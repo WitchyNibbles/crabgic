@@ -90,7 +90,7 @@ Phase 23 is the terminal phase (**Unlocks: —**); no roadmap phase consumes any
 5. Git-invariance + neutral-rendering matrix harness against 07/08 — failing-test-first: harness FAILs on a seeded commit body carrying an attribution leak.
 6. Neutral-communication + connector-security + exactly-once matrix harness against 17/16/18/19/20 — failing-test-first: harness FAILs on a seeded confusable-domain fixture and on a seeded replay-with-changed-payload fixture (must be rejected, not silently accepted).
 7. `@live` full-system conformance run: pinned-range gate, hermeticity/sandbox self-test on a clean host, gateway MCP 8-family completeness — failing-test-first: run FAILs while any gateway tool family or CLI backend still returns `NOT_IMPLEMENTED`.
-8. Security review cycle against `docs/threat-model.md` (02) vs. 03/16/17 implementation — failing-test-first: review BLOCKS while any CRITICAL/HIGH finding is open (mirrors 14's gate semantics).
+8. Security review cycle against `docs/threat-model.md` (02) vs. 03/16 keystones + 17's lint surface — failing-test-first: review BLOCKS while any CRITICAL/HIGH finding is open (mirrors 14's gate semantics).
 9. Docs authoring (`docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, `upgrade-guide.md`) + ARM64 verification close-out — failing-test-first: doc review FAILs if any claim doesn't cite the actual release-candidate object ID or a passing CI run.
 10. Reproducible-build + provenance pipeline; publication dry-run, then real publish (npm, SHA-pinned marketplace entry, `CHANGELOG.md`, `v1.0.0` tag) — failing-test-first: dry-run FAILs closed if a from-clean-checkout rebuild's tarball hash mismatches the release build's.
 
@@ -113,6 +113,7 @@ This phase *is* mostly its own test plan — every matrix run emits `EvidenceRec
   | Sessions | 06 (resume/fork), 13 (parking reuses it) | Kill -9 → resume, and parking-across-restart, both live |
   | Neutrality | 08 (commits), 17 (lint), 10 (post-install) | Re-run against real release-candidate artifacts |
   | Version drift | 06/09 (version gate) | Doctor refuses an untested `claude --version` on the release host |
+  | Verification gates (§9 delta row 9: conformance verdicts in the exact-revision evidence set) | 14 (`engine-conformance` binding gate) | Fired by the 14/15/22 gate re-run above — binds the release engine version's green `engine-live` record into the release candidate's evidence chain; a mapping note, not a separate 23 harness |
 
 - **Security:** threat-model-vs-implementation review (02's `docs/threat-model.md` vs. 03/16 keystones + 17's lint surface); forged delete/admin/impersonation-before-network-I/O fixtures (16/18/20); SSRF/redirect/tenant-boundary fixtures (16); secret-leakage/attribution fixtures (17); a seeded CRITICAL/HIGH finding must block release (mirrors 14's gate semantics) — this is not omitted, it's the work item 8 entry point above.
 
@@ -120,7 +121,7 @@ This phase *is* mostly its own test plan — every matrix run emits `EvidenceRec
 
 - [ ] `release-e2e` CI job's archived `e2e/release-gate-report.json` shows PASS for every item below, each linked to ≥1 `EvidenceRecord` from the exact release-candidate object ID.
 - [ ] All applicable quality/security/perf/learning gates (14/15/22) pass on the release candidate with the coverage policy satisfied — not a synthetic fixture.
-- [ ] No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16/17).
+- [ ] No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16 keystones + 17's lint surface).
 - [ ] Every requirement linked to evidence from the exact final Git object ID and remote (Jira/Grafana) revisions (21's traceability report).
 - [ ] Performance contracts satisfied rather than skipped, measured on a quiet host (15).
 - [ ] Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).
@@ -133,6 +134,7 @@ This phase *is* mostly its own test plan — every matrix run emits `EvidenceRec
 - [ ] Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).
 - [ ] `docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, and `upgrade-guide.md` are committed, and every claim in them cites a passing CI run or `EvidenceRecord` from the release candidate — no aspirational text.
 - [ ] Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view engineering-orchestrator` re-check passes.
+- [ ] Release artifact records the exact pinned engine/SDK version (`@anthropic-ai/claude-agent-sdk`, exact-pinned per 01's `engine-pin-lint` policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; `docs/compatibility-matrix.md` states the pinned version alongside the tested Claude Code engine version range — evidenced by the `engine-pin-lint` CI run and the tarball manifest check cited in the release-gate report.
 
 ## Risks & open questions
 

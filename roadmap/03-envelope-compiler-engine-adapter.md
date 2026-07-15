@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 00, 02 |
-| **Unlocks** | 06 — plus informal fake-engine reuse in 05's pre-06 worker tests (no dependency edge; see Risks) |
+| **Unlocks** | 05 (fake-engine reuse in 05's pre-06 worker-lifecycle tests — formalized, `P03 --> P05`), 06 |
 | **Sources** | adaptation §1 (EngineAdapter), §4.1–§4.2, §5.1, §9 (envelope-conformance test-matrix), Appendix B (`mcp__*` deny footgun); `docs/engine-baseline.md` (phase 00 output) |
 | **Primary package** | `packages/engine-core`, `packages/testkit` (fake engine) |
 
@@ -44,7 +44,7 @@ From `packages/engine-core` (scaffolded empty by 01; first populated here — Ga
 
 From `packages/testkit` (scaffolded empty by 01; this phase adds the fake engine — 02 already contributes fixture builders, 16 later adds fake providers):
 
-- **Fake engine** implementing `EngineAdapter` — formal consumer 06 ("fake vs live parity: identical fixture verdicts," 06's own exit criteria). Also exercised directly by 05's own pre-06 worker-lifecycle tests per 05's own text ("spawn via EngineAdapter (fake engine until 06)," 05 §In scope) — flagged in Risks below, since 05's header does not currently list 03 as a dependency.
+- **Fake engine** implementing `EngineAdapter` — formal consumer 06 ("fake vs live parity: identical fixture verdicts," 06's own exit criteria). Also exercised directly by 05's own pre-06 worker-lifecycle tests per 05's own text ("spawn via EngineAdapter (fake engine until 06)," 05 §In scope) — now a formal dependency: 05's header lists 03, and the README graph carries a `P03 --> P05` edge (see Risks).
 - **Envelope-conformance fixture format** (per-envelope scripted trace + expected per-layer verdict) — reused byte-identical by 06's `@live` suite (adaptation §9) and re-executed by 23 against the release-candidate object ID ("envelope-conformance fixture format," 23 §Interfaces consumed).
 - **Golden settings artifacts** for the three canonical envelopes — diffed by 06 for real-engine drift and re-diffed by 23 at release ("golden settings artifacts," 23 §Interfaces consumed).
 
@@ -102,5 +102,5 @@ All vectors below are written red before their corresponding compiler/adapter co
 - **§10 risk #5 (sandbox default read-open):** the sandbox emitter must always populate `denyRead` for `~/.ssh`/`~/.aws`; only a golden-artifact drift test would catch a silent regression here.
 - **§10 risk #3 (SDK `settingSources` default ambiguity):** doesn't gate this phase's pure compiler directly (no SDK call happens here), but `WorkerSdkOptions` must show `settingSources: []` explicitly in the golden artifacts so drift is visible before 06 ever spawns a real worker.
 - **§10 risk #2 (`--permission-prompt-tool` undocumented):** the `AdjudicationCallback` hook slot deliberately mirrors the documented SDK `canUseTool` callback shape, not the undocumented CLI flag; 06 must not build the real wiring against the latter.
-- **Cross-phase gap, not fixed here:** 05's own text ("spawn via EngineAdapter (fake engine until 06)") implies a hard dependency on this phase's `packages/engine-core` type and `packages/testkit` fake engine that neither 05's header (`Depends on: 04`) nor the README graph (no `P03→P05` edge) reflects. Flagged for the reconciler — not fixed here, since this phase does not own 05.
+- **Resolved (previously flagged as a cross-phase gap):** 05's own text ("spawn via EngineAdapter (fake engine until 06)") implied a hard dependency on this phase's `packages/engine-core` type and `packages/testkit` fake engine. This is now formalized: 05's header lists `03, 04` under Depends on, and the README graph carries a `P03 --> P05` edge.
 - **Fake-vs-live parity is not permanent truth:** this phase guarantees fixture-*format* compatibility; only 06's `@live` suite proves the fake engine's behavior still matches the real one on any given pinned engine version.

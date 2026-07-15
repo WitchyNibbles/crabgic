@@ -19,7 +19,7 @@ Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §
 | 02 | `02-contracts-and-schemas.md` | Core contracts, state machines, canonical errors | 01 |
 | 03 | `03-envelope-compiler-engine-adapter.md` | EngineAdapter contract + envelope compiler + fake engine | 00, 02 |
 | 04 | `04-journal-idempotency-leases.md` | Event journal, snapshots, idempotency, leases | 02 |
-| 05 | `05-supervisor-daemon.md` | Supervisor daemon & UDS control plane | 04 |
+| 05 | `05-supervisor-daemon.md` | Supervisor daemon & UDS control plane | 03, 04 |
 | 06 | `06-claude-engine-adapter.md` | Claude Code worker runtime (SDK transport) | 03, 05 |
 | 07 | `07-git-control-repo-worktrees.md` | Git engine: control repo, worktrees, overlap analysis | 04 |
 | 08 | `08-integration-publication.md` | Merge preflight, CAS refs, neutral Git rendering, local publish | 02, 07, 17 |
@@ -46,7 +46,7 @@ graph LR
   P00[00 spikes] --> P03
   P01[01 bootstrap] --> P02
   P02 --> P03 & P04 & P16 & P17 & P08 & P12
-  P03 --> P06
+  P03 --> P05 & P06
   P04 --> P05 & P07 & P16
   P05 --> P06 & P09 & P16
   P06 --> P10 & P11 & P13
@@ -62,10 +62,10 @@ graph LR
   P18 --> P19 & P21
   P20 --> P21
   P21 --> P23
-  P15 & P19 & P22 --> P23
+  P08 & P15 & P19 & P22 --> P23
 ```
 
-Critical path: 00/01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 23. The connector line (16 → 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.
+Critical path: 00/01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 15 → 23. The connector line (16 & 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.
 
 ## Mapping to the original plan's 10 phases
 

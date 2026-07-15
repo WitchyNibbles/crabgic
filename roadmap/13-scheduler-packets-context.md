@@ -30,6 +30,7 @@ Once this phase lands, the DAG approved in 11 executes to completion without fur
 - Lesson grading, contamination detection, promotion/review, persistent-lesson storage (22) — this phase supplies the shadow-run mechanism and the ephemeral preamble slot only.
 - IntentContract/DAG/roster/envelope authoring and the human approval gate itself (11) — this phase consumes the approved artifacts and never re-derives or re-approves them.
 - Manager-side native subagent exploration (`isolation: worktree`, read-heavy inspection) — that surface belongs to 10/11; this phase is pure supervisor-owned worker-DAG execution, never "manager subagents" (Gap 9's own clarification).
+- Claude Code's experimental Agent Teams mechanism (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) — deliberately not used anywhere in the system (adaptation §10 risk 7: experimental, breaking changes); this phase's supervisor-owned executor is the only orchestrator and never delegates orchestration to it.
 - Worktree creation/destruction/quarantine and the overlap-analysis algorithm itself (07) — this phase only consumes readiness inputs.
 - EngineAdapter spawn/resume/cancel implementation, session/hook/sandbox mechanics, structured-output validation (06) — this phase only calls it.
 - Worker lifecycle plumbing — spawn/reap/log ring buffer/UDS request-response surface (05) — invoked through 06, never reimplemented here.

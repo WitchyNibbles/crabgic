@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 16, 17 |
-| **Unlocks** | 19, 21, 23 |
+| **Unlocks** | 19, 21; transitively, 23 (no direct 18→23 edge — 23's own "Depends on: all" header includes 18, but the mermaid graph's simplified inbound edges to 23 are 08/15/19/21/22 only) |
 | **Sources** | original plan Jira sections (scope, intake/sync, rate limits); REST v3 + Agile APIs; adaptation §7 (Jira/Grafana connectors — unchanged, three Claude Code notes), §8 (intake/sync policy, milestone-only updates carry over unchanged) |
 | **Primary package** | `packages/connectors-jira` |
 

@@ -291,7 +291,7 @@ identical choice for its own gate/flake evidence, citing this same closed-at-13 
 **Phases affected:** 02, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 16, 18, 21, 22, 23 — every phase that writes
 or consumes a `JournalEntryType` member (07 is the sole writer of `git_freeze`/`worktree_quarantine`, 16 of
 `remote_operation_record`, 18/21 of `milestone_sync`, 09/11/12/22 of `approval_token_mint` — the union of all member writers/consumers,
-broader than Phase 02's own prose note at 02:72, which is itself under-inclusive (02:72 omits 11/14/16 and
+broader than Phase 02's own prose note at 02:73, which is itself under-inclusive (02:73 omits 11/14/16 and
 attributes `approval_token_mint` to 09/12 only) — expanded 2026-07-15 after an audit found the prior set (02,
 04, 08, 13, 14, 22) omitted the actual writers)
 

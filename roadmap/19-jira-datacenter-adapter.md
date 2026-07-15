@@ -43,7 +43,7 @@ Everything below lives in `packages/connectors-jira`. Per the dependency graph, 
 - **`DcEditionFeatureMatrix`** — new: maps a discovered DC edition/version to its available fields/actions, feeding `CapabilitySnapshot` (P02); the source of every DC-only typed `unsupported` result.
 - **`wikiMarkupRenderProfile`** — new: `RenderedArtifact` → Jira wiki-markup serializer, plus its golden corpus.
 - **Parameterized Jira conformance suite** — generalizes 18's Cloud-only suite to run identical assertions over both `JiraDeploymentType` values.
-- **DC fixture set** — `packages/connectors-jira/fixtures/datacenter/{10.3,11.3}/` (cassettes) and `docker/jira-datacenter/{10.3,11.3}/` (container recipes + teardown scripts). Consumed by 23 work item 1 (disposable-environment tooling).
+- **DC fixture set** — `packages/connectors-jira/fixtures/datacenter/{10.3,11.3}/` (cassettes) and `docker/jira-datacenter/{10.3,11.3}/` (container recipes + teardown scripts). Consumed by 23 work item 2 (disposable-environment tooling).
 - **Doctor-check functions** — PAT-validity probe, basic-auth-active finding (non-blocking), connection-reachability probe exercising 16's custom-CA path. Plain functions returning structured findings; consumed by this phase's own test suite directly and, later, by 23's CLI-wiring work behind `connection doctor <id>`.
 
 ## Interfaces consumed

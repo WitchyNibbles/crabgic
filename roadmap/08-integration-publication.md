@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 02 (`ChangeSet`/`WorkUnit`/`CommunicationPolicy`/`JournalEntryType`/`EvidenceRecord`/`RenderedArtifact`), 07 (control clone, worktrees, overlap analysis), 17 (`ArtifactKind`, `lint()`/`renderWithRegeneration()`) |
-| **Unlocks** | 23 (no other phase's header names 08 as a dependency — see Risks) |
+| **Unlocks** | 23 (`P08 --> P23` in the README graph; no other phase's header names 08 as a dependency — see Risks) |
 | **Sources** | original plan "Git and worktree isolation" (integration/publication half) + "Concise communication policy" (neutral identity); adaptation §5.4 (neutral identity), §8 ("local-branch publication without checkout/push" — stays exactly as planned) |
 | **Primary package** | `packages/git-engine` (shared with 07 — 08 adds the integration/publication half; see Risks for module-boundary note) |
 
@@ -98,7 +98,7 @@ From **17** (`packages/renderer`):
 
 ## Risks & open questions
 
-- **No phase's header names 08 as a dependency, and the mermaid graph draws no edge out of it** — yet 13 dispatches the `WorkUnit`s this phase creates, and 09's `evidence` command surfaces the `EvidenceRecord`s it attaches. Both resolve without a new edge: 13 already depends on 07, which shares `packages/git-engine` with 08; 09 already reads the generic `EvidenceRecord`/journal surface (02/04) regardless of writer. This is the mirror image of 17's own flagged open item (17→08 consumption vs. 08's header formerly omitting 17) — closed on this side by adding 17 to Depends on above.
+- **Resolved — the mermaid graph now draws a `P08 --> P23` edge**, reflecting 23's release-gate consumption of this phase's preflight/CAS/publication work (every Interfaces-produced row above names 23 as a consumer). 13 and 09 still consume 08's outputs with no new edge of their own: 13 already depends on 07, which shares `packages/git-engine` with 08; 09 already reads the generic `EvidenceRecord`/journal surface (02/04) regardless of writer. This is the mirror image of 17's own flagged open item (17→08 consumption vs. 08's header formerly omitting 17) — closed on this side by adding 17 to Depends on above.
 - **`final_verifying` (14) runs between this phase's two stages** (`integrating` work, then `published_local` work) — no phase text states what composition root sequences 08 → 14 → 08. Not resolvable from this file; flagged as an open architectural question, not invented here.
 - **Rebuild-and-reverify loop must terminate** — bounded attempt cap, converge-or-block-with-evidence, never an unbounded retry; covered by the racing-integrators test above.
 - **PR/review-comment content is template-filled from existing structured data, not freshly authored prose** — if a future product decision wants richer, model-authored PR narrative, that is a genuine product decision the source doc doesn't settle and would need an explicit owner call, not a quiet scope add here.

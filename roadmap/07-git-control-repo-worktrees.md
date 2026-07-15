@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 04 |
-| **Unlocks** | 08 (shares `packages/git-engine`: frozen base object ID, control clone, worktree/ref conventions, invariance harness), 13 (overlap-analysis output, worktree lifecycle, frozen base object ID), 23 (invariance harness, worktree quarantine, control-clone location — reused directly in the Git-invariance matrix) |
+| **Unlocks** | 08 (shares `packages/git-engine`: frozen base object ID, control clone, worktree/ref conventions, invariance harness), 13 (overlap-analysis output, worktree lifecycle, frozen base object ID); 23 transitively (via 08's `P08 --> P23` edge — reuses this phase's invariance harness, worktree quarantine, and control-clone location directly) |
 | **Sources** | original plan "Git and worktree isolation"; adaptation §3.2 (why not native `.claude/worktrees`), §4.5 (worktree-scoped session resume), §8 (Git engine "stays exactly as planned") |
 | **Primary package** | `packages/git-engine` |
 

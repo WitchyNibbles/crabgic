@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Depends on** | 04 — plus informal, pre-06 reliance on 03's `EngineAdapter` interface and `packages/testkit` fake engine for this phase's own worker-lifecycle tests (no dependency edge; flagged by 03/06; see Risks) |
+| **Depends on** | 03, 04 — this phase spawns via 03's `EngineAdapter` interface and `packages/testkit`'s fake engine for its own pre-06 worker-lifecycle tests (formerly an informal, unedged reliance; see Risks) |
 | **Unlocks** | 06, 09, 16 |
 | **Sources** | original plan "Manager and isolated workers" + resource budgets; adaptation §3.1 (hooks/`canUseTool` as the enforcement layer this phase's adjudication stub answers), §4.5 (`session_id` durability, crash/resume), §5.1 layer 0 (per-worker process confinement), §5.6 (crash recovery + plan-limit parking machinery) |
 | **Primary package** | `packages/supervisor` |
@@ -61,7 +61,7 @@ From **04** (`packages/journal`), this phase's sole direct dependency:
 - `runKillHarness(operation, faultPoints[])` — reused directly for this phase's own crash-recovery test suite (04's own text: "reusable by 05/13/23's own crash-recovery tests").
 - On-disk layout constants: `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/journal/`, `.../leases/` — this phase's own runtime dir/registries nest as a sibling subpath under the same pinned root, never a second root.
 
-From **03** (`packages/engine-core`, `packages/testkit`) — informal, pre-06, no dependency edge (flagged; see Risks):
+From **03** (`packages/engine-core`, `packages/testkit`) — direct dependency (`P03 --> P05`; formerly informal, pre-06, no dependency edge — see Risks):
 - `EngineAdapter`'s interface shape and the fake-engine implementation this phase spawns against for its own worker-lifecycle tests until 06 lands the real adapter; `AdjudicationCallback`'s call shape, which this phase's stub answers.
 
 **Ambient, via `packages/contracts` (02)** — not a direct Depends-on edge, the same convention every phase applies:
@@ -97,14 +97,14 @@ From **03** (`packages/engine-core`, `packages/testkit`) — informal, pre-06, n
 - [ ] Foreign-uid peer refused (unit-tested check; integration where CI permits).
 - [ ] Two same-uid local connections (standing in for the CLI and the gateway) both pass the `SO_PEERCRED` check against the identical router and receive identical `run.status`/`run.cancel` responses — proving one handler, two transports.
 - [ ] kill -9 mid-operation → restart recovers registries via 04's `recover(runId)`; no duplicated side effects.
-- [ ] Hung fake worker fully reaped within deadline.
-- [ ] Slow subscriber never stalls a worker; drops surfaced.
+- [ ] Hung fake worker fully reaped within deadline — evidence: Test plan's Integration suite, fake-engine fault injection (hang/crash/log-spam) proving the SIGTERM → grace → SIGKILL ladder and orphan reaping.
+- [ ] Slow subscriber never stalls a worker; drops surfaced — evidence: Test plan's Property (fast-check) suite, randomized concurrent-subscriber sequences asserting drops are always counted and never propagate backpressure to the worker pipe.
 - [ ] Idle budget test green with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat).
 - [ ] A repo-wide check confirms no `change_set.*`-named operation exists anywhere in this package's router or registry surface.
 
 ## Risks & open questions
 
-- **Flagged, not resolved here — the 03/05 dependency-edge gap:** this phase's own worker-management scope ("spawn via EngineAdapter (fake engine until 06)") needs 03's `packages/engine-core` interface and `packages/testkit`'s fake engine at this phase's own build time, for its own pre-06 worker-lifecycle tests. Neither this phase's header nor the README's dependency graph (no `P03→P05` edge) reflects that — a gap both 03's and 06's own files already flag and leave for the reconciler. Recorded here so all three files describing the same gap agree on its shape; the actual header/graph edit is a cross-file change outside a single phase spec's authority.
+- **Resolved — the 03/05 dependency-edge gap:** this phase's own worker-management scope ("spawn via EngineAdapter (fake engine until 06)") needs 03's `packages/engine-core` interface and `packages/testkit`'s fake engine at this phase's own build time, for its own pre-06 worker-lifecycle tests. This is now reflected: this phase's header lists `03, 04` under Depends on, and the README's dependency graph carries a `P03 --> P05` edge.
 - **Flagged, not resolved here — the idle-budget/`packages/perf` tension:** this rewrite's own brief characterizes 23's idle-budget re-measurement as `packages/perf` (15) owning the harness. 15's own file states the opposite, twice, by name: the supervisor idle-resource budget is "owned end-to-end by 05 ... and re-measured directly by 23; not a PerformanceContract, never routed through `packages/perf`," and its resource-capture wrappers apply "around the benchmarked base/candidate processes only (not the supervisor's own idle budget — see Out of scope)." This file follows 15's explicit, twice-stated text: the idle-budget probe is this phase's own self-contained measurement, not a `packages/perf` benchmark. Flagging the discrepancy rather than silently picking a side; if 15 is ever revised to actually take this measurement over, this phase's own perf-harness work item and exit criterion need a matching edit.
 - Stay dependency-light: 01 names this phase's idle-budget perf harness directly as its reason later phases should bias away from heavyweight frameworks when choosing dependencies — a note this phase's own implementation should honor first, not just later phases'.
 - The idle budget is re-measured as a release gate (23) on a quiet host — noisy shared CI should not be the only evidence for the documented numbers.

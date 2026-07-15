@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 02 |
-| **Unlocks** | 05, 07, 16, 23 |
+| **Unlocks** | 05, 07, 16 (direct); 23 transitively (via 05/07/16 — see Interfaces produced, "imported directly by 05, 07, 16 ... transitively by ... 23") |
 | **Sources** | original plan "Durable execution"; adaptation §4.5 (session_id durability), §5.6 (crash recovery, plan-limit parking), §8 (journal/lease/idempotency invariants) |
 | **Primary package** | `packages/journal` |
 

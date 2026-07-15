@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 06, 09, 10 |
-| **Unlocks** | 13, 23 |
+| **Unlocks** | 13; transitively, 23 (no direct 11→23 edge — 23's own "Depends on: all" header includes 11, but the mermaid graph's simplified inbound edges to 23 are 08/15/19/21/22 only) |
 | **Sources** | original plan "Intent contract and approval"; adaptation §0 (auth/budget policy), §5.5 (approval flow, gateway tool list), §9 (EngineAdapter capabilities), Appendix B (worker permission profile), §10 risks 9/10 |
 | **Primary package** | `packages/supervisor`, `packages/plugin`, `packages/cli` |
 
@@ -100,7 +100,7 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
 
 **From 09 (`packages/cli`):**
 - Approval-token minting mechanism — terminal-prompt rendering of envelope digests + HMAC token minted and
-  bound to the envelope hash, journaled (09 work item 5, explicitly "consumed in 11" per 09's own text). 11
+  bound to the envelope hash, journaled (09 work item 6, explicitly "consumed in 11" per 09's own text). 11
   supplies the contract/plan/budget/mutation-preview/manifest content rendered through it; 09 owns the
   generic mint/expire/single-use machinery.
 - `run` CLI command surface + typed UDS client — 11 implements the pre-dispatch intake → contract → approval

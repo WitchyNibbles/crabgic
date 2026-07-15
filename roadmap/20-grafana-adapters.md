@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 16, 17 |
-| **Unlocks** | 21, 23 |
+| **Unlocks** | 21; transitively, 23 (no direct 20→23 edge — 23's own "Depends on: all" header includes 20, but the mermaid graph's simplified inbound edges to 23 are 08/15/19/21/22 only) |
 | **Sources** | original plan Grafana sections (scope, mutation safety, version-aware routing); adaptation §7 (gateway is the sole MCP/HTTP client to upstream providers; gateway-side result-size budgets), §5.5 (`observability.*` tool naming), §10 (risks 4, 10, 11) |
 | **Primary package** | `packages/connectors-grafana` |
 

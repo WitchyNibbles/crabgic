@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Depends on** | 02 (`renderer-core` module in `packages/contracts`, `CommunicationPolicy`) |
-| **Unlocks** | 08 (PR/commit/branch text + terminal PR artifacts), 18, 20 (provider-payload templates + lint), 23 (release-gate corpus) |
+| **Unlocks** | 08 (PR/commit/branch text + terminal PR artifacts), 18, 20 (provider-payload templates + lint); transitively, 23 (release-gate corpus — no direct 17→23 edge; 23's own "Depends on: all" header includes 17, but the mermaid graph's simplified inbound edges to 23 are 08/15/19/21/22 only) |
 | **Sources** | original plan "Concise communication policy" + "Blocking renderer and linter"; adaptation §8 ("stays exactly as planned" list), §9 (Neutrality test-matrix item) |
 | **Primary package** | `packages/renderer` |
 
