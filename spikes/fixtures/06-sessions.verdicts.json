@@ -7,8 +7,8 @@
   },
   {
     "probe": "sessions.kill9-resume-continuity",
-    "expectation": "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact",
-    "observed": "resume result=\"42\"; contains \"42\"=true",
+    "expectation": "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact; the killed run's fixture carries a non-empty crash-truncated stream-json prefix",
+    "observed": "crash-stream prefix captured before SIGKILL: 23 event line(s); resume result=\"42\"; contains \"42\"=true",
     "verdict": "PASS"
   },
   {

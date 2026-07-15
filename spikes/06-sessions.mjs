@@ -37,6 +37,14 @@ if (!existsSync(REAL_CREDS)) {
   process.exit(0);
 }
 
+// Targeted-run mode (validation round): SPIKE06_ONLY=kill9 runs ONLY the
+// kill-9/resume probe and MERGES its verdict + raw-output entries into the
+// existing committed fixtures (replacing the matching probe/keys) instead of
+// overwriting the whole files — so the other three probes' committed
+// evidence stays traceable to the run that produced it without re-spending
+// their queries. Default (env unset): full run, full overwrite, as always.
+const ONLY_KILL9 = process.env.SPIKE06_ONLY === "kill9";
+
 const isolatedConfigDir = mkdtempSync(join(tmpdir(), "crabgic-spike06-config-"));
 const scratchCwd = mkdtempSync(join(tmpdir(), "crabgic-spike06-cwd-"));
 copyFileSync(REAL_CREDS, join(isolatedConfigDir, ".credentials.json"));
@@ -63,7 +71,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 try {
   // --- Probe 1: pre-assigned --session-id honored ---
-  {
+  if (!ONLY_KILL9) {
     const sid = randomUUID();
     const r = await runClaude([
       "-p", "Reply with just: ok",
@@ -84,20 +92,41 @@ try {
   }
 
   // --- Probe 2: kill -9 mid-run, then --resume continuity ---
+  // Fixture-quality fix (validation round): the first version used
+  // --output-format json (single result at end), so the SIGKILLed process
+  // had emitted ZERO stdout bytes and the "crash" fixture was empty. This
+  // version streams (stream-json + include-partial-messages), waits for the
+  // first complete stream event line — guaranteeing a genuine non-empty
+  // crash-truncated stream prefix in the fixture — and keeps a 3.5s floor
+  // before SIGKILL so the worker has reached the sleep(8) Bash call
+  // (preserves the resume-continuity behavior verified in earlier passes;
+  // the PASS criterion below is unchanged).
   {
     const sid = randomUUID();
     const { child, getStdout, getStderr } = spawnClaude([
       "-p", "Remember the number 42 for later. Then via Bash run: sleep 8",
-      "--model", "haiku", "--output-format", "json",
+      "--model", "haiku",
+      "--output-format", "stream-json", "--include-partial-messages", "--verbose",
       "--setting-sources", "",
       "--settings", JSON.stringify({ permissions: { allow: ["Bash(sleep:*)"] } }),
       "--permission-mode", "dontAsk",
       "--session-id", sid,
     ], { env, cwd: scratchCwd });
-    await delay(3500); // let it reach the sleep(8) Bash call before killing
+    const spawnedAt = Date.now();
+    while (!getStdout().includes("\n") && Date.now() - spawnedAt < 15000) await delay(200);
+    const elapsed = Date.now() - spawnedAt;
+    if (elapsed < 3500) await delay(3500 - elapsed);
     child.kill("SIGKILL");
     await new Promise((resolve) => child.on("close", resolve));
-    rawOutputs["kill9-initial"] = { stdout: getStdout(), stderr: getStderr() };
+    const streamPrefix = getStdout();
+    const streamPrefixLines = streamPrefix.split("\n").filter((l) => l.trim()).length;
+    rawOutputs["kill9-initial"] = {
+      transport: "cli --output-format stream-json --include-partial-messages",
+      killedWith: "SIGKILL",
+      streamPrefixLines,
+      stdout: streamPrefix,
+      stderr: getStderr(),
+    };
 
     const rResume = await runClaude([
       "-p", "What number should you remember? Reply with just the number.",
@@ -110,14 +139,14 @@ try {
     const recalled = (resumeJson?.result ?? "").includes("42");
     entries.push(verdict({
       probe: "sessions.kill9-resume-continuity",
-      expectation: "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact",
-      observed: `resume result="${resumeJson?.result ?? "(none)"}"; contains "42"=${recalled}`,
+      expectation: "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact; the killed run's fixture carries a non-empty crash-truncated stream-json prefix",
+      observed: `crash-stream prefix captured before SIGKILL: ${streamPrefixLines} event line(s); resume result="${resumeJson?.result ?? "(none)"}"; contains "42"=${recalled}`,
       verdict: recalled ? "PASS" : "FAIL",
     }));
   }
 
   // --- Probe 3: --fork-session leaves the original transcript untouched ---
-  {
+  if (!ONLY_KILL9) {
     const sid = randomUUID();
     const rInitial = await runClaude([
       "-p", "Remember the word BANANA123. Reply with just: ok",
@@ -152,7 +181,7 @@ try {
   }
 
   // --- Probe 4: two concurrent same-dir sessions, distinct session-ids, no interleave ---
-  {
+  if (!ONLY_KILL9) {
     const sidA = randomUUID();
     const sidB = randomUUID();
     const [rA, rB] = await Promise.all([
@@ -203,16 +232,31 @@ try {
 }
 
 const outPath = join(__dirname, "fixtures", "06-sessions.verdicts.json");
-writeVerdicts(outPath, entries);
-
 const fixturePath = join(__dirname, "fixtures", "06-sessions.raw.sanitized.json");
 const sanitized = JSON.parse(JSON.stringify(rawOutputs).split(process.env.HOME).join("<HOME>"));
-writeFileSync(fixturePath, JSON.stringify(sanitized, null, 2) + "\n", "utf8");
+
+if (ONLY_KILL9 && existsSync(outPath) && existsSync(fixturePath)) {
+  // Merge: replace only the entries/keys this targeted run produced.
+  const mergedVerdicts = JSON.parse(readFileSync(outPath, "utf8")).map((old) => {
+    const replacement = entries.find((e) => e.probe === old.probe);
+    return replacement ?? old;
+  });
+  for (const e of entries) {
+    if (!mergedVerdicts.some((v) => v.probe === e.probe)) mergedVerdicts.push(e);
+  }
+  writeVerdicts(outPath, mergedVerdicts);
+  const mergedRaw = { ...JSON.parse(readFileSync(fixturePath, "utf8")), ...sanitized };
+  writeFileSync(fixturePath, JSON.stringify(mergedRaw, null, 2) + "\n", "utf8");
+  console.log(`\n[SPIKE06_ONLY=kill9] merged ${entries.length} verdict(s) + ${Object.keys(sanitized).length} raw key(s) into existing fixtures.`);
+} else {
+  writeVerdicts(outPath, entries);
+  writeFileSync(fixturePath, JSON.stringify(sanitized, null, 2) + "\n", "utf8");
+}
 
 const hits = scanForSecrets(readFileSync(outPath, "utf8") + readFileSync(fixturePath, "utf8"));
 if (hits.length) {
   console.error("SANITIZATION FAILURE:", hits);
   process.exitCode = 1;
 } else {
-  console.log(`\n${entries.length} verdict(s) recorded to ${outPath}; sanitization scan clean.`);
+  console.log(`\nverdicts at ${outPath}; sanitization scan clean.`);
 }
