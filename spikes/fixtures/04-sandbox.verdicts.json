@@ -1,0 +1,39 @@
+[
+  {
+    "probe": "sandbox.bwrap-presence",
+    "expectation": "bwrap (bubblewrap) binary is present on PATH for Linux/WSL2 sandboxing",
+    "observed": "found at /usr/bin/bwrap",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sandbox.fail-if-unavailable-aborts",
+    "expectation": "with sandbox.enabled + failIfUnavailable:true and bwrap made unresolvable (starved PATH), the worker aborts rather than running the command unsandboxed",
+    "observed": "query() threw: Claude Code returned an error result: Sandbox required but unavailable: sandbox is enabled but dependencies are missing: bubblewrap (bwrap) not installed, socat not installed · install missing tools (e.g. apt install bubblewrap socat) or see https://code.claude.com/docs/en/sandboxing. Set sandbox.failIfUnavailable=false to allow unsandboxed execution.",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sandbox.egress-denied-empty-allowlist",
+    "expectation": "with sandbox network.allowedDomains: [], a Bash-invoked curl to an external host fails (no egress), even though the Bash tool call itself is permission-allowed",
+    "observed": "sawSuccessCode(200)=false; sawProxyForbidden(403)=true; sawOtherFailureSignal=false. Live behavior: the sandbox's network proxy answers disallowed requests with HTTP 403 itself (curl exits 0 — it reached the proxy, not example.com) rather than a connection-refused/DNS-failure shape.",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sandbox.uds-reachability",
+    "expectation": "a Unix domain socket is unreachable from the sandbox by default and reachable once `network.allowAllUnixSockets: true` is set (adaptation's `allowUnixSockets: true` boolean does not match the live string[]/macOS-only schema)",
+    "observed": "default config: PONG seen=false; allowAllUnixSockets:true config: PONG seen=true",
+    "verdict": "PASS",
+    "note": "SCHEMA CORRECTION: live SandboxSettings.network.allowUnixSockets is string[] (macOS path allowlist, ignored on Linux/WSL2); the Linux-relevant boolean is allowAllUnixSockets. Adaptation Appendix A's `allowUnixSockets: true` boolean form does not apply on this platform."
+  },
+  {
+    "probe": "sandbox.denyread-ssh-enforced",
+    "expectation": "sandbox default is read-open (secret readable without denyRead) but sandbox.filesystem.denyRead: ['~/.ssh'] blocks the same Bash `cat` read",
+    "observed": "without denyRead: secret content observed=true; with denyRead ~/.ssh: secret content observed=false",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sandbox.masked-credential-envvar",
+    "expectation": "sandbox.credentials.envVars mode:'mask' substitutes a sentinel for EO_SECRET_X inside the sandbox; the real value never appears in the worker's resolved env/output",
+    "observed": "real secret value leaked into transcript=false; some VALUE= output observed=true",
+    "verdict": "PASS"
+  }
+]

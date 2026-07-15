@@ -1,0 +1,26 @@
+[
+  {
+    "probe": "hermeticity.rogue-settings-env",
+    "expectation": "rogue user-tier and project-tier settings.json 'env' blocks are NOT injected into the worker's Bash environment",
+    "observed": "transcript does not contain the user-tier marker; does not contain the project-tier marker",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "hermeticity.rogue-hook",
+    "expectation": "planted PreToolUse hooks (user-tier and project-tier settings.json) do NOT fire for the worker's Bash call",
+    "observed": "user-tier hook marker file absent (hook did not fire); project-tier hook marker file absent (hook did not fire)",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "hermeticity.rogue-claude-md",
+    "expectation": "planted CLAUDE.md content/secret phrase is NOT injected into the worker's system prompt or surfaced in its answer",
+    "observed": "transcript does not contain the planted secret phrase",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "hermeticity.rogue-mcp-json",
+    "expectation": "planted project .mcp.json is NOT auto-discovered; no 'rogue' MCP server appears in the worker's init message",
+    "observed": "init message mcp_servers = []",
+    "verdict": "PASS"
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "probe": "permissions.dontask-auto-deny-unlisted-tool",
+    "expectation": "dontAsk mode auto-denies a tool (Write) not covered by any allow rule, with no interactive prompt",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; Write denied=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.compound-command-smuggling",
+    "expectation": "`echo x && curl ...` is denied because the curl subcommand does not independently match the Bash(echo:*) allow rule",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; compound denied=true; control echo-only allowed=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.process-wrapper-smuggling",
+    "expectation": "`nohup curl ...` is denied because the wrapper is stripped and curl still does not match Bash(echo:*)",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; wrapper denied=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.deny-wins-same-level",
+    "expectation": "a rule present in both permissions.allow and permissions.deny at the same settings level is denied (deny wins)",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01A9Jf5DcqymZ1361cHKtqdm\",\"tool_input\":{\"command\":\"echo same-level-test\",\"description\":\"Echo the text 'same-level-test'\"}}]",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.deny-wins-cross-level",
+    "expectation": "user-tier deny (~/.claude equiv settings.json) wins over project-tier allow for the same Bash(echo:*) rule",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01Siyr6LqE87aUgkmSPP8vRi\",\"tool_input\":{\"command\":\"echo cross-level-test\",\"description\":\"Echo the text cross-level-test\"}}]",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.edit-outside-allowed-path",
+    "expectation": "Edit is denied for a path outside the allow rule (Edit(//tmp/crabgic-spike03-allowed-uyiban/**)); the file on disk is left unmodified",
+    "observed": "permission_denials=[{\"tool_name\":\"Edit\",\"tool_use_id\":\"toolu_01PAzfrKnuqh39bo1a9r5TGU\",\"tool_input\":{\"file_path\":\"/tmp/crabgic-spike03-forbidden-gBccCq/target.txt\",\"old_string\":\"old\",\"new_string\":\"new\",\"replace_all\":false}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01F3C49sDZCU81ySvKuYGHnG\",\"tool_input\":{\"command\":\"sed -i 's/old/new/g' /tmp/crabgic-spike03-forbidden-gBccCq/target.txt\",\"description\":\"Replace \\\"old\\\" with \\\"new\\\" in target.txt\"}}]; file still contains original content=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "permissions.agent-deny-blocks-subagent",
+    "expectation": "permissions.deny: [\"Agent\"] blocks subagent spawning — enforced as catalog-removal of the live \"Task\" tool literal (the \"Agent\" rule name aliases it; no tool literally named \"Agent\" exists on 2.1.210)",
+    "observed": "control run (no Agent deny) catalog includes \"Task\"=true; deny:[\"Agent\"] run catalog excludes \"Task\"=true (tools=[\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]); tool literally named \"Agent\" present=false; call-time Task denial recorded=false (expected false — enforcement is pre-context removal)",
+    "verdict": "PASS",
+    "note": "Naming fact for phase 03: the deny rule to write is \"Agent\" (rule name), which removes the \"Task\" tool (live literal) from the catalog; deny: [\"Task\"] works identically (spike 08). See docs/engine-baseline.md §4."
+  },
+  {
+    "probe": "permissions.bash-colon-spacing",
+    "expectation": "determine whether Bash(<prefix>:*) requires/forbids a space before the colon for a prefix beyond the doc's four confirmed literals",
+    "observed": "Bash(cargo check:*) (no space before colon) matched and allowed the command; Bash(cargo check :*) (space before colon) did NOT match and the command was denied. No-space form is the required syntax, consistent with the doc's four literal examples.",
+    "verdict": "PASS"
+  }
+]

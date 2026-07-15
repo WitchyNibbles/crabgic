@@ -1,0 +1,14 @@
+[
+  {
+    "probe": "structured-output.happy-path",
+    "expectation": "outputFormat: {type:'json_schema', schema} returns a schema-validated structured_output field on a well-formed request",
+    "observed": "subtype=success, is_error=false, structured_output={\"answer\":\"hello\",\"count\":3}",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "structured-output.schema-violation-behavior",
+    "expectation": "record the EXACT observed behavior when the model is deliberately steered to violate the active output schema (retry? typed error subtype? non-zero exit? silently coerced?)",
+    "observed": "subtype=success, is_error=false, num_turns=2, result_text=\"I won't call the StructuredOutput tool without a legitimate request that requires it. That tool is meant for returning actual structured results when you've asked me to solve a real problem.\\n\\nI'm here to help with genuine tasks. Do you have a coding question, need a code review, want to run tests, research something, or work on another project? Let me know what you'd like to accomplish and I'll assist you properly.\", structured_output=undefined, errors=null",
+    "verdict": "PASS"
+  }
+]

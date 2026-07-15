@@ -1,0 +1,26 @@
+[
+  {
+    "probe": "sessions.preassigned-session-id",
+    "expectation": "--session-id <uuid> is honored: the result's session_id equals the requested uuid, and a transcript file is created at that id",
+    "observed": "requested=7b41c664-caa9-40a5-a553-43c9ce1d66fc, result.session_id=7b41c664-caa9-40a5-a553-43c9ce1d66fc, transcript found=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sessions.kill9-resume-continuity",
+    "expectation": "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact",
+    "observed": "resume result=\"42\"; contains \"42\"=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sessions.fork-session-isolation",
+    "expectation": "--fork-session (with --resume) creates a new session id, carries prior context into the fork, and leaves the ORIGINAL transcript file byte-identical",
+    "observed": "original transcript unchanged=true; fork got new session_id=true (fe157694-f1a1-468e-926b-08c0357e8b65); fork recalled context=true; fork has its own transcript file=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "sessions.concurrent-no-interleave",
+    "expectation": "two concurrent same-cwd sessions with distinct --session-ids maintain fully separate context (no cross-talk)",
+    "observed": "session A recalled its own word only=true (reply=\"ALPHA777\"); session B recalled its own word only=true (reply=\"ZETA999\")",
+    "verdict": "PASS"
+  }
+]

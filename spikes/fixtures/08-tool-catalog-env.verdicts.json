@@ -1,0 +1,21 @@
+[
+  {
+    "probe": "tool-catalog.env-contamination-hypothesis",
+    "expectation": "if nested-session env inheritance drives the surprising tool catalog, the inherited-env catalog should differ from the strict-allowlist catalog",
+    "observed": "SDK/allowlisted tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; SDK/inherited tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; identical=true. Spikes 01-06 already used allowlisted envs (SDK Options.env REPLACES the subprocess env entirely; every probe constructed env from scratch), so the surprising catalog was never an inherited-env artifact in the first place.",
+    "verdict": "PASS",
+    "note": "Hypothesis REFUTED: catalog identical under inherited vs strictly allowlisted env — the taxonomy difference is NOT env contamination."
+  },
+  {
+    "probe": "tool-catalog.sdk-vs-cli-transport",
+    "expectation": "determine whether the surprising catalog is an SDK-transport surface by comparing against the CLI transport under the same allowlisted env",
+    "observed": "CLI/allowlisted tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; engine versions: sdk=2.1.210, cli=2.1.210; sdk-vs-cli identical=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "tool-catalog.subagent-literal-deny",
+    "expectation": "deny: [\"Task\"] blocks a subagent spawn attempt via the discovered literal tool name",
+    "observed": "discovered literal=\"Task\"; with deny:[\"Task\"] active the init catalog EXCLUDES Task (removedFromCatalog=true; init tools=[\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]); permission_denials=[] — empty because enforcement is catalog-removal (tool never visible to the model), not call-time denial. Cross-reference (spike 03 fixtures): deny:[\"Agent\"] removed \"Task\" identically (present 6/6 runs without that deny, absent 2/2 runs with it) — the \"Agent\" permission-rule name aliases the live \"Task\" tool literal.",
+    "verdict": "PASS"
+  }
+]
