@@ -26,8 +26,8 @@
   },
   {
     "probe": "sandbox.denyread-ssh-enforced",
-    "expectation": "sandbox default is read-open (secret readable without denyRead) but sandbox.filesystem.denyRead: ['~/.ssh'] blocks the same Bash `cat` read",
-    "observed": "without denyRead: secret content observed=true; with denyRead ~/.ssh: secret content observed=false",
+    "expectation": "no-deny arm: attempted cat succeeds (read-open default); with-deny arm: attempted cat is BLOCKED — the cat's own failure line carries a denial-class errno (attempted-and-blocked, not mere marker-absence)",
+    "observed": "no-deny arm: 1 cat attempt(s), marker content returned=true; with-deny arm: 1 cat attempt(s) (command: \"cat /tmp/crabgic-spike04-config-gFlPvF/.ssh/config-data.txt\"), cat failure line=\"cat: /tmp/crabgic-spike04-config-gFlPvF/.ssh/config-data.txt: No such file or directory\" (enforcement shape: denyRead masks the path as ENOENT/\"No such file or directory\", not EACCES), marker content leaked=false",
     "verdict": "PASS"
   },
   {

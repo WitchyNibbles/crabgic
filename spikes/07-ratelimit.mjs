@@ -25,6 +25,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
+// (fixture scan below reads only files already committed under spikes/fixtures/)
 import { fileURLToPath } from "node:url";
 import { verdict, writeVerdicts, scanForSecrets } from "./lib/verdict.mjs";
 
@@ -52,19 +53,71 @@ entries.push(verdict({
   note: "MITIGATION: re-run this probe's live-trigger path only outside owner working hours, on a dedicated/metered test account (not the owner's daily subscription), or opportunistically once a real limit is naturally hit during unrelated work.",
 }));
 
-// --- Probe B: the one real signal sample already observed on this host today ---
+// --- Probe B: structured rate_limit_event shape — OBSERVED in this phase's own committed fixtures ---
+// Validation-round finding: the ordinary spike runs (02/03/04/05) each
+// received `rate_limit_event` messages in their SDK streams as a matter of
+// course; the sanitized transcripts committed in spikes/fixtures/ therefore
+// already contain the structured signal shape. This probe scans those
+// committed fixtures (no live API call) and records every distinct
+// rate_limit_info payload verbatim.
+function collectRateLimitEvents() {
+  const found = []; // {file, info}
+  const jsonFiles = [
+    "03-permissions.transcripts.sanitized.json",
+    "04-sandbox.transcripts.sanitized.json",
+    "05-structured-output.transcripts.sanitized.json",
+  ];
+  const walk = (obj, file) => {
+    if (Array.isArray(obj)) { obj.forEach((v) => walk(v, file)); return; }
+    if (obj && typeof obj === "object") {
+      if (obj.type === "rate_limit_event" && obj.rate_limit_info) found.push({ file, info: obj.rate_limit_info });
+      for (const v of Object.values(obj)) walk(v, file);
+    }
+  };
+  for (const f of jsonFiles) {
+    const p = join(__dirname, "fixtures", f);
+    if (existsSync(p)) walk(JSON.parse(readFileSync(p, "utf8")), f);
+  }
+  const jsonlPath = join(__dirname, "fixtures", "02-hermeticity.transcript.sanitized.jsonl");
+  if (existsSync(jsonlPath)) {
+    for (const line of readFileSync(jsonlPath, "utf8").trim().split("\n")) {
+      try {
+        const m = JSON.parse(line);
+        if (m.type === "rate_limit_event" && m.rate_limit_info) found.push({ file: "02-hermeticity.transcript.sanitized.jsonl", info: m.rate_limit_info });
+      } catch {}
+    }
+  }
+  return found;
+}
+
+const rlEvents = collectRateLimitEvents();
+const distinctPayloads = [...new Set(rlEvents.map((e) => JSON.stringify(e.info)))];
+const statusesSeen = [...new Set(rlEvents.map((e) => e.info.status))];
+
+entries.push(verdict({
+  probe: "ratelimit.structured-event-shape",
+  expectation: "capture the structured stream-json / SDK-stream rate-limit signal shape verbatim",
+  observed:
+    `OBSERVED — ${rlEvents.length} \`rate_limit_event\` message(s) found in this phase's own committed fixtures (files: ${[...new Set(rlEvents.map((e) => e.file))].join(", ")}). ` +
+    `Shape: {"type":"rate_limit_event","rate_limit_info":{...},"uuid":...,"session_id":...}. Distinct rate_limit_info payloads, verbatim: ${distinctPayloads.join(" | ")}. ` +
+    `Statuses observed: ${statusesSeen.join(", ")}. The SDK type declaration (sdk.d.ts SDKRateLimitEvent/SDKRateLimitInfo) types status as 'allowed'|'allowed_warning'|'rejected', ` +
+    `rateLimitType as 'five_hour'|'seven_day'|'seven_day_opus'|'seven_day_sonnet'|'seven_day_overage_included'|'overage', with numeric epoch-seconds resetsAt, utilization, overage* fields, and errorCode?: 'credits_required'. ` +
+    "Phase 06 must build limitSignal detection from THIS real schema (status transition to 'rejected', rateLimitType, resetsAt), not from a synthesized guess.",
+  verdict: rlEvents.length > 0 ? "PASS" : "UNRESOLVED",
+  ...(rlEvents.length > 0 ? {} : { note: "MITIGATION: fixtures did not contain rate_limit_event on this pass; capture opportunistically per probe C." }),
+}));
+
+// --- Probe C: the exhausted/blocked variant — still unobserved ---
 const OBSERVED_SIGNAL = "Agent terminated early due to an API error: You've hit your session limit · resets 2:10pm (Europe/Madrid)";
 entries.push(verdict({
-  probe: "ratelimit.observed-signal-sample",
-  expectation: "capture the exact error/event shape a subscription rate/usage-limit surfaces as, verbatim",
+  probe: "ratelimit.exhausted-variant-shape",
+  expectation: "capture the EXHAUSTED/blocked variant (SDK-typed status:'rejected', and/or the terminal result/error emitted when a request is actually refused) verbatim",
   observed:
-    `Observed today (2026-07-15) on this host, surfaced as a plain error STRING to a headless agent process (channel: process/API error text, NOT a parsed stream-json event): "${OBSERVED_SIGNAL}". ` +
-    "This confirms the error-string channel's shape (a human-readable sentence naming the limit kind — 'session limit' — and a localized reset time/timezone) " +
-    "but does NOT confirm the structured stream-json event shape (e.g. any dedicated `type`/`subtype` discriminator, machine-parseable reset-timestamp field, " +
-    "or limit-kind enum) — that remains UNRESOLVED per adaptation §10 item 10 (exact stream-json event taxonomy unconfirmed) until a real limit is captured " +
-    "live through the SDK/CLI's own stream-json output rather than observed only as surfaced prose.",
+    `NOT yet observed as a structured event: every committed rate_limit_event carries status 'allowed' or 'allowed_warning' (see ratelimit.structured-event-shape); the 'rejected' status exists in the SDK type but no live sample was captured. ` +
+    `The only exhausted-limit sample from this host (2026-07-15) is the plain error STRING surfaced to a headless agent process: "${OBSERVED_SIGNAL}" — a human-readable sentence naming the limit kind and a localized reset time, ` +
+    "which does not reveal how (or whether) a status:'rejected' rate_limit_event and/or a distinct terminal result message accompany the refusal in-stream.",
   verdict: "UNRESOLVED",
-  note: "MITIGATION: the next time ANY worker on this host naturally hits a subscription limit while running with --output-format stream-json (or the SDK's message stream), capture the RAW message sequence verbatim into spikes/fixtures/07-ratelimit.live-capture.sanitized.jsonl and update this verdict to PASS (signal shape confirmed) or FAIL (shape differs from what phase 06/13 assumed).",
+  note: "MITIGATION: the next time ANY worker on this host naturally hits a subscription limit while streaming, capture the RAW message sequence verbatim into spikes/fixtures/07-ratelimit.live-capture.sanitized.jsonl and update this verdict; never trigger deliberately on the owner's subscription (see probe A).",
 }));
 
 const outPath = join(__dirname, "fixtures", "07-ratelimit.verdicts.json");
