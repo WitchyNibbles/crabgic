@@ -65,7 +65,7 @@ graph LR
   P08 & P15 & P19 & P22 --> P23
 ```
 
-Critical path: 00/01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 15 → 23. The connector line (16 & 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.
+Critical path: 01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 15 → 23 (00 runs in parallel with 01 and gates 03 via its only edge, 00 → 03). The connector line (16 & 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.
 
 ## Mapping to the original plan's 10 phases
 

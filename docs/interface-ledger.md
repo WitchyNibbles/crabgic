@@ -625,9 +625,10 @@ the sibling of Phase 04's existing `$XDG_STATE_HOME` state-root bullet:
 Phase 04's constant rather than independently inventing "XDG cache" phrasing or a differing path-segment
 order.
 
-**Phases affected:** 04, 05, 07, 08, 12, 14, 23 — 04 pins the cache-root constant, 07/12 nest under it, and
-05/08/14/23 embed the `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/…` subpath convention
-(05:24, 08:21/59, 14:48, 23:67) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/10/11)
+**Phases affected:** 04, 05, 07, 08, 12, 14, 23 — 04 pins the cache-root constant, 07/12 nest under it,
+08/14/23 embed the `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/…` subpath convention
+(08:21/59, 14:48, 23:67), and 05 embeds the same pinned convention via its `$XDG_STATE_HOME/…` state-root
+sibling (05:24) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/10/11)
 
 **Verified in:**
 - `04-journal-idempotency-leases.md` §In scope, "Layout" bullet, line 22 — *"`$XDG_CACHE_HOME/engineering-

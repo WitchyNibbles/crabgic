@@ -88,19 +88,19 @@ From **03** (`packages/engine-core`, `packages/testkit`) — direct dependency (
 
 **Integration:** failing-first, over a real UDS socket in tmp dirs (no mocked transport) — handshake against version skew; router dispatch for `run.status`/`run.cancel`/`worker.*`; fake-engine fault injection (hang, crash, log-spam) proving the SIGTERM → grace → SIGKILL ladder and orphan reaping; two concurrent same-uid connections (standing in for the CLI and the gateway) both clearing `SO_PEERCRED` against the identical router; kill -9 mid-operation → restart → registries recovered via 04's `recover(runId)` with no duplicated side effect; idle-heartbeat measurement over a sustained no-op window against the documented RSS/CPU numbers.
 
-**Conformance:** `docs/ipc-protocol.md` — a wire-format change lacking a version bump fails a schema-diff check (additive-only within a major).
+**Conformance:** `docs/ipc-protocol.md` — a wire-format change lacking a version bump fails a schema-diff check (additive-only within a major); a grep-based check over this package's registered router/registry operation names confirms no `change_set.*`-named operation exists anywhere in it (Gap 1 — ChangeSet-state queries are answered exclusively by 11's `project.inspect`; mirrors 22's grep-based check over `packages/gateway`'s registered tool names).
 
 **Security:** foreign-uid peer refused before any request is served; a crashed/timed-out adjudication bridge resolves to deny, never allow (the property 06's real implementation must also uphold); idle-budget measurement captures no environment/secret content.
 
 ## Exit criteria
 
-- [ ] Foreign-uid peer refused (unit-tested check; integration where CI permits).
-- [ ] Two same-uid local connections (standing in for the CLI and the gateway) both pass the `SO_PEERCRED` check against the identical router and receive identical `run.status`/`run.cancel` responses — proving one handler, two transports.
-- [ ] kill -9 mid-operation → restart recovers registries via 04's `recover(runId)`; no duplicated side effects.
+- [ ] Foreign-uid peer refused (unit-tested check; integration where CI permits) — evidence: Test plan's Security suite (foreign-uid peer refused before any request is served) and Property (fast-check) suite's randomized peer-uid sequences.
+- [ ] Two same-uid local connections (standing in for the CLI and the gateway) both pass the `SO_PEERCRED` check against the identical router and receive identical `run.status`/`run.cancel` responses — proving one handler, two transports — evidence: Test plan's Integration suite, two concurrent same-uid connections both clearing `SO_PEERCRED` against the identical router.
+- [ ] kill -9 mid-operation → restart recovers registries via 04's `recover(runId)`; no duplicated side effects — evidence: Test plan's Integration suite, kill -9 mid-operation → restart → registries recovered via 04's `recover(runId)` with no duplicated side effect.
 - [ ] Hung fake worker fully reaped within deadline — evidence: Test plan's Integration suite, fake-engine fault injection (hang/crash/log-spam) proving the SIGTERM → grace → SIGKILL ladder and orphan reaping.
 - [ ] Slow subscriber never stalls a worker; drops surfaced — evidence: Test plan's Property (fast-check) suite, randomized concurrent-subscriber sequences asserting drops are always counted and never propagate backpressure to the worker pipe.
-- [ ] Idle budget test green with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat).
-- [ ] A repo-wide check confirms no `change_set.*`-named operation exists anywhere in this package's router or registry surface.
+- [ ] Idle budget test green with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat) — evidence: Test plan's Integration suite, idle-heartbeat measurement over a sustained no-op window against the documented RSS/CPU numbers.
+- [ ] A repo-wide check confirms no `change_set.*`-named operation exists anywhere in this package's router or registry surface — evidence: Test plan's Conformance suite, grep-based check over this package's registered router/registry operation names (Gap 1).
 
 ## Risks & open questions
 
