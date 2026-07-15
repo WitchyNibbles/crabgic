@@ -1,7 +1,11 @@
 # CLAUDE.md
 
-This repository is the pre-implementation planning corpus for Engineering Orchestrator —
-implementation has not started. Read, in order, before doing any work here:
+This repository is Engineering Orchestrator: a harness that makes Claude operate as an
+autonomous engineering orchestrator, per the design in `docs/claude-code-adaptation.md`.
+Implementation is underway, under active development against the phased roadmap in
+`roadmap/README.md`; the roadmap phase files govern all implementation work here (TDD,
+evidence-based exit criteria — see the ground rules below). Read, in order, before doing
+any work here:
 
 1. `docs/claude-code-adaptation.md` §0 — confirmed product decisions.
 2. `roadmap/README.md` — ground rules and phase dependency graph.
