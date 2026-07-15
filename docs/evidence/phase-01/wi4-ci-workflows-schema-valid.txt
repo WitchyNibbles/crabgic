@@ -1,0 +1,7 @@
+$ npx @action-validator/cli .github/workflows/ci.yml
+exit=0
+
+$ npx @action-validator/cli .github/workflows/engine-live.yml
+exit=0
+
+# Note: no GitHub remote is configured for this repo (deviation — see docs/evidence/phase-01/README.md). These workflows are authored and schema-validated locally but have never executed as an actual GitHub Actions run.

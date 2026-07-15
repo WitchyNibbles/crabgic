@@ -1,0 +1,41 @@
+$ changeset add --empty
+🦋  Empty Changeset added! - you can now commit it
+🦋  
+🦋  If you want to modify or expand on the changeset summary, you can find it here
+🦋  info /home/eimi/projects/crabgic/.changeset/five-eels-look.md
+exit=0
+
+$ changeset status --verbose   # with an additional manually-authored patch-level trial changeset for @eo/contracts
+🦋  info Packages to be bumped at patch
+🦋  - @eo/contracts 0.0.1
+🦋    - .changeset/trial-patch-contracts.md
+🦋  ---
+🦋  info Running release would release NO packages as a minor
+🦋  ---
+🦋  info Running release would release NO packages as a major
+exit=0
+
+$ changeset version   # applies the trial changeset(s): consumes them, bumps @eo/contracts 0.0.0 -> 0.0.1, writes CHANGELOG.md
+🦋  All files have been updated. Review them and commit at your leisure
+exit=0
+
+=== resulting packages/contracts/package.json version diff ===
+3c3
+<   "version": "0.0.0",
+---
+>   "version": "0.0.1",
+
+=== resulting packages/contracts/CHANGELOG.md ===
+# @eo/contracts
+
+## 0.0.1
+
+### Patch Changes
+
+- Phase 01 Changesets-skeleton trial: verifies `changeset add` (patch-level) +
+  `changeset version` produce a valid CHANGELOG.md entry end-to-end. This
+  changeset and its resulting version bump are reverted immediately after
+  capturing evidence (see docs/evidence/phase-01/wi5-changesets-*); no real
+  release is cut at this phase.
+
+# This is a DRY-RUN-equivalent trial (changesets CLI has no --dry-run flag for `version`): captured for evidence, then reverted — packages/contracts/package.json version restored to 0.0.0, CHANGELOG.md deleted, .changeset/ left with only config.json + README.md (no pending changesets, no versioned release cut).

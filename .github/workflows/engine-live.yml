@@ -1,0 +1,35 @@
+name: engine-live
+
+# INERT PLACEHOLDER (Phase 01, Gap 15).
+#
+# This workflow exists only as a manually-triggered stub. No engine is
+# invoked here, and no Claude Code engine fact is asserted by this file.
+#
+# Phase 06 (packages/engine-claude) wires the `engine-live` job below to run
+# the `@live`-tagged Claude Code conformance suite — the suite of tests
+# tagged `@live` that require a real host with the `claude` CLI installed
+# and authenticated (see roadmap/06-claude-engine-adapter.md). Each green
+# `engine-live` run is expected to be journaled as a queryable record
+# (`{ engineVersion, runId, suiteDigest }`), which phase 14's
+# `engine-conformance` gate later requires for the exact attempted engine
+# version. Phase 10 additionally reuses this same CI job for its own
+# `@live` plugin-load smoke test. Phase 23 reuses this job wholesale at
+# release.
+#
+# Until phase 06 lands, `workflow_dispatch` is the only trigger (no push/PR
+# trigger), and the job body below performs no engine invocation of any
+# kind.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  engine-live:
+    name: engine-live (placeholder — phase 06 wires the @live conformance suite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inert placeholder — no engine invoked
+        run: |
+          echo "engine-live is an inert placeholder as of phase 01."
+          echo "Phase 06 wires this job to run the @live-tagged Claude Code conformance suite in packages/engine-claude."
+          echo "No claude CLI invocation, no engine version pin, and no conformance suite run happens here."

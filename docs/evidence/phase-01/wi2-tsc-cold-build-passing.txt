@@ -1,0 +1,95 @@
+$ tsc -b --clean && tsc -b --verbose   # cold build, from clean state, all 18 packages + root solution
+3:53:39 PM - Projects in this build: 
+    * packages/contracts/tsconfig.json
+    * packages/testkit/tsconfig.json
+    * packages/engine-core/tsconfig.json
+    * packages/journal/tsconfig.json
+    * packages/supervisor/tsconfig.json
+    * packages/engine-claude/tsconfig.json
+    * packages/git-engine/tsconfig.json
+    * packages/gateway/tsconfig.json
+    * packages/renderer/tsconfig.json
+    * packages/connectors-jira/tsconfig.json
+    * packages/connectors-grafana/tsconfig.json
+    * packages/detect/tsconfig.json
+    * packages/scheduler/tsconfig.json
+    * packages/gates/tsconfig.json
+    * packages/perf/tsconfig.json
+    * packages/learning/tsconfig.json
+    * packages/cli/tsconfig.json
+    * packages/plugin/tsconfig.json
+    * tsconfig.json
+
+3:53:39 PM - Project 'packages/contracts/tsconfig.json' is out of date because output file 'packages/contracts/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/contracts/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/testkit/tsconfig.json' is out of date because output file 'packages/testkit/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/testkit/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/engine-core/tsconfig.json' is out of date because output file 'packages/engine-core/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/engine-core/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/journal/tsconfig.json' is out of date because output file 'packages/journal/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/journal/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/supervisor/tsconfig.json' is out of date because output file 'packages/supervisor/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/supervisor/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/engine-claude/tsconfig.json' is out of date because output file 'packages/engine-claude/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/engine-claude/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/git-engine/tsconfig.json' is out of date because output file 'packages/git-engine/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/git-engine/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/gateway/tsconfig.json' is out of date because output file 'packages/gateway/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/gateway/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/renderer/tsconfig.json' is out of date because output file 'packages/renderer/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/renderer/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/connectors-jira/tsconfig.json' is out of date because output file 'packages/connectors-jira/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/connectors-jira/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/connectors-grafana/tsconfig.json' is out of date because output file 'packages/connectors-grafana/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/connectors-grafana/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/detect/tsconfig.json' is out of date because output file 'packages/detect/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/detect/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/scheduler/tsconfig.json' is out of date because output file 'packages/scheduler/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/scheduler/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/gates/tsconfig.json' is out of date because output file 'packages/gates/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/gates/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/perf/tsconfig.json' is out of date because output file 'packages/perf/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/perf/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/learning/tsconfig.json' is out of date because output file 'packages/learning/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/learning/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/cli/tsconfig.json' is out of date because output file 'packages/cli/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/cli/tsconfig.json'...
+
+3:53:39 PM - Project 'packages/plugin/tsconfig.json' is out of date because output file 'packages/plugin/dist/.tsbuildinfo' does not exist
+
+3:53:39 PM - Building project '/home/eimi/projects/crabgic/packages/plugin/tsconfig.json'...
+
+exit=0

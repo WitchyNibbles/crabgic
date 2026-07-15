@@ -1,0 +1,12 @@
+$ node scripts/check-repo-hygiene.mjs
+check-repo-hygiene: OK — LICENSE (11357 bytes)
+check-repo-hygiene: MISSING — NOTICE
+check-repo-hygiene: MISSING — SECURITY.md
+check-repo-hygiene: MISSING — CONTRIBUTING.md
+check-repo-hygiene: MISSING — CODE_OF_CONDUCT.md
+check-repo-hygiene: OK — README.md (4658 bytes)
+check-repo-hygiene: OK — .github/PULL_REQUEST_TEMPLATE.md (448 bytes)
+check-repo-hygiene: OK — .github/ISSUE_TEMPLATE/bug_report.md (488 bytes)
+check-repo-hygiene: OK — .github/ISSUE_TEMPLATE/feature_request.md (448 bytes)
+check-repo-hygiene: FAIL — one or more required files missing/empty.
+exit=1

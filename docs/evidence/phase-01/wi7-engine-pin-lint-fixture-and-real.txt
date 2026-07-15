@@ -1,0 +1,8 @@
+$ node scripts/check-engine-pin.mjs <fixture manifest declaring "@anthropic-ai/claude-agent-sdk": "^2.1.0">
+engine-pin-lint: FAIL
+  - /tmp/claude-1000/-home-eimi-projects-crabgic/3a52d6ab-6c53-47d9-af0b-fe704aa71d6f/scratchpad/wi7-fixture-manifest.json: dependencies["@anthropic-ai/claude-agent-sdk"] = "^2.1.0" is not an exact pin (no ^/~/range/wildcard/tag allowed — engine-bundling dependencies must be pinned exactly)
+exit=1
+
+$ node scripts/check-engine-pin.mjs   # real workspace (packages/*/package.json) — no engine dependency declared at phase 01
+engine-pin-lint: PASS — checked 18 manifest(s), no range-specified engine-bundling dependency found (watched: @anthropic-ai/claude-agent-sdk).
+exit=0

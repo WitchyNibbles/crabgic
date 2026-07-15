@@ -1,0 +1,59 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/testkit"
+    },
+    {
+      "path": "./packages/engine-core"
+    },
+    {
+      "path": "./packages/journal"
+    },
+    {
+      "path": "./packages/supervisor"
+    },
+    {
+      "path": "./packages/engine-claude"
+    },
+    {
+      "path": "./packages/git-engine"
+    },
+    {
+      "path": "./packages/gateway"
+    },
+    {
+      "path": "./packages/renderer"
+    },
+    {
+      "path": "./packages/connectors-jira"
+    },
+    {
+      "path": "./packages/connectors-grafana"
+    },
+    {
+      "path": "./packages/detect"
+    },
+    {
+      "path": "./packages/scheduler"
+    },
+    {
+      "path": "./packages/gates"
+    },
+    {
+      "path": "./packages/perf"
+    },
+    {
+      "path": "./packages/learning"
+    },
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/plugin"
+    }
+  ]
+}

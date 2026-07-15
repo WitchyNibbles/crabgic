@@ -1,0 +1,6 @@
+$ tsc -b <fixture-root>   # fixture: two packages whose tsconfig.json project references point at each other
+# fixture root: /tmp/claude-1000/-home-eimi-projects-crabgic/3a52d6ab-6c53-47d9-af0b-fe704aa71d6f/scratchpad/wi2-cycle-fixture (pkg-a references pkg-b; pkg-b references pkg-a)
+error TS6202: Project references may not form a circular graph. Cycle detected: /tmp/claude-1000/-home-eimi-projects-crabgic/3a52d6ab-6c53-47d9-af0b-fe704aa71d6f/scratchpad/wi2-cycle-fixture/tsconfig.json
+/tmp/claude-1000/-home-eimi-projects-crabgic/3a52d6ab-6c53-47d9-af0b-fe704aa71d6f/scratchpad/wi2-cycle-fixture/pkg-a/tsconfig.json
+/tmp/claude-1000/-home-eimi-projects-crabgic/3a52d6ab-6c53-47d9-af0b-fe704aa71d6f/scratchpad/wi2-cycle-fixture/pkg-b/tsconfig.json
+exit=4

@@ -1,0 +1,12 @@
+$ node scripts/check-repo-hygiene.mjs
+check-repo-hygiene: OK — LICENSE (11357 bytes)
+check-repo-hygiene: OK — NOTICE (818 bytes)
+check-repo-hygiene: OK — SECURITY.md (2338 bytes)
+check-repo-hygiene: OK — CONTRIBUTING.md (3441 bytes)
+check-repo-hygiene: OK — CODE_OF_CONDUCT.md (2952 bytes)
+check-repo-hygiene: OK — README.md (4658 bytes)
+check-repo-hygiene: OK — .github/PULL_REQUEST_TEMPLATE.md (448 bytes)
+check-repo-hygiene: OK — .github/ISSUE_TEMPLATE/bug_report.md (488 bytes)
+check-repo-hygiene: OK — .github/ISSUE_TEMPLATE/feature_request.md (448 bytes)
+check-repo-hygiene: PASS — all required top-level files exist and are non-empty.
+exit=0

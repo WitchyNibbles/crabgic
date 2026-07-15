@@ -1,0 +1,22 @@
+$ node scripts/check-workspace-count.mjs
+check-workspace-count: found 18 workspace(s):
+  - @eo/connectors-grafana
+  - @eo/connectors-jira
+  - @eo/contracts
+  - @eo/detect
+  - @eo/engine-claude
+  - @eo/engine-core
+  - @eo/gates
+  - @eo/gateway
+  - @eo/git-engine
+  - @eo/journal
+  - @eo/learning
+  - @eo/perf
+  - @eo/plugin
+  - @eo/renderer
+  - @eo/scheduler
+  - @eo/supervisor
+  - @eo/testkit
+  - engineering-orchestrator
+check-workspace-count: PASS — exactly 18 workspaces declared.
+exit=0

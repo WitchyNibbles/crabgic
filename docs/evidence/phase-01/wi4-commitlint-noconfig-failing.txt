@@ -1,0 +1,13 @@
+$ mv commitlint.config.js /tmp/...; echo "this is a malformed commit message with no type prefix" | commitlint
+# captured with commitlint.config.js temporarily absent — demonstrates the assertion "commitlint rejects malformed messages" cannot be meaningfully made before the config lands (fails for lack of rules, not a real type-enum validation)
+⧗   --- input ---
+this is a malformed commit message with no type prefix
+✖   Please add rules to your `commitlint.config.js`
+    - Getting started guide: https://commitlint.js.org/guides/getting-started
+    - Example config: https://github.com/conventional-changelog/commitlint/blob/master/%40commitlint/config-conventional/src/index.ts
+    - Or run commitlint with the built-in default config: commitlint --default-config [empty-rules]
+
+✖   found 1 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=9

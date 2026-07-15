@@ -1,0 +1,25 @@
+{
+  "name": "@eo/engine-claude",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Claude Code worker runtime / SDK transport (empty stub — phase 06).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

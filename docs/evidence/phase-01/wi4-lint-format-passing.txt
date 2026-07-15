@@ -1,0 +1,11 @@
+$ npm run lint    # (eslint . --ignore-pattern 'spikes/**' — spikes/** is owned by the phase-00 worker; excluded from this repo's lint scope by ownership boundary, not by relaxing eslint.config.js rules)
+
+> engineering-orchestrator-monorepo@0.0.0 lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run format   # prettier --check . (spikes/**, roadmap/**, docs/claude-code-adaptation.md, docs/interface-ledger.md, README.md, CLAUDE.md excluded via .prettierignore — same ownership boundary)
+Checking formatting...
+All matched files use Prettier code style!
+prettier exit=0

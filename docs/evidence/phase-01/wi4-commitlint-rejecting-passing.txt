@@ -1,0 +1,23 @@
+$ echo "this is a malformed commit message with no type prefix" | commitlint   # commitlint.config.js present
+⧗   --- input ---
+this is a malformed commit message with no type prefix
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+
+✖   found 2 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "build: bump deps" | commitlint   # conventional-commit default type but outside our narrowed feat|fix|refactor|docs|test|chore|perf|ci set
+⧗   --- input ---
+build: bump deps
+✖   type must be one of [feat, fix, refactor, docs, test, chore, perf, ci] [type-enum]
+
+✖   found 1 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "feat: add commitlint config" | commitlint   # well-formed message, control case
+exit=0

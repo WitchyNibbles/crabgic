@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+package-lock.json
+CHANGELOG.md
+.changeset/pre.json
+
+# Owned by other concurrent phase-01 workers (file-ownership boundary) —
+# not this worker's to reformat: README.md, CLAUDE.md, roadmap/**,
+# docs/claude-code-adaptation.md, docs/interface-ledger.md, spikes/**.
+README.md
+CLAUDE.md
+roadmap/
+docs/claude-code-adaptation.md
+docs/interface-ledger.md
+spikes/

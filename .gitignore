@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test / coverage
+coverage/
+.vitest-cache/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Changesets pre-release state (not applicable until phase 23 cuts a release)
+.changeset/pre.json

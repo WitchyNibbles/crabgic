@@ -1,0 +1,3 @@
+$ node scripts/check-release-notes.mjs
+check-release-notes: MISSING — /home/eimi/projects/crabgic/docs/release-notes-prep.md
+exit=1

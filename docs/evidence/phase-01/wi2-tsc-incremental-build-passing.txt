@@ -1,0 +1,59 @@
+$ tsc -b --verbose   # re-run immediately after, no source changes -> incremental no-op
+3:53:39 PM - Projects in this build: 
+    * packages/contracts/tsconfig.json
+    * packages/testkit/tsconfig.json
+    * packages/engine-core/tsconfig.json
+    * packages/journal/tsconfig.json
+    * packages/supervisor/tsconfig.json
+    * packages/engine-claude/tsconfig.json
+    * packages/git-engine/tsconfig.json
+    * packages/gateway/tsconfig.json
+    * packages/renderer/tsconfig.json
+    * packages/connectors-jira/tsconfig.json
+    * packages/connectors-grafana/tsconfig.json
+    * packages/detect/tsconfig.json
+    * packages/scheduler/tsconfig.json
+    * packages/gates/tsconfig.json
+    * packages/perf/tsconfig.json
+    * packages/learning/tsconfig.json
+    * packages/cli/tsconfig.json
+    * packages/plugin/tsconfig.json
+    * tsconfig.json
+
+3:53:39 PM - Project 'packages/contracts/tsconfig.json' is up to date because newest input 'packages/contracts/src/index.ts' is older than output 'packages/contracts/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/testkit/tsconfig.json' is up to date because newest input 'packages/testkit/src/index.ts' is older than output 'packages/testkit/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/engine-core/tsconfig.json' is up to date because newest input 'packages/engine-core/src/index.ts' is older than output 'packages/engine-core/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/journal/tsconfig.json' is up to date because newest input 'packages/journal/src/index.ts' is older than output 'packages/journal/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/supervisor/tsconfig.json' is up to date because newest input 'packages/supervisor/src/index.ts' is older than output 'packages/supervisor/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/engine-claude/tsconfig.json' is up to date because newest input 'packages/engine-claude/src/index.ts' is older than output 'packages/engine-claude/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/git-engine/tsconfig.json' is up to date because newest input 'packages/git-engine/src/index.ts' is older than output 'packages/git-engine/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/gateway/tsconfig.json' is up to date because newest input 'packages/gateway/src/index.ts' is older than output 'packages/gateway/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/renderer/tsconfig.json' is up to date because newest input 'packages/renderer/src/index.ts' is older than output 'packages/renderer/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/connectors-jira/tsconfig.json' is up to date because newest input 'packages/connectors-jira/src/index.ts' is older than output 'packages/connectors-jira/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/connectors-grafana/tsconfig.json' is up to date because newest input 'packages/connectors-grafana/src/index.ts' is older than output 'packages/connectors-grafana/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/detect/tsconfig.json' is up to date because newest input 'packages/detect/src/index.ts' is older than output 'packages/detect/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/scheduler/tsconfig.json' is up to date because newest input 'packages/scheduler/src/index.ts' is older than output 'packages/scheduler/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/gates/tsconfig.json' is up to date because newest input 'packages/gates/src/index.ts' is older than output 'packages/gates/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/perf/tsconfig.json' is up to date because newest input 'packages/perf/src/index.ts' is older than output 'packages/perf/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/learning/tsconfig.json' is up to date because newest input 'packages/learning/src/index.ts' is older than output 'packages/learning/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/cli/tsconfig.json' is up to date because newest input 'packages/cli/src/index.ts' is older than output 'packages/cli/dist/.tsbuildinfo'
+
+3:53:39 PM - Project 'packages/plugin/tsconfig.json' is up to date because newest input 'packages/plugin/src/index.ts' is older than output 'packages/plugin/dist/.tsbuildinfo'
+
+exit=0

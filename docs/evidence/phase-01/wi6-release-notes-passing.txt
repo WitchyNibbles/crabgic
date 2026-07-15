@@ -1,0 +1,3 @@
+$ node scripts/check-release-notes.mjs
+check-release-notes: PASS — docs/release-notes-prep.md records a timestamped npm-name verdict.
+exit=0

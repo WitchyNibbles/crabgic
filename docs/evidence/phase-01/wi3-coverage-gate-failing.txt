@@ -1,0 +1,31 @@
+$ vitest run --coverage   # with temporary packages/_fixture-coverage-temp present (~53-60% covered)
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:55:51
+   Duration  244ms (transform 21ms, setup 0ms, import 32ms, tests 3ms, environment 0ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   53.33 |       50 |      60 |   53.33 |                   
+ ...erage-temp/src |   53.33 |       50 |      60 |   53.33 |                   
+  index.ts         |   53.33 |       50 |      60 |   53.33 | 21-37             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 53.33% ( 8/15 )
+Branches     : 50% ( 5/10 )
+Functions    : 60% ( 3/5 )
+Lines        : 53.33% ( 8/15 )
+================================================================================
+ERROR: Coverage for lines (53.33%) does not meet global threshold (80%)
+ERROR: Coverage for functions (60%) does not meet global threshold (80%)
+ERROR: Coverage for statements (53.33%) does not meet global threshold (80%)
+ERROR: Coverage for branches (50%) does not meet global threshold (80%)
+exit=1

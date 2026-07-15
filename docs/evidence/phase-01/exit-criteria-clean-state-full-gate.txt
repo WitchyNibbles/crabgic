@@ -1,0 +1,72 @@
+$ git clean -xdn   # sanity check before clean-room verify: confirms only reproducible/derived artifacts (node_modules, packages/*/dist, coverage) are untracked-and-ignored; everything else untracked is this phase's new, not-yet-committed source (orchestrator commits, not this worker)
+!! coverage/
+!! node_modules/
+!! packages/cli/dist/
+!! packages/connectors-grafana/dist/
+!! packages/connectors-jira/dist/
+!! packages/contracts/dist/
+!! packages/detect/dist/
+!! packages/engine-claude/dist/
+!! packages/engine-core/dist/
+!! packages/gates/dist/
+!! packages/gateway/dist/
+!! packages/git-engine/dist/
+!! packages/journal/dist/
+!! packages/learning/dist/
+!! packages/perf/dist/
+!! packages/plugin/dist/
+!! packages/renderer/dist/
+!! packages/scheduler/dist/
+!! packages/supervisor/dist/
+!! packages/testkit/dist/
+!! spikes/node_modules/
+
+$ rm -rf node_modules packages/*/dist coverage   # remove reproducible artifacts to simulate a clean checkout
+
+$ npm ci
+
+added 326 packages, and audited 345 packages in 4s
+
+77 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+exit=0
+
+$ npm run build   # tsc -b, cold
+
+> engineering-orchestrator-monorepo@0.0.0 build
+> tsc -b
+
+exit=0
+
+$ npm test   # vitest run --coverage, 80% line+branch gate (0/0 vacuously satisfied — no source logic yet, out of phase-01 scope)
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 0/0 )
+Branches     : 100% ( 0/0 )
+Functions    : 100% ( 0/0 )
+Lines        : 100% ( 0/0 )
+================================================================================
+exit=0
+
+$ npm run lint
+
+> engineering-orchestrator-monorepo@0.0.0 lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run format
+Checking formatting...
+All matched files use Prettier code style!
+
+$ tsc -b --clean && tsc -b   # cold, again, post npm-ci
+cold exit=0
+
+$ tsc -b   # incremental no-op re-run
+incremental exit=0
