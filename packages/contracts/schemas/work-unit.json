@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "changeSetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirementIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ownedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "attemptStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "dispatched",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "parked:rate_limit"
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "changeSetId",
+    "title",
+    "requirementIds",
+    "dependsOn",
+    "role",
+    "ownedPaths",
+    "attemptStatus"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

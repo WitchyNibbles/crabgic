@@ -1,0 +1,105 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workUnitId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "requirementIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonGoals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "baseObjectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "relevantInterfaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "ownedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resourceLimits": {
+      "type": "object",
+      "properties": {
+        "maxTurns": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "maxBudgetUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "maxTurns"
+      ],
+      "additionalProperties": false
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resultSchema": {
+      "type": "object",
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "workUnitId",
+    "requirementIds",
+    "objective",
+    "nonGoals",
+    "baseObjectId",
+    "relevantInterfaces",
+    "ownedPaths",
+    "constraints",
+    "resourceLimits",
+    "gates",
+    "resultSchema"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

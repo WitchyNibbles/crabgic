@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "reproducer",
+        "candidate",
+        "dev_eval",
+        "held_out_eval",
+        "shadow_run",
+        "independent_review",
+        "promoted",
+        "rejected",
+        "rolled_back",
+        "expired"
+      ]
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceRecordIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "sourceWorkUnitId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "rollbackChangeSetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "state",
+    "content",
+    "evidenceRecordIds",
+    "createdAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,31 @@
+$ npx vitest run --coverage.enabled=false packages/contracts/src/config/precedence.test.ts
+# precedence.ts does NOT exist yet at this point (TDD failing-first, roadmap/02 work item 8:
+# 'a config stack that lowers a security-key boolean must be rejected before the resolver exists').
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/config/precedence.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/config/precedence.test.ts [ packages/contracts/src/config/precedence.test.ts ]
+Error: Cannot find module './precedence.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/config/precedence.test.ts
+ ❯ src/config/precedence.test.ts:3:1
+      1| import * as fc from "fast-check";
+      2| import { describe, expect, it } from "vitest";
+      3| import {
+       | ^
+      4|   CONFIG_LAYER_ORDER,
+      5|   SecurityKeyLoosenedError,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  22:17:23
+   Duration  201ms (transform 35ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+
+
+Exit code: 1

@@ -1,0 +1,48 @@
+Phase 02, work item 4 — failing-first evidence for the canonical connector-
+error union (10 members) + redacting constructors.
+
+The test file (connector-error.test.ts) was written against the module
+under test with the implementation module temporarily removed, to produce a
+genuine failing run before the schema/class existed, per this phase's own
+work item 4 ("Failing-first: a constructor call carrying a raw provider
+body must not type-check against the public type") and the roadmap/README.md
+TDD ground rule.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/contracts/src/errors/connector-error.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/errors/connector-error.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/errors/connector-error.test.ts [ packages/contracts/src/errors/connector-error.test.ts ]
+Error: Cannot find module './connector-error.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/errors/connector-error.test.ts
+ ❯ src/errors/connector-error.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import {
+       | ^
+      3|   CONNECTOR_ERROR_KINDS,
+      4|   ConnectorError,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  22:11:12
+   Duration  190ms (transform 27ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+
+Note on the type-level security assertion specifically: the `@ts-expect-error`
+lines in connector-error.test.ts assert against a type (`ConnectorErrorData`)
+and class (`ConnectorError`) that, at this failing-first stage, do not exist
+at all — the module fails to resolve before type-checking is even reached,
+which is itself the strongest possible "failing" state for those assertions.
+Once the implementation lands, the type-level guarantee is verified
+separately via `npx tsc -b packages/contracts` (vitest transpiles with
+esbuild and does not enforce `@ts-expect-error`) — see
+wi4-connector-errors-passing.txt for that run.

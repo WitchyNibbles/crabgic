@@ -1,0 +1,127 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "changeSetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "canonicalHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ownedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "networkDestinations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "credentialReferences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "remoteResourceAuthorizations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          },
+          "highImpactFlags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "assignment",
+                "reporter change",
+                "closing transitions",
+                "sprint completion",
+                "attachments",
+                "bulk mutations",
+                "issue creation",
+                "alert disabling",
+                "contact points",
+                "mute timings",
+                "notification templates"
+              ]
+            }
+          }
+        },
+        "required": [
+          "reference",
+          "highImpactFlags"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "temporaryServices": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prohibitedActions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "changeSetId",
+    "createdAt",
+    "canonicalHash",
+    "ownedPaths",
+    "commands",
+    "networkDestinations",
+    "credentialReferences",
+    "dependencies",
+    "remoteResourceAuthorizations",
+    "temporaryServices",
+    "prohibitedActions"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "remoteMutationPlanId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "operationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contentHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "applied",
+        "verified",
+        "recorded",
+        "conflict",
+        "failed"
+      ]
+    },
+    "appliedRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "errorKind": {
+      "type": "string",
+      "enum": [
+        "authentication",
+        "permission",
+        "not_found",
+        "conflict",
+        "rate_limited",
+        "validation",
+        "unsupported",
+        "transient",
+        "ambiguous_write",
+        "policy_blocked"
+      ]
+    },
+    "recordedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "remoteMutationPlanId",
+    "operationId",
+    "contentHash",
+    "status",
+    "recordedAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

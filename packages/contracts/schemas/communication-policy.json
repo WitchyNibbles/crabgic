@@ -1,0 +1,209 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "branchName": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxChars"
+          ],
+          "additionalProperties": false
+        },
+        "commitSubject": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "format": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "maxChars",
+            "format"
+          ],
+          "additionalProperties": false
+        },
+        "commitBody": {
+          "type": "object",
+          "properties": {
+            "maxLines": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxLines"
+          ],
+          "additionalProperties": false
+        },
+        "prTitle": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "format": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "maxChars",
+            "format"
+          ],
+          "additionalProperties": false
+        },
+        "prBody": {
+          "type": "object",
+          "properties": {
+            "maxLines": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          },
+          "required": [
+            "maxLines",
+            "sections"
+          ],
+          "additionalProperties": false
+        },
+        "jiraSummary": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxChars"
+          ],
+          "additionalProperties": false
+        },
+        "jiraComment": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "maxLines": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "milestoneTemplate": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "maxChars",
+            "maxLines",
+            "milestoneTemplate"
+          ],
+          "additionalProperties": false
+        },
+        "grafanaAnnotation": {
+          "type": "object",
+          "properties": {
+            "maxChars": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "maxChars"
+          ],
+          "additionalProperties": false
+        },
+        "reviewComment": {
+          "type": "object",
+          "properties": {
+            "maxLines": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "shape": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "maxLines",
+            "shape"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "branchName",
+        "commitSubject",
+        "commitBody",
+        "prTitle",
+        "prBody",
+        "jiraSummary",
+        "jiraComment",
+        "grafanaAnnotation",
+        "reviewComment"
+      ],
+      "additionalProperties": false
+    },
+    "prohibitedContentCategories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "attribution",
+          "first_person",
+          "signatures",
+          "mentions",
+          "secrets",
+          "unsafe_links"
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "limits",
+    "prohibitedContentCategories"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

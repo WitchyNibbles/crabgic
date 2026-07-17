@@ -1,0 +1,239 @@
+{
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "changeSetId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "budgetSource": {
+          "type": "string",
+          "enum": [
+            "requirement_acceptance_criteria",
+            "ecosystem_research",
+            "base_revision_measurement"
+          ]
+        },
+        "variant": {
+          "type": "string",
+          "const": "provisional"
+        },
+        "budgets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": {
+                "type": "string",
+                "enum": [
+                  "latency",
+                  "throughput",
+                  "error_rate",
+                  "cpu_time",
+                  "peak_rss",
+                  "peak_heap",
+                  "allocations",
+                  "fs_ops",
+                  "fs_bytes",
+                  "network_ops",
+                  "network_bytes",
+                  "query_count",
+                  "capacity"
+                ]
+              },
+              "percentile": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 99
+              },
+              "threshold": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "riskCategory": {
+                "type": "string",
+                "enum": [
+                  "cpu",
+                  "allocation",
+                  "copying",
+                  "io",
+                  "networking",
+                  "database",
+                  "serialization",
+                  "concurrency",
+                  "caching",
+                  "dataset_size",
+                  "user_visible_hot_path"
+                ]
+              }
+            },
+            "required": [
+              "metric",
+              "threshold",
+              "unit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "budgetHash": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "changeSetId",
+        "createdAt",
+        "budgetSource",
+        "variant",
+        "budgets",
+        "budgetHash"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "changeSetId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "budgetSource": {
+          "type": "string",
+          "enum": [
+            "requirement_acceptance_criteria",
+            "ecosystem_research",
+            "base_revision_measurement"
+          ]
+        },
+        "variant": {
+          "type": "string",
+          "const": "enforced"
+        },
+        "budgets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": {
+                "type": "string",
+                "enum": [
+                  "latency",
+                  "throughput",
+                  "error_rate",
+                  "cpu_time",
+                  "peak_rss",
+                  "peak_heap",
+                  "allocations",
+                  "fs_ops",
+                  "fs_bytes",
+                  "network_ops",
+                  "network_bytes",
+                  "query_count",
+                  "capacity"
+                ]
+              },
+              "percentile": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 99
+              },
+              "threshold": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "riskCategory": {
+                "type": "string",
+                "enum": [
+                  "cpu",
+                  "allocation",
+                  "copying",
+                  "io",
+                  "networking",
+                  "database",
+                  "serialization",
+                  "concurrency",
+                  "caching",
+                  "dataset_size",
+                  "user_visible_hot_path"
+                ]
+              },
+              "measuredValue": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "metric",
+              "threshold",
+              "unit",
+              "measuredValue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "budgetHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provisionalBudgetHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "block",
+            "inconclusive_blocking"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "changeSetId",
+        "createdAt",
+        "budgetSource",
+        "variant",
+        "budgets",
+        "budgetHash",
+        "provisionalBudgetHash",
+        "outcome"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

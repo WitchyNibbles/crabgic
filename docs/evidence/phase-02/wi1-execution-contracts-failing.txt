@@ -1,0 +1,100 @@
+Command: npx vitest run --coverage.enabled=false packages/contracts/src/contracts/change-set.test.ts packages/contracts/src/contracts/work-unit.test.ts packages/contracts/src/contracts/task-packet.test.ts packages/contracts/src/contracts/worker-result.test.ts packages/contracts/src/contracts/evidence-record.test.ts packages/contracts/src/contracts/run-snapshot.test.ts packages/contracts/src/contracts/learning-proposal.test.ts
+Date: 2026-07-15 (repo-local run, worker: phase-02 execution-domain contracts)
+Purpose: TDD failing-first evidence for roadmap/02-contracts-and-schemas.md work item 1 (execution-domain slice: ChangeSet, WorkUnit, TaskPacket, WorkerResult, EvidenceRecord, RunSnapshot, LearningProposal). Fails because the 7 source modules do not exist yet.
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/contracts/learning-proposal.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/work-unit.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/change-set.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/task-packet.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/worker-result.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/run-snapshot.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/evidence-record.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/contracts/change-set.test.ts [ packages/contracts/src/contracts/change-set.test.ts ]
+Error: Cannot find module './change-set.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/change-set.test.ts
+ ❯ src/contracts/change-set.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { ChangeSetSchema } from "./change-set.js";
+       | ^
+      3| import { RUN_LIFECYCLE_STATES } from "../state-machines/run-lifecycle.…
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/evidence-record.test.ts [ packages/contracts/src/contracts/evidence-record.test.ts ]
+Error: Cannot find module './evidence-record.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/evidence-record.test.ts
+ ❯ src/contracts/evidence-record.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { EvidenceRecordSchema } from "./evidence-record.js";
+       | ^
+      3|
+      4| const ID = "11111111-1111-4111-8111-111111111111";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/learning-proposal.test.ts [ packages/contracts/src/contracts/learning-proposal.test.ts ]
+Error: Cannot find module './learning-proposal.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/learning-proposal.test.ts
+ ❯ src/contracts/learning-proposal.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { LearningProposalSchema } from "./learning-proposal.js";
+       | ^
+      3| import { LEARNING_PROPOSAL_STATES } from "../learning/learning-proposa…
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/run-snapshot.test.ts [ packages/contracts/src/contracts/run-snapshot.test.ts ]
+Error: Cannot find module './run-snapshot.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/run-snapshot.test.ts
+ ❯ src/contracts/run-snapshot.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { RunSnapshotSchema } from "./run-snapshot.js";
+       | ^
+      3| import { RUN_LIFECYCLE_STATES } from "../state-machines/run-lifecycle.…
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/task-packet.test.ts [ packages/contracts/src/contracts/task-packet.test.ts ]
+Error: Cannot find module './task-packet.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/task-packet.test.ts
+ ❯ src/contracts/task-packet.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { TaskPacketSchema } from "./task-packet.js";
+       | ^
+      3|
+      4| const ID = "11111111-1111-4111-8111-111111111111";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/work-unit.test.ts [ packages/contracts/src/contracts/work-unit.test.ts ]
+Error: Cannot find module './work-unit.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/work-unit.test.ts
+ ❯ src/contracts/work-unit.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { WorkUnitSchema } from "./work-unit.js";
+       | ^
+      3| import { WORK_UNIT_ATTEMPT_STATUSES } from "../state-machines/work-uni…
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/worker-result.test.ts [ packages/contracts/src/contracts/worker-result.test.ts ]
+Error: Cannot find module './worker-result.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/worker-result.test.ts
+ ❯ src/contracts/worker-result.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { WorkerResultSchema } from "./worker-result.js";
+       | ^
+      3| import { WORK_UNIT_ATTEMPT_STATUS_TERMINALS } from "../state-machines/…
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  7 failed (7)
+      Tests  no tests
+   Start at  22:08:14
+   Duration  252ms (transform 274ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)
+

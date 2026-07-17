@@ -1,0 +1,103 @@
+Phase 02, work item 1 — passing evidence for the 6 connector-domain
+contracts (external-connection, capability-snapshot, remote-mutation-plan,
+remote-operation-record, remote-resource, rendered-artifact), after
+implementing each schema module against the failing tests captured in
+wi1-connector-contracts-failing.txt.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose \
+    packages/contracts/src/contracts/external-connection.test.ts \
+    packages/contracts/src/contracts/capability-snapshot.test.ts \
+    packages/contracts/src/contracts/remote-mutation-plan.test.ts \
+    packages/contracts/src/contracts/remote-operation-record.test.ts \
+    packages/contracts/src/contracts/remote-resource.test.ts \
+    packages/contracts/src/contracts/rendered-artifact.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — valid fixture > parses a fully-valid fixture (roadmap/18: revision comparator stamps RemoteResource) 2ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — valid fixture > accepts a Grafana-shaped resource with no canonicalUrl 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — invalid-shape rejection > rejects a missing schemaVersion 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — invalid-shape rejection > rejects a non-uuid externalConnectionId 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — invalid-shape rejection > rejects a malformed canonicalUrl 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — invalid-shape rejection > rejects an empty revision 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — invalid-shape rejection > rejects a malformed observedAt timestamp 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — unknown-key rejection (.strict()) > rejects an embedded requirementId (linkage lives in the evidence_pointer journal entry, per roadmap/21, not on this record) 0ms
+ ✓ |@eo/contracts| src/contracts/remote-resource.test.ts > RemoteResourceSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — valid fixture > parses a fully-valid fixture (roadmap/16 §In scope, CapabilitySnapshot bullet) 3ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — valid fixture > accepts an unknown-edition, forced-read-only snapshot (roadmap/18/20: unknown versions default read-only) 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — invalid-shape rejection > rejects a missing schemaVersion 1ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — invalid-shape rejection > rejects a non-uuid externalConnectionId 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — invalid-shape rejection > rejects a non-boolean isReadOnly 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — invalid-shape rejection > rejects a malformed discoveredAt timestamp 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — invalid-shape rejection > rejects an empty product string 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/capability-snapshot.test.ts > CapabilitySnapshotSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — valid fixture > parses a fully-valid fixture (roadmap/17 Interfaces produced: RenderedArtifact instances) 3ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — valid fixture > accepts every ArtifactKind token 17 names, since `kind` is deliberately unconstrained here (owned by 17, out of scope) 1ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — invalid-shape rejection > rejects a missing schemaVersion 1ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — invalid-shape rejection > rejects an empty kind 0ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — invalid-shape rejection > rejects an empty content 0ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — invalid-shape rejection > rejects a malformed renderedAt timestamp 0ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — invalid-shape rejection > rejects a non-uuid id 0ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/rendered-artifact.test.ts > RenderedArtifactSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — valid fixture > parses a fully-valid fixture (roadmap/16 §In scope, ExternalConnection store bullet) 3ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — valid fixture > accepts a minimal connection with only the required fields 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — valid fixture > accepts an exec-backend secret reference with args 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a missing schemaVersion 1ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a non-https baseUrl 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a malformed baseUrl 1ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a non-positive discoveryTtlSeconds 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a secretRef with an unrecognized backend 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a literal credential smuggled into secretRef (no such field exists on any branch) 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — invalid-shape rejection > rejects a non-uuid id 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — unknown-key rejection (.strict()) > rejects an unknown key on customCaRef 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > SecretReferenceSchema — all union branches > accepts the env backend 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > SecretReferenceSchema — all union branches > accepts the file backend 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > SecretReferenceSchema — all union branches > accepts the exec backend without args 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > SecretReferenceSchema — all union branches > rejects a backend outside the closed union 0ms
+ ✓ |@eo/contracts| src/contracts/external-connection.test.ts > ExternalConnectionSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — valid fixture > parses a fully-valid fixture (roadmap/16 §In scope, Mutation pipeline bullet) 3ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — valid fixture > accepts a create-action plan with no expectedRemoteRevision and no capability flags 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — valid fixture > accepts multiple required capability flags (roadmap/20: bulk-touching mutations may require more than one) 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — invalid-shape rejection > rejects a missing schemaVersion 1ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — invalid-shape rejection > rejects a non-uuid envelopeId 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — invalid-shape rejection > rejects a capability flag outside HighImpactCapabilityFlag's 11-member union 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — invalid-shape rejection > rejects an empty idempotencyKey 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — invalid-shape rejection > rejects an empty redactedDiff 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — unknown-key rejection (.strict()) > rejects a raw provider-body-shaped key masquerading as the redacted diff 0ms
+ ✓ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts > RemoteMutationPlanSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — valid fixture > parses a fully-valid fixture (roadmap/04 §In scope, Idempotency registry; roadmap/16 Mutation pipeline) 3ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — valid fixture > accepts a pre-network-I/O pending record with no appliedRevision yet 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — valid fixture > accepts a conflict record carrying a canonical errorKind 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > has exactly 6 statuses 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status pending 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status applied 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status verified 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status recorded 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status conflict 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > accepts status failed 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — all status union branches > rejects a status outside the closed union 1ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — invalid-shape rejection > rejects a missing schemaVersion 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — invalid-shape rejection > rejects a non-uuid remoteMutationPlanId 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — invalid-shape rejection > rejects an errorKind outside the canonical 10-member connector-error union 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — invalid-shape rejection > rejects an empty operationId 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@eo/contracts| src/contracts/remote-operation-record.test.ts > RemoteOperationRecordSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+
+ Test Files  6 passed (6)
+      Tests  73 passed (73)
+   Start at  22:14:01
+   Duration  257ms (transform 238ms, setup 0ms, import 475ms, tests 53ms, environment 1ms)
+
+Additionally, `npx tsc -b packages/contracts` (run after implementation) exits 0
+with no diagnostics — see wi4-connector-errors-passing.txt for the full
+type-check transcript shared across both work items' deliverables (they
+build as one TypeScript project, `packages/contracts`).

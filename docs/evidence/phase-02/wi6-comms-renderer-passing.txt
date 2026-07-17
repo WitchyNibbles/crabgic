@@ -1,0 +1,89 @@
+Work item 6 — CommunicationPolicy constants + renderer-core module.
+Passing run after implementation: packages/contracts/src/contracts/
+communication-policy.ts and packages/contracts/src/renderer-core/
+{length-counter,line-counter,limit-check,attribution-scanner,index}.ts now
+exist. Same test files as the failing-first capture
+(wi6-comms-renderer-failing.txt), unmodified in substance (prettier
+reformatted two files for line-wrap only, no assertion changes). The
+mandated failing-first fixture — "rejects a 7-line review comment as
+over-length (the mandated failing-first fixture)" — is visible below,
+passing, under "Work item 6 failing-first fixture — over-length review
+comment".
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/contracts/src/renderer-core packages/contracts/src/contracts/communication-policy.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > returns 0 for the empty string (no content is zero lines, not one blank line) 1ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > returns 1 for single-line text with no newline 0ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > does not count a single trailing newline as an extra blank line 0ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > counts an unterminated final line 0ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > counts an interior blank line 0ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > counts a lone newline as 1 line 0ms
+ ✓ |@eo/contracts| src/renderer-core/line-counter.test.ts > countLines > normalizes CRLF to LF before counting, so CRLF text never over-counts vs LF-only text 0ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > returns 0 for the empty string 1ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > counts plain ASCII text (code units and code points coincide) 0ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > counts a trailing newline as 1 char (line semantics live in line-counter.ts, not here) 0ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > counts a surrogate-pair emoji as 1 char, not the 2 UTF-16 code units `.length` would report 0ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > counts CRLF as 2 chars (no CRLF normalization happens at this layer) 1ms
+ ✓ |@eo/contracts| src/renderer-core/length-counter.test.ts > countChars > does not collapse a combining-mark grapheme cluster into 1 (documented limitation) 0ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > returns no findings for clean text 2ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > catches the seeded 'Generated with…' fixture (roadmap/02 Test plan) 1ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > is case-insensitive for text tokens 0ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > reports the correct index and 1-based line number 1ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > finds multiple occurrences of the same token 0ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > exposes the canonical token list 0ms
+ ✓ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts > scanForAttributionTokens > findings are sorted by index ascending 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > accepts text within maxChars 2ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > rejects text over maxChars 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > accepts text within maxLines 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > rejects text over maxLines 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > ignores a bound that is not present on the limit 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > fails if either present bound is violated 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > boundary fixtures (roadmap/02 Test plan): 72-char commit subject accepted / 73-char rejected > the fixture is exactly 72 chars 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > boundary fixtures (roadmap/02 Test plan): 72-char commit subject accepted / 73-char rejected > accepts a 72-char commit subject 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > boundary fixtures (roadmap/02 Test plan): 72-char commit subject accepted / 73-char rejected > rejects a 73-char commit subject 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > boundary fixtures (roadmap/02 Test plan): 6-line review comment accepted / 7-line rejected > accepts a 6-line review comment 0ms
+ ✓ |@eo/contracts| src/renderer-core/limit-check.test.ts > checkLimit > boundary fixtures (roadmap/02 Test plan): 6-line review comment accepted / 7-line rejected > rejects a 7-line review comment 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > PROHIBITED_CONTENT_CATEGORIES > has exactly the 6 deliberately-spelled members 1ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > PROHIBITED_CONTENT_CATEGORIES > ProhibitedContentCategorySchema accepts every declared member 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > PROHIBITED_CONTENT_CATEGORIES > ProhibitedContentCategorySchema rejects a label outside the closed union 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > branch name <= 64 chars 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > commit subject <= 72 chars, `type(scope): outcome` format 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > commit body <= 5 lines 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > PR title <= 72 chars, same convention as the commit subject 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > PR body <= 12 lines / 4 sections (Outcome, Validation, Risk, Tracking) 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > Jira summary <= 120 chars 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > Jira comment <= 800 chars / 6 lines + milestone template 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > Grafana annotation <= 240 chars 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > review comment <= 6 lines (one finding, evidence, action) — exit criterion 1ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > COMMUNICATION_POLICY_LIMITS (roadmap/02 In-scope bullet, verbatim numbers) > contains no dashboard-version-message entry anywhere (ledger Gap 6; exit criterion) 1ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > DEFAULT_COMMUNICATION_POLICY parses against its own schema 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > matches the golden CommunicationPolicy snapshot (roadmap/02 exit criterion) 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > golden snapshot includes the review-comment limit 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > golden snapshot contains no dashboard-version-message entry anywhere (exit criterion, literal wording) 1ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > rejects an unknown top-level field (.strict()) 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > rejects a missing required field 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > rejects a prohibited-content category outside the closed union 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > CommunicationPolicySchema / DEFAULT_COMMUNICATION_POLICY > round-trips through JSON serialize/parse 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > Work item 6 failing-first fixture — over-length review comment > accepts a review comment at exactly the 6-line limit 0ms
+ ✓ |@eo/contracts| src/contracts/communication-policy.test.ts > Work item 6 failing-first fixture — over-length review comment > rejects a 7-line review comment as over-length (the mandated failing-first fixture) 0ms
+
+ Test Files  5 passed (5)
+      Tests  54 passed (54)
+   Start at  22:10:42
+   Duration  229ms (transform 200ms, setup 0ms, import 314ms, tests 27ms, environment 1ms)
+
+vitest exit=0
+
+$ npx tsc -p packages/contracts/tsconfig.isolated-check.json   # isolated typecheck of only this deliverable's files + their direct dependencies (src/shared/ids.ts, src/shared/schema-version.ts); full `npx tsc -b packages/contracts` currently fails for unrelated reasons in files owned by other concurrent phase-02 workers (src/contracts/{capability-manifest,evidence-record,learning-proposal,performance-contract,run-snapshot}.test.ts and src/errors/connector-error.test.ts reference source files those workers have not yet created) — none of the tsc errors from that run reference any file this deliverable created; see below for the isolated, scoped, clean result.
+tsc exit=0
+
+$ npx eslint packages/contracts/src/contracts/communication-policy.ts packages/contracts/src/contracts/communication-policy.test.ts packages/contracts/src/renderer-core/*.ts
+eslint exit=0
+
+$ npx prettier --check packages/contracts/src/contracts/communication-policy.ts packages/contracts/src/contracts/communication-policy.test.ts packages/contracts/src/renderer-core/*.ts
+Checking formatting...
+All matched files use Prettier code style!
+prettier exit=0

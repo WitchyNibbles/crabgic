@@ -1,0 +1,28 @@
+$ npx vitest run --coverage.enabled=false packages/contracts/src/config/precedence.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > rejects a config stack that lowers a security-key boolean (roadmap/02 work item 8 failing-first fixture) 3ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > allows a higher-precedence layer to tighten a security-key boolean 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > rejects a config stack that raises a min-wins numeric security key 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > allows a higher-precedence layer to tighten a min-wins numeric security key 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > accumulates deny-list entries across every layer (union, append-only) 1ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > a higher-precedence layer cannot shrink the resolved deny list 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > non-security keys follow plain CLI > env > project > user > defaults precedence 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > falls through to the next-highest layer that defines a plain key when higher layers omit it 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > CONFIG_LAYER_ORDER is exactly CLI, env, project, user, defaults (CLI highest) 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > is a pure function — never mutates any input layer 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — unit fixtures > SecurityKeyLoosenedError carries structured, typed fields (typed rejection) 0ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — fast-check property: security-key monotonicity > no CLI/env/project/user/defaults combination ever loosens a declared security key (10000 fast-check cases) 506ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — adversarial corpus (Test plan Security bullet) > always rejects an adversarial attempt to flip a boolean security key from a lower-precedence layer 136ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — adversarial corpus (Test plan Security bullet) > always rejects an adversarial attempt to raise a min-wins numeric security key from a lower-precedence layer 117ms
+ ✓ |@eo/contracts| src/config/precedence.test.ts > resolveConfig — adversarial corpus (Test plan Security bullet) > an attempt to inject a wider allow list (shrink the deny list) from any layer never shrinks the resolved deny list 117ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  22:21:10
+   Duration  1.10s (transform 46ms, setup 0ms, import 84ms, tests 886ms, environment 0ms)
+
+
+Exit code: 0

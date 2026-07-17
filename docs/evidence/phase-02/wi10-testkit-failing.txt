@@ -1,0 +1,62 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/testkit| src/fixtures/registry.test.ts (0 test)
+ ❯ |@eo/testkit| src/ajv-harness.test.ts (0 test)
+ ❯ |@eo/testkit| src/providers/id-provider.test.ts (0 test)
+ ❯ |@eo/testkit| src/providers/clock-provider.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/testkit| src/ajv-harness.test.ts [ packages/testkit/src/ajv-harness.test.ts ]
+Error: Cannot find module './fixtures/registry.js' imported from /home/eimi/projects/crabgic/packages/testkit/src/ajv-harness.test.ts
+ ❯ src/ajv-harness.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { CONTRACT_FIXTURES } from "./fixtures/registry.js";
+       | ^
+      3| import {
+      4|   createContractSchemaValidator,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |@eo/testkit| src/fixtures/registry.test.ts [ packages/testkit/src/fixtures/registry.test.ts ]
+Error: Cannot find module './registry.js' imported from /home/eimi/projects/crabgic/packages/testkit/src/fixtures/registry.test.ts
+ ❯ src/fixtures/registry.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { ALL_FIXTURES, CONTRACT_FIXTURES, ENUM_FIXTURES } from "./regi…
+       | ^
+      3|
+      4| /**
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |@eo/testkit| src/providers/clock-provider.test.ts [ packages/testkit/src/providers/clock-provider.test.ts ]
+Error: Cannot find module './clock-provider.js' imported from /home/eimi/projects/crabgic/packages/testkit/src/providers/clock-provider.test.ts
+ ❯ src/providers/clock-provider.test.ts:3:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { TimestampSchema } from "@eo/contracts";
+      3| import { createClockProvider, createClockProviderState, drawTimestamp …
+       | ^
+      4|
+      5| /**
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |@eo/testkit| src/providers/id-provider.test.ts [ packages/testkit/src/providers/id-provider.test.ts ]
+Error: Cannot find module './id-provider.js' imported from /home/eimi/projects/crabgic/packages/testkit/src/providers/id-provider.test.ts
+ ❯ src/providers/id-provider.test.ts:3:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { IdSchema } from "@eo/contracts";
+      3| import { createIdProvider, createIdProviderState, drawId } from "./id-…
+       | ^
+      4|
+      5| /**
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  no tests
+   Start at  22:33:58
+   Duration  415ms (transform 464ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+

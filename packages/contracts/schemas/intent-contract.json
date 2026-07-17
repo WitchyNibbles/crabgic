@@ -1,0 +1,91 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "changeSetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sections": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "non-goals": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compatibility": {
+          "type": "string",
+          "minLength": 1
+        },
+        "security": {
+          "type": "string",
+          "minLength": 1
+        },
+        "performance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observability": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rollout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptance": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "scope",
+        "non-goals",
+        "audience",
+        "compatibility",
+        "security",
+        "performance",
+        "observability",
+        "rollout",
+        "acceptance"
+      ],
+      "additionalProperties": false
+    },
+    "requirementIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "changeSetId",
+    "createdAt",
+    "sections",
+    "requirementIds"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

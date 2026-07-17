@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "externalConnectionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonicalTarget": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredCapabilityFlags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "assignment",
+          "reporter change",
+          "closing transitions",
+          "sprint completion",
+          "attachments",
+          "bulk mutations",
+          "issue creation",
+          "alert disabling",
+          "contact points",
+          "mute timings",
+          "notification templates"
+        ]
+      }
+    },
+    "redactedDiff": {
+      "type": "string",
+      "minLength": 1
+    },
+    "desiredStateHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedRemoteRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "impactClass": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rollbackClass": {
+      "type": "string",
+      "minLength": 1
+    },
+    "envelopeId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "externalConnectionId",
+    "tenant",
+    "canonicalTarget",
+    "action",
+    "redactedDiff",
+    "desiredStateHash",
+    "idempotencyKey",
+    "impactClass",
+    "rollbackClass",
+    "envelopeId"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,103 @@
+Phase 02, work item 1 — failing-first evidence for the 6 connector-domain
+contracts (external-connection, capability-snapshot, remote-mutation-plan,
+remote-operation-record, remote-resource, rendered-artifact).
+
+Test files were written first, against schema modules that did not yet
+exist, per the roadmap/README.md ground rule (TDD mandatory) and this
+phase's own work item 1 ("Failing-first: one invalid-shape fixture per
+contract rejected before the schema exists").
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false \
+    packages/contracts/src/contracts/external-connection.test.ts \
+    packages/contracts/src/contracts/capability-snapshot.test.ts \
+    packages/contracts/src/contracts/remote-mutation-plan.test.ts \
+    packages/contracts/src/contracts/remote-operation-record.test.ts \
+    packages/contracts/src/contracts/remote-resource.test.ts \
+    packages/contracts/src/contracts/rendered-artifact.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/contracts/external-connection.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/remote-operation-record.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/remote-mutation-plan.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/capability-snapshot.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/rendered-artifact.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/remote-resource.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/contracts/capability-snapshot.test.ts [ packages/contracts/src/contracts/capability-snapshot.test.ts ]
+Error: Cannot find module './capability-snapshot.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/capability-snapshot.test.ts
+ ❯ src/contracts/capability-snapshot.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { CapabilitySnapshotSchema } from "./capability-snapshot.js";
+       | ^
+      3|
+      4| const validSnapshot = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |@eo/contracts| src/contracts/external-connection.test.ts [ packages/contracts/src/contracts/external-connection.test.ts ]
+Error: Cannot find module './external-connection.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/external-connection.test.ts
+ ❯ src/contracts/external-connection.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { ExternalConnectionSchema, SecretReferenceSchema } from "./ext…
+       | ^
+      3|
+      4| const validConnection = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |@eo/contracts| src/contracts/remote-mutation-plan.test.ts [ packages/contracts/src/contracts/remote-mutation-plan.test.ts ]
+Error: Cannot find module './remote-mutation-plan.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/remote-mutation-plan.test.ts
+ ❯ src/contracts/remote-mutation-plan.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { RemoteMutationPlanSchema } from "./remote-mutation-plan.js";
+       | ^
+      3|
+      4| const validPlan = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |@eo/contracts| src/contracts/remote-operation-record.test.ts [ packages/contracts/src/contracts/remote-operation-record.test.ts ]
+Error: Cannot find module './remote-operation-record.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/remote-operation-record.test.ts
+ ❯ src/contracts/remote-operation-record.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import {
+       | ^
+      3|   REMOTE_OPERATION_RECORD_STATUSES,
+      4|   RemoteOperationRecordSchema,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |@eo/contracts| src/contracts/remote-resource.test.ts [ packages/contracts/src/contracts/remote-resource.test.ts ]
+Error: Cannot find module './remote-resource.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/remote-resource.test.ts
+ ❯ src/contracts/remote-resource.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { RemoteResourceSchema } from "./remote-resource.js";
+       | ^
+      3|
+      4| const validResource = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@eo/contracts| src/contracts/rendered-artifact.test.ts [ packages/contracts/src/contracts/rendered-artifact.test.ts ]
+Error: Cannot find module './rendered-artifact.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/rendered-artifact.test.ts
+ ❯ src/contracts/rendered-artifact.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { RenderedArtifactSchema } from "./rendered-artifact.js";
+       | ^
+      3|
+      4| const validArtifact = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  6 failed (6)
+      Tests  no tests
+   Start at  22:11:05
+   Duration  417ms (transform 244ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)

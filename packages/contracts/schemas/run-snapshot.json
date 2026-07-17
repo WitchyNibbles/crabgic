@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "changeSetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "runState": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "awaiting_approval",
+        "ready",
+        "running",
+        "verifying",
+        "integrating",
+        "final_verifying",
+        "published_local",
+        "failed",
+        "blocked",
+        "cancelled"
+      ]
+    },
+    "journalSequenceNumber": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "runId",
+    "changeSetId",
+    "runState",
+    "journalSequenceNumber",
+    "capturedAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,181 @@
+======================================================================
+PHASE 02 INTEGRATION — FULL GATE (docs/evidence/phase-02/exit-criteria-full-gate.txt)
+Captured: 2026-07-15
+======================================================================
+
+--- 1. npx vitest run (full suite, coverage on, 80% line+branch gate) ---
+$ npx vitest run
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  37 passed (37)
+      Tests  452 passed (452)
+   Start at  22:51:35
+   Duration  3.34s (transform 3.57s, setup 0ms, import 6.04s, tests 7.23s, environment 6ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.05 |    90.82 |     100 |      98 |                   
+ ...cts/src/config |    93.4 |    88.88 |     100 |   92.68 |                   
+  precedence.ts    |   92.85 |    88.88 |     100 |      92 | ...45,185,270-271 
+ ...cts/src/errors |   93.54 |       70 |     100 |   93.54 |                   
+  ...ctor-error.ts |   93.54 |       70 |     100 |   93.54 | 106,109           
+ testkit/src       |     100 |    77.77 |     100 |     100 |                   
+  ajv-harness.ts   |     100 |    77.77 |     100 |     100 | 80-81             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.05% ( 404/412 )
+Branches     : 90.82% ( 99/109 )
+Functions    : 100% ( 105/105 )
+Lines        : 98% ( 392/400 )
+================================================================================
+vitest exit: 0
+
+--- 2. npx tsc -b (root, all 18 packages, cold build) ---
+$ rm -rf packages/*/dist && npx tsc -b
+tsc -b exit: 0
+(no output above = zero errors across all 18 packages)
+
+--- 3. npm run lint (eslint . --ignore-pattern 'spikes/**', per repo's own script; spikes/ is phase-00's ownership, unchanged since phase-01's own precedent) ---
+$ npm run lint
+
+> engineering-orchestrator-monorepo@0.0.0 lint
+> eslint . --ignore-pattern 'spikes/**'
+
+lint exit: 0
+
+--- 4. npm run format (prettier --check .) ---
+$ npm run format
+
+> engineering-orchestrator-monorepo@0.0.0 format
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+format exit: 0
+
+--- 5. Gateway sole-definition-site scanner test (defect A fix confirmation) ---
+This is already included in the full vitest run above (packages/contracts/src/gateway/server-name.test.ts)
+as part of the 452 passing tests. Isolated re-run for clarity:
+$ npx vitest run packages/contracts/src/gateway/server-name.test.ts --coverage.enabled=false --reporter=verbose
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the literal "eo_gateway" (golden value, interface-ledger Gap 11) 1ms
+ ✓ |@eo/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the sole definition site of the literal under packages/*/src (exit criterion) 8ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  22:51:57
+   Duration  188ms (transform 26ms, setup 0ms, import 39ms, tests 10ms, environment 0ms)
+
+exit: 0
+
+--- 6. JSON Schema build determinism re-check (packages/contracts/schemas/*.json byte-stable; full transcript in wi1-json-schema-bytestable.txt) ---
+$ cd packages/contracts && npm run build:schemas && cd - && git diff --stat packages/contracts/schemas
+
+> @eo/contracts@0.0.0 build:schemas
+> tsc -b && node scripts/build-schemas.ts
+
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/authorization-envelope.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-manifest.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/change-set.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/communication-policy.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/evidence-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/external-connection.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/intent-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/learning-proposal.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/performance-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/project-profile.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-mutation-plan.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-operation-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-resource.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/rendered-artifact.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/requirement.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/run-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/stack-evidence.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/task-packet.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/work-unit.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/worker-result.json
+done: 21 schema files written to /home/eimi/projects/crabgic/packages/contracts/schemas
+(empty output above git diff --stat = byte-stable, no drift)
+
+======================================================================
+SUMMARY
+======================================================================
+- vitest run (452 tests, 37 test files): PASS, exit 0
+- Coverage (global, v8 provider): 98.05% statements, 90.82% branches,
+  100% functions, 98% lines — all above the 80% line+branch gate.
+- tsc -b (root, all 18 packages, cold build from a full `dist/` wipe): PASS, exit 0
+- npm run lint (eslint . --ignore-pattern 'spikes/**'): PASS, exit 0
+- npm run format (prettier --check .): PASS, exit 0
+- Gateway sole-definition-site scanner (defect A): PASS — both tests green
+  (previously failing before this session's fix to
+  packages/contracts/src/contracts/capability-manifest.test.ts).
+- JSON Schema build determinism: PASS — `git diff --stat
+  packages/contracts/schemas` is empty after a fresh rebuild against the
+  now-committed-equivalent working tree.
+
+======================================================================
+ADDENDUM — POST-VALIDATION FIX-LOOP RE-RUN
+Captured: 2026-07-17
+======================================================================
+
+The Opus validation round after the 2026-07-15 capture above surfaced one
+MINOR source deviation: CONNECTOR_ERROR_KINDS in
+packages/contracts/src/errors/connector-error.ts ordered its members
+`…unsupported, ambiguous_write, transient, policy_blocked`, while
+roadmap/02-contracts-and-schemas.md line 19 declares
+`…unsupported, transient, ambiguous_write, policy_blocked` — and
+connector-error.test.ts's "byte-matches the roadmap's declared member
+list, in order" test title was therefore untrue (it matched the source's
+order, not the roadmap's). Set membership was identical either way; only
+tuple/enum-array ordering differed.
+
+Fix applied (evidence README Deviations item 11): the two adjacent members
+were swapped in CONNECTOR_ERROR_KINDS, in the test's expected array, and in
+the test's CONSTRUCTORS table, restoring the roadmap order and making the
+test title truthful. Because schemas/remote-operation-record.json embeds
+ConnectorErrorKindSchema's enum array, the schemas were rebuilt and
+re-verified, and the full gate was re-run:
+
+- npm run build:schemas, run twice consecutively; `diff -r` between the
+  two runs' schemas/ trees: empty (BYTE-STABLE). errorKind enum in
+  schemas/remote-operation-record.json now reads
+  `…"unsupported", "transient", "ambiguous_write", "policy_blocked"`.
+- npx tsc -b (root, cold, from a full packages/*/dist wipe): PASS, exit 0
+- npx vitest run --coverage: 452 tests / 37 files PASS, exit 0; coverage
+  identical to the 2026-07-15 capture (98.05% stmts / 90.82% branches /
+  100% funcs / 98% lines — order-only change, no behavioral delta)
+- npm run lint: PASS, exit 0
+- npm run format: PASS, exit 0
+- Gateway sole-definition-site scanner + full connector-error suite
+  (targeted re-run): 37/37 PASS
+
+Sequencing note from this re-run: vitest must run with `dist/` present —
+`@eo/testkit`'s tests resolve `@eo/contracts` through its built dist entry,
+so a dist wipe without an intervening `tsc -b` fails 4 test files on
+package resolution (observed live, then rebuilt; not a product defect).
+
+Validation verdict (2026-07-17): a fresh, context-free Opus code-soundness
+validator audited the post-fix tree adversarially (redaction guarantees at
+type and runtime level — including an out-of-repo tsc probe against the
+compiled dist proving TS2339/TS2353 on raw-body access; config-resolver
+loosening bypass attempts incl. NaN/Infinity edges; transition-table and
+exhaustiveness mutation survivability; schema-build and testkit
+determinism) and returned PASS with zero CRITICAL/MAJOR findings, plus an
+explicit pass on all five fix-re-audit checks for the member-order fix
+above. Its one MINOR finding — the `null`/primitive branches of
+`redactProviderResponse` (connector-error.ts) were untested, so a
+regression interpolating a raw string body would have passed CI — was
+remediated the same day with two test-only additions (null marker;
+primitive typeof-only, asserting a seeded fake hostname never survives
+into `toData()` output). Post-remediation gate: 454 tests / 37 files PASS,
+tsc -b exit 0, lint/format clean; coverage 98.54% stmts / 92.66% branches /
+100% funcs / 98.5% lines; connector-error.ts itself now 100% stmts/lines.

@@ -1,0 +1,6 @@
+$ npx tsc -b packages/contracts
+# WI5 stub removed from journal-entry-type.test.ts (see wi5-journal-14th-member-tsc-failing.txt).
+
+
+(no output above this line means tsc -b succeeded with zero diagnostics)
+Exit code: 0

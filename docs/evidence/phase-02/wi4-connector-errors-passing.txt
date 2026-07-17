@@ -1,0 +1,104 @@
+Phase 02, work item 4 — passing evidence for the canonical connector-error
+union (10 members) + redacting constructors, after implementing
+`packages/contracts/src/errors/connector-error.ts` against the failing test
+captured in wi4-connector-errors-failing.txt.
+
+=== Part 1: runtime test suite ===
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/contracts/src/errors/connector-error.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorKindSchema — closed 10-member union > has exactly 10 members (roadmap/02 §In scope, Canonical connector errors) 1ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorKindSchema — closed 10-member union > byte-matches the roadmap's declared member list, in order 1ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorKindSchema — closed 10-member union > accepts every declared member 1ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorKindSchema — closed 10-member union > rejects a kind outside the closed union 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > authentication constructor produces an error carrying exactly that kind 1ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > permission constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > not_found constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > conflict constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > rate_limited constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > validation constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > unsupported constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > ambiguous_write constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > transient constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > policy_blocked constructor produces an error carrying exactly that kind 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > authentication: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > permission: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > not_found: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > conflict: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > rate_limited: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > validation: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > unsupported: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > ambiguous_write: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > transient: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > policy_blocked: ≥1 round-trip fixture (construct -> toData -> JSON stringify -> parse -> deep-equal) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > derives a key-names-only redaction summary from an object provider response, never raw values 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > accepts an explicit redactedDetail override instead of deriving one 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — one constructor per member, all 10 union branches > round-trips through fromData(toData()) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorDataSchema — invalid-shape and unknown-key rejection > parses a fully-valid fixture 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorDataSchema — invalid-shape and unknown-key rejection > rejects a kind outside the closed union 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorDataSchema — invalid-shape and unknown-key rejection > rejects a missing required field 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorDataSchema — invalid-shape and unknown-key rejection > rejects an empty message 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorErrorDataSchema — invalid-shape and unknown-key rejection > rejects an unknown top-level key (.strict()) 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — type-level security: the public type has no raw-body field > rejects a raw-provider-body field on the serialized ConnectorErrorData shape at the type level 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — type-level security: the public type has no raw-body field > rejects reading a raw-provider-response field off a constructed ConnectorError instance 0ms
+ ✓ |@eo/contracts| src/errors/connector-error.test.ts > ConnectorError — type-level security: the public type has no raw-body field > rejects passing an unknown extra field into a constructor's input at the type level 0ms
+
+ Test Files  1 passed (1)
+      Tests  35 passed (35)
+   Start at  22:14:01
+   Duration  189ms (transform 37ms, setup 0ms, import 60ms, tests 10ms, environment 0ms)
+
+=== Part 2: type-level enforcement (the actual security-exit-criterion check) ===
+
+vitest transpiles TypeScript with esbuild and does NOT enforce
+`@ts-expect-error` — the 3 type-level assertions in the "type-level
+security" describe block above therefore execute successfully as plain JS
+regardless of whether the suppressed line would actually fail to compile.
+The real enforcement mechanism, as this phase's own work item 4 requires
+("an `@ts-expect-error` line that stops erroring fails the build"), is
+`npx tsc -b packages/contracts`.
+
+First run, immediately after implementing connector-error.ts and before
+relocating two `@ts-expect-error` comments onto the exact offending lines
+(TypeScript attributes an excess-property error to the specific bad
+property's line, not to the line where the object-literal assignment
+starts) — this is the real, unedited failure this project surfaced:
+
+Command:
+
+  npx tsc -b packages/contracts
+
+Output:
+
+  packages/contracts/src/errors/connector-error.test.ts(147,5): error TS2578: Unused '@ts-expect-error' directive.
+  packages/contracts/src/errors/connector-error.test.ts(156,7): error TS2353: Object literal may only specify known properties, and 'rawProviderBody' does not exist in type '{ message: string; kind: "validation" | "authentication" | "permission" | "not_found" | "conflict" | "rate_limited" | "unsupported" | "ambiguous_write" | "transient" | "policy_blocked"; provider: string; retryable: boolean; redactedDetail: string; }'.
+  packages/contracts/src/errors/connector-error.test.ts(176,5): error TS2578: Unused '@ts-expect-error' directive.
+  packages/contracts/src/errors/connector-error.test.ts(182,7): error TS2353: Object literal may only specify known properties, and 'rawProviderBody' does not exist in type 'ConnectorErrorInput'.
+
+This is the exit criterion working exactly as designed: TS2353 proves
+`rawProviderBody` is genuinely unconstructible on both the public
+`ConnectorErrorData` type and the constructor's `ConnectorErrorInput` type;
+TS2578 proves the `@ts-expect-error` comments were merely misplaced by one
+property (moved to directly precede the `rawProviderBody: ...` line in each
+case), not that the underlying type guarantee was ever missing.
+
+Command after moving the two `@ts-expect-error` comments onto their exact
+target lines:
+
+  npx tsc -b packages/contracts --force
+
+Output: (empty — exit code 0, zero diagnostics)
+
+This confirms: (a) `rawProviderBody`/an unrecognized raw-body-shaped field
+fails to type-check against `ConnectorErrorData` and against
+`ConnectorErrorInput`; (b) `err.rawProviderResponse` fails to type-check
+against a constructed `ConnectorError` instance; (c) every other line in
+`packages/contracts` — the 6 connector contracts included — compiles clean
+under the repo's strict TS config (`exactOptionalPropertyTypes`,
+`noUncheckedIndexedAccess`, etc).

@@ -1,0 +1,101 @@
+Work item 1 (roadmap/02-contracts-and-schemas.md) — JSON Schema build,
+byte-stability exit criterion:
+  "JSON Schema artifacts byte-stable across two consecutive builds (empty
+  diff)."
+
+Script: packages/contracts/scripts/build-schemas.ts
+npm script: packages/contracts/package.json -> "build:schemas": "tsc -b && node scripts/build-schemas.ts"
+
+Method: run `npm run build:schemas` twice in a row with no source edits
+between runs, copy each run's `schemas/*.json` output to a separate scratch
+directory, `diff -r` the two copies, and separately confirm
+`git diff --stat packages/contracts/schemas` is empty (no byte changed
+relative to the currently-committed tree) plus `git status --short` showing
+the directory as a single new (untracked-until-commit, but git-tracked going
+forward — not gitignored) unit.
+
+Raw commands + raw output (verbatim):
+
+=== command ===
+$ cd packages/contracts && npm run build:schemas   (RUN 1)
+
+
+> @eo/contracts@0.0.0 build:schemas
+> tsc -b && node scripts/build-schemas.ts
+
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/authorization-envelope.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-manifest.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/change-set.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/communication-policy.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/evidence-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/external-connection.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/intent-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/learning-proposal.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/performance-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/project-profile.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-mutation-plan.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-operation-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-resource.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/rendered-artifact.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/requirement.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/run-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/stack-evidence.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/task-packet.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/work-unit.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/worker-result.json
+done: 21 schema files written to /home/eimi/projects/crabgic/packages/contracts/schemas
+
+=== command ===
+$ cd packages/contracts && npm run build:schemas   (RUN 2, immediately after RUN 1, no source edits between them)
+
+
+> @eo/contracts@0.0.0 build:schemas
+> tsc -b && node scripts/build-schemas.ts
+
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/authorization-envelope.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-manifest.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/capability-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/change-set.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/communication-policy.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/evidence-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/external-connection.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/intent-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/learning-proposal.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/performance-contract.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/project-profile.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-mutation-plan.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-operation-record.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/remote-resource.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/rendered-artifact.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/requirement.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/run-snapshot.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/stack-evidence.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/task-packet.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/work-unit.json
+wrote /home/eimi/projects/crabgic/packages/contracts/schemas/worker-result.json
+done: 21 schema files written to /home/eimi/projects/crabgic/packages/contracts/schemas
+
+=== diff -r of RUN 1 output copy vs RUN 2 output copy (byte-stability check) ===
+$ diff -r <scratch>/schema-run1 <scratch>/schema-run2
+diff -r exit code: 0
+
+=== git diff --stat packages/contracts/schemas ===
+$ git diff --stat packages/contracts/schemas
+(empty output above = no diff)
+
+=== git status --short packages/contracts/schemas ===
+$ git status --short packages/contracts/schemas
+?? packages/contracts/schemas/
+
+Verdict: PASS. `diff -r` between the two runs' output copies is byte-identical
+(exit 0, no output). `git diff --stat` against the working tree between the
+two runs is empty. 21 files present, one per contract, matching work item 1's
+"one JSON Schema file per contract."
+
+Determinism settings chosen (see build-schemas.ts's own doc comment for full
+rationale): zod-to-json-schema `target: "jsonSchema7"`, `$refStrategy:
+"none"` (fully inlined, no $ref/definitions — each schema file validates
+standalone via ajv); `JSON.stringify(schema, null, 2)` plus one trailing
+newline; a fixed, alphabetized-by-filename array drives emission order
+(never `Object.keys` iteration order).

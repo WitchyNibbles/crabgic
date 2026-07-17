@@ -1,0 +1,9 @@
+$ npx tsc -b packages/contracts
+# Stub present in packages/contracts/src/journal/journal-entry-type.test.ts:
+#   type StubbedFourteenMemberJournalEntryType = JournalEntryType | "capability_quarantine_verdict";
+#   const wi5StubbedDescriptions: Record<StubbedFourteenMemberJournalEntryType, string> =
+#     JOURNAL_ENTRY_TYPE_DESCRIPTIONS;
+
+packages/contracts/src/journal/journal-entry-type.test.ts(17,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type 'Readonly<Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 4 more ... | "learning_transition", string>>' but required in type 'Record<StubbedFourteenMemberJournalEntryType, string>'.
+
+Exit code: 1

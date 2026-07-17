@@ -1,0 +1,107 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "manifest",
+              "lockfile",
+              "language_runtime",
+              "source_composition",
+              "ci",
+              "container",
+              "infrastructure",
+              "migration",
+              "deployment_config",
+              "observability_integration"
+            ]
+          },
+          "ecosystem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "category",
+          "ecosystem",
+          "detail",
+          "path",
+          "confidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "conflictingPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2
+          }
+        },
+        "required": [
+          "description",
+          "conflictingPaths"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unresolvedAmbiguity": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "createdAt",
+    "findings",
+    "contradictions",
+    "unresolvedAmbiguity"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

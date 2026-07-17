@@ -1,0 +1,89 @@
+Work item 6 — CommunicationPolicy constants + renderer-core module.
+Failing-first fixture (roadmap/02 Work item 6): an over-length review-comment
+fixture — see `communication-policy.test.ts`'s "Work item 6 failing-first
+fixture — over-length review comment" describe block, specifically the test
+"rejects a 7-line review comment as over-length (the mandated failing-first
+fixture)", which asserts `checkLimit(sevenLineReviewComment,
+DEFAULT_COMMUNICATION_POLICY.limits.reviewComment)` is `false`.
+
+Captured before any implementation source file existed under
+packages/contracts/src/contracts/communication-policy.ts or
+packages/contracts/src/renderer-core/*.ts — only the *.test.ts files existed
+at this point, so every suite fails to even collect (module-not-found),
+which trivially includes the mandated over-length-review-comment fixture
+test among everything else in these files.
+
+$ npx vitest run --coverage.enabled=false packages/contracts/src/renderer-core packages/contracts/src/contracts/communication-policy.test.ts
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/contracts/communication-policy.test.ts (0 test)
+ ❯ |@eo/contracts| src/renderer-core/attribution-scanner.test.ts (0 test)
+ ❯ |@eo/contracts| src/renderer-core/length-counter.test.ts (0 test)
+ ❯ |@eo/contracts| src/renderer-core/limit-check.test.ts (0 test)
+ ❯ |@eo/contracts| src/renderer-core/line-counter.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/contracts/communication-policy.test.ts [ packages/contracts/src/contracts/communication-policy.test.ts ]
+Error: Cannot find module './communication-policy.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/communication-policy.test.ts
+ ❯ src/contracts/communication-policy.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import {
+       | ^
+      3|   COMMUNICATION_POLICY_LIMITS,
+      4|   CommunicationPolicySchema,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |@eo/contracts| src/renderer-core/attribution-scanner.test.ts [ packages/contracts/src/renderer-core/attribution-scanner.test.ts ]
+Error: Cannot find module './attribution-scanner.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/renderer-core/attribution-scanner.test.ts
+ ❯ src/renderer-core/attribution-scanner.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { ATTRIBUTION_TOKENS, scanForAttributionTokens } from "./attrib…
+       | ^
+      3|
+      4| describe("scanForAttributionTokens", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |@eo/contracts| src/renderer-core/length-counter.test.ts [ packages/contracts/src/renderer-core/length-counter.test.ts ]
+Error: Cannot find module './length-counter.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/renderer-core/length-counter.test.ts
+ ❯ src/renderer-core/length-counter.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { countChars } from "./length-counter.js";
+       | ^
+      3|
+      4| describe("countChars", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |@eo/contracts| src/renderer-core/limit-check.test.ts [ packages/contracts/src/renderer-core/limit-check.test.ts ]
+Error: Cannot find module './limit-check.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/renderer-core/limit-check.test.ts
+ ❯ src/renderer-core/limit-check.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { checkLimit } from "./limit-check.js";
+       | ^
+      3| import { countChars } from "./length-counter.js";
+      4| import { countLines } from "./line-counter.js";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |@eo/contracts| src/renderer-core/line-counter.test.ts [ packages/contracts/src/renderer-core/line-counter.test.ts ]
+Error: Cannot find module './line-counter.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/renderer-core/line-counter.test.ts
+ ❯ src/renderer-core/line-counter.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { countLines } from "./line-counter.js";
+       | ^
+      3|
+      4| describe("countLines", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  5 failed (5)
+      Tests  no tests
+   Start at  22:07:47
+   Duration  232ms (transform 155ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)
+
+exit=1

@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "externalConnectionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "resourceKind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "externalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonicalUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "externalConnectionId",
+    "resourceKind",
+    "externalId",
+    "revision",
+    "observedAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "awaiting_approval",
+        "ready",
+        "running",
+        "verifying",
+        "integrating",
+        "final_verifying",
+        "published_local",
+        "failed",
+        "blocked",
+        "cancelled"
+      ]
+    },
+    "intentContractId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "authorizationEnvelopeId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "capabilityManifestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "provisionalPerformanceContractId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "enforcedPerformanceContractId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "integrationOrder": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "rollbackStrategy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "state",
+    "intentContractId",
+    "authorizationEnvelopeId",
+    "capabilityManifestId",
+    "provisionalPerformanceContractId",
+    "integrationOrder",
+    "rollbackStrategy",
+    "createdAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

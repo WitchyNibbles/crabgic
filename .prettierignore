@@ -14,3 +14,11 @@ roadmap/
 docs/claude-code-adaptation.md
 docs/interface-ledger.md
 spikes/
+
+# Phase 02 (work item 1): packages/contracts/schemas/*.json is a machine-
+# generated build artifact with its own documented byte-stability contract
+# (packages/contracts/scripts/build-schemas.ts: fixed 2-space
+# `JSON.stringify`, trailing newline — deliberately not prettier's own JSON
+# style) — same rationale as `package-lock.json` above, not hand-authored
+# content for this gate to reformat.
+packages/contracts/schemas/

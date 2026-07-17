@@ -1,0 +1,56 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > drawTimestamp (pure core) > produces a TimestampSchema-valid ISO string 2ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > drawTimestamp (pure core) > is deterministic: same epoch + step + tick position always yields the same timestamp 0ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > drawTimestamp (pure core) > advances by exactly one step per draw without mutating the input state 1ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > drawTimestamp (pure core) > starts exactly at the fixed epoch on the first draw 0ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > createClockProvider (closure convenience factory) > documented closure-counter factory: .next() returns TimestampSchema-valid, monotonically-advancing timestamps 0ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > createClockProvider (closure convenience factory) > is deterministic across separate provider instances sharing epoch + step 0ms
+ ✓ |@eo/testkit| src/providers/clock-provider.test.ts > createClockProvider (closure convenience factory) > defaults to a fixed epoch/step when called with no arguments (deterministic across runs) 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > drawId (pure core) > produces an IdSchema-valid UUID 1ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > drawId (pure core) > is deterministic: same seed + same counter always yields the same id 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > drawId (pure core) > advances the counter without mutating the input state (immutability) 1ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > drawId (pure core) > produces distinct ids for successive counters from the same seed 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > drawId (pure core) > different seeds produce different ids for the same counter position 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > createIdProvider (closure convenience factory) > documented closure-counter factory: .next() returns IdSchema-valid, sequentially-advancing ids 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > createIdProvider (closure convenience factory) > is deterministic across separate provider instances sharing a seed 0ms
+ ✓ |@eo/testkit| src/providers/id-provider.test.ts > createIdProvider (closure convenience factory) > never mutates a hidden module-level global — two independent providers never interfere 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > registers exactly 21 contract fixtures 2ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > registers exactly 2 enum-instance fixtures (WorkUnitAttemptStatus, JournalEntryType) 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > ALL_FIXTURES is the concatenation of both (23 total) 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > every contract fixture has a unique kebabName matching a contract module's own naming 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > AuthorizationEnvelope builder's default output parses against its own contract zod schema 2ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > CapabilityManifest builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > CapabilitySnapshot builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > ChangeSet builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > CommunicationPolicy builder's default output parses against its own contract zod schema 1ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > EvidenceRecord builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > ExternalConnection builder's default output parses against its own contract zod schema 1ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > IntentContract builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > LearningProposal builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > PerformanceContract builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > ProjectProfile builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > RemoteMutationPlan builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > RemoteOperationRecord builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > RemoteResource builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > RenderedArtifact builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > Requirement builder's default output parses against its own contract zod schema 1ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > RunSnapshot builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > StackEvidence builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > TaskPacket builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > WorkUnit builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > WorkerResult builder's default output parses against its own contract zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > WorkUnitAttemptStatus builder's default output parses against its own union zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > JournalEntryType builder's default output parses against its own union zod schema 0ms
+ ✓ |@eo/testkit| src/fixtures/registry.test.ts > fixture registry — meta-test > every builder honors partial overrides immutably (does not mutate a shared default) 4ms
+ ✓ |@eo/testkit| src/ajv-harness.test.ts > ajv integration harness > validates a single fixture's default output against its emitted JSON Schema file 35ms
+ ✓ |@eo/testkit| src/ajv-harness.test.ts > ajv integration harness > rejects an instance that violates the emitted JSON Schema (negative control) 17ms
+ ✓ |@eo/testkit| src/ajv-harness.test.ts > ajv integration harness > reports a non-root instancePath verbatim for a nested-property type violation 12ms
+ ✓ |@eo/testkit| src/ajv-harness.test.ts > ajv integration harness > validates every one of the 21 contract fixtures' default output against its own emitted schema 104ms
+
+ Test Files  4 passed (4)
+      Tests  47 passed (47)
+   Start at  22:50:42
+   Duration  700ms (transform 900ms, setup 0ms, import 1.29s, tests 198ms, environment 0ms)
+

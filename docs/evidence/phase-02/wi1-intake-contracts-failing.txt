@@ -1,0 +1,105 @@
+$ npx vitest run --coverage.enabled=false \
+  packages/contracts/src/contracts/project-profile.test.ts \
+  packages/contracts/src/contracts/stack-evidence.test.ts \
+  packages/contracts/src/contracts/intent-contract.test.ts \
+  packages/contracts/src/contracts/requirement.test.ts \
+  packages/contracts/src/contracts/authorization-envelope.test.ts \
+  packages/contracts/src/contracts/capability-manifest.test.ts \
+  packages/contracts/src/contracts/performance-contract.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/contracts| src/contracts/capability-manifest.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/performance-contract.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/project-profile.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/intent-contract.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/authorization-envelope.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/requirement.test.ts (0 test)
+ ❯ |@eo/contracts| src/contracts/stack-evidence.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/contracts| src/contracts/authorization-envelope.test.ts [ packages/contracts/src/contracts/authorization-envelope.test.ts ]
+Error: Cannot find module './authorization-envelope.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/authorization-envelope.test.ts
+ ❯ src/contracts/authorization-envelope.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { AuthorizationEnvelopeSchema } from "./authorization-envelope.…
+       | ^
+      3|
+      4| const validEnvelope = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/capability-manifest.test.ts [ packages/contracts/src/contracts/capability-manifest.test.ts ]
+Error: Cannot find module './capability-manifest.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/capability-manifest.test.ts
+ ❯ src/contracts/capability-manifest.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { CapabilityManifestSchema } from "./capability-manifest.js";
+       | ^
+      3|
+      4| const skillEntry = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/intent-contract.test.ts [ packages/contracts/src/contracts/intent-contract.test.ts ]
+Error: Cannot find module './intent-contract.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/intent-contract.test.ts
+ ❯ src/contracts/intent-contract.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { INTENT_CONTRACT_SECTION_KEYS, IntentContractSchema } from "./…
+       | ^
+      3|
+      4| const validSections = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/performance-contract.test.ts [ packages/contracts/src/contracts/performance-contract.test.ts ]
+Error: Cannot find module './performance-contract.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/performance-contract.test.ts
+ ❯ src/contracts/performance-contract.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { PerformanceContractSchema } from "./performance-contract.js";
+       | ^
+      3|
+      4| const provisionalBudgetEntry = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/project-profile.test.ts [ packages/contracts/src/contracts/project-profile.test.ts ]
+Error: Cannot find module './project-profile.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/project-profile.test.ts
+ ❯ src/contracts/project-profile.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { ProjectProfileSchema } from "./project-profile.js";
+       | ^
+      3|
+      4| const validEcosystem = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/requirement.test.ts [ packages/contracts/src/contracts/requirement.test.ts ]
+Error: Cannot find module './intent-contract.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/requirement.test.ts
+ ❯ src/contracts/requirement.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { INTENT_CONTRACT_SECTION_KEYS } from "./intent-contract.js";
+       | ^
+      3| import { RequirementSchema } from "./requirement.js";
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/contracts| src/contracts/stack-evidence.test.ts [ packages/contracts/src/contracts/stack-evidence.test.ts ]
+Error: Cannot find module './stack-evidence.js' imported from /home/eimi/projects/crabgic/packages/contracts/src/contracts/stack-evidence.test.ts
+ ❯ src/contracts/stack-evidence.test.ts:2:1
+      1| import { describe, expect, it } from "vitest";
+      2| import { STACK_EVIDENCE_CATEGORIES, StackEvidenceSchema } from "./stac…
+       | ^
+      3|
+      4| const validFinding = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  7 failed (7)
+      Tests  no tests
+   Start at  22:07:50
+   Duration  257ms (transform 261ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)
+

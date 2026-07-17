@@ -1,0 +1,13 @@
+Command: npx vitest run --coverage.enabled=false packages/contracts/src/contracts/change-set.test.ts packages/contracts/src/contracts/work-unit.test.ts packages/contracts/src/contracts/task-packet.test.ts packages/contracts/src/contracts/worker-result.test.ts packages/contracts/src/contracts/evidence-record.test.ts packages/contracts/src/contracts/run-snapshot.test.ts packages/contracts/src/contracts/learning-proposal.test.ts
+Date: 2026-07-15 (repo-local run, worker: phase-02 execution-domain contracts)
+Purpose: TDD passing evidence for roadmap/02-contracts-and-schemas.md work item 1 (execution-domain slice: ChangeSet, WorkUnit, TaskPacket, WorkerResult, EvidenceRecord, RunSnapshot, LearningProposal), after implementing the 7 source modules and running prettier --write on 4 test files.
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  7 passed (7)
+      Tests  56 passed (56)
+   Start at  22:11:02
+   Duration  294ms (transform 452ms, setup 0ms, import 755ms, tests 61ms, environment 1ms)
+
