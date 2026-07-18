@@ -20,14 +20,24 @@ describe("heartbeat scheduler — idle CPU budget", () => {
     const scheduler = createHeartbeatScheduler({ intervalMs: 5_000 });
     scheduler.start();
 
-    await wait(300); // sustained no-op window
+    // A 2s window (was 300ms) so the fixed one-off startup/sampling CPU cost
+    // (~3-5ms: scheduler construction + the immediate sample) amortizes well
+    // below the 1%-of-one-core budget — 1% of 300ms is only 3ms, smaller than
+    // that fixed cost, so the short window sat on the boundary and flaked when
+    // this test ran alongside the full parallel suite (the paced idle process
+    // itself uses only a few ms of CPU regardless of window length; the
+    // companion idle-budget.integration.test.ts already measures over 1500ms
+    // for the same reason). An always-polling implementation would burn ~2s of
+    // CPU over this window (fraction ~1.0), so the discriminating power against
+    // the failing-first naive variant is strengthened, not weakened.
+    await wait(2_000);
 
     scheduler.stop();
     const after = sampleResourceUsage();
 
     const cpuFraction = cpuFractionBetween(before, after);
     expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);
-  });
+  }, 20_000);
 });
 
 describe("heartbeat scheduler — lifecycle mechanics", () => {
