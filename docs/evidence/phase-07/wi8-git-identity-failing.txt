@@ -1,0 +1,55 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/git-identity.test.ts (2 tests | 2 failed) 132ms
+     × sets user.name to the fixed neutral name and user.email to the configured service email, locally (never global) 69ms
+     × a commit made immediately afterward carries the configured identity, with no further identity call 62ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/git-identity.test.ts > configureGitIdentity (WI8) > sets user.name to the fixed neutral name and user.email to the configured service email, locally (never global)
+GitCommandError: git config --local --get user.name exited with code 1: 
+ ❯ Object.run src/plumbing.ts:126:15
+    124|       const result = await spawnFn(request);
+    125|       if (result.exitCode !== 0 && runOptions.allowFailure !== true) {
+    126|         throw new GitCommandError(args, result.exitCode, result.stderr…
+       |               ^
+    127|       }
+    128|       return result;
+ ❯ src/git-identity.test.ts:34:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@eo/git-engine| src/git-identity.test.ts > configureGitIdentity (WI8) > a commit made immediately afterward carries the configured identity, with no further identity call
+Error: Command failed: git commit -q -m commit right after identity config --no-verify
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: empty ident name (for <eimi@DESKTOP-3B4TUKC.localdomain>) not allowed
+
+ ❯ fixtureGit src/test-support/fixture-repo.ts:21:10
+     19| /** Runs `git <args>` in `cwd`, argv-array only, no shell. Throws on n…
+     20| export function fixtureGit(cwd: string, args: readonly string[]): stri…
+     21|   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["i…
+       |          ^
+     22| }
+     23|
+ ❯ src/git-identity.test.ts:50:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  18:13:35
+   Duration  294ms (transform 36ms, setup 0ms, import 51ms, tests 132ms, environment 0ms)
+

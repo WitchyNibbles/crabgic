@@ -1,0 +1,164 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/spawn-surface-scan.test.ts (5 tests | 1 failed) 17ms
+     × every git call with a caller-influenced positional (clone/fetch/diff/worktree-add) references the shared OPTION_TERMINATOR guard 8ms
+ ❯ |@eo/git-engine| src/argument-injection.regression.test.ts (7 tests | 6 failed) 445ms
+     × a ref shaped like --upload-pack=<cmd> never executes the smuggled command (RCE contained to a tmp sandbox) 105ms
+     × rejects a leading-dash fetch ref up front with a typed error, before ever spawning git 83ms
+     × a baseRef shaped like --output=<victim> never truncates/overwrites the victim file (contained to a tmp sandbox) 47ms
+     × rejects a flag-shaped baseObjectId with a typed error, before ever spawning `git worktree add` 54ms
+     × rejects a well-formed-length-but-non-hex baseObjectId too 52ms
+     × rejects a flag-shaped targetRef up front with a typed error 97ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — fetch RCE via --upload-pack option smuggling is blocked > a ref shaped like --upload-pack=<cmd> never executes the smuggled command (RCE contained to a tmp sandbox)
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/argument-injection.regression.test.ts:65:32
+     63|
+     64|     // The core security assertion: the smuggled `touch` command never…
+     65|     expect(existsSync(marker)).toBe(false);
+       |                                ^
+     66|   });
+     67|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — fetch RCE via --upload-pack option smuggling is blocked > rejects a leading-dash fetch ref up front with a typed error, before ever spawning git
+AssertionError: expected GitCommandError: git fetch origin -badref… { …(3) } to be an instance of UnsafeGitRefError
+ ❯ src/argument-injection.regression.test.ts:75:64
+     73|     await ensureControlClone(plumbing, { sourceRepoPath: sourceDir, co…
+     74|
+     75|     await expect(fetchRefresh(plumbing, controlDir, "-badref")).reject…
+       |                                                                ^
+     76|       UnsafeGitRefError,
+     77|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — overlap-analyzer diff --output overwrite is blocked > a baseRef shaped like --output=<victim> never truncates/overwrites the victim file (contained to a tmp sandbox)
+AssertionError: expected '' to be 'PRECIOUS DATA - MUST NOT BE OVERWRITT…' // Object.is equality
+
+- Expected
++ Received
+
+- PRECIOUS DATA - MUST NOT BE OVERWRITTEN
+-
+
+ ❯ src/argument-injection.regression.test.ts:105:42
+    103|     // The core security assertion: the victim file, OUTSIDE the repo,…
+    104|     // never touched.
+    105|     expect(readFileSync(victim, "utf8")).toBe(preciousContent);
+       |                                          ^
+    106|   });
+    107| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — worktree-lifecycle rejects a non-hex baseObjectId > rejects a flag-shaped baseObjectId with a typed error, before ever spawning `git worktree add`
+AssertionError: expected GitCommandError: git worktree add -b work… { …(3) } to be an instance of InvalidObjectIdError
+ ❯ src/argument-injection.regression.test.ts:144:6
+    142|         serviceEmail: "svc@example.invalid",
+    143|       }),
+    144|     ).rejects.toBeInstanceOf(InvalidObjectIdError);
+       |      ^
+    145|   });
+    146|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — worktree-lifecycle rejects a non-hex baseObjectId > rejects a well-formed-length-but-non-hex baseObjectId too
+AssertionError: expected GitCommandError: git worktree add -b work… { …(3) } to be an instance of InvalidObjectIdError
+ ❯ src/argument-injection.regression.test.ts:163:6
+    161|         serviceEmail: "svc@example.invalid",
+    162|       }),
+    163|     ).rejects.toBeInstanceOf(InvalidObjectIdError);
+       |      ^
+    164|   });
+    165| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/git-engine| src/argument-injection.regression.test.ts > CRITICAL 1 fix — intake-freeze rejects a leading-dash targetRef > rejects a flag-shaped targetRef up front with a typed error
+AssertionError: promise resolved "{ status: 'frozen', freeze: { …(5) } }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "freeze": {
++     "baseObjectId": "--output=/tmp/whatever",
++     "dirtySnapshot": {
++       "added": [],
++       "conflicted": [],
++       "copied": [],
++       "deleted": [],
++       "ignored": [],
++       "modified": [],
++       "renamed": [],
++       "typechange": [],
++       "untracked": [],
++     },
++     "frozenAt": "2026-07-18T17:47:13.024Z",
++     "repositoryFormat": {
++       "hasSubmodules": false,
++       "hasUnbornHead": false,
++       "hooksPathNeutralized": false,
++       "lfsPointerPaths": [],
++       "objectFormat": "sha1",
++     },
++     "targetRef": "--output=/tmp/whatever",
++   },
++   "status": "frozen",
+  }
+
+ ❯ src/argument-injection.regression.test.ts:184:6
+    182|         plannedWritePaths: [],
+    183|       }),
+    184|     ).rejects.toBeInstanceOf(UnsafeGitRefError);
+       |      ^
+    185|   });
+    186| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/git-engine| src/spawn-surface-scan.test.ts > spawn-surface static scan (option-smuggling exit criterion — NOTE 7 fix) > every git call with a caller-influenced positional (clone/fetch/diff/worktree-add) references the shared OPTION_TERMINATOR guard
+AssertionError: expected [ 'control-clone.ts', …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "control-clone.ts",
++   "overlap-analyzer.ts",
++   "intake-freeze.ts",
++   "worktree-lifecycle.ts",
++ ]
+
+ ❯ src/spawn-surface-scan.test.ts:108:23
+    106|       if (!importsGuard || !usesTerminator) offenders.push(fileName);
+    107|     }
+    108|     expect(offenders).toEqual([]);
+       |                       ^
+    109|   });
+    110| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  7 failed | 23 passed (30)
+   Start at  19:47:12
+   Duration  692ms (transform 171ms, setup 0ms, import 223ms, tests 485ms, environment 0ms)
+

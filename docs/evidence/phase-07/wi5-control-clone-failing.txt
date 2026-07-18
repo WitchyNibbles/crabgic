@@ -1,0 +1,118 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/control-clone.test.ts (7 tests | 6 failed) 312ms
+     × resolves at $XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/ 6ms
+     × clones a fresh control repo via `git clone --no-local` 51ms
+     × neutralizes core.hooksPath on the freshly cloned control repo 47ms
+     × is idempotent: calling again against an already-cloned dir reports created=false and does not re-clone 45ms
+     × calls onStep at each internal checkpoint, in order 48ms
+     × fetches an updated target ref from the source repo and returns the fetched object id 72ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > resolveGitControlDir — path convention (Gap 14, WI5 exit criterion) > resolves at $XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/
+AssertionError: expected '/custom/cache/engineering-orchestrato…' to be '/custom/cache/engineering-orchestrato…' // Object.is equality
+
+Expected: "/custom/cache/engineering-orchestrator/abc123hash/git-control"
+Received: "/custom/cache/engineering-orchestrator/abc123hash/not-yet-git-control"
+
+ ❯ src/control-clone.test.ts:30:22
+     28|     const projectHash = "abc123hash";
+     29|     const resolved = resolveGitControlDir(env, projectHash);
+     30|     expect(resolved).toBe(
+       |                      ^
+     31|       join(resolveXdgCacheHome(env), "engineering-orchestrator", proje…
+     32|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > ensureControlClone (WI5) > clones a fresh control repo via `git clone --no-local`
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/control-clone.test.ts:47:28
+     45|     const result = await ensureControlClone(plumbing, { sourceRepoPath…
+     46|
+     47|     expect(result.created).toBe(true);
+       |                            ^
+     48|     expect(existsSync(join(controlDir, ".git"))).toBe(true);
+     49|     const log = await plumbing.run(["log", "-1", "--format=%H"], { cwd…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > ensureControlClone (WI5) > neutralizes core.hooksPath on the freshly cloned control repo
+Error: spawn git ENOENT
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > ensureControlClone (WI5) > is idempotent: calling again against an already-cloned dir reports created=false and does not re-clone
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/control-clone.test.ts:88:27
+     86|     const second = await ensureControlClone(plumbing, { sourceRepoPath…
+     87|
+     88|     expect(first.created).toBe(true);
+       |                           ^
+     89|     expect(second.created).toBe(false);
+     90|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > ensureControlClone (WI5) > calls onStep at each internal checkpoint, in order
+AssertionError: expected [] to deeply equal [ 'before-clone', …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "before-clone",
+-   "after-clone-before-hooks-neutralize",
+-   "after-hooks-neutralize-before-done",
+- ]
++ []
+
+ ❯ src/control-clone.test.ts:106:19
+    104|     });
+    105|
+    106|     expect(steps).toEqual([
+       |                   ^
+    107|       "before-clone",
+    108|       "after-clone-before-hooks-neutralize",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@eo/git-engine| src/control-clone.test.ts > fetchRefresh (WI5) > fetches an updated target ref from the source repo and returns the fetched object id
+AssertionError: expected '' to be '584906fee69bbaae7371656965127dd249931…' // Object.is equality
+
+- Expected
++ Received
+
+- 584906fee69bbaae7371656965127dd249931368
+
+ ❯ src/control-clone.test.ts:134:29
+    132|     const fetchedObjectId = await fetchRefresh(plumbing, controlDir, "…
+    133|
+    134|     expect(fetchedObjectId).toBe(secondHead);
+       |                             ^
+    135|     expect(fetchedObjectId).not.toBe(firstHead);
+    136|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  18:11:05
+   Duration  843ms (transform 310ms, setup 0ms, import 404ms, tests 312ms, environment 0ms)
+

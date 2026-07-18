@@ -1,0 +1,190 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/overlap-analyzer.property.test.ts (3 tests | 2 failed) 59ms
+     × collides === (touched sets intersect), for every random pair, ≥1000 cases 16ms
+     × never misses a true collision: a shared path (possibly only via a rename) is ALWAYS flagged 3ms
+ ❯ |@eo/git-engine| src/overlap-analyzer.test.ts (7 tests | 5 failed) 167ms
+     × flags a moved-in-one/edited-in-other collision (rename-aware) 7ms
+     × flags a plain literal-path collision (no rename involved) 1ms
+     × flags a declared non-Git resource collision and labels it separately 1ms
+     × detects a real rename between two commits via --find-renames 76ms
+     × real-git end-to-end: a fixture repo's move-in-one/edit-in-other is flagged as a collision 80ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.property.test.ts > analyzeOverlap — property: correctness against an independent reference model (WI7) > collides === (touched sets intersect), for every random pair, ≥1000 cases
+Error: Property failed after 1 tests
+{ seed: -1264625127, path: "0:0:0:0:0:0:1:1:1:1:1:1:1:1:3:2", endOnFailure: true }
+Counterexample: [{"unitId":"00000000-0000-1000-8000-000000000000","paths":[],"renames":[{"from":"a","to":"a"}]},{"unitId":"00000000-0000-1000-8000-000000000000","paths":["a"],"renames":[]}]
+Shrunk 15 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ throwIfFailed ../../node_modules/fast-check/lib/fast-check.js:2469:8
+ ❯ reportRunDetails ../../node_modules/fast-check/lib/fast-check.js:2485:14
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2542:7
+ ❯ src/overlap-analyzer.property.test.ts:37:8
+     35| describe("analyzeOverlap — property: correctness against an independen…
+     36|   it("collides === (touched sets intersect), for every random pair, ≥1…
+     37|     fc.assert(
+       |        ^
+     38|       fc.property(plannedWriteSetArb, plannedWriteSetArb, (setA, setB)…
+     39|         const verdicts = analyzeOverlap([setA, setB]);
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.property.test.ts:48:34
+ ❯ Property.predicate ../../node_modules/fast-check/lib/fast-check.js:1353:99
+ ❯ Property.run ../../node_modules/fast-check/lib/fast-check.js:1322:24
+ ❯ runIt ../../node_modules/fast-check/lib/fast-check.js:2505:24
+ ❯ check ../../node_modules/fast-check/lib/fast-check.js:2537:204
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2540:14
+ ❯ src/overlap-analyzer.property.test.ts:37:8
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.property.test.ts > analyzeOverlap — property: correctness against an independent reference model (WI7) > never misses a true collision: a shared path (possibly only via a rename) is ALWAYS flagged
+Error: Property failed after 1 tests
+{ seed: 2096461350, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
+Counterexample: [{"unitId":"00000000-0000-1000-8000-000000000000","paths":[],"renames":[]},{"unitId":"00000000-0000-1000-8000-000000000000","paths":[],"renames":[]},"a"]
+Shrunk 13 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ throwIfFailed ../../node_modules/fast-check/lib/fast-check.js:2469:8
+ ❯ reportRunDetails ../../node_modules/fast-check/lib/fast-check.js:2485:14
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2542:7
+ ❯ src/overlap-analyzer.property.test.ts:56:8
+     54|
+     55|   it("never misses a true collision: a shared path (possibly only via …
+     56|     fc.assert(
+       |        ^
+     57|       fc.property(
+     58|         plannedWriteSetArb,
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.property.test.ts:65:41
+ ❯ Property.predicate ../../node_modules/fast-check/lib/fast-check.js:1353:99
+ ❯ Property.run ../../node_modules/fast-check/lib/fast-check.js:1322:24
+ ❯ runIt ../../node_modules/fast-check/lib/fast-check.js:2505:24
+ ❯ check ../../node_modules/fast-check/lib/fast-check.js:2537:204
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2540:14
+ ❯ src/overlap-analyzer.property.test.ts:56:8
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — pure pairwise collision detection (WI7) > flags a moved-in-one/edited-in-other collision (rename-aware)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:27:35
+     25|     const verdicts = analyzeOverlap(sets);
+     26|     expect(verdicts).toHaveLength(1);
+     27|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+     28|     expect(verdicts[0]!.collidingPaths).toContain("src/old-name.txt");
+     29|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — pure pairwise collision detection (WI7) > flags a plain literal-path collision (no rename involved)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:47:35
+     45|     ];
+     46|     const verdicts = analyzeOverlap(sets);
+     47|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+     48|     expect(verdicts[0]!.collidingPaths).toEqual(["src/shared.txt"]);
+     49|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — pure pairwise collision detection (WI7) > flags a declared non-Git resource collision and labels it separately
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:67:35
+     65|     ];
+     66|     const verdicts = analyzeOverlap(sets, [{ path: "package-lock.json"…
+     67|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+     68|     expect(verdicts[0]!.declaredResourceCollisions).toEqual(["package-…
+     69|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > detectRenamesFromWorktree — real `git diff --find-renames` (WI7 integration, no mocked git) > detects a real rename between two commits via --find-renames
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/overlap-analyzer.test.ts:84:30
+     82|
+     83|     const detected = await detectRenamesFromWorktree(plumbing, dir, ba…
+     84|     expect(detected.renames).toHaveLength(1);
+       |                              ^
+     85|     expect(detected.renames[0]).toMatchObject({ from: "src/a.txt", to:…
+     86|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > detectRenamesFromWorktree — real `git diff --find-renames` (WI7 integration, no mocked git) > real-git end-to-end: a fixture repo's move-in-one/edit-in-other is flagged as a collision
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:114:35
+    112|     ]);
+    113|
+    114|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+    115|     expect(verdicts[0]!.collidingPaths).toContain("src/a.txt");
+    116|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 3 passed (10)
+   Start at  18:20:45
+   Duration  349ms (transform 58ms, setup 0ms, import 97ms, tests 226ms, environment 0ms)
+

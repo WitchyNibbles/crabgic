@@ -1,0 +1,103 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/repo-validation.test.ts (11 tests | 5 failed) 517ms
+     × detects unborn HEAD on a freshly-init'd repo with zero commits 27ms
+     × detects SHA-256 object format on a repo initialized with --object-format=sha256 37ms
+     × detects a submodule shape (.gitmodules present) 58ms
+     × detects an LFS pointer file by its content signature (no smudge required) 56ms
+     × neutralizeHooksPath makes core.hooksPath report neutralized 46ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/repo-validation.test.ts > validateRepository (WI3) > detects unborn HEAD on a freshly-init'd repo with zero commits
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/repo-validation.test.ts:40:34
+     38|     dirs.push(dir);
+     39|     const report = await validateRepository(plumbing, dir);
+     40|     expect(report.hasUnbornHead).toBe(true);
+       |                                  ^
+     41|   });
+     42|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |@eo/git-engine| src/repo-validation.test.ts > validateRepository (WI3) > detects SHA-256 object format on a repo initialized with --object-format=sha256
+AssertionError: expected 'sha1' to be 'sha256' // Object.is equality
+
+Expected: "sha256"
+Received: "sha1"
+
+ ❯ src/repo-validation.test.ts:57:33
+     55|     fixtureGit(dir, ["commit", "-q", "-m", "init", "--no-verify"]);
+     56|     const report = await validateRepository(plumbing, dir);
+     57|     expect(report.objectFormat).toBe("sha256");
+       |                                 ^
+     58|   });
+     59|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |@eo/git-engine| src/repo-validation.test.ts > validateRepository (WI3) > detects a submodule shape (.gitmodules present)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/repo-validation.test.ts:78:34
+     76|     fixtureGit(dir, ["commit", "-q", "-m", "add submodule config", "--…
+     77|     const report = await validateRepository(plumbing, dir);
+     78|     expect(report.hasSubmodules).toBe(true);
+       |                                  ^
+     79|   });
+     80|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |@eo/git-engine| src/repo-validation.test.ts > validateRepository (WI3) > detects an LFS pointer file by its content signature (no smudge required)
+AssertionError: expected [] to include 'assets/big.bin'
+ ❯ src/repo-validation.test.ts:99:36
+     97|     fixtureGit(dir, ["commit", "-q", "-m", "add lfs pointer", "--no-ve…
+     98|     const report = await validateRepository(plumbing, dir);
+     99|     expect(report.lfsPointerPaths).toContain("assets/big.bin");
+       |                                    ^
+    100|   });
+    101|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |@eo/git-engine| src/repo-validation.test.ts > validateRepository (WI3) > neutralizeHooksPath makes core.hooksPath report neutralized
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/repo-validation.test.ts:114:41
+    112|     await neutralizeHooksPath(plumbing, dir);
+    113|     const report = await validateRepository(plumbing, dir);
+    114|     expect(report.hooksPathNeutralized).toBe(true);
+       |                                         ^
+    115|   });
+    116|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 6 passed (11)
+   Start at  18:08:50
+   Duration  692ms (transform 37ms, setup 0ms, import 53ms, tests 517ms, environment 0ms)
+

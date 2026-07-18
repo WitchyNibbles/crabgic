@@ -1,0 +1,95 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/intake-freeze.test.ts (7 tests | 5 failed) 735ms
+     × an intersecting planned write blocks, naming the exact offending path 104ms
+     × captures the exact base object id from the control clone's target ref 105ms
+     × captures the porcelain-v2 dirty snapshot and repository-format report 103ms
+     × journals a git_freeze entry that passes @eo/journal's own JournalEntrySchema 104ms
+     × journals a git_freeze entry naming the block when the freeze is blocked 104ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/intake-freeze.test.ts > freezeIntake (WI5) > an intersecting planned write blocks, naming the exact offending path
+AssertionError: expected 'frozen' to be 'blocked' // Object.is equality
+
+Expected: "blocked"
+Received: "frozen"
+
+ ❯ src/intake-freeze.test.ts:70:27
+     68|     });
+     69|
+     70|     expect(result.status).toBe("blocked");
+       |                           ^
+     71|     if (result.status === "blocked") {
+     72|       expect(result.offendingPaths).toEqual(["src/a.txt"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |@eo/git-engine| src/intake-freeze.test.ts > freezeIntake (WI5) > captures the exact base object id from the control clone's target ref
+AssertionError: expected '' to be '61b2a7e2f008295168aba7d0026cc52db8451…' // Object.is equality
+
+- Expected
++ Received
+
+- 61b2a7e2f008295168aba7d0026cc52db8451579
+
+ ❯ src/intake-freeze.test.ts:91:40
+     89|     });
+     90|
+     91|     expect(result.freeze.baseObjectId).toBe(expectedHead);
+       |                                        ^
+     92|     expect(result.freeze.baseObjectId).toHaveLength(40);
+     93|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |@eo/git-engine| src/intake-freeze.test.ts > freezeIntake (WI5) > captures the porcelain-v2 dirty snapshot and repository-format report
+AssertionError: expected [] to include 'untracked-new.txt'
+ ❯ src/intake-freeze.test.ts:107:70
+    105|     });
+    106|
+    107|     expect(result.freeze.dirtySnapshot.untracked.map((e) => e.path)).t…
+       |                                                                      ^
+    108|     expect(result.freeze.repositoryFormat.objectFormat).toBe("sha1");
+    109|     expect(result.freeze.repositoryFormat.hasUnbornHead).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |@eo/git-engine| src/intake-freeze.test.ts > freezeIntake (WI5) > journals a git_freeze entry that passes @eo/journal's own JournalEntrySchema
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/intake-freeze.test.ts:146:27
+    144|     for await (const entry of store.queryEntries()) entries.push(entry…
+    145|     const freezeEntries = entries.filter((e) => e.type === "git_freeze…
+    146|     expect(freezeEntries).toHaveLength(1);
+       |                           ^
+    147|     expect(() => JournalEntrySchema.parse(freezeEntries[0])).not.toThr…
+    148|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |@eo/git-engine| src/intake-freeze.test.ts > freezeIntake (WI5) > journals a git_freeze entry naming the block when the freeze is blocked
+AssertionError: expected undefined to be defined
+ ❯ src/intake-freeze.test.ts:167:25
+    165|     for await (const entry of store.queryEntries()) entries.push(entry…
+    166|     const freezeEntry = entries.find((e) => e.type === "git_freeze");
+    167|     expect(freezeEntry).toBeDefined();
+       |                         ^
+    168|     if (freezeEntry?.type === "git_freeze") {
+    169|       expect(freezeEntry.payload.reason).toContain("src/a.txt");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 2 passed (7)
+   Start at  18:12:33
+   Duration  1.29s (transform 310ms, setup 0ms, import 405ms, tests 735ms, environment 0ms)
+

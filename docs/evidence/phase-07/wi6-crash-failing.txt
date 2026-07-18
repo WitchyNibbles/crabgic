@@ -1,0 +1,125 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/worktree-lifecycle.crash.test.ts (2 tests | 2 failed) 949ms
+     × every fault point converges to either a fully-completed OR a quarantined worktree — never a silently-dropped one 525ms
+     × every fault point converges: the worktree ends up EITHER back at its original path (never attempted) OR fully quarantined with its journal entry eventually recorded — never lost 423ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.crash.test.ts > kill -9 mid-worktree-creation (WI6 RED requirement) > every fault point converges to either a fully-completed OR a quarantined worktree — never a silently-dropped one
+AssertionError: [
+  {
+    "faultPoint": "before-worktree-add",
+    "attemptIndex": 0,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": true,
+    "verdict": "pass",
+    "detail": "no trace at worktreesRootDir or quarantineDir; ref never created=true"
+  },
+  {
+    "faultPoint": "after-worktree-add-before-identity",
+    "attemptIndex": 1,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": false,
+    "verdict": "fail",
+    "detail": "left at original path; git-dir ok=true, dirty=false, hasMarker=false"
+  },
+  {
+    "faultPoint": "after-identity-before-marker",
+    "attemptIndex": 2,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": false,
+    "verdict": "fail",
+    "detail": "left at original path; git-dir ok=true, dirty=false, hasMarker=false"
+  },
+  {
+    "faultPoint": "done",
+    "attemptIndex": 3,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": true,
+    "verdict": "pass",
+    "detail": "left at original path; git-dir ok=true, dirty=false, hasMarker=true"
+  }
+]: expected [ { …(8) }, { …(8) } ] to have a length of +0 but got 2
+
+- Expected
++ Received
+
+- 0
++ 2
+
+ ❯ src/worktree-lifecycle.crash.test.ts:129:7
+    127|       report.results.filter((r) => r.verdict === "fail"),
+    128|       JSON.stringify(report.results, null, 2),
+    129|     ).toHaveLength(0);
+       |       ^
+    130|     expect(report.allConverged).toBe(true);
+    131|   }, 60_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.crash.test.ts > kill -9 mid-quarantine (WI6 Test plan crash case) > every fault point converges: the worktree ends up EITHER back at its original path (never attempted) OR fully quarantined with its journal entry eventually recorded — never lost
+AssertionError: [
+  {
+    "faultPoint": "before-quarantine-move",
+    "attemptIndex": 0,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": false,
+    "verdict": "fail",
+    "detail": "quarantinedDirs=[], journaledPaths=[]"
+  },
+  {
+    "faultPoint": "after-marker-before-journal",
+    "attemptIndex": 1,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": false,
+    "verdict": "fail",
+    "detail": "quarantinedDirs=[\"att-mrql7ng7-13caeaed-mrql7nmj-qriup7\"], journaledPaths=[]"
+  },
+  {
+    "faultPoint": "done",
+    "attemptIndex": 2,
+    "killedAt": "marker-observed",
+    "exitCode": null,
+    "exitSignal": "SIGKILL",
+    "recovered": true,
+    "verdict": "pass",
+    "detail": "quarantinedDirs=[\"att-mrql7ngy-e55c64d2-mrql7np4-5cxdoa\"], journaledPaths=[\"/tmp/eo-git-engine-CYiwNI/worktree-quarantine/attempt-2/att-mrql7ngy-e55c64d2-mrql7np4-5cxdoa\"]"
+  }
+]: expected [ { …(8) }, { …(8) } ] to have a length of +0 but got 2
+
+- Expected
++ Received
+
+- 0
++ 2
+
+ ❯ src/worktree-lifecycle.crash.test.ts:228:7
+    226|       report.results.filter((r) => r.verdict === "fail"),
+    227|       JSON.stringify(report.results, null, 2),
+    228|     ).toHaveLength(0);
+       |       ^
+    229|     expect(report.allConverged).toBe(true);
+    230|   }, 60_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  18:34:41
+   Duration  1.49s (transform 315ms, setup 0ms, import 410ms, tests 949ms, environment 0ms)
+

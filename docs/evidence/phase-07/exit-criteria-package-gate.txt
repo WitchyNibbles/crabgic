@@ -1,0 +1,108 @@
+=== RECAPTURED 2026-07-18 — Validation round fix pass (CRITICAL 1 + MAJOR 2/3 +
+    MINOR 4/5/6 + NOTE 7). See README.md's "Validation round (2026-07-18)"
+    section for the fix-by-fix summary. This supersedes the counts below the
+    "=== ORIGINAL (phase build) ===" marker, which is kept for history. ===
+
+=== 1. npx tsc -b packages/git-engine ===
+(exit code: 0)
+
+=== 2. npx vitest run --coverage.enabled=false packages/git-engine ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  21 passed (21)
+      Tests  147 passed (147)
+   Start at  19:52:10
+   Duration  2.48s (transform 4.68s, setup 0ms, import 6.81s, tests 8.47s, environment 3ms)
+
+(exit code: 0)
+
+NOTE: "ref-collision resistance: many concurrent attempts on the SAME task
+never collide" (worktree-lifecycle.test.ts) surfaced ONE environment-timing-
+dependent flake during this fix pass's testing — a 12-way concurrent
+`git worktree add` against the SAME repo occasionally races on git's own
+`.git/worktrees/<name>/commondir` admin file ("failed to read
+.../commondir: Success", git exit 128). Re-running the SAME test in
+isolation 3x immediately after was 3/3 green, and the full suite was green
+(147/147) on the run before and the two runs after — so it is not a
+deterministic regression from this pass's changes. Same CLASS of
+git-internal worktree-admin concurrency issue already documented in this
+file's "Deviations" §2 (a DIFFERENT specific race, on
+`configureGitIdentity`'s config-lock, already fixed with retry logic by the
+original build) — this occurrence is on `git worktree add` itself, not the
+identity step. Not root-caused or fixed in this pass (out of this
+validation round's seven named findings); flagged for the reconciler if it
+recurs with any frequency.
+
+=== 3. npx eslint packages/git-engine --ignore-pattern 'spikes/**' ===
+(exit code: 0)
+
+=== 4. npx prettier --check packages/git-engine ===
+Checking formatting...
+All matched files use Prettier code style!
+(exit code: 0)
+
+=== 5. coverage (informational; global gate mixes other packages, this package's own row is what matters) ===
+ git-engine/src    |   95.88 |    86.32 |   98.82 |   97.66 |
+  git-identity.ts  |   94.73 |      100 |     100 |   93.75 | 68
+  intake-freeze.ts |     100 |       75 |     100 |     100 | 132-134
+  invariance.ts    |   97.61 |    86.66 |     100 |   97.56 | 70,183
+  ...p-analyzer.ts |     100 |    88.23 |     100 |     100 | 171-176
+  plumbing.ts      |   96.42 |    88.88 |    90.9 |   96.42 | 83
+  ...ain-parser.ts |    88.6 |    85.29 |     100 |   94.11 | 94,146,187,211
+  ...validation.ts |   87.87 |       75 |     100 |   93.33 | 83,103
+  ...-lifecycle.ts |   97.89 |       80 |     100 |     100 | 68,203-328,339
+ ...c/test-support |   96.42 |       75 |     100 |     100 |
+  fixture-repo.ts  |   96.42 |       75 |     100 |     100 | 39-41
+
+(statements / branches / functions / lines — all four ≥80% at the directory
+level; every individual file listed above is ALSO ≥80% on every metric
+except the well-understood branch-coverage gaps already called out in the
+original build's own evidence — e.g. `repo-validation.ts`'s 75% branch row
+is the same `allowFailure` early-return branches the original build noted.
+Files not listed here — `git-arg-guard.ts` (new this pass),
+`control-clone.ts`, `worktree-ref.ts`, `attempt-token.ts`,
+`journal-appender.ts`, `layout.ts` — are 100% on every metric, which is why
+the default text reporter folds them into the directory row without an
+individual line.)
+
+=== ORIGINAL (phase build) — kept for history ===
+
+=== 1. npx tsc -b packages/git-engine ===
+(exit code: 0)
+
+=== 2. npx vitest run --coverage.enabled=false packages/git-engine ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  19 passed (19)
+      Tests  116 passed (116)
+   Start at  18:41:01
+   Duration  2.24s (transform 4.39s, setup 0ms, import 6.19s, tests 6.78s, environment 2ms)
+
+(exit code: 0)
+
+=== 3. npx eslint packages/git-engine ===
+(exit code: 0)
+
+=== 4. npx prettier --check packages/git-engine ===
+Checking formatting...
+All matched files use Prettier code style!
+(exit code: 0)
+
+=== 5. coverage (informational; global gate mixes other packages, this package's own row is what matters) ===
+ git-engine/src    |   95.25 |    85.56 |   98.59 |   97.41 |
+  git-identity.ts  |   94.73 |      100 |     100 |   93.75 | 68
+  intake-freeze.ts |     100 |       75 |     100 |     100 | 96-98
+  invariance.ts    |   97.36 |     92.3 |     100 |   97.29 | 54
+  ...p-analyzer.ts |     100 |    86.66 |     100 |     100 | 130-135
+  plumbing.ts      |   96.42 |    83.33 |    90.9 |   96.42 | 83
+  ...ain-parser.ts |    88.6 |    85.29 |     100 |   94.11 | 94,146,187,211
+  ...validation.ts |   87.87 |       75 |     100 |   93.33 | 73,93
+  ...-lifecycle.ts |   97.56 |    79.16 |     100 |     100 | 67,173-267,276
+ ...c/test-support |   96.42 |       75 |     100 |     100 |
+  fixture-repo.ts  |   96.42 |       75 |     100 |     100 | 39-41
+ journal/src       |       0 |        0 |       0 |       0 |
+  attempts.ts      |       0 |        0 |       0 |       0 | 35-98

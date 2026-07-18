@@ -1,0 +1,90 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/plumbing.test.ts (15 tests | 12 failed) 22ms
+     × reaches git as one literal argv element: semicolon 9ms
+     × reaches git as one literal argv element: double-ampersand 1ms
+     × reaches git as one literal argv element: double-pipe 1ms
+     × reaches git as one literal argv element: single-pipe 1ms
+     × reaches git as one literal argv element: command-substitution 1ms
+     × reaches git as one literal argv element: backticks 1ms
+     × reaches git as one literal argv element: embedded-newline 1ms
+     × reaches git as one literal argv element: path-traversal 1ms
+     × reaches git as one literal argv element: quote-breakout 1ms
+     × never routes through a shell binary (sh/bash/cmd) as the spawned command 1ms
+     × spawns real git and returns its version string 1ms
+     × a shell-metacharacter-laden ref reaches real git as a literal argv element (never shell-expanded) 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: semicolon
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: double-ampersand
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: double-pipe
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: single-pipe
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: command-substitution
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: backticks
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: embedded-newline
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: path-traversal
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > reaches git as one literal argv element: quote-breakout
+AssertionError: expected 'sh' to be 'git' // Object.is equality
+
+Expected: "git"
+Received: "sh"
+
+ ❯ src/plumbing.test.ts:54:31
+     52|       // shell), and the metacharacter-laden value survives as ONE lit…
+     53|       // argv element — never concatenated into a larger string.
+     54|       expect(request.command).toBe("git");
+       |                               ^
+     55|       expect(request.args).toEqual(["checkout", fixture.value]);
+     56|       expect(request.args).toContain(fixture.value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createGitPlumbing — argv-injection resistance (WI1) > never routes through a shell binary (sh/bash/cmd) as the spawned command
+AssertionError: expected [ Array(5) ] to not include 'sh'
+ ❯ src/plumbing.test.ts:68:64
+     66|
+     67|     const request = calls[0]!;
+     68|     expect(["sh", "bash", "cmd", "cmd.exe", "powershell"]).not.toConta…
+       |                                                                ^
+     69|   });
+     70|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createNodeGitSpawn — real process, real git (WI1 version probe) > spawns real git and returns its version string
+Error: createNodeGitSpawn: stub not implemented
+ ❯ src/plumbing.ts:47:11
+     45|     // STUB: not implemented for real spawning yet.
+     46|     void request;
+     47|     throw new Error("createNodeGitSpawn: stub not implemented");
+       |           ^
+     48|   };
+     49| }
+ ❯ Object.run src/plumbing.ts:79:28
+ ❯ Object.version src/plumbing.ts:91:33
+ ❯ src/plumbing.test.ts:102:36
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  |@eo/git-engine| src/plumbing.test.ts > createNodeGitSpawn — real process, real git (WI1 version probe) > a shell-metacharacter-laden ref reaches real git as a literal argv element (never shell-expanded)
+Error: createNodeGitSpawn: stub not implemented
+ ❯ src/plumbing.ts:47:11
+     45|     // STUB: not implemented for real spawning yet.
+     46|     void request;
+     47|     throw new Error("createNodeGitSpawn: stub not implemented");
+       |           ^
+     48|   };
+     49| }
+ ❯ Object.run src/plumbing.ts:79:28
+ ❯ src/plumbing.test.ts:113:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  12 failed | 7 passed (19)
+   Start at  18:05:48
+   Duration  220ms (transform 61ms, setup 0ms, import 87ms, tests 26ms, environment 0ms)
+

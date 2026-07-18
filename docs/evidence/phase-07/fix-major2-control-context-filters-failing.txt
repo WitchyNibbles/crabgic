@@ -1,0 +1,53 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/control-context-isolation.test.ts (2 tests | 2 failed) 232ms
+     × ensureControlClone: neither the ambient post-checkout hook nor the ambient smudge filter fires during clone 124ms
+     × createWorktree: neither the ambient post-checkout hook nor the ambient smudge filter fires during `worktree add` 107ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/control-context-isolation.test.ts > MAJOR 2 fix — control-context operations neutralize ambient global hooks/filters > ensureControlClone: neither the ambient post-checkout hook nor the ambient smudge filter fires during clone
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/control-context-isolation.test.ts:104:42
+    102|       await ensureControlClone(plumbing, { sourceRepoPath: sourceDir, …
+    103|
+    104|       expect(existsSync(hookMarkerPath)).toBe(false);
+       |                                          ^
+    105|       expect(existsSync(smudgeMarkerPath)).toBe(false);
+    106|       expect(existsSync(join(controlDir, ".git"))).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@eo/git-engine| src/control-context-isolation.test.ts > MAJOR 2 fix — control-context operations neutralize ambient global hooks/filters > createWorktree: neither the ambient post-checkout hook nor the ambient smudge filter fires during `worktree add`
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/control-context-isolation.test.ts:138:42
+    136|       });
+    137|
+    138|       expect(existsSync(hookMarkerPath)).toBe(false);
+       |                                          ^
+    139|       expect(existsSync(smudgeMarkerPath)).toBe(false);
+    140|       expect(existsSync(join(record.worktreePath, "assets", "tracked.b…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  19:49:00
+   Duration  460ms (transform 76ms, setup 0ms, import 99ms, tests 232ms, environment 0ms)
+

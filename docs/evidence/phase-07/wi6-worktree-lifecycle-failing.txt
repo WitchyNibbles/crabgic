@@ -1,0 +1,98 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/worktree-lifecycle.test.ts (9 tests | 6 failed) 430ms
+     × creates a real worktree checked out at the given base object id 55ms
+     × configures the neutral git identity automatically at creation time (WI8 integration) 49ms
+     × moves a dirty worktree to the quarantine dir and journals a worktree_quarantine entry 43ms
+     × quarantine is never silently identical to deletion — the working tree content survives the move 46ms
+     × a clean, fully-created worktree is left alone (reported completed, not quarantined) 55ms
+     × a dirty worktree found at sweep time is quarantined, never silently left or cleaned 46ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > createWorktree (WI6) > creates a real worktree checked out at the given base object id
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/worktree-lifecycle.test.ts:67:64
+     65|     });
+     66|
+     67|     expect(existsSync(join(record.worktreePath, "README.md"))).toBe(tr…
+       |                                                                ^
+     68|     expect(record.ref).toBe(`work/run1/cs1/task1/${record.attempt}`);
+     69|     const head = fixtureGit(record.worktreePath, ["rev-parse", "HEAD"]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > createWorktree (WI6) > configures the neutral git identity automatically at creation time (WI8 integration)
+Error: ENOENT: no such file or directory, open '/tmp/eo-git-engine-GueFTE/worktrees/run1/cs1/task1/att-mrqklyd2-663e19b5/worker-output.txt'
+ ❯ src/worktree-lifecycle.test.ts:85:5
+     83|     });
+     84|
+     85|     writeFileSync(join(record.worktreePath, "worker-output.txt"), "wor…
+       |     ^
+     86|     fixtureGit(record.worktreePath, ["add", "-A"]);
+     87|     fixtureGit(record.worktreePath, ["commit", "-q", "-m", "worker com…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > quarantineWorktree (WI6) > moves a dirty worktree to the quarantine dir and journals a worktree_quarantine entry
+Error: ENOENT: no such file or directory, open '/tmp/eo-git-engine-YXnXjk/worktrees/run1/cs1/task1/att-mrqklyi2-a924a613/uncommitted.txt'
+ ❯ src/worktree-lifecycle.test.ts:162:5
+    160|       serviceEmail: "svc@example.invalid",
+    161|     });
+    162|     writeFileSync(join(record.worktreePath, "uncommitted.txt"), "dirty…
+       |     ^
+    163|
+    164|     const journalDir = freshTmpDir();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > quarantineWorktree (WI6) > quarantine is never silently identical to deletion — the working tree content survives the move
+Error: ENOENT: no such file or directory, open '/tmp/eo-git-engine-jeNo58/worktrees/run1/cs1/task1/att-mrqklyjc-6daa3dfd/valuable-work.txt'
+ ❯ src/worktree-lifecycle.test.ts:200:5
+    198|       serviceEmail: "svc@example.invalid",
+    199|     });
+    200|     writeFileSync(join(record.worktreePath, "valuable-work.txt"), "do …
+       |     ^
+    201|
+    202|     const result = await quarantineWorktree(plumbing, {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > sweepOrphanWorktrees (WI6 — ordinary path; crash path in ./worktree-lifecycle.crash.test.ts) > a clean, fully-created worktree is left alone (reported completed, not quarantined)
+AssertionError: expected [] to include '/tmp/eo-git-engine-44iJcn/worktrees/r…'
+ ❯ src/worktree-lifecycle.test.ts:235:30
+    233|     });
+    234|
+    235|     expect(report.completed).toContain(record.worktreePath);
+       |                              ^
+    236|     expect(report.quarantined).toEqual([]);
+    237|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@eo/git-engine| src/worktree-lifecycle.test.ts > sweepOrphanWorktrees (WI6 — ordinary path; crash path in ./worktree-lifecycle.crash.test.ts) > a dirty worktree found at sweep time is quarantined, never silently left or cleaned
+Error: ENOENT: no such file or directory, open '/tmp/eo-git-engine-zFYPCT/worktrees/run1/cs1/task1/att-mrqklym4-716cd039/left-dirty.txt'
+ ❯ src/worktree-lifecycle.test.ts:250:5
+    248|       serviceEmail: "svc@example.invalid",
+    249|     });
+    250|     writeFileSync(join(record.worktreePath, "left-dirty.txt"), "oops\n…
+       |     ^
+    251|
+    252|     const report = await sweepOrphanWorktrees(plumbing, {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 3 passed (9)
+   Start at  18:17:49
+   Duration  972ms (transform 311ms, setup 0ms, import 402ms, tests 430ms, environment 0ms)
+

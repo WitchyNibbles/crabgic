@@ -1,0 +1,240 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/porcelain-parser.test.ts (13 tests | 12 failed) 22ms
+     × parses a modified ordinary entry (worktree-modified, index-unmodified) 6ms
+     × parses an added ordinary entry (staged new file) 1ms
+     × parses a deleted ordinary entry 1ms
+     × parses a renamed entry (type 2, tab-separated path/origPath) 1ms
+     × parses a copied entry (type 2, C-score) 1ms
+     × parses an untracked entry 2ms
+     × parses an ignored entry 1ms
+     × parses a conflicted (unmerged) entry 3ms
+     × parses a full mixed byte stream covering every state in one pass 1ms
+     × handles a path containing a literal space via fixed-field splitting 1ms
+     × collects every dirty-category path, excluding ignored 1ms
+     × includes BOTH sides of a rename 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a modified ordinary entry (worktree-modified, index-unmodified)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:26:31
+     24|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 src/a.txt";
+     25|     const snapshot = parsePorcelainV2(line);
+     26|     expect(snapshot.modified).toHaveLength(1);
+       |                               ^
+     27|     expect(snapshot.modified[0]).toMatchObject({ kind: "modified", pat…
+     28|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses an added ordinary entry (staged new file)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:35:28
+     33|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 src/new.txt";
+     34|     const snapshot = parsePorcelainV2(line);
+     35|     expect(snapshot.added).toHaveLength(1);
+       |                            ^
+     36|     expect(snapshot.added[0]).toMatchObject({ kind: "added", path: "sr…
+     37|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a deleted ordinary entry
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:44:30
+     42|       "0000000000000000000000000000000000000000 src/gone.txt";
+     43|     const snapshot = parsePorcelainV2(line);
+     44|     expect(snapshot.deleted).toHaveLength(1);
+       |                              ^
+     45|     expect(snapshot.deleted[0]).toMatchObject({ kind: "deleted", path:…
+     46|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a renamed entry (type 2, tab-separated path/origPath)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:53:30
+     51|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 R100 src/new-name.txt\…
+     52|     const snapshot = parsePorcelainV2(line);
+     53|     expect(snapshot.renamed).toHaveLength(1);
+       |                              ^
+     54|     expect(snapshot.renamed[0]).toMatchObject({
+     55|       kind: "renamed",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a copied entry (type 2, C-score)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:67:29
+     65|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 C075 src/copy.txt\tsrc…
+     66|     const snapshot = parsePorcelainV2(line);
+     67|     expect(snapshot.copied).toHaveLength(1);
+       |                             ^
+     68|     expect(snapshot.copied[0]).toMatchObject({
+     69|       kind: "copied",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses an untracked entry
+AssertionError: expected [] to deeply equal [ { path: 'scratch/notes.txt' } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "path": "scratch/notes.txt",
+-   },
+- ]
++ []
+
+ ❯ src/porcelain-parser.test.ts:79:32
+     77|     const line = "? scratch/notes.txt";
+     78|     const snapshot = parsePorcelainV2(line);
+     79|     expect(snapshot.untracked).toEqual([{ path: "scratch/notes.txt" }]…
+       |                                ^
+     80|   });
+     81|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses an ignored entry
+AssertionError: expected [] to deeply equal [ { path: 'dist/build.js' } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "path": "dist/build.js",
+-   },
+- ]
++ []
+
+ ❯ src/porcelain-parser.test.ts:85:30
+     83|     const line = "! dist/build.js";
+     84|     const snapshot = parsePorcelainV2(line);
+     85|     expect(snapshot.ignored).toEqual([{ path: "dist/build.js" }]);
+       |                              ^
+     86|   });
+     87|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a conflicted (unmerged) entry
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:94:33
+     92|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 src/conflict.txt";
+     93|     const snapshot = parsePorcelainV2(line);
+     94|     expect(snapshot.conflicted).toHaveLength(1);
+       |                                 ^
+     95|     expect(snapshot.conflicted[0]!.path).toBe("src/conflict.txt");
+     96|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > parses a full mixed byte stream covering every state in one pass
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/porcelain-parser.test.ts:116:31
+    114|     ].join("\n");
+    115|     const snapshot = parsePorcelainV2(lines);
+    116|     expect(snapshot.modified).toHaveLength(1);
+       |                               ^
+    117|     expect(snapshot.added).toHaveLength(1);
+    118|     expect(snapshot.deleted).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > parsePorcelainV2 (WI4) > handles a path containing a literal space via fixed-field splitting
+TypeError: Cannot read properties of undefined (reading 'path')
+ ❯ src/porcelain-parser.test.ts:130:34
+    128|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 src/my file.txt";
+    129|     const snapshot = parsePorcelainV2(line);
+    130|     expect(snapshot.modified[0]!.path).toBe("src/my file.txt");
+       |                                  ^
+    131|   });
+    132| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > dirtyPaths (WI4 — feeds WI5's overlap-vs-planned-writes check) > collects every dirty-category path, excluding ignored
+AssertionError: expected [] to include 'modified.txt'
+ ❯ src/porcelain-parser.test.ts:144:19
+    142|     const snapshot = parsePorcelainV2(lines);
+    143|     const paths = dirtyPaths(snapshot);
+    144|     expect(paths).toContain("modified.txt");
+       |                   ^
+    145|     expect(paths).toContain("untracked.txt");
+    146|     expect(paths).not.toContain("ignored.txt");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  |@eo/git-engine| src/porcelain-parser.test.ts > dirtyPaths (WI4 — feeds WI5's overlap-vs-planned-writes check) > includes BOTH sides of a rename
+AssertionError: expected [] to include 'new.txt'
+ ❯ src/porcelain-parser.test.ts:153:19
+    151|       "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 e69de29bb2d1d6434b8b29…
+    152|     const paths = dirtyPaths(parsePorcelainV2(line));
+    153|     expect(paths).toContain("new.txt");
+       |                   ^
+    154|     expect(paths).toContain("old.txt");
+    155|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  12 failed | 3 passed (15)
+   Start at  18:09:05
+   Duration  272ms (transform 52ms, setup 0ms, import 94ms, tests 111ms, environment 0ms)
+

@@ -1,0 +1,96 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/invariance.test.ts (9 tests | 5 failed) 21ms
+     × changes when a file's content is mutated 5ms
+     × changes when a new file is added 2ms
+     × changes when a file is deleted 1ms
+     × assertTreeInvariant THROWS TreeMutatedError against a deliberately mutated fixture tree (the RED-proving case) 3ms
+     × propagates TreeMutatedError when the wrapped function mutates the tree 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/invariance.test.ts > computeWorkingTreeHash / assertTreeInvariant (WI2) > changes when a file's content is mutated
+AssertionError: expected '0000000000000000000000000000000000000…' not to be '0000000000000000000000000000000000000…' // Object.is equality
+ ❯ src/invariance.test.ts:42:23
+     40|     writeFileSync(join(dir, "a.txt"), "ALPHA-MUTATED\n");
+     41|     const after = await computeWorkingTreeHash(dir);
+     42|     expect(after).not.toBe(before);
+       |                       ^
+     43|   });
+     44|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |@eo/git-engine| src/invariance.test.ts > computeWorkingTreeHash / assertTreeInvariant (WI2) > changes when a new file is added
+AssertionError: expected '0000000000000000000000000000000000000…' not to be '0000000000000000000000000000000000000…' // Object.is equality
+ ❯ src/invariance.test.ts:50:23
+     48|     writeFileSync(join(dir, "new-file.txt"), "new\n");
+     49|     const after = await computeWorkingTreeHash(dir);
+     50|     expect(after).not.toBe(before);
+       |                       ^
+     51|   });
+     52|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |@eo/git-engine| src/invariance.test.ts > computeWorkingTreeHash / assertTreeInvariant (WI2) > changes when a file is deleted
+AssertionError: expected '0000000000000000000000000000000000000…' not to be '0000000000000000000000000000000000000…' // Object.is equality
+ ❯ src/invariance.test.ts:58:23
+     56|     rmSync(join(dir, "a.txt"));
+     57|     const after = await computeWorkingTreeHash(dir);
+     58|     expect(after).not.toBe(before);
+       |                       ^
+     59|   });
+     60|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |@eo/git-engine| src/invariance.test.ts > computeWorkingTreeHash / assertTreeInvariant (WI2) > assertTreeInvariant THROWS TreeMutatedError against a deliberately mutated fixture tree (the RED-proving case)
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/invariance.test.ts:65:51
+     63|     const before = await computeWorkingTreeHash(dir);
+     64|     writeFileSync(join(dir, "a.txt"), "MUTATED — this must be caught\n…
+     65|     await expect(assertTreeInvariant(dir, before)).rejects.toBeInstanc…
+       |                                                   ^
+     66|   });
+     67|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |@eo/git-engine| src/invariance.test.ts > withTreeInvariance (WI2 — the exported wrapper 08/23 reuse directly) > propagates TreeMutatedError when the wrapped function mutates the tree
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/invariance.test.ts:97:6
+     95|         writeFileSync(join(dir, "a.txt"), "mutated by the wrapped op\n…
+     96|       }),
+     97|     ).rejects.toBeInstanceOf(TreeMutatedError);
+       |      ^
+     98|   });
+     99| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 4 passed (9)
+   Start at  18:05:49
+   Duration  189ms (transform 30ms, setup 0ms, import 44ms, tests 21ms, environment 0ms)
+

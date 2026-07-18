@@ -1,0 +1,201 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/git-engine| src/overlap-analyzer.property.test.ts (4 tests | 3 failed) 69ms
+     × collides === (touched sets intersect), for every random pair, ≥1000 cases 16ms
+     × never misses a true collision: a shared path (possibly only via a rename) is ALWAYS flagged 3ms
+     × MAJOR 3 fix: never misses a collision even when the two units spell the SAME canonical path differently 2ms
+ ❯ |@eo/git-engine| src/overlap-analyzer.test.ts (12 tests | 4 failed) 186ms
+     × src/a.txt vs ./src/a.txt collide (leading './' spelling) 5ms
+     × pkg/ vs pkg collide (trailing slash spelling) 1ms
+     × a//b vs a/b collide (doubled-slash spelling) 1ms
+     × unit-a's ./package-lock.json collides with unit-b's plain package-lock.json, and is recognized against a differently-spelled registry entry 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.property.test.ts > analyzeOverlap — property: correctness against an independent reference model (WI7) > collides === (touched sets intersect), for every random pair, ≥1000 cases
+Error: Property failed after 1 tests
+{ seed: 1321399079, path: "0:0:0:0:0:2:2:2:2:2", endOnFailure: true }
+Counterexample: [{"unitId":"00000000-0000-1000-8000-000000000000","paths":["h"],"renames":[]},{"unitId":"00000000-0000-1000-8000-000000000000","paths":["./h/"],"renames":[]}]
+Shrunk 9 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ throwIfFailed ../../node_modules/fast-check/lib/fast-check.js:2469:8
+ ❯ reportRunDetails ../../node_modules/fast-check/lib/fast-check.js:2485:14
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2542:7
+ ❯ src/overlap-analyzer.property.test.ts:83:8
+     81| describe("analyzeOverlap — property: correctness against an independen…
+     82|   it("collides === (touched sets intersect), for every random pair, ≥1…
+     83|     fc.assert(
+       |        ^
+     84|       fc.property(plannedWriteSetArb, plannedWriteSetArb, (setA, setB)…
+     85|         const verdicts = analyzeOverlap([setA, setB]);
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.property.test.ts:94:34
+ ❯ Property.predicate ../../node_modules/fast-check/lib/fast-check.js:1353:99
+ ❯ Property.run ../../node_modules/fast-check/lib/fast-check.js:1322:24
+ ❯ runIt ../../node_modules/fast-check/lib/fast-check.js:2505:24
+ ❯ check ../../node_modules/fast-check/lib/fast-check.js:2537:204
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2540:14
+ ❯ src/overlap-analyzer.property.test.ts:83:8
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.property.test.ts > analyzeOverlap — property: correctness against an independent reference model (WI7) > never misses a true collision: a shared path (possibly only via a rename) is ALWAYS flagged
+Error: Property failed after 1 tests
+{ seed: -1090477189, path: "0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
+Counterexample: [{"unitId":"00000000-0000-1000-8000-000000000000","paths":[],"renames":[]},{"unitId":"00000000-0000-1000-8000-000000000000","paths":[],"renames":[]},"./a"]
+Shrunk 10 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ throwIfFailed ../../node_modules/fast-check/lib/fast-check.js:2469:8
+ ❯ reportRunDetails ../../node_modules/fast-check/lib/fast-check.js:2485:14
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2542:7
+ ❯ src/overlap-analyzer.property.test.ts:102:8
+    100|
+    101|   it("never misses a true collision: a shared path (possibly only via …
+    102|     fc.assert(
+       |        ^
+    103|       fc.property(plannedWriteSetArb, plannedWriteSetArb, pathArb, (se…
+    104|         const forcedA: PlannedWriteSet = { ...setA, paths: [...setA.pa…
+
+Caused by: AssertionError: expected [ './a' ] to include 'a'
+ ❯ src/overlap-analyzer.property.test.ts:108:45
+ ❯ Property.predicate ../../node_modules/fast-check/lib/fast-check.js:1353:99
+ ❯ Property.run ../../node_modules/fast-check/lib/fast-check.js:1322:24
+ ❯ runIt ../../node_modules/fast-check/lib/fast-check.js:2505:24
+ ❯ check ../../node_modules/fast-check/lib/fast-check.js:2537:204
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2540:14
+ ❯ src/overlap-analyzer.property.test.ts:102:8
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.property.test.ts > analyzeOverlap — property: correctness against an independent reference model (WI7) > MAJOR 3 fix: never misses a collision even when the two units spell the SAME canonical path differently
+Error: Property failed after 1 tests
+{ seed: 1512341648, path: "0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
+Counterexample: ["00000000-0000-1000-8000-000000000000","00000000-0000-1000-8000-000000000000","a",(l) => l,(l) => `././${l}`]
+Shrunk 10 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ throwIfFailed ../../node_modules/fast-check/lib/fast-check.js:2469:8
+ ❯ reportRunDetails ../../node_modules/fast-check/lib/fast-check.js:2485:14
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2542:7
+ ❯ src/overlap-analyzer.property.test.ts:115:8
+    113|
+    114|   it("MAJOR 3 fix: never misses a collision even when the two units sp…
+    115|     fc.assert(
+       |        ^
+    116|       fc.property(
+    117|         fc.uuid(),
+
+Caused by: AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.property.test.ts:127:41
+ ❯ Property.predicate ../../node_modules/fast-check/lib/fast-check.js:1353:99
+ ❯ Property.run ../../node_modules/fast-check/lib/fast-check.js:1322:24
+ ❯ runIt ../../node_modules/fast-check/lib/fast-check.js:2505:24
+ ❯ check ../../node_modules/fast-check/lib/fast-check.js:2537:204
+ ❯ Module.assert ../../node_modules/fast-check/lib/fast-check.js:2540:14
+ ❯ src/overlap-analyzer.property.test.ts:115:8
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — F3 path normalization (validator's exact false-negative pairs, MAJOR 3 fix) > src/a.txt vs ./src/a.txt collide (leading './' spelling)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:95:35
+     93|       { unitId: "unit-b", paths: ["./src/a.txt"] },
+     94|     ]);
+     95|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+     96|   });
+     97|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — F3 path normalization (validator's exact false-negative pairs, MAJOR 3 fix) > pkg/ vs pkg collide (trailing slash spelling)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:103:35
+    101|       { unitId: "unit-b", paths: ["pkg"] },
+    102|     ]);
+    103|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+    104|   });
+    105|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — F3 path normalization (validator's exact false-negative pairs, MAJOR 3 fix) > a//b vs a/b collide (doubled-slash spelling)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:111:35
+    109|       { unitId: "unit-b", paths: ["a/b"] },
+    110|     ]);
+    111|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+    112|   });
+    113|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/git-engine| src/overlap-analyzer.test.ts > analyzeOverlap — F3 path normalization (validator's exact false-negative pairs, MAJOR 3 fix) > unit-a's ./package-lock.json collides with unit-b's plain package-lock.json, and is recognized against a differently-spelled registry entry
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/overlap-analyzer.test.ts:122:35
+    120|       [{ path: "./package-lock.json", label: "npm lockfile" }],
+    121|     );
+    122|     expect(verdicts[0]!.collides).toBe(true);
+       |                                   ^
+    123|     expect(verdicts[0]!.declaredResourceCollisions).toEqual(["package-…
+    124|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 9 passed (16)
+   Start at  19:49:56
+   Duration  383ms (transform 81ms, setup 0ms, import 131ms, tests 255ms, environment 0ms)
+
