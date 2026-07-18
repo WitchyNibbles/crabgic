@@ -1,0 +1,33 @@
+Phase 04 package-scoped gate — VALIDATION ROUND (2026-07-18) recapture
+Captured by the phase-04 fix worker after landing F1 (MAJOR 1: rotated-
+journal repair orchestration), F2 (MAJOR 2: lease self-defense against
+out-of-band deletion), F3 (MINOR 3: idempotency recorded/replayed
+round-trip parity), F5 (MINOR 5: doc-comment-only concurrency clarity),
+F6 (acquireProjectLease convenience export). See docs/evidence/phase-04/
+README.md's "Validation round (2026-07-18)" section for the full
+per-finding writeup.
+
+=== npx tsc -b (full monorepo project references) ===
+exit code: 0
+
+
+=== npx vitest run --coverage.enabled=false packages/journal ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  30 passed (30)
+      Tests  262 passed (262)
+   Start at  10:57:24
+   Duration  7.68s (transform 4.68s, setup 0ms, import 7.52s, tests 15.79s, environment 4ms)
+
+=== npm run lint (eslint . --ignore-pattern 'spikes/**', repo-wide) ===
+exit code: 0
+
+> engineering-orchestrator-monorepo@0.0.0 lint
+> eslint . --ignore-pattern 'spikes/**'
+
+=== npx prettier --check packages/journal ===
+exit code: 0
+Checking formatting...
+All matched files use Prettier code style!

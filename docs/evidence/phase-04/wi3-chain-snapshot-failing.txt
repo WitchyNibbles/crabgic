@@ -1,0 +1,129 @@
+======================================================================
+PHASE 04, WORK ITEM 3 — chain verifier + tail repair + snapshot — FAILING-FIRST evidence
+Captured: 2026-07-17
+======================================================================
+
+verifyChain is a permissive no-op stub (always reports zero lines / no
+issue, regardless of actual segment content). The corrupted-tail
+fixture test (a valid 3-entry chain, torn mid-write inside the last
+entry's bytes) fails genuinely below, along with the historical-tamper
+security test and the prevHash-chaining test, before real verification
+logic exists.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/store/verify-chain.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/store/verify-chain.test.ts (5 tests | 4 failed) 46ms
+     × reports no issue and every entry as valid 25ms
+     × detects the torn tail: all prior entries stay valid, the torn line is reported as the first issue 9ms
+     × fails verification when an EARLIER entry (not the tail) is byte-tampered, distinctly from a torn tail 8ms
+     × accepts a non-genesis expectedInitialPrevHash for a would-be second segment 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/store/verify-chain.test.ts > verifyChain — a fully valid chain > reports no issue and every entry as valid
+AssertionError: expected [] to deeply equal [ …(3) ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "hash": "d8eaec58066a527ad1a4ef34c58c87ce40f98e7955a038280458591c82394373",
+-     "payload": {
+-       "rationale": "a",
+-     },
+-     "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+-     "schemaVersion": 1,
+-     "seq": 1,
+-     "timestamp": "2026-07-17T22:14:20.486Z",
+-     "type": "fanout_rationale",
+-   },
+-   {
+-     "hash": "2d0d19ea5db580c155b582c413c6239f1f0849b489c28daa2cd88afb5bb402fb",
+-     "payload": {
+-       "rationale": "b",
+-     },
+-     "prevHash": "d8eaec58066a527ad1a4ef34c58c87ce40f98e7955a038280458591c82394373",
+-     "schemaVersion": 1,
+-     "seq": 2,
+-     "timestamp": "2026-07-17T22:14:20.495Z",
+-     "type": "fanout_rationale",
+-   },
+-   {
+-     "hash": "3916a15f1f95675d150d269798a62cf54bd4ee00dc6c045679338380b60d0e26",
+-     "payload": {
+-       "rationale": "c",
+-     },
+-     "prevHash": "2d0d19ea5db580c155b582c413c6239f1f0849b489c28daa2cd88afb5bb402fb",
+-     "schemaVersion": 1,
+-     "seq": 3,
+-     "timestamp": "2026-07-17T22:14:20.498Z",
+-     "type": "fanout_rationale",
+-   },
+- ]
++ []
+
+ ❯ src/store/verify-chain.test.ts:43:33
+     41|     const report = await verifyChain(config.fs, segmentPath(config.seg…
+     42|     expect(report.firstIssue).toBeUndefined();
+     43|     expect(report.validEntries).toEqual([e1, e2, e3]);
+       |                                 ^
+     44|     expect(report.truncatedTrailingBytes).toBe(0);
+     45|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |@eo/journal| src/store/verify-chain.test.ts > verifyChain — corrupted-tail fixture (valid chain truncated mid-entry) > detects the torn tail: all prior entries stay valid, the torn line is reported as the first issue
+AssertionError: expected undefined to be defined
+ ❯ src/store/verify-chain.test.ts:65:31
+     63|
+     64|     const report = await verifyChain(config.fs, path);
+     65|     expect(report.firstIssue).toBeDefined();
+       |                               ^
+     66|     expect(report.firstIssue?.kind).toBe("parse_error");
+     67|     expect(report.validEntries).toEqual([e1, e2]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |@eo/journal| src/store/verify-chain.test.ts > verifyChain — security: post-hoc single-byte tamper of a HISTORICAL entry > fails verification when an EARLIER entry (not the tail) is byte-tampered, distinctly from a torn tail
+AssertionError: expected undefined to be defined
+ ❯ src/store/verify-chain.test.ts:93:31
+     91|
+     92|     const report = await verifyChain(config.fs, path);
+     93|     expect(report.firstIssue).toBeDefined();
+       |                               ^
+     94|     expect(report.firstIssue?.kind).toBe("hash_mismatch");
+     95|     expect(report.firstIssue?.lineIndex).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |@eo/journal| src/store/verify-chain.test.ts > verifyChain — prevHash chaining across an explicit initial prevHash > accepts a non-genesis expectedInitialPrevHash for a would-be second segment
+AssertionError: expected undefined to be 'prev_hash_mismatch' // Object.is equality
+
+- Expected:
+"prev_hash_mismatch"
+
++ Received:
+undefined
+
+ ❯ src/store/verify-chain.test.ts:121:57
+    119|
+    120|     const reportWithWrongExpectation = await verifyChain(config.fs, pa…
+    121|     expect(reportWithWrongExpectation.firstIssue?.kind).toBe("prev_has…
+       |                                                         ^
+    122|
+    123|     const reportWithCorrectExpectation = await verifyChain(config.fs, …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  00:14:20
+   Duration  355ms (transform 158ms, setup 0ms, import 208ms, tests 46ms, environment 0ms)
+

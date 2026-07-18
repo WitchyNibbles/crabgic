@@ -1,0 +1,24 @@
+======================================================================
+PHASE 04, WORK ITEM 1 — ndjson entry codec — PASSING evidence
+Captured: 2026-07-17
+======================================================================
+
+Real decodeLine/tryDecodeLine implementation landed (JSON.parse +
+JournalEntrySchema.parse). All 13 JournalEntryType members and all 6
+WorkUnitAttemptStatus members round-trip; parked:rate_limit retains
+sessionId; .strict() rejects extra payload keys; HashHexSchema rejects
+malformed hashes.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/codec/journal-entry.test.ts packages/journal/src/codec/ndjson-codec.test.ts packages/journal/src/codec/hash-chain.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  3 passed (3)
+      Tests  56 passed (56)
+   Start at  00:09:58
+   Duration  319ms (transform 308ms, setup 0ms, import 429ms, tests 26ms, environment 0ms)
+

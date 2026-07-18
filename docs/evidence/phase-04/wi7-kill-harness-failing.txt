@@ -1,0 +1,111 @@
+docs/evidence/phase-04/wi7-kill-harness-failing.txt — captured 2026-07-18
+roadmap/04-journal-idempotency-leases.md work item 7 failing-first fixture:
+"the harness is run against work items 2-5 and must catch at least one seeded
+corruption class before it is trusted for reuse"; RED-first protocol: "the
+harness test written before the harness exists — prefer a stub-level
+assertion failure."
+
+packages/journal/src/kill-harness.ts exists with its full public type surface
+already defined, but runKillHarness()'s body is a stub that throws
+"not implemented yet" — a stub-level assertion failure, per the RED-first
+instruction's stated preference over a raw module-resolution crash.
+
+$ npx vitest run --coverage.enabled=false packages/journal/src/kill-harness.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/kill-harness.test.ts (7 tests | 6 failed) 17ms
+     × catches a seeded corruption class: an unsafe in-place buffered writer with no fsync/rename leaves a torn file when killed mid-write, and reports each fault point independently 6ms
+     × passes the safe counterpart: a temp-file + rename writer never exposes a torn file at any of its fault points 2ms
+     × supports an operation factory (per-fault-point spec) instead of a fixed spec 1ms
+     × reports killedAt: natural-exit when the operation exits without ever signalling the requested fault point 1ms
+     × force-kills and reports killedAt: timeout-kill when the operation hangs past spawnTimeoutMs without the requested marker 1ms
+     × invokes onOperationOutput for every stdout/stderr chunk observed 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > catches a seeded corruption class: an unsafe in-place buffered writer with no fsync/rename leaves a torn file when killed mid-write, and reports each fault point independently
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:50:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > passes the safe counterpart: a temp-file + rename writer never exposes a torn file at any of its fault points
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:78:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > supports an operation factory (per-fault-point spec) instead of a fixed spec
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:97:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > reports killedAt: natural-exit when the operation exits without ever signalling the requested fault point
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:111:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > force-kills and reports killedAt: timeout-kill when the operation hangs past spawnTimeoutMs without the requested marker
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:123:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@eo/journal| src/kill-harness.test.ts > runKillHarness > invokes onOperationOutput for every stdout/stderr chunk observed
+Error: runKillHarness: not implemented yet (roadmap/04 work item 7 failing-first stub)
+ ❯ runKillHarness src/kill-harness.ts:81:9
+     79|   _opts: KillHarnessOptions,
+     80| ): Promise<KillHarnessReport> {
+     81|   throw new Error(
+       |         ^
+     82|     "runKillHarness: not implemented yet (roadmap/04 work item 7 faili…
+     83|   );
+ ❯ src/kill-harness.test.ts:136:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  00:17:32
+   Duration  154ms (transform 21ms, setup 0ms, import 31ms, tests 17ms, environment 0ms)
+

@@ -1,0 +1,139 @@
+======================================================================
+PHASE 04, WORK ITEM 1 — ndjson entry codec — FAILING-FIRST evidence
+Captured: 2026-07-17
+======================================================================
+
+JournalEntrySchema (13-member discriminated union), the payload schemas
+per JournalEntryType, and encodeEntryToLine are implemented for real.
+decodeLine/tryDecodeLine are a deliberate stub (always throw / report
+failure, ignoring their input) so the round-trip tests below fail at
+the assertion level, not at module resolution.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/codec/journal-entry.test.ts packages/journal/src/codec/ndjson-codec.test.ts packages/journal/src/codec/hash-chain.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/codec/ndjson-codec.test.ts (6 tests | 2 failed) 9ms
+     × decodeLine parses and validates a well-formed line 2ms
+     × tryDecodeLine reports ok:true with the decoded entry on success 2ms
+ ❯ |@eo/journal| src/codec/journal-entry.test.ts (41 tests | 20 failed) 20ms
+     × round-trips a valid "run_transition" entry through encode -> decode 3ms
+     × round-trips a valid "work_unit_transition" entry through encode -> decode 1ms
+     × round-trips a valid "adjudication_decision" entry through encode -> decode 0ms
+     × round-trips a valid "remote_operation_record" entry through encode -> decode 0ms
+     × round-trips a valid "evidence_pointer" entry through encode -> decode 1ms
+     × round-trips a valid "session_assignment" entry through encode -> decode 0ms
+     × round-trips a valid "git_freeze" entry through encode -> decode 0ms
+     × round-trips a valid "worktree_quarantine" entry through encode -> decode 0ms
+     × round-trips a valid "cas_ref_update" entry through encode -> decode 0ms
+     × round-trips a valid "approval_token_mint" entry through encode -> decode 0ms
+     × round-trips a valid "fanout_rationale" entry through encode -> decode 0ms
+     × round-trips a valid "milestone_sync" entry through encode -> decode 0ms
+     × round-trips a valid "learning_transition" entry through encode -> decode 0ms
+     × round-trips a work_unit_transition entry with status "pending" 0ms
+     × round-trips a work_unit_transition entry with status "dispatched" 0ms
+     × round-trips a work_unit_transition entry with status "succeeded" 0ms
+     × round-trips a work_unit_transition entry with status "failed" 0ms
+     × round-trips a work_unit_transition entry with status "cancelled" 0ms
+     × round-trips a work_unit_transition entry with status "parked:rate_limit" 0ms
+     × a parked:rate_limit entry retains its sessionId in the round-tripped payload 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 22 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "run_transition" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "work_unit_transition" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "adjudication_decision" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "remote_operation_record" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "evidence_pointer" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "session_assignment" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "git_freeze" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "worktree_quarantine" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "cas_ref_update" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "approval_token_mint" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "fanout_rationale" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "milestone_sync" entry through encode -> decode
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "learning_transition" entry through encode -> decode
+Error: journal: decodeLine is not yet implemented (work item 1 failing-first stub) — see docs/evidence/phase-04/wi1-codec-failing.txt
+ ❯ decodeLine src/codec/ndjson-codec.ts:30:9
+     28| /** Parses and validates one ndjson line (without its trailing newline…
+     29| export function decodeLine(_line: string): JournalEntry {
+     30|   throw new Error(
+       |         ^
+     31|     "journal: decodeLine is not yet implemented (work item 1 failing-f…
+     32|   );
+ ❯ src/codec/journal-entry.test.ts:74:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯
+
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "pending"
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "dispatched"
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "succeeded"
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "failed"
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "cancelled"
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "parked:rate_limit"
+Error: journal: decodeLine is not yet implemented (work item 1 failing-first stub) — see docs/evidence/phase-04/wi1-codec-failing.txt
+ ❯ decodeLine src/codec/ndjson-codec.ts:30:9
+     28| /** Parses and validates one ndjson line (without its trailing newline…
+     29| export function decodeLine(_line: string): JournalEntry {
+     30|   throw new Error(
+       |         ^
+     31|     "journal: decodeLine is not yet implemented (work item 1 failing-f…
+     32|   );
+ ❯ src/codec/journal-entry.test.ts:170:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/22]⎯
+
+ FAIL  |@eo/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > a parked:rate_limit entry retains its sessionId in the round-tripped payload
+Error: journal: decodeLine is not yet implemented (work item 1 failing-first stub) — see docs/evidence/phase-04/wi1-codec-failing.txt
+ ❯ decodeLine src/codec/ndjson-codec.ts:30:9
+     28| /** Parses and validates one ndjson line (without its trailing newline…
+     29| export function decodeLine(_line: string): JournalEntry {
+     30|   throw new Error(
+       |         ^
+     31|     "journal: decodeLine is not yet implemented (work item 1 failing-f…
+     32|   );
+ ❯ src/codec/journal-entry.test.ts:183:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯
+
+ FAIL  |@eo/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > decodeLine parses and validates a well-formed line
+Error: journal: decodeLine is not yet implemented (work item 1 failing-first stub) — see docs/evidence/phase-04/wi1-codec-failing.txt
+ ❯ decodeLine src/codec/ndjson-codec.ts:30:9
+     28| /** Parses and validates one ndjson line (without its trailing newline…
+     29| export function decodeLine(_line: string): JournalEntry {
+     30|   throw new Error(
+       |         ^
+     31|     "journal: decodeLine is not yet implemented (work item 1 failing-f…
+     32|   );
+ ❯ src/codec/ndjson-codec.test.ts:30:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/22]⎯
+
+ FAIL  |@eo/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > tryDecodeLine reports ok:true with the decoded entry on success
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/codec/ndjson-codec.test.ts:51:23
+     49|     const line = encodeEntryToLine(entry).slice(0, -1);
+     50|     const result = tryDecodeLine(line);
+     51|     expect(result.ok).toBe(true);
+       |                       ^
+     52|     expect(result.entry).toEqual(entry);
+     53|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/22]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  22 failed | 34 passed (56)
+   Start at  00:09:36
+   Duration  336ms (transform 291ms, setup 0ms, import 409ms, tests 34ms, environment 0ms)
+

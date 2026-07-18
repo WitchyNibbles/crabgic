@@ -1,0 +1,127 @@
+======================================================================
+PHASE 04, WORK ITEM 4 — evidence/traceability query surface — FAILING-FIRST evidence
+Captured: 2026-07-17
+======================================================================
+
+queryEntries is a stub supporting only a full-segment scan (it ignores
+the filter argument entirely). The type/runId/changeSetId/workUnitId
+filter tests below fail genuinely (every entry comes back regardless
+of filter) before real filtering exists.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/store/query-entries.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/store/query-entries.test.ts (8 tests | 5 failed) 144ms
+     × filters by type 36ms
+     × filters by runId, excluding entries correlated to a different run 9ms
+     × filters by changeSetId 6ms
+     × filters by workUnitId 6ms
+     × combines multiple filter fields (AND semantics) 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/store/query-entries.test.ts > queryEntries — fixture journal spanning all 13 JournalEntryType members > filters by type
+AssertionError: expected [ …(13) ] to have a length of 1 but got 13
+
+- Expected
++ Received
+
+- 1
++ 13
+
+ ❯ src/store/query-entries.test.ts:97:26
+     95|     }
+     96|     const onlyEvidence = await collect(queryEntries(config, { type: "e…
+     97|     expect(onlyEvidence).toHaveLength(1);
+       |                          ^
+     98|     expect(onlyEvidence[0]!.type).toBe("evidence_pointer");
+     99|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |@eo/journal| src/store/query-entries.test.ts > queryEntries — fixture journal spanning all 13 JournalEntryType members > filters by runId, excluding entries correlated to a different run
+AssertionError: expected [ …(3) ] to have a length of 1 but got 3
+
+- Expected
++ Received
+
+- 1
++ 3
+
+ ❯ src/store/query-entries.test.ts:108:22
+    106|
+    107|     const runAOnly = await collect(queryEntries(config, { runId: RUN_A…
+    108|     expect(runAOnly).toHaveLength(1);
+       |                      ^
+    109|     expect(runAOnly[0]!.runId).toBe(RUN_A);
+    110|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |@eo/journal| src/store/query-entries.test.ts > queryEntries — fixture journal spanning all 13 JournalEntryType members > filters by changeSetId
+AssertionError: expected [ …(2) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/store/query-entries.test.ts:118:22
+    116|
+    117|     const filtered = await collect(queryEntries(config, { changeSetId:…
+    118|     expect(filtered).toHaveLength(1);
+       |                      ^
+    119|     expect(filtered[0]!.type).toBe("evidence_pointer");
+    120|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |@eo/journal| src/store/query-entries.test.ts > queryEntries — fixture journal spanning all 13 JournalEntryType members > filters by workUnitId
+AssertionError: expected [ …(2) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/store/query-entries.test.ts:128:22
+    126|
+    127|     const filtered = await collect(queryEntries(config, { workUnitId: …
+    128|     expect(filtered).toHaveLength(1);
+       |                      ^
+    129|     expect(filtered[0]!.type).toBe("work_unit_transition");
+    130|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |@eo/journal| src/store/query-entries.test.ts > queryEntries — fixture journal spanning all 13 JournalEntryType members > combines multiple filter fields (AND semantics)
+AssertionError: expected [ …(2) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/store/query-entries.test.ts:138:22
+    136|
+    137|     const filtered = await collect(queryEntries(config, { runId: RUN_A…
+    138|     expect(filtered).toHaveLength(1);
+       |                      ^
+    139|   });
+    140|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 3 passed (8)
+   Start at  00:16:02
+   Duration  452ms (transform 163ms, setup 0ms, import 212ms, tests 144ms, environment 0ms)
+

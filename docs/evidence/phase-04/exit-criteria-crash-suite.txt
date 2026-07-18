@@ -1,0 +1,62 @@
+Phase 04 crash-suite exit-criteria evidence — VALIDATION ROUND (2026-07-18) recapture
+
+roadmap/04-journal-idempotency-leases.md exit criterion 1: "1k randomized
+kill-iteration run (runKillHarness over the append/chain/snapshot path):
+zero undetected corruption; recovery always converges to the last valid
+chained entry."
+
+VALIDATION ROUND MAJOR 1 finding (adversarial audit): "The 1000-iteration
+crash suite NEVER rotates segments, so the multi-segment path had zero
+coverage (green was vacuous for rotated journals)." Fixed by adding a
+SECOND, dedicated rotation variant (EO_CRASH_FIXTURE_SEGMENT_MAX_BYTES=1,
+forcing a fresh segment on every append) alongside the original variant —
+both are captured below, honestly, at the SAME 1000-iteration scale.
+
+NOTE: the two runs below were captured, then the rotation variant's describe
+block (and its shared verify()/plan helpers) were extracted from
+crash-suite.test.ts into two new dedicated files —
+crash-fixtures/crash-suite-rotation.test.ts (the rotation variant test
+itself) and crash-fixtures/verify-recovery.ts + crash-fixtures/plan.ts
+(shared helpers) — purely to keep every file under this repo's 400-line
+convention; no test logic/assertions changed. The commands below reflect
+the file layout AT CAPTURE TIME; the post-split, current commands are:
+  EO_CRASH_SUITE_ITERATIONS=1000 npx vitest run packages/journal/src/crash-fixtures/crash-suite.test.ts --coverage.enabled=false
+  EO_CRASH_SUITE_ROTATION_ITERATIONS=1000 npx vitest run packages/journal/src/crash-fixtures/crash-suite-rotation.test.ts --coverage.enabled=false
+Re-verified green (default iteration counts, both files) after the split —
+see docs/evidence/phase-04/exit-criteria-package-gate.txt's full 262/262
+journal-suite run, captured after the split.
+
+=== VARIANT 1: original (non-rotating) — 1000 iterations ===
+command (at capture time, pre-split): EO_CRASH_SUITE_ITERATIONS=1000 npx vitest run packages/journal/src/crash-fixtures/crash-suite.test.ts -t "recovery always converges with zero undetected corruption across randomized real kill iterations over the append/snapshot path" --coverage.enabled=false
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 2 skipped (3)
+   Start at  11:06:09
+   Duration  104.14s (transform 267ms, setup 0ms, import 497ms, tests 103.54s, environment 0ms)
+
+
+RESULT: 1000/1000 iterations, allConverged=true, zero undetected corruption.
+
+=== VARIANT 2 (NEW, this validation round): segment rotation — 1000 iterations ===
+command (at capture time, pre-split; now lives in crash-suite-rotation.test.ts — see NOTE above): EO_CRASH_SUITE_ROTATION_ITERATIONS=1000 npx vitest run packages/journal/src/crash-fixtures/crash-suite.test.ts -t "genuinely re-rotating" --coverage.enabled=false
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 2 skipped (3)
+   Start at  11:07:57
+   Duration  108.70s (transform 266ms, setup 0ms, import 493ms, tests 108.10s, environment 0ms)
+
+
+RESULT: 1000/1000 iterations, allConverged=true, zero undetected corruption,
+every iteration's journal verified via the orchestrated verifyJournal/
+repairJournal path (../store/verify-journal.ts / ../store/repair-journal.ts),
+with an explicit assertion that at least one iteration's surviving journal
+spans more than one segment file (proving genuine rotation occurred, not
+a degenerate single-segment run).

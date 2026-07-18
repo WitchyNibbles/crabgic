@@ -1,0 +1,38 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+ ❯ |@eo/journal| src/store/journal-store.test.ts (8 tests | 1 failed | 7 skipped) 34ms
+     × the committed seq=3 entry survives repair, and no duplicate seq is ever produced 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/store/journal-store.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 1 regression: repairing a rotated journal via the highest segment's path must not destroy committed entries > the committed seq=3 entry survives repair, and no duplicate seq is ever produced
+AssertionError: expected [ 1, 2, 1 ] to deeply equal [ 1, 2, 3 ]
+
+- Expected
++ Received
+
+  [
+    1,
+    2,
+-   3,
++   1,
+  ]
+
+ ❯ src/store/journal-store.test.ts:188:42
+    186|     // stay globally unique and monotonic.
+    187|     const allEntries = await collect(store.queryEntries());
+    188|     expect(allEntries.map((e) => e.seq)).toEqual([1, 2, 3]);
+       |                                          ^
+    189|     expect(new Set(allEntries.map((e) => e.seq)).size).toBe(allEntries…
+    190|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  10:40:47
+   Duration  1.03s (transform 184ms, setup 0ms, import 242ms, tests 34ms, environment 0ms)
+

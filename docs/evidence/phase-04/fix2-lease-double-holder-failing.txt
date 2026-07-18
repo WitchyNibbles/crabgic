@@ -1,0 +1,36 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+ ❯ |@eo/journal| src/lease.test.ts (15 tests | 1 failed | 14 skipped) 26ms
+     × A's renewNow() must NEVER clobber B's file once B has legitimately acquired after an out-of-band deletion 25ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > A's renewNow() must NEVER clobber B's file once B has legitimately acquired after an out-of-band deletion
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/lease.test.ts:405:36
+    403|     // THE FIX'S CORE ASSERTION: A's renewal must detect it no longer …
+    404|     // the on-disk file and must refuse to write — never clobber B.
+    405|     await expect(leaseA.renewNow()).rejects.toThrow();
+       |                                    ^
+    406|     expect(leaseA.held).toBe(false);
+    407|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 skipped (15)
+   Start at  10:40:03
+   Duration  1.08s (transform 114ms, setup 0ms, import 317ms, tests 26ms, environment 0ms)
+

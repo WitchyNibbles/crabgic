@@ -1,0 +1,30 @@
+Crash suite (roadmap/04-journal-idempotency-leases.md exit criterion 1) —
+passing evidence, captured 2026-07-18. Same file
+(packages/journal/src/crash-fixtures/crash-suite.test.ts) as
+exit-criteria-crash-suite-red.txt, now with the main randomized real
+safe-path suite added alongside the corruption-detection self-check —
+both describe blocks green together. Default EO_CRASH_SUITE_ITERATIONS
+(unset -> 25) keeps this the fast, always-runs-in-CI form; the committed
+large-scale run is exit-criteria-crash-suite.txt.
+
+Bug fixed during this pass (documented — see Deviations in this phase's
+evidence README): the initial seeded PRNG used plain `state * 1103515245`
+which silently overflows JS's 53-bit float mantissa for state values above
+~8.1M, producing a badly degenerate sequence (every iteration picked the
+same mode/fault point, `pick(2) === 0` always). Fixed to use `Math.imul`
+for real 32-bit integer multiplication. Also fixed:
+`prepareCrashSuiteRuntime` originally only transpiled the entry script
+itself, not `signaling-fs-port.ts` (a second file colocated in
+`crash-fixtures/` that the entry script imports) — the child process
+crashed with `ERR_MODULE_NOT_FOUND` on every real (non-corruption-check)
+run until `CRASH_SUITE_LOCAL_FIXTURE_FILES` was added.
+
+  $ npx vitest run --coverage.enabled=false packages/journal/src/crash-fixtures/crash-suite.test.ts
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:54:41
+   Duration  3.44s (transform 262ms, setup 0ms, import 500ms, tests 2.84s, environment 0ms)

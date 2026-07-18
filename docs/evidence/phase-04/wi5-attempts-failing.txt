@@ -1,0 +1,93 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/attempts.test.ts (6 tests | 4 failed) 45ms
+     × persists a work_unit_transition entry carrying workUnitId, sessionId, and status 14ms
+     × auto-populates previousStatus from the prior recorded attempt for the same work unit 7ms
+     × returns the LATEST (highest seq) attempt, not the first 10ms
+     × survives a torn-tail crash immediately after it, and read-back through recordAttempt/getLatestAttempt still reports the exact session_id 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/attempts.test.ts > recordAttempt — basic persistence > persists a work_unit_transition entry carrying workUnitId, sessionId, and status
+AssertionError: expected undefined to be '711b0c61-572d-41f0-96a7-072906fd8cc9' // Object.is equality
+
+- Expected:
+"711b0c61-572d-41f0-96a7-072906fd8cc9"
+
++ Received:
+undefined
+
+ ❯ src/attempts.test.ts:35:30
+     33|
+     34|     expect(record.workUnitId).toBe(workUnitId);
+     35|     expect(record.sessionId).toBe(sessionId);
+       |                              ^
+     36|     expect(record.status).toBe("dispatched");
+     37|     expect(record.previousStatus).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |@eo/journal| src/attempts.test.ts > recordAttempt — basic persistence > auto-populates previousStatus from the prior recorded attempt for the same work unit
+AssertionError: expected undefined to be 'dispatched' // Object.is equality
+
+- Expected:
+"dispatched"
+
++ Received:
+undefined
+
+ ❯ src/attempts.test.ts:59:35
+     57|     const second = await recordAttempt(store, workUnitId, sessionId, "…
+     58|
+     59|     expect(second.previousStatus).toBe("dispatched");
+       |                                   ^
+     60|     expect(second.status).toBe("parked:rate_limit");
+     61|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |@eo/journal| src/attempts.test.ts > getLatestAttempt — read-back path > returns the LATEST (highest seq) attempt, not the first
+AssertionError: expected 1 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 1
+
+ ❯ src/attempts.test.ts:82:25
+     80|     const latest = await getLatestAttempt(store, workUnitId);
+     81|     expect(latest?.status).toBe("dispatched");
+     82|     expect(latest?.seq).toBe(third.seq);
+       |                         ^
+     83|   });
+     84|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |@eo/journal| src/attempts.test.ts > EXIT CRITERION: a parked:rate_limit attempt retains session_id across a simulated crash+recover cycle > survives a torn-tail crash immediately after it, and read-back through recordAttempt/getLatestAttempt still reports the exact session_id
+AssertionError: expected undefined to be '067b6e00-009a-42b9-9347-33a393bb8f1e' // Object.is equality
+
+- Expected:
+"067b6e00-009a-42b9-9347-33a393bb8f1e"
+
++ Received:
+undefined
+
+ ❯ src/attempts.test.ts:108:30
+    106|     await recordAttempt(store, workUnitId, sessionId, "dispatched");
+    107|     const parked = await recordAttempt(store, workUnitId, sessionId, "…
+    108|     expect(parked.sessionId).toBe(sessionId);
+       |                              ^
+    109|
+    110|     // Simulate a crash: one more entry starts writing (e.g. a subsequ…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  00:46:50
+   Duration  393ms (transform 188ms, setup 0ms, import 244ms, tests 45ms, environment 0ms)
+

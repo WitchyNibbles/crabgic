@@ -1,0 +1,48 @@
+Append p50 latency benchmark (roadmap/04-journal-idempotency-leases.md
+exit criterion 9: "Append p50 latency documented with a CI regression
+gate — evidence: benchmark output committed, gate wired into CI").
+
+Captured 2026-07-18 on this development machine (WSL2 / Linux
+6.6.87.2-microsoft-standard-WSL2 — the same environment roadmap/04's own
+§Risks note flags: "fsync semantics differ on WSL2 9p mounts").
+
+Method: packages/journal/src/store/append-benchmark.ts's
+`measureAppendLatencies` — 1000 SEQUENTIAL, real appendEntry() calls
+(real fs, real fsync(file), real fsync(dir); no mocking) against a fresh
+tmp journal directory, timed individually via `performance.now()`.
+
+Command (one-time capture; the throwaway capture test file used to run it,
+packages/journal/src/store/zz-bench-capture.test.ts, was deleted
+immediately after this capture — it is not part of the permanent suite):
+
+  $ npx vitest run --coverage.enabled=false packages/journal/src/store/zz-bench-capture.test.ts
+
+Result (1000 real appends):
+
+  {
+    "count": 1000,
+    "p50Ms": 2.30982199999994,
+    "p90Ms": 2.7610910000000786,
+    "p99Ms": 67.50827299999992,
+    "meanMs": 4.867018087,
+    "minMs": 1.9848869999999579,
+    "maxMs": 73.88145899999972
+  }
+
+p50 = 2.31ms. p99/max show occasional outliers (likely page-cache/kernel
+scheduling jitter typical of WSL2's 9p-adjacent storage stack, consistent
+with roadmap/04's own documented risk) but the P50 THE EXIT CRITERION NAMES
+stays well under 3ms.
+
+CI REGRESSION GATE: packages/journal/src/store/append-benchmark.test.ts,
+describe "REGRESSION GATE: append p50 latency over 300 real appends stays
+under a generous documented threshold" — asserts p50 < 100ms (a >40x margin
+over the 2.31ms measured here), documented in that test file's own doc
+comment as deliberately generous specifically because of the WSL2/9p
+variance risk roadmap/04 itself names — this catches a genuine multi-x
+regression without being flaky across contributors' machines or CI
+runners with different storage backends. This test runs as part of the
+normal `vitest run` / `npm test`, which is already wired into
+`.github/workflows/ci.yml`'s "test" job (`npm run build && npm test`) —
+no CI YAML changes were needed; see this phase's evidence README for
+confirmation.

@@ -1,0 +1,145 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+ ❯ |@eo/journal| src/idempotency.test.ts (9 tests | 7 failed) 23ms
+     × the SAME (operationId, contentHash) replays a byte-identical result and does NOT re-execute compute 5ms
+     × replay survives a brand-new IdempotencyRegistry instance against the same journal (genuinely journal-backed, not just an in-memory cache) 1ms
+     × persists a remote_operation_record journal entry keyed on (operationId, contentHash) 3ms
+     × the SAME operationId with a DIFFERENT contentHash returns a typed conflict, and never re-executes compute 1ms
+     × a conflicting write never mutates the originally recorded result — a later call with the ORIGINAL hash still replays the original value 1ms
+     × only ONE remote_operation_record entry is ever persisted for an operationId that later conflicts 1ms
+     × matches a reference model across randomized sequential call sequences 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > the SAME (operationId, contentHash) replays a byte-identical result and does NOT re-execute compute
+AssertionError: expected 'recorded' to be 'replayed' // Object.is equality
+
+Expected: "replayed"
+Received: "recorded"
+
+ ❯ src/idempotency.test.ts:45:27
+     43|
+     44|     expect(first.status).toBe("recorded");
+     45|     expect(second.status).toBe("replayed");
+       |                           ^
+     46|     expect(second.result).toEqual(first.result);
+     47|     // The core replay invariant this work item's RED capture exercise…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > replay survives a brand-new IdempotencyRegistry instance against the same journal (genuinely journal-backed, not just an in-memory cache)
+AssertionError: expected 'recorded' to be 'replayed' // Object.is equality
+
+Expected: "replayed"
+Received: "recorded"
+
+ ❯ src/idempotency.test.ts:61:28
+     59|     const outcome = await secondRegistry.checkOrRecord("op-restart", "…
+     60|
+     61|     expect(outcome.status).toBe("replayed");
+       |                            ^
+     62|     expect(outcome.result).toEqual({ value: "durable" });
+     63|     expect(compute).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > persists a remote_operation_record journal entry keyed on (operationId, contentHash)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/idempotency.test.ts:75:21
+     73|       entries.push(entry);
+     74|     }
+     75|     expect(entries).toHaveLength(1);
+       |                     ^
+     76|     expect(entries[0]?.type).toBe("remote_operation_record");
+     77|     if (entries[0]?.type === "remote_operation_record") {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > the SAME operationId with a DIFFERENT contentHash returns a typed conflict, and never re-executes compute
+AssertionError: expected 'recorded' to be 'conflict' // Object.is equality
+
+Expected: "conflict"
+Received: "recorded"
+
+ ❯ src/idempotency.test.ts:95:27
+     93|
+     94|     expect(first.status).toBe("recorded");
+     95|     expect(second.status).toBe("conflict");
+       |                           ^
+     96|     expect(second.result).toBeUndefined();
+     97|     expect(computeB).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > a conflicting write never mutates the originally recorded result — a later call with the ORIGINAL hash still replays the original value
+AssertionError: expected 'recorded' to be 'replayed' // Object.is equality
+
+Expected: "replayed"
+Received: "recorded"
+
+ ❯ src/idempotency.test.ts:109:27
+    107|     }));
+    108|
+    109|     expect(replay.status).toBe("replayed");
+       |                           ^
+    110|     expect(replay.result).toEqual({ value: "original" });
+    111|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > only ONE remote_operation_record entry is ever persisted for an operationId that later conflicts
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/idempotency.test.ts:124:21
+    122|       entries.push(entry);
+    123|     }
+    124|     expect(entries).toHaveLength(1);
+       |                     ^
+    125|   });
+    126| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |@eo/journal| src/idempotency.test.ts > property: randomized (operationId, contentHash) sequences never produce a silent overwrite > matches a reference model across randomized sequential call sequences
+Error: Property failed after 1 tests
+{ seed: -1188331726, path: "0:0:0:0", endOnFailure: true }
+Counterexample: [[{"operationId":"op-1","contentHash":"hash-x"}]]
+Shrunk 3 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ asyncThrowIfFailed ../../node_modules/fast-check/lib/fast-check.js:2474:8
+
+Caused by: AssertionError: expected 'recorded' to be 'replayed' // Object.is equality
+
+Expected: "replayed"
+Received: "recorded"
+
+ ❯ src/idempotency.test.ts:189:35
+ ❯ AsyncProperty.run ../../node_modules/fast-check/lib/fast-check.js:1217:19
+ ❯ asyncRunIt ../../node_modules/fast-check/lib/fast-check.js:2516:15
+ ❯ src/idempotency.test.ts:142:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 2 passed (9)
+   Start at  00:45:19
+   Duration  916ms (transform 180ms, setup 0ms, import 250ms, tests 23ms, environment 0ms)
+

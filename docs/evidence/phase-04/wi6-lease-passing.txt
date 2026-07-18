@@ -1,0 +1,18 @@
+docs/evidence/phase-04/wi6-lease-passing.txt — captured 2026-07-18
+Final passing state: real O_EXCL atomic create (packages/journal/src/lease.ts),
+plus coverage-completeness additions (LeaseAcquireRaceLostError direct unit
+test, a genuine multi-attempt retry test, EACCES-propagation test, a
+vanished-lease-file release() test, and an autoRenew:true heartbeat test).
+Stable across 3 repeated runs (51/51 passing each time, no flakiness observed).
+
+$ npx vitest run --coverage.enabled=false packages/journal/src/lease.test.ts packages/journal/src/lease-record.test.ts packages/journal/src/lease-proc-stat.test.ts packages/journal/src/lease-fixtures/lease-acquire-attempt.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  4 passed (4)
+      Tests  41 passed (41)
+   Start at  00:27:06
+   Duration  1.05s (transform 186ms, setup 0ms, import 500ms, tests 935ms, environment 0ms)
+

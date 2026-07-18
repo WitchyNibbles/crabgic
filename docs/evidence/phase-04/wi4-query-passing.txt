@@ -1,0 +1,23 @@
+======================================================================
+PHASE 04, WORK ITEM 4 — evidence/traceability query surface — PASSING evidence
+Captured: 2026-07-17
+======================================================================
+
+Real filtering landed (type/runId/changeSetId/workUnitId, AND
+semantics). Integration test against a fixture journal spanning all 13
+JournalEntryType members; evidence_pointer results deserialize as a
+full EvidenceRecord; scanning is correct across segment rotation.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/store/query-entries.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  00:16:23
+   Duration  444ms (transform 160ms, setup 0ms, import 208ms, tests 142ms, environment 0ms)
+

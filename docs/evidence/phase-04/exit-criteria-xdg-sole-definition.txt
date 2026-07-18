@@ -1,0 +1,52 @@
+XDG root sole-definition-site check (roadmap/04-journal-idempotency-leases.md
+exit criterion 11: "$XDG_STATE_HOME/$XDG_CACHE_HOME engineering-orchestrator
+roots are defined exactly once in this package — evidence: repo-wide
+lint/grep CI check fails if another package reimplements the root instead
+of importing it").
+
+Captured 2026-07-18, run LAST (per this worker's brief) so packages
+concurrently under construction by other workers (packages/engine-core)
+were in their most current state.
+
+Test: packages/journal/src/layout/xdg-sole-definition.test.ts. Scans every
+.ts file under packages/*/src (excluding packages/journal/src itself) for
+files containing BOTH the "engineering-orchestrator" namespace literal AND
+an XDG_STATE_HOME/XDG_CACHE_HOME reference (env-var-based root derivation)
+— the AND condition is what distinguishes a genuine reimplementation from
+a file that merely mentions the product name for unrelated reasons.
+
+FIRST RUN found one match: packages/engine-core/src/compiler/
+xdg-default-paths.ts. Investigated directly (read the full file) — its
+only XDG-related runtime values are `~`-anchored literal fallbacks
+(CONTROL_REPO_STATE_ROOT_DENY_PATH = "~/.local/state/engineering-
+orchestrator/**", CONTROL_REPO_CACHE_ROOT_DENY_PATH = "~/.cache/
+engineering-orchestrator/**") with NO `process.env.XDG_*` read anywhere in
+the file — not a reimplementation. It matched only because its own doc
+comment DISCUSSES $XDG_STATE_HOME/$XDG_CACHE_HOME in prose while explaining
+exactly why it deliberately does NOT resolve them (the documented phase 03
+-> phase 04 import-edge seam: phase 03/engine-core cannot depend on
+@eo/journal per the roadmap's own dependency graph, so it hardcodes the XDG
+spec's own documented unset-env-var defaults instead of reading the env
+vars). This is precisely the documented, pre-authorized seam this worker's
+brief named ("packages/engine-core is being built concurrently ... and
+legitimately emits documented tilde-anchored DEFAULT literals ... an
+orchestrator-settled seam"). Added to XDG_ALLOWLISTED_RELATIVE_PATHS with
+this rationale recorded inline in the check's own source, plus a dedicated
+test ("keeps every allowlisted file honest") that re-verifies, on every
+run, that no allowlisted file has started actually READING
+process.env.XDG_STATE_HOME/XDG_CACHE_HOME — an allowlist entry stops being
+valid, and the check would then need to be told to stop trusting it, the
+moment that changes.
+
+  $ npx vitest run --coverage.enabled=false packages/journal/src/layout/xdg-sole-definition.test.ts
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:05:48
+   Duration  223ms (transform 32ms, setup 0ms, import 46ms, tests 13ms, environment 0ms)
+
+No other package outside packages/journal/src reimplements env-var-based
+XDG root resolution.

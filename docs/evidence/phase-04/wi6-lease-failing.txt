@@ -1,0 +1,128 @@
+docs/evidence/phase-04/wi6-lease-failing.txt — captured 2026-07-18
+roadmap/04-journal-idempotency-leases.md work item 6 failing-first fixture:
+"a two-process contention test expects exactly one lease holder and fails
+against a naive non-atomic create."
+
+At this point packages/journal/src/lease.ts's writeExclusive() is DELIBERATELY
+naive: `await writeFile(path, payload, "utf8")` — no O_EXCL, no existence check,
+blind overwrite. This genuinely breaks mutual exclusion: BOTH the real
+two-child-process integration test (the exit-criterion test) and its in-process
+concurrent analog observe two holders instead of one, and both single-process
+'live lease blocks a second acquire' unit tests also fail for the same root
+cause (the contended path in tryAcquireOnce is never reached because
+writeExclusive never throws EEXIST).
+
+$ npx vitest run --coverage.enabled=false packages/journal/src/lease.test.ts packages/journal/src/lease-record.test.ts packages/journal/src/lease-proc-stat.test.ts packages/journal/src/lease-fixtures/lease-acquire-attempt.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/lease-fixtures/lease-acquire-attempt.test.ts (2 tests | 1 failed) 167ms
+     × exactly one of two concurrent attempts against the same lease acquires it 160ms
+ ❯ |@eo/journal| src/lease.test.ts (10 tests | 3 failed) 459ms
+     × a second acquire is DENIED (LeaseHeldError) while the first holder is live and not expired 8ms
+     × NEVER takes over while the recorded process is confirmed still alive, even after the clock says expired (roadmap/04 exit criterion) 3ms
+     × exactly one of two real, concurrently-spawned child processes acquires the lease 428ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > a second acquire is DENIED (LeaseHeldError) while the first holder is live and not expired
+AssertionError: promise resolved "Lease{ …(4) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ Lease {
++   "leaseDir": "/tmp/eo-lease-Z7eroZ",
++   "leasePath": "/tmp/eo-lease-Z7eroZ/proj-live.lease.json",
++   "pid": 222,
++   "projectHash": "proj-live",
+  }
+
+ ❯ src/lease.test.ts:71:6
+     69|         autoRenew: false,
+     70|       }),
+     71|     ).rejects.toThrow(LeaseHeldError);
+       |      ^
+     72|   });
+     73|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |@eo/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > NEVER takes over while the recorded process is confirmed still alive, even after the clock says expired (roadmap/04 exit criterion)
+AssertionError: promise resolved "Lease{ …(4) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ Lease {
++   "leaseDir": "/tmp/eo-lease-fF8gMT",
++   "leasePath": "/tmp/eo-lease-fF8gMT/proj-alive-expired.lease.json",
++   "pid": 222,
++   "projectHash": "proj-alive-expired",
+  }
+
+ ❯ src/lease.test.ts:96:6
+     94|         autoRenew: false,
+     95|       }),
+     96|     ).rejects.toThrow(LeaseHeldError);
+       |      ^
+     97|   });
+     98|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |@eo/journal| src/lease.test.ts > Lease.acquire — INTEGRATION: two real child processes contending for one lease dir (roadmap/04 work item 6 exit criterion) > exactly one of two real, concurrently-spawned child processes acquires the lease
+AssertionError: expected [ 'ACQUIRED', 'ACQUIRED' ] to deeply equal [ 'ACQUIRED', 'DENIED' ]
+
+- Expected
++ Received
+
+  [
+    "ACQUIRED",
+-   "DENIED",
++   "ACQUIRED",
+  ]
+
+ ❯ src/lease.test.ts:268:29
+    266|
+    267|     const outcomes = [outputA, outputB].map((output) => output.trim().…
+    268|     expect(outcomes.sort()).toEqual(["ACQUIRED", "DENIED"]);
+       |                             ^
+    269|   }, 20_000);
+    270| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |@eo/journal| src/lease-fixtures/lease-acquire-attempt.test.ts > attemptLeaseAcquire — in-process concurrent contention (fast analog of the real two-process test) > exactly one of two concurrent attempts against the same lease acquires it
+AssertionError: expected [ 'ACQUIRED', 'ACQUIRED' ] to deeply equal [ 'ACQUIRED', 'DENIED' ]
+
+- Expected
++ Received
+
+  [
+    "ACQUIRED",
+-   "DENIED",
++   "ACQUIRED",
+  ]
+
+ ❯ src/lease-fixtures/lease-acquire-attempt.test.ts:25:22
+     23|
+     24|     const outcomes = [a.outcome, b.outcome].sort();
+     25|     expect(outcomes).toEqual(["ACQUIRED", "DENIED"]);
+       |                      ^
+     26|
+     27|     const denied = a.outcome === "DENIED" ? a : b;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  4 failed | 33 passed (37)
+   Start at  00:15:48
+   Duration  873ms (transform 177ms, setup 0ms, import 467ms, tests 758ms, environment 0ms)
+

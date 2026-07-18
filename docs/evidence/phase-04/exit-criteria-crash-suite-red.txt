@@ -1,0 +1,58 @@
+Crash suite (roadmap/04-journal-idempotency-leases.md exit criterion 1) —
+failing-first evidence, captured 2026-07-18.
+
+This exit criterion's own text names the required proof: "the harness is
+run against work items 2-5 and must catch at least one seeded corruption
+class before it is trusted for reuse" (work item 7's own wording, applied
+here one layer up — to this NEW crash-suite scaffolding built on top of the
+already-real, already-tested append/kill-harness primitives W3/W4 built).
+There is no "unimplemented stub" to throw against here (unlike wi5's
+idempotency/attempts modules): appendEntry, writeSnapshot, and
+runKillHarness already exist and already work. What this capture instead
+proves, BEFORE the real randomized safe-path suite is trusted: the new
+fault-injection scaffolding this worker built for the crash suite —
+packages/journal/src/crash-fixtures/{prepare-runtime.ts,
+signaling-fs-port.ts, append-chain-snapshot-operation.ts} — genuinely
+detects corruption when pointed at a deliberately broken append variant,
+not just when pointed at the real (presumably correct) one.
+
+Test: packages/journal/src/crash-fixtures/crash-suite.test.ts,
+describe "crash suite — harness corruption-detection self-check".
+
+The child fixture (append-chain-snapshot-operation.ts), spawned with
+EO_CRASH_FIXTURE_BROKEN=1, uses a genuinely unsafe append variant instead of
+the real appendEntry: it open()s the segment file with "w" (TRUNCATE — an
+immediate, irreversible destruction of the file's existing bytes, unlike
+the real path's "a"/O_APPEND), then rewrites the whole file (prior valid
+entries + one new line) in two unsynced halves with a sleep between them.
+Killed at "after-open-file": the file is left EMPTY, losing both
+previously-durable prior entries. Killed at "after-write": the file is left
+containing only the first half of the concatenated content, an unparseable
+or truncated-mid-entry mess that may also destroy earlier valid entries
+(unlike a real torn TAIL write, which only ever affects the newest line).
+
+At this stage, ONLY the corruption-detection test exists in
+crash-suite.test.ts; the main randomized safe-path suite (which exercises
+appendEntry/writeSnapshot for real) had not yet been written.
+
+  $ npx vitest run --coverage.enabled=false packages/journal/src/crash-fixtures/crash-suite.test.ts
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:51:04
+   Duration  834ms (transform 249ms, setup 0ms, import 476ms, tests 260ms, environment 0ms)
+
+The test's own assertions are the "RED-equivalent" proof: it asserts
+`report.allConverged` is `false` and at least one fault point's `verdict`
+is `"fail"` — i.e. the crash-suite verify() step (verifyAppendRecovery:
+verifyChain -> repairChain -> verifyChain -> assert exactly the expected
+surviving-entry count -> assert the journal remains writable) correctly
+identifies the broken variant's real, OS-level SIGKILL-induced corruption
+as corruption, for both fault points exercised ("after-open-file" and
+"after-write"). This test PASSING is what proves the scaffolding has teeth;
+see exit-criteria-crash-suite-passing.txt for the full file (this test plus
+the main randomized safe-path suite) all green together, and
+exit-criteria-crash-suite.txt for the committed large-scale run.

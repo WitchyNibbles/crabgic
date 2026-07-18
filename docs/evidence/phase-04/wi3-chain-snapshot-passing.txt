@@ -1,0 +1,30 @@
+======================================================================
+PHASE 04, WORK ITEM 3 — chain verifier + tail repair + snapshot writer/loader + recover — PASSING evidence
+Captured: 2026-07-17
+======================================================================
+
+Real verifyChain (hash-chain + prevHash + seq verification, distinct
+parse_error/hash_mismatch/prev_hash_mismatch/seq_gap issue kinds),
+repairChain (durable truncate + adjudication_decision repair entry —
+documented deviation, see repair-chain.ts's doc comment for why
+adjudication_decision was chosen over inventing a 14th JournalEntryType),
+writeSnapshot/loadLatestSnapshot (atomic temp+rename), and recover
+(snapshot + replay) all landed. Includes the two required fast-check
+property suites (torn-write recovery always converges to a valid chain
+prefix; snapshot+replay reconstructs identical state to full
+replay-from-genesis) and the parked:rate_limit session_id retention
+exit-criterion test.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/store/verify-chain.test.ts packages/journal/src/store/repair-chain.test.ts packages/journal/src/store/snapshot-io.test.ts packages/journal/src/store/journal-recovery-properties.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  4 passed (4)
+      Tests  19 passed (19)
+   Start at  00:18:19
+   Duration  937ms (transform 596ms, setup 0ms, import 856ms, tests 831ms, environment 0ms)
+

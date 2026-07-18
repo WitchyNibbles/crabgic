@@ -1,0 +1,39 @@
+======================================================================
+PHASE 04, WORK ITEM 2 — append path + fsync discipline — FAILING-FIRST evidence
+Captured: 2026-07-17
+======================================================================
+
+durablyAppendLine is a naive buffered writer (open -> write -> close,
+no fsync at all) — the fsync-ordering test below fails genuinely
+(0 fsync calls observed) before the fsync-ordered implementation lands.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/journal/src/store/durable-io.test.ts
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/journal| src/store/durable-io.test.ts (7 tests | 1 failed) 29ms
+     × performs write -> fsync(file) -> fsync(dir), in exactly that order, on the real fs port 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/journal| src/store/durable-io.test.ts > durablyAppendLine — real filesystem > performs write -> fsync(file) -> fsync(dir), in exactly that order, on the real fs port
+AssertionError: expected 0 to be greater than or equal to 2
+ ❯ src/store/durable-io.test.ts:52:33
+     50|
+     51|     expect(firstWriteIndex).toBeGreaterThanOrEqual(0);
+     52|     expect(fsyncIndexes.length).toBeGreaterThanOrEqual(2);
+       |                                 ^
+     53|     // The write must happen before ANY fsync call.
+     54|     expect(firstWriteIndex).toBeLessThan(fsyncIndexes[0]!);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  00:11:07
+   Duration  174ms (transform 29ms, setup 0ms, import 41ms, tests 29ms, environment 0ms)
+
