@@ -1,0 +1,84 @@
+=== RECAPTURED after phase-05 hardening pass (2026-07-18) — see README.md's "Hardening
+=== pass (2026-07-18)" section for F1/F2/F3. Prior capture (147 tests) is superseded by
+=== this one (156 tests = 147 + 1 new F1 exact-drop-count test + 6 new F2 line-framer
+=== cap tests + 2 new F2 uds-server integration tests).
+
+=== npx tsc -b packages/supervisor ===
+(clean — no output above means success)
+
+=== npx vitest run --coverage.enabled=false packages/supervisor ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  32 passed (32)
+      Tests  156 passed (156)
+   Start at  19:37:55
+   Duration  2.36s (transform 8.50s, setup 0ms, import 12.89s, tests 4.99s, environment 8ms)
+
+Note: one flake was observed and re-run during this gate capture —
+src/idle-budget/heartbeat-scheduler.test.ts's "stays under <1% of one core while idle"
+CPU-budget timing assertion (0.01186 vs the <0.01 budget threshold) on this shared/noisy
+host, pre-existing and unrelated to this session's changes (this file was not touched by
+this hardening pass). Isolated re-run immediately after: `npx vitest run
+--coverage.enabled=false packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts`
+-> 5/5 passed. The full-suite run captured above is a clean 156/156 pass with no retry.
+
+=== npx eslint packages/supervisor --ignore-pattern 'spikes/**' ===
+(clean — no output above means success)
+
+=== npx prettier --check "packages/supervisor/**/*.{ts,json,md}" "docs/ipc-protocol.md" "docs/evidence/phase-05/**/*.md" ===
+Checking formatting...
+All matched files use Prettier code style!
+
+=== coverage (scoped to packages/supervisor/src) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  32 passed (32)
+      Tests  156 passed (156)
+   Start at  19:38:24
+   Duration  2.87s (transform 8.59s, setup 0ms, import 13.50s, tests 5.35s, environment 5ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   96.76 |    84.76 |   98.54 |    98.2 |
+ src/event-bus     |   95.23 |    87.87 |     100 |     100 |
+  ...cation-bus.ts |      90 |       85 |     100 |     100 | 63-77
+  ring-buffer.ts   |     100 |     92.3 |     100 |     100 | 56
+ src/peer-auth     |   91.13 |    71.05 |     100 |   97.26 |
+  ...middleware.ts |   87.09 |    66.66 |     100 |   96.42 | 81
+  ...redentials.ts |   93.75 |       75 |     100 |   97.77 | 179
+ src/protocol      |     100 |    83.33 |     100 |     100 |
+  handshake.ts     |     100 |       75 |     100 |     100 | 30
+  ...sage-codec.ts |     100 |       50 |     100 |     100 | 11
+ src/registries    |     100 |    91.66 |     100 |     100 |
+  recovery.ts      |     100 |    91.66 |     100 |     100 | 71-72,107
+ src/router        |     100 |    96.42 |     100 |     100 |
+  build-router.ts  |     100 |    95.83 |     100 |     100 | 87
+ src/socket        |   88.23 |    71.42 |      90 |    87.5 |
+  uds-server.ts    |   88.23 |    71.42 |      90 |    87.5 | 91,108-112,154
+ ...rker-lifecycle |   98.76 |    81.48 |   93.33 |    98.7 |
+  ...ion-ladder.ts |   95.65 |      100 |   83.33 |   95.45 | 64
+  ...le-manager.ts |     100 |    73.68 |     100 |     100 | 73,137-150
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 96.76% ( 509/526 )
+Branches     : 84.76% ( 178/210 )
+Functions    : 98.54% ( 135/137 )
+Lines        : 98.2% ( 492/501 )
+================================================================================
+
+(uds-server.ts's coverage dipped slightly in relative percentage — 88.23%/71.42% vs the
+prior 82.92%/68.42% baseline is actually a small IMPROVEMENT despite more lines added by
+frameSocketLines/serveConnection's outer LineTooLongError catch; the uncovered lines
+91,108-112,154 are the HandshakeProtocolError branch's early-return and the
+onConnectionError passthrough branch in startSupervisorServer, both pre-existing
+untested-by-design paths, not new gaps introduced by this hardening pass.)
+
+All numbers remain above the ground rule's 80% line+branch bar.

@@ -1,0 +1,51 @@
+Fix F1 (MINOR, phase-05 hardening pass, 2026-07-18) — mutant reverted, real
+implementation restored and green.
+
+ring-buffer.ts's poll() restored to the original, correct arithmetic:
+
+  drops += oldestSeq - 1 - cursor;
+
+(the temporary "// MUTANT" marker and comment removed — the diff against the pre-fix
+version of ring-buffer.ts is now empty; only the test files changed for this fix).
+
+=== npx vitest run --coverage.enabled=false packages/supervisor/src/event-bus (mutant reverted) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  4 passed (4)
+      Tests  17 passed (17)
+   Start at  19:33:20
+   Duration  613ms (transform 359ms, setup 0ms, import 518ms, tests 268ms, environment 0ms)
+
+=== npx vitest run --coverage.enabled=false packages/supervisor (full package, mutant reverted) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  32 passed (32)
+      Tests  148 passed (148)
+   Start at  19:29:22
+   Duration  1.90s (transform 7.71s, setup 0ms, import 11.56s, tests 4.46s, environment 4ms)
+
+148 = the original 147 (docs/evidence/phase-05/exit-criteria-package-gate.txt) + 1 new
+deterministic exact-drop-count test in ring-buffer-drops.test.ts. The two existing
+property tests in ring-buffer.property.test.ts were strengthened in place (same test
+count, stronger oracle) rather than duplicated.
+
+What changed, summarized (test-only — no production code diff other than the
+mutant-and-revert cycle itself, which nets to zero):
+- packages/supervisor/src/event-bus/ring-buffer-drops.test.ts: added one deterministic
+  test asserting an EXACT drop count (11) for a subscriber that has fallen a known,
+  hand-computed number of entries behind a small, capacity-bounded FIFO buffer.
+- packages/supervisor/src/event-bus/ring-buffer.property.test.ts: added an independent,
+  brute-force-loop-counted reference model (createReferenceModel) that mirrors the
+  byte-capacity FIFO eviction rule but computes each subscriber's drop count via
+  enumeration, never via ring-buffer.ts's own closed-form subtraction; wired it into
+  both existing property tests, replacing their prior weak oracles
+  (Number.isInteger(drops) && drops>=0, and Array.isArray(polled)) with exact-match
+  assertions against this model, plus a "dropped + survived === pushed" full-accounting
+  invariant on the first test. Also rebalanced the first test's action-arbitrary weights
+  and array-length/capacity parameters (see fix-dropcount-mutant-killed.txt) so the
+  property actually exercises real, repeated eviction in every generated run instead of
+  rarely triggering it.

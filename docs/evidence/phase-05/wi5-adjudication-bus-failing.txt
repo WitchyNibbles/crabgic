@@ -1,0 +1,30 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/supervisor| src/event-bus/adjudication-bus.test.ts (5 tests | 1 failed) 33ms
+     × a throwing policy resolves to deny, never allow 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/supervisor| src/event-bus/adjudication-bus.test.ts > adjudication bus — fail-closed on ANY bridge failure > a throwing policy resolves to deny, never allow
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/event-bus/adjudication-bus.test.ts:36:31
+     34|     });
+     35|     const decision = await adjudicate("Bash", { command: "rm -rf /" },…
+     36|     expect(decision.behavior).toBe("deny");
+       |                               ^
+     37|   });
+     38|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  18:21:56
+   Duration  499ms (transform 272ms, setup 0ms, import 352ms, tests 33ms, environment 0ms)
+

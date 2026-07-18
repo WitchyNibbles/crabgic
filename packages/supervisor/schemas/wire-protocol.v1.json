@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "messages": {
+    "event": ["event", "payload", "type"],
+    "handshake": ["clientName", "protocolVersion", "type"],
+    "handshake_ack": ["accepted", "protocolVersion", "reason", "type"],
+    "request": ["id", "op", "params", "type"],
+    "response": ["error", "id", "ok", "result", "type"]
+  }
+}

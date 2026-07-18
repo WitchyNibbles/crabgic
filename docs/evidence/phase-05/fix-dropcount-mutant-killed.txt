@@ -1,0 +1,96 @@
+Fix F1 (MINOR, phase-05 hardening pass, 2026-07-18) — mutant-kill proof for the
+ring-buffer drop-count arithmetic.
+
+Mutant applied to packages/supervisor/src/event-bus/ring-buffer.ts, poll(), the exact
+line the two validators flagged as unguarded (ring-buffer.ts ~line 87):
+
+  REAL:    drops += oldestSeq - 1 - cursor;
+  MUTANT:  drops += 1; // MUTANT (temporary, for docs/evidence/phase-05/fix-dropcount-mutant-*.txt) — real: drops += oldestSeq - 1 - cursor
+
+This is exactly the mutant the validators predicted would survive the prior test suite
+(ring-buffer-drops.test.ts's toBe(0)/toBeGreaterThan(0) assertions and the property
+test's Number.isInteger(drops) && drops>=0 oracle) because it still produces *a*
+non-negative integer whenever the real code would have produced a larger one.
+
+=== npx vitest run --coverage.enabled=false packages/supervisor/src/event-bus (WITH mutant) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/supervisor| src/event-bus/ring-buffer-drops.test.ts (6 tests | 1 failed) 10ms
+     × reports the EXACT drop count for a subscriber that has fallen behind — not merely 'greater than 0' 5ms
+ ❯ |@eo/supervisor| src/event-bus/ring-buffer.property.test.ts (2 tests | 2 failed) 20ms
+     × push() always resolves promptly, and each subscriber's exact drop count matches an independent reference model 10ms
+     × a subscriber that never polls accumulates drops but never crashes or blocks the producer 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > reports the EXACT drop count for a subscriber that has fallen behind — not merely 'greater than 0'
+AssertionError: expected 1 to be 11 // Object.is equality
+
+- Expected
++ Received
+
+- 11
++ 1
+
+ ❯ src/event-bus/ring-buffer-drops.test.ts:66:23
+     64|     // of 11 — this assertion catches that, where `toBeGreaterThan(0)`
+     65|     // would not.
+     66|     expect(sub.drops).toBe(11);
+       |                       ^
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |@eo/supervisor| src/event-bus/ring-buffer.property.test.ts > ring buffer — property: push() never blocks, drops are always accounted > push() always resolves promptly, and each subscriber's exact drop count matches an independent reference model
+Error: Property failed after 1 tests
+{ seed: -2063604396, path: "0:0", endOnFailure: true }
+Shrunk 1 time(s)
+Caused by: Error: Property failed by returning false
+ ❯ src/event-bus/ring-buffer.property.test.ts:96:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |@eo/supervisor| src/event-bus/ring-buffer.property.test.ts > ring buffer — property: push() never blocks, drops are always accounted > a subscriber that never polls accumulates drops but never crashes or blocks the producer
+Error: Property failed after 2 tests
+{ seed: -1175785745, path: "1:1:0:0:0:2:0", endOnFailure: true }
+Counterexample: [27]
+Shrunk 6 time(s)
+Caused by: AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/event-bus/ring-buffer.property.test.ts:180:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  3 failed | 14 passed (17)
+   Start at  19:33:07
+   Duration  618ms (transform 335ms, setup 0ms, import 498ms, tests 111ms, environment 0ms)
+
+All three strengthened assertions independently catch the mutant:
+1. ring-buffer-drops.test.ts's new deterministic "EXACT drop count" test (capacity 30,
+   6-entry FIFO, subscriber falls 11 entries behind) — expected 11, mutant reports 1.
+2. ring-buffer.property.test.ts's first property test — its new independent reference
+   model (a brute-force loop-counted shadow simulation, not ring-buffer.ts's own
+   closed-form subtraction) diverges from the mutant's fixed +1-per-poll count.
+3. ring-buffer.property.test.ts's second property test ("never polls") — same
+   independent reference model, exact match against a single large accumulated gap
+   (pushCount up to 500 against a 512-byte/20-byte-line capacity).
+
+Note: getting property test #1 to reliably catch this mutant required two supporting
+fixes to the property test's own parameters (see fix-dropcount-mutant-restored.txt's
+companion note and ring-buffer.property.test.ts's own comments): the action arbitrary's
+poll-weighting was rebalanced to match its own doc comment ("1 = slow, rarely polled",
+previously polled at the same rate as subscriber 0), and the buffer capacity/minLength
+were rebalanced (capacityBytes 2048->250, minLength 1->60) after direct measurement
+showed fast-check's default array-size heuristic clusters generated array lengths at
+~1-12 elements even with maxLength: 200, so the previous capacity (large enough to
+require 40+ pushes before any eviction) was rarely if ever exceeded in a typical run —
+the property was checking almost nothing. Both fixes are pure test-quality
+strengthening; no production code changed by them.

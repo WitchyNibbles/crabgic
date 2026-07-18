@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  18:09:58
+   Duration  157ms (transform 24ms, setup 0ms, import 36ms, tests 4ms, environment 0ms)
+

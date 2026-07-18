@@ -2,7 +2,7 @@
   "name": "@eo/supervisor",
   "version": "0.0.0",
   "private": true,
-  "description": "Supervisor daemon & UDS control plane (empty stub — phase 05).",
+  "description": "Supervisor daemon & UDS control plane (roadmap/05-supervisor-daemon.md).",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -21,5 +21,15 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@eo/contracts": "0.0.0",
+    "@eo/engine-core": "0.0.0",
+    "@eo/journal": "0.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eo/testkit": "0.0.0",
+    "fast-check": "4.9.0"
   }
 }

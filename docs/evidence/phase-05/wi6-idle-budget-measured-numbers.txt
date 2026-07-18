@@ -1,0 +1,14 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/supervisor| src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > documents the real HEARTBEAT_INTERVAL_MS constant as exactly 5 seconds 1ms
+stdout | src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler
+[idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1083% of one core (budget <1%)
+
+ ✓ |@eo/supervisor| src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler 1503ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  18:26:56
+   Duration  1.67s (transform 26ms, setup 0ms, import 39ms, tests 1.51s, environment 0ms)
+

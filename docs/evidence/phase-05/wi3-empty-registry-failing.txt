@@ -1,0 +1,41 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/supervisor| src/registries/registry.test.ts (6 tests | 2 failed) 7ms
+     × list() on a freshly-created, empty registry returns [], never throws 4ms
+     × query() on an empty registry returns [], never throws 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/supervisor| src/registries/registry.test.ts > createInMemoryRegistry > list() on a freshly-created, empty registry returns [], never throws
+Error: registry: empty
+ ❯ Object.list src/registries/registry.ts:19:15
+     17|     list() {
+     18|       if (items.size === 0) {
+     19|         throw new Error("registry: empty");
+       |               ^
+     20|       }
+     21|       return Array.from(items.values());
+ ❯ src/registries/registry.test.ts:12:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@eo/supervisor| src/registries/registry.test.ts > createInMemoryRegistry > query() on an empty registry returns [], never throws
+Error: registry: empty
+ ❯ Object.query src/registries/registry.ts:28:15
+     26|     query(predicate) {
+     27|       if (items.size === 0) {
+     28|         throw new Error("registry: empty");
+       |               ^
+     29|       }
+     30|       return Array.from(items.values()).filter(predicate);
+ ❯ src/registries/registry.test.ts:17:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  18:09:45
+   Duration  178ms (transform 25ms, setup 0ms, import 39ms, tests 7ms, environment 0ms)
+

@@ -1,0 +1,30 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/supervisor| src/worker-lifecycle/termination-ladder.test.ts (2 tests | 1 failed) 9ms
+     × reaps a hung fake worker within the grace deadline (forced escalation), never staying stuck forever 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/supervisor| src/worker-lifecycle/termination-ladder.test.ts > terminateWorker — SIGTERM -> grace -> SIGKILL ladder against the fake engine > reaps a hung fake worker within the grace deadline (forced escalation), never staying stuck forever
+AssertionError: expected 'graceful' to be 'forced' // Object.is equality
+
+Expected: "forced"
+Received: "graceful"
+
+ ❯ src/worker-lifecycle/termination-ladder.test.ts:45:28
+     43|       "terminateWorker",
+     44|     );
+     45|     expect(result.outcome).toBe("forced");
+       |                            ^
+     46|
+     47|     // Genuinely reaped: a further pull resolves immediately (done), n…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  18:15:28
+   Duration  649ms (transform 390ms, setup 0ms, import 519ms, tests 9ms, environment 0ms)
+
