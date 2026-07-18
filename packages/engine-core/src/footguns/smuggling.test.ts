@@ -71,5 +71,7 @@ describe("footgun: no commands input ever widens the compiler past the four cano
       }),
       { numRuns: 10000 },
     );
-  });
+    // 20s timeout: 10k fast-check cases can exceed vitest's default 5s under
+    // full-suite parallel CPU contention (matches anchor-forms.test.ts).
+  }, 20000);
 });

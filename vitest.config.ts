@@ -53,6 +53,13 @@ export default defineConfig({
       test: { root, name: readPackageName(root) },
     })),
     passWithNoTests: true,
+    // The default 5s per-test timeout is too tight for this repo's legitimate
+    // >=10k-case fast-check property suites (envelope-compiler footguns, config
+    // monotonicity, journal recovery, lease interleavings). Scoped they finish
+    // in ~1-2s, but under full-suite parallel CPU contention (18+ packages'
+    // test files at once) a 10k-case run can exceed 5s and flake. 20s gives
+    // ample headroom while still failing a genuinely hung test promptly.
+    testTimeout: 20000,
     // See the file-level comment above: this now actually takes effect
     // per-package, unlike under the original bare-glob `projects` form.
     exclude: ["**/dist/**", "**/node_modules/**", "**/.git/**"],

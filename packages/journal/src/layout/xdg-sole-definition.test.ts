@@ -15,35 +15,43 @@ import { describe, expect, it } from "vitest";
  * definition-site scanner sets for `GATEWAY_MCP_SERVER_NAME`, per
  * docs/evidence/phase-02/README.md).
  *
- * DETECTION RULE: flags a file OUTSIDE `packages/journal/src` only when it
- * contains BOTH (a) the product namespace literal `"engineering-
- * orchestrator"` AND (b) a reference to `XDG_STATE_HOME`/`XDG_CACHE_HOME`
- * (env-var-based root derivation — the actual reimplementation risk this
- * exit criterion cares about: a package that reads the XDG env vars itself
- * and builds its own `.../engineering-orchestrator/<hash>/...` path rather
- * than importing `resolveStateRoot`/`resolveCacheRoot`/etc. from this
- * package). Requiring BOTH conditions (not just the namespace literal
- * alone) deliberately allowlists any package that merely REFERENCES the
- * product name for unrelated reasons (e.g. a display string, a package
- * description) without touching XDG env-var resolution at all.
+ * DETECTION RULE: flags a PRODUCTION source file (`.ts`, NOT `.test.ts`)
+ * OUTSIDE `packages/journal/src` only when it contains BOTH (a) the product
+ * namespace literal `"engineering-orchestrator"` AND (b) an actual READ of
+ * `process.env.XDG_STATE_HOME`/`process.env.XDG_CACHE_HOME` (dot- or
+ * bracket-access). Reading the XDG env var itself and then building a
+ * `.../engineering-orchestrator/<hash>/...` path IS the reimplementation
+ * this exit criterion cares about — precisely "reimplements the root
+ * instead of importing it." Requiring an actual env-var READ (not a mere
+ * textual MENTION of the variable name) is what makes the rule faithful:
+ * a downstream package that correctly IMPORTS `resolveStateRoot`/
+ * `resolveCacheRoot`/`readXdgEnvFromProcess` from `@eo/journal` and only
+ * composes its own subpaths (as 05's `xdg-supervisor-layout.ts` and 07's
+ * `layout.ts` do) still MENTIONS `$XDG_STATE_HOME` in its own doc comments
+ * and re-exports, but never reads the env var itself — it must NOT be
+ * flagged. `.test.ts` files are excluded outright: a test legitimately
+ * constructs `XdgEnv` fixtures and may set `process.env.XDG_*` to exercise
+ * override behavior; that is fixture setup, not a production reimplementation
+ * of the root.
  *
- * DOCUMENTED SEAM (allowlist, per this worker's brief): `packages/engine-
- * core` is being built concurrently by another worker and legitimately
- * emits DOCUMENTED, TILDE-ANCHORED DEFAULT literals
+ * (History: the original rule matched any textual MENTION of the env-var
+ * names, which false-positived on 05/07's correct importers — doc comments
+ * and test fixtures — once those downstream packages landed. Tightened
+ * 2026-07-18 to an actual env-var READ in production source; the synthetic
+ * sanity fixture below still fires, so the check retains its teeth.)
+ *
+ * DOCUMENTED SEAM (allowlist): `packages/engine-core` legitimately emits
+ * DOCUMENTED, TILDE-ANCHORED DEFAULT literals
  * (`~/.local/state/engineering-orchestrator/**`,
  * `~/.cache/engineering-orchestrator/**`) in its compiled capability-deny
- * lists — phase 03 (engine-core) cannot import phase 04 (journal) per the
- * roadmap's own dependency graph (03 has no edge to/from 04), so it cannot
- * literally import `resolveStateRoot`/`resolveCacheRoot` even if it wanted
- * to; an orchestrator-settled seam, not a violation this check should
- * catch. Those literals are STATIC STRINGS (no `process.env.XDG_*` read
- * anywhere near them) — under this check's AND-based detection rule they
- * would not match condition (b) and so would not be flagged even with no
- * explicit allowlist entry. `XDG_ALLOWLISTED_RELATIVE_PATHS` exists as a
- * defensive, explicit escape hatch anyway (e.g. for a doc comment in
- * engine-core that happens to mention `$XDG_STATE_HOME` in prose while
- * explaining why its literal mirrors that variable's own spec default) —
- * entries here must each carry a one-line rationale in the array itself.
+ * lists — phase 03 (engine-core) has no dependency edge to phase 04
+ * (journal) per the roadmap graph, so it cannot import
+ * `resolveStateRoot`/`resolveCacheRoot` and instead hardcodes the XDG
+ * spec's own unset-env-var defaults. Those literals are STATIC STRINGS with
+ * NO `process.env.XDG_*` read, so under the READ-based rule they are not
+ * flagged even without an allowlist entry. The explicit entry remains as a
+ * defensive escape hatch (and to document the seam); each entry must carry
+ * an inline rationale and is kept honest by the last test below.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -54,25 +62,22 @@ const PACKAGES_DIR = join(REPO_ROOT, "packages");
 const XDG_ALLOWLISTED_RELATIVE_PATHS: readonly string[] = [
   // packages/engine-core/src/compiler/xdg-default-paths.ts: confirmed by
   // direct read (2026-07-18) — this file's ONLY XDG-related runtime values
-  // are `~`-anchored literal fallbacks
-  // (CONTROL_REPO_STATE_ROOT_DENY_PATH = "~/.local/state/engineering-
-  // orchestrator/**", CONTROL_REPO_CACHE_ROOT_DENY_PATH =
-  // "~/.cache/engineering-orchestrator/**") with NO `process.env.XDG_*`
-  // read anywhere in the file — it is not a reimplementation of env-var-
-  // based root resolution at all. It matches this check's AND-rule only
-  // because its own doc comment DISCUSSES `$XDG_STATE_HOME`/
-  // `$XDG_CACHE_HOME` in PROSE while explaining exactly why it deliberately
-  // does NOT resolve them (the documented phase 03 -> phase 04 import-edge
-  // seam roadmap/03 and interface-ledger Gap 14 both record: phase 03
-  // cannot depend on `@eo/journal`, so it hardcodes the XDG spec's own
-  // documented unset-env-var defaults instead of reading the env vars).
+  // are `~`-anchored literal fallbacks with NO `process.env.XDG_*` read
+  // anywhere in the file. Under the READ-based rule it would not be flagged
+  // regardless; the entry documents the phase-03->phase-04 no-import-edge seam
+  // (roadmap/03, interface-ledger Gap 14).
   "packages/engine-core/src/compiler/xdg-default-paths.ts",
 ];
 
 const NAMESPACE_LITERAL = "engineering-orchestrator";
-const XDG_ENV_VAR_PATTERN = /XDG_STATE_HOME|XDG_CACHE_HOME/;
+/**
+ * An actual READ of the XDG env vars: `process.env.XDG_STATE_HOME`,
+ * `process.env["XDG_CACHE_HOME"]`, etc. A file that only names the variable
+ * in prose, a re-export, or an `XdgEnv` object-literal key does NOT match.
+ */
+const XDG_ENV_READ_PATTERN = /process\.env(?:\s*\[\s*["'`]|\.)\s*(?:XDG_STATE_HOME|XDG_CACHE_HOME)/;
 
-function listTsFilesRecursive(dir: string): string[] {
+function listProductionTsFilesRecursive(dir: string): string[] {
   let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -84,8 +89,8 @@ function listTsFilesRecursive(dir: string): string[] {
     if (entry.name === "node_modules" || entry.name === "dist") continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      out.push(...listTsFilesRecursive(full));
-    } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+      out.push(...listProductionTsFilesRecursive(full));
+    } else if (entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
       out.push(full);
     }
   }
@@ -101,14 +106,14 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
     const violations: string[] = [];
     for (const pkg of packageEntries) {
       const srcDir = join(PACKAGES_DIR, pkg.name, "src");
-      for (const file of listTsFilesRecursive(srcDir)) {
+      for (const file of listProductionTsFilesRecursive(srcDir)) {
         const rel = relative(REPO_ROOT, file);
         if (XDG_ALLOWLISTED_RELATIVE_PATHS.includes(rel)) continue;
 
         const content = readFileSync(file, "utf8");
         const hasNamespaceLiteral = content.includes(NAMESPACE_LITERAL);
-        const hasEnvVarDerivation = XDG_ENV_VAR_PATTERN.test(content);
-        if (hasNamespaceLiteral && hasEnvVarDerivation) {
+        const readsXdgEnv = XDG_ENV_READ_PATTERN.test(content);
+        if (hasNamespaceLiteral && readsXdgEnv) {
           violations.push(rel);
         }
       }
@@ -128,15 +133,29 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
       const root = join(stateHome, "engineering-orchestrator", projectHash);
     `;
     const hasNamespaceLiteral = fakeReimplementation.includes(NAMESPACE_LITERAL);
-    const hasEnvVarDerivation = XDG_ENV_VAR_PATTERN.test(fakeReimplementation);
-    expect(hasNamespaceLiteral && hasEnvVarDerivation).toBe(true);
+    const readsXdgEnv = XDG_ENV_READ_PATTERN.test(fakeReimplementation);
+    expect(hasNamespaceLiteral && readsXdgEnv).toBe(true);
   });
 
-  it("sanity: a tilde-anchored literal default with no XDG env-var reference does NOT trigger the check (the engine-core seam)", () => {
+  it("sanity: a correct importer that only MENTIONS the env var (doc comment, re-export, XdgEnv fixture key) is NOT flagged", () => {
+    // The exact shape 05/07's layout modules take: import the resolver from
+    // @eo/journal, mention `$XDG_STATE_HOME` in prose, never read the env var.
+    const correctImporter = `
+      import { resolveStateRoot, type XdgEnv } from "@eo/journal";
+      // nests under 04's pinned $XDG_STATE_HOME/engineering-orchestrator/<hash>/ root
+      export const fixture: XdgEnv = { HOME: "/h", XDG_STATE_HOME: "/s" };
+      export function dir(env: XdgEnv, h: string) { return resolveStateRoot(env, h); }
+    `;
+    const hasNamespaceLiteral = correctImporter.includes(NAMESPACE_LITERAL);
+    const readsXdgEnv = XDG_ENV_READ_PATTERN.test(correctImporter);
+    expect(hasNamespaceLiteral && readsXdgEnv).toBe(false);
+  });
+
+  it("sanity: a tilde-anchored literal default with no XDG env-var read does NOT trigger the check (the engine-core seam)", () => {
     const tildeDefault = `export const DEFAULT_STATE_DENY_ROOT = "~/.local/state/engineering-orchestrator/**";`;
     const hasNamespaceLiteral = tildeDefault.includes(NAMESPACE_LITERAL);
-    const hasEnvVarDerivation = XDG_ENV_VAR_PATTERN.test(tildeDefault);
-    expect(hasNamespaceLiteral && hasEnvVarDerivation).toBe(false);
+    const readsXdgEnv = XDG_ENV_READ_PATTERN.test(tildeDefault);
+    expect(hasNamespaceLiteral && readsXdgEnv).toBe(false);
   });
 
   it("keeps every allowlisted file honest: none of them actually reads process.env.XDG_STATE_HOME/XDG_CACHE_HOME (only mentions the names in prose/literals)", () => {
@@ -144,11 +163,10 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
     // reimplementation slipped into an already-allowlisted file — an
     // allowlist entry is only valid for a file with NO env-var READ, only
     // a literal/prose mention of the variable names.
-    const ENV_READ_PATTERN = /process\.env(?:\s*\[\s*["'`]|\.)\s*(?:XDG_STATE_HOME|XDG_CACHE_HOME)/;
     for (const rel of XDG_ALLOWLISTED_RELATIVE_PATHS) {
       const content = readFileSync(join(REPO_ROOT, rel), "utf8");
       expect(
-        ENV_READ_PATTERN.test(content),
+        XDG_ENV_READ_PATTERN.test(content),
         `allowlisted file "${rel}" now reads XDG env vars directly — remove it from the allowlist and let the check flag it`,
       ).toBe(false);
     }

@@ -33,7 +33,9 @@ describe("footgun: never a blanket mcp__* deny", () => {
       }),
       { numRuns: 10000 },
     );
-  });
+    // 20s timeout: 10k fast-check cases can exceed vitest's default 5s under
+    // full-suite parallel CPU contention (matches anchor-forms.test.ts).
+  }, 20000);
 
   it("single-server exposure comes from strictMcpConfig, not a deny (roadmap/03's own footgun bullet)", () => {
     const compiled = compileEnvelope(buildEnvelopeFixture());

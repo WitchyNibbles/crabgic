@@ -80,7 +80,9 @@ describe("compileEnvelope — property: no allow outside the envelope (≥10k ca
       }),
       { numRuns: 10000 },
     );
-  });
+    // 20s timeout: 10k fast-check cases can exceed vitest's default 5s under
+    // full-suite parallel CPU contention (matches anchor-forms.test.ts).
+  }, 20000);
 
   it("a target inside a declared owned path IS allowed for Edit (positive confinement counterpart)", () => {
     fc.assert(
