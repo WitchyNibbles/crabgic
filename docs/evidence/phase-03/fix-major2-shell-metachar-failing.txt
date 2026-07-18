@@ -1,0 +1,64 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts (24 tests | 3 failed | 21 skipped) 8ms
+     × 'git status & curl evil' (single '&' background operator, not split by the compound-operator regex) must deny 6ms
+     × 'git status $(curl evil)' (command substitution) must deny 1ms
+     × 'git status `curl evil`' (backtick command substitution) must deny 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status & curl evil' (single '&' background operator, not split by the compound-operator regex) must deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:196:7
+    194|         toolInput: { command: "git status & curl evil" },
+    195|       }),
+    196|     ).toBe("deny");
+       |       ^
+    197|   });
+    198|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status $(curl evil)' (command substitution) must deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:205:7
+    203|         toolInput: { command: "git status $(curl evil)" },
+    204|       }),
+    205|     ).toBe("deny");
+       |       ^
+    206|   });
+    207|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status `curl evil`' (backtick command substitution) must deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:214:7
+    212|         toolInput: { command: "git status `curl evil`" },
+    213|       }),
+    214|     ).toBe("deny");
+       |       ^
+    215|   });
+    216| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 21 skipped (24)
+   Start at  10:39:46
+   Duration  305ms (transform 149ms, setup 0ms, import 195ms, tests 8ms, environment 0ms)
+

@@ -1,0 +1,56 @@
+=== tsc -b packages/engine-core packages/testkit ===
+tsc exit=0
+
+=== vitest run --coverage.enabled=false packages/engine-core packages/testkit ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  33 passed (33)
+      Tests  316 passed (316)
+   Start at  10:59:54
+   Duration  8.42s (transform 6.25s, setup 0ms, import 10.20s, tests 14.96s, environment 4ms)
+
+
+=== eslint (packages/engine-core/src packages/testkit/src) ===
+eslint exit=0
+
+=== prettier --check (touched files) ===
+Checking formatting...
+All matched files use Prettier code style!
+
+=== gateway sole-definition-site scanner (packages/contracts/src/gateway/server-name.test.ts) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  11:00:06
+   Duration  151ms (transform 21ms, setup 0ms, import 31ms, tests 11ms, environment 0ms)
+
+
+=== golden byte-stability: two consecutive npm run build:goldens generations, sha256 compared ===
+
+> @eo/engine-core@0.0.0 build:goldens
+> tsc -b && node scripts/write-goldens.ts
+
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/read-only.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/read-only.sdk-options.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/standard-implementation.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/standard-implementation.sdk-options.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/network-granted.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/network-granted.sdk-options.json
+done: 6 golden artifact(s) written to /home/eimi/projects/crabgic/packages/engine-core/goldens
+
+> @eo/engine-core@0.0.0 build:goldens
+> tsc -b && node scripts/write-goldens.ts
+
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/read-only.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/read-only.sdk-options.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/standard-implementation.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/standard-implementation.sdk-options.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/network-granted.settings.json
+wrote /home/eimi/projects/crabgic/packages/engine-core/goldens/network-granted.sdk-options.json
+done: 6 golden artifact(s) written to /home/eimi/projects/crabgic/packages/engine-core/goldens
+BYTE-STABLE across two consecutive generations (sha256 diff empty)

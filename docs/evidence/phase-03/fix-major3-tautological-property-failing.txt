@@ -1,0 +1,26 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/engine-core| src/footguns/anchor-forms.test.ts (6 tests | 1 failed | 5 skipped) 7ms
+     × compileEnvelope rejects '~/'-prefixed owned paths outright instead of compiling them into a plausible-looking allow rule (the exact input the OLD anchor-forms assertion endorsed as correct) 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/footguns/anchor-forms.test.ts > MAJOR 3 regression: the compiler must not treat a hostile owned path as valid, compilable output > compileEnvelope rejects '~/'-prefixed owned paths outright instead of compiling them into a plausible-looking allow rule (the exact input the OLD anchor-forms assertion endorsed as correct)
+AssertionError: expected [Function] to throw an error
+ ❯ src/footguns/anchor-forms.test.ts:74:7
+     72|     expect(() =>
+     73|       compileEnvelope(buildEnvelopeFixture({ ownedPaths: ["~/.ssh", "~…
+     74|     ).toThrow();
+       |       ^
+     75|   });
+     76| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  10:39:51
+   Duration  331ms (transform 160ms, setup 0ms, import 219ms, tests 7ms, environment 0ms)
+

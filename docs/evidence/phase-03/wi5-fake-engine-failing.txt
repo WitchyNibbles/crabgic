@@ -1,0 +1,998 @@
+Phase 03, worker W2 — work item 5 (fake engine) failing-first evidence.
+
+roadmap/03-envelope-compiler-engine-adapter.md work item 5's own
+failing-first fixture: "a test spawning the not-yet-built fake engine
+against a phase-00 scripted trace and asserting ordered EngineEvent
+replay — fails until it exists."
+
+Date: 2026-07-18
+
+Method: every non-trivial fake-engine module (bash-command-matching,
+path-matching, permission-evaluator, sandbox-evaluator,
+adjudication-layer, layered-conformance, fake-engine-adapter) was first
+written as a deliberately-wrong STUB — compiling, type-correct, trivial or
+incorrect bodies (e.g. evaluatePermissionLayer always returns "deny",
+evaluateSandboxLayer always returns "allow", evaluateAdjudicationLayer
+always returns "allow" — the exact fail-OPEN bug the mandatory security
+test must catch — FakeEngineAdapter.spawn ignores the script and yields
+only an init event, FakeEngineAdapter.resume always throws
+"not implemented"). The full, real test suites below were then run
+against these stubs, producing genuine assertion-level failures (not
+"Cannot find module" failures) per the roadmap/README.md TDD ground rule
+and the lesson recorded in docs/evidence/phase-02/README.md deviation #9
+(prefer stub-backed RED captures over module-resolution-failure RED where
+practical).
+
+Command: npx vitest run --coverage.enabled=false packages/testkit
+(the full run covered both work item 5 and work item 6 files in one pass;
+this file holds every failure OUTSIDE fake-engine/conformance-fixtures/ —
+see wi6-conformance-failing.txt for that subset).
+
+Full-run result at this stage: 54 failed / 117 passed (171 total) across
+the whole packages/testkit fake-engine tree (13 failed test files, 7
+passed test files, of 20 total). The log below is the subset of that same
+run's failures belonging to work item 5's own files.
+
+======================================================================
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts (17 tests | 4 failed) 15ms
+     × allows a Bash command matching an allow-listed prefix 4ms
+     × the un-smuggled control command (echo alone) still allows 1ms
+     × allows an Edit inside the owned path 1ms
+     × allows a gateway tool call matching the server-scoped allow entry 1ms
+ ❯ |@eo/testkit| src/fake-engine/path-matching.test.ts (12 tests | 6 failed) 13ms
+     × matches a plain (worktree-relative, '//'-anchor-equivalent) target under the base 6ms
+     × matches the base path itself with no trailing segment 1ms
+     × matches a '~/'-anchored rule against a '~/'-prefixed target 1ms
+     × matches a bare '/'-anchored rule against a matching absolute target 1ms
+     × matches when both the tool and the anchored glob agree 1ms
+     × Read(~/.ssh/**) matches an attempted read under ~/.ssh (docs/engine-baseline.md §6 denyRead probe) 1ms
+ ❯ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts (9 tests | 4 failed) 10ms
+     × extracts a domain from a full URL 5ms
+     × extracts a domain from a bare curl target 1ms
+     × denies a Bash call targeting a domain outside allowedDomains 1ms
+     × denies a Read under a denyRead entry 1ms
+ ❯ |@eo/testkit| src/fake-engine/parity.test.ts (8 tests | 1 failed) 9ms
+     × bash-colon-spacing: the no-space form matches (baseline's load-bearing verdict for phase 03) 5ms
+ ❯ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts (15 tests | 10 failed) 22ms
+     × splits on && (docs/engine-baseline.md §3 compound-command probe) 8ms
+     × splits on ||, ;, and | 2ms
+     × drops empty segments from stray/adjacent separators 1ms
+     × strips a bare nohup wrapper (docs/engine-baseline.md §3 process-wrapper probe) 1ms
+     × strips a bare nice wrapper 1ms
+     × strips a timeout wrapper and its duration argument 1ms
+     × strips chained wrappers 1ms
+     × decomposes a compound command with a process-wrapper segment into matchable subcommands 1ms
+     × matches the exact prefix with a trailing word boundary 1ms
+     × the doc's four confirmed literals all match their own prefix (interface-ledger Gap 12) 0ms
+ ❯ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts (9 tests | 5 failed) 10ms
+     × a callback that returns deny -> deny 4ms
+     × a callback that THROWS -> deny, never allow (fail-closed) 0ms
+     × a callback that throws a non-Error value -> still deny 0ms
+     × no callback supplied at all (runtime-undefined, bypassing the type system) -> deny, never allow 0ms
+     × a non-function value passed where a callback is expected -> deny 1ms
+ ❯ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts (7 tests | 4 failed) 8ms
+     × rejects a fixture whose 'expected' object is missing the 'sandbox' verdict 5ms
+     × rejects a fixture missing the entire 'expected' object 1ms
+     × rejects an 'expected' verdict value outside the allow|deny enum 0ms
+     × rejects an unknown extra top-level field (.strict()) 0ms
+ ❯ |@eo/testkit| src/fake-engine/layered-conformance.test.ts (6 tests | 5 failed) 12ms
+     × allow + allow + allow -> overall allow, every field populated 8ms
+     × adjudication layer alone denying makes overall deny even if permissions/sandbox allow 1ms
+     × a throwing adjudication callback still fails closed inside the combined evaluation 1ms
+     × sandbox layer alone denying (disallowed network domain) makes overall deny 1ms
+     × an explicit permissionRules override is used instead of the profile's own permissions (cross-level merge support) 1ms
+ ❯ |@eo/testkit| src/fake-engine/demo.test.ts (1 test | 1 failed) 5ms
+     × spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure 4ms
+ ❯ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts (10 tests | 2 failed) 17ms
+     × compound-command-smuggling reproduces its hand-derived expected per-layer verdict 9ms
+     × process-wrapper-smuggling reproduces its hand-derived expected per-layer verdict 1ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts (3 tests | 3 failed) 10ms
+     × a scripted tool call adjudicated by a THROWING callback is denied, never executed 7ms
+     × a spawn() call given no adjudicate callback at all (runtime bypass of the required parameter) fails closed 1ms
+     × resume() with a throwing callback also fails closed for the resumed session's own scripted calls 1ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts (6 tests | 4 failed) 14ms
+     × resume() continues a crashed session to a normal terminal result (kill9-resume shape) 3ms
+     × replays a verbatim recorded rate_limit_event payload mid-stream, then completes normally 2ms
+     × terminal result is success-shaped with structuredOutput undefined, no retry event, no error 1ms
+     × the stream blocks until cancel() resolves it, then ends with no result event 2ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts (8 tests | 5 failed) 18ms
+     × replays init -> toolUse -> result for an allowed scripted call 8ms
+     × a permission-denied tool call never emits a toolUse event, only appears in the terminal result's permissionDenials 2ms
+     × emits multiple toolUse events in scripted order for multiple allowed calls 2ms
+     × the normal-path terminal result's structuredOutput conforms to WorkerResultSchema (deliverable 1) 3ms
+     × resume() with a matching sessionRef continues via the script's onResume continuation 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 54 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that returns deny -> deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/adjudication-layer.test.ts:26:73
+     24|
+     25|   it("a callback that returns deny -> deny", async () => {
+     26|     expect(await evaluateAdjudicationLayer(alwaysDenyAdjudicate, CALL)…
+       |                                                                         ^
+     27|   });
+     28|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that THROWS -> deny, never allow (fail-closed)
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/adjudication-layer.test.ts:30:74
+     28|
+     29|   it("a callback that THROWS -> deny, never allow (fail-closed)", asyn…
+     30|     expect(await evaluateAdjudicationLayer(alwaysThrowAdjudicate, CALL…
+       |                                                                          ^
+     31|   });
+     32|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that throws a non-Error value -> still deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/adjudication-layer.test.ts:38:65
+     36|       throw "not an Error instance";
+     37|     };
+     38|     expect(await evaluateAdjudicationLayer(throwsString, CALL)).toBe("…
+       |                                                                 ^
+     39|   });
+     40|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > no callback supplied at all (runtime-undefined, bypassing the type system) -> deny, never allow
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/adjudication-layer.test.ts:42:62
+     40|
+     41|   it("no callback supplied at all (runtime-undefined, bypassing the ty…
+     42|     expect(await evaluateAdjudicationLayer(undefined, CALL)).toBe("den…
+       |                                                              ^
+     43|   });
+     44|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a non-function value passed where a callback is expected -> deny
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/adjudication-layer.test.ts:47:65
+     45|   it("a non-function value passed where a callback is expected -> deny…
+     46|     const notAFunction = "not-a-callback" as unknown as typeof alwaysA…
+     47|     expect(await evaluateAdjudicationLayer(notAFunction, CALL)).toBe("…
+       |                                                                 ^
+     48|   });
+     49| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > splits on && (docs/engine-baseline.md §3 compound-command probe)
+AssertionError: expected [ 'echo x && curl http://example.com' ] to deeply equal [ 'echo x', 'curl http://example.com' ]
+
+- Expected
++ Received
+
+  [
+-   "echo x",
+-   "curl http://example.com",
++   "echo x && curl http://example.com",
+  ]
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:20:71
+     18| describe("splitCompoundCommand", () => {
+     19|   it("splits on && (docs/engine-baseline.md §3 compound-command probe)…
+     20|     expect(splitCompoundCommand("echo x && curl http://example.com")).…
+       |                                                                       ^
+     21|       "echo x",
+     22|       "curl http://example.com",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > splits on ||, ;, and |
+AssertionError: expected [ 'echo a || echo b' ] to deeply equal [ 'echo a', 'echo b' ]
+
+- Expected
++ Received
+
+  [
+-   "echo a",
+-   "echo b",
++   "echo a || echo b",
+  ]
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:27:54
+     25|
+     26|   it("splits on ||, ;, and |", () => {
+     27|     expect(splitCompoundCommand("echo a || echo b")).toEqual(["echo a"…
+       |                                                      ^
+     28|     expect(splitCompoundCommand("echo a; echo b")).toEqual(["echo a", …
+     29|     expect(splitCompoundCommand("echo a | cat")).toEqual(["echo a", "c…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > drops empty segments from stray/adjacent separators
+AssertionError: expected [ 'echo a &&  && echo b' ] to deeply equal [ 'echo a', 'echo b' ]
+
+- Expected
++ Received
+
+  [
+-   "echo a",
+-   "echo b",
++   "echo a &&  && echo b",
+  ]
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:37:58
+     35|
+     36|   it("drops empty segments from stray/adjacent separators", () => {
+     37|     expect(splitCompoundCommand("echo a &&  && echo b")).toEqual(["ech…
+       |                                                          ^
+     38|   });
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a bare nohup wrapper (docs/engine-baseline.md §3 process-wrapper probe)
+AssertionError: expected 'nohup curl http://example.com' to be 'curl http://example.com' // Object.is equality
+
+Expected: "curl http://example.com"
+Received: "nohup curl http://example.com"
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:43:66
+     41| describe("stripProcessWrapper", () => {
+     42|   it("strips a bare nohup wrapper (docs/engine-baseline.md §3 process-…
+     43|     expect(stripProcessWrapper("nohup curl http://example.com")).toBe(…
+       |                                                                  ^
+     44|   });
+     45|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a bare nice wrapper
+AssertionError: expected 'nice curl http://example.com' to be 'curl http://example.com' // Object.is equality
+
+Expected: "curl http://example.com"
+Received: "nice curl http://example.com"
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:47:65
+     45|
+     46|   it("strips a bare nice wrapper", () => {
+     47|     expect(stripProcessWrapper("nice curl http://example.com")).toBe("…
+       |                                                                 ^
+     48|   });
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a timeout wrapper and its duration argument
+AssertionError: expected 'timeout 10 curl http://example.com' to be 'curl http://example.com' // Object.is equality
+
+Expected: "curl http://example.com"
+Received: "timeout 10 curl http://example.com"
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:51:71
+     49|
+     50|   it("strips a timeout wrapper and its duration argument", () => {
+     51|     expect(stripProcessWrapper("timeout 10 curl http://example.com")).…
+       |                                                                       ^
+     52|       "curl http://example.com",
+     53|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips chained wrappers
+AssertionError: expected 'nohup nice curl http://example.com' to be 'curl http://example.com' // Object.is equality
+
+Expected: "curl http://example.com"
+Received: "nohup nice curl http://example.com"
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:57:71
+     55|
+     56|   it("strips chained wrappers", () => {
+     57|     expect(stripProcessWrapper("nohup nice curl http://example.com")).…
+       |                                                                       ^
+     58|       "curl http://example.com",
+     59|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > decomposeBashCommand > decomposes a compound command with a process-wrapper segment into matchable subcommands
+AssertionError: expected [ Array(1) ] to deeply equal [ 'echo x', 'curl http://example.com' ]
+
+- Expected
++ Received
+
+  [
+-   "echo x",
+-   "curl http://example.com",
++   "echo x && nohup curl http://example.com",
+  ]
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:69:77
+     67| describe("decomposeBashCommand", () => {
+     68|   it("decomposes a compound command with a process-wrapper segment int…
+     69|     expect(decomposeBashCommand("echo x && nohup curl http://example.c…
+       |                                                                             ^
+     70|       "echo x",
+     71|       "curl http://example.com",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > matches the exact prefix with a trailing word boundary
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:82:75
+     80| describe("matchesBashPrefixRule", () => {
+     81|   it("matches the exact prefix with a trailing word boundary", () => {
+     82|     expect(matchesBashPrefixRule("Bash(npm run test:*)", "npm run test…
+       |                                                                           ^
+     83|     expect(matchesBashPrefixRule("Bash(npm run test:*)", "npm run test…
+     84|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > the doc's four confirmed literals all match their own prefix (interface-ledger Gap 12)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/bash-command-matching.test.ts:95:77
+     93|
+     94|   it("the doc's four confirmed literals all match their own prefix (in…
+     95|     expect(matchesBashPrefixRule("Bash(npm run build:*)", "npm run bui…
+       |                                                                             ^
+     96|     expect(matchesBashPrefixRule("Bash(git status:*)", "git status")).…
+     97|     expect(matchesBashPrefixRule("Bash(git diff:*)", "git diff")).toBe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/demo.test.ts > exit criterion 5 — smuggled-command demo > spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure
+AssertionError: expected undefined to be defined
+ ❯ src/fake-engine/demo.test.ts:39:25
+     37|
+     38|     const resultEvent = events.find((event): event is EngineResultEven…
+     39|     expect(resultEvent).toBeDefined();
+       |                         ^
+     40|     expect(resultEvent?.permissionDenials).toEqual([
+     41|       { toolName: "Bash", toolInput: { command: smuggledCommand } },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — crash injection (docs/engine-baseline.md §7 kill9 shape) > resume() continues a crashed session to a normal terminal result (kill9-resume shape)
+Error: FakeEngineAdapter.resume: stub not implemented
+ ❯ FakeEngineAdapter.resume src/fake-engine/fake-engine-adapter.ts:72:11
+     70|
+     71|   resume(_sessionRef: SessionRef, _adjudicate: AdjudicationCallback): …
+     72|     throw new Error("FakeEngineAdapter.resume: stub not implemented");
+       |           ^
+     73|   }
+     74|
+ ❯ src/fake-engine/fake-engine-adapter.failures.test.ts:54:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — limitSignal injection (docs/engine-baseline.md §8 verbatim schema) > replays a verbatim recorded rate_limit_event payload mid-stream, then completes normally
+AssertionError: expected undefined to be 'allowed_warning' // Object.is equality
+
+- Expected:
+"allowed_warning"
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/fake-engine-adapter.failures.test.ts:72:82
+     70|
+     71|     const limitEvent = events.find((e) => e.type === "limitSignal");
+     72|     expect(limitEvent && limitEvent.type === "limitSignal" && limitEve…
+       |                                                                                  ^
+     73|     expect(limitEvent && limitEvent.type === "limitSignal" && limitEve…
+     74|     expect(events.some((e) => e.type === "result")).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — schema-violating result injection (docs/engine-baseline.md §5 exact observed shape) > terminal result is success-shaped with structuredOutput undefined, no retry event, no error
+AssertionError: expected undefined to be 'success' // Object.is equality
+
+- Expected:
+"success"
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/fake-engine-adapter.failures.test.ts:86:29
+     84|
+     85|     const result = events.find((e): e is EngineResultEvent => e.type =…
+     86|     expect(result?.subtype).toBe("success");
+       |                             ^
+     87|     expect(result?.isError).toBe(false);
+     88|     expect(result?.structuredOutput).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — hang/timeout injection via cancel(handle, deadline) > the stream blocks until cancel() resolves it, then ends with no result event
+AssertionError: expected { value: undefined, done: true } to be Symbol(timeout) // Object.is equality
+
+- Expected:
+Symbol(timeout)
+
++ Received:
+{
+  "done": true,
+  "value": undefined,
+}
+
+ ❯ src/fake-engine/fake-engine-adapter.failures.test.ts:112:19
+    110|       new Promise((resolve) => setTimeout(() => resolve(TIMEOUT_SENTIN…
+    111|     ]);
+    112|     expect(raced).toBe(TIMEOUT_SENTINEL);
+       |                   ^
+    113|
+    114|     await adapter.cancel(handle, TimestampSchema.parse("2026-07-18T00:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > a scripted tool call adjudicated by a THROWING callback is denied, never executed
+AssertionError: expected undefined to deeply equal [ { toolName: 'Bash', …(1) } ]
+
+- Expected:
+[
+  {
+    "toolInput": {
+      "command": "echo hi",
+    },
+    "toolName": "Bash",
+  },
+]
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/fake-engine-adapter.security.test.ts:42:39
+     40|     expect(events.some((e) => e.type === "toolUse")).toBe(false);
+     41|     const result = events.find((e): e is EngineResultEvent => e.type =…
+     42|     expect(result?.permissionDenials).toEqual([{ toolName: "Bash", too…
+       |                                       ^
+     43|   });
+     44|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > a spawn() call given no adjudicate callback at all (runtime bypass of the required parameter) fails closed
+AssertionError: expected undefined to deeply equal [ { toolName: 'Bash', …(1) } ]
+
+- Expected:
+[
+  {
+    "toolInput": {
+      "command": "echo hi",
+    },
+    "toolName": "Bash",
+  },
+]
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/fake-engine-adapter.security.test.ts:59:39
+     57|     expect(events.some((e) => e.type === "toolUse")).toBe(false);
+     58|     const result = events.find((e): e is EngineResultEvent => e.type =…
+     59|     expect(result?.permissionDenials).toEqual([{ toolName: "Bash", too…
+       |                                       ^
+     60|   });
+     61|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > resume() with a throwing callback also fails closed for the resumed session's own scripted calls
+Error: FakeEngineAdapter.resume: stub not implemented
+ ❯ FakeEngineAdapter.resume src/fake-engine/fake-engine-adapter.ts:72:11
+     70|
+     71|   resume(_sessionRef: SessionRef, _adjudicate: AdjudicationCallback): …
+     72|     throw new Error("FakeEngineAdapter.resume: stub not implemented");
+       |           ^
+     73|   }
+     74|
+ ❯ src/fake-engine/fake-engine-adapter.security.test.ts:71:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > replays init -> toolUse -> result for an allowed scripted call
+AssertionError: expected [ 'init' ] to deeply equal [ 'init', 'toolUse', 'result' ]
+
+- Expected
++ Received
+
+  [
+    "init",
+-   "toolUse",
+-   "result",
+  ]
+
+ ❯ src/fake-engine/fake-engine-adapter.test.ts:42:39
+     40|     const events = await collect(handle.events);
+     41|
+     42|     expect(events.map((e) => e.type)).toEqual(["init", "toolUse", "res…
+       |                                       ^
+     43|     const init = events[0];
+     44|     expect(init?.type === "init" && init.sessionId).toBe(script.sessio…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > a permission-denied tool call never emits a toolUse event, only appears in the terminal result's permissionDenials
+AssertionError: expected undefined to deeply equal [ { toolName: 'Write', …(1) } ]
+
+- Expected:
+[
+  {
+    "toolInput": {
+      "file_path": "/tmp/x",
+    },
+    "toolName": "Write",
+  },
+]
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/fake-engine-adapter.test.ts:63:39
+     61|     expect(events.some((e) => e.type === "toolUse")).toBe(false);
+     62|     const result = events.find((e): e is EngineResultEvent => e.type =…
+     63|     expect(result?.permissionDenials).toEqual([{ toolName: "Write", to…
+       |                                       ^
+     64|   });
+     65|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > emits multiple toolUse events in scripted order for multiple allowed calls
+AssertionError: expected [] to deeply equal [ 'npm run test', 'git status' ]
+
+- Expected
++ Received
+
+- [
+-   "npm run test",
+-   "git status",
+- ]
++ []
+
+ ❯ src/fake-engine/fake-engine-adapter.test.ts:81:84
+     79|     const events = await collect(handle.events);
+     80|     const toolUseEvents = events.filter((e): e is EngineToolUseEvent =…
+     81|     expect(toolUseEvents.map((e) => (e.toolInput as { command: string …
+       |                                                                                    ^
+     82|       "npm run test",
+     83|       "git status",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > the normal-path terminal result's structuredOutput conforms to WorkerResultSchema (deliverable 1)
+AssertionError: expected [Function] to not throw an error but '[\n  {\n    "code": "invalid_type",\n…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"[
+  {
+    \"code\": \"invalid_type\",
+    \"expected\": \"object\",
+    \"received\": \"undefined\",
+    \"path\": [],
+    \"message\": \"Required\"
+  }
+]"
+
+ ❯ src/fake-engine/fake-engine-adapter.test.ts:93:74
+     91|     const events = await collect(handle.events);
+     92|     const result = events.find((e): e is EngineResultEvent => e.type =…
+     93|     expect(() => WorkerResultSchema.parse(result?.structuredOutput)).n…
+       |                                                                          ^
+     94|   });
+     95| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — sessionRef scoping (resume) > resume() with a matching sessionRef continues via the script's onResume continuation
+Error: FakeEngineAdapter.resume: stub not implemented
+ ❯ FakeEngineAdapter.resume src/fake-engine/fake-engine-adapter.ts:72:11
+     70|
+     71|   resume(_sessionRef: SessionRef, _adjudicate: AdjudicationCallback): …
+     72|     throw new Error("FakeEngineAdapter.resume: stub not implemented");
+       |           ^
+     73|   }
+     74|
+ ❯ src/fake-engine/fake-engine-adapter.test.ts:135:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > allow + allow + allow -> overall allow, every field populated
+AssertionError: expected { permissions: 'deny', …(3) } to deeply equal { permissions: 'allow', …(3) }
+
+- Expected
++ Received
+
+  {
+    "adjudication": "allow",
+-   "overall": "allow",
+-   "permissions": "allow",
++   "overall": "deny",
++   "permissions": "deny",
+    "sandbox": "allow",
+  }
+
+ ❯ src/fake-engine/layered-conformance.test.ts:52:21
+     50|       alwaysAllowAdjudicate,
+     51|     );
+     52|     expect(verdict).toEqual({ permissions: "allow", adjudication: "all…
+       |                     ^
+     53|   });
+     54|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > adjudication layer alone denying makes overall deny even if permissions/sandbox allow
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/layered-conformance.test.ts:73:33
+     71|       alwaysDenyAdjudicate,
+     72|     );
+     73|     expect(verdict.permissions).toBe("allow");
+       |                                 ^
+     74|     expect(verdict.sandbox).toBe("allow");
+     75|     expect(verdict.adjudication).toBe("deny");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > a throwing adjudication callback still fails closed inside the combined evaluation
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/layered-conformance.test.ts:86:34
+     84|       alwaysThrowAdjudicate,
+     85|     );
+     86|     expect(verdict.adjudication).toBe("deny");
+       |                                  ^
+     87|     expect(verdict.overall).toBe("deny");
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > sandbox layer alone denying (disallowed network domain) makes overall deny
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/layered-conformance.test.ts:97:33
+     95|       alwaysAllowAdjudicate,
+     96|     );
+     97|     expect(verdict.permissions).toBe("allow");
+       |                                 ^
+     98|     expect(verdict.sandbox).toBe("deny");
+     99|     expect(verdict.overall).toBe("deny");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > an explicit permissionRules override is used instead of the profile's own permissions (cross-level merge support)
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/layered-conformance.test.ts:110:33
+    108|       { allow: ["Bash(echo:*)"], deny: [] },
+    109|     );
+    110|     expect(verdict.permissions).toBe("allow");
+       |                                 ^
+    111|     expect(verdict.overall).toBe("allow");
+    112|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > bash-colon-spacing: the no-space form matches (baseline's load-bearing verdict for phase 03)
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/parity.test.ts:101:7
+     99|     expect(
+    100|       evaluatePermissionLayer(rules, { toolName: "Bash", toolInput: { …
+    101|     ).toBe("allow");
+       |       ^
+    102|   });
+    103| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a plain (worktree-relative, '//'-anchor-equivalent) target under the base
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:12:100
+     10| describe("matchesAnchoredGlobLiteral", () => {
+     11|   it("matches a plain (worktree-relative, '//'-anchor-equivalent) targ…
+     12|     expect(matchesAnchoredGlobLiteral("//packages/example/src/**", "pa…
+       |                                                                                                    ^
+     13|       true,
+     14|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches the base path itself with no trailing segment
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:18:93
+     16|
+     17|   it("matches the base path itself with no trailing segment", () => {
+     18|     expect(matchesAnchoredGlobLiteral("//packages/example/src/**", "pa…
+       |                                                                                             ^
+     19|       true,
+     20|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a '~/'-anchored rule against a '~/'-prefixed target
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:43:70
+     41|
+     42|   it("matches a '~/'-anchored rule against a '~/'-prefixed target", ()…
+     43|     expect(matchesAnchoredGlobLiteral("~/.ssh/**", "~/.ssh/id_rsa")).t…
+       |                                                                      ^
+     44|   });
+     45|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a bare '/'-anchored rule against a matching absolute target
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:51:84
+     49|
+     50|   it("matches a bare '/'-anchored rule against a matching absolute tar…
+     51|     expect(matchesAnchoredGlobLiteral("/etc/allowed/**", "/etc/allowed…
+       |                                                                                    ^
+     52|   });
+     53| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > matches when both the tool and the anchored glob agree
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:59:7
+     57|     expect(
+     58|       matchesToolPathRule("Edit(//packages/example/src/**)", "Edit", "…
+     59|     ).toBe(true);
+       |       ^
+     60|   });
+     61|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > Read(~/.ssh/**) matches an attempted read under ~/.ssh (docs/engine-baseline.md §6 denyRead probe)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/fake-engine/path-matching.test.ts:75:77
+     73|
+     74|   it("Read(~/.ssh/**) matches an attempted read under ~/.ssh (docs/eng…
+     75|     expect(matchesToolPathRule("Read(~/.ssh/**)", "Read", "~/.ssh/conf…
+       |                                                                             ^
+     76|   });
+     77| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > allows a Bash command matching an allow-listed prefix
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:26:107
+     24|
+     25|   it("allows a Bash command matching an allow-listed prefix", () => {
+     26|     expect(evaluatePermissionLayer(ECHO_ONLY, { toolName: "Bash", tool…
+       |                                                                                                           ^
+     27|       "allow",
+     28|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > the un-smuggled control command (echo alone) still allows
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:54:21
+     52|       toolInput: { command: "echo safe" },
+     53|     });
+     54|     expect(verdict).toBe("allow");
+       |                     ^
+     55|   });
+     56| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > allows an Edit inside the owned path
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:92:7
+     90|         toolInput: { file_path: "packages/example/src/foo.ts" },
+     91|       }),
+     92|     ).toBe("allow");
+       |       ^
+     93|   });
+     94|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — mcp__ tool names and the blanket-deny footgun (adaptation Appendix B) > allows a gateway tool call matching the server-scoped allow entry
+AssertionError: expected 'deny' to be 'allow' // Object.is equality
+
+Expected: "allow"
+Received: "deny"
+
+ ❯ src/fake-engine/permission-evaluator.test.ts:130:100
+    128|   it("allows a gateway tool call matching the server-scoped allow entr…
+    129|     const rules: PermissionRuleSet = { allow: ["mcp__eo_gateway__*"], …
+    130|     expect(evaluatePermissionLayer(rules, { toolName: "mcp__eo_gateway…
+       |                                                                                                    ^
+    131|       "allow",
+    132|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a full URL
+AssertionError: expected undefined to be 'example.com' // Object.is equality
+
+- Expected:
+"example.com"
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/sandbox-evaluator.test.ts:29:66
+     27| describe("extractNetworkDomain", () => {
+     28|   it("extracts a domain from a full URL", () => {
+     29|     expect(extractNetworkDomain("curl http://example.com/path")).toBe(…
+       |                                                                  ^
+     30|   });
+     31|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a bare curl target
+AssertionError: expected undefined to be 'api.example.com' // Object.is equality
+
+- Expected:
+"api.example.com"
+
++ Received:
+undefined
+
+ ❯ src/fake-engine/sandbox-evaluator.test.ts:33:58
+     31|
+     32|   it("extracts a domain from a bare curl target", () => {
+     33|     expect(extractNetworkDomain("curl api.example.com")).toBe("api.exa…
+       |                                                          ^
+     34|   });
+     35|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > denies a Bash call targeting a domain outside allowedDomains
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/sandbox-evaluator.test.ts:48:21
+     46|       toolInput: { command: "curl http://example.com" },
+     47|     });
+     48|     expect(verdict).toBe("deny");
+       |                     ^
+     49|   });
+     50|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > denies a Read under a denyRead entry
+AssertionError: expected 'allow' to be 'deny' // Object.is equality
+
+Expected: "deny"
+Received: "allow"
+
+ ❯ src/fake-engine/sandbox-evaluator.test.ts:76:21
+     74|       toolInput: { file_path: "~/.ssh/id_rsa" },
+     75|     });
+     76|     expect(verdict).toBe("deny");
+       |                     ^
+     77|   });
+     78|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/54]⎯
+
+ Test Files  13 failed | 7 passed (20)
+      Tests  54 failed | 117 passed (171)
+   Start at  00:56:14
+   Duration  826ms (transform 3.47s, setup 0ms, import 4.89s, tests 320ms, environment 2ms)
+

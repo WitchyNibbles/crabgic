@@ -12,3 +12,8 @@ export * from "./providers/clock-provider.js";
 export * from "./providers/id-provider.js";
 export * from "./fixtures/index.js";
 export * from "./ajv-harness.js";
+
+// Fake engine (roadmap/03-envelope-compiler-engine-adapter.md work items
+// 5-6): scriptable EngineAdapter implementation + envelope-conformance
+// fixture format, reused byte-identical by 06's own @live suite.
+export * from "./fake-engine/index.js";

@@ -1,0 +1,141 @@
+Phase 03, work item 3 — failing-first evidence for the sandbox-profile
+emitter, the `WorkerSettingsJson`/`WorkerSdkOptions` serializers, and the
+golden settings artifacts.
+
+Date: 2026-07-17
+
+Setup (deliberately-wrong stub, per this worker's TDD protocol — "prefer
+genuine assertion-level failures over module-absence failures"):
+  - `src/compiler/sandbox-profile.ts` shipped with `emitSandboxProfile`
+    ignoring its `envelope` argument entirely and returning
+    `network.allowAllUnixSockets: false` (should always be `true` on
+    Linux/WSL2 per docs/engine-baseline.md §6) and an empty
+    `filesystem.denyRead` (drops every mandatory deny path). The
+    `SandboxProfileSchema.parse(...)` call inside the stub itself throws a
+    ZodError on `allowAllUnixSockets: false` (its schema requires the
+    literal `true`) — every downstream consumer (`compile-envelope.ts`,
+    `worker-settings.ts`, `generate-golden-artifacts.ts`) that calls
+    `emitSandboxProfile` therefore also fails, cascading a single seeded
+    defect across every wi3-scoped test file.
+  - The golden files under `packages/engine-core/goldens/` do not exist
+    yet at all (`ls packages/engine-core/goldens/` — empty directory) —
+    the roadmap's own sanctioned failing-first form for this sub-part
+    ("Failing-first: a byte-diff test against a golden file that doesn't
+    exist yet"). In this run that ENOENT never gets reached because the
+    ZodError above throws first inside `buildGoldenArtifacts()` — a
+    stronger RED than a missing-file read, not a weaker one.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/engine-core/src/compiler/sandbox-profile.test.ts packages/engine-core/src/compiler/worker-settings.test.ts packages/engine-core/src/compiler/compile-envelope.test.ts packages/engine-core/src/goldens/generate-golden-artifacts.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/engine-core| src/compiler/worker-settings.test.ts (0 test)
+ ❯ |@eo/engine-core| src/compiler/compile-envelope.test.ts (5 tests | 5 failed) 8ms
+     × returns a CompiledWorkerProfile that validates against its own schema 4ms
+     × is pure — the same envelope compiles to a deep-equal profile on every call 1ms
+     × does not mutate its input envelope 1ms
+     × settingsJson.permissions/sandbox equal the top-level compiled permissions/sandbox 0ms
+     × sdkOptions.allowedTools/disallowedTools mirror permissions.allow/deny exactly 0ms
+ ❯ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts (0 test)
+ ❯ |@eo/engine-core| src/compiler/sandbox-profile.test.ts (13 tests | 13 failed) 12ms
+     × denyRead includes control-repo state+cache root, ~/.ssh, ~/.aws 4ms
+     × failIfUnavailable is always true 1ms
+     × denyRead is identical regardless of what the envelope authorizes 1ms
+     × enabled is always true and allowUnsandboxedCommands is always false 1ms
+     × network.allowAllUnixSockets is always true — the Linux/WSL2 UDS gate (docs/engine-baseline.md §6) 1ms
+     × never carries an allowUnixSockets field (macOS-only path allowlist, ignored on Linux — docs/engine-baseline.md §6) 0ms
+     × network.allowLocalBinding is always false 1ms
+     × filesystem.allowWrite carries the worktree+tmp placeholder tokens (see README.md's placeholder-token convention) 0ms
+     × network.allowedDomains comes only from envelope.networkDestinations 1ms
+     × network.allowedDomains is empty when the envelope grants no network destinations 0ms
+     × credentials.envVars masks each credentialReference 0ms
+     × credentials.envVars is empty when the envelope references no credentials 0ms
+     × does not mutate its input envelope 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/compiler/worker-settings.test.ts [ packages/engine-core/src/compiler/worker-settings.test.ts ]
+ZodError: [
+  {
+    "received": false,
+    "code": "invalid_literal",
+    "expected": true,
+    "path": [ "network", "allowAllUnixSockets" ],
+    "message": "Invalid literal value, expected true"
+  }
+]
+ ❯ Object.get error [as error] ../../node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse ../../node_modules/zod/v3/types.js:114:22
+ ❯ emitSandboxProfile src/compiler/sandbox-profile.ts:14:31
+ ❯ src/compiler/worker-settings.test.ts:17:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+ FAIL  |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts [ packages/engine-core/src/goldens/generate-golden-artifacts.test.ts ]
+ZodError: [
+  {
+    "received": false,
+    "code": "invalid_literal",
+    "expected": true,
+    "path": [ "network", "allowAllUnixSockets" ],
+    "message": "Invalid literal value, expected true"
+  }
+]
+ ❯ Object.get error [as error] ../../node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse ../../node_modules/zod/v3/types.js:114:22
+ ❯ emitSandboxProfile src/compiler/sandbox-profile.ts:14:31
+ ❯ compileEnvelope src/compiler/compile-envelope.ts:16:19
+ ❯ src/goldens/generate-golden-artifacts.ts:32:22
+ ❯ buildGoldenArtifacts src/goldens/generate-golden-artifacts.ts:31:35
+ ❯ src/goldens/generate-golden-artifacts.test.ts:19:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 18 ⎯⎯⎯⎯⎯⎯⎯
+
+Every one of the 18 individual test failures below shares the identical
+root-cause ZodError shown above (`network.allowAllUnixSockets` must be the
+literal `true`; the stub returned `false`), each thrown from the same
+`emitSandboxProfile` call site (`src/compiler/sandbox-profile.ts:14:31`),
+reached from a different call site per test file:
+
+ FAIL  |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > returns a CompiledWorkerProfile that validates against its own schema
+ FAIL  |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > is pure — the same envelope compiles to a deep-equal profile on every call
+ FAIL  |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > does not mutate its input envelope
+ FAIL  |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > settingsJson.permissions/sandbox equal the top-level compiled permissions/sandbox
+ FAIL  |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > sdkOptions.allowedTools/disallowedTools mirror permissions.allow/deny exactly
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > denyRead includes control-repo state+cache root, ~/.ssh, ~/.aws
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > failIfUnavailable is always true
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > denyRead is identical regardless of what the envelope authorizes
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > enabled is always true and allowUnsandboxedCommands is always false
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > network.allowAllUnixSockets is always true — the Linux/WSL2 UDS gate (docs/engine-baseline.md §6)
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > never carries an allowUnixSockets field (macOS-only path allowlist, ignored on Linux — docs/engine-baseline.md §6)
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > network.allowLocalBinding is always false
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > filesystem.allowWrite carries the worktree+tmp placeholder tokens (see README.md's placeholder-token convention)
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > network.allowedDomains comes only from envelope.networkDestinations
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > network.allowedDomains is empty when the envelope grants no network destinations
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > credentials.envVars masks each credentialReference
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > credentials.envVars is empty when the envelope references no credentials
+ FAIL  |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — immutability > does not mutate its input envelope
+
+ Test Files  4 failed (4)
+      Tests  18 failed (18)
+   Start at  00:17:14
+   Duration  401ms (transform 546ms, setup 0ms, import 412ms, tests 19ms, environment 0ms)
+
+Exit code: 1
+
+Supplementary check — golden files genuinely absent (the roadmap's own
+sanctioned failing-first form, "a byte-diff test against a golden file
+that doesn't exist yet"):
+
+  $ ls -la packages/engine-core/goldens/
+  total 8
+  drwxr-xr-x 2 eimi eimi 4096 Jul 18 00:09 .
+  drwxr-xr-x 6 eimi eimi 4096 Jul 18 00:09 ..
+
+(empty — no golden JSON files committed yet at RED time.)

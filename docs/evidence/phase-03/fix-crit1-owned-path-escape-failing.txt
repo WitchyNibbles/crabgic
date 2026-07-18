@@ -1,0 +1,72 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/engine-core| src/compiler/permission-profile.test.ts (18 tests | 4 failed | 14 skipped) 9ms
+     × an owned path that looks like a system directory does not compile to a literal filesystem-root grant (validator's exact attack: ownedPaths ['etc/cron.d']) 5ms
+     × an absolute-spelled owned path is rejected outright, never silently compiled 1ms
+     × a home-anchored owned path ('~/.ssh') is rejected outright, never compiled into a plausible-looking allow rule 1ms
+     × owned-path allow rules always carry a worktree-anchor placeholder token phase 06 can substitute 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — CRITICAL 1 regression: owned-path escape via unanchored '//' emission > an owned path that looks like a system directory does not compile to a literal filesystem-root grant (validator's exact attack: ownedPaths ['etc/cron.d'])
+AssertionError: expected [ 'Edit(//etc/cron.d/**)', …(2) ] to not include 'Edit(//etc/cron.d/**)'
+ ❯ src/compiler/permission-profile.test.ts:157:31
+    155|     // relative owned path.
+    156|     const profile = emitPermissionProfile(buildEnvelopeFixture({ owned…
+    157|     expect(profile.allow).not.toContain("Edit(//etc/cron.d/**)");
+       |                               ^
+    158|     expect(profile.allow).not.toContain("Write(//etc/cron.d/**)");
+    159|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — CRITICAL 1 regression: owned-path escape via unanchored '//' emission > an absolute-spelled owned path is rejected outright, never silently compiled
+AssertionError: expected [Function] to throw an error
+ ❯ src/compiler/permission-profile.test.ts:164:7
+    162|     expect(() =>
+    163|       emitPermissionProfile(buildEnvelopeFixture({ ownedPaths: ["/etc/…
+    164|     ).toThrow();
+       |       ^
+    165|   });
+    166|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — CRITICAL 1 regression: owned-path escape via unanchored '//' emission > a home-anchored owned path ('~/.ssh') is rejected outright, never compiled into a plausible-looking allow rule
+AssertionError: expected [Function] to throw an error
+ ❯ src/compiler/permission-profile.test.ts:170:7
+    168|     expect(() =>
+    169|       emitPermissionProfile(buildEnvelopeFixture({ ownedPaths: ["~/.ss…
+    170|     ).toThrow();
+       |       ^
+    171|   });
+    172|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — CRITICAL 1 regression: owned-path escape via unanchored '//' emission > owned-path allow rules always carry a worktree-anchor placeholder token phase 06 can substitute
+AssertionError: expected 'Edit(//packages/a/src/**)' to match /^(Edit|Write)\(\/\/<worktree>\//\
+
+- Expected:
+/^(Edit|Write)\(\/\/<worktree>\//
+
++ Received:
+"Edit(//packages/a/src/**)"
+
+ ❯ src/compiler/permission-profile.test.ts:180:20
+    178|     expect(pathRules.length).toBeGreaterThan(0);
+    179|     for (const rule of pathRules) {
+    180|       expect(rule).toMatch(/^(Edit|Write)\(\/\/<worktree>\//);
+       |                    ^
+    181|     }
+    182|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 14 skipped (18)
+   Start at  10:39:41
+   Duration  313ms (transform 150ms, setup 0ms, import 194ms, tests 9ms, environment 0ms)
+

@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Edit(//<worktree>/packages/example/src/**)",
+      "Write(//<worktree>/packages/example/src/**)",
+      "Bash(npm run test:*)",
+      "Bash(npm run build:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "mcp__eo_gateway__*"
+    ],
+    "deny": [
+      "Agent",
+      "WebFetch",
+      "WebSearch",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Read(~/.local/state/engineering-orchestrator/**)",
+      "Read(~/.cache/engineering-orchestrator/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Edit(~/.local/state/engineering-orchestrator/**)",
+      "Edit(~/.cache/engineering-orchestrator/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Write(~/.local/state/engineering-orchestrator/**)",
+      "Write(~/.cache/engineering-orchestrator/**)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "Edit(//<worktree>/.git/**)",
+      "Write(//<worktree>/.git/**)"
+    ],
+    "ask": []
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": [],
+      "allowAllUnixSockets": true,
+      "allowLocalBinding": false
+    },
+    "filesystem": {
+      "allowWrite": [
+        "<worktree>",
+        "<worker-tmp>"
+      ],
+      "denyRead": [
+        "~/.local/state/engineering-orchestrator/**",
+        "~/.cache/engineering-orchestrator/**",
+        "~/.ssh/**",
+        "~/.aws/**"
+      ]
+    },
+    "credentials": {
+      "envVars": []
+    }
+  }
+}

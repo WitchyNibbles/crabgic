@@ -1,0 +1,182 @@
+Phase 03, work item 1 — failing-first evidence for the `EngineAdapter`
+contract types (`EngineEvent`, `EngineCapabilities`, `WorkerHandle`,
+`SessionRef`, `AdjudicationCallback`, `EngineAdapter` interface).
+
+Date: 2026-07-17
+
+Setup (deliberately-wrong stubs, per this worker's TDD protocol — "prefer
+genuine assertion-level failures over module-absence failures"):
+  - `src/adapter/engine-event.ts` shipped with only 5 of the 6 required
+    `EngineEvent` variants (the `limitSignal` variant was omitted).
+  - `src/adapter/stub-engine-adapter.ts`'s `StubEngineAdapter.capabilities()`
+    returned the RETIRED `structuredOutput`/`sessionResume` draft field
+    names (interface-ledger Gap 7) instead of `supportsJsonSchema`/
+    `supportsSessionResume`.
+  - `src/compiler/sandbox-profile.ts` (work item 3's stub, not this work
+    item's own code) additionally returned `network.allowAllUnixSockets:
+    false` and an empty `denyRead` — this cascades into
+    `engine-adapter.test.ts`'s own fixture construction
+    (`compileEnvelope(buildEnvelopeFixture())`), which throws a ZodError
+    before any of that file's tests can run. This is itself a genuine,
+    assertion-level (schema-validation) failure, not a module-resolution
+    error — recorded here as-is per the "never fabricate output" rule.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/adapter
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ × |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly the six variants init | assistant | toolUse | result | retry | limitSignal, in order 6ms
+   → expected [ Array(5) ] to deeply equal [ Array(6) ]
+ × |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly six variants (count) 2ms
+   → expected 5 to be 6 // Object.is equality
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > the exhaustiveness descriptor covers exactly the six declared variants, one description each 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > init: sessionId/model/cwd/tools/mcpServers (baseline §2 hermeticity mcp_servers=[]; §4.4 tool catalog; §7 session_id) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > assistant: sessionId/text (baseline §2, 'final reply exactly "DONE"'; §5, model's plain-text decline) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > toolUse: toolUseId/toolName/toolInput/toolResult (baseline §3 tool_use/tool_result; §6 ENOENT-masking shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > toolUse: toolResult is optional (a call may still be in flight) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > result: subtype/isError/structuredOutput/totalCostUsd/turnsUsed/permissionDenials (baseline §3 permission_denials; §4.4; §5; §7) 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > result: structuredOutput/totalCostUsd/turnsUsed are optional (baseline §5's observed success-with-no-structured-output shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > retry: subtype is always 'api_retry' (baseline §Full verdict tally, ratelimit row: SDKAPIRetryMessage typed shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: matches baseline §8's exact recorded rate_limit_info schema (allowed_warning sample) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: accepts 'rejected' status and 'credits_required' errorCode (SDK-typed; baseline §8's UNRESOLVED exhausted variant) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: accepts every baseline §8-documented rateLimitType member 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > ENGINE_CAPABILITIES_FIELD_NAMES is exactly the five Gap-7 fields, sorted 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > the descriptor has exactly five entries, one description each 1ms
+ × |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > returns keys that are exactly supportsJsonSchema, supportsSessionResume, permissionModel, sandboxModel, engineVersion — no more, no fewer 5ms
+   → expected [ 'engineVersion', …(4) ] to deeply equal [ 'engineVersion', …(4) ]
+ × |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > supportsJsonSchema/supportsSessionResume are booleans; permissionModel/sandboxModel/engineVersion are strings 2ms
+   → expected 'undefined' to be 'boolean' // Object.is equality
+ × |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > never carries the retired structuredOutput/sessionResume draft field names (Gap 7) 1ms
+   → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-adapter.test.ts [ packages/engine-core/src/adapter/engine-adapter.test.ts ]
+ZodError: [
+  {
+    "received": false,
+    "code": "invalid_literal",
+    "expected": true,
+    "path": [
+      "network",
+      "allowAllUnixSockets"
+    ],
+    "message": "Invalid literal value, expected true"
+  }
+]
+ ❯ Object.get error [as error] ../../node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse ../../node_modules/zod/v3/types.js:114:22
+ ❯ emitSandboxProfile src/compiler/sandbox-profile.ts:14:31
+     12|  */
+     13| export function emitSandboxProfile(_envelope: AuthorizationEnvelope): …
+     14|   return SandboxProfileSchema.parse({
+       |                               ^
+     15|     enabled: true,
+     16|     failIfUnavailable: true,
+ ❯ compileEnvelope src/compiler/compile-envelope.ts:16:19
+ ❯ src/adapter/engine-adapter.test.ts:36:34
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { issues: [ { received: false, code: 'invalid_literal', expected: true, path: [ 'network', 'allowAllUnixSockets' ], message: 'Invalid literal value, expected true' } ], addIssue: 'Function<anonymous>', addIssues: 'Function<anonymous>', errors: [ { received: false, code: 'invalid_literal', expected: true, path: [ 'network', 'allowAllUnixSockets' ], message: 'Invalid literal value, expected true' } ], format: 'Function<format>', isEmpty: false, flatten: 'Function<flatten>', formErrors: { formErrors: [], fieldErrors: { network: [ 'Invalid literal value, expected true' ] } } }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > returns keys that are exactly supportsJsonSchema, supportsSessionResume, permissionModel, sandboxModel, engineVersion — no more, no fewer
+AssertionError: expected [ 'engineVersion', …(4) ] to deeply equal [ 'engineVersion', …(4) ]
+
+- Expected
++ Received
+
+  [
+    "engineVersion",
+    "permissionModel",
+    "sandboxModel",
+-   "supportsJsonSchema",
+-   "supportsSessionResume",
++   "sessionResume",
++   "structuredOutput",
+  ]
+
+ ❯ src/adapter/engine-capabilities.test.ts:42:38
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > supportsJsonSchema/supportsSessionResume are booleans; permissionModel/sandboxModel/engineVersion are strings
+AssertionError: expected 'undefined' to be 'boolean' // Object.is equality
+
+Expected: "boolean"
+Received: "undefined"
+
+ ❯ src/adapter/engine-capabilities.test.ts:48:44
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > never carries the retired structuredOutput/sessionResume draft field names (Gap 7)
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/adapter/engine-capabilities.test.ts:58:40
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly the six variants init | assistant | toolUse | result | retry | limitSignal, in order
+AssertionError: expected [ Array(5) ] to deeply equal [ Array(6) ]
+
+- Expected
++ Received
+
+@@ -2,7 +2,6 @@
+   "init",
+   "assistant",
+   "toolUse",
+   "result",
+   "retry",
+-  "limitSignal",
+ ]
+
+ ❯ src/adapter/engine-event.test.ts:17:32
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly six variants (count)
+AssertionError: expected 5 to be 6 // Object.is equality
+
+- Expected
++ Received
+
+- 6
++ 5
+
+ ❯ src/adapter/engine-event.test.ts:21:39
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  5 failed | 13 passed (18)
+   Start at  00:15:37
+   Duration  335ms (transform 233ms, setup 0ms, import 94ms, tests 24ms, environment 0ms)
+
+Exit code: 1
+
+Note: `engine-adapter.test.ts`'s own stub-conformance assertions (spawn/
+resume/cancel/capabilities behavior) never got to execute in this run
+because `COMPILED_PROFILE_FIXTURE`'s module-level construction throws
+first (see the sandbox-profile.ts stub note above) — this is a stronger
+form of "failing before implementation" than the interface simply being
+absent, and is recorded here verbatim, not fabricated. The type-level
+half of the stub-conformance proof (`const adapter: EngineAdapter = new
+StubEngineAdapter()` type-checking at all) is separately confirmed by
+`npx tsc -b packages/engine-core` once the real implementation lands —
+see wi1-adapter-types-passing.txt.

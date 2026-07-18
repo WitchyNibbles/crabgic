@@ -1,0 +1,179 @@
+Phase 03, worker W2 — work item 6 (envelope-conformance fixture format +
+validator) failing-first evidence.
+
+roadmap/03-envelope-compiler-engine-adapter.md work item 6's own
+failing-first fixture: "a fixture-schema validator run against a
+hand-written fixture missing a required per-layer verdict field — fails
+until the format + validator exist."
+
+Date: 2026-07-18
+
+Method: `conformance-fixtures/schema.ts` was first written as a
+deliberately-loose STUB zod schema (`z.object({ name: z.string() })
+.passthrough()` — accepts any object carrying just a `name` string, no
+`.strict()`, no required `expected` per-layer-verdict shape). The real
+`schema.test.ts` suite (asserting that fixtures missing the `sandbox`
+verdict, missing `expected` entirely, carrying an out-of-enum verdict
+value, or carrying an unknown extra field are all REJECTED) was run
+against this stub, genuinely failing because the loose stub wrongly
+accepts every one of those broken fixtures. `fixtures.test.ts` (exit
+criterion 4 — every fixture reproduces its hand-derived expected per-layer
+verdict) was also run in this same pass; its failures here are downstream
+of the work-item-5 evaluator stubs (permission/sandbox layers) still
+being wrong at this point, not the fixture format itself — see
+wi5-fake-engine-failing.txt for those.
+
+Command: npx vitest run --coverage.enabled=false
+packages/testkit/src/fake-engine/conformance-fixtures
+
+======================================================================
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts (17 tests | 4 failed) 15ms
+     × allows a Bash command matching an allow-listed prefix 4ms
+     × the un-smuggled control command (echo alone) still allows 1ms
+     × allows an Edit inside the owned path 1ms
+     × allows a gateway tool call matching the server-scoped allow entry 1ms
+ ❯ |@eo/testkit| src/fake-engine/path-matching.test.ts (12 tests | 6 failed) 13ms
+     × matches a plain (worktree-relative, '//'-anchor-equivalent) target under the base 6ms
+     × matches the base path itself with no trailing segment 1ms
+     × matches a '~/'-anchored rule against a '~/'-prefixed target 1ms
+     × matches a bare '/'-anchored rule against a matching absolute target 1ms
+     × matches when both the tool and the anchored glob agree 1ms
+     × Read(~/.ssh/**) matches an attempted read under ~/.ssh (docs/engine-baseline.md §6 denyRead probe) 1ms
+ ❯ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts (9 tests | 4 failed) 10ms
+     × extracts a domain from a full URL 5ms
+     × extracts a domain from a bare curl target 1ms
+     × denies a Bash call targeting a domain outside allowedDomains 1ms
+     × denies a Read under a denyRead entry 1ms
+ ❯ |@eo/testkit| src/fake-engine/parity.test.ts (8 tests | 1 failed) 9ms
+     × bash-colon-spacing: the no-space form matches (baseline's load-bearing verdict for phase 03) 5ms
+ ❯ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts (15 tests | 10 failed) 22ms
+     × splits on && (docs/engine-baseline.md §3 compound-command probe) 8ms
+     × splits on ||, ;, and | 2ms
+     × drops empty segments from stray/adjacent separators 1ms
+     × strips a bare nohup wrapper (docs/engine-baseline.md §3 process-wrapper probe) 1ms
+     × strips a bare nice wrapper 1ms
+     × strips a timeout wrapper and its duration argument 1ms
+     × strips chained wrappers 1ms
+     × decomposes a compound command with a process-wrapper segment into matchable subcommands 1ms
+     × matches the exact prefix with a trailing word boundary 1ms
+     × the doc's four confirmed literals all match their own prefix (interface-ledger Gap 12) 0ms
+ ❯ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts (9 tests | 5 failed) 10ms
+     × a callback that returns deny -> deny 4ms
+     × a callback that THROWS -> deny, never allow (fail-closed) 0ms
+     × a callback that throws a non-Error value -> still deny 0ms
+     × no callback supplied at all (runtime-undefined, bypassing the type system) -> deny, never allow 0ms
+     × a non-function value passed where a callback is expected -> deny 1ms
+ ❯ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts (7 tests | 4 failed) 8ms
+     × rejects a fixture whose 'expected' object is missing the 'sandbox' verdict 5ms
+     × rejects a fixture missing the entire 'expected' object 1ms
+     × rejects an 'expected' verdict value outside the allow|deny enum 0ms
+     × rejects an unknown extra top-level field (.strict()) 0ms
+ ❯ |@eo/testkit| src/fake-engine/layered-conformance.test.ts (6 tests | 5 failed) 12ms
+     × allow + allow + allow -> overall allow, every field populated 8ms
+     × adjudication layer alone denying makes overall deny even if permissions/sandbox allow 1ms
+     × a throwing adjudication callback still fails closed inside the combined evaluation 1ms
+     × sandbox layer alone denying (disallowed network domain) makes overall deny 1ms
+     × an explicit permissionRules override is used instead of the profile's own permissions (cross-level merge support) 1ms
+ ❯ |@eo/testkit| src/fake-engine/demo.test.ts (1 test | 1 failed) 5ms
+     × spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure 4ms
+ ❯ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts (10 tests | 2 failed) 17ms
+     × compound-command-smuggling reproduces its hand-derived expected per-layer verdict 9ms
+     × process-wrapper-smuggling reproduces its hand-derived expected per-layer verdict 1ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts (3 tests | 3 failed) 10ms
+     × a scripted tool call adjudicated by a THROWING callback is denied, never executed 7ms
+     × a spawn() call given no adjudicate callback at all (runtime bypass of the required parameter) fails closed 1ms
+     × resume() with a throwing callback also fails closed for the resumed session's own scripted calls 1ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts (6 tests | 4 failed) 14ms
+     × resume() continues a crashed session to a normal terminal result (kill9-resume shape) 3ms
+     × replays a verbatim recorded rate_limit_event payload mid-stream, then completes normally 2ms
+     × terminal result is success-shaped with structuredOutput undefined, no retry event, no error 1ms
+     × the stream blocks until cancel() resolves it, then ends with no result event 2ms
+ ❯ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts (8 tests | 5 failed) 18ms
+     × replays init -> toolUse -> result for an allowed scripted call 8ms
+     × a permission-denied tool call never emits a toolUse event, only appears in the terminal result's permissionDenials 2ms
+     × emits multiple toolUse events in scripted order for multiple allowed calls 2ms
+     × the normal-path terminal result's structuredOutput conforms to WorkerResultSchema (deliverable 1) 3ms
+     × resume() with a matching sessionRef continues via the script's onResume continuation 1ms
+
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > compound-command-smuggling reproduces its hand-derived expected per-layer verdict
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > process-wrapper-smuggling reproduces its hand-derived expected per-layer verdict
+AssertionError: expected { permissions: 'deny', …(2) } to deeply equal { permissions: 'deny', …(2) }
+
+- Expected
++ Received
+
+  {
+    "adjudication": "allow",
+    "permissions": "deny",
+-   "sandbox": "deny",
++   "sandbox": "allow",
+  }
+
+ ❯ src/fake-engine/conformance-fixtures/fixtures.test.ts:23:54
+     21|       const sandbox = evaluateSandboxLayer(profile.sandbox, fixture.to…
+     22|       const adjudication = await evaluateAdjudicationLayer(alwaysAllow…
+     23|       expect({ permissions, adjudication, sandbox }).toEqual(fixture.e…
+       |                                                      ^
+     24|     },
+     25|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture whose 'expected' object is missing the 'sandbox' verdict
+AssertionError: expected [Function] to throw an error
+ ❯ src/fake-engine/conformance-fixtures/schema.test.ts:25:54
+     23|       expected: { permissions: "allow", adjudication: "allow" },
+     24|     };
+     25|     expect(() => validateConformanceFixture(broken)).toThrow();
+       |                                                      ^
+     26|   });
+     27|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture missing the entire 'expected' object
+AssertionError: expected [Function] to throw an error
+ ❯ src/fake-engine/conformance-fixtures/schema.test.ts:30:54
+     28|   it("rejects a fixture missing the entire 'expected' object", () => {
+     29|     const { expected: _expected, ...broken } = VALID_FIXTURE;
+     30|     expect(() => validateConformanceFixture(broken)).toThrow();
+       |                                                      ^
+     31|   });
+     32|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an 'expected' verdict value outside the allow|deny enum
+AssertionError: expected [Function] to throw an error
+ ❯ src/fake-engine/conformance-fixtures/schema.test.ts:38:54
+     36|       expected: { permissions: "maybe", adjudication: "allow", sandbox…
+     37|     };
+     38|     expect(() => validateConformanceFixture(broken)).toThrow();
+       |                                                      ^
+     39|   });
+     40|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/54]⎯
+
+ FAIL  |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an unknown extra top-level field (.strict())
+AssertionError: expected [Function] to throw an error
+ ❯ src/fake-engine/conformance-fixtures/schema.test.ts:43:54
+     41|   it("rejects an unknown extra top-level field (.strict())", () => {
+     42|     const broken = { ...VALID_FIXTURE, unknownField: "nope" };
+     43|     expect(() => validateConformanceFixture(broken)).toThrow();
+       |                                                      ^
+     44|   });
+     45| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/54]⎯
+
+
+ Test Files  13 failed | 7 passed (20)
+      Tests  54 failed | 117 passed (171)
+   Start at  00:56:14
+   Duration  826ms (transform 3.47s, setup 0ms, import 4.89s, tests 320ms, environment 2ms)
+

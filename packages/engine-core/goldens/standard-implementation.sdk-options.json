@@ -1,0 +1,39 @@
+{
+  "allowedTools": [
+    "Edit(//<worktree>/packages/example/src/**)",
+    "Write(//<worktree>/packages/example/src/**)",
+    "Bash(npm run test:*)",
+    "Bash(npm run build:*)",
+    "Bash(git status:*)",
+    "Bash(git diff:*)",
+    "mcp__eo_gateway__*"
+  ],
+  "disallowedTools": [
+    "Agent",
+    "WebFetch",
+    "WebSearch",
+    "Bash(git push:*)",
+    "Bash(curl:*)",
+    "Bash(wget:*)",
+    "Read(~/.local/state/engineering-orchestrator/**)",
+    "Read(~/.cache/engineering-orchestrator/**)",
+    "Read(~/.ssh/**)",
+    "Read(~/.aws/**)",
+    "Edit(~/.local/state/engineering-orchestrator/**)",
+    "Edit(~/.cache/engineering-orchestrator/**)",
+    "Edit(~/.ssh/**)",
+    "Edit(~/.aws/**)",
+    "Write(~/.local/state/engineering-orchestrator/**)",
+    "Write(~/.cache/engineering-orchestrator/**)",
+    "Write(~/.ssh/**)",
+    "Write(~/.aws/**)",
+    "Edit(//<worktree>/.git/**)",
+    "Write(//<worktree>/.git/**)"
+  ],
+  "permissionMode": "dontAsk",
+  "settingSources": [],
+  "strictMcpConfig": true,
+  "mcpServers": {
+    "eo_gateway": {}
+  }
+}

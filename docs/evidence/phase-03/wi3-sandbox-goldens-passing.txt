@@ -1,0 +1,94 @@
+Phase 03, work item 3 — passing evidence for `emitSandboxProfile`, the
+`WorkerSettingsJson`/`WorkerSdkOptions` serializers, and the golden
+settings artifacts, after implementing the real sandbox emission logic in
+`src/compiler/sandbox-profile.ts` (mandatory `denyRead` paths,
+`allowAllUnixSockets: true`, worktree+tmp write placeholders,
+envelope-driven `network.allowedDomains`/`credentials.envVars`) and
+generating the six committed golden files under
+`packages/engine-core/goldens/`.
+
+Date: 2026-07-17
+
+=== Part 1: runtime test suite ===
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/compiler/sandbox-profile.test.ts packages/engine-core/src/compiler/worker-settings.test.ts packages/engine-core/src/compiler/compile-envelope.test.ts packages/engine-core/src/goldens/generate-golden-artifacts.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > denyRead includes control-repo state+cache root, ~/.ssh, ~/.aws 2ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > failIfUnavailable is always true 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — mandatory denyRead (roadmap/03 work item 3 failing-first fixture) > denyRead is identical regardless of what the envelope authorizes 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > enabled is always true and allowUnsandboxedCommands is always false 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > network.allowAllUnixSockets is always true — the Linux/WSL2 UDS gate (docs/engine-baseline.md §6) 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > never carries an allowUnixSockets field (macOS-only path allowlist, ignored on Linux — docs/engine-baseline.md §6) 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > network.allowLocalBinding is always false 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — fixed sandbox posture > filesystem.allowWrite carries the worktree+tmp placeholder tokens (see README.md's placeholder-token convention) 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > network.allowedDomains comes only from envelope.networkDestinations 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > network.allowedDomains is empty when the envelope grants no network destinations 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > credentials.envVars masks each credentialReference 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — envelope-driven fields > credentials.envVars is empty when the envelope references no credentials 0ms
+ ✓ |@eo/engine-core| src/compiler/sandbox-profile.test.ts > emitSandboxProfile — immutability > does not mutate its input envelope 0ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > WorkerSettingsJson embeds the exact compiled permissions/sandbox decision 2ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > WorkerSdkOptions.allowedTools/disallowedTools mirror the SAME permissions.allow/deny arrays 1ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > permissionMode is dontAsk 0ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > settingSources is explicitly the empty array (roadmap/03 §Risks, §10 risk #3) 0ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > strictMcpConfig is true 0ms
+ ✓ |@eo/engine-core| src/compiler/worker-settings.test.ts > toWorkerSettingsJson / toWorkerSdkOptions — one compiled decision, two serializations > mcpServers is keyed by exactly GATEWAY_MCP_SERVER_NAME — no other server 0ms
+ ✓ |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > returns a CompiledWorkerProfile that validates against its own schema 2ms
+ ✓ |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > is pure — the same envelope compiles to a deep-equal profile on every call 2ms
+ ✓ |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > does not mutate its input envelope 1ms
+ ✓ |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > settingsJson.permissions/sandbox equal the top-level compiled permissions/sandbox 1ms
+ ✓ |@eo/engine-core| src/compiler/compile-envelope.test.ts > compileEnvelope > sdkOptions.allowedTools/disallowedTools mirror permissions.allow/deny exactly 1ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > read-only.settings.json is byte-identical to the committed golden 2ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > read-only.sdk-options.json is byte-identical to the committed golden 0ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > standard-implementation.settings.json is byte-identical to the committed golden 0ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > standard-implementation.sdk-options.json is byte-identical to the committed golden 0ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > network-granted.settings.json is byte-identical to the committed golden 0ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability against committed goldens > network-granted.sdk-options.json is byte-identical to the committed golden 0ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability across two consecutive in-process generations > buildGoldenArtifacts() produces deep-equal output on two consecutive calls 3ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability across two consecutive in-process generations > every artifact's content ends with exactly one trailing newline (JSON.stringify(...,null,2)+\n convention) 1ms
+ ✓ |@eo/engine-core| src/goldens/generate-golden-artifacts.test.ts > golden settings artifacts — byte-stability across two consecutive in-process generations > produces exactly six artifacts — 2 serializations x 3 canonical envelopes 2ms
+
+ Test Files  4 passed (4)
+      Tests  33 passed (33)
+   Start at  00:21:49
+   Duration  306ms (transform 532ms, setup 0ms, import 754ms, tests 28ms, environment 0ms)
+
+Exit code: 0
+
+=== Part 2: golden artifacts byte-stable across two consecutive real builds ===
+
+Procedure: copied `packages/engine-core/goldens/*.json` (already committed,
+generated by the first `node scripts/write-goldens.ts` run after
+implementing the real compiler) to a scratch dir, ran `npx tsc -b
+packages/engine-core --force` (a full rebuild, not incremental) followed
+by `node scripts/write-goldens.ts` again, copied the regenerated files to
+a second scratch dir, and diffed the two.
+
+Commands (run from repo root):
+
+  npx tsc -b packages/engine-core --force
+  (cd packages/engine-core && node scripts/write-goldens.ts)
+  diff -r <run1-scratch-dir> <run2-scratch-dir>
+
+Output:
+
+  tsc: (empty — exit code 0, zero diagnostics)
+  write-goldens: wrote 6 golden artifact(s) to packages/engine-core/goldens
+  diff -r: (empty — exit code 0, zero differences across all 6 files)
+
+This confirms: byte-stable across two consecutive builds (empty diff),
+satisfying the roadmap's own exit criterion verbatim.
+
+=== Golden artifact paths (committed) ===
+
+  packages/engine-core/goldens/read-only.settings.json
+  packages/engine-core/goldens/read-only.sdk-options.json
+  packages/engine-core/goldens/standard-implementation.settings.json
+  packages/engine-core/goldens/standard-implementation.sdk-options.json
+  packages/engine-core/goldens/network-granted.settings.json
+  packages/engine-core/goldens/network-granted.sdk-options.json

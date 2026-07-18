@@ -1,0 +1,44 @@
+Phase 03, worker W2 — work item 6 (envelope-conformance fixture format +
+validator) passing evidence.
+
+Date: 2026-07-18
+
+After implementing the real `.strict()` `ConformanceFixtureSchema` (see
+wi6-conformance-failing.txt for the loose stub this replaced) and the
+seven-fixture conformance set (`conformance-fixtures/fixtures.ts`), both
+`schema.test.ts` (format/validator correctness, including every RED
+rejection case now genuinely rejected) and `fixtures.test.ts` (exit
+criterion 4 — every fixture reproduces its hand-derived expected
+per-layer verdict) are green.
+
+Command: npx vitest run --coverage.enabled=false
+packages/testkit/src/fake-engine/conformance-fixtures
+
+======================================================================
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture whose 'expected' object is missing the 'sandbox' verdict 3ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture missing the entire 'expected' object 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an 'expected' verdict value outside the allow|deny enum 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an unknown extra top-level field (.strict()) 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — accepts a well-formed fixture > parses the valid fixture and round-trips its fields 1ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — accepts a well-formed fixture > accepts optional permissionOverride/additionalPermissionLevels/envelopeOverrides fields 1ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema is directly usable via its own zod .strict() parse > ConformanceFixtureSchema.parse behaves identically to validateConformanceFixture 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > compound-command-smuggling reproduces its hand-derived expected per-layer verdict 3ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > process-wrapper-smuggling reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > path-escape-relative reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > path-escape-absolute reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > deny-wins-same-level reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > deny-wins-cross-level reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > blanket-mcp-deny-footgun reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > covers exactly the seven required scenario classes (roadmap/03 work item 6) 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > each fixture cites a baseline/spec source for its hand-derived expectation 0ms
+ ✓ |@eo/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > each layer is independently callable without the others (disabling layers 3/4 to check layer 2 alone) 0ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  01:07:08
+   Duration  354ms (transform 218ms, setup 0ms, import 287ms, tests 14ms, environment 0ms)
+

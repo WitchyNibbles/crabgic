@@ -1,0 +1,98 @@
+Phase 03, work item 4 — failing-first evidence for the footgun + property +
+mutation suites (`src/footguns/*.test.ts`).
+
+Date: 2026-07-17
+
+Setup (deliberately-wrong stubs, per this worker's TDD protocol — "prefer
+genuine assertion-level failures over module-absence failures"):
+  - `src/compiler/sandbox-profile.ts`'s stub (see
+    wi3-sandbox-goldens-failing.txt) throws a ZodError
+    (`network.allowAllUnixSockets` must be `true`) from inside
+    `emitSandboxProfile`, cascading into every footgun/property/mutation
+    test that calls `compileEnvelope` (all of them).
+  - `src/compiler/permission-profile.ts`'s stub (see
+    wi2-permission-profile-failing.txt) additionally emits the exact
+    blanket-`mcp__*`-deny footgun this suite exists to catch — visible in
+    `mcp-deny.test.ts`'s first test, which reaches the
+    `assertNoBlanketMcpDeny` call before the sandbox ZodError would have
+    fired (permission-profile emission runs first inside
+    `compileEnvelope`), producing a genuine footgun-invariant failure
+    rather than a ZodError for that one assertion.
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false packages/engine-core/src/footguns
+
+Real output (summary):
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@eo/engine-core| src/footguns/mutation.test.ts (0 test)
+ ❯ |@eo/engine-core| src/footguns/anchor-forms.test.ts (5 tests | 5 failed) 17ms
+     × owned-path allow rules are always '//'-anchored (filesystem-root anchor) 7ms
+     × mandatory credential/control-repo denies are always '~/'-anchored (home anchor) 1ms
+     × no allow rule ever appears verbatim in the deny list, and vice versa, for any owned-path/command/network/credential input (fast-check) 6ms
+     × an owned path crafted to itself look like a '~/'-anchored mandatory-deny path still produces only a '//'-anchored allow rule, never colliding with the real deny 1ms
+     × a mandatory deny is never accidentally emitted twice under two different anchor spellings 1ms
+ ❯ |@eo/engine-core| src/footguns/smuggling.test.ts (6 tests | 6 failed) 17ms
+     × 'git status && curl …' never produces a Bash allow rule (baseline §3) 7ms
+     × ';'/'|'/'||' compound forms never produce a Bash allow rule either 1ms
+     × 'nohup git status' never produces a Bash allow rule (baseline §3: 'Process-wrapper smuggling … denied — PASS') 1ms
+     × 'timeout 5 git diff' never satisfies the exact-match 'git diff' gate 1ms
+     × 'nice -n 5 npm run test' never satisfies the exact-match 'npm run test' gate 1ms
+     × the compiler never emits a Bash allow rule outside the four doc-confirmed literals, for any commands input (≥5k cases) 6ms
+ ❯ |@eo/engine-core| src/footguns/property.test.ts (3 tests | 3 failed) 20ms
+     × every emitted allow rule is explainable by the envelope that produced it 11ms
+     × every fixed mandatory deny and every mandatory denyRead path is present, for any envelope 3ms
+     × the compiled profile never contains a blanket mcp__* deny, for any envelope 5ms
+ ❯ |@eo/engine-core| src/footguns/mcp-deny.test.ts (4 tests | 4 failed) 18ms
+     × a minimal envelope's compiled deny list never contains 'mcp__*' 7ms
+     × the mandatory gateway allow entry is always present, never shadowed 2ms
+     × no envelope, of any shape, ever produces a blanket mcp__* deny (fast-check, ≥10k cases) 6ms
+     × single-server exposure comes from strictMcpConfig, not a deny (roadmap/03's own footgun bullet) 1ms
+
+ Test Files  5 failed (5)
+      Tests  18 failed (18)
+   Start at  00:18:48
+   Duration  426ms (transform 693ms, setup 0ms, import 862ms, tests 72ms, environment 0ms)
+
+Exit code: 1
+
+Representative detailed failures:
+
+(1) `mutation.test.ts` fails entirely at collection — its module-level
+`baseline = compileEnvelope(envelope)` throws before any `it` registers:
+
+ FAIL  |@eo/engine-core| src/footguns/mutation.test.ts [ packages/engine-core/src/footguns/mutation.test.ts ]
+ZodError: [
+  {
+    "received": false,
+    "code": "invalid_literal",
+    "expected": true,
+    "path": [ "network", "allowAllUnixSockets" ],
+    "message": "Invalid literal value, expected true"
+  }
+]
+ ❯ emitSandboxProfile src/compiler/sandbox-profile.ts:14:31
+ ❯ compileEnvelope src/compiler/compile-envelope.ts:16:19
+ ❯ src/footguns/mutation.test.ts:64:18
+
+(2) `mcp-deny.test.ts`'s own footgun-invariant assertion fails on the
+REAL footgun (the blanket `mcp__*` deny the stub permission-profile
+emits), not merely on the cascading sandbox ZodError — this is the
+strongest genuine RED in this capture, directly exercising the invariant
+this work item exists to protect:
+
+ FAIL  |@eo/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > a minimal envelope's compiled deny list never contains 'mcp__*'
+AssertionError: expected [Function] to not throw an error but '[\n  {\n    "received": false, "…' was thrown
+ ❯ src/footguns/mcp-deny.test.ts:21:87
+
+(3) The ≥10k-case fast-check property suite also fails genuinely, with a
+real (minimal, shrunk) counterexample rather than an internal harness
+error:
+
+ FAIL  |@eo/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > no envelope, of any shape, ever produces a blanket mcp__* deny (fast-check, ≥10k cases)
+Error: Property failed after 1 tests
+{ seed: 1132406208, path: "0:0:0", endOnFailure: true }
+Counterexample: [{"schemaVersion":1,"id":"8f14e45f-ceea-467e-b4d3-8b5f8f5f8f5f","changeSetId":"1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed","createdAt":"2026-07-15T12:00:00.000Z","canonicalHash":"sha256:deterministic-fixture-envelope-hash","ownedPaths":[],"commands":[],"networkDestinations":[],"credentialReferences":[],"dependencies":[],"remoteResourceAuthorizations":[],"temporaryServices":[],"prohibitedActions":[]}]
+Shrunk 2 time(s)

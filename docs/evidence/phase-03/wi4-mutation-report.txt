@@ -1,0 +1,149 @@
+Phase 03, work item 4 — mutation-test report.
+
+Date: 2026-07-17 (original); updated 2026-07-18 for the Validation round
+(2026-07-18) security-fix round — seeds 4 and 5 added, both tied to the
+CRITICAL 1 finding (see docs/evidence/phase-03/README.md's "Validation
+round" section and packages/engine-core/README.md's "Security-fix round"
+section for the full writeup).
+Source: packages/engine-core/src/footguns/mutation.test.ts (variant
+functions), packages/engine-core/src/footguns/invariants.ts (assertion
+helpers under test).
+
+Scope: roadmap/03-envelope-compiler-engine-adapter.md §Test plan,
+Security bullet — "mutation tests over deliberately broken compiler
+variants — blanket `mcp__*` deny, dropped control-repo/`.ssh`/`.aws`
+`denyRead`, space-before-colon `Bash` literal — each must be caught by a
+failing test, not silently pass"; §Exit criteria — "each seeded
+broken-compiler variant … is caught by a failing test, recorded in the
+mutation-test report."
+
+Method: each seeded variant is a function, exported ONLY from
+`mutation.test.ts` (never from `src/` production code), that takes the
+REAL `compileEnvelope`'s own correct output (a `CompiledWorkerProfile`
+built from a non-trivial fixture envelope — owned paths + two authorized
+Bash commands) and mutates it to reintroduce exactly one seeded defect.
+Each seed is verified twice: (a) the real compiler's own unmutated output
+never trips the corresponding invariant assertion (a negative control —
+proves the assertion isn't simply always-throwing), and (b) the mutated
+variant IS caught by that same assertion, throwing the expected typed
+error.
+
+---
+
+Seed 1 — blanket `mcp__*` deny
+  Variant function: withBlanketMcpDenyBug
+  Mutation: appends the literal "mcp__*" to permissions.deny.
+  Assertion under test: assertNoBlanketMcpDeny (invariants.ts)
+  Expected thrown type: BlanketMcpDenyViolationError
+
+  Result: CAUGHT.
+    - Real compiler output: assertNoBlanketMcpDeny(baseline) does not throw. PASS
+    - Seeded variant: assertNoBlanketMcpDeny(withBlanketMcpDenyBug(baseline))
+      throws BlanketMcpDenyViolationError. PASS
+
+---
+
+Seed 2 — dropped mandatory denyRead paths (control-repo state+cache root, ~/.ssh, ~/.aws)
+  Variant function: withDroppedMandatoryDenyReadPathsBug
+  Mutation: replaces sandbox.filesystem.denyRead with [] (empty array).
+  Assertion under test: assertMandatoryDenyReadPathsPresent (invariants.ts)
+  Expected thrown type: MissingMandatoryDenyReadPathError
+
+  Result: CAUGHT.
+    - Real compiler output: assertMandatoryDenyReadPathsPresent(baseline)
+      does not throw. PASS
+    - Seeded variant:
+      assertMandatoryDenyReadPathsPresent(withDroppedMandatoryDenyReadPathsBug(baseline))
+      throws MissingMandatoryDenyReadPathError (reports the first missing
+      path, CONTROL_REPO_STATE_ROOT_DENY_PATH). PASS
+
+---
+
+Seed 3 — space-before-colon Bash literal (interface-ledger Gap 12)
+  Variant function: withSpaceBeforeColonBashLiteralBug
+  Mutation: rewrites the emitted "Bash(git status:*)" allow entry to
+  "Bash(git status :*)" (space inserted before the colon).
+  Assertion under test: assertNoSpaceBeforeColonBashLiteral (invariants.ts)
+  Expected thrown type: SpaceBeforeColonBashLiteralError
+
+  Result: CAUGHT.
+    - Real compiler output: assertNoSpaceBeforeColonBashLiteral(baseline)
+      does not throw. PASS
+    - Seeded variant:
+      assertNoSpaceBeforeColonBashLiteral(withSpaceBeforeColonBashLiteralBug(baseline))
+      throws SpaceBeforeColonBashLiteralError, naming the offending rule
+      ("Bash(git status :*)"). PASS
+
+---
+
+Seed 4 — raw unanchored owned-path allow rule (CRITICAL 1, security-fix round)
+  Variant function: withRawUnanchoredOwnedPathBug
+  Mutation: appends "Edit(//etc/cron.d/**)"/"Write(//etc/cron.d/**)" to
+  permissions.allow — reproducing the PRE-FIX compiler's exact defect: a
+  raw, unanchored owned-path allow rule with no worktree placeholder token,
+  baked straight from a hostile relative path
+  (validator's exact attack: ownedPaths:["etc/cron.d"] -> Edit(//etc/cron.d/**)
+  -> /etc/cron.d/** under adaptation §4.1's filesystem-root '//' anchor).
+  Assertion under test: assertAllOwnedPathAllowRulesAreWorktreeScoped (invariants.ts)
+  Expected thrown type: UnanchoredOwnedPathAllowError
+
+  Result: CAUGHT.
+    - Real compiler output: assertAllOwnedPathAllowRulesAreWorktreeScoped(baseline)
+      does not throw. PASS
+    - Seeded variant:
+      assertAllOwnedPathAllowRulesAreWorktreeScoped(withRawUnanchoredOwnedPathBug(baseline))
+      throws UnanchoredOwnedPathAllowError, naming the offending rule
+      ("Edit(//etc/cron.d/**)"). PASS
+
+---
+
+Seed 5 — dropped Edit/Write deny backstop (CRITICAL 1, security-fix round)
+  Variant function: withDroppedEditWriteDenyBackstopBug
+  Mutation: strips every Edit(...)/Write(...) entry from permissions.deny —
+  reproducing the PRE-FIX compiler's defect: no Edit/Write deny backstop
+  existed at all (only Read(...) denies for the sensitive roots; Appendix
+  B's own Edit(//abs/path/worktree/.git/**) deny had been dropped entirely).
+  Assertion under test: assertEditWriteDenyBackstopPresent (invariants.ts)
+  Expected thrown type: MissingEditWriteDenyBackstopError
+
+  Result: CAUGHT.
+    - Real compiler output: assertEditWriteDenyBackstopPresent(baseline)
+      does not throw. PASS
+    - Seeded variant:
+      assertEditWriteDenyBackstopPresent(withDroppedEditWriteDenyBackstopBug(baseline))
+      throws MissingEditWriteDenyBackstopError (reports the first missing
+      backstop rule). PASS
+
+---
+
+Summary: 5/5 seeded broken-compiler variants caught, 0 silently passed
+(3 original + 2 added in the 2026-07-18 security-fix round).
+
+Command used to produce the passing run this report describes (run from
+repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/footguns/mutation.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 1: blanket mcp__* deny > the real compiler's own output never trips assertNoBlanketMcpDeny 2ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 1: blanket mcp__* deny > the seeded variant IS caught 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 2: dropped mandatory denyRead paths > the real compiler's own output never trips assertMandatoryDenyReadPathsPresent 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 2: dropped mandatory denyRead paths > the seeded variant IS caught 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 3: space-before-colon Bash literal > the real compiler's own output never trips assertNoSpaceBeforeColonBashLiteral 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 3: space-before-colon Bash literal > the seeded variant IS caught 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 4: raw unanchored owned-path allow rule (CRITICAL 1) > the real compiler's own output never trips assertAllOwnedPathAllowRulesAreWorktreeScoped 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 4: raw unanchored owned-path allow rule (CRITICAL 1) > the seeded variant IS caught 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 5: dropped Edit/Write deny backstop (CRITICAL 1) > the real compiler's own output never trips assertEditWriteDenyBackstopPresent 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 5: dropped Edit/Write deny backstop (CRITICAL 1) > the seeded variant IS caught 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > assertNoFootguns — runs all five checks together > never throws against the real compiler's own output 0ms
+ ✓ |@eo/engine-core| src/footguns/mutation.test.ts > assertNoFootguns — runs all five checks together > catches each of the five seeded variants in turn 0ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  10:51:02
+   Duration  326ms (transform 168ms, setup 0ms, import 217ms, tests 6ms, environment 0ms)
+
+Exit code: 0

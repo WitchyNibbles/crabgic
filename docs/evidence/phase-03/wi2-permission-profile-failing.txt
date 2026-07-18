@@ -1,0 +1,183 @@
+Phase 03, work item 2 — failing-first evidence for `emitPermissionProfile`
+(permission-profile emission).
+
+Date: 2026-07-17
+
+Setup (deliberately-wrong stub, per this worker's TDD protocol — "prefer
+genuine assertion-level failures over module-absence failures"):
+  `src/compiler/permission-profile.ts` shipped with `emitPermissionProfile`
+  ignoring its `envelope` argument entirely and returning `allow: []`
+  (never emits owned-path/Bash/gateway allows) and `deny: ["mcp__*"]` (the
+  exact blanket-`mcp__*`-deny footgun this compiler must NEVER emit).
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/compiler/permission-profile.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > a minimal envelope's allow list contains only the mandatory gateway allow entry 6ms
+   → expected [] to deeply equal [ 'mcp__eo_gateway__*' ]
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > defaultMode is dontAsk and disableBypassPermissionsMode is disable 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > ask is always empty (adaptation §4.1's compiled shape) 0ms
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits Edit/Write allow entries for each owned path, '//'-anchored 1ms
+   → expected [] to deeply equal ArrayContaining{…}
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits exactly the four doc-confirmed Bash literals when all four are authorized, and no others 1ms
+   → expected [] to deeply equal [ 'Bash(git diff:*)', …(3) ]
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits only the authorized subset when the envelope authorizes fewer than four 1ms
+   → expected [] to deeply equal [ 'Bash(git status:*)' ]
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > never emits a Bash rule for a command the envelope did not authorize 0ms
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > the allow list contains ONLY owned-path Edit/Write, the authorized Bash literals, and the gateway allow — nothing else (roadmap/03 work item 2 exit criterion) 1ms
+   → expected [] to deeply equal [ 'Bash(git status:*)', …(4) ]
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > never allows Read/Grep/Glob unconditionally (see README.md's deviation-from-Appendix-B note) 1ms
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory tool/command denies are always present, regardless of envelope content 1ms
+   → expected [ 'mcp__*' ] to deeply equal ArrayContaining{…}
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory path denies (control-repo state+cache root, ~/.ssh, ~/.aws) are always present 1ms
+   → expected [ 'mcp__*' ] to deeply equal ArrayContaining{…}
+ × |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > never emits a blanket mcp__* deny (Appendix B's own footgun warning) 1ms
+   → expected [ 'mcp__*' ] to not include 'mcp__*'
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory denies are identical regardless of what the envelope authorizes 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — immutability > does not mutate its input envelope 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > a minimal envelope's allow list contains only the mandatory gateway allow entry
+AssertionError: expected [] to deeply equal [ 'mcp__eo_gateway__*' ]
+
+- Expected
++ Received
+
+- [
+-   "mcp__eo_gateway__*",
+- ]
++ []
+
+ ❯ src/compiler/permission-profile.test.ts:23:27
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits Edit/Write allow entries for each owned path, '//'-anchored
+AssertionError: expected [] to deeply equal ArrayContaining{…}
+
+- Expected
++ Received
+
+- ArrayContaining [
+-   "Edit(//packages/a/src/**)",
+-   "Write(//packages/a/src/**)",
+-   "Edit(//packages/b/src/**)",
+-   "Write(//packages/b/src/**)",
+- ]
++ []
+
+ ❯ src/compiler/permission-profile.test.ts:40:27
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits exactly the four doc-confirmed Bash literals when all four are authorized, and no others
+AssertionError: expected [] to deeply equal [ 'Bash(git diff:*)', …(3) ]
+
+- Expected
++ Received
+
+- [
+-   "Bash(git diff:*)",
+-   "Bash(git status:*)",
+-   "Bash(npm run build:*)",
+-   "Bash(npm run test:*)",
+- ]
++ []
+
+ ❯ src/compiler/permission-profile.test.ts:55:35
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits only the authorized subset when the envelope authorizes fewer than four
+AssertionError: expected [] to deeply equal [ 'Bash(git status:*)' ]
+
+- Expected
++ Received
+
+- [
+-   "Bash(git status:*)",
+- ]
++ []
+
+ ❯ src/compiler/permission-profile.test.ts:62:64
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > the allow list contains ONLY owned-path Edit/Write, the authorized Bash literals, and the gateway allow — nothing else (roadmap/03 work item 2 exit criterion)
+AssertionError: expected [] to deeply equal [ 'Bash(git status:*)', …(4) ]
+
+- Expected
++ Received
+
+- [
+-   "Bash(git status:*)",
+-   "Bash(npm run test:*)",
+-   "Edit(//packages/a/src/**)",
+-   "Write(//packages/a/src/**)",
+-   "mcp__eo_gateway__*",
+- ]
++ []
+
+ ❯ src/compiler/permission-profile.test.ts:74:39
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory tool/command denies are always present, regardless of envelope content
+AssertionError: expected [ 'mcp__*' ] to deeply equal ArrayContaining{…}
+
+- Expected
++ Received
+
+- ArrayContaining [
+-   "Agent",
+-   "WebFetch",
+-   "WebSearch",
+-   "Bash(git push:*)",
+-   "Bash(curl:*)",
+-   "Bash(wget:*)",
++ [
++   "mcp__*",
+  ]
+
+ ❯ src/compiler/permission-profile.test.ts:96:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory path denies (control-repo state+cache root, ~/.ssh, ~/.aws) are always present
+AssertionError: expected [ 'mcp__*' ] to deeply equal ArrayContaining{…}
+
+- Expected
++ Received
+
+- ArrayContaining [
+-   "Read(~/.local/state/engineering-orchestrator/**)",
+-   "Read(~/.cache/engineering-orchestrator/**)",
+-   "Read(~/.ssh/**)",
+-   "Read(~/.aws/**)",
++ [
++   "mcp__*",
+  ]
+
+ ❯ src/compiler/permission-profile.test.ts:110:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > never emits a blanket mcp__* deny (Appendix B's own footgun warning)
+AssertionError: expected [ 'mcp__*' ] to not include 'mcp__*'
+ ❯ src/compiler/permission-profile.test.ts:121:68
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 6 passed (14)
+   Start at  00:16:34
+   Duration  315ms (transform 144ms, setup 0ms, import 189ms, tests 15ms, environment 0ms)
+
+Exit code: 1

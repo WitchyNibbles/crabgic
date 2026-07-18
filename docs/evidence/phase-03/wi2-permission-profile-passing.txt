@@ -1,0 +1,37 @@
+Phase 03, work item 2 — passing evidence for `emitPermissionProfile`,
+after implementing the real allow/deny emission logic in
+`src/compiler/permission-profile.ts` (owned-path `Edit`/`Write` allows,
+gated four-literal `Bash(...)` allows, the `mcp__${GATEWAY_MCP_SERVER_NAME}
+__*` gateway allow, and the fixed mandatory tool/command/path denies).
+
+Date: 2026-07-17
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/compiler/permission-profile.test.ts
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > a minimal envelope's allow list contains only the mandatory gateway allow entry 2ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > defaultMode is dontAsk and disableBypassPermissionsMode is disable 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > ask is always empty (adaptation §4.1's compiled shape) 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits Edit/Write allow entries for each owned path, '//'-anchored 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits exactly the four doc-confirmed Bash literals when all four are authorized, and no others 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > emits only the authorized subset when the envelope authorizes fewer than four 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > never emits a Bash rule for a command the envelope did not authorize 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > the allow list contains ONLY owned-path Edit/Write, the authorized Bash literals, and the gateway allow — nothing else (roadmap/03 work item 2 exit criterion) 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — allow emission (roadmap/03 work item 2 failing-first fixture) > never allows Read/Grep/Glob unconditionally (see README.md's deviation-from-Appendix-B note) 1ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory tool/command denies are always present, regardless of envelope content 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory path denies (control-repo state+cache root, ~/.ssh, ~/.aws) are always present 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > never emits a blanket mcp__* deny (Appendix B's own footgun warning) 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — mandatory deny emission > mandatory denies are identical regardless of what the envelope authorizes 0ms
+ ✓ |@eo/engine-core| src/compiler/permission-profile.test.ts > emitPermissionProfile — immutability > does not mutate its input envelope 0ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  00:21:47
+   Duration  302ms (transform 150ms, setup 0ms, import 197ms, tests 8ms, environment 0ms)
+
+Exit code: 0

@@ -22,3 +22,10 @@ spikes/
 # style) — same rationale as `package-lock.json` above, not hand-authored
 # content for this gate to reformat.
 packages/contracts/schemas/
+
+# Phase 03 (work item 3): packages/engine-core/goldens/*.json is a machine-
+# generated build artifact with its own documented byte-stability contract
+# (packages/engine-core/scripts/write-goldens.ts: fixed 2-space
+# `JSON.stringify`, trailing newline — deliberately not prettier's own JSON
+# style) — identical rationale to packages/contracts/schemas/ above.
+packages/engine-core/goldens/

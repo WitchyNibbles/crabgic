@@ -1,0 +1,141 @@
+Phase 03, worker W2 — work item 5 (fake engine) passing evidence.
+
+Date: 2026-07-18
+
+After implementing the real logic in every module that was stubbed for
+wi5-fake-engine-failing.txt (bash-command-matching.ts, path-matching.ts,
+permission-evaluator.ts, sandbox-evaluator.ts, adjudication-layer.ts,
+fake-engine-adapter.ts — layered-conformance.ts, scripted-trace.ts,
+rate-limit-fixtures.ts, engine-result-to-worker-result.ts, and tool-call.ts
+were written correct-from-the-start as thin composition/data modules, per
+this file's own header note in the failing capture), every work-item-5
+test file is green.
+
+Command: npx vitest run --coverage.enabled=false <every fake-engine/*.test.ts
+file except conformance-fixtures/*> (verbose reporter; conformance-fixtures/
+is work item 6's own scope — see wi6-conformance-passing.txt).
+
+Result: 14 test files passed, 111 tests passed, 0 failed.
+
+======================================================================
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > splits on && (docs/engine-baseline.md §3 compound-command probe) 2ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > splits on ||, ;, and | 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > a command with no compound operator is a single segment 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > splitCompoundCommand > drops empty segments from stray/adjacent separators 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a bare nohup wrapper (docs/engine-baseline.md §3 process-wrapper probe) 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a bare nice wrapper 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips a timeout wrapper and its duration argument 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > strips chained wrappers 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > stripProcessWrapper > leaves an unwrapped command untouched 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > decomposeBashCommand > decomposes a compound command with a process-wrapper segment into matchable subcommands 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > decomposeBashCommand > a plain single command decomposes to itself 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > matches the exact prefix with a trailing word boundary 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > does not match a different command, even with a shared prefix substring 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > does not match against a non-Bash rule string 0ms
+ ✓ |@eo/testkit| src/fake-engine/bash-command-matching.test.ts > matchesBashPrefixRule > the doc's four confirmed literals all match their own prefix (interface-ledger Gap 12) 0ms
+ ✓ |@eo/testkit| src/fake-engine/rate-limit-fixtures.test.ts > RECORDED_RATE_LIMIT_PAYLOADS > has exactly the four baseline-recorded payloads, in order 2ms
+ ✓ |@eo/testkit| src/fake-engine/rate-limit-fixtures.test.ts > RECORDED_RATE_LIMIT_PAYLOADS > no payload carries status 'rejected' (baseline §8: never synthesize the unobserved variant) 1ms
+ ✓ |@eo/testkit| src/fake-engine/rate-limit-fixtures.test.ts > RECORDED_RATE_LIMIT_PAYLOADS > every payload's resetsAt matches the verbatim recorded epoch 0ms
+ ✓ |@eo/testkit| src/fake-engine/rate-limit-fixtures.test.ts > RECORDED_RATE_LIMIT_PAYLOADS > the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99} 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > baseline recorded PASS for every probe this fixture set reproduces 1ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > compound-command-smuggling: fake engine denies the same command baseline recorded as denied 1ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > process-wrapper-smuggling: fake engine denies the same command baseline recorded as denied 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > deny-wins-same-level: fake engine denies, matching baseline's recorded denial 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > deny-wins-cross-level: fake engine denies via rule-set merge, matching baseline's cross-tier denial 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > bash-colon-spacing: the no-space form matches (baseline's load-bearing verdict for phase 03) 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §8 rate-limit schema > the committed structured-event-shape probe is PASS and cites the exact utilization values this package replays 0ms
+ ✓ |@eo/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §5 structured-output schema-violation shape > the committed schema-violation probe is PASS and matches the exact shape this package's schemaViolation injection replays 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a plain (worktree-relative, '//'-anchor-equivalent) target under the base 1ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches the base path itself with no trailing segment 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > does not match a sibling path with a shared prefix substring 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > does not match a relative traversal that escapes the base (path-escape fixture) 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > does not match an absolute target against a '//'-anchored (worktree-relative) rule (path-escape fixture) 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a '~/'-anchored rule against a '~/'-prefixed target 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > does not match a '~/'-anchored rule against an unrelated absolute target 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesAnchoredGlobLiteral > matches a bare '/'-anchored rule against a matching absolute target 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > matches when both the tool and the anchored glob agree 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > does not match when the tool differs (Edit rule vs Write call) 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > does not match a non-path rule string (e.g. a Bash rule) 0ms
+ ✓ |@eo/testkit| src/fake-engine/path-matching.test.ts > matchesToolPathRule > Read(~/.ssh/**) matches an attempted read under ~/.ssh (docs/engine-baseline.md §6 denyRead probe) 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that returns allow -> allow 1ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that returns deny -> deny 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that THROWS -> deny, never allow (fail-closed) 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that throws a differently-worded error -> still deny (catch is message-agnostic) 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > no callback supplied at all (runtime-undefined, bypassing the type system) -> deny, never allow 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a non-function value passed where a callback is expected -> deny 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysAllowAdjudicate resolves an allow decision 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysDenyAdjudicate resolves a deny decision 0ms
+ ✓ |@eo/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysThrowAdjudicate rejects 2ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > denies an unlisted tool (baseline: 'dontAsk auto-denies an unlisted tool (Write)') 1ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > allows a Bash command matching an allow-listed prefix 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > denies a Bash call with a missing/non-string command (decomposes to zero subcommands) 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > denies 'echo x && curl ...' — curl subcommand independently fails to match 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > denies 'nohup curl ...' — wrapper stripped, curl still fails to match 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > the un-smuggled control command (echo alone) still allows 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — deny-wins (baseline §3) > same-level: a rule present in both allow and deny is denied 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — deny-wins (baseline §3) > cross-level: merging a project-tier allow with a user-tier deny for the same rule still denies 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > allows an Edit inside the owned path 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies an Edit outside the owned path 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies a relative traversal escape out of the owned path 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies an absolute-path escape attempt 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > an explicit path deny rule wins over a matching path allow rule (deny-wins) 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — generic bare tool-name rules (non-Bash/Edit/Write/Read/mcp__) > allows a call matching an exact tool-name allow rule 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — generic bare tool-name rules (non-Bash/Edit/Write/Read/mcp__) > denies an unlisted generic tool call by default (dontAsk default-deny) 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Agent/Task alias (baseline §4: deny 'Agent' removes the 'Task' tool literal) > a deny:['Agent'] ruleset denies a call to the live 'Task' tool literal 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — mcp__ tool names and the blanket-deny footgun (adaptation Appendix B) > allows a gateway tool call matching the server-scoped allow entry 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — mcp__ tool names and the blanket-deny footgun (adaptation Appendix B) > a blanket mcp__* deny shadows the specific gateway allow (deny wins) — the footgun scenario 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > mergePermissionRuleSets > unions allow/deny arrays across every ruleset given, preserving order 1ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > mergePermissionRuleSets > merging zero rulesets yields an empty ruleset 0ms
+ ✓ |@eo/testkit| src/fake-engine/permission-evaluator.test.ts > permissionProfileToRuleSet > projects a PermissionProfile-shaped object down to just allow/deny 0ms
+ ✓ |@eo/testkit| src/fake-engine/engine-result-to-worker-result.test.ts > toWorkerResult > maps a clean success result to outcome 'succeeded' with no diagnostics 2ms
+ ✓ |@eo/testkit| src/fake-engine/engine-result-to-worker-result.test.ts > toWorkerResult > maps a result with permission denials to outcome 'failed' with per-denial diagnostics 1ms
+ ✓ |@eo/testkit| src/fake-engine/engine-result-to-worker-result.test.ts > toWorkerResult > maps an isError result to outcome 'failed' even with no denials 0ms
+ ✓ |@eo/testkit| src/fake-engine/engine-result-to-worker-result.test.ts > toWorkerResult > defaults turnsUsed to 0 when the event omits it 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a full URL 1ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a bare curl target 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > returns undefined for a command with no network reference 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > denies a Bash call targeting a domain outside allowedDomains 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > allows a Bash call targeting an explicitly allowlisted domain 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > allows a Bash call with no network reference regardless of allowedDomains 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > denies a Read under a denyRead entry 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > allows a Read outside any denyRead entry 0ms
+ ✓ |@eo/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > allows a non-filesystem, non-Bash tool call by default (e.g. mcp__ tool) 0ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > allow + allow + allow -> overall allow, every field populated 2ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > permission layer alone denying makes overall deny even if adjudication/sandbox allow 0ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > adjudication layer alone denying makes overall deny even if permissions/sandbox allow 0ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > a throwing adjudication callback still fails closed inside the combined evaluation 0ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > sandbox layer alone denying (disallowed network domain) makes overall deny 0ms
+ ✓ |@eo/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > an explicit permissionRules override is used instead of the profile's own permissions (cross-level merge support) 0ms
+ ✓ |@eo/testkit| src/fake-engine/scripted-trace.test.ts > buildFakeEngineScript > produces a deterministic default sessionId across calls with no overrides 2ms
+ ✓ |@eo/testkit| src/fake-engine/scripted-trace.test.ts > buildFakeEngineScript > the default structuredOutput conforms to WorkerResultSchema (deliverable 1: 'normal-path result conforms to WorkerResult') 1ms
+ ✓ |@eo/testkit| src/fake-engine/scripted-trace.test.ts > buildFakeEngineScript > honors overrides immutably (two successive builds with different overrides don't leak into each other) 1ms
+ ✓ |@eo/testkit| src/fake-engine/scripted-trace.test.ts > buildFakeEngineScript > defaults toolCalls/mcpServers to empty arrays 0ms
+ ✓ |@eo/testkit| src/fake-engine/scripted-trace.test.ts > buildFakeEngineScript > an onResume continuation script can be attached 0ms
+ ✓ |@eo/testkit| src/fake-engine/demo.test.ts > exit criterion 5 — smuggled-command demo > spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure 4ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > a scripted tool call adjudicated by a THROWING callback is denied, never executed 4ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > a spawn() call given no adjudicate callback at all (runtime bypass of the required parameter) fails closed 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.security.test.ts > FakeEngineAdapter — adjudication-hook-bypass fail-closed (security) > resume() with a throwing callback also fails closed for the resumed session's own scripted calls 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > replays init -> toolUse -> result for an allowed scripted call 4ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > a permission-denied tool call never emits a toolUse event, only appears in the terminal result's permissionDenials 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > emits multiple toolUse events in scripted order for multiple allowed calls 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-first fixture) > the normal-path terminal result's structuredOutput conforms to WorkerResultSchema (deliverable 1) 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — capabilities() > returns exactly the five EngineCapabilities fields 0ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — sessionRef scoping (resume) > resume() rejects a sessionRef whose scope doesn't match the original spawn (fail-closed scoping) 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — sessionRef scoping (resume) > resume() rejects an entirely unknown sessionId 0ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.test.ts > FakeEngineAdapter — sessionRef scoping (resume) > resume() with a matching sessionRef continues via the script's onResume continuation 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — crash injection (docs/engine-baseline.md §7 kill9 shape) > the event stream ends abruptly with no terminal result event 3ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — crash injection (docs/engine-baseline.md §7 kill9 shape) > resume() continues a crashed session to a normal terminal result (kill9-resume shape) 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — limitSignal injection (docs/engine-baseline.md §8 verbatim schema) > replays a verbatim recorded rate_limit_event payload mid-stream, then completes normally 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — schema-violating result injection (docs/engine-baseline.md §5 exact observed shape) > terminal result is success-shaped with structuredOutput undefined, no retry event, no error 1ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — hang/timeout injection via cancel(handle, deadline) > the stream blocks until cancel() resolves it, then ends with no result event 51ms
+ ✓ |@eo/testkit| src/fake-engine/fake-engine-adapter.failures.test.ts > FakeEngineAdapter — hang/timeout injection via cancel(handle, deadline) > cancel() never throws for an already-terminated handle 1ms
+
+ Test Files  14 passed (14)
+      Tests  111 passed (111)
+   Start at  01:06:50
+   Duration  541ms (transform 1.93s, setup 0ms, import 2.80s, tests 132ms, environment 1ms)
+

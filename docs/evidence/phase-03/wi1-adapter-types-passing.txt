@@ -1,0 +1,59 @@
+Phase 03, work item 1 — passing evidence for the `EngineAdapter` contract
+types, after implementing:
+  - `src/adapter/engine-event.ts`: added the missing `limitSignal` variant
+    (`EngineLimitSignalEvent`, `RateLimitStatus`, `RateLimitType`),
+    bringing `ENGINE_EVENT_TYPES` to the required 6 members.
+  - `src/adapter/stub-engine-adapter.ts`: fixed `capabilities()` to return
+    `supportsJsonSchema`/`supportsSessionResume` (interface-ledger Gap 7)
+    instead of the retired `structuredOutput`/`sessionResume` draft names.
+
+Date: 2026-07-17
+
+Command (run from repo root):
+
+  npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/adapter
+
+Real output:
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly the six variants init | assistant | toolUse | result | retry | limitSignal, in order 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > has exactly six variants (count) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — exhaustiveness (roadmap/03 work item 1 failing-first fixture) > the exhaustiveness descriptor covers exactly the six declared variants, one description each 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > init: sessionId/model/cwd/tools/mcpServers (baseline §2 hermeticity mcp_servers=[]; §4.4 tool catalog; §7 session_id) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > assistant: sessionId/text (baseline §2, 'final reply exactly "DONE"'; §5, model's plain-text decline) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > toolUse: toolUseId/toolName/toolInput/toolResult (baseline §3 tool_use/tool_result; §6 ENOENT-masking shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > toolUse: toolResult is optional (a call may still be in flight) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > result: subtype/isError/structuredOutput/totalCostUsd/turnsUsed/permissionDenials (baseline §3 permission_denials; §4.4; §5; §7) 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > result: structuredOutput/totalCostUsd/turnsUsed are optional (baseline §5's observed success-with-no-structured-output shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > retry: subtype is always 'api_retry' (baseline §Full verdict tally, ratelimit row: SDKAPIRetryMessage typed shape) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: matches baseline §8's exact recorded rate_limit_info schema (allowed_warning sample) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: accepts 'rejected' status and 'credits_required' errorCode (SDK-typed; baseline §8's UNRESOLVED exhausted variant) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-event.test.ts > EngineEvent — variant payload shapes, grounded in docs/engine-baseline.md > limitSignal: accepts every baseline §8-documented rateLimitType member 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > ENGINE_CAPABILITIES_FIELD_NAMES is exactly the five Gap-7 fields, sorted 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > the descriptor has exactly five entries, one description each 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > returns keys that are exactly supportsJsonSchema, supportsSessionResume, permissionModel, sandboxModel, engineVersion — no more, no fewer 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > supportsJsonSchema/supportsSessionResume are booleans; permissionModel/sandboxModel/engineVersion are strings 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > never carries the retired structuredOutput/sessionResume draft field names (Gap 7) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > spawn returns a WorkerHandle with a string sessionRef.sessionId and an async-iterable events stream 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > resume returns a WorkerHandle carrying the exact sessionRef it was given 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > cancel resolves without throwing 1ms
+ ✓ |@eo/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > capabilities() returns a truthy object (key-shape asserted in engine-capabilities.test.ts) 0ms
+ ✓ |@eo/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > an empty scripted event stream is a valid, iterable async sequence 0ms
+
+ Test Files  3 passed (3)
+      Tests  23 passed (23)
+   Start at  00:21:37
+   Duration  297ms (transform 207ms, setup 0ms, import 271ms, tests 12ms, environment 0ms)
+
+Exit code: 0
+
+Type-level stub-conformance proof (`const adapter: EngineAdapter = new
+StubEngineAdapter()` in engine-adapter.test.ts):
+
+Command:
+
+  npx tsc -b packages/engine-core
+
+Output: (empty — exit code 0, zero diagnostics; confirmed separately below
+in this phase's final full-package typecheck run.)
