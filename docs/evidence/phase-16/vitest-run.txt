@@ -1,0 +1,11 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+(node:642620) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  29 passed (29)
+      Tests  278 passed (278)
+   Start at  00:59:54
+   Duration  2.89s (transform 4.50s, setup 0ms, import 7.37s, tests 5.64s, environment 3ms)
+
