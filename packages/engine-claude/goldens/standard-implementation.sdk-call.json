@@ -1,0 +1,158 @@
+{
+  "allowedTools": [
+    "Edit(///fixture/worktree/packages/example/src/**)",
+    "Write(///fixture/worktree/packages/example/src/**)",
+    "Bash(npm run test:*)",
+    "Bash(npm run build:*)",
+    "Bash(git status:*)",
+    "Bash(git diff:*)",
+    "mcp__eo_gateway__*"
+  ],
+  "cwd": "/fixture/worktree",
+  "disallowedTools": [
+    "Agent",
+    "WebFetch",
+    "WebSearch",
+    "Bash(git push:*)",
+    "Bash(curl:*)",
+    "Bash(wget:*)",
+    "Read(~/.local/state/engineering-orchestrator/**)",
+    "Read(~/.cache/engineering-orchestrator/**)",
+    "Read(~/.ssh/**)",
+    "Read(~/.aws/**)",
+    "Edit(~/.local/state/engineering-orchestrator/**)",
+    "Edit(~/.cache/engineering-orchestrator/**)",
+    "Edit(~/.ssh/**)",
+    "Edit(~/.aws/**)",
+    "Write(~/.local/state/engineering-orchestrator/**)",
+    "Write(~/.cache/engineering-orchestrator/**)",
+    "Write(~/.ssh/**)",
+    "Write(~/.aws/**)",
+    "Edit(///fixture/worktree/.git/**)",
+    "Write(///fixture/worktree/.git/**)"
+  ],
+  "env": {
+    "CLAUDE_CODE_OAUTH_TOKEN": "token-fixture-value",
+    "CLAUDE_CONFIG_DIR": "/fixture/claude-config",
+    "HOME": "/fixture/home",
+    "PATH": "/usr/bin:/bin",
+    "TMP": "/fixture/tmp",
+    "TMPDIR": "/fixture/tmp"
+  },
+  "includePartialMessages": true,
+  "maxTurns": 8,
+  "mcpServers": {
+    "eo_gateway": {
+      "args": [
+        "gateway",
+        "mcp"
+      ],
+      "command": "engineering-orchestrator",
+      "type": "stdio"
+    }
+  },
+  "model": "sonnet",
+  "outputFormat": {
+    "schema": {
+      "type": "object"
+    },
+    "type": "json_schema"
+  },
+  "permissionMode": "dontAsk",
+  "sandbox": {
+    "allowUnsandboxedCommands": false,
+    "credentials": {
+      "envVars": []
+    },
+    "enabled": true,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "allowWrite": [
+        "/fixture/worktree",
+        "/fixture/worker-tmp"
+      ],
+      "denyRead": [
+        "~/.local/state/engineering-orchestrator/**",
+        "~/.cache/engineering-orchestrator/**",
+        "~/.ssh/**",
+        "~/.aws/**"
+      ]
+    },
+    "network": {
+      "allowAllUnixSockets": true,
+      "allowLocalBinding": false,
+      "allowedDomains": []
+    }
+  },
+  "sessionId": "00000000-0000-4000-8000-000000000000",
+  "settingSources": [],
+  "settings": {
+    "permissions": {
+      "allow": [
+        "Edit(///fixture/worktree/packages/example/src/**)",
+        "Write(///fixture/worktree/packages/example/src/**)",
+        "Bash(npm run test:*)",
+        "Bash(npm run build:*)",
+        "Bash(git status:*)",
+        "Bash(git diff:*)",
+        "mcp__eo_gateway__*"
+      ],
+      "ask": [],
+      "defaultMode": "dontAsk",
+      "deny": [
+        "Agent",
+        "WebFetch",
+        "WebSearch",
+        "Bash(git push:*)",
+        "Bash(curl:*)",
+        "Bash(wget:*)",
+        "Read(~/.local/state/engineering-orchestrator/**)",
+        "Read(~/.cache/engineering-orchestrator/**)",
+        "Read(~/.ssh/**)",
+        "Read(~/.aws/**)",
+        "Edit(~/.local/state/engineering-orchestrator/**)",
+        "Edit(~/.cache/engineering-orchestrator/**)",
+        "Edit(~/.ssh/**)",
+        "Edit(~/.aws/**)",
+        "Write(~/.local/state/engineering-orchestrator/**)",
+        "Write(~/.cache/engineering-orchestrator/**)",
+        "Write(~/.ssh/**)",
+        "Write(~/.aws/**)",
+        "Edit(///fixture/worktree/.git/**)",
+        "Write(///fixture/worktree/.git/**)"
+      ],
+      "disableBypassPermissionsMode": "disable"
+    },
+    "sandbox": {
+      "allowUnsandboxedCommands": false,
+      "credentials": {
+        "envVars": []
+      },
+      "enabled": true,
+      "failIfUnavailable": true,
+      "filesystem": {
+        "allowWrite": [
+          "/fixture/worktree",
+          "/fixture/worker-tmp"
+        ],
+        "denyRead": [
+          "~/.local/state/engineering-orchestrator/**",
+          "~/.cache/engineering-orchestrator/**",
+          "~/.ssh/**",
+          "~/.aws/**"
+        ]
+      },
+      "network": {
+        "allowAllUnixSockets": true,
+        "allowLocalBinding": false,
+        "allowedDomains": []
+      }
+    }
+  },
+  "strictMcpConfig": true,
+  "systemPrompt": {
+    "append": "fixture role preamble",
+    "preset": "claude_code",
+    "type": "preset"
+  }
+}

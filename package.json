@@ -17,6 +17,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "lint": "eslint . --ignore-pattern 'spikes/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'spikes/**'",
     "format": "prettier --check .",

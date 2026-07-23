@@ -62,13 +62,27 @@ export default defineConfig({
     testTimeout: 20000,
     // See the file-level comment above: this now actually takes effect
     // per-package, unlike under the original bare-glob `projects` form.
-    exclude: ["**/dist/**", "**/node_modules/**", "**/.git/**"],
+    // `*.live.test.ts` is phase 06's `@live` conformance suite (ledger
+    // Gap 15): it spawns the real pinned Claude Code engine, so it never
+    // runs in the default gate — only `vitest.live.config.ts` (the
+    // `engine-live` CI job / `npm run test:live`) picks it up.
+    exclude: ["**/dist/**", "**/node_modules/**", "**/.git/**", "**/*.live.test.ts"],
     coverage: {
       provider: "v8",
       enabled: true,
       reporter: ["text", "lcov", "html"],
       include: ["packages/*/src/**/*.ts"],
-      exclude: ["**/dist/**", "**/*.d.ts", "**/*.config.*", "**/node_modules/**"],
+      // `src/live/**` is exercised only by the `@live` engine suite (real
+      // engine required), so it is exempt from the default-gate coverage
+      // denominator the same way the live tests themselves are excluded.
+      exclude: [
+        "**/dist/**",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/node_modules/**",
+        "**/*.live.test.ts",
+        "packages/*/src/live/**",
+      ],
       thresholds: {
         lines: 80,
         branches: 80,

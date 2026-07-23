@@ -1,35 +1,60 @@
 name: engine-live
 
-# INERT PLACEHOLDER (Phase 01, Gap 15).
+# Phase 06 wiring (ledger Gap 15; roadmap/06 work item 6): this job runs the
+# `@live`-tagged conformance suite — `packages/engine-claude/src/live/
+# *.live.test.ts` via `vitest.live.config.ts` — against the real, pinned
+# Claude Code engine bundled by the exact-pinned
+# `@anthropic-ai/claude-agent-sdk` dependency (engine facts:
+# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.210).
 #
-# This workflow exists only as a manually-triggered stub. No engine is
-# invoked here, and no Claude Code engine fact is asserted by this file.
+# Auth: the job needs a `CLAUDE_CODE_OAUTH_TOKEN` repository secret (owner-
+# provisioned via `claude setup-token`; adaptation §5.7). The suite's own
+# harness refuses to run without auth and rate-limit-guards itself via the
+# `rate_limit_event` stream (baseline §8) — it aborts rather than pressing a
+# nearly-exhausted subscription window.
 #
-# Phase 06 (packages/engine-claude) wires the `engine-live` job below to run
-# the `@live`-tagged Claude Code conformance suite — the suite of tests
-# tagged `@live` that require a real host with the `claude` CLI installed
-# and authenticated (see roadmap/06-claude-engine-adapter.md). Each green
-# `engine-live` run is expected to be journaled as a queryable record
-# (`{ engineVersion, runId, suiteDigest }`), which phase 14's
-# `engine-conformance` gate later requires for the exact attempted engine
-# version. Phase 10 additionally reuses this same CI job for its own
-# `@live` plugin-load smoke test. Phase 23 reuses this job wholesale at
-# release.
+# Each green run is journaled as a queryable `{engineVersion, runId,
+# suiteDigest}` record (consumed by phase 14's `engine-conformance` binding
+# gate); the record file is uploaded as a workflow artifact. Phase 10 reuses
+# this job for its `@live` plugin-load smoke test; phase 23 reuses it
+# wholesale at release.
 #
-# Until phase 06 lands, `workflow_dispatch` is the only trigger (no push/PR
-# trigger), and the job body below performs no engine invocation of any
-# kind.
+# Trigger stays manual (`workflow_dispatch`): live runs consume the owner's
+# subscription and are started deliberately, never as a push side effect.
 
 on:
   workflow_dispatch: {}
 
 jobs:
   engine-live:
-    name: engine-live (placeholder — phase 06 wires the @live conformance suite)
+    name: engine-live (@live conformance suite vs pinned engine)
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
-      - name: Inert placeholder — no engine invoked
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install sandbox runtime deps (bubblewrap + socat, baseline §6)
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat
+      - name: Fail fast without auth secret
         run: |
-          echo "engine-live is an inert placeholder as of phase 01."
-          echo "Phase 06 wires this job to run the @live-tagged Claude Code conformance suite in packages/engine-claude."
-          echo "No claude CLI invocation, no engine version pin, and no conformance suite run happens here."
+          if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN repository secret is not configured; the @live suite cannot authenticate. See docs/engine-baseline.md §1."
+            exit 1
+          fi
+      - run: npm ci
+      - run: npx tsc -b
+      - name: Run @live conformance suite
+        env:
+          EO_LIVE: "1"
+          EO_LIVE_RUN_ID: ${{ github.run_id }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: npm run test:live
+      - name: Upload live-run journal record
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-live-run-record
+          path: packages/engine-claude/live-run-record.json
+          if-no-files-found: error

@@ -1,0 +1,41 @@
+{
+  "engineVersion": "2.1.210",
+  "fixtures": {
+    "blanket-mcp-deny-footgun": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "compound-command-smuggling": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "deny-wins-cross-level": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "deny-wins-same-level": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "path-escape-absolute": {
+      "detail": "the pinned engine recorded a permission denial for the attempted out-of-owned-path tool call (executed-call guarded)",
+      "mechanism": "engine-permission-deny",
+      "verdict": "deny"
+    },
+    "path-escape-relative": {
+      "detail": "the pinned engine recorded a permission denial for the attempted out-of-owned-path tool call (executed-call guarded)",
+      "mechanism": "engine-permission-deny",
+      "verdict": "deny"
+    },
+    "process-wrapper-smuggling": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    }
+  },
+  "source": "offline-baseline"
+}

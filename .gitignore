@@ -26,3 +26,6 @@ npm-debug.log*
 
 # Changesets pre-release state (not applicable until phase 23 cuts a release)
 .changeset/pre.json
+
+# Phase 06 @live run artifact (regenerated each `npm run test:live`; uploaded by the engine-live CI job)
+packages/engine-claude/live-run-record.json

@@ -29,3 +29,9 @@ packages/contracts/schemas/
 # `JSON.stringify`, trailing newline — deliberately not prettier's own JSON
 # style) — identical rationale to packages/contracts/schemas/ above.
 packages/engine-core/goldens/
+
+# Phase 06 (work item 1): packages/engine-claude/goldens/*.sdk-call.json are
+# machine-generated golden SDK-call fixtures with the same byte-stability
+# contract (recursively key-sorted, fixed 2-space `JSON.stringify`, trailing
+# newline) — identical rationale to packages/engine-core/goldens/ above.
+packages/engine-claude/goldens/
