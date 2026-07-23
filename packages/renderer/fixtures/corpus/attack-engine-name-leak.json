@@ -1,0 +1,10 @@
+{
+  "id": "attack-engine-name-leak",
+  "description": "Engine-name credit line leaked into a PR body (adaptation §9 Neutrality test-matrix item).",
+  "kind": "pr_body",
+  "candidate": "Outcome: built using Anthropic's Claude\nValidation: none\nRisk: none\nTracking: none",
+  "expect": "blocked",
+  "expectedStages": [
+    "attribution-neutral"
+  ]
+}

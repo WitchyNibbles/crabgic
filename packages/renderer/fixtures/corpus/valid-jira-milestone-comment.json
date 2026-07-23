@@ -1,0 +1,7 @@
+{
+  "id": "valid-jira-milestone-comment",
+  "description": "A clean, fully-shaped Jira milestone comment.",
+  "kind": "jira_milestone_comment",
+  "candidate": "Outcome: milestone shipped\nEvidence: https://ci.example.com/build/42\nRisk: none\nNext: monitor for a week\nRef: PROJ-17",
+  "expect": "ok"
+}

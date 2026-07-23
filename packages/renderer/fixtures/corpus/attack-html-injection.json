@@ -1,0 +1,10 @@
+{
+  "id": "attack-html-injection",
+  "description": "Raw <script> HTML tag injected into a PR body.",
+  "kind": "pr_body",
+  "candidate": "Outcome: done <script>alert(1)</script>\nValidation: none\nRisk: none\nTracking: none",
+  "expect": "blocked",
+  "expectedStages": [
+    "url-policy"
+  ]
+}

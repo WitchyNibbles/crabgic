@@ -1,0 +1,144 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > branch_name (plain string, no template) 1`] = `"feature/renderer-lint-pipeline"`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > commit_body (plain string, no template) 1`] = `"Adds the ordered lint stage pipeline and regenerate-once orchestration."`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > commit_subject 1`] = `"feat(renderer): add blocking lint pipeline"`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > grafana_annotation 1`] = `"resolved | renderer-service | deployed v1.2.0 | evidence=https://ci.example.com/build/42"`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > jira_milestone_comment 1`] = `
+"Outcome: milestone shipped
+Evidence: https://ci.example.com/build/42
+Risk: none
+Next: monitor for a week
+Ref: PROJ-17"
+`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > pr_body 1`] = `
+"Outcome: shipped the renderer's blocking lint pipeline
+Validation: unit + property + golden suites green
+Risk: low, no external callers yet
+Tracking: PROJ-17"
+`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > pr_title 1`] = `"feat(renderer): add blocking lint pipeline"`;
+
+exports[`golden byte-stability — one valid fixture per ArtifactKind > review_comment 1`] = `
+"Finding: missing null check on parsed input
+Evidence: src/parser.ts:42
+Action: add a guard clause before dereferencing"
+`;
+
+exports[`golden byte-stability — toADF / toWikiMarkup > toADF 1`] = `
+{
+  "content": [
+    {
+      "attrs": {
+        "level": 1,
+      },
+      "content": [
+        {
+          "text": "Milestone update",
+          "type": "text",
+        },
+      ],
+      "type": "heading",
+    },
+    {
+      "content": [
+        {
+          "text": "Outcome: shipped the ",
+          "type": "text",
+        },
+        {
+          "marks": [
+            {
+              "type": "strong",
+            },
+          ],
+          "text": "renderer",
+          "type": "text",
+        },
+        {
+          "text": " lint pipeline.",
+          "type": "text",
+        },
+      ],
+      "type": "paragraph",
+    },
+    {
+      "content": [
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "unit suite green",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "listItem",
+        },
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "property suite green",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "listItem",
+        },
+      ],
+      "type": "bulletList",
+    },
+    {
+      "content": [
+        {
+          "text": "See ",
+          "type": "text",
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "href": "https://ci.example.com/build/42",
+              },
+              "type": "link",
+            },
+          ],
+          "text": "the build",
+          "type": "text",
+        },
+        {
+          "text": " for details.",
+          "type": "text",
+        },
+      ],
+      "type": "paragraph",
+    },
+  ],
+  "type": "doc",
+  "version": 1,
+}
+`;
+
+exports[`golden byte-stability — toADF / toWikiMarkup > toWikiMarkup 1`] = `
+"h1. Milestone update
+
+Outcome: shipped the *renderer* lint pipeline.
+
+* unit suite green
+* property suite green
+
+See [the build|https://ci.example.com/build/42] for details."
+`;

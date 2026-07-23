@@ -1,0 +1,7 @@
+{
+  "id": "valid-commit-body",
+  "description": "A clean, short commit body within the 5-line limit.",
+  "kind": "commit_body",
+  "candidate": "Adds the ordered lint stage pipeline and regenerate-once orchestration.",
+  "expect": "ok"
+}

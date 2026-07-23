@@ -1,0 +1,10 @@
+{
+  "id": "attack-unevidenced-claim",
+  "description": "Unevidenced completion claim ('fixed') with no evidence reference anywhere in the text.",
+  "kind": "review_comment",
+  "candidate": "Finding: null deref\nEvidence: none provided\nAction: fixed the null check",
+  "expect": "blocked",
+  "expectedStages": [
+    "evidence-claims"
+  ]
+}

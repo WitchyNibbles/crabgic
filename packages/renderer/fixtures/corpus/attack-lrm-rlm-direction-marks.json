@@ -1,0 +1,10 @@
+{
+  "id": "attack-lrm-rlm-direction-marks",
+  "description": "LEFT-TO-RIGHT MARK (U+200E) smuggled into a commit body — L3 adversarial-review fixture.",
+  "kind": "commit_body",
+  "candidate": "looks‎fine, nothing hidden here",
+  "expect": "blocked",
+  "expectedStages": [
+    "unicode-defense"
+  ]
+}

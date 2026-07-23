@@ -1,0 +1,11 @@
+{
+  "id": "attack-attribution-leak",
+  "description": "Generated-with/Co-Authored-By attribution trailer leaked into a commit body (shared with 08's belt-and-suspenders assertion).",
+  "kind": "commit_body",
+  "candidate": "fix: correct the parser\n\n🤖 Generated with Claude Code\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "expect": "blocked",
+  "expectedStages": [
+    "metadata-strip",
+    "attribution-neutral"
+  ]
+}

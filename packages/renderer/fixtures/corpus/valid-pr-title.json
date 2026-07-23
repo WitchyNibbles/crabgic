@@ -1,0 +1,7 @@
+{
+  "id": "valid-pr-title",
+  "description": "A clean PR title matching the commit-subject convention.",
+  "kind": "pr_title",
+  "candidate": "feat(renderer): add blocking lint pipeline",
+  "expect": "ok"
+}

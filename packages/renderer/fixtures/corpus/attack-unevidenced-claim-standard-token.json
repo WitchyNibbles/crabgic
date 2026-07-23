@@ -1,0 +1,10 @@
+{
+  "id": "attack-unevidenced-claim-standard-token",
+  "description": "Unevidenced completion claim next to a standard/hash token (SHA-256) that must not count as a ticket-key evidence reference — M3 adversarial-review fixture.",
+  "kind": "review_comment",
+  "candidate": "Finding: hash mismatch\nEvidence: none\nAction: verified via SHA-256",
+  "expect": "blocked",
+  "expectedStages": [
+    "evidence-claims"
+  ]
+}

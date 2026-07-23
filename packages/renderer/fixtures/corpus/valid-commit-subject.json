@@ -1,0 +1,7 @@
+{
+  "id": "valid-commit-subject",
+  "description": "A clean conventional-commit subject.",
+  "kind": "commit_subject",
+  "candidate": "feat(renderer): add blocking lint pipeline",
+  "expect": "ok"
+}

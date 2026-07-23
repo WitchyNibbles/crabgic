@@ -1,0 +1,7 @@
+{
+  "id": "valid-branch-name",
+  "description": "A clean branch name within the 64-char limit.",
+  "kind": "branch_name",
+  "candidate": "feature/renderer-lint-pipeline",
+  "expect": "ok"
+}

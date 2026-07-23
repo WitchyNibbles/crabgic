@@ -1,0 +1,10 @@
+{
+  "id": "attack-confusable-greek-alpha",
+  "description": "Greek lowercase alpha (U+03B1) homograph in a domain-in-link fixture — M4 adversarial-review fixture.",
+  "kind": "review_comment",
+  "candidate": "Finding: phishing link\nEvidence: see [link](https://pαypal.com/reset)\nAction: block domain",
+  "expect": "blocked",
+  "expectedStages": [
+    "unicode-defense"
+  ]
+}

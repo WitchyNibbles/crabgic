@@ -1,0 +1,10 @@
+{
+  "id": "attack-html-injection-slash-attribute",
+  "description": "Slash-delimited-attribute XSS tag with no whitespace before attrs (<svg/onload=...>) in a PR body — M1 adversarial-review fixture.",
+  "kind": "pr_body",
+  "candidate": "Outcome: done <svg/onload=alert(1)>\nValidation: none\nRisk: none\nTracking: none",
+  "expect": "blocked",
+  "expectedStages": [
+    "url-policy"
+  ]
+}

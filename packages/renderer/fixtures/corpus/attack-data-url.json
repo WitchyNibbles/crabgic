@@ -1,0 +1,10 @@
+{
+  "id": "attack-data-url",
+  "description": "data: URL injected into a Grafana annotation.",
+  "kind": "grafana_annotation",
+  "candidate": "resolved | api | rollback | evidence=data:text/html;base64,abcd",
+  "expect": "blocked",
+  "expectedStages": [
+    "url-policy"
+  ]
+}

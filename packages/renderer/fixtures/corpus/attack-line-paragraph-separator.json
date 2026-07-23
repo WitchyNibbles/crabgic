@@ -1,0 +1,10 @@
+{
+  "id": "attack-line-paragraph-separator",
+  "description": "LINE SEPARATOR (U+2028) smuggled into a review comment to bypass newline-based line counting — L3 adversarial-review fixture.",
+  "kind": "review_comment",
+  "candidate": "Finding: x extra hidden line\nEvidence: y\nAction: z",
+  "expect": "blocked",
+  "expectedStages": [
+    "unicode-defense"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "valid-grafana-annotation",
+  "description": "A clean Grafana annotation within the 240-char limit.",
+  "kind": "grafana_annotation",
+  "candidate": "resolved | renderer-service | deployed v1.2.0 | evidence=https://ci.example.com/build/42",
+  "expect": "ok"
+}

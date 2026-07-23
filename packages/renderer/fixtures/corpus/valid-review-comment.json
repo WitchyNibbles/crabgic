@@ -1,0 +1,7 @@
+{
+  "id": "valid-review-comment",
+  "description": "A clean, fully-shaped review comment with evidence.",
+  "kind": "review_comment",
+  "candidate": "Finding: missing null check on parsed input\nEvidence: src/parser.ts:42\nAction: add a guard clause before dereferencing",
+  "expect": "ok"
+}

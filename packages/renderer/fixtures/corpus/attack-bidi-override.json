@@ -1,0 +1,10 @@
+{
+  "id": "attack-bidi-override",
+  "description": "Trojan Source bidi-override (CVE-2021-42574) smuggled into a commit body.",
+  "kind": "commit_body",
+  "candidate": "looks fine‮reversed",
+  "expect": "blocked",
+  "expectedStages": [
+    "unicode-defense"
+  ]
+}

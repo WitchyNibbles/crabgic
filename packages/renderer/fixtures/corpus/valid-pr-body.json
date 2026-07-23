@@ -1,0 +1,7 @@
+{
+  "id": "valid-pr-body",
+  "description": "A clean, fully-shaped PR body.",
+  "kind": "pr_body",
+  "candidate": "Outcome: shipped the renderer's blocking lint pipeline\nValidation: unit + property + golden suites green\nRisk: low, no external callers yet\nTracking: PROJ-17",
+  "expect": "ok"
+}

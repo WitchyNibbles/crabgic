@@ -1,0 +1,10 @@
+{
+  "id": "attack-remote-image",
+  "description": "Embedded remote image in a PR body.",
+  "kind": "pr_body",
+  "candidate": "Outcome: see ![screenshot](https://evil.example/x.png)\nValidation: none\nRisk: none\nTracking: none",
+  "expect": "blocked",
+  "expectedStages": [
+    "url-policy"
+  ]
+}

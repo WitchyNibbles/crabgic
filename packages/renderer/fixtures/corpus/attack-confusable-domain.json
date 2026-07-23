@@ -1,0 +1,10 @@
+{
+  "id": "attack-confusable-domain",
+  "description": "Cyrillic а (U+0430) homograph inside an otherwise-Latin domain, in a link.",
+  "kind": "review_comment",
+  "candidate": "Finding: phishing link\nEvidence: see [link](https://pаypal.com/reset)\nAction: block domain",
+  "expect": "blocked",
+  "expectedStages": [
+    "unicode-defense"
+  ]
+}
