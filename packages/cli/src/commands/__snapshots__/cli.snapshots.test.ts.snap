@@ -1,0 +1,202 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`--json output schema snapshots > NOT_IMPLEMENTED shape is snapshot-stable 1`] = `
+{
+  "command": "install",
+  "message": ""install" has no backend wired yet — see the roadmap for the phase that lands it",
+  "status": "NOT_IMPLEMENTED",
+}
+`;
+
+exports[`--json output schema snapshots > gateway mcp's tool-listing shape (empty registry) is snapshot-stable 1`] = `
+{
+  "tools": [],
+}
+`;
+
+exports[`--json output schema snapshots > gateway mcp's tool-listing shape (one registered tool) is snapshot-stable 1`] = `
+{
+  "tools": [
+    {
+      "description": "Search the tracker.",
+      "inputSchema": {
+        "properties": {
+          "query": {
+            "type": "string",
+          },
+        },
+        "type": "object",
+      },
+      "name": "tracker.search",
+    },
+  ],
+}
+`;
+
+exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = `
+"{
+  "install": {
+    "usage": "engineering-orchestrator install [--dry-run] [--json]",
+    "summary": "Install the plugin/managed config into this project."
+  },
+  "doctor": {
+    "usage": "engineering-orchestrator doctor [--repair-plan] [--json]",
+    "summary": "Validate the host end-to-end against seeded fault checks."
+  },
+  "run": {
+    "usage": "engineering-orchestrator run [--json]",
+    "summary": "Dispatch a new run."
+  },
+  "status": {
+    "usage": "engineering-orchestrator status [run-id] [--watch] [--json]",
+    "summary": "Show (or stream) a run's status."
+  },
+  "resume": {
+    "usage": "engineering-orchestrator resume <run-id>",
+    "summary": "Resume a parked or interrupted run."
+  },
+  "cancel": {
+    "usage": "engineering-orchestrator cancel <run-id|task-id>",
+    "summary": "Cancel a run or a single task within it."
+  },
+  "evidence": {
+    "usage": "engineering-orchestrator evidence <change-set-id>",
+    "summary": "Show every EvidenceRecord journaled for a ChangeSet."
+  },
+  "connection": {
+    "usage": "engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>",
+    "summary": "Manage external connector connections."
+  },
+  "trust": {
+    "usage": "engineering-orchestrator trust review|approve|revoke",
+    "summary": "Review and approve high-impact capability grants."
+  },
+  "learn": {
+    "usage": "engineering-orchestrator learn list|approve|reject|rollback",
+    "summary": "Manage reviewed learning proposals."
+  },
+  "upgrade": {
+    "usage": "engineering-orchestrator upgrade [--dry-run]",
+    "summary": "Upgrade the installed plugin/managed config."
+  },
+  "uninstall": {
+    "usage": "engineering-orchestrator uninstall [--keep-state]",
+    "summary": "Remove the installed plugin/managed config."
+  },
+  "gateway": {
+    "usage": "engineering-orchestrator gateway mcp",
+    "summary": "Boot the gateway MCP server over stdio (no user-facing flags)."
+  }
+}
+"
+`;
+
+exports[`help text snapshots > top-level help (human) is snapshot-stable 1`] = `
+"Commands:
+
+  engineering-orchestrator install [--dry-run] [--json]
+      Install the plugin/managed config into this project.
+  engineering-orchestrator doctor [--repair-plan] [--json]
+      Validate the host end-to-end against seeded fault checks.
+  engineering-orchestrator run [--json]
+      Dispatch a new run.
+  engineering-orchestrator status [run-id] [--watch] [--json]
+      Show (or stream) a run's status.
+  engineering-orchestrator resume <run-id>
+      Resume a parked or interrupted run.
+  engineering-orchestrator cancel <run-id|task-id>
+      Cancel a run or a single task within it.
+  engineering-orchestrator evidence <change-set-id>
+      Show every EvidenceRecord journaled for a ChangeSet.
+  engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>
+      Manage external connector connections.
+  engineering-orchestrator trust review|approve|revoke
+      Review and approve high-impact capability grants.
+  engineering-orchestrator learn list|approve|reject|rollback
+      Manage reviewed learning proposals.
+  engineering-orchestrator upgrade [--dry-run]
+      Upgrade the installed plugin/managed config.
+  engineering-orchestrator uninstall [--keep-state]
+      Remove the installed plugin/managed config.
+  engineering-orchestrator gateway mcp
+      Boot the gateway MCP server over stdio (no user-facing flags).
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-cancel 1`] = `
+"engineering-orchestrator cancel <run-id|task-id>
+    Cancel a run or a single task within it.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-connection 1`] = `
+"engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>
+    Manage external connector connections.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-doctor 1`] = `
+"engineering-orchestrator doctor [--repair-plan] [--json]
+    Validate the host end-to-end against seeded fault checks.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-evidence 1`] = `
+"engineering-orchestrator evidence <change-set-id>
+    Show every EvidenceRecord journaled for a ChangeSet.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-gateway 1`] = `
+"engineering-orchestrator gateway mcp
+    Boot the gateway MCP server over stdio (no user-facing flags).
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-install 1`] = `
+"engineering-orchestrator install [--dry-run] [--json]
+    Install the plugin/managed config into this project.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-learn 1`] = `
+"engineering-orchestrator learn list|approve|reject|rollback
+    Manage reviewed learning proposals.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-resume 1`] = `
+"engineering-orchestrator resume <run-id>
+    Resume a parked or interrupted run.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-run 1`] = `
+"engineering-orchestrator run [--json]
+    Dispatch a new run.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-status 1`] = `
+"engineering-orchestrator status [run-id] [--watch] [--json]
+    Show (or stream) a run's status.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-trust 1`] = `
+"engineering-orchestrator trust review|approve|revoke
+    Review and approve high-impact capability grants.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-uninstall 1`] = `
+"engineering-orchestrator uninstall [--keep-state]
+    Remove the installed plugin/managed config.
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-upgrade 1`] = `
+"engineering-orchestrator upgrade [--dry-run]
+    Upgrade the installed plugin/managed config.
+"
+`;

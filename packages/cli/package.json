@@ -2,7 +2,7 @@
   "name": "engineering-orchestrator",
   "version": "0.0.0",
   "private": true,
-  "description": "engineering-orchestrator CLI & doctor (empty stub — phase 09).",
+  "description": "engineering-orchestrator CLI & doctor (roadmap/09-cli-and-doctor.md).",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -10,6 +10,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "engineering-orchestrator": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,6 +24,16 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@eo/contracts": "0.0.0",
+    "@eo/journal": "0.0.0",
+    "@eo/supervisor": "0.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eo/testkit": "0.0.0",
+    "fast-check": "4.9.0"
   },
   "publishConfig": {
     "access": "public"
