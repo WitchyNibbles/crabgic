@@ -105,13 +105,11 @@ describe("executeMutationPlan — happy path", () => {
 
   it("persists a pre-I/O pending record, then a terminal 'recorded' record — both under the SAME operationId (HIGH/MEDIUM #3)", async () => {
     const plan = buildPlan();
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: '{"appliedRevision":"rev-1"}',
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: '{"appliedRevision":"rev-1"}',
+    } satisfies HttpTransportResponse);
 
     await executeMutationPlan(plan, buildHandlers(), buildDeps(journal, sendRequest));
 
@@ -126,13 +124,11 @@ describe("executeMutationPlan — happy path", () => {
 
 describe("executeMutationPlan — exactly-once semantics", () => {
   it("replays a byte-identical result for the same (operationId, contentHash) without re-invoking the network call", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: '{"appliedRevision":"rev-1"}',
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: '{"appliedRevision":"rev-1"}',
+    } satisfies HttpTransportResponse);
     const deps = buildDeps(journal, sendRequest);
     const plan = buildPlan();
 
@@ -145,13 +141,11 @@ describe("executeMutationPlan — exactly-once semantics", () => {
   });
 
   it("rejects a changed-content plan for the same idempotencyKey as a typed conflict, never a silent overwrite", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: '{"appliedRevision":"rev-1"}',
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: '{"appliedRevision":"rev-1"}',
+    } satisfies HttpTransportResponse);
     const deps = buildDeps(journal, sendRequest);
     const plan = buildPlan();
     const changedPlan = buildPlan({ desiredStateHash: "sha256:desired-state-DIFFERENT" });
@@ -278,13 +272,11 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   });
 
   it("maps a verify() false result to a failed outcome, never silently treated as success", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: '{"appliedRevision":"rev-1"}',
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: '{"appliedRevision":"rev-1"}',
+    } satisfies HttpTransportResponse);
     const handlers = buildHandlers({ verify: async () => false });
     const outcome = await executeMutationPlan(
       buildPlan(),
@@ -301,13 +293,11 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   });
 
   it("maps a >=400 HTTP response to a failed outcome carrying the canonical ConnectorError kind", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 403,
-        headers: {},
-        bodyText: "",
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 403,
+      headers: {},
+      bodyText: "",
+    } satisfies HttpTransportResponse);
     const outcome = await executeMutationPlan(
       buildPlan(),
       buildHandlers(),
@@ -330,13 +320,11 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   });
 
   it("an AmbiguousWriteBlockedError thrown directly from parseResponse is mapped to blocked", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: "{}",
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: "{}",
+    } satisfies HttpTransportResponse);
     const handlers = buildHandlers({
       parseResponse: () => {
         throw new AmbiguousWriteBlockedError("provider signaled an unresolvable ambiguous outcome");
@@ -371,13 +359,11 @@ describe("executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-t
       },
     });
 
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 200,
-        headers: {},
-        bodyText: '{"appliedRevision":"rev-1"}',
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: {},
+      bodyText: '{"appliedRevision":"rev-1"}',
+    } satisfies HttpTransportResponse);
     const outcome = await executeMutationPlan(
       plan,
       buildHandlers(),

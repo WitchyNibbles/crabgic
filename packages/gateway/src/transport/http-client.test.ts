@@ -250,13 +250,11 @@ describe("GatewayHttpClient — retry ladder + backoff", () => {
   });
 
   it("does not blindly retry a POST on a 503", async () => {
-    const sendRequest = vi
-      .fn()
-      .mockResolvedValue({
-        status: 503,
-        headers: {},
-        bodyText: "",
-      } satisfies HttpTransportResponse);
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 503,
+      headers: {},
+      bodyText: "",
+    } satisfies HttpTransportResponse);
 
     const client = new GatewayHttpClient({
       allowlist: ALLOWLIST,
