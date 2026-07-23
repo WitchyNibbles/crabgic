@@ -4,7 +4,5 @@
   "kind": "review_comment",
   "candidate": "Finding: phishing link\nEvidence: see [link](https://pаypal.com/reset)\nAction: block domain",
   "expect": "blocked",
-  "expectedStages": [
-    "unicode-defense"
-  ]
+  "expectedStages": ["unicode-defense"]
 }

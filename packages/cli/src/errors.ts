@@ -33,7 +33,9 @@ export class NotImplementedError extends Error {
   readonly command: string;
 
   constructor(command: string) {
-    super(`"${command}" has no backend wired yet (phase 09 stub — see roadmap for the owning phase)`);
+    super(
+      `"${command}" has no backend wired yet (phase 09 stub — see roadmap for the owning phase)`,
+    );
     this.name = "NotImplementedError";
     this.command = command;
   }

@@ -106,7 +106,8 @@ export function evidenceClaimsStage(input: LintStageInput): readonly LintFinding
   const claims = findAllMatches(text, CLAIM_WORD_PATTERN);
   if (claims.length === 0) return [];
 
-  const hasEvidence = URL_PATTERN.test(text) || hasGenuineTicketKey(text) || hasGenuineEvidenceLabel(text);
+  const hasEvidence =
+    URL_PATTERN.test(text) || hasGenuineTicketKey(text) || hasGenuineEvidenceLabel(text);
   if (hasEvidence) return [];
 
   return claims.map((match) => ({

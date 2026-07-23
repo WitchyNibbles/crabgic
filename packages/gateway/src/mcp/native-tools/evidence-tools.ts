@@ -38,10 +38,7 @@ const EVIDENCE_GET_INPUT_SHAPE = {
   changeSetId: z.string(),
 };
 
-async function persistEvidenceRecord(
-  journal: JournalStore,
-  record: EvidenceRecord,
-): Promise<void> {
+async function persistEvidenceRecord(journal: JournalStore, record: EvidenceRecord): Promise<void> {
   await journal.appendEntry({
     type: "evidence_pointer",
     changeSetId: record.changeSetId,
@@ -53,7 +50,8 @@ async function persistEvidenceRecord(
 export function buildEvidenceTools(deps: EvidenceToolsDeps): readonly AnyGatewayToolDefinition[] {
   const attach: GatewayToolDefinition<typeof EVIDENCE_ATTACH_INPUT_SHAPE> = {
     name: "evidence.attach",
-    description: "Durably attaches a worker-submitted EvidenceRecord to a ChangeSet (04's journal).",
+    description:
+      "Durably attaches a worker-submitted EvidenceRecord to a ChangeSet (04's journal).",
     inputSchema: EVIDENCE_ATTACH_INPUT_SHAPE,
     handler: async (args) => {
       const record = EvidenceRecordSchema.parse({
@@ -63,7 +61,9 @@ export function buildEvidenceTools(deps: EvidenceToolsDeps): readonly AnyGateway
         ...args,
       });
       await persistEvidenceRecord(deps.journal, record);
-      return { content: [{ type: "text", text: JSON.stringify({ attached: true, id: record.id }) }] };
+      return {
+        content: [{ type: "text", text: JSON.stringify({ attached: true, id: record.id }) }],
+      };
     },
   };
 

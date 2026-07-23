@@ -71,7 +71,11 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
       ],
     }),
     createJournalChainCheck({ journal: options.journal }),
-    createWsl2WarningsCheck({ isWsl2: detectWsl2, stateRootPath: stateRoot, cacheRootPath: cacheRoot }),
+    createWsl2WarningsCheck({
+      isWsl2: detectWsl2,
+      stateRootPath: stateRoot,
+      cacheRootPath: cacheRoot,
+    }),
   ];
 }
 

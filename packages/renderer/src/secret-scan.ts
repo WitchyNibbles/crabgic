@@ -46,7 +46,10 @@ const SECRET_PATTERNS: readonly SecretPattern[] = [
   // base64url segments dot-separated, header segment always starts with
   // "ey" since a JSON object's `{"` prefix base64-encodes to that) that
   // carries no `Bearer` prefix at all.
-  { label: "GitHub fine-grained personal access token (github_pat_*)", pattern: /github_pat_[A-Za-z0-9_]{20,}/g },
+  {
+    label: "GitHub fine-grained personal access token (github_pat_*)",
+    pattern: /github_pat_[A-Za-z0-9_]{20,}/g,
+  },
   {
     label: "JWT (JSON Web Token)",
     pattern: /\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,

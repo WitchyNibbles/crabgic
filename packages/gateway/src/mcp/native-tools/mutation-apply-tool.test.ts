@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION, type ExternalConnection, type RemoteMutationPlan } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  type ExternalConnection,
+  type RemoteMutationPlan,
+} from "@eo/contracts";
 import { InMemoryExternalConnectionStore } from "../../connection-store/external-connection-store.js";
 import { ProviderRegistry } from "../../provider-dispatch/provider-registry.js";
 import { IdempotencyKeyLock } from "../../mutation-pipeline/mutation-pipeline.js";
@@ -11,7 +15,10 @@ import { GatewayHttpClient } from "../../transport/http-client.js";
 import { buildMutationApplyTool, type MutationApplyToolDeps } from "./mutation-apply-tool.js";
 import type { MutationApplyClient } from "./mutation-apply-client.js";
 
-function buildPlan(connectionId: string, overrides: Partial<RemoteMutationPlan> = {}): RemoteMutationPlan {
+function buildPlan(
+  connectionId: string,
+  overrides: Partial<RemoteMutationPlan> = {},
+): RemoteMutationPlan {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: "f0000000-0000-4000-8000-000000000001",
@@ -90,7 +97,11 @@ describe("buildMutationApplyTool", () => {
     const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
     let verifyCalled = false;
     mutationApplyClients.register("verifying-provider", {
-      buildRequest: () => ({ url: new URL("https://verifying-provider.invalid/apply"), method: "PUT", hasPrecondition: true }),
+      buildRequest: () => ({
+        url: new URL("https://verifying-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
       parseResponse: () => ({ appliedRevision: "rev-1" }),
       verify: async () => {
         verifyCalled = true;
@@ -100,7 +111,10 @@ describe("buildMutationApplyTool", () => {
 
     const buildHttpClient = async (_c: ExternalConnection) =>
       new GatewayHttpClient({
-        allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://verifying-provider.invalid"] },
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://verifying-provider.invalid"],
+        },
         resolveHostAddresses: async () => ["203.0.113.7"],
         sendRequest: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
       });
@@ -129,7 +143,11 @@ describe("buildMutationApplyTool", () => {
     const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
     let reconcileCalled = false;
     mutationApplyClients.register("reconciling-provider", {
-      buildRequest: () => ({ url: new URL("https://reconciling-provider.invalid/apply"), method: "PUT", hasPrecondition: true }),
+      buildRequest: () => ({
+        url: new URL("https://reconciling-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
       parseResponse: () => ({ appliedRevision: "rev-1" }),
       reconcileAmbiguous: async () => {
         reconcileCalled = true;
@@ -139,7 +157,10 @@ describe("buildMutationApplyTool", () => {
 
     const buildHttpClient = async (_c: ExternalConnection) =>
       new GatewayHttpClient({
-        allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://reconciling-provider.invalid"] },
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://reconciling-provider.invalid"],
+        },
         resolveHostAddresses: async () => ["203.0.113.7"],
         sendRequest: async () => {
           throw new Error("ECONNRESET");

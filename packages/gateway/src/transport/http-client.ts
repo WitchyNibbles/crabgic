@@ -187,7 +187,11 @@ export class GatewayHttpClient {
 
       if (action.kind === "retry") {
         const retryAfterMs = parseRetryAfterHeader(response.headers["retry-after"] ?? null);
-        const delayMs = computeBackoffDelayMs(attempt, retryAfterMs, { baseMs: 200, maxMs: 30_000, random: this.#random });
+        const delayMs = computeBackoffDelayMs(attempt, retryAfterMs, {
+          baseMs: 200,
+          maxMs: 30_000,
+          random: this.#random,
+        });
         await this.#sleep(delayMs);
         continue;
       }
@@ -201,7 +205,10 @@ export class GatewayHttpClient {
     const addresses = await this.#resolveHostAddresses(url.hostname);
     const verdict = checkHopBeforeCredentialAttach(url, addresses, this.#allowlist);
     if (!verdict.allowed) {
-      throw new SsrfRefusedError(url.toString(), `${isFirstHop ? "initial request" : "redirect"}: ${verdict.reason}`);
+      throw new SsrfRefusedError(
+        url.toString(),
+        `${isFirstHop ? "initial request" : "redirect"}: ${verdict.reason}`,
+      );
     }
     const pinned = addresses[0];
     if (pinned === undefined) {

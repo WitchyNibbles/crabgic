@@ -26,7 +26,10 @@ afterEach(async () => {
 
 describe("queryEvidence", () => {
   it("returns an empty-but-valid report for a fresh ChangeSet with zero records", async () => {
-    const report = await queryEvidence({ journal, changeSetId: "11111111-1111-4111-8111-111111111111" });
+    const report = await queryEvidence({
+      journal,
+      changeSetId: "11111111-1111-4111-8111-111111111111",
+    });
     expect(report).toEqual({ changeSetId: "11111111-1111-4111-8111-111111111111", records: [] });
   });
 

@@ -14,7 +14,10 @@ export interface Tokenized {
   readonly flags: ReadonlyMap<string, string | true>;
 }
 
-export function tokenize(argv: readonly string[], valueFlagNames: readonly string[] = []): Tokenized {
+export function tokenize(
+  argv: readonly string[],
+  valueFlagNames: readonly string[] = [],
+): Tokenized {
   const valueFlags = new Set<string>(valueFlagNames);
   const positionals: string[] = [];
   const flags = new Map<string, string | true>();

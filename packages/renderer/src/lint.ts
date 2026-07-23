@@ -46,7 +46,11 @@ export const STAGE_PIPELINE: readonly LintStage[] = [
  * not just the first one encountered — matching `LintFinding`'s own design
  * rationale ("never a bare boolean").
  */
-export function lint(candidate: string, kind: ArtifactKind, policy: CommunicationPolicy): LintOutcome {
+export function lint(
+  candidate: string,
+  kind: ArtifactKind,
+  policy: CommunicationPolicy,
+): LintOutcome {
   const input: LintStageInput = { candidate, kind, policy };
   const findings = STAGE_PIPELINE.flatMap((stage) => stage(input));
   return findings.length === 0 ? { ok: true } : { ok: false, findings };

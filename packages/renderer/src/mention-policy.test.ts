@@ -25,8 +25,10 @@ describe("mentionPolicyStage", () => {
   });
 
   it("allows text with no @ tokens", () => {
-    expect(mentionPolicyStage(stageInput("Outcome: done\nValidation: green\nRisk: none\nTracking: none"))).toEqual(
-      [],
-    );
+    expect(
+      mentionPolicyStage(
+        stageInput("Outcome: done\nValidation: green\nRisk: none\nTracking: none"),
+      ),
+    ).toEqual([]);
   });
 });

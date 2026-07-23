@@ -20,7 +20,11 @@ describe("mapHttpStatusToConnectorError", () => {
   ];
 
   it.each(CASES)("maps status %d to kind %s", (status, expectedKind) => {
-    const err = mapHttpStatusToConnectorError({ status, provider: "jira", rawProviderResponse: { secret: "leak" } });
+    const err = mapHttpStatusToConnectorError({
+      status,
+      provider: "jira",
+      rawProviderResponse: { secret: "leak" },
+    });
     expect(err.kind).toBe(expectedKind);
     expect(err).toBeInstanceOf(ConnectorError);
   });
@@ -38,7 +42,11 @@ describe("mapHttpStatusToConnectorError", () => {
 
 describe("mapUnknownErrorToConnectorError", () => {
   it("passes through an existing ConnectorError unchanged", () => {
-    const original = ConnectorError.rateLimited({ message: "x", provider: "jira", retryable: true });
+    const original = ConnectorError.rateLimited({
+      message: "x",
+      provider: "jira",
+      retryable: true,
+    });
     expect(mapUnknownErrorToConnectorError(original, "jira")).toBe(original);
   });
 

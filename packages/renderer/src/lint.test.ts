@@ -8,7 +8,9 @@ describe("STAGE_PIPELINE — runner order (work item 1 failing-first fixture)", 
   });
 
   it("runs every stage against a clean candidate with no findings", () => {
-    expect(lint("Corrects the off-by-one error.", "commit_body", DEFAULT_COMMUNICATION_POLICY)).toEqual({
+    expect(
+      lint("Corrects the off-by-one error.", "commit_body", DEFAULT_COMMUNICATION_POLICY),
+    ).toEqual({
       ok: true,
     });
   });
@@ -16,7 +18,9 @@ describe("STAGE_PIPELINE — runner order (work item 1 failing-first fixture)", 
 
 describe("lint()", () => {
   it("returns ok:true for a clean commit subject", () => {
-    expect(lint("fix: correct the off-by-one error", "commit_subject", DEFAULT_COMMUNICATION_POLICY)).toEqual({
+    expect(
+      lint("fix: correct the off-by-one error", "commit_subject", DEFAULT_COMMUNICATION_POLICY),
+    ).toEqual({
       ok: true,
     });
   });

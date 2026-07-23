@@ -19,8 +19,7 @@ export interface LintFinding {
  * `LintOutcome` — roadmap/17 §Interfaces produced, verbatim union shape.
  */
 export type LintOutcome =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly findings: readonly LintFinding[] };
+  { readonly ok: true } | { readonly ok: false; readonly findings: readonly LintFinding[] };
 
 /**
  * Shared input every stage function receives. Stages are pure, synchronous,

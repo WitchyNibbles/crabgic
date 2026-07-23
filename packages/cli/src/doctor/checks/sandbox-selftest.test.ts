@@ -48,7 +48,11 @@ describe("createSandboxSelftestCheck", () => {
     const check = createSandboxSelftestCheck({
       probe: async (_command, args) => {
         if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
-        return { stdout: "", stderr: "sh: 1: cannot create /eo-sandbox-selftest-marker: Read-only file system", exitCode: 1 };
+        return {
+          stdout: "",
+          stderr: "sh: 1: cannot create /eo-sandbox-selftest-marker: Read-only file system",
+          exitCode: 1,
+        };
       },
     });
     const finding = await check.run();

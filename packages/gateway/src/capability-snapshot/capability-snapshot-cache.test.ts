@@ -80,7 +80,11 @@ describe("isInvalidatingError / invalidateOnError", () => {
     "flags %s as invalidating",
     (kind) => {
       const err = ConnectorError[
-        kind === "authentication" ? "authentication" : kind === "permission" ? "permission" : "unsupported"
+        kind === "authentication"
+          ? "authentication"
+          : kind === "permission"
+            ? "permission"
+            : "unsupported"
       ]({ message: "x", provider: "jira", retryable: false });
       expect(isInvalidatingError(err)).toBe(true);
     },

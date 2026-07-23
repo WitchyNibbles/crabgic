@@ -34,7 +34,14 @@ export interface WorkUnitStatusEvent {
 
 /** Renders one WorkUnit status line — `parked:rate_limit` is visually and textually distinct from both `dispatched` ("running") and `failed`. */
 export function renderWorkUnitStatusLine(event: WorkUnitStatusEvent): string {
-  const marker = event.status === "parked:rate_limit" ? "⏸" : event.status === "failed" ? "✗" : event.status === "succeeded" ? "✓" : "•";
+  const marker =
+    event.status === "parked:rate_limit"
+      ? "⏸"
+      : event.status === "failed"
+        ? "✗"
+        : event.status === "succeeded"
+          ? "✓"
+          : "•";
   return `${marker} [${event.workUnitId}] ${STATUS_LABELS[event.status]}`;
 }
 

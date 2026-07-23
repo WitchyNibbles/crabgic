@@ -4,8 +4,5 @@
   "kind": "jira_milestone_comment",
   "candidate": "Outcome: see [click here](javascript:alert(1))\nEvidence: https://ci.example.com/1\nRisk: none\nNext: none\nRef: PROJ-1",
   "expect": "blocked",
-  "expectedStages": [
-    "url-policy",
-    "adf-safe-subset"
-  ]
+  "expectedStages": ["url-policy", "adf-safe-subset"]
 }

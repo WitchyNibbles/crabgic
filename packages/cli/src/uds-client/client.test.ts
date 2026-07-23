@@ -54,7 +54,9 @@ function buildDeps(): SupervisorDependencies {
   };
 }
 
-async function startServer(deps = buildDeps()): Promise<{ server: SupervisorServer; deps: SupervisorDependencies }> {
+async function startServer(
+  deps = buildDeps(),
+): Promise<{ server: SupervisorServer; deps: SupervisorDependencies }> {
   const runtimeDir = join(root, "run");
   const socketPath = join(runtimeDir, "control.sock");
   const router = buildSupervisorRouter(deps);
@@ -117,7 +119,9 @@ describe("connectUdsClient — per-request timeout (adversarial-review fix, 2026
     // server first (while the client socket is still open) would hang.
     await client?.close();
     client = undefined;
-    await new Promise<void>((resolve) => (rawServer ? rawServer.close(() => resolve()) : resolve()));
+    await new Promise<void>((resolve) =>
+      rawServer ? rawServer.close(() => resolve()) : resolve(),
+    );
     rawServer = undefined;
   });
 
@@ -131,7 +135,9 @@ describe("connectUdsClient — per-request timeout (adversarial-review fix, 2026
         if (newlineIndex === -1) return;
         // Ack the handshake for real; silently swallow every request line
         // after that — this server never answers.
-        socket.write(`${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`);
+        socket.write(
+          `${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`,
+        );
       });
     });
     await new Promise<void>((resolve, reject) => {

@@ -9,7 +9,9 @@ function stageInput(candidate: string): LintStageInput {
 
 describe("secretScanStage", () => {
   it("blocks an AWS-style access key in a review comment (failing-first fixture)", () => {
-    const findings = secretScanStage(stageInput("finding: leaked key AKIAABCDEFGHIJKLMNOP in config"));
+    const findings = secretScanStage(
+      stageInput("finding: leaked key AKIAABCDEFGHIJKLMNOP in config"),
+    );
     expect(findings.length).toBe(1);
     expect(findings[0]!.stage).toBe(STAGE_NAME_SECRET_SCAN);
     expect(findings[0]!.severity).toBe("block");
@@ -27,7 +29,9 @@ describe("secretScanStage", () => {
   });
 
   it("blocks a postgres connection string with embedded credentials", () => {
-    const findings = secretScanStage(stageInput("connect via postgres://admin:hunter2@db.internal:5432/app"));
+    const findings = secretScanStage(
+      stageInput("connect via postgres://admin:hunter2@db.internal:5432/app"),
+    );
     expect(findings.some((f) => f.message.match(/connection string/i))).toBe(true);
   });
 
@@ -85,9 +89,11 @@ describe("secretScanStage", () => {
   });
 
   it("allows clean review-comment text with no secrets", () => {
-    expect(secretScanStage(stageInput("finding: missing null check; evidence: test.ts:42; action: add guard"))).toEqual(
-      [],
-    );
+    expect(
+      secretScanStage(
+        stageInput("finding: missing null check; evidence: test.ts:42; action: add guard"),
+      ),
+    ).toEqual([]);
   });
 
   it("reports a correct span for the matched secret", () => {

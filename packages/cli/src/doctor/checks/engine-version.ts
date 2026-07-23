@@ -22,7 +22,10 @@ function parseSemverTriple(version: string): readonly [number, number, number] {
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
-function compareSemver(a: readonly [number, number, number], b: readonly [number, number, number]): number {
+function compareSemver(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+): number {
   for (let i = 0; i < 3; i++) {
     if (a[i]! !== b[i]!) return a[i]! - b[i]!;
   }

@@ -59,9 +59,7 @@ describe("parseCommand", () => {
   });
 
   it("parses connection add with a valid secret reference", () => {
-    expect(
-      parseCommand(["connection", "add", "jira", "--reference", "env:JIRA_TOKEN"]),
-    ).toEqual({
+    expect(parseCommand(["connection", "add", "jira", "--reference", "env:JIRA_TOKEN"])).toEqual({
       command: "connection-add",
       provider: "jira",
       reference: { raw: "env:JIRA_TOKEN" },
@@ -76,13 +74,16 @@ describe("parseCommand", () => {
   });
 
   it("rejects connection add with an unknown provider", () => {
-    expect(() =>
-      parseCommand(["connection", "add", "bogus", "--reference", "env:X"]),
-    ).toThrow(CliUsageError);
+    expect(() => parseCommand(["connection", "add", "bogus", "--reference", "env:X"])).toThrow(
+      CliUsageError,
+    );
   });
 
   it("parses connection list/doctor/capabilities", () => {
-    expect(parseCommand(["connection", "list"])).toEqual({ command: "connection-list", json: false });
+    expect(parseCommand(["connection", "list"])).toEqual({
+      command: "connection-list",
+      json: false,
+    });
     expect(parseCommand(["connection", "doctor", "conn-1"])).toEqual({
       command: "connection-doctor",
       connectionId: "conn-1",

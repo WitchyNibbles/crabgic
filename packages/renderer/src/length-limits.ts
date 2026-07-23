@@ -74,7 +74,8 @@ export function lengthLimitsStage(input: LintStageInput): readonly LintFinding[]
     findings.push({
       stage: STAGE_NAME_LENGTH_LIMITS,
       severity: "block",
-      message: parts.length > 0 ? parts.join("; ") : `"${kind}" exceeds its CommunicationPolicy limit`,
+      message:
+        parts.length > 0 ? parts.join("; ") : `"${kind}" exceeds its CommunicationPolicy limit`,
     });
   }
 

@@ -75,7 +75,8 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
           severity: "error",
           passed: false,
           evidence: "a write to a read-only-bound path inside bwrap unexpectedly succeeded",
-          repairStep: "investigate the bwrap installation/kernel configuration — confinement is not holding",
+          repairStep:
+            "investigate the bwrap installation/kernel configuration — confinement is not holding",
         };
       }
 

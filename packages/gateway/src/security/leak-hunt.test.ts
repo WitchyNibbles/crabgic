@@ -18,7 +18,10 @@ import { ProviderRegistry } from "../provider-dispatch/provider-registry.js";
 import { buildNativeToolRegistry } from "../mcp/native-registry.js";
 import type { GenericProviderClient } from "../mcp/native-tools/provider-dispatch-tool.js";
 import type { MutationApplyClient } from "../mcp/native-tools/mutation-apply-client.js";
-import { mapHttpStatusToConnectorError, mapUnknownErrorToConnectorError } from "../mutation-pipeline/error-mapping.js";
+import {
+  mapHttpStatusToConnectorError,
+  mapUnknownErrorToConnectorError,
+} from "../mutation-pipeline/error-mapping.js";
 import {
   executeMutationPlan,
   IdempotencyKeyLock,
@@ -44,7 +47,9 @@ function collectStrings(value: unknown, out: string[] = []): string[] {
 function assertNoLeak(surfaceName: string, value: unknown): void {
   const strings = collectStrings(value);
   const leaked = strings.filter((s) => s.includes(SECRET_MARKER));
-  expect(leaked, `${surfaceName} leaked the raw secret marker: ${JSON.stringify(leaked)}`).toEqual([]);
+  expect(leaked, `${surfaceName} leaked the raw secret marker: ${JSON.stringify(leaked)}`).toEqual(
+    [],
+  );
 }
 
 describe("leak hunt — canonical-error mapping never echoes a raw provider body", () => {
@@ -115,7 +120,9 @@ describe("leak hunt — native tool-registry dispatch never echoes a raw provide
       mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
       supervisorSocketPath: "/nonexistent.sock",
     });
-    const result = await registry.get("tracker.search")?.handler({ connectionId: connection.id, params: {} });
+    const result = await registry
+      .get("tracker.search")
+      ?.handler({ connectionId: connection.id, params: {} });
     assertNoLeak("tracker.search GatewayToolResult", result);
   });
 });
@@ -162,7 +169,11 @@ describe("leak hunt — mutation pipeline never journals a raw provider body", (
 
     const handlers: MutationPipelineHandlers = {
       provider: "leaky-provider",
-      buildRequest: () => ({ url: new URL("https://leaky-provider.invalid/apply"), method: "PUT", hasPrecondition: true }),
+      buildRequest: () => ({
+        url: new URL("https://leaky-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
       parseResponse: (_p, response) => JSON.parse(response.bodyText) as { appliedRevision: string },
       verify: async () => true,
     };

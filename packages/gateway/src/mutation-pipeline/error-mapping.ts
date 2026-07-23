@@ -31,9 +31,11 @@ export function mapHttpStatusToConnectorError(input: HttpStatusMappingInput): Co
   if (status === 401) return ConnectorError.authentication({ ...base, retryable: false });
   if (status === 403) return ConnectorError.permission({ ...base, retryable: false });
   if (status === 404) return ConnectorError.notFound({ ...base, retryable: false });
-  if (status === 409 || status === 412) return ConnectorError.conflict({ ...base, retryable: false });
+  if (status === 409 || status === 412)
+    return ConnectorError.conflict({ ...base, retryable: false });
   if (status === 429) return ConnectorError.rateLimited({ ...base, retryable: true });
-  if (status === 400 || status === 422) return ConnectorError.validation({ ...base, retryable: false });
+  if (status === 400 || status === 422)
+    return ConnectorError.validation({ ...base, retryable: false });
   if (status === 501) return ConnectorError.unsupported({ ...base, retryable: false });
   if (status >= 500) return ConnectorError.transient({ ...base, retryable: true });
   return ConnectorError.transient({ ...base, retryable: true });

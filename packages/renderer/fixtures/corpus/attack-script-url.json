@@ -4,7 +4,5 @@
   "kind": "review_comment",
   "candidate": "Finding: xss\nEvidence: [click](javascript:alert(1))\nAction: sanitize",
   "expect": "blocked",
-  "expectedStages": [
-    "url-policy"
-  ]
+  "expectedStages": ["url-policy"]
 }

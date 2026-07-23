@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { collectAllPages, paginate, type Page } from "./pagination.js";
 
-function makeFakeSource(totalItems: number, pageSize: number): (cursor: string | undefined) => Promise<Page<number>> {
+function makeFakeSource(
+  totalItems: number,
+  pageSize: number,
+): (cursor: string | undefined) => Promise<Page<number>> {
   return async (cursor) => {
     const start = cursor === undefined ? 0 : Number(cursor);
     const end = Math.min(start + pageSize, totalItems);
@@ -17,7 +20,11 @@ describe("paginate", () => {
     for await (const items of paginate(fetchPage)) {
       pages.push([...items]);
     }
-    expect(pages).toEqual([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9]]);
+    expect(pages).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+      [8, 9],
+    ]);
   });
 
   it("handles a single-page source", async () => {

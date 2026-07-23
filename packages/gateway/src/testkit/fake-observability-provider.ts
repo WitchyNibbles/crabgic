@@ -18,7 +18,9 @@ export interface FakeObservabilityProviderHandle {
 
 const FAKE_OBSERVABILITY_BASE_URL = "https://fake-observability.invalid";
 
-export function createFakeObservabilityProvider(script: FakeProviderScript): FakeObservabilityProviderHandle {
+export function createFakeObservabilityProvider(
+  script: FakeProviderScript,
+): FakeObservabilityProviderHandle {
   const fakeTransport = createFakeProviderTransport(script);
   const httpClient = new GatewayHttpClient({
     allowlist: { allowedSchemes: ["https:"], allowedOrigins: [FAKE_OBSERVABILITY_BASE_URL] },
@@ -27,7 +29,11 @@ export function createFakeObservabilityProvider(script: FakeProviderScript): Fak
     sleep: async () => undefined,
   });
 
-  async function callAndParse(method: "GET" | "POST" | "PUT" | "PATCH", path: string, isWrite: boolean): Promise<unknown> {
+  async function callAndParse(
+    method: "GET" | "POST" | "PUT" | "PATCH",
+    path: string,
+    isWrite: boolean,
+  ): Promise<unknown> {
     const response = await httpClient.request({
       connectionId: "fake-observability-connection",
       tenant: "fake-tenant",

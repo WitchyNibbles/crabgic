@@ -9,7 +9,12 @@
  * always FAILING even on an authenticated host. `buildRealCliDependencies`
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
-import { createJournalStore, readXdgEnvFromProcess, resolveJournalDir, type XdgEnv } from "@eo/journal";
+import {
+  createJournalStore,
+  readXdgEnvFromProcess,
+  resolveJournalDir,
+  type XdgEnv,
+} from "@eo/journal";
 import { resolveSupervisorSocketPath } from "@eo/supervisor";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
@@ -40,6 +45,7 @@ export function buildRealCliDependencies(
     // `~/.claude/...` lookups match whichever HOME this invocation
     // actually resolved everything else from) and for testability
     // (overriding `xdgEnv` deterministically controls auth resolution too).
-    resolveAuthState: overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
+    resolveAuthState:
+      overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
   };
 }

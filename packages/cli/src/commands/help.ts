@@ -18,19 +18,55 @@ export interface CommandHelpEntry {
 
 /** One entry per command name declared in the plan (roadmap/09 §In scope) — alphabetical by command name, `gateway mcp` included per its own explicit callout. */
 export const COMMAND_HELP: Readonly<Record<string, CommandHelpEntry>> = {
-  install: { usage: `${BINARY_NAME} install [--dry-run] [--json]`, summary: "Install the plugin/managed config into this project." },
-  doctor: { usage: `${BINARY_NAME} doctor [--repair-plan] [--json]`, summary: "Validate the host end-to-end against seeded fault checks." },
+  install: {
+    usage: `${BINARY_NAME} install [--dry-run] [--json]`,
+    summary: "Install the plugin/managed config into this project.",
+  },
+  doctor: {
+    usage: `${BINARY_NAME} doctor [--repair-plan] [--json]`,
+    summary: "Validate the host end-to-end against seeded fault checks.",
+  },
   run: { usage: `${BINARY_NAME} run [--json]`, summary: "Dispatch a new run." },
-  status: { usage: `${BINARY_NAME} status [run-id] [--watch] [--json]`, summary: "Show (or stream) a run's status." },
-  resume: { usage: `${BINARY_NAME} resume <run-id>`, summary: "Resume a parked or interrupted run." },
-  cancel: { usage: `${BINARY_NAME} cancel <run-id|task-id>`, summary: "Cancel a run or a single task within it." },
-  evidence: { usage: `${BINARY_NAME} evidence <change-set-id>`, summary: "Show every EvidenceRecord journaled for a ChangeSet." },
-  connection: { usage: `${BINARY_NAME} connection add jira|grafana / list / doctor <id> / capabilities <id>`, summary: "Manage external connector connections." },
-  trust: { usage: `${BINARY_NAME} trust review|approve|revoke`, summary: "Review and approve high-impact capability grants." },
-  learn: { usage: `${BINARY_NAME} learn list|approve|reject|rollback`, summary: "Manage reviewed learning proposals." },
-  upgrade: { usage: `${BINARY_NAME} upgrade [--dry-run]`, summary: "Upgrade the installed plugin/managed config." },
-  uninstall: { usage: `${BINARY_NAME} uninstall [--keep-state]`, summary: "Remove the installed plugin/managed config." },
-  gateway: { usage: `${BINARY_NAME} gateway mcp`, summary: "Boot the gateway MCP server over stdio (no user-facing flags)." },
+  status: {
+    usage: `${BINARY_NAME} status [run-id] [--watch] [--json]`,
+    summary: "Show (or stream) a run's status.",
+  },
+  resume: {
+    usage: `${BINARY_NAME} resume <run-id>`,
+    summary: "Resume a parked or interrupted run.",
+  },
+  cancel: {
+    usage: `${BINARY_NAME} cancel <run-id|task-id>`,
+    summary: "Cancel a run or a single task within it.",
+  },
+  evidence: {
+    usage: `${BINARY_NAME} evidence <change-set-id>`,
+    summary: "Show every EvidenceRecord journaled for a ChangeSet.",
+  },
+  connection: {
+    usage: `${BINARY_NAME} connection add jira|grafana / list / doctor <id> / capabilities <id>`,
+    summary: "Manage external connector connections.",
+  },
+  trust: {
+    usage: `${BINARY_NAME} trust review|approve|revoke`,
+    summary: "Review and approve high-impact capability grants.",
+  },
+  learn: {
+    usage: `${BINARY_NAME} learn list|approve|reject|rollback`,
+    summary: "Manage reviewed learning proposals.",
+  },
+  upgrade: {
+    usage: `${BINARY_NAME} upgrade [--dry-run]`,
+    summary: "Upgrade the installed plugin/managed config.",
+  },
+  uninstall: {
+    usage: `${BINARY_NAME} uninstall [--keep-state]`,
+    summary: "Remove the installed plugin/managed config.",
+  },
+  gateway: {
+    usage: `${BINARY_NAME} gateway mcp`,
+    summary: "Boot the gateway MCP server over stdio (no user-facing flags).",
+  },
 };
 
 function renderTopLevelHelp(): string {
@@ -45,9 +81,10 @@ function renderTopLevelHelp(): string {
 export function renderHelp(command: HelpCommand): CommandResult {
   if (command.topic !== undefined) {
     const entry = COMMAND_HELP[command.topic];
-    const stdout = entry === undefined
-      ? `no help available for "${command.topic}"\n`
-      : `${entry.usage}\n    ${entry.summary}\n`;
+    const stdout =
+      entry === undefined
+        ? `no help available for "${command.topic}"\n`
+        : `${entry.usage}\n    ${entry.summary}\n`;
     return {
       exitCode: EXIT_OK,
       stdout: command.json ? formatJson(entry ?? null) : stdout,

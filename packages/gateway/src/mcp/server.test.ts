@@ -54,7 +54,10 @@ describe("buildGatewayMcpServer + connectGatewayMcpServer — in-process (real c
     const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
     const client = new Client({ name: "in-process-client", version: "0.0.0" });
 
-    await Promise.all([connectGatewayMcpServer(server, serverTransport), client.connect(clientTransport)]);
+    await Promise.all([
+      connectGatewayMcpServer(server, serverTransport),
+      client.connect(clientTransport),
+    ]);
     try {
       const result = await client.callTool({ name: "fixture.echo", arguments: {} });
       expect(result.isError).toBeFalsy();
@@ -76,7 +79,10 @@ describe("buildGatewayMcpServer + connectGatewayMcpServer — in-process (real c
     const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
     const client = new Client({ name: "in-process-client", version: "0.0.0" });
 
-    await Promise.all([connectGatewayMcpServer(server, serverTransport), client.connect(clientTransport)]);
+    await Promise.all([
+      connectGatewayMcpServer(server, serverTransport),
+      client.connect(clientTransport),
+    ]);
     try {
       const result = await client.callTool({ name: "fixture.fail", arguments: {} });
       expect(result.isError).toBe(true);

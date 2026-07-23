@@ -10,7 +10,9 @@ function stageInput(candidate: string): LintStageInput {
 describe("attributionNeutralStage", () => {
   it("blocks the seeded 'Generated with...'/'Co-Authored-By' fixture (shared with 08)", () => {
     const findings = attributionNeutralStage(
-      stageInput("fix: correct the parser\n\n🤖 Generated with Claude Code\nCo-Authored-By: Claude <noreply@anthropic.com>"),
+      stageInput(
+        "fix: correct the parser\n\n🤖 Generated with Claude Code\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      ),
     );
     expect(findings.length).toBeGreaterThan(0);
     expect(findings.every((f) => f.stage === STAGE_NAME_ATTRIBUTION_NEUTRAL)).toBe(true);
@@ -19,7 +21,9 @@ describe("attributionNeutralStage", () => {
   });
 
   it("blocks first-person voice", () => {
-    const findings = attributionNeutralStage(stageInput("I fixed the bug because we needed it working."));
+    const findings = attributionNeutralStage(
+      stageInput("I fixed the bug because we needed it working."),
+    );
     expect(findings.some((f) => f.message.match(/first-person/i))).toBe(true);
   });
 
@@ -34,7 +38,9 @@ describe("attributionNeutralStage", () => {
   });
 
   it("allows clean neutral text", () => {
-    expect(attributionNeutralStage(stageInput("Corrects the off-by-one error in the pagination loop."))).toEqual([]);
+    expect(
+      attributionNeutralStage(stageInput("Corrects the off-by-one error in the pagination loop.")),
+    ).toEqual([]);
   });
 
   it("still blocks a lone '--' signature delimiter on its own line (L1)", () => {

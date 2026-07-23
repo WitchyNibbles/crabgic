@@ -18,9 +18,9 @@ describe("createToolRegistry", () => {
   it("rejects a duplicate tool-name registration", () => {
     const registry = createToolRegistry();
     registry.register({ name: "fake.tool", description: "d", inputSchema: {} });
-    expect(() => registry.register({ name: "fake.tool", description: "d2", inputSchema: {} })).toThrow(
-      DuplicateToolError,
-    );
+    expect(() =>
+      registry.register({ name: "fake.tool", description: "d2", inputSchema: {} }),
+    ).toThrow(DuplicateToolError);
     // The original registration is unaffected by the rejected duplicate.
     expect(registry.list()).toHaveLength(1);
   });

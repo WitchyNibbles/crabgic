@@ -30,7 +30,10 @@ export function buildGatewayMcpServer(registry: GatewayToolRegistry): McpServer 
       { description: tool.description, inputSchema: tool.inputSchema },
       async (args: Record<string, unknown>) => {
         const result = await tool.handler(args as never);
-        return { content: [...result.content], ...(result.isError !== undefined ? { isError: result.isError } : {}) };
+        return {
+          content: [...result.content],
+          ...(result.isError !== undefined ? { isError: result.isError } : {}),
+        };
       },
     );
   }

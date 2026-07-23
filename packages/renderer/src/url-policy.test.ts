@@ -9,7 +9,7 @@ function stageInput(candidate: string): LintStageInput {
 
 describe("urlPolicyStage", () => {
   it("blocks a <script> tag in a PR body (failing-first fixture)", () => {
-    const findings = urlPolicyStage(stageInput('Outcome: done <script>alert(1)</script>'));
+    const findings = urlPolicyStage(stageInput("Outcome: done <script>alert(1)</script>"));
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0]!.stage).toBe(STAGE_NAME_URL_POLICY);
     expect(findings[0]!.message).toMatch(/raw HTML tag/i);
@@ -26,7 +26,9 @@ describe("urlPolicyStage", () => {
 
   it("blocks a javascript: URL", () => {
     const findings = urlPolicyStage(stageInput("click [here](javascript:alert(1))"));
-    expect(findings.some((f) => f.message.match(/disallowed URL scheme "javascript:"/i))).toBe(true);
+    expect(findings.some((f) => f.message.match(/disallowed URL scheme "javascript:"/i))).toBe(
+      true,
+    );
   });
 
   it("blocks an embedded remote image", () => {
@@ -54,8 +56,10 @@ describe("urlPolicyStage", () => {
   });
 
   it("allows plain text with no URLs or tags", () => {
-    expect(urlPolicyStage(stageInput("Outcome: done\nValidation: tests green\nRisk: none\nTracking: none"))).toEqual(
-      [],
-    );
+    expect(
+      urlPolicyStage(
+        stageInput("Outcome: done\nValidation: tests green\nRisk: none\nTracking: none"),
+      ),
+    ).toEqual([]);
   });
 });

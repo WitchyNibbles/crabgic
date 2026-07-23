@@ -6,7 +6,10 @@
  */
 
 // ---- Secrets (work item 1) ----
-export { resolveSecretReference, SecretResolutionError } from "./secrets/secret-reference-resolver.js";
+export {
+  resolveSecretReference,
+  SecretResolutionError,
+} from "./secrets/secret-reference-resolver.js";
 
 // ---- ExternalConnection store (work item 1) ----
 export {
@@ -136,7 +139,10 @@ export type { NativeRegistryDeps } from "./mcp/native-registry.js";
 export { forwardToSupervisor, UdsForwardError } from "./mcp/uds-forward-client.js";
 export type { UdsForwardResponse, UdsForwardClientOptions } from "./mcp/uds-forward-client.js";
 
-export type { GenericProviderClient, ProviderDispatchDeps } from "./mcp/native-tools/provider-dispatch-tool.js";
+export type {
+  GenericProviderClient,
+  ProviderDispatchDeps,
+} from "./mcp/native-tools/provider-dispatch-tool.js";
 export { buildTrackerTools } from "./mcp/native-tools/tracker-tools.js";
 export { buildObservabilityTools } from "./mcp/native-tools/observability-tools.js";
 export { buildEvidenceTools } from "./mcp/native-tools/evidence-tools.js";

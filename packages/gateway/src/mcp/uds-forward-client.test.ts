@@ -15,7 +15,10 @@ import { forwardToSupervisor, UdsForwardError } from "./uds-forward-client.js";
  */
 function startFakePeer(
   socketPath: string,
-  handleRequest: (op: string, params: unknown) => { ok: boolean; result?: unknown; error?: { code: string; message: string } },
+  handleRequest: (
+    op: string,
+    params: unknown,
+  ) => { ok: boolean; result?: unknown; error?: { code: string; message: string } },
   options: { rejectHandshake?: boolean } = {},
 ): Promise<Server> {
   return new Promise((resolve) => {
@@ -32,7 +35,9 @@ function startFakePeer(
             socket.end();
             return;
           }
-          socket.write(`${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`);
+          socket.write(
+            `${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`,
+          );
           return;
         }
         const request = JSON.parse(line) as { id: string; op: string; params: unknown };
@@ -96,9 +101,9 @@ describe("forwardToSupervisor", () => {
     const server = await startFakePeer(socketPath, () => ({ ok: true }), { rejectHandshake: true });
 
     try {
-      await expect(forwardToSupervisor(socketPath, "run.status", { runId: "x" })).rejects.toBeInstanceOf(
-        UdsForwardError,
-      );
+      await expect(
+        forwardToSupervisor(socketPath, "run.status", { runId: "x" }),
+      ).rejects.toBeInstanceOf(UdsForwardError);
     } finally {
       await closeServer(server);
     }

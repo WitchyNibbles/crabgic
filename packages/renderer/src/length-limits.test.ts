@@ -49,7 +49,11 @@ describe("lengthLimitsStage", () => {
       ...DEFAULT_COMMUNICATION_POLICY,
       limits: { ...DEFAULT_COMMUNICATION_POLICY.limits, branchName: { maxChars: 5 } },
     };
-    const findings = lengthLimitsStage({ candidate: "123456", kind: "branch_name", policy: customPolicy });
+    const findings = lengthLimitsStage({
+      candidate: "123456",
+      kind: "branch_name",
+      policy: customPolicy,
+    });
     expect(findings.some((f) => f.message.match(/6 chars exceeds the 5-char limit/))).toBe(true);
   });
 });

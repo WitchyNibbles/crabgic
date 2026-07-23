@@ -57,9 +57,9 @@ describe("isPrivateOrReservedIp", () => {
 
 describe("checkOriginAllowlist", () => {
   it("allows an exact scheme+origin match", () => {
-    expect(checkOriginAllowlist(new URL("https://example.atlassian.net/rest"), ALLOWLIST)).toEqual(
-      { allowed: true },
-    );
+    expect(checkOriginAllowlist(new URL("https://example.atlassian.net/rest"), ALLOWLIST)).toEqual({
+      allowed: true,
+    });
   });
 
   it("refuses a foreign origin", () => {
@@ -126,16 +126,12 @@ describe("checkHopBeforeCredentialAttach", () => {
 
   it("property: any origin outside the allowlist is always refused regardless of resolved address", () => {
     fc.assert(
-      fc.property(
-        fc.webUrl({ validSchemes: ["https"] }),
-        fc.ipV4(),
-        (urlString, ip) => {
-          const url = new URL(urlString);
-          fc.pre(url.origin !== ALLOWLIST.allowedOrigins[0]);
-          const verdict = checkHopBeforeCredentialAttach(url, [ip], ALLOWLIST);
-          expect(verdict.allowed).toBe(false);
-        },
-      ),
+      fc.property(fc.webUrl({ validSchemes: ["https"] }), fc.ipV4(), (urlString, ip) => {
+        const url = new URL(urlString);
+        fc.pre(url.origin !== ALLOWLIST.allowedOrigins[0]);
+        const verdict = checkHopBeforeCredentialAttach(url, [ip], ALLOWLIST);
+        expect(verdict.allowed).toBe(false);
+      }),
       { numRuns: 200 },
     );
   });

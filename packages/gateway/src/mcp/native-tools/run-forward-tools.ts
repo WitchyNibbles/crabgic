@@ -16,7 +16,9 @@ export interface RunForwardToolsDeps {
 const RUN_STATUS_INPUT_SHAPE = { runId: z.string() };
 const RUN_CANCEL_INPUT_SHAPE = { runId: z.string(), reason: z.string().optional() };
 
-export function buildRunForwardTools(deps: RunForwardToolsDeps): readonly AnyGatewayToolDefinition[] {
+export function buildRunForwardTools(
+  deps: RunForwardToolsDeps,
+): readonly AnyGatewayToolDefinition[] {
   const status: GatewayToolDefinition<typeof RUN_STATUS_INPUT_SHAPE> = {
     name: "run.status",
     description: "Forwards to 05's supervisor `run.status` router operation over UDS.",
@@ -24,7 +26,9 @@ export function buildRunForwardTools(deps: RunForwardToolsDeps): readonly AnyGat
     handler: async (args) => {
       const response = await forwardToSupervisor(deps.supervisorSocketPath, "run.status", args);
       return {
-        content: [{ type: "text", text: JSON.stringify(response.ok ? response.result : response.error) }],
+        content: [
+          { type: "text", text: JSON.stringify(response.ok ? response.result : response.error) },
+        ],
         ...(response.ok ? {} : { isError: true }),
       };
     },
@@ -37,7 +41,9 @@ export function buildRunForwardTools(deps: RunForwardToolsDeps): readonly AnyGat
     handler: async (args) => {
       const response = await forwardToSupervisor(deps.supervisorSocketPath, "run.cancel", args);
       return {
-        content: [{ type: "text", text: JSON.stringify(response.ok ? response.result : response.error) }],
+        content: [
+          { type: "text", text: JSON.stringify(response.ok ? response.result : response.error) },
+        ],
         ...(response.ok ? {} : { isError: true }),
       };
     },

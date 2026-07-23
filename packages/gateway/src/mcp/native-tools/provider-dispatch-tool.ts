@@ -13,7 +13,10 @@
 import { z } from "zod";
 import { ConnectorError } from "@eo/contracts";
 import type { ExternalConnectionRepository } from "../../connection-store/external-connection-store.js";
-import { ProviderRegistry, UnknownProviderError } from "../../provider-dispatch/provider-registry.js";
+import {
+  ProviderRegistry,
+  UnknownProviderError,
+} from "../../provider-dispatch/provider-registry.js";
 import { BudgetExceededError, enforceResultBudget } from "../../transport/budgets.js";
 import { mapUnknownErrorToConnectorError } from "../../mutation-pipeline/error-mapping.js";
 import type { GatewayToolDefinition, GatewayToolResult } from "../tool-registry.js";

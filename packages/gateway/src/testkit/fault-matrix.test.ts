@@ -137,7 +137,9 @@ describe("fake tracker + observability provider doubles — end-to-end through t
   });
 
   it("fake observability provider dispatches query through GatewayHttpClient", async () => {
-    const { client } = createFakeObservabilityProvider({ responses: [okResponse('{"series":[1,2,3]}')] });
+    const { client } = createFakeObservabilityProvider({
+      responses: [okResponse('{"series":[1,2,3]}')],
+    });
     const result = (await client.query?.({})) as { series: number[] };
     expect(result.series).toEqual([1, 2, 3]);
   });

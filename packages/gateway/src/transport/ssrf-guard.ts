@@ -11,8 +11,7 @@
  */
 
 export type SsrfGuardVerdict =
-  | { readonly allowed: true }
-  | { readonly allowed: false; readonly reason: string };
+  { readonly allowed: true } | { readonly allowed: false; readonly reason: string };
 
 const PRIVATE_IPV4_RANGES: ReadonlyArray<readonly [string, number]> = [
   ["10.0.0.0", 8],

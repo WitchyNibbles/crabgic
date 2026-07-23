@@ -16,7 +16,9 @@ describe("ApprovalTokenMinter", () => {
   it("mints a token and verifies it exactly once", async () => {
     const minter = makeMinter();
     const minted = await minter.mint("envelope_hash", "digest-1");
-    expect(() => minter.verify(minted.token, { subjectKind: "envelope_hash", digest: "digest-1" })).not.toThrow();
+    expect(() =>
+      minter.verify(minted.token, { subjectKind: "envelope_hash", digest: "digest-1" }),
+    ).not.toThrow();
   });
 
   it("verifying with the wrong digest fails closed", async () => {

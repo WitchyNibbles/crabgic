@@ -47,7 +47,10 @@ export class NPlusOneDetector {
   }
 
   report(): NPlusOneReport {
-    const ratio = this.#parentItemCount === 0 ? this.#childRequestCount : this.#childRequestCount / this.#parentItemCount;
+    const ratio =
+      this.#parentItemCount === 0
+        ? this.#childRequestCount
+        : this.#childRequestCount / this.#parentItemCount;
     return {
       flagged: this.#parentItemCount > 0 && ratio > this.#maxChildRequestsPerParent,
       childRequestCount: this.#childRequestCount,

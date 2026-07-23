@@ -13,10 +13,20 @@ import { buildProviderDispatchTool, type ProviderDispatchDeps } from "./provider
 import { buildMutationApplyTool, type MutationApplyToolDeps } from "./mutation-apply-tool.js";
 import type { AnyGatewayToolDefinition } from "../tool-registry.js";
 
-const OBSERVABILITY_READ_AND_PLAN_TOOLS: ReadonlyArray<readonly [name: string, description: string, operation: string]> = [
-  ["observability.search", "Searches observability resources (e.g. Grafana dashboards) for a connection.", "search"],
+const OBSERVABILITY_READ_AND_PLAN_TOOLS: ReadonlyArray<
+  readonly [name: string, description: string, operation: string]
+> = [
+  [
+    "observability.search",
+    "Searches observability resources (e.g. Grafana dashboards) for a connection.",
+    "search",
+  ],
   ["observability.get", "Reads one observability resource by canonical target.", "get"],
-  ["observability.query", "Executes a read-only observability query (e.g. a Grafana datasource query).", "query"],
+  [
+    "observability.query",
+    "Executes a read-only observability query (e.g. a Grafana datasource query).",
+    "query",
+  ],
   ["observability.plan_create", "Plans an observability resource creation.", "planCreate"],
   ["observability.plan_update", "Plans an observability resource update.", "planUpdate"],
 ];

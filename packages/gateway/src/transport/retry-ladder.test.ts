@@ -21,7 +21,12 @@ describe("decideRetryAction — verb-specific rules", () => {
   });
 
   it("PATCH without a precondition never blindly retries", () => {
-    const action = decideRetryAction({ ...BASE, verb: "PATCH", status: 503, hasPrecondition: false });
+    const action = decideRetryAction({
+      ...BASE,
+      verb: "PATCH",
+      status: 503,
+      hasPrecondition: false,
+    });
     expect(action.kind).toBe("give-up");
   });
 
@@ -31,7 +36,12 @@ describe("decideRetryAction — verb-specific rules", () => {
   });
 
   it("DELETE without a precondition never blindly retries", () => {
-    const action = decideRetryAction({ ...BASE, verb: "DELETE", status: 503, hasPrecondition: false });
+    const action = decideRetryAction({
+      ...BASE,
+      verb: "DELETE",
+      status: 503,
+      hasPrecondition: false,
+    });
     expect(action.kind).toBe("give-up");
   });
 });
@@ -84,7 +94,13 @@ describe("decideRetryAction — bounds", () => {
         fc.integer({ min: 1, max: 10 }),
         fc.constantFrom(409, 412),
         (verb, hasPrecondition, attempt, status) => {
-          const action = decideRetryAction({ verb, status, hasPrecondition, attempt, maxAttempts: 10 });
+          const action = decideRetryAction({
+            verb,
+            status,
+            hasPrecondition,
+            attempt,
+            maxAttempts: 10,
+          });
           expect(action.kind).toBe("fetch-rebase-or-block");
         },
       ),

@@ -67,7 +67,11 @@ describe("GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix)", (
       return { status: 200, headers: {}, bodyText: "{}" } satisfies HttpTransportResponse;
     });
     const resolveHostAddresses = vi.fn().mockResolvedValue(["203.0.113.7"]);
-    const client = new GatewayHttpClient({ allowlist: ALLOWLIST, sendRequest, resolveHostAddresses });
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest,
+      resolveHostAddresses,
+    });
 
     await client.request(baseReq());
     expect(resolveHostAddresses).toHaveBeenCalledTimes(1); // resolved exactly once for this attempt/hop
@@ -89,7 +93,11 @@ describe("GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix)", (
       expect(r.pinnedAddress).toBe("203.0.113.7");
       return { status: 200, headers: {}, bodyText: "{}" } satisfies HttpTransportResponse;
     });
-    const client = new GatewayHttpClient({ allowlist: ALLOWLIST, sendRequest, resolveHostAddresses });
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest,
+      resolveHostAddresses,
+    });
 
     const result = await client.request(baseReq());
     expect(result.status).toBe(200);
@@ -122,7 +130,11 @@ describe("GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix)", (
         expect(r.pinnedAddress).toBe("203.0.113.8");
         return { status: 200, headers: {}, bodyText: "{}" } satisfies HttpTransportResponse;
       });
-    const client = new GatewayHttpClient({ allowlist: ALLOWLIST, sendRequest, resolveHostAddresses });
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest,
+      resolveHostAddresses,
+    });
 
     const result = await client.request(baseReq());
     expect(result.status).toBe(200);
@@ -139,7 +151,11 @@ describe("GatewayHttpClient — redirect revalidation", () => {
         headers: { location: "https://example.atlassian.net/rest/api/3/issue/EX-2" },
         bodyText: "",
       } satisfies HttpTransportResponse)
-      .mockResolvedValueOnce({ status: 200, headers: {}, bodyText: "{}" } satisfies HttpTransportResponse);
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: {},
+        bodyText: "{}",
+      } satisfies HttpTransportResponse);
 
     const client = new GatewayHttpClient({
       allowlist: ALLOWLIST,
@@ -209,8 +225,16 @@ describe("GatewayHttpClient — retry ladder + backoff", () => {
   it("retries a GET on a 503 and eventually succeeds", async () => {
     const sendRequest = vi
       .fn()
-      .mockResolvedValueOnce({ status: 503, headers: {}, bodyText: "" } satisfies HttpTransportResponse)
-      .mockResolvedValueOnce({ status: 200, headers: {}, bodyText: "ok" } satisfies HttpTransportResponse);
+      .mockResolvedValueOnce({
+        status: 503,
+        headers: {},
+        bodyText: "",
+      } satisfies HttpTransportResponse)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: {},
+        bodyText: "ok",
+      } satisfies HttpTransportResponse);
 
     const client = new GatewayHttpClient({
       allowlist: ALLOWLIST,
@@ -228,7 +252,11 @@ describe("GatewayHttpClient — retry ladder + backoff", () => {
   it("does not blindly retry a POST on a 503", async () => {
     const sendRequest = vi
       .fn()
-      .mockResolvedValue({ status: 503, headers: {}, bodyText: "" } satisfies HttpTransportResponse);
+      .mockResolvedValue({
+        status: 503,
+        headers: {},
+        bodyText: "",
+      } satisfies HttpTransportResponse);
 
     const client = new GatewayHttpClient({
       allowlist: ALLOWLIST,
@@ -251,7 +279,11 @@ describe("GatewayHttpClient — retry ladder + backoff", () => {
         headers: { "retry-after": "1" },
         bodyText: "",
       } satisfies HttpTransportResponse)
-      .mockResolvedValueOnce({ status: 200, headers: {}, bodyText: "ok" } satisfies HttpTransportResponse);
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: {},
+        bodyText: "ok",
+      } satisfies HttpTransportResponse);
 
     const client = new GatewayHttpClient({
       allowlist: ALLOWLIST,
@@ -328,9 +360,7 @@ describe("GatewayHttpClient — concurrency + write serialization", () => {
     });
 
     await Promise.all(
-      Array.from({ length: 8 }, (_, i) =>
-        client.request(baseReq({ resource: `issue:EX-${i}` })),
-      ),
+      Array.from({ length: 8 }, (_, i) => client.request(baseReq({ resource: `issue:EX-${i}` }))),
     );
 
     expect(maxActive).toBeLessThanOrEqual(2);

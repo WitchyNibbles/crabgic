@@ -4,7 +4,5 @@
   "kind": "commit_body",
   "candidate": "looks fine‮reversed",
   "expect": "blocked",
-  "expectedStages": [
-    "unicode-defense"
-  ]
+  "expectedStages": ["unicode-defense"]
 }

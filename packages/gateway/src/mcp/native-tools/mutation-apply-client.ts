@@ -27,5 +27,8 @@ export interface MutationApplyClient {
   /** Read-back compare + verify. Defaults to "always verified" when omitted — a provider without a cheap read-back check may rely on the HTTP status alone; a real connector should supply a genuine check. */
   verify?(plan: RemoteMutationPlan, applied: MutationApplyResult): Promise<boolean>;
   /** Marker-reconciliation (see `../../mutation-pipeline/reconciliation.js`) — see `MutationPipelineHandlers.reconcileAmbiguous`'s own doc comment for the exact contract. */
-  reconcileAmbiguous?(plan: RemoteMutationPlan, cause: unknown): Promise<MutationApplyResult | undefined>;
+  reconcileAmbiguous?(
+    plan: RemoteMutationPlan,
+    cause: unknown,
+  ): Promise<MutationApplyResult | undefined>;
 }

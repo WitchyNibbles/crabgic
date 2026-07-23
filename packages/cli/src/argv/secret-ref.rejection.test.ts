@@ -63,13 +63,7 @@ describe("parseSecretReference", () => {
 
 describe("isSecretShapedValue", () => {
   it("is false for every recognized reference form", () => {
-    for (const ref of [
-      "env:FOO",
-      "op://a/b/c",
-      "vault://a/b",
-      "file:///a/b",
-      "ref:xyz",
-    ]) {
+    for (const ref of ["env:FOO", "op://a/b/c", "vault://a/b", "file:///a/b", "ref:xyz"]) {
       expect(isSecretShapedValue(ref)).toBe(false);
     }
   });

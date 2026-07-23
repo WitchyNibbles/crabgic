@@ -9,7 +9,9 @@ function stageInput(candidate: string): LintStageInput {
 
 describe("metadataStripStage", () => {
   it("blocks a Co-Authored-By trailer", () => {
-    const findings = metadataStripStage(stageInput("fix bug\n\nCo-Authored-By: Someone <s@example.com>"));
+    const findings = metadataStripStage(
+      stageInput("fix bug\n\nCo-Authored-By: Someone <s@example.com>"),
+    );
     expect(findings.length).toBe(1);
     expect(findings[0]!.stage).toBe(STAGE_NAME_METADATA_STRIP);
     expect(findings[0]!.severity).toBe("block");
@@ -35,6 +37,8 @@ describe("metadataStripStage", () => {
   });
 
   it("does not false-positive on unrelated 'Author' mid-sentence text", () => {
-    expect(metadataStripStage(stageInput("The Author field in this schema is required."))).toEqual([]);
+    expect(metadataStripStage(stageInput("The Author field in this schema is required."))).toEqual(
+      [],
+    );
   });
 });

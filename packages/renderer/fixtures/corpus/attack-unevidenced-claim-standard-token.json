@@ -4,7 +4,5 @@
   "kind": "review_comment",
   "candidate": "Finding: hash mismatch\nEvidence: none\nAction: verified via SHA-256",
   "expect": "blocked",
-  "expectedStages": [
-    "evidence-claims"
-  ]
+  "expectedStages": ["evidence-claims"]
 }

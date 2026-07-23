@@ -136,7 +136,10 @@ const WORD_PATTERN = /[\p{L}\p{N}][\p{L}\p{N}.-]*/gu;
 
 function findAllMatches(text: string, pattern: RegExp): RegExpExecArray[] {
   const matches: RegExpExecArray[] = [];
-  const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+  const re = new RegExp(
+    pattern.source,
+    pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`,
+  );
   let match: RegExpExecArray | null;
   while ((match = re.exec(text)) !== null) {
     matches.push(match);
@@ -147,7 +150,9 @@ function findAllMatches(text: string, pattern: RegExp): RegExpExecArray[] {
 
 function codepointName(char: string): string {
   const codepoint = char.codePointAt(0);
-  return codepoint === undefined ? char : `U+${codepoint.toString(16).toUpperCase().padStart(4, "0")}`;
+  return codepoint === undefined
+    ? char
+    : `U+${codepoint.toString(16).toUpperCase().padStart(4, "0")}`;
 }
 
 /**

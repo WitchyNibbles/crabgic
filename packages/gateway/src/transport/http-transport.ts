@@ -57,7 +57,11 @@ function flattenHeaders(raw: NodeJS.Dict<string | string[]>): Record<string, str
 }
 
 /** Builds the `RequestOptions` for one call — pinned-address form dials the literal IP with SNI/Host set to the original hostname; the fallback form dials `url.hostname` directly (legacy/test-only). */
-function buildRequestOptions(req: HttpTransportRequest, isHttps: boolean, timeoutMs: number): RequestOptions {
+function buildRequestOptions(
+  req: HttpTransportRequest,
+  isHttps: boolean,
+  timeoutMs: number,
+): RequestOptions {
   const port = req.url.port !== "" ? Number(req.url.port) : isHttps ? 443 : 80;
   const path = `${req.url.pathname}${req.url.search}`;
   const base: RequestOptions = {
@@ -71,7 +75,8 @@ function buildRequestOptions(req: HttpTransportRequest, isHttps: boolean, timeou
     return { ...base, hostname: req.url.hostname, port, path };
   }
 
-  const hostHeaderValue = req.url.port !== "" ? `${req.url.hostname}:${req.url.port}` : req.url.hostname;
+  const hostHeaderValue =
+    req.url.port !== "" ? `${req.url.hostname}:${req.url.port}` : req.url.hostname;
   return {
     ...base,
     hostname: req.pinnedAddress,
@@ -89,24 +94,23 @@ export async function sendHttpRequest(req: HttpTransportRequest): Promise<HttpTr
   const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return new Promise((resolve, reject) => {
-    const clientRequest = requestFn(
-      buildRequestOptions(req, isHttps, timeoutMs),
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => {
-          resolve({
-            status: res.statusCode ?? 0,
-            headers: flattenHeaders(res.headers),
-            bodyText: Buffer.concat(chunks).toString("utf8"),
-          });
+    const clientRequest = requestFn(buildRequestOptions(req, isHttps, timeoutMs), (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => {
+        resolve({
+          status: res.statusCode ?? 0,
+          headers: flattenHeaders(res.headers),
+          bodyText: Buffer.concat(chunks).toString("utf8"),
         });
-        res.on("error", (err) => reject(err));
-      },
-    );
+      });
+      res.on("error", (err) => reject(err));
+    });
 
     clientRequest.on("timeout", () => {
-      clientRequest.destroy(new Error(`request to ${req.url.origin} timed out after ${timeoutMs}ms`));
+      clientRequest.destroy(
+        new Error(`request to ${req.url.origin} timed out after ${timeoutMs}ms`),
+      );
     });
     clientRequest.on("error", (err) => reject(err));
 

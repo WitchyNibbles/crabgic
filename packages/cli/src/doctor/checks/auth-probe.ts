@@ -40,10 +40,7 @@ type SecretFileState = "valid" | "invalid" | "absent";
  * `"valid"`. Never returns or logs the file's own content — only reads it
  * far enough to classify.
  */
-async function checkSecretFile(
-  path: string,
-  requireJson: boolean,
-): Promise<SecretFileState> {
+async function checkSecretFile(path: string, requireJson: boolean): Promise<SecretFileState> {
   let mode: number;
   try {
     const st = await stat(path);
@@ -124,7 +121,12 @@ export function createAuthProbeCheck(options: AuthProbeOptions): DoctorCheck {
     async run(): Promise<DoctorFinding> {
       const state = await options.probe();
       if (state === "valid") {
-        return { id: CHECK_ID, severity: "error", passed: true, evidence: "subscription auth is valid" };
+        return {
+          id: CHECK_ID,
+          severity: "error",
+          passed: true,
+          evidence: "subscription auth is valid",
+        };
       }
       if (state === "missing") {
         return {

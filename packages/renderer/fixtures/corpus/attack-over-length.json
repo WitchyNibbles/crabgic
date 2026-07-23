@@ -4,7 +4,5 @@
   "kind": "review_comment",
   "candidate": "Finding: a\nline2\nline3\nline4\nline5\nline6\nline7\nEvidence: x\nAction: y",
   "expect": "blocked",
-  "expectedStages": [
-    "length-limits"
-  ]
+  "expectedStages": ["length-limits"]
 }

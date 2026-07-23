@@ -19,7 +19,9 @@ import { buildProviderDispatchTool, type ProviderDispatchDeps } from "./provider
 import { buildMutationApplyTool, type MutationApplyToolDeps } from "./mutation-apply-tool.js";
 import type { AnyGatewayToolDefinition } from "../tool-registry.js";
 
-const TRACKER_READ_AND_PLAN_TOOLS: ReadonlyArray<readonly [name: string, description: string, operation: string]> = [
+const TRACKER_READ_AND_PLAN_TOOLS: ReadonlyArray<
+  readonly [name: string, description: string, operation: string]
+> = [
   ["tracker.search", "Searches tracker items (e.g. Jira issues) for a connection.", "search"],
   ["tracker.get", "Reads one tracker item by canonical target.", "get"],
   ["tracker.plan_create", "Plans a tracker item creation (no network I/O yet).", "planCreate"],

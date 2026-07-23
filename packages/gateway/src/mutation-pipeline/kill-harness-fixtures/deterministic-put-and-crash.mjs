@@ -16,11 +16,7 @@
 // fixture's own exactly-once behavior.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createJournalStore } from "@eo/journal";
-import {
-  executeMutationPlan,
-  IdempotencyKeyLock,
-  GatewayHttpClient,
-} from "@eo/gateway";
+import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@eo/gateway";
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function delay(ms) {

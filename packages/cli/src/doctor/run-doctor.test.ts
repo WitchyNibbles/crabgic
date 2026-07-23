@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@eo/supervisor";
 import { buildDefaultDoctorChecks, runDoctor } from "./run-doctor.js";
 
-const fakeJournal = { verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }) };
+const fakeJournal = {
+  verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }),
+};
 
 describe("buildDefaultDoctorChecks", () => {
   it("wires every named doctor check exactly once", () => {

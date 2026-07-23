@@ -9,7 +9,9 @@ function stageInput(candidate: string): LintStageInput {
 
 describe("evidenceClaimsStage", () => {
   it("blocks a seeded unevidenced 'fixed' claim in a review comment", () => {
-    const findings = evidenceClaimsStage(stageInput("finding: null deref; action: fixed the null check"));
+    const findings = evidenceClaimsStage(
+      stageInput("finding: null deref; action: fixed the null check"),
+    );
     expect(findings.length).toBe(1);
     expect(findings[0]!.stage).toBe(STAGE_NAME_EVIDENCE_CLAIMS);
     expect(findings[0]!.severity).toBe("block");
@@ -33,11 +35,15 @@ describe("evidenceClaimsStage", () => {
   });
 
   it("allows a claim accompanied by an explicit evidence: marker", () => {
-    expect(evidenceClaimsStage(stageInput("fixed the bug. evidence: test-run-2026-07-23"))).toEqual([]);
+    expect(evidenceClaimsStage(stageInput("fixed the bug. evidence: test-run-2026-07-23"))).toEqual(
+      [],
+    );
   });
 
   it("allows text with no completion claims at all", () => {
-    expect(evidenceClaimsStage(stageInput("investigating the null-deref in the parser"))).toEqual([]);
+    expect(evidenceClaimsStage(stageInput("investigating the null-deref in the parser"))).toEqual(
+      [],
+    );
   });
 
   it("blocks a claim next to a placeholder Evidence: line (e.g. 'none provided')", () => {

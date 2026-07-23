@@ -42,7 +42,10 @@ export function computeBackoffDelayMs(
 }
 
 /** Parses a `Retry-After` header value (seconds, or an HTTP-date) to milliseconds. Returns `undefined` for an unparseable value. */
-export function parseRetryAfterHeader(value: string | null, now: () => Date = () => new Date()): number | undefined {
+export function parseRetryAfterHeader(
+  value: string | null,
+  now: () => Date = () => new Date(),
+): number | undefined {
   if (value === null || value.trim().length === 0) return undefined;
 
   const asSeconds = Number(value);

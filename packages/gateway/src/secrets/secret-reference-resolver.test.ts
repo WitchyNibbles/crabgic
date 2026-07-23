@@ -26,9 +26,9 @@ describe("resolveSecretReference — env backend", () => {
 
   it("rejects an empty-string env var", async () => {
     process.env[VAR_NAME] = "";
-    await expect(
-      resolveSecretReference({ backend: "env", variable: VAR_NAME }),
-    ).rejects.toThrow(/unset or empty/);
+    await expect(resolveSecretReference({ backend: "env", variable: VAR_NAME })).rejects.toThrow(
+      /unset or empty/,
+    );
   });
 });
 

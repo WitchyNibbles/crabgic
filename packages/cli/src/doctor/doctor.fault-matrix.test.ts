@@ -25,7 +25,9 @@ function probeResult(overrides: Partial<ProbeResult>): ProbeResult {
   return { stdout: "", stderr: "", exitCode: 0, ...overrides };
 }
 
-const fakeJournal = { verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }) };
+const fakeJournal = {
+  verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }),
+};
 
 describe("doctor fault-fixture matrix", () => {
   it("wrong engine-version string: fails with a repair step naming the accepted range", async () => {

@@ -4,7 +4,5 @@
   "kind": "grafana_annotation",
   "candidate": "resolved | api | rollback | evidence=data:text/html;base64,abcd",
   "expect": "blocked",
-  "expectedStages": [
-    "url-policy"
-  ]
+  "expectedStages": ["url-policy"]
 }

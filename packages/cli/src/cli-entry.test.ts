@@ -18,7 +18,10 @@ const unusedDeps: CliDependencies = {
   connectClient: () => {
     throw new Error("should not be called for this test");
   },
-  journal: { queryEntries: async function* () {}, verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }) },
+  journal: {
+    queryEntries: async function* () {},
+    verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }),
+  },
   projectHash: "hash",
 };
 
@@ -44,7 +47,10 @@ describe("runCliEntry", () => {
     const io = fakeIo();
     const runGatewayMcp = vi.fn().mockResolvedValue(undefined);
     const buildDependencies = vi.fn(() => unusedDeps);
-    const exitCode = await runCliEntry(["gateway", "mcp"], io, { buildDependencies, runGatewayMcp });
+    const exitCode = await runCliEntry(["gateway", "mcp"], io, {
+      buildDependencies,
+      runGatewayMcp,
+    });
     expect(exitCode).toBe(0);
     expect(runGatewayMcp).toHaveBeenCalledOnce();
     expect(buildDependencies).not.toHaveBeenCalled();

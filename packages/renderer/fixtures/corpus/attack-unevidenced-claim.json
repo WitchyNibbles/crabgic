@@ -4,7 +4,5 @@
   "kind": "review_comment",
   "candidate": "Finding: null deref\nEvidence: none provided\nAction: fixed the null check",
   "expect": "blocked",
-  "expectedStages": [
-    "evidence-claims"
-  ]
+  "expectedStages": ["evidence-claims"]
 }

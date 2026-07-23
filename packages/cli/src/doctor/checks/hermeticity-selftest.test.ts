@@ -15,7 +15,11 @@ describe("createHermeticitySelftestCheck", () => {
 
   it("fails when the probe never executed (no sound absence evidence)", async () => {
     const check = createHermeticitySelftestCheck({
-      probe: async () => ({ executed: false, rogueMarkerLeaked: false, detail: "claude not found" }),
+      probe: async () => ({
+        executed: false,
+        rogueMarkerLeaked: false,
+        detail: "claude not found",
+      }),
     });
     const finding = await check.run();
     expect(finding.passed).toBe(false);

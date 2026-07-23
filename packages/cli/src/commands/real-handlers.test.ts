@@ -69,7 +69,12 @@ describe("runStatusCommand --watch", () => {
     const controller = new AbortController();
     controller.abort();
     const result = await runStatusCommand(
-      { command: "status", runId: "11111111-1111-4111-8111-111111111111", watch: true, json: false },
+      {
+        command: "status",
+        runId: "11111111-1111-4111-8111-111111111111",
+        watch: true,
+        json: false,
+      },
       deps,
       { watchSignal: controller.signal, emitLine: (line) => lines.push(line) },
     );

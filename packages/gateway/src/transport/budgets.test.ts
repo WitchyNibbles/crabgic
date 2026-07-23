@@ -18,9 +18,7 @@ describe("enforceItemBudget", () => {
   });
 
   it("throws BudgetExceededError for an item one byte over budget", () => {
-    expect(() => enforceItemBudget("a".repeat(ITEM_BUDGET_BYTES + 1))).toThrow(
-      BudgetExceededError,
-    );
+    expect(() => enforceItemBudget("a".repeat(ITEM_BUDGET_BYTES + 1))).toThrow(BudgetExceededError);
   });
 
   it("measures actual UTF-8 byte length, not JS string length", () => {

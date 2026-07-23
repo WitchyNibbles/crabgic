@@ -24,15 +24,21 @@ describe("golden byte-stability — one valid fixture per ArtifactKind", () => {
   });
 
   it("commit_subject", () => {
-    expect(renderPrTitle({ type: "feat", scope: "renderer", outcome: "add blocking lint pipeline" })).toMatchSnapshot();
+    expect(
+      renderPrTitle({ type: "feat", scope: "renderer", outcome: "add blocking lint pipeline" }),
+    ).toMatchSnapshot();
   });
 
   it("commit_body (plain string, no template)", () => {
-    expect("Adds the ordered lint stage pipeline and regenerate-once orchestration.").toMatchSnapshot();
+    expect(
+      "Adds the ordered lint stage pipeline and regenerate-once orchestration.",
+    ).toMatchSnapshot();
   });
 
   it("pr_title", () => {
-    expect(renderPrTitle({ type: "feat", scope: "renderer", outcome: "add blocking lint pipeline" })).toMatchSnapshot();
+    expect(
+      renderPrTitle({ type: "feat", scope: "renderer", outcome: "add blocking lint pipeline" }),
+    ).toMatchSnapshot();
   });
 
   it("pr_body", () => {

@@ -10,11 +10,15 @@ function stageInput(candidate: string, kind: ArtifactKind): LintStageInput {
 
 describe("schemaValidationStage — commit_subject / pr_title format", () => {
   it("allows a well-formed conventional commit subject", () => {
-    expect(schemaValidationStage(stageInput("feat(renderer): add lint pipeline", "commit_subject"))).toEqual([]);
+    expect(
+      schemaValidationStage(stageInput("feat(renderer): add lint pipeline", "commit_subject")),
+    ).toEqual([]);
   });
 
   it("allows a scopeless conventional subject", () => {
-    expect(schemaValidationStage(stageInput("feat: add lint pipeline", "commit_subject"))).toEqual([]);
+    expect(schemaValidationStage(stageInput("feat: add lint pipeline", "commit_subject"))).toEqual(
+      [],
+    );
   });
 
   it("blocks a subject with no colon separator", () => {
@@ -44,8 +48,12 @@ describe("schemaValidationStage — pr_body sections", () => {
   });
 
   it("blocks a missing required section", () => {
-    const findings = schemaValidationStage(stageInput("Outcome: done\nValidation: green\nRisk: none", "pr_body"));
-    expect(findings.some((f) => f.message.match(/required section "Tracking" is missing/))).toBe(true);
+    const findings = schemaValidationStage(
+      stageInput("Outcome: done\nValidation: green\nRisk: none", "pr_body"),
+    );
+    expect(findings.some((f) => f.message.match(/required section "Tracking" is missing/))).toBe(
+      true,
+    );
   });
 });
 
@@ -57,7 +65,10 @@ describe("schemaValidationStage — jira_milestone_comment sections", () => {
 
   it("blocks an unknown field", () => {
     const findings = schemaValidationStage(
-      stageInput("Outcome: done\nEvidence: link\nRisk: none\nNext: ship\nRef: PROJ-1\nBonus: x", "jira_milestone_comment"),
+      stageInput(
+        "Outcome: done\nEvidence: link\nRisk: none\nNext: ship\nRef: PROJ-1\nBonus: x",
+        "jira_milestone_comment",
+      ),
     );
     expect(findings.some((f) => f.message.match(/unknown section field "Bonus"/))).toBe(true);
   });
@@ -71,7 +82,9 @@ describe("schemaValidationStage — review_comment shape", () => {
 
   it("blocks a missing shape component", () => {
     const findings = schemaValidationStage(stageInput("Finding: x\nEvidence: y", "review_comment"));
-    expect(findings.some((f) => f.message.match(/required section "Action" is missing/))).toBe(true);
+    expect(findings.some((f) => f.message.match(/required section "Action" is missing/))).toBe(
+      true,
+    );
   });
 });
 
@@ -79,8 +92,10 @@ describe("schemaValidationStage — structural no-op kinds", () => {
   it("is a no-op for branch_name, commit_body, grafana_annotation", () => {
     expect(schemaValidationStage(stageInput("feature/anything", "branch_name"))).toEqual([]);
     expect(schemaValidationStage(stageInput("free-form body text", "commit_body"))).toEqual([]);
-    expect(schemaValidationStage(stageInput("state | service | change | evidence=x", "grafana_annotation"))).toEqual(
-      [],
-    );
+    expect(
+      schemaValidationStage(
+        stageInput("state | service | change | evidence=x", "grafana_annotation"),
+      ),
+    ).toEqual([]);
   });
 });

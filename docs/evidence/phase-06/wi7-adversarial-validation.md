@@ -36,6 +36,7 @@ only exercised `provisionWorkerAuth` once per dir, never the spawn→resume doub
 
 **Fix (`auth.ts`):** `provisionWorkerAuth` is now idempotent for the `credentialsFile` path. It
 inspects an already-present destination WITHOUT following symlinks (`O_RDONLY|O_NOFOLLOW`):
+
 - dest absent (`ENOENT`) → exclusive no-follow create, exactly as before (first spawn);
 - dest is a regular file whose bytes equal the source → accept as-is, no rewrite (resume/fork);
 - dest bytes differ → refuse as tampering, never overwrite;
@@ -45,6 +46,7 @@ This preserves the `wi6` Finding-5 hardening (a pre-planted symlink is still ref
 resume read path too) while making recovery on `credentialsFile` auth succeed.
 
 **Tests added (RED→GREEN):**
+
 - `auth.test.ts` — split the over-broad "REFUSES a pre-existing regular file" case into
   (a) idempotent-accept on byte-identical dest and (b) refuse on byte-mismatched dest.
 - `crash-recovery.test.ts` — end-to-end `spawn(credentialsFile)` into a real temp
@@ -57,7 +59,7 @@ threshold met; eslint + prettier clean.
 ## Also fixed
 
 - **Doc-comment ordering (correctness of documentation, `adapter.ts`).** The `session_assignment`
-  comment claimed 05 appends its own entry only *after* consuming the first pulled event; 05
+  comment claimed 05 appends its own entry only _after_ consuming the first pulled event; 05
   actually appends synchronously right after `spawn()` returns, before building the iterator, so
   05's entry lands first. Comment corrected; the load-bearing invariant (this generator's own
   append precedes its own `sdkQueryFn` call) was never in doubt, and duplicate entries are
@@ -67,13 +69,13 @@ threshold met; eslint + prettier clean.
 
 1. **Bash compound-command splitting is quote-unaware (MEDIUM, fails SAFE).**
    `splitCompoundCommand`/`decomposeBashCommand` (`adjudication-policy.ts`) split on bare
-   `;`/`|`/`&&`/`||` with no shell-quoting awareness, so an allowed command whose *quoted
-   argument* contains an operator (e.g. `git commit -m "fix; typo"`) is over-split and
+   `;`/`|`/`&&`/`||` with no shell-quoting awareness, so an allowed command whose _quoted
+   argument_ contains an operator (e.g. `git commit -m "fix; typo"`) is over-split and
    false-DENIED. Confirmed by trace to fail only in the safe direction (over-denial adds
    segments that must each independently match; it never merges/hides a real separator), so it
    is a reliability defect, not a privilege-escalation bypass. A correct fix needs a
    quote/escape-aware tokenizer; a hasty partial fix risks mis-tracking quote state and MERGING a
-   real separator (which *would* be a security hole), so it is deferred rather than rushed into
+   real separator (which _would_ be a security hole), so it is deferred rather than rushed into
    this commit. Untested (the property test never generates a quoted operator).
 
 2. **No production composition root yet wires the real policy through the journal-teed bus
@@ -90,7 +92,7 @@ threshold met; eslint + prettier clean.
 3. **Cross-process resume inherits the resuming adapter instance's `HOME`/`TMP` (LOW).**
    `buildHandle` scopes the security-sensitive `CLAUDE_CONFIG_DIR` to the session's own
    `sessionRef.configDir` (safe — no credential leak), but `HOME`/`TMPDIR`/`TMP` come from the
-   adapter instance's construction-time provisioning. If a *new* adapter instance ever resumes a
+   adapter instance's construction-time provisioning. If a _new_ adapter instance ever resumes a
    session it didn't spawn, the resumed worker runs under mismatched `HOME`/`TMP`. Already noted
    in the adapter's own cross-process-resume carry-forward (13/05 reconciliation).
 

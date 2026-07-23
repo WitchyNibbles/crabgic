@@ -40,17 +40,27 @@ function buildPlan(overrides: Partial<RemoteMutationPlan> = {}): RemoteMutationP
 }
 
 /** A minimal, always-successful handler set — `sendRequest` (the fake network) drives the actual behavior of each test. */
-function buildHandlers(overrides: Partial<MutationPipelineHandlers> = {}): MutationPipelineHandlers {
+function buildHandlers(
+  overrides: Partial<MutationPipelineHandlers> = {},
+): MutationPipelineHandlers {
   return {
     provider: "fake-provider",
-    buildRequest: () => ({ url: new URL("https://fake-provider.invalid/apply"), method: "PUT", hasPrecondition: true }),
-    parseResponse: (_plan, response) => JSON.parse(response.bodyText) as { appliedRevision: string },
+    buildRequest: () => ({
+      url: new URL("https://fake-provider.invalid/apply"),
+      method: "PUT",
+      hasPrecondition: true,
+    }),
+    parseResponse: (_plan, response) =>
+      JSON.parse(response.bodyText) as { appliedRevision: string },
     verify: async () => true,
     ...overrides,
   };
 }
 
-function buildDeps(journal: JournalStore, sendRequest: typeof sendHttpRequest): MutationPipelineDeps {
+function buildDeps(
+  journal: JournalStore,
+  sendRequest: typeof sendHttpRequest,
+): MutationPipelineDeps {
   const httpClient = new GatewayHttpClient({
     allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://fake-provider.invalid"] },
     resolveHostAddresses: async () => ["203.0.113.7"],
@@ -77,10 +87,18 @@ describe("executeMutationPlan — happy path", () => {
     const applyCalls: string[] = [];
     const sendRequest = vi.fn().mockImplementation(async () => {
       applyCalls.push("apply");
-      return { status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse;
+      return {
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse;
     });
 
-    const outcome = await executeMutationPlan(buildPlan(), buildHandlers(), buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome).toEqual({ status: "recorded", appliedRevision: "rev-1" });
     expect(applyCalls).toHaveLength(1);
   });
@@ -89,7 +107,11 @@ describe("executeMutationPlan — happy path", () => {
     const plan = buildPlan();
     const sendRequest = vi
       .fn()
-      .mockResolvedValue({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse);
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse);
 
     await executeMutationPlan(plan, buildHandlers(), buildDeps(journal, sendRequest));
 
@@ -106,7 +128,11 @@ describe("executeMutationPlan — exactly-once semantics", () => {
   it("replays a byte-identical result for the same (operationId, contentHash) without re-invoking the network call", async () => {
     const sendRequest = vi
       .fn()
-      .mockResolvedValue({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse);
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse);
     const deps = buildDeps(journal, sendRequest);
     const plan = buildPlan();
 
@@ -121,7 +147,11 @@ describe("executeMutationPlan — exactly-once semantics", () => {
   it("rejects a changed-content plan for the same idempotencyKey as a typed conflict, never a silent overwrite", async () => {
     const sendRequest = vi
       .fn()
-      .mockResolvedValue({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse);
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse);
     const deps = buildDeps(journal, sendRequest);
     const plan = buildPlan();
     const changedPlan = buildPlan({ desiredStateHash: "sha256:desired-state-DIFFERENT" });
@@ -139,9 +169,17 @@ describe("executeMutationPlan — mutating network I/O goes through GatewayHttpC
   it("a foreign-origin buildRequest target is refused by the SSRF guard before any network call, mapped to a failed outcome", async () => {
     const sendRequest = vi.fn();
     const handlers = buildHandlers({
-      buildRequest: () => ({ url: new URL("https://evil.example.com/steal"), method: "PUT", hasPrecondition: true }),
+      buildRequest: () => ({
+        url: new URL("https://evil.example.com/steal"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
     });
-    const outcome = await executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      handlers,
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("blocked");
     expect(sendRequest).not.toHaveBeenCalled();
   });
@@ -154,13 +192,21 @@ describe("executeMutationPlan — mutating network I/O goes through GatewayHttpC
       n += 1;
       await new Promise((resolve) => setTimeout(resolve, mine === 0 ? 20 : 1));
       order.push(mine);
-      return { status: 200, headers: {}, bodyText: `{"appliedRevision":"rev-${mine}"}` } satisfies HttpTransportResponse;
+      return {
+        status: 200,
+        headers: {},
+        bodyText: `{"appliedRevision":"rev-${mine}"}`,
+      } satisfies HttpTransportResponse;
     });
     const deps = buildDeps(journal, sendRequest);
 
     await Promise.all([
       executeMutationPlan(buildPlan({ idempotencyKey: "op-a" }), buildHandlers(), deps),
-      executeMutationPlan(buildPlan({ idempotencyKey: "op-b", desiredStateHash: "sha256:desired-state-2" }), buildHandlers(), deps),
+      executeMutationPlan(
+        buildPlan({ idempotencyKey: "op-b", desiredStateHash: "sha256:desired-state-2" }),
+        buildHandlers(),
+        deps,
+      ),
     ]);
 
     expect(order).toEqual([0, 1]); // same tenant+resource key -> submission order preserved
@@ -173,7 +219,11 @@ describe("executeMutationPlan — MEDIUM #5: concurrent same-idempotencyKey seri
     const sendRequest = vi.fn().mockImplementation(async () => {
       networkCalls += 1;
       await new Promise((resolve) => setTimeout(resolve, 15));
-      return { status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-concurrent"}' } satisfies HttpTransportResponse;
+      return {
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-concurrent"}',
+      } satisfies HttpTransportResponse;
     });
     const deps = buildDeps(journal, sendRequest);
     const plan = buildPlan();
@@ -192,7 +242,11 @@ describe("executeMutationPlan — MEDIUM #5: concurrent same-idempotencyKey seri
 describe("executeMutationPlan — ambiguous write, verification failure, connector errors", () => {
   it("maps a network failure with no reconcileAmbiguous hook to a blocked/ambiguous_write outcome (fails closed)", async () => {
     const sendRequest = vi.fn().mockRejectedValue(new Error("ECONNRESET"));
-    const outcome = await executeMutationPlan(buildPlan(), buildHandlers(), buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("blocked");
     expect(outcome.errorKind).toBe("ambiguous_write");
   });
@@ -202,7 +256,11 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
     const handlers = buildHandlers({
       reconcileAmbiguous: async () => ({ appliedRevision: "reconciled-rev" }),
     });
-    const outcome = await executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      handlers,
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome).toEqual({ status: "recorded", appliedRevision: "reconciled-rev" });
     expect(sendRequest).toHaveBeenCalledOnce();
   });
@@ -210,7 +268,11 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   it("a network failure WITH a reconcileAmbiguous hook that cannot resolve it still blocks", async () => {
     const sendRequest = vi.fn().mockRejectedValue(new Error("ECONNRESET"));
     const handlers = buildHandlers({ reconcileAmbiguous: async () => undefined });
-    const outcome = await executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      handlers,
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("blocked");
     expect(outcome.errorKind).toBe("ambiguous_write");
   });
@@ -218,9 +280,17 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   it("maps a verify() false result to a failed outcome, never silently treated as success", async () => {
     const sendRequest = vi
       .fn()
-      .mockResolvedValue({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse);
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse);
     const handlers = buildHandlers({ verify: async () => false });
-    const outcome = await executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      handlers,
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("failed");
   });
 
@@ -231,8 +301,18 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
   });
 
   it("maps a >=400 HTTP response to a failed outcome carrying the canonical ConnectorError kind", async () => {
-    const sendRequest = vi.fn().mockResolvedValue({ status: 403, headers: {}, bodyText: "" } satisfies HttpTransportResponse);
-    const outcome = await executeMutationPlan(buildPlan(), buildHandlers(), buildDeps(journal, sendRequest));
+    const sendRequest = vi
+      .fn()
+      .mockResolvedValue({
+        status: 403,
+        headers: {},
+        bodyText: "",
+      } satisfies HttpTransportResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("failed");
     expect(outcome.errorKind).toBe("permission");
   });
@@ -244,19 +324,29 @@ describe("executeMutationPlan — ambiguous write, verification failure, connect
         throw new TypeError("unexpected bug");
       },
     });
-    await expect(executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest))).rejects.toThrow(
-      TypeError,
-    );
+    await expect(
+      executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest)),
+    ).rejects.toThrow(TypeError);
   });
 
   it("an AmbiguousWriteBlockedError thrown directly from parseResponse is mapped to blocked", async () => {
-    const sendRequest = vi.fn().mockResolvedValue({ status: 200, headers: {}, bodyText: "{}" } satisfies HttpTransportResponse);
+    const sendRequest = vi
+      .fn()
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: "{}",
+      } satisfies HttpTransportResponse);
     const handlers = buildHandlers({
       parseResponse: () => {
         throw new AmbiguousWriteBlockedError("provider signaled an unresolvable ambiguous outcome");
       },
     });
-    const outcome = await executeMutationPlan(buildPlan(), handlers, buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      handlers,
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("blocked");
     expect(outcome.errorKind).toBe("ambiguous_write");
   });
@@ -281,8 +371,18 @@ describe("executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-t
       },
     });
 
-    const sendRequest = vi.fn().mockResolvedValue({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' } satisfies HttpTransportResponse);
-    const outcome = await executeMutationPlan(plan, buildHandlers(), buildDeps(journal, sendRequest));
+    const sendRequest = vi
+      .fn()
+      .mockResolvedValue({
+        status: 200,
+        headers: {},
+        bodyText: '{"appliedRevision":"rev-1"}',
+      } satisfies HttpTransportResponse);
+    const outcome = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
 
     expect(outcome.status).toBe("blocked");
     expect(outcome.errorKind).toBe("ambiguous_write");
@@ -305,7 +405,9 @@ describe("executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-t
     });
 
     const sendRequest = vi.fn();
-    const handlers = buildHandlers({ reconcileAmbiguous: async () => ({ appliedRevision: "found-via-marker" }) });
+    const handlers = buildHandlers({
+      reconcileAmbiguous: async () => ({ appliedRevision: "found-via-marker" }),
+    });
     const outcome = await executeMutationPlan(plan, handlers, buildDeps(journal, sendRequest));
 
     expect(outcome).toEqual({ status: "recorded", appliedRevision: "found-via-marker" });
@@ -354,7 +456,11 @@ describe("executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-t
     const sendRequest = vi.fn();
     const handlers = buildHandlers({
       reconcileAmbiguous: async () => {
-        throw ConnectorError.permission({ message: "forbidden", provider: "fake-provider", retryable: false });
+        throw ConnectorError.permission({
+          message: "forbidden",
+          provider: "fake-provider",
+          retryable: false,
+        });
       },
     });
     const outcome = await executeMutationPlan(plan, handlers, buildDeps(journal, sendRequest));
@@ -382,7 +488,11 @@ describe("executeMutationPlan — a prior TERMINAL (failed/conflict) record is n
     });
 
     const sendRequest = vi.fn();
-    const outcome = await executeMutationPlan(plan, buildHandlers(), buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
 
     expect(outcome.status).toBe("failed");
     expect(outcome.errorKind).toBe("permission");
@@ -406,7 +516,11 @@ describe("executeMutationPlan — a prior TERMINAL (failed/conflict) record is n
     });
 
     const sendRequest = vi.fn();
-    const outcome = await executeMutationPlan(plan, buildHandlers(), buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
 
     expect(outcome.status).toBe("conflict");
     expect(sendRequest).not.toHaveBeenCalled();
@@ -416,9 +530,15 @@ describe("executeMutationPlan — a prior TERMINAL (failed/conflict) record is n
 describe("executeMutationPlan — a network call that itself throws AmbiguousWriteBlockedError directly", () => {
   it("is never double-wrapped, and maps straight through to blocked", async () => {
     const sendRequest = vi.fn().mockImplementation(async () => {
-      throw new AmbiguousWriteBlockedError("the transport itself detected an unresolvable ambiguous outcome");
+      throw new AmbiguousWriteBlockedError(
+        "the transport itself detected an unresolvable ambiguous outcome",
+      );
     });
-    const outcome = await executeMutationPlan(buildPlan(), buildHandlers(), buildDeps(journal, sendRequest));
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest),
+    );
     expect(outcome.status).toBe("blocked");
     expect(outcome.errorKind).toBe("ambiguous_write");
     expect(outcome.detail).toContain("unresolvable ambiguous outcome");
@@ -433,7 +553,11 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/jour
     await writeFile(sideEffectFile, "");
   });
 
-  function fixtureSpec(fixture: string, faultPoint: string, extraEnv: Readonly<Record<string, string>> = {}) {
+  function fixtureSpec(
+    fixture: string,
+    faultPoint: string,
+    extraEnv: Readonly<Record<string, string>> = {},
+  ) {
     return {
       command: process.execPath,
       args: [fixture],
@@ -455,7 +579,10 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/jour
   async function readLastOutcome(): Promise<{ status: string } | undefined> {
     try {
       const content = await readFile(`${sideEffectFile}.outcomes.jsonl`, "utf8");
-      const lines = content.trim().split("\n").filter((l) => l.length > 0);
+      const lines = content
+        .trim()
+        .split("\n")
+        .filter((l) => l.length > 0);
       const last = lines.at(-1);
       return last === undefined ? undefined : (JSON.parse(last) as { status: string });
     } catch {
@@ -463,14 +590,19 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/jour
     }
   }
 
-  async function runRecoveryPass(fixture: string, extraEnv: Readonly<Record<string, string>> = {}): Promise<void> {
+  async function runRecoveryPass(
+    fixture: string,
+    extraEnv: Readonly<Record<string, string>> = {},
+  ): Promise<void> {
     const spec = fixtureSpec(fixture, "none", extraEnv);
     await new Promise<void>((resolve, reject) => {
       const child = spawn(spec.command, spec.args, {
         env: { ...process.env, ...spec.env },
         stdio: "ignore",
       });
-      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`recovery pass exited ${code}`))));
+      child.on("exit", (code) =>
+        code === 0 ? resolve() : reject(new Error(`recovery pass exited ${code}`)),
+      );
       child.on("error", reject);
     });
   }

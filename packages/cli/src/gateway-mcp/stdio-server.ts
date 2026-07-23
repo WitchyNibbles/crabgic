@@ -88,7 +88,9 @@ export function startGatewayMcpServer(options: GatewayMcpServerOptions): Gateway
         // A misbehaving/compromised peer sending an unbounded, newline-less
         // frame — reject and stop serving rather than buffer without limit.
         output.write(
-          encodeLine(buildError(0, JSON_RPC_INVALID_REQUEST, `oversized line rejected: ${err.message}`)),
+          encodeLine(
+            buildError(0, JSON_RPC_INVALID_REQUEST, `oversized line rejected: ${err.message}`),
+          ),
         );
         stopped = true;
         input.off("data", onData);
@@ -114,11 +116,14 @@ export function startGatewayMcpServer(options: GatewayMcpServerOptions): Gateway
     }
     const result = JsonRpcRequestSchema.safeParse(parsed);
     if (!result.success) {
-      const id = typeof (parsed as { id?: unknown })?.id === "string" ||
+      const id =
+        typeof (parsed as { id?: unknown })?.id === "string" ||
         typeof (parsed as { id?: unknown })?.id === "number"
-        ? (parsed as { id: string | number }).id
-        : 0;
-      output.write(encodeLine(buildError(id, JSON_RPC_PARSE_ERROR, "invalid JSON-RPC request shape")));
+          ? (parsed as { id: string | number }).id
+          : 0;
+      output.write(
+        encodeLine(buildError(id, JSON_RPC_PARSE_ERROR, "invalid JSON-RPC request shape")),
+      );
       return;
     }
     const response = handleRequest(result.data, options.registry);

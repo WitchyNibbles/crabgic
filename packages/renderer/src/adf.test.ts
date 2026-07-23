@@ -15,7 +15,12 @@ describe("validateAdfSafeSubset", () => {
     const doc: AdfDocument = {
       type: "doc",
       version: 1,
-      content: [{ type: "layoutSection", content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }] }],
+      content: [
+        {
+          type: "layoutSection",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }],
+        },
+      ],
     };
     const findings = validateAdfSafeSubset(doc);
     expect(findings.length).toBeGreaterThan(0);
@@ -26,7 +31,9 @@ describe("validateAdfSafeSubset", () => {
     const doc: AdfDocument = {
       type: "doc",
       version: 1,
-      content: [{ type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "mention" }] }] }],
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "mention" }] }] },
+      ],
     };
     const findings = validateAdfSafeSubset(doc);
     expect(findings.some((f) => f.message.match(/mark type "mention"/))).toBe(true);
@@ -39,12 +46,20 @@ describe("validateAdfSafeSubset", () => {
       content: [
         {
           type: "paragraph",
-          content: [{ type: "text", text: "click", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }],
+          content: [
+            {
+              type: "text",
+              text: "click",
+              marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }],
+            },
+          ],
         },
       ],
     };
     const findings = validateAdfSafeSubset(doc);
-    expect(findings.some((f) => f.message.match(/href/i) && f.message.match(/javascript/i))).toBe(true);
+    expect(findings.some((f) => f.message.match(/href/i) && f.message.match(/javascript/i))).toBe(
+      true,
+    );
   });
 
   it("rejects a link mark with a data: href", () => {
@@ -55,7 +70,11 @@ describe("validateAdfSafeSubset", () => {
         {
           type: "paragraph",
           content: [
-            { type: "text", text: "img", marks: [{ type: "link", attrs: { href: "data:text/html;base64,abcd" } }] },
+            {
+              type: "text",
+              text: "img",
+              marks: [{ type: "link", attrs: { href: "data:text/html;base64,abcd" } }],
+            },
           ],
         },
       ],
@@ -69,7 +88,16 @@ describe("validateAdfSafeSubset", () => {
       type: "doc",
       version: 1,
       content: [
-        { type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href: "http://example.com" } }] }] },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "x",
+              marks: [{ type: "link", attrs: { href: "http://example.com" } }],
+            },
+          ],
+        },
       ],
     };
     expect(validateAdfSafeSubset(doc).some((f) => f.message.match(/href/i))).toBe(true);
@@ -79,7 +107,9 @@ describe("validateAdfSafeSubset", () => {
     const doc: AdfDocument = {
       type: "doc",
       version: 1,
-      content: [{ type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link" }] }] }],
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link" }] }] },
+      ],
     };
     expect(validateAdfSafeSubset(doc).some((f) => f.message.match(/href/i))).toBe(true);
   });
@@ -91,7 +121,13 @@ describe("validateAdfSafeSubset", () => {
       content: [
         {
           type: "paragraph",
-          content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href: "https://example.com" } }] }],
+          content: [
+            {
+              type: "text",
+              text: "x",
+              marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+            },
+          ],
         },
       ],
     };
@@ -109,12 +145,21 @@ describe("validateAdfSafeSubset", () => {
           content: [
             { type: "text", text: "bold", marks: [{ type: "strong" }] },
             { type: "text", text: " and " },
-            { type: "text", text: "link", marks: [{ type: "link", attrs: { href: "https://example.com" } }] },
+            {
+              type: "text",
+              text: "link",
+              marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+            },
           ],
         },
         {
           type: "bulletList",
-          content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "item" }] }] }],
+          content: [
+            {
+              type: "listItem",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "item" }] }],
+            },
+          ],
         },
       ],
     };
@@ -163,7 +208,10 @@ describe("toADF", () => {
 
   it("converts a fenced code block", () => {
     const doc = toADF("```\nconst x = 1;\n```");
-    expect(doc.content[0]).toEqual({ type: "codeBlock", content: [{ type: "text", text: "const x = 1;" }] });
+    expect(doc.content[0]).toEqual({
+      type: "codeBlock",
+      content: [{ type: "text", text: "const x = 1;" }],
+    });
   });
 
   it("converts a blockquote", () => {
@@ -228,7 +276,8 @@ describe("adfSafeSubsetStage", () => {
   });
 
   it("passes clean jira_milestone_comment markdown", () => {
-    const text = "Outcome: done\nEvidence: https://example.com\nRisk: none\nNext: ship\nRef: PROJ-1";
+    const text =
+      "Outcome: done\nEvidence: https://example.com\nRisk: none\nNext: ship\nRef: PROJ-1";
     expect(adfSafeSubsetStage(stageInput(text, "jira_milestone_comment"))).toEqual([]);
   });
 });

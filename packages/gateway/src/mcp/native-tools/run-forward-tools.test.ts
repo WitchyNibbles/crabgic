@@ -8,7 +8,10 @@ import { buildRunForwardTools } from "./run-forward-tools.js";
 
 function startFakePeer(
   socketPath: string,
-  handleRequest: (op: string, params: unknown) => { ok: boolean; result?: unknown; error?: { code: string; message: string } },
+  handleRequest: (
+    op: string,
+    params: unknown,
+  ) => { ok: boolean; result?: unknown; error?: { code: string; message: string } },
 ): Promise<Server> {
   return new Promise((resolve) => {
     const server = createServer((socket: Socket) => {
@@ -17,7 +20,9 @@ function startFakePeer(
       lines.on("line", (line) => {
         if (stage === "handshake") {
           stage = "request";
-          socket.write(`${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`);
+          socket.write(
+            `${JSON.stringify({ type: "handshake_ack", protocolVersion: 1, accepted: true })}\n`,
+          );
           return;
         }
         const request = JSON.parse(line) as { id: string; op: string; params: unknown };

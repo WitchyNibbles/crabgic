@@ -51,7 +51,9 @@ export type HermeticitySelftestProbe = () => Promise<HermeticitySelftestResult>;
  * Never merges with the real ambient `process.env` (`ProcessProbeOptions.env`
  * REPLACES it — see `../process-probe.ts`).
  */
-export function createRealHermeticitySelftestProbe(spawnProbe: ProcessProbeFn): HermeticitySelftestProbe {
+export function createRealHermeticitySelftestProbe(
+  spawnProbe: ProcessProbeFn,
+): HermeticitySelftestProbe {
   return async () => {
     const scratchDir = await mkdtemp(join(tmpdir(), "eo-doctor-hermeticity-"));
     try {

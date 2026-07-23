@@ -17,9 +17,7 @@ export class BudgetExceededError extends Error {
   readonly budgetBytes: number;
 
   constructor(scope: "item" | "result", actualBytes: number, budgetBytes: number) {
-    super(
-      `gateway budget exceeded (${scope}): ${actualBytes} bytes > ${budgetBytes}-byte budget`,
-    );
+    super(`gateway budget exceeded (${scope}): ${actualBytes} bytes > ${budgetBytes}-byte budget`);
     this.name = "BudgetExceededError";
     this.scope = scope;
     this.actualBytes = actualBytes;

@@ -26,7 +26,10 @@ export interface ReachabilityProbeResult {
 
 export interface ReachabilityProbeOptions {
   /** Injectable client factory — production code builds a real `GatewayHttpClient`; tests inject one wired to a fake transport or a disposable HTTPS fixture server. */
-  readonly buildClient?: (connection: ExternalConnection, customCaPem?: string) => GatewayHttpClient;
+  readonly buildClient?: (
+    connection: ExternalConnection,
+    customCaPem?: string,
+  ) => GatewayHttpClient;
   readonly path?: string; // probe path, default "/"
 }
 

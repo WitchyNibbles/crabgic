@@ -54,7 +54,9 @@ export function buildResultTools(deps: ResultToolDeps): readonly AnyGatewayToolD
         workUnitId: record.workUnitId,
         payload: record,
       });
-      return { content: [{ type: "text", text: JSON.stringify({ submitted: true, id: record.id }) }] };
+      return {
+        content: [{ type: "text", text: JSON.stringify({ submitted: true, id: record.id }) }],
+      };
     },
   };
 

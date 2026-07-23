@@ -11,7 +11,9 @@ describe("toWikiMarkup", () => {
   });
 
   it("converts bold, italic, code, and link marks", () => {
-    const out = toWikiMarkup("plain **bold** and *italic* and `code` and [link](https://example.com)");
+    const out = toWikiMarkup(
+      "plain **bold** and *italic* and `code` and [link](https://example.com)",
+    );
     expect(out).toBe("plain *bold* and _italic_ and {{code}} and [link|https://example.com]");
   });
 

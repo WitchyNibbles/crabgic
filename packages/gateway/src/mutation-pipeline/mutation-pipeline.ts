@@ -116,7 +116,10 @@ export interface MutationPipelineHandlers {
    * maps to a `blocked`/`ambiguous_write` outcome. Absent entirely, EVERY
    * ambiguous outcome fails closed (never guesses, never blindly retries).
    */
-  reconcileAmbiguous?(plan: RemoteMutationPlan, cause: unknown): Promise<MutationApplyResult | undefined>;
+  reconcileAmbiguous?(
+    plan: RemoteMutationPlan,
+    cause: unknown,
+  ): Promise<MutationApplyResult | undefined>;
 }
 
 export type MutationOutcomeStatus = "recorded" | "replayed" | "conflict" | "blocked" | "failed";
@@ -148,7 +151,10 @@ export class IdempotencyKeyLock {
   readonly #serializer = new WriteSerializer();
 
   async runExclusive<T>(idempotencyKey: string, task: () => Promise<T>): Promise<T> {
-    return this.#serializer.runExclusive({ tenant: "idempotency-key", resource: idempotencyKey }, task);
+    return this.#serializer.runExclusive(
+      { tenant: "idempotency-key", resource: idempotencyKey },
+      task,
+    );
   }
 }
 
@@ -236,7 +242,10 @@ async function performApplyOnce(
   const applied = handlers.parseResponse(plan, response);
   const verified = await handlers.verify(plan, applied);
   if (!verified) {
-    throw new MutationVerificationFailedError(plan.id, "read-back did not confirm the desired state");
+    throw new MutationVerificationFailedError(
+      plan.id,
+      "read-back did not confirm the desired state",
+    );
   }
   return applied;
 }
@@ -261,12 +270,19 @@ async function applyVerifyRecord(
 ): Promise<MutationPipelineOutcome> {
   try {
     const applied = await performApplyOnce(plan, handlers, deps);
-    await persistRecord(deps.journal, plan, "recorded", { appliedRevision: applied.appliedRevision });
+    await persistRecord(deps.journal, plan, "recorded", {
+      appliedRevision: applied.appliedRevision,
+    });
     return { status: "recorded", appliedRevision: applied.appliedRevision };
   } catch (err) {
     const outcome = mapCaughtErrorToOutcome(err);
     if (outcome === undefined) throw err;
-    await persistRecord(deps.journal, plan, "failed", outcome.errorKind !== undefined ? { errorKind: outcome.errorKind } : {});
+    await persistRecord(
+      deps.journal,
+      plan,
+      "failed",
+      outcome.errorKind !== undefined ? { errorKind: outcome.errorKind } : {},
+    );
     return outcome;
   }
 }
@@ -306,12 +322,19 @@ async function reconcilePendingOperation(
         detail: "reconciliation could not determine the prior attempt's outcome",
       };
     }
-    await persistRecord(deps.journal, plan, "recorded", { appliedRevision: reconciled.appliedRevision });
+    await persistRecord(deps.journal, plan, "recorded", {
+      appliedRevision: reconciled.appliedRevision,
+    });
     return { status: "recorded", appliedRevision: reconciled.appliedRevision };
   } catch (err) {
     const outcome = mapCaughtErrorToOutcome(err);
     if (outcome === undefined) throw err;
-    await persistRecord(deps.journal, plan, "failed", outcome.errorKind !== undefined ? { errorKind: outcome.errorKind } : {});
+    await persistRecord(
+      deps.journal,
+      plan,
+      "failed",
+      outcome.errorKind !== undefined ? { errorKind: outcome.errorKind } : {},
+    );
     return outcome;
   }
 }
@@ -366,5 +389,7 @@ export async function executeMutationPlan(
   handlers: MutationPipelineHandlers,
   deps: MutationPipelineDeps,
 ): Promise<MutationPipelineOutcome> {
-  return deps.lock.runExclusive(plan.idempotencyKey, () => executeMutationPlanLocked(plan, handlers, deps));
+  return deps.lock.runExclusive(plan.idempotencyKey, () =>
+    executeMutationPlanLocked(plan, handlers, deps),
+  );
 }

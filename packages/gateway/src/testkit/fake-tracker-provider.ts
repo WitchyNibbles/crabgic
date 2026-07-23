@@ -29,7 +29,11 @@ export function createFakeTrackerProvider(script: FakeProviderScript): FakeTrack
     sleep: async () => undefined,
   });
 
-  async function callAndParse(method: "GET" | "POST" | "PUT" | "PATCH", path: string, isWrite: boolean): Promise<unknown> {
+  async function callAndParse(
+    method: "GET" | "POST" | "PUT" | "PATCH",
+    path: string,
+    isWrite: boolean,
+  ): Promise<unknown> {
     const response = await httpClient.request({
       connectionId: "fake-tracker-connection",
       tenant: "fake-tenant",

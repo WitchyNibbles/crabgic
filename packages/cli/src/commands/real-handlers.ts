@@ -46,7 +46,9 @@ export async function runStatusCommand(
 
   const client = await deps.connectClient();
   try {
-    const result = await client.request<{ run?: RunRecordLike }>("run.status", { runId: cmd.runId });
+    const result = await client.request<{ run?: RunRecordLike }>("run.status", {
+      runId: cmd.runId,
+    });
 
     if (!cmd.watch) {
       return {
@@ -86,7 +88,10 @@ export async function runStatusCommand(
 }
 
 /** `cancel <run-id|task-id>` — wired to `run.cancel` (work-unit/task-level cancellation is 13's own semantics; this phase wires only the run-scoped op 05 already exposes). */
-export async function runCancelCommand(cmd: CancelCommand, deps: CliDependencies): Promise<CommandResult> {
+export async function runCancelCommand(
+  cmd: CancelCommand,
+  deps: CliDependencies,
+): Promise<CommandResult> {
   const client = await deps.connectClient();
   try {
     const result = await client.request<{ accepted: boolean; runState?: string }>("run.cancel", {
@@ -115,7 +120,10 @@ export async function runEvidenceCommand(
     return { exitCode: EXIT_OK, stdout: formatJson(report) };
   }
   if (report.records.length === 0) {
-    return { exitCode: EXIT_OK, stdout: `no evidence recorded yet for change set "${cmd.changeSetId}"\n` };
+    return {
+      exitCode: EXIT_OK,
+      stdout: `no evidence recorded yet for change set "${cmd.changeSetId}"\n`,
+    };
   }
   const lines = report.records.map(
     (r) => `- ${r.command} (exit ${String(r.exitStatus)}) @ ${r.objectId} — ${r.capturedAt}`,
@@ -124,7 +132,10 @@ export async function runEvidenceCommand(
 }
 
 /** `doctor [--repair-plan] [--json]`. */
-export async function runDoctorCommand(cmd: DoctorCommand, deps: CliDependencies): Promise<CommandResult> {
+export async function runDoctorCommand(
+  cmd: DoctorCommand,
+  deps: CliDependencies,
+): Promise<CommandResult> {
   const checks = buildDefaultDoctorChecks({
     projectHash: deps.projectHash,
     journal: deps.journal,

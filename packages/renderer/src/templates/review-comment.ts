@@ -9,5 +9,9 @@ export interface ReviewCommentInput {
 }
 
 export function renderReviewComment(input: ReviewCommentInput): string {
-  return [`Finding: ${input.finding}`, `Evidence: ${input.evidence}`, `Action: ${input.action}`].join("\n");
+  return [
+    `Finding: ${input.finding}`,
+    `Evidence: ${input.evidence}`,
+    `Action: ${input.action}`,
+  ].join("\n");
 }

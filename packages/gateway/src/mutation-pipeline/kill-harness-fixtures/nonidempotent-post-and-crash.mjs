@@ -19,11 +19,7 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { createJournalStore } from "@eo/journal";
-import {
-  executeMutationPlan,
-  IdempotencyKeyLock,
-  GatewayHttpClient,
-} from "@eo/gateway";
+import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@eo/gateway";
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function delay(ms) {
@@ -96,7 +92,8 @@ const handlers = {
     method: "POST",
   }),
   parseResponse: (_plan, response) => JSON.parse(response.bodyText),
-  verify: async (_plan, applied) => typeof applied.appliedRevision === "string" && applied.appliedRevision.length > 0,
+  verify: async (_plan, applied) =>
+    typeof applied.appliedRevision === "string" && applied.appliedRevision.length > 0,
   // Marker-reconciliation (`../reconciliation.js`'s own philosophy,
   // modeled directly by this fixture since 18/20 haven't landed): search
   // for an object already carrying this operation's marker BEFORE ever

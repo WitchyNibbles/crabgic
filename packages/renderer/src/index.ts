@@ -32,8 +32,14 @@ export {
 export { toWikiMarkup } from "./wiki-markup.js";
 
 // Templates.
-export { renderJiraMilestoneComment, type JiraMilestoneCommentInput } from "./templates/jira-milestone-comment.js";
-export { renderGrafanaAnnotation, type GrafanaAnnotationInput } from "./templates/grafana-annotation.js";
+export {
+  renderJiraMilestoneComment,
+  type JiraMilestoneCommentInput,
+} from "./templates/jira-milestone-comment.js";
+export {
+  renderGrafanaAnnotation,
+  type GrafanaAnnotationInput,
+} from "./templates/grafana-annotation.js";
 export { renderPrTitle, type PrTitleInput } from "./templates/pr-title.js";
 export { renderPrBody, type PrBodyInput } from "./templates/pr-body.js";
 export { renderReviewComment, type ReviewCommentInput } from "./templates/review-comment.js";

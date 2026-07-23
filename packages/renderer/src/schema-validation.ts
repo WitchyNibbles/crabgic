@@ -35,7 +35,10 @@ interface SectionSpec {
   readonly labels: readonly string[];
 }
 
-function sectionSpecFor(kind: ArtifactKind, policy: LintStageInput["policy"]): SectionSpec | undefined {
+function sectionSpecFor(
+  kind: ArtifactKind,
+  policy: LintStageInput["policy"],
+): SectionSpec | undefined {
   switch (kind) {
     case "pr_body":
       return { labels: policy.limits.prBody.sections };

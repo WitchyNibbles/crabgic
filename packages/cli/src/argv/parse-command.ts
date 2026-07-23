@@ -74,7 +74,9 @@ function parseTrust(rest: readonly string[]): ParsedCommand {
     const tokenId = requirePositional(t.positionals, 0, "token-id");
     return { command: "trust-revoke", tokenId, json: readBooleanFlag(t, "json") };
   }
-  throw new CliUsageError(`unknown "trust" sub-command "${verb ?? ""}" (expected review|approve|revoke)`);
+  throw new CliUsageError(
+    `unknown "trust" sub-command "${verb ?? ""}" (expected review|approve|revoke)`,
+  );
 }
 
 function parseLearn(rest: readonly string[]): ParsedCommand {

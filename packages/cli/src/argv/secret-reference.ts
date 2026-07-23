@@ -10,7 +10,8 @@
 import { SecretValueRejectedError } from "../errors.js";
 
 /** A reference form this module recognizes as safe: `env:NAME`, `op://...`, `vault://...`, `file:///abs/path` (never inlined content), or `ref:opaque-id`. */
-const REFERENCE_PATTERN = /^(env:[A-Za-z_][A-Za-z0-9_]*|op:\/\/\S+|vault:\/\/\S+|file:\/\/\/\S+|ref:\S+)$/;
+const REFERENCE_PATTERN =
+  /^(env:[A-Za-z_][A-Za-z0-9_]*|op:\/\/\S+|vault:\/\/\S+|file:\/\/\/\S+|ref:\S+)$/;
 
 /**
  * Shapes commonly mistaken for "just a string" but which are actual secret

@@ -86,7 +86,12 @@ afterEach(async () => {
 describe("dispatchCommand — --json validates against 05's PUBLISHED schemas (adversarial-review fix, 2026-07-24, finding #7)", () => {
   it("status <run-id> --json is real, published-schema-valid RunStatusResultSchema output, not merely snapshot-stable", async () => {
     const result = await dispatchCommand(
-      { command: "status", runId: "11111111-1111-4111-8111-111111111111", watch: false, json: true },
+      {
+        command: "status",
+        runId: "11111111-1111-4111-8111-111111111111",
+        watch: false,
+        json: true,
+      },
       deps,
     );
     expect(result.exitCode).toBe(EXIT_OK);
@@ -106,7 +111,12 @@ describe("dispatchCommand — --json validates against 05's PUBLISHED schemas (a
 describe("dispatchCommand — real backends", () => {
   it("status <run-id>: unknown run renders gracefully, exit OK", async () => {
     const result = await dispatchCommand(
-      { command: "status", runId: "11111111-1111-4111-8111-111111111111", watch: false, json: false },
+      {
+        command: "status",
+        runId: "11111111-1111-4111-8111-111111111111",
+        watch: false,
+        json: false,
+      },
       deps,
     );
     expect(result.exitCode).toBe(EXIT_OK);
@@ -141,8 +151,14 @@ describe("dispatchCommand — real backends", () => {
   });
 
   it("doctor --json: returns a well-formed report", async () => {
-    const result = await dispatchCommand({ command: "doctor", repairPlan: false, json: true }, deps);
-    const parsed = JSON.parse(result.stdout!) as { findings: readonly unknown[]; allPassed: boolean };
+    const result = await dispatchCommand(
+      { command: "doctor", repairPlan: false, json: true },
+      deps,
+    );
+    const parsed = JSON.parse(result.stdout!) as {
+      findings: readonly unknown[];
+      allPassed: boolean;
+    };
     expect(parsed.findings).toHaveLength(8);
     expect(typeof parsed.allPassed).toBe("boolean");
   });
@@ -202,7 +218,12 @@ describe("dispatchCommand — supervisor unavailable", () => {
       },
     };
     const result = await dispatchCommand(
-      { command: "status", runId: "11111111-1111-4111-8111-111111111111", watch: false, json: false },
+      {
+        command: "status",
+        runId: "11111111-1111-4111-8111-111111111111",
+        watch: false,
+        json: false,
+      },
       brokenDeps,
     );
     expect(result.exitCode).toBe(EXIT_SUPERVISOR_UNAVAILABLE);

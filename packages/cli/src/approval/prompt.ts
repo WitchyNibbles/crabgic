@@ -14,7 +14,10 @@ import {
   type MintedApprovalToken,
 } from "./token.js";
 
-export function renderApprovalPrompt(subjectKind: ApprovalTokenSubjectKind, digest: string): string {
+export function renderApprovalPrompt(
+  subjectKind: ApprovalTokenSubjectKind,
+  digest: string,
+): string {
   const label = subjectKind === "envelope_hash" ? "authorization envelope" : "capability manifest";
   return (
     `About to approve the following ${label} digest:\n\n` +

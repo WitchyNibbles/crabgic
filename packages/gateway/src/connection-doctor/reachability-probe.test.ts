@@ -6,7 +6,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@eo/contracts";
 import { GatewayHttpClient } from "../transport/http-client.js";
 import { sendHttpRequest, type HttpTransportRequest } from "../transport/http-transport.js";
-import { generateSelfSignedCert, type DisposableCert } from "../transport/test-support/self-signed-cert.js";
+import {
+  generateSelfSignedCert,
+  type DisposableCert,
+} from "../transport/test-support/self-signed-cert.js";
 import { probeConnectionReachability } from "./reachability-probe.js";
 
 /**
@@ -185,7 +188,10 @@ describe("probeConnectionReachability", () => {
       const result = await probeConnectionReachability(connection, {
         buildClient: (_c, customCaPem) =>
           new GatewayHttpClient({
-            allowlist: { allowedSchemes: ["https:"], allowedOrigins: [`https://127.0.0.1:${errorPort}`] },
+            allowlist: {
+              allowedSchemes: ["https:"],
+              allowedOrigins: [`https://127.0.0.1:${errorPort}`],
+            },
             resolveHostAddresses: async () => ["203.0.113.7"],
             sendRequest: realNetworkSendRequestPinnedTo("127.0.0.1"),
             maxAttempts: 1,

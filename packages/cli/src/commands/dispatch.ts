@@ -63,7 +63,10 @@ export async function dispatchCommand(
         // `gateway mcp` is a long-running stdio process, never a single
         // CommandResult — `../bin.ts` boots it directly and never routes
         // it through this dispatcher's request/response model.
-        return notImplementedResult("gateway mcp is booted directly by bin.ts, never dispatched", false);
+        return notImplementedResult(
+          "gateway mcp is booted directly by bin.ts, never dispatched",
+          false,
+        );
 
       default: {
         const exhaustive: never = command;

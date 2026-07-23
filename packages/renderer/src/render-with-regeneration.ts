@@ -15,7 +15,11 @@ import { normalizeToNfc } from "./unicode-defense.js";
  */
 export type RenderOutcome =
   | { readonly status: "rendered"; readonly artifact: RenderedArtifact }
-  | { readonly status: "blocked"; readonly error: "policy_blocked"; readonly findings: readonly LintFinding[] };
+  | {
+      readonly status: "blocked";
+      readonly error: "policy_blocked";
+      readonly findings: readonly LintFinding[];
+    };
 
 /**
  * A caller-supplied candidate generator. Called with no feedback on the
@@ -34,7 +38,11 @@ export interface RenderWithRegenerationInput {
   readonly now?: () => Date;
 }
 
-function buildRenderedArtifact(kind: ArtifactKind, content: string, now: () => Date): RenderedArtifact {
+function buildRenderedArtifact(
+  kind: ArtifactKind,
+  content: string,
+  now: () => Date,
+): RenderedArtifact {
   const artifact: RenderedArtifact = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: randomUUID(),
@@ -67,7 +75,9 @@ function buildRenderedArtifact(kind: ArtifactKind, content: string, now: () => D
  * length-limit verdict computed on the wrong string can wrongly block (or,
  * in principle, wrongly pass) content relative to what is actually stored.
  */
-export async function renderWithRegeneration(input: RenderWithRegenerationInput): Promise<RenderOutcome> {
+export async function renderWithRegeneration(
+  input: RenderWithRegenerationInput,
+): Promise<RenderOutcome> {
   const { kind, generate, policy } = input;
   const now = input.now ?? (() => new Date());
 

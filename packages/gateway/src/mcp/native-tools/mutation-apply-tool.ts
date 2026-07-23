@@ -22,7 +22,10 @@ import {
   type MutationPipelineHandlers,
   type MutationPipelineOutcome,
 } from "../../mutation-pipeline/mutation-pipeline.js";
-import { ProviderRegistry, UnknownProviderError } from "../../provider-dispatch/provider-registry.js";
+import {
+  ProviderRegistry,
+  UnknownProviderError,
+} from "../../provider-dispatch/provider-registry.js";
 import type { GatewayToolDefinition, GatewayToolResult } from "../tool-registry.js";
 import type { MutationApplyClient } from "./mutation-apply-client.js";
 
