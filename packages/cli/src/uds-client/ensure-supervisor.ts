@@ -20,7 +20,7 @@
  * CLI process can exit while the daemon lives on.
  */
 import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { SupervisorUnavailableError } from "../errors.js";
 import type { UdsClient } from "./client.js";
 
@@ -80,16 +80,17 @@ export interface SpawnSupervisorDaemonOptions {
 /**
  * The real daemon spawner — a thin, real-process shim (like `../bin.ts`,
  * untested-by-design; the retry/spawn POLICY above carries the tested
- * branches). Resolves the daemon entry point through `@eo/supervisor`'s own
- * `./bin/supervisord.js` export (so this side never hard-codes that package's
- * `dist` layout, and an unbuilt/missing daemon surfaces as a loud
- * `MODULE_NOT_FOUND` rather than a silent spawn of a nonexistent path), then
- * runs it under the current `node` (`process.execPath`), detached with stdio
- * ignored, and unref'd so the CLI can exit while the daemon lives on.
+ * branches). `../bin/supervisord.ts` is this same package's second bin entry
+ * (it lives here, not in `@eo/supervisor`, because the daemon constructs the
+ * real `ClaudeEngineAdapter` and `@eo/engine-claude` already depends on
+ * `@eo/supervisor` — hosting it there would be a dependency cycle), so the
+ * daemon is resolved as a plain sibling of this file's own built location
+ * rather than through any package resolution. It is then run under the
+ * current `node` (`process.execPath`), detached with stdio ignored, and
+ * unref'd so the CLI can exit while the daemon lives on.
  */
 export function spawnSupervisorDaemon(options: SpawnSupervisorDaemonOptions): void {
-  const require = createRequire(import.meta.url);
-  const supervisordBin = require.resolve("@eo/supervisor/bin/supervisord.js");
+  const supervisordBin = fileURLToPath(new URL("../bin/supervisord.js", import.meta.url));
 
   const child = spawn(process.execPath, [supervisordBin], {
     detached: true,

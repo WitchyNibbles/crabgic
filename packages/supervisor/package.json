@@ -10,15 +10,11 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "engineering-orchestrator-supervisord": "./dist/bin/supervisord.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./bin/supervisord.js": "./dist/bin/supervisord.js"
+    }
   },
   "files": [
     "dist"

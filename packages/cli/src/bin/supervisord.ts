@@ -2,12 +2,17 @@
 /**
  * `engineering-orchestrator-supervisord` executable entry point —
  * roadmap/05-supervisor-daemon.md §Lifecycle ("started on demand by the CLI
- * (09); exactly one live instance per project"). This is the ONLY file in
- * this package that touches the real `process.env`/`process.stderr`/
- * `process.exitCode` and installs real signal handlers: a thin,
- * intentionally-untested-by-design shim over `../compose/boot-supervisor.ts`'s
+ * (09); exactly one live instance per project"). A thin,
+ * intentionally-untested-by-design shim over `@eo/supervisor`'s
  * `bootSupervisor`, which carries every branch of actual logic and IS
- * unit-tested — the same split `packages/cli`'s own `bin.ts` uses.
+ * unit-tested — the same split this package's own `../bin.ts` uses.
+ *
+ * WHY THIS LIVES IN `packages/cli`, not `packages/supervisor`: the daemon
+ * must construct the real `ClaudeEngineAdapter` to drive work, and
+ * `@eo/engine-claude` already depends on `@eo/supervisor` — hosting the
+ * entry point there would be a dependency cycle. `@eo/supervisor` therefore
+ * keeps the composition root parameterized on `@eo/engine-core`'s
+ * `EngineAdapter` interface, and this layer injects the concrete engine.
  *
  * Contract (settled in the phase-23 final-wiring pass): the spawner (the CLI,
  * roadmap/09) passes the resolved project hash in `EO_PROJECT_HASH`; every
@@ -21,8 +26,11 @@
  * (exit 0) so a spawn race never fails the caller — a daemon IS up.
  */
 import { readXdgEnvFromProcess } from "@eo/journal";
-import { readPeerCredentialsLinux } from "../peer-auth/peer-credentials.js";
-import { bootSupervisor, SupervisorAlreadyRunningError } from "../compose/boot-supervisor.js";
+import {
+  bootSupervisor,
+  readPeerCredentialsLinux,
+  SupervisorAlreadyRunningError,
+} from "@eo/supervisor";
 
 const EXIT_OK = 0;
 const EXIT_GENERAL_ERROR = 1;
