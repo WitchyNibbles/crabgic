@@ -48,10 +48,29 @@ function readPackageName(root: string): string {
 
 export default defineConfig({
   test: {
-    projects: packageDirs.map((root) => ({
-      extends: true,
-      test: { root, name: readPackageName(root) },
-    })),
+    projects: [
+      ...packageDirs.map((root) => ({
+        extends: true,
+        test: { root, name: readPackageName(root) },
+      })),
+      // Phase 23 work item 1: `e2e/report/` is the ReleaseGateReport
+      // generator/schema — Phase-23-owned harness/tooling living under
+      // top-level `e2e/` per that phase's own header ("not an npm
+      // workspace member"), so it is NOT one of the `packages/*` dirs
+      // enumerated above. Its own local project entry is the minimal,
+      // additive wiring that makes `npx vitest run e2e` discover and run
+      // its tests (every matched test file's path contains "e2e", so the
+      // bare positional filter "e2e" matches this project's files without
+      // matching anything under `e2e/provisioning/` — that sibling
+      // directory has its own standalone `vitest.config.ts`/`vitest.live.
+      // config.ts`, deliberately not wired in here). `extends: true`
+      // inherits this file's `exclude`/`testTimeout`/coverage settings,
+      // exactly like every packages/* project above.
+      {
+        extends: true,
+        test: { root: "e2e/report", name: "e2e-report" },
+      },
+    ],
     passWithNoTests: true,
     // The default 5s per-test timeout is too tight for this repo's legitimate
     // >=10k-case fast-check property suites (envelope-compiler footguns, config
@@ -71,7 +90,7 @@ export default defineConfig({
       provider: "v8",
       enabled: true,
       reporter: ["text", "lcov", "html"],
-      include: ["packages/*/src/**/*.ts"],
+      include: ["packages/*/src/**/*.ts", "e2e/report/src/**/*.ts"],
       // `src/live/**` is exercised only by the `@live` engine suite (real
       // engine required), so it is exempt from the default-gate coverage
       // denominator the same way the live tests themselves are excluded.

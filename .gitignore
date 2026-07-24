@@ -29,3 +29,7 @@ npm-debug.log*
 
 # Phase 06 @live run artifact (regenerated each `npm run test:live`; uploaded by the engine-live CI job)
 packages/engine-claude/live-run-record.json
+
+# Phase 23 work item 1 @live run artifact (regenerated each release-gate-report
+# generator run; archived by the release-e2e CI job)
+e2e/release-gate-report.json

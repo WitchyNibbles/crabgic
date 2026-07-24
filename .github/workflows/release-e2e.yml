@@ -1,0 +1,76 @@
+name: release-e2e
+
+# roadmap/23-release-hardening.md work item 1 / §Interfaces produced:
+# "`e2e/release-gate-report.json` (introduced here; phase-23-internal) —
+# the checklist-item -> EvidenceRecord audit trail, archived by the
+# `release-e2e` CI job (introduced here)." Exit criteria: "`release-e2e` CI
+# job's archived `e2e/release-gate-report.json` shows PASS for every item
+# below, each linked to >=1 EvidenceRecord from the exact release-candidate
+# object ID."
+#
+# HONESTY NOTE (mirrors `engine-live.yml`/`jira-datacenter-smoke.yml`'s own
+# precedent): this work item builds the report generator + its schema only
+# (roadmap/23 work item 1). The disposable-environment provisioning, the
+# installation/orchestration/git/connector/live-conformance matrix
+# harnesses, the security review, and the reproducible-build pipeline
+# (work items 2-10) are separate, not-yet-built workers' scope — until they
+# exist and journal real `evidence_pointer` entries, this job's generator
+# run legitimately produces an EVIDENCE-PENDING verdict for every one of
+# the 15 checklist items (see `e2e/report/src/checklist.ts` and
+# `generator.ts`'s tri-state doc comments). The job itself, the CLI
+# invocation, and the artifact upload are all real and already wired for
+# the day the real live/containerized harnesses start journaling evidence
+# against a real `EO_RELEASE_CANDIDATE_OBJECT_ID`.
+#
+# Trigger stays manual (`workflow_dispatch`) and this job is NOT part of
+# the required push/PR check set (unlike `ci.yml`/`gates-conformance.yml`/
+# `perf-conformance.yml`, which run on every push) — mirrors `engine-live`'s
+# own "live runs are started deliberately" rationale, and additionally:
+# until work items 2-10 exist, a per-push run of this job could do nothing
+# but reproduce the same EVIDENCE-PENDING report every time, so it would
+# never be a meaningful blocking signal yet.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_candidate_object_id:
+        description: "Exact release-candidate Git object ID (defaults to `git rev-parse HEAD` of the checked-out ref if omitted)"
+        required: false
+        type: string
+      scoring_mode:
+        description: "'interim' (missing evidence -> EVIDENCE-PENDING) or 'final' (missing evidence -> FAIL, the real release-cut mode)"
+        required: false
+        type: choice
+        options:
+          - interim
+          - final
+        default: interim
+
+jobs:
+  release-e2e:
+    name: release-e2e (ReleaseGateReport generator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Build (incl. e2e/report, wired into the root tsc -b project references)
+        run: npm run build
+      - name: Run the ReleaseGateReport generator
+        env:
+          EO_RELEASE_CANDIDATE_OBJECT_ID: ${{ inputs.release_candidate_object_id }}
+          EO_RELEASE_GATE_MODE: ${{ inputs.scoring_mode }}
+        run: node e2e/report/dist/cli.js
+      - name: Upload the archived release-gate-report.json (audit trail)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-report
+          path: e2e/release-gate-report.json
+          if-no-files-found: error

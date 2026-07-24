@@ -54,6 +54,9 @@
     },
     {
       "path": "./packages/plugin"
+    },
+    {
+      "path": "./e2e/report"
     }
   ]
 }
