@@ -1,0 +1,33 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/provisioning
+
+stdout | test/grafana-oss.live.test.ts > @live Grafana OSS/Enterprise — real docker compose boot + /api/health + teardown > boots Grafana 'oss' '13.1', waits for /api/health database:ok, and tears down
+[grafana-oss.live] oss 13.1: {"status":"error","message":"Command failed: docker compose -f /home/eimi/projects/crabgic/docker/grafana/13.1/docker-compose.yml -p live-oss-13-1-4808 up -d\ntime=\"2026-07-24T19:01:44+02:00\" level=warning msg=\"/home/eimi/projects/crabgic/docker/grafana/13.1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\"\n Image grafana/grafana-oss:13.1.0 Pulling \n Image grafana/grafana-oss:13.1.0 Error manifest for grafana/grafana-oss:13.1.0 not found: manifest unknown: manifest unknown\nError response from daemon: manifest for grafana/grafana-oss:13.1.0 not found: manifest unknown: manifest unknown\n"}
+
+ ❯ test/grafana-oss.live.test.ts (4 tests | 1 failed) 33155ms
+     × boots Grafana 'oss' '13.1', waits for /api/health database:ok, and tears down 1149ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/grafana-oss.live.test.ts > @live Grafana OSS/Enterprise — real docker compose boot + /api/health + teardown > boots Grafana 'oss' '13.1', waits for /api/health database:ok, and tears down
+AssertionError: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ test/grafana-oss.live.test.ts:84:30
+     82|       console.log(`[grafana-oss.live] ${edition} ${version}:`, JSON.st…
+     83|
+     84|       expect(outcome.status).toBe("ok");
+       |                              ^
+     85|       if (outcome.status === "ok") {
+     86|         expect(outcome.result.database).toBe("ok");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  19:01:23
+   Duration  33.32s (transform 43ms, setup 0ms, import 64ms, tests 33.16s, environment 0ms)
+

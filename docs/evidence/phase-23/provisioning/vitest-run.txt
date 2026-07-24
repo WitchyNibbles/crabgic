@@ -1,0 +1,28 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/provisioning
+      Coverage enabled with v8
+
+
+ Test Files  6 passed (6)
+      Tests  32 passed (32)
+   Start at  19:01:15
+   Duration  487ms (transform 273ms, setup 0ms, import 460ms, tests 464ms, environment 1ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   92.62 |    89.74 |   81.81 |   95.57 |                   
+ src               |   91.66 |    87.09 |   78.26 |      96 |                   
+  crashHandlers.ts |   91.42 |    85.71 |   72.72 |     100 | 46                
+  provisioning.ts  |   91.11 |    85.71 |   81.81 |   92.68 | 28,33,47          
+ src/testing       |   94.73 |      100 |      90 |   94.73 |                   
+  ...poseRunner.ts |   94.73 |      100 |      90 |   94.73 | 67-68             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 92.62% ( 113/122 )
+Branches     : 89.74% ( 35/39 )
+Functions    : 81.81% ( 27/33 )
+Lines        : 95.57% ( 108/113 )
+================================================================================

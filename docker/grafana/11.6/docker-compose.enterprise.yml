@@ -1,0 +1,36 @@
+version: "3.8"
+
+# Enterprise counterpart of ./docker-compose.yml (roadmap/23 §In scope).
+# grafana/grafana-enterprise:11.6 BOOTS with no license applied — Grafana
+# Enterprise is the OSS binary plus additional gated plugins/features behind
+# a license file; with no license mounted, the container starts and serves
+# the exact same OSS-equivalent API surface (including /api/health) that
+# this recipe's smoke test checks, it just never unlocks the
+# enterprise-only features (SAML/LDAP sync, reporting, licensed data
+# sources, etc.). No license is baked in or required to reach the healthy
+# state this recipe's smoke test checks for.
+#
+# Usage:
+#   docker compose -f docker/grafana/11.6/docker-compose.enterprise.yml up -d
+#   ../smoke-test.sh 11.6 enterprise
+#   docker compose -f docker/grafana/11.6/docker-compose.enterprise.yml down -v   # teardown
+services:
+  grafana-enterprise:
+    image: grafana/grafana-enterprise:11.6
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-11_6-enterprise-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  grafana-11_6-enterprise-data:

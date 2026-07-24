@@ -1,0 +1,7 @@
+Booting Grafana oss 13.1...
+time="2026-07-24T18:50:02+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/13.1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image grafana/grafana-oss:13.1.0 Pulling 
+ Image grafana/grafana-oss:13.1.0 Error manifest for grafana/grafana-oss:13.1.0 not found: manifest unknown: manifest unknown
+Error response from daemon: manifest for grafana/grafana-oss:13.1.0 not found: manifest unknown: manifest unknown
+Tearing down Grafana oss 13.1 smoke-test stack...
+time="2026-07-24T18:50:03+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/13.1/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"

@@ -1,0 +1,21 @@
+Booting Grafana oss 11.6...
+time="2026-07-24T18:48:58+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/11.6/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Network 116_default Creating 
+ Network 116_default Created 
+ Volume 116_grafana-11_6-data Creating 
+ Volume 116_grafana-11_6-data Created 
+ Container 116-grafana-1 Creating 
+ Container 116-grafana-1 Created 
+ Container 116-grafana-1 Starting 
+ Container 116-grafana-1 Started 
+Grafana oss 11.6 reached a healthy /api/health after ~5s — smoke test passed.
+Tearing down Grafana oss 11.6 smoke-test stack...
+time="2026-07-24T18:49:03+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/11.6/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container 116-grafana-1 Stopping 
+ Container 116-grafana-1 Stopped 
+ Container 116-grafana-1 Removing 
+ Container 116-grafana-1 Removed 
+ Network 116_default Removing 
+ Volume 116_grafana-11_6-data Removing 
+ Volume 116_grafana-11_6-data Removed 
+ Network 116_default Removed 

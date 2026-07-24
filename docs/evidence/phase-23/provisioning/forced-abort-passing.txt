@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/provisioning
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  19:00:35
+   Duration  279ms (transform 63ms, setup 0ms, import 93ms, tests 11ms, environment 0ms)
+

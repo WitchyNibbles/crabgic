@@ -1,0 +1,25 @@
+{
+  "name": "@eo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Phase 23 release-hardening top-level E2E tooling (not an npm workspace member — roadmap/23-release-hardening.md's own header: \"lives under top-level e2e/ (not an npm workspace member)\"). e2e/provisioning/ (this work item): disposable-environment provisioning + guaranteed-teardown harness. e2e/report/ is a sibling worker's directory (release-gate-report generator) and is untouched here.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "provisioning:typecheck": "tsc -p provisioning/tsconfig.json --noEmit",
+    "provisioning:test": "vitest run --config provisioning/vitest.config.ts",
+    "provisioning:test:live": "vitest run --config provisioning/vitest.live.config.ts"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  },
+  "note_no_install": "Deps above are declared for documentation/version-pinning only, matching versions already present in the repo root's node_modules (root package.json + packages/contracts). Per this work item's constraint (\"Do NOT run npm install / edit package-lock\"), no install was run against this file — Node's ancestor node_modules resolution finds zod/vitest/typescript from the repo-root node_modules/ at runtime/build time without a workspace entry, and `npx <tool>` from repo root resolves the same root-installed binaries."
+}

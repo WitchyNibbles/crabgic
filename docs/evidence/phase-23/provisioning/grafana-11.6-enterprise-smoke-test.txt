@@ -1,0 +1,289 @@
+Booting Grafana enterprise 11.6...
+time="2026-07-24T18:51:05+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/11.6/docker-compose.enterprise.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image grafana/grafana-enterprise:11.6 Pulling 
+ 55afa1ecc21d Already exists 0B
+ a0acb3ce3384 Pulling fs layer 0B
+ b561867c3207 Pulling fs layer 0B
+ ca063d731079 Pulling fs layer 0B
+ 50d94d46906e Pulling fs layer 0B
+ 575918c982a8 Pulling fs layer 0B
+ d2dda3eca45b Pulling fs layer 0B
+ 96ed53d4385f Pulling fs layer 0B
+ 6ab5c4685ab8 Pulling fs layer 0B
+ 74992e954a96 Pulling fs layer 0B
+ 50d94d46906e Waiting 0B
+ 575918c982a8 Waiting 0B
+ d2dda3eca45b Waiting 0B
+ 96ed53d4385f Waiting 0B
+ 6ab5c4685ab8 Waiting 0B
+ 74992e954a96 Waiting 0B
+ b561867c3207 Downloading 42.23kB
+ a0acb3ce3384 Downloading 139B
+ a0acb3ce3384 Verifying Checksum 0B
+ a0acb3ce3384 Download complete 0B
+ a0acb3ce3384 Extracting 139B
+ a0acb3ce3384 Extracting 139B
+ a0acb3ce3384 Pull complete 0B
+ b561867c3207 Downloading 222kB
+ b561867c3207 Downloading 544kB
+ ca063d731079 Downloading 88.24kB
+ b561867c3207 Downloading 1.241MB
+ ca063d731079 Downloading 382.9kB
+ b561867c3207 Downloading 1.444MB
+ ca063d731079 Downloading 861.6kB
+ 50d94d46906e Downloading 8.192kB
+ b561867c3207 Downloading 1.95MB
+ ca063d731079 Downloading 1.802MB
+ 50d94d46906e Downloading 65.7kB
+ 50d94d46906e Verifying Checksum 0B
+ 50d94d46906e Download complete 0B
+ b561867c3207 Downloading 2.288MB
+ ca063d731079 Downloading 2.571MB
+ b561867c3207 Downloading 3.216MB
+ ca063d731079 Downloading 3.343MB
+ b561867c3207 Verifying Checksum 0B
+ b561867c3207 Download complete 0B
+ b561867c3207 Extracting 65.54kB
+ ca063d731079 Downloading 3.714MB
+ b561867c3207 Extracting 720.9kB
+ 575918c982a8 Downloading 3.508kB
+ ca063d731079 Downloading 4.209MB
+ 575918c982a8 Downloading 32.77kB
+ 575918c982a8 Verifying Checksum 0B
+ 575918c982a8 Download complete 0B
+ b561867c3207 Extracting 3.473MB
+ ca063d731079 Downloading 4.399MB
+ b561867c3207 Extracting 3.678MB
+ ca063d731079 Downloading 4.694MB
+ ca063d731079 Downloading 4.984MB
+ b561867c3207 Pull complete 0B
+ ca063d731079 Downloading 5.842MB
+ ca063d731079 Downloading 6.13MB
+ d2dda3eca45b Downloading 524.4kB
+ ca063d731079 Downloading 6.42MB
+ 96ed53d4385f Downloading 531.2kB
+ ca063d731079 Downloading 6.709MB
+ d2dda3eca45b Downloading 1.063MB
+ ca063d731079 Downloading 7.878MB
+ 96ed53d4385f Downloading 1.587MB
+ d2dda3eca45b Downloading 2.128MB
+ ca063d731079 Downloading 8.354MB
+ ca063d731079 Downloading 8.735MB
+ ca063d731079 Download complete 0B
+ ca063d731079 Extracting 98.3kB
+ 96ed53d4385f Downloading 2.127MB
+ d2dda3eca45b Downloading 2.66MB
+ ca063d731079 Extracting 1.769MB
+ 96ed53d4385f Downloading 2.655MB
+ ca063d731079 Extracting 6.39MB
+ d2dda3eca45b Downloading 3.19MB
+ ca063d731079 Extracting 8.735MB
+ 96ed53d4385f Downloading 3.18MB
+ 6ab5c4685ab8 Downloading 3.509kB
+ 6ab5c4685ab8 Downloading 5.064kB
+ 6ab5c4685ab8 Verifying Checksum 0B
+ 6ab5c4685ab8 Download complete 0B
+ ca063d731079 Pull complete 0B
+ d2dda3eca45b Downloading 3.728MB
+ 50d94d46906e Extracting 32.77kB
+ 50d94d46906e Extracting 65.7kB
+ 96ed53d4385f Downloading 3.719MB
+ d2dda3eca45b Downloading 4.268MB
+ 50d94d46906e Pull complete 0B
+ 575918c982a8 Extracting 32.77kB
+ 575918c982a8 Extracting 32.77kB
+ 96ed53d4385f Downloading 4.257MB
+ 74992e954a96 Downloading 1.226kB
+ 74992e954a96 Download complete 0B
+ d2dda3eca45b Downloading 4.797MB
+ 575918c982a8 Pull complete 0B
+ 96ed53d4385f Downloading 4.798MB
+ d2dda3eca45b Downloading 5.329MB
+ 96ed53d4385f Downloading 5.333MB
+ d2dda3eca45b Downloading 5.858MB
+ 96ed53d4385f Downloading 5.865MB
+ d2dda3eca45b Downloading 6.391MB
+ 96ed53d4385f Downloading 6.392MB
+ d2dda3eca45b Downloading 6.922MB
+ 96ed53d4385f Downloading 6.921MB
+ d2dda3eca45b Downloading 7.461MB
+ 96ed53d4385f Downloading 7.461MB
+ d2dda3eca45b Downloading 7.993MB
+ 96ed53d4385f Downloading 7.988MB
+ d2dda3eca45b Downloading 8.519MB
+ 96ed53d4385f Downloading 8.519MB
+ d2dda3eca45b Downloading 9.057MB
+ 96ed53d4385f Downloading 9.58MB
+ d2dda3eca45b Downloading 10.12MB
+ d2dda3eca45b Downloading 11.19MB
+ 96ed53d4385f Downloading 11.17MB
+ d2dda3eca45b Downloading 12.25MB
+ 96ed53d4385f Downloading 12.23MB
+ d2dda3eca45b Downloading 12.78MB
+ 96ed53d4385f Downloading 12.77MB
+ d2dda3eca45b Downloading 13.31MB
+ d2dda3eca45b Downloading 13.85MB
+ 96ed53d4385f Downloading 13.83MB
+ d2dda3eca45b Downloading 14.39MB
+ 96ed53d4385f Downloading 14.37MB
+ d2dda3eca45b Downloading 14.92MB
+ d2dda3eca45b Downloading 15.98MB
+ 96ed53d4385f Downloading 15.44MB
+ 96ed53d4385f Downloading 15.97MB
+ d2dda3eca45b Downloading 16.52MB
+ 96ed53d4385f Downloading 16.51MB
+ d2dda3eca45b Downloading 17.06MB
+ 96ed53d4385f Downloading 17.04MB
+ d2dda3eca45b Downloading 17.59MB
+ d2dda3eca45b Downloading 18.12MB
+ 96ed53d4385f Downloading 17.57MB
+ d2dda3eca45b Downloading 18.65MB
+ 96ed53d4385f Downloading 18.11MB
+ d2dda3eca45b Downloading 19.18MB
+ 96ed53d4385f Downloading 18.64MB
+ d2dda3eca45b Downloading 19.72MB
+ 96ed53d4385f Downloading 19.17MB
+ d2dda3eca45b Downloading 20.78MB
+ 96ed53d4385f Downloading 20.79MB
+ d2dda3eca45b Downloading 21.32MB
+ 96ed53d4385f Downloading 21.32MB
+ d2dda3eca45b Downloading 21.85MB
+ 96ed53d4385f Downloading 21.85MB
+ d2dda3eca45b Downloading 22.39MB
+ 96ed53d4385f Downloading 22.38MB
+ d2dda3eca45b Downloading 22.92MB
+ 96ed53d4385f Downloading 22.92MB
+ d2dda3eca45b Downloading 23.46MB
+ 96ed53d4385f Downloading 23.46MB
+ d2dda3eca45b Downloading 24MB
+ 96ed53d4385f Downloading 24MB
+ d2dda3eca45b Downloading 24.53MB
+ 96ed53d4385f Downloading 24.53MB
+ d2dda3eca45b Downloading 25.07MB
+ 96ed53d4385f Downloading 25.6MB
+ d2dda3eca45b Downloading 25.6MB
+ 96ed53d4385f Downloading 28.25MB
+ d2dda3eca45b Downloading 28.28MB
+ 96ed53d4385f Downloading 30.94MB
+ d2dda3eca45b Downloading 30.96MB
+ d2dda3eca45b Downloading 33.1MB
+ 96ed53d4385f Downloading 33.61MB
+ d2dda3eca45b Downloading 35.74MB
+ 96ed53d4385f Downloading 36.28MB
+ d2dda3eca45b Downloading 38.41MB
+ 96ed53d4385f Downloading 38.93MB
+ d2dda3eca45b Downloading 41.08MB
+ 96ed53d4385f Downloading 41.59MB
+ d2dda3eca45b Downloading 43.75MB
+ 96ed53d4385f Downloading 44.24MB
+ d2dda3eca45b Downloading 45.88MB
+ 96ed53d4385f Downloading 46.92MB
+ d2dda3eca45b Downloading 48.55MB
+ 96ed53d4385f Downloading 49.57MB
+ d2dda3eca45b Downloading 50.68MB
+ 96ed53d4385f Downloading 52.22MB
+ d2dda3eca45b Downloading 53.35MB
+ 96ed53d4385f Downloading 54.37MB
+ d2dda3eca45b Downloading 55.5MB
+ 96ed53d4385f Downloading 56.51MB
+ d2dda3eca45b Downloading 58.17MB
+ 96ed53d4385f Downloading 59.18MB
+ d2dda3eca45b Downloading 60.3MB
+ 96ed53d4385f Downloading 61.31MB
+ d2dda3eca45b Downloading 62.43MB
+ 96ed53d4385f Downloading 63.97MB
+ d2dda3eca45b Downloading 64.05MB
+ 96ed53d4385f Downloading 66.1MB
+ d2dda3eca45b Downloading 65.65MB
+ 96ed53d4385f Verifying Checksum 0B
+ 96ed53d4385f Download complete 0B
+ d2dda3eca45b Downloading 68.28MB
+ d2dda3eca45b Downloading 70.94MB
+ d2dda3eca45b Downloading 74.15MB
+ d2dda3eca45b Downloading 77.35MB
+ d2dda3eca45b Downloading 80.54MB
+ d2dda3eca45b Downloading 83.76MB
+ d2dda3eca45b Downloading 86.95MB
+ d2dda3eca45b Downloading 90.15MB
+ d2dda3eca45b Downloading 92.82MB
+ d2dda3eca45b Downloading 95.48MB
+ d2dda3eca45b Downloading 98.65MB
+ d2dda3eca45b Downloading 101.9MB
+ d2dda3eca45b Downloading 104.5MB
+ d2dda3eca45b Downloading 107.7MB
+ d2dda3eca45b Downloading 111.4MB
+ d2dda3eca45b Verifying Checksum 0B
+ d2dda3eca45b Download complete 0B
+ d2dda3eca45b Extracting 557.1kB
+ d2dda3eca45b Extracting 5.014MB
+ d2dda3eca45b Extracting 10.58MB
+ d2dda3eca45b Extracting 13.93MB
+ d2dda3eca45b Extracting 15.6MB
+ d2dda3eca45b Extracting 25.07MB
+ d2dda3eca45b Extracting 33.98MB
+ d2dda3eca45b Extracting 39.55MB
+ d2dda3eca45b Extracting 45.12MB
+ d2dda3eca45b Extracting 53.48MB
+ d2dda3eca45b Extracting 62.39MB
+ d2dda3eca45b Extracting 68.52MB
+ d2dda3eca45b Extracting 75.76MB
+ d2dda3eca45b Extracting 82.44MB
+ d2dda3eca45b Extracting 87.46MB
+ d2dda3eca45b Extracting 96.93MB
+ d2dda3eca45b Extracting 107.5MB
+ d2dda3eca45b Extracting 110.3MB
+ d2dda3eca45b Extracting 113.5MB
+ d2dda3eca45b Pull complete 0B
+ 96ed53d4385f Extracting 557.1kB
+ 96ed53d4385f Extracting 2.228MB
+ 96ed53d4385f Extracting 2.785MB
+ 96ed53d4385f Extracting 3.342MB
+ 96ed53d4385f Extracting 3.899MB
+ 96ed53d4385f Extracting 5.014MB
+ 96ed53d4385f Extracting 5.571MB
+ 96ed53d4385f Extracting 6.128MB
+ 96ed53d4385f Extracting 8.913MB
+ 96ed53d4385f Extracting 11.14MB
+ 96ed53d4385f Extracting 13.93MB
+ 96ed53d4385f Extracting 15.6MB
+ 96ed53d4385f Extracting 18.94MB
+ 96ed53d4385f Extracting 19.5MB
+ 96ed53d4385f Extracting 22.84MB
+ 96ed53d4385f Extracting 27.3MB
+ 96ed53d4385f Extracting 30.64MB
+ 96ed53d4385f Extracting 34.54MB
+ 96ed53d4385f Extracting 40.11MB
+ 96ed53d4385f Extracting 45.12MB
+ 96ed53d4385f Extracting 49.02MB
+ 96ed53d4385f Extracting 51.81MB
+ 96ed53d4385f Extracting 53.48MB
+ 96ed53d4385f Extracting 56.82MB
+ 96ed53d4385f Extracting 63.5MB
+ 96ed53d4385f Extracting 66.48MB
+ 96ed53d4385f Pull complete 0B
+ 6ab5c4685ab8 Extracting 5.064kB
+ 6ab5c4685ab8 Extracting 5.064kB
+ 6ab5c4685ab8 Pull complete 0B
+ 74992e954a96 Extracting 1.226kB
+ 74992e954a96 Extracting 1.226kB
+ 74992e954a96 Pull complete 0B
+ Image grafana/grafana-enterprise:11.6 Pulled 
+ Network 116_default Creating 
+ Network 116_default Created 
+ Volume 116_grafana-11_6-enterprise-data Creating 
+ Volume 116_grafana-11_6-enterprise-data Created 
+ Container 116-grafana-enterprise-1 Creating 
+ Container 116-grafana-enterprise-1 Created 
+ Container 116-grafana-enterprise-1 Starting 
+ Container 116-grafana-enterprise-1 Started 
+Grafana enterprise 11.6 reached a healthy /api/health after ~15s — smoke test passed.
+Tearing down Grafana enterprise 11.6 smoke-test stack...
+time="2026-07-24T18:51:47+02:00" level=warning msg="/home/eimi/projects/crabgic/docker/grafana/11.6/docker-compose.enterprise.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container 116-grafana-enterprise-1 Stopping 
+ Container 116-grafana-enterprise-1 Stopped 
+ Container 116-grafana-enterprise-1 Removing 
+ Container 116-grafana-enterprise-1 Removed 
+ Network 116_default Removing 
+ Volume 116_grafana-11_6-enterprise-data Removing 
+ Volume 116_grafana-11_6-enterprise-data Removed 
+ Network 116_default Removed 

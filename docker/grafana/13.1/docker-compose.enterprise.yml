@@ -1,0 +1,34 @@
+version: "3.8"
+
+# Enterprise counterpart of ./docker-compose.yml. Unlike OSS 13.1 (see the
+# sibling file's honesty note), `grafana/grafana-enterprise:13.1` IS
+# published and DOES boot today — verified live in this environment, see
+# docs/evidence/phase-23/provisioning/grafana-enterprise-13.1-live-result.txt.
+# No license is required to reach the healthy state this recipe's smoke
+# test checks for; see ../11.6/docker-compose.enterprise.yml's header for
+# the full no-license-needed-to-boot rationale.
+#
+# Usage:
+#   docker compose -f docker/grafana/13.1/docker-compose.enterprise.yml up -d
+#   ../smoke-test.sh 13.1 enterprise
+#   docker compose -f docker/grafana/13.1/docker-compose.enterprise.yml down -v   # teardown
+services:
+  grafana-enterprise:
+    image: grafana/grafana-enterprise:13.1
+    ports:
+      - "3005:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-13_1-enterprise-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  grafana-13_1-enterprise-data:

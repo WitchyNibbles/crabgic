@@ -1,0 +1,28 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/provisioning
+
+ ❯ test/forced-abort.test.ts (1 test | 1 failed) 2657ms
+     × still tears down when a SIGTERM arrives while the probe is in flight 2655ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/forced-abort.test.ts > forced abort mid-run (crash-safe teardown) > still tears down when a SIGTERM arrives while the probe is in flight
+Error: not torn down yet
+ ❯ test/forced-abort.test.ts:74:17
+     72|         const verification = await verifyTornDown(runId, runner);
+     73|         if (!verification.tornDown) {
+     74|           throw new Error("not torn down yet");
+       |                 ^
+     75|         }
+     76|       });
+ ❯ waitForAssertion test/forced-abort.test.ts:113:7
+ ❯ test/forced-abort.test.ts:71:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  19:00:23
+   Duration  2.96s (transform 81ms, setup 0ms, import 114ms, tests 2.66s, environment 0ms)
+

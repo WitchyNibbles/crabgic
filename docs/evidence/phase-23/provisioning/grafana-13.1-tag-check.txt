@@ -1,0 +1,37 @@
+Docker Hub registry API check performed while authoring
+docker/grafana/13.1/{docker-compose.yml,docker-compose.enterprise.yml}
+(this repo's project date: 2026-07-24).
+
+Command:
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    "https://hub.docker.com/v2/repositories/grafana/grafana-oss/tags/<tag>"
+
+Results:
+  grafana/grafana-oss:13.1     -> 404
+  grafana/grafana-oss:13.1.0   -> 404
+  grafana/grafana-oss:13.1.1   -> 404
+  grafana/grafana-oss (newest published tag observed): 13.0.2
+    (curl -s "https://hub.docker.com/v2/repositories/grafana/grafana-oss/tags?page_size=100&ordering=last_updated"
+     -> newest entries: latest, 13.0.2, 13.0.1, 13.0.1-security-01, 12.4.3, ...)
+
+  grafana/grafana-enterprise:13.1 -> 200 (exists)
+    curl -s "https://hub.docker.com/v2/repositories/grafana/grafana-enterprise/tags/13.1"
+    {
+      "name": "13.1",
+      "tag_last_pushed": "2026-07-22T05:51:24.012167Z",
+      ...
+    }
+
+Interpretation: as of this check, Grafana Labs had published
+grafana-enterprise:13.1 (two days before this repo's project date) but had
+NOT yet published a corresponding grafana-oss:13.1/13.1.0/13.1.1 tag. This
+is a genuine, reproducible vendor-timing asymmetry, not a defect in this
+recipe or the provisioning harness. docker/grafana/13.1/docker-compose.yml
+(OSS) is pinned to the conventional first-patch tag (13.1.0) it will
+resolve to the moment Grafana Labs publishes it; no change to the compose
+file will be required. See
+docker/grafana/13.1/docker-compose.yml_manifest-error.txt equivalent below
+(grafana-13.1-oss-smoke-test-FAILS-vendor-tag-not-published.txt) for the
+live, honest failure this produces today, and
+grafana-13.1-enterprise-smoke-test.txt for the live, honest PASS the
+Enterprise 13.1 recipe produces today.

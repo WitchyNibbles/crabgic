@@ -1,0 +1,50 @@
+version: "3.8"
+
+# roadmap/23-release-hardening.md §In scope: Grafana OSS 13.1 recipe.
+# Mirrors ../11.6/docker-compose.yml — see that file's header for the full
+# rationale.
+#
+# HONESTY NOTE (checked live against Docker Hub's registry API on the date
+# this recipe was authored — see
+# docs/evidence/phase-23/provisioning/grafana-13.1-tag-check.txt for the raw
+# `curl`/HTTP-status evidence): as of that check, `grafana/grafana-oss` had
+# NO `13.1`/`13.1.0`/`13.1.1` tag published — the newest published OSS tag
+# was `13.0.2`. `grafana/grafana-enterprise:13.1` DOES already exist (pushed
+# two days earlier per the same check) — Grafana Labs evidently ships
+# Enterprise slightly ahead of (or independently of) the OSS image tag for
+# a given minor version at least in this instance. This is a real,
+# reproducible vendor-timing gap, not a mistake in this recipe: the image
+# tag below (`13.1.0`, the conventional first-patch tag a new minor would
+# use) is pinned per the roadmap's mandated version and will resolve the
+# moment Grafana Labs publishes it — no change to this file will be needed.
+# Until then, `docker compose pull`/`up` against this file fails with
+# "manifest unknown", which this recipe's own smoke-test.sh and the
+# provisioning harness's `@live` test both report honestly rather than
+# silently skip or fake — see
+# docs/evidence/phase-23/provisioning/grafana-oss-13.1-live-result.txt.
+# ../docker-compose.enterprise.yml (this directory) genuinely boots today.
+#
+# Usage:
+#   docker compose -f docker/grafana/13.1/docker-compose.yml up -d
+#   ../smoke-test.sh 13.1 oss
+#   docker compose -f docker/grafana/13.1/docker-compose.yml down -v   # teardown
+services:
+  grafana:
+    image: grafana/grafana-oss:13.1.0
+    ports:
+      - "3004:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-13_1-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  grafana-13_1-data:

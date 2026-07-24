@@ -1,0 +1,44 @@
+version: "3.8"
+
+# roadmap/23-release-hardening.md §In scope: "Disposable-environment
+# provisioning + guaranteed-teardown scripts: ... Grafana OSS/Enterprise
+# 11.6/12.4/13.1 containers". Phase 20 shipped fixture cassettes for these
+# versions (packages/connectors-grafana/fixtures/) but not the container
+# recipes themselves — this file is the owed OSS recipe for Grafana 11.6,
+# mirroring docker/jira-datacenter's structure (per-version compose file +
+# shared smoke-test.sh + README).
+#
+# Grafana OSS boots with NO license — every API this recipe's health probe
+# and any future live-capture tooling would exercise is reachable
+# unauthenticated-admin-default out of the box. This is genuinely runnable,
+# unlike Jira Data Center (which needs a trial license past its own
+# first-run wizard) — see docker/grafana/README.md.
+#
+# Usage:
+#   docker compose -f docker/grafana/11.6/docker-compose.yml up -d
+#   ../smoke-test.sh 11.6 oss
+#   docker compose -f docker/grafana/11.6/docker-compose.yml down -v   # teardown
+services:
+  grafana:
+    image: grafana/grafana-oss:11.6.5
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-11_6-data:/var/lib/grafana
+    healthcheck:
+      # `/api/health` returns `{"database":"ok",...}` once Grafana has
+      # finished its startup migrations — confirmed to take ~7s on a warm
+      # image pull in this repo's own live verification
+      # (docs/evidence/phase-23/provisioning/grafana-11.6-manual-boot.txt).
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  grafana-11_6-data:
