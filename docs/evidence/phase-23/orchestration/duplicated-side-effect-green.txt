@@ -1,0 +1,31 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/orchestration
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  19:51:53
+   Duration  851ms (transform 476ms, setup 0ms, import 627ms, tests 68ms, environment 0ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   64.51 |       60 |   73.33 |   62.06 |                   
+ ...iledProfile.ts |      50 |      100 |      50 |      50 | 81                
+ evidence.ts       |     100 |    71.42 |     100 |     100 | 77-78,83,91       
+ targetDrift.ts    |       0 |        0 |       0 |       0 | 27-58             
+ testJournal.ts    |      80 |      100 |   66.66 |      80 | 36                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 64.51% ( 20/31 )
+Branches     : 60% ( 12/20 )
+Functions    : 73.33% ( 11/15 )
+Lines        : 62.06% ( 18/29 )
+================================================================================
+ERROR: Coverage for lines (62.06%) does not meet global threshold (80%)
+ERROR: Coverage for functions (73.33%) does not meet global threshold (80%)
+ERROR: Coverage for statements (64.51%) does not meet global threshold (80%)
+ERROR: Coverage for branches (60%) does not meet global threshold (80%)

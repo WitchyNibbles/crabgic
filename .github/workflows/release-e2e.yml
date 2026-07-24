@@ -9,18 +9,28 @@ name: release-e2e
 # object ID."
 #
 # HONESTY NOTE (mirrors `engine-live.yml`/`jira-datacenter-smoke.yml`'s own
-# precedent): this work item builds the report generator + its schema only
-# (roadmap/23 work item 1). The disposable-environment provisioning, the
-# installation/orchestration/git/connector/live-conformance matrix
-# harnesses, the security review, and the reproducible-build pipeline
-# (work items 2-10) are separate, not-yet-built workers' scope — until they
-# exist and journal real `evidence_pointer` entries, this job's generator
-# run legitimately produces an EVIDENCE-PENDING verdict for every one of
-# the 15 checklist items (see `e2e/report/src/checklist.ts` and
-# `generator.ts`'s tri-state doc comments). The job itself, the CLI
-# invocation, and the artifact upload are all real and already wired for
-# the day the real live/containerized harnesses start journaling evidence
-# against a real `EO_RELEASE_CANDIDATE_OBJECT_ID`.
+# precedent, updated by this phase's integration/reconciliation pass): work
+# items 2-10's six self-contained harnesses (`e2e/provisioning`,
+# `e2e/matrix/{installation,git,orchestration,connector}`, `e2e/live`,
+# `e2e/release`) now exist and this job runs their OFFLINE (non-`@live`/
+# non-`EO_LIVE`-gated) suites via `npm run test:e2e` + typechecks them via
+# `npm run check:e2e-types`, immediately before generating the report — but
+# each harness's own `EvidenceRecord` journal is still a per-test-file
+# ephemeral temp directory (created and torn down inside that harness's own
+# test run; see e.g. `e2e/matrix/installation/src/test-support/test-journal
+# .ts`), never a shared/persistent location this generator step can read.
+# Wiring a real, shared, CI-visible journal that both a harness run and this
+# generator step observe is explicit composition-root work, deliberately
+# NOT done by this integration pass (approved-but-paused, separate step).
+# Concretely: `npm run test:e2e` genuinely passing is real, verified
+# evidence that every harness's own real checks are green on this
+# checkout — but it does not, by itself, cause this step's
+# `e2e/release-gate-report.json` run to see any new linked `EvidenceRecord`s
+# (the generator only reads whatever `EO_RELEASE_GATE_JOURNAL_DIR` resolves
+# to, which stays empty until that composition-root wiring lands). Every
+# one of the 15 checklist items legitimately still scores EVIDENCE-PENDING
+# in `interim` mode today — this step is real and already wired for the day
+# a real, shared journal exists.
 #
 # Trigger stays manual (`workflow_dispatch`) and this job is NOT part of
 # the required push/PR check set (unlike `ci.yml`/`gates-conformance.yml`/
@@ -62,6 +72,10 @@ jobs:
       - run: npm ci
       - name: Build (incl. e2e/report, wired into the root tsc -b project references)
         run: npm run build
+      - name: Typecheck every self-contained e2e harness (each has its own tsconfig.json)
+        run: npm run check:e2e-types
+      - name: Run every self-contained e2e harness's offline suite (excludes @live/EO_LIVE-gated tests)
+        run: npm run test:e2e
       - name: Run the ReleaseGateReport generator
         env:
           EO_RELEASE_CANDIDATE_OBJECT_ID: ${{ inputs.release_candidate_object_id }}

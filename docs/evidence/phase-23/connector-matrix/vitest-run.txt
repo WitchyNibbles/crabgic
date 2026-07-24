@@ -1,0 +1,22 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/connector
+      Coverage enabled with v8
+
+
+ Test Files  15 passed (15)
+      Tests  91 passed (91)
+   Start at  19:55:36
+   Duration  3.19s (transform 8.81s, setup 0ms, import 15.56s, tests 4.02s, environment 2ms)
+
+ % Coverage report from v8
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------|---------|----------|---------|---------|-------------------
+-------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 26/26 )
+Branches     : 100% ( 10/10 )
+Functions    : 100% ( 5/5 )
+Lines        : 100% ( 25/25 )
+================================================================================

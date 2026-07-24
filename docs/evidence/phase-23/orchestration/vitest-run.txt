@@ -1,0 +1,22 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/orchestration
+      Coverage enabled with v8
+
+
+ Test Files  14 passed (14)
+      Tests  36 passed (36)
+   Start at  20:05:20
+   Duration  1.43s (transform 6.36s, setup 0ms, import 9.76s, tests 933ms, environment 2ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 31/31 )
+Branches     : 100% ( 20/20 )
+Functions    : 100% ( 15/15 )
+Lines        : 100% ( 29/29 )
+================================================================================

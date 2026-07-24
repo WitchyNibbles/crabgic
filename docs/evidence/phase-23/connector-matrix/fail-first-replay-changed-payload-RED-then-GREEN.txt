@@ -1,0 +1,63 @@
+########## RED — changed-payload replay (naive 'silently accept' expectation) ##########
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/connector
+      Coverage enabled with v8
+
+ ❯ src/exactly-once/replay-changed-payload.test.ts (3 tests | 1 failed) 41ms
+     × a changed desiredStateHash for the SAME idempotencyKey is rejected as 'conflict', never silently accepted/overwritten, and never re-applied over the network 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/exactly-once/replay-changed-payload.test.ts > GREEN: the REAL executeMutationPlan pipeline REJECTS a changed-payload replay as a typed conflict > a changed desiredStateHash for the SAME idempotencyKey is rejected as 'conflict', never silently accepted/overwritten, and never re-applied over the network
+AssertionError: expected 'conflict' to be 'recorded' // Object.is equality
+
+Expected: "recorded"
+Received: "conflict"
+
+ ❯ src/exactly-once/replay-changed-payload.test.ts:170:35
+    168|
+    169|     // TEMP RED PROBE: the naive "silently accept as a fresh recorded …
+    170|     expect(changedOutcome.status).toBe("recorded");
+       |                                   ^
+    171|
+    172|     const journalDir2 = await mkdtemp(join(tmpdir(), "eo-connector-mat…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  19:55:29
+   Duration  829ms (transform 373ms, setup 0ms, import 623ms, tests 41ms, environment 0ms)
+
+
+########## restoring the real, correct expectation (GREEN) ##########
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/connector
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  19:55:31
+   Duration  795ms (transform 370ms, setup 0ms, import 592ms, tests 40ms, environment 0ms)
+
+ % Coverage report from v8
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------|---------|----------|---------|---------|-------------------
+All files    |   46.15 |       60 |      60 |      48 |                   
+ evidence.ts |   63.15 |       60 |      60 |   66.66 | 42-48,72-73       
+ fixtures.ts |       0 |      100 |     100 |       0 | 19-47             
+-------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 46.15% ( 12/26 )
+Branches     : 60% ( 6/10 )
+Functions    : 60% ( 3/5 )
+Lines        : 48% ( 12/25 )
+================================================================================
+ERROR: Coverage for lines (48%) does not meet global threshold (80%)
+ERROR: Coverage for functions (60%) does not meet global threshold (80%)
+ERROR: Coverage for statements (46.15%) does not meet global threshold (80%)
+ERROR: Coverage for branches (60%) does not meet global threshold (80%)

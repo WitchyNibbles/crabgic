@@ -1,0 +1,62 @@
+########## RED — confusable-domain (naive check probe) ##########
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/connector
+      Coverage enabled with v8
+
+ ❯ src/neutral-communication/confusable-domain.test.ts (4 tests | 1 failed) 31ms
+     × blocks a pr_body embedding the Cyrillic-'а' confusable 'paypal.com' homograph 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/neutral-communication/confusable-domain.test.ts > GREEN: the REAL @eo/renderer lint() pipeline rejects the same seeded confusable-domain fixture > blocks a pr_body embedding the Cyrillic-'а' confusable 'paypal.com' homograph
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/neutral-communication/confusable-domain.test.ts:82:27
+     80|     const naive = naiveDenylistCheck(candidate);
+     81|
+     82|     expect(naive.blocked).toBe(true); // TEMP RED PROBE
+       |                           ^
+     83|
+     84|     await emitScenarioEvidence({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  19:55:16
+   Duration  591ms (transform 318ms, setup 0ms, import 408ms, tests 31ms, environment 0ms)
+
+
+########## restoring real lint() guard (GREEN) ##########
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic/e2e/matrix/connector
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  19:55:17
+   Duration  571ms (transform 316ms, setup 0ms, import 407ms, tests 31ms, environment 0ms)
+
+ % Coverage report from v8
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------|---------|----------|---------|---------|-------------------
+All files    |    92.3 |       70 |     100 |      92 |                   
+ evidence.ts |   89.47 |       70 |     100 |   88.88 | 72-73             
+-------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 92.3% ( 24/26 )
+Branches     : 70% ( 7/10 )
+Functions    : 100% ( 5/5 )
+Lines        : 92% ( 23/25 )
+================================================================================
+ERROR: Coverage for branches (70%) does not meet global threshold (80%)

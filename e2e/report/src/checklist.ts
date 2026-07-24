@@ -56,6 +56,18 @@ export const RELEASE_GATE_CHECKLIST: readonly ReleaseGateChecklistItemSpec[] = [
       "coverage",
       "security",
       "engine-conformance",
+      // Phase-23 integration/reconciliation (this work item): `e2e/live`'s
+      // harness (roadmap/23 work item 7) is this repo's own end-to-end
+      // "everything still actually works" conformance sweep — its
+      // dedicated `release-gate:live-conformance` umbrella tag (pinned-
+      // engine-range gate + hermeticity/sandbox self-test) and its
+      // `release-gate:not-implemented-sweep` tag (zero-NOT_IMPLEMENTED
+      // dispatch/production-wiring sweep) are both accepted here as
+      // additional quality-gate evidence alongside the existing 14/15/22
+      // tags, since both prove exactly the kind of "still conforms, still
+      // real behavior" property this item's description covers.
+      "release-gate:live-conformance",
+      "release-gate:not-implemented-sweep",
     ],
   },
   {
@@ -93,7 +105,19 @@ export const RELEASE_GATE_CHECKLIST: readonly ReleaseGateChecklistItemSpec[] = [
     id: "jira-grafana-exactly-once",
     description: "Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).",
     required: true,
-    requiredGateTags: ["release-gate:jira-grafana-exactly-once"],
+    requiredGateTags: [
+      "release-gate:jira-grafana-exactly-once",
+      // Phase-23 integration/reconciliation (this work item): `e2e/matrix/
+      // connector`'s harness (roadmap/23 work item 6) journals every one of
+      // its scenarios — including its exactly-once suite
+      // (`src/exactly-once/{jira-cassette-readback,replay-changed-payload,
+      // crash-recovery,grafana-cassette,ambiguous-reconciliation}.test.ts`,
+      // the direct exact-once/read-back proof this item describes) — under
+      // one blanket harness-wide tag, `release-gate:connector-matrix`
+      // (`e2e/matrix/connector/src/support/evidence.ts`). Accepted here so
+      // those scenarios' evidence actually scores this item.
+      "release-gate:connector-matrix",
+    ],
   },
   {
     id: "gateway-cli-surface-complete",
@@ -101,14 +125,43 @@ export const RELEASE_GATE_CHECKLIST: readonly ReleaseGateChecklistItemSpec[] = [
       "Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero " +
       "NOT_IMPLEMENTED remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).",
     required: true,
-    requiredGateTags: ["release-gate:gateway-cli-surface-complete"],
+    requiredGateTags: [
+      "release-gate:gateway-cli-surface-complete",
+      // Phase-23 integration/reconciliation (this work item): `e2e/live`
+      // (roadmap/23 work item 7) is this exit criterion's own harness — the
+      // zero-NOT_IMPLEMENTED sweep (`notImplementedSweepGate.ts`) already
+      // emits `release-gate:gateway-cli-surface-complete` itself on a PASS
+      // verdict, but every run (pass or fail) also always emits its own
+      // dedicated `release-gate:not-implemented-sweep` tag, and the
+      // harness's broader conformance umbrella emits
+      // `release-gate:live-conformance` (pinned-engine-range gate +
+      // hermeticity/sandbox self-test). Both are accepted here too so a
+      // FAILing sweep run (which withholds the dedicated tag by design —
+      // see `notImplementedSweepGate.ts`'s own doc comment) still surfaces
+      // as linked evidence against this item instead of silently vanishing,
+      // and so the harness's other live-conformance evidence scores this
+      // item as well.
+      "release-gate:not-implemented-sweep",
+      "release-gate:live-conformance",
+    ],
   },
   {
     id: "no-engine-attribution",
     description:
       "No development-engine attribution in any project-controlled shared artifact (08/10/17).",
     required: true,
-    requiredGateTags: ["release-gate:no-engine-attribution"],
+    requiredGateTags: [
+      "release-gate:no-engine-attribution",
+      // Phase-23 integration/reconciliation (this work item): `e2e/matrix/
+      // git`'s harness (roadmap/23 work item 5) journals every scenario —
+      // including its attribution-leak proof
+      // (`test/publish-attribution-leak-scenario.test.ts`,
+      // `test/neutral-rendering-assertion.test.ts`) — under one blanket
+      // harness-wide tag, `release-gate:git-matrix`
+      // (`e2e/matrix/git/src/evidence.ts`). Accepted here so that evidence
+      // actually scores this item.
+      "release-gate:git-matrix",
+    ],
   },
   {
     id: "no-unauthorized-mutation",
@@ -116,7 +169,42 @@ export const RELEASE_GATE_CHECKLIST: readonly ReleaseGateChecklistItemSpec[] = [
       "No user checkout, remote Git repository, or unauthorized provider resource modified " +
       "anywhere in the matrix (assertion-harness log).",
     required: true,
-    requiredGateTags: ["release-gate:no-unauthorized-mutation"],
+    requiredGateTags: [
+      "release-gate:no-unauthorized-mutation",
+      // Phase-23 integration/reconciliation (this work item): the SAME
+      // `release-gate:git-matrix` blanket tag above also covers this
+      // item — the harness's checkout/remote-invariance proof
+      // (`test/checkout-invariance-scenario.test.ts`) is exactly "no user
+      // checkout ... modified" for the git side of the matrix.
+      "release-gate:git-matrix",
+      // `e2e/matrix/connector`'s harness (work item 6) covers the
+      // provider-resource half of this item — its connector-security suite
+      // (`src/connector-security/{ssrf-and-dns-rebind,tenant-boundary,
+      // forged-delete-admin-and-raw-tool-denial,exact-origin-and-redirects,
+      // error-redaction}.test.ts`) asserts no unauthorized Jira/Grafana
+      // mutation occurs, under the same blanket `release-gate:
+      // connector-matrix` tag used above for the exactly-once item.
+      "release-gate:connector-matrix",
+      // `e2e/matrix/installation`'s harness (roadmap/23 work item 3) has no
+      // dedicated checklist item of its own (there is no
+      // "install-matrix"-slugged item in this 15-item list). Its own
+      // dominant, repeated proof across its scenario suite
+      // (`test/user-edit-assertion.test.ts`'s RED fail-first vector, plus
+      // its GREEN counterpart `test/uninstall-preserving-edits-scenario
+      // .test.ts`, `test/config-drift-scenario.test.ts`, and
+      // `test/repo-state-scenarios.test.ts`) is that install/upgrade/
+      // uninstall NEVER silently overwrites a user's own out-of-band edit
+      // — i.e. "no unauthorized ... modification" of user-owned content,
+      // which is this item's own description almost verbatim. DELIBERATE
+      // CHOICE (documented per this work item's own instruction): this is
+      // a better fit than `demo-branch-evidence-handoff` (that item is
+      // about the demo run's own git-branch/evidence-bundle output, not
+      // installation-lifecycle user-edit safety) — the installation
+      // matrix's blanket harness-wide tag, `release-gate:
+      // installation-matrix` (`e2e/matrix/installation/src/evidence.ts`),
+      // is accepted here instead.
+      "release-gate:installation-matrix",
+    ],
   },
   {
     id: "demo-branch-evidence-handoff",
