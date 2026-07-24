@@ -1,0 +1,48 @@
+=== npx tsc -b packages/git-engine ===
+(exit code: 0)
+
+=== npx vitest run packages/git-engine --coverage.enabled=false (full, 31 files) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  31 passed (31)
+      Tests  246 passed (246)
+   Start at  07:58:30
+   Duration  2.20s (transform 4.82s, setup 0ms, import 7.34s, tests 12.88s, environment 4ms)
+
+
+=== npx eslint packages/git-engine ===
+(exit code: 0)
+
+=== npx prettier --check packages/git-engine ===
+Checking formatting...
+All matched files use Prettier code style!
+
+=== new-code coverage (this phase's 7 new source files only) ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  31 passed (31)
+      Tests  246 passed (246)
+   Start at  07:58:35
+   Duration  2.54s (transform 4.20s, setup 0ms, import 6.97s, tests 13.72s, environment 4ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.06 |    95.45 |     100 |   99.51 |                   
+ branch-namer.ts   |   97.36 |     91.3 |     100 |   97.36 | 143               
+ ...e-preflight.ts |     100 |    93.33 |     100 |     100 | 204               
+ publish-local.ts  |    98.3 |       90 |     100 |     100 | 93,276            
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.06% ( 211/213 )
+Branches     : 95.45% ( 105/110 )
+Functions    : 100% ( 46/46 )
+Lines        : 99.51% ( 204/205 )
+================================================================================

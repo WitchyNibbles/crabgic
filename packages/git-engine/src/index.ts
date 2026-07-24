@@ -1,6 +1,9 @@
 /**
  * `@eo/git-engine` public barrel — roadmap/07-git-control-repo-worktrees.md
- * §Interfaces produced. Re-exported surfaces, grouped by concern (populated
+ * §Interfaces produced (07's half) and roadmap/08-integration-publication.md
+ * §Interfaces produced (08's half, added below the phase-07 exports without
+ * modifying any of them — see docs/evidence/phase-08/README.md's module-
+ * boundary note). Re-exported surfaces, grouped by concern (populated
  * incrementally as each work item lands):
  *
  *   - Plumbing (WI1): spawned `git`, argv-array only, no shell.
@@ -117,3 +120,61 @@ export type {
   PlannedWriteSet,
   RenamePair,
 } from "./overlap-analyzer.js";
+
+// ---- Phase 08: merge preflight, CAS refs, neutral Git rendering, local publication ----
+
+export { preflightMerge } from "./merge-preflight.js";
+export type { PreflightMergeOptions, PreflightResult } from "./merge-preflight.js";
+
+export { applyCasUpdate } from "./cas-ref-update.js";
+export type {
+  ApplyCasUpdateOptions,
+  CasUpdateResult,
+  RebuildBlocked,
+  RebuildFn,
+  RebuildOutcome,
+} from "./cas-ref-update.js";
+
+export {
+  BRANCH_TYPES,
+  InvalidBranchTypeError,
+  MAX_BRANCH_NAME_LENGTH,
+  buildBranchNameCandidate,
+  isBranchType,
+  nameBranch,
+  slugify,
+} from "./branch-namer.js";
+export type { BranchType, BuildBranchNameInput, NameBranchResult } from "./branch-namer.js";
+
+export {
+  COMMIT_TYPES,
+  assembleCommitBody,
+  assembleCommitSubject,
+  renderCommit,
+} from "./commit-renderer.js";
+export type { CommitType, RenderCommitInput, RenderCommitResult } from "./commit-renderer.js";
+
+export { EvidenceAttachmentConflictError, attachEvidence } from "./evidence-attachment.js";
+export type {
+  AttachEvidenceOptions,
+  AttachEvidenceResult,
+  EvidenceAttachmentOutcome,
+  EvidenceAttachmentSource,
+} from "./evidence-attachment.js";
+
+export {
+  PublishedAttributionLeakError,
+  PublishLocalInvarianceViolationError,
+  publishLocal,
+} from "./publish-local.js";
+export type { AttributionLeak, PublishLocalOptions, PublishResult } from "./publish-local.js";
+
+export {
+  INTEGRATION_JOURNAL_ENTRY_TYPES,
+  buildCasRefUpdateEntryInput,
+  buildEvidencePointerEntryInput,
+} from "./integration-journal.js";
+export type {
+  IntegrationJournalAppender,
+  IntegrationJournalEntryType,
+} from "./integration-journal.js";
