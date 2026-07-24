@@ -4,7 +4,7 @@
  * `GATEWAY_MCP_SERVER_NAME` (constant, 02) whose command is exactly
  * `engineering-orchestrator gateway mcp` (09)." Golden-test target
  * (`mcp-entry.golden.test`): the literal `.mcp.json` shape below MUST equal
- * `{"eo_gateway": {"command": "engineering-orchestrator", "args":
+ * `{"GATEWAY_MCP_SERVER_NAME": {"command": "engineering-orchestrator", "args":
  * ["gateway", "mcp"]}}` byte-for-byte — this file references the imported
  * `GATEWAY_MCP_SERVER_NAME` constant, never a hand-typed literal (this
  * package's own repo-wide sole-definition-site scanner,

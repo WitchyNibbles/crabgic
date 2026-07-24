@@ -4,10 +4,10 @@
  * equals `engineering-orchestrator gateway mcp`, byte-for-byte — golden
  * test `mcp-entry.golden.test`." Work item 2's first failing test: "a
  * golden-file comparison of the generated `.mcp.json` entry against the
- * literal `{"eo_gateway": {"command": "engineering-orchestrator", "args":
+ * literal `{"GATEWAY_MCP_SERVER_NAME": {"command": "engineering-orchestrator", "args":
  * ["gateway", "mcp"]}}` shape."
  *
- * This file never hand-types the `"eo_gateway"` literal (this repo's
+ * This file never hand-types the `"GATEWAY_MCP_SERVER_NAME"` literal (this repo's
  * sole-definition-site scanner, `@eo/contracts`'s `server-name.test.ts`,
  * forbids it anywhere under `packages/*\/src`) — the golden shape below is
  * built with `GATEWAY_MCP_SERVER_NAME` as a computed property key, which is
@@ -29,7 +29,7 @@ describe("mcp-entry.golden.test", () => {
       },
     });
     // Byte-for-byte JSON comparison against the ledger's exact literal text
-    // (ledger: `{"eo_gateway": {"command": "engineering-orchestrator", "args": ["gateway", "mcp"]}}`),
+    // (ledger: `{"GATEWAY_MCP_SERVER_NAME": {"command": "engineering-orchestrator", "args": ["gateway", "mcp"]}}`),
     // reconstructed here only via the imported constant, never re-typed.
     const expectedJson = JSON.stringify({
       [GATEWAY_MCP_SERVER_NAME]: { command: "engineering-orchestrator", args: ["gateway", "mcp"] },

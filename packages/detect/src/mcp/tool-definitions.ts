@@ -2,7 +2,7 @@
  * `capability.audit` / `capability.approve` MCP tool definitions —
  * roadmap/12 §Interfaces produced: "implementation stays in
  * `packages/detect` (unchanged: no relocation into `packages/gateway`).
- * Both register into the single `eo_gateway` tool registry
+ * Both register into the single `GATEWAY_MCP_SERVER_NAME` tool registry
  * (`GATEWAY_MCP_SERVER_NAME`, 02) that phase 09's `gateway mcp` command
  * exposes — no new dependency edge, since this phase already depends on
  * 09." This module owns only the tool DESCRIPTORS + registration; the

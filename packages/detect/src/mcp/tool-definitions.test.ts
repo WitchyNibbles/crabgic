@@ -1,6 +1,6 @@
 /**
  * roadmap/12 exit criterion: "`capability.audit`/`capability.approve`
- * resolve over the shared `eo_gateway` registry against a stub MCP
+ * resolve over the shared `GATEWAY_MCP_SERVER_NAME` registry against a stub MCP
  * client." Reuses 09's real `createToolRegistry`/`startGatewayMcpServer`
  * (`engineering-orchestrator`) — this is the SAME registry/stdio-server
  * `gateway mcp` boots in production, not a reimplementation.
@@ -58,7 +58,7 @@ function createStubMcpClient(input: PassThrough, output: PassThrough): StubMcpCl
   };
 }
 
-describe("capability.audit / capability.approve — registered into the shared eo_gateway registry", () => {
+describe("capability.audit / capability.approve — registered into the shared GATEWAY_MCP_SERVER_NAME registry", () => {
   let handle: GatewayMcpServerHandle | undefined;
   afterEach(() => {
     handle?.stop();
