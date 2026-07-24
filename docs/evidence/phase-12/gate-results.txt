@@ -1,0 +1,73 @@
+=== npx tsc -b packages/detect ===
+(exit 0)
+
+=== npx vitest run packages/detect --coverage.enabled=false ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  40 passed (40)
+      Tests  196 passed (196)
+   Start at  07:58:44
+   Duration  1.45s (transform 5.63s, setup 0ms, import 7.65s, tests 1.09s, environment 5ms)
+
+
+=== npx eslint packages/detect ===
+(exit 0)
+
+=== npx prettier --write then --check packages/detect ===
+(all unchanged)
+Checking formatting...
+All matched files use Prettier code style!
+(exit 0)
+
+=== coverage scoped to packages/detect/src ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  40 passed (40)
+      Tests  196 passed (196)
+   Start at  07:58:49
+   Duration  1.93s (transform 5.33s, setup 0ms, import 7.29s, tests 1.17s, environment 4ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   94.72 |    86.81 |   99.23 |   98.49 |                   
+ src               |   97.61 |    86.66 |     100 |     100 |                   
+  contradiction.ts |   95.45 |    83.33 |     100 |     100 | 14                
+  ...ce-builder.ts |     100 |    88.88 |     100 |     100 | 54                
+ ...pability-store |   96.15 |    83.33 |     100 |   98.61 |                   
+  store.ts         |   94.44 |    78.57 |     100 |   97.95 | 116               
+ src/detectors     |   94.02 |    85.04 |     100 |     100 |                   
+  ci-detector.ts   |     100 |    66.66 |     100 |     100 | 17                
+  ...e-detector.ts |   94.73 |    93.75 |     100 |     100 | 46                
+  ...e-detector.ts |   84.61 |     72.5 |     100 |     100 | ...52,64-70,82-88 
+  ...y-detector.ts |   91.17 |    81.25 |     100 |     100 | 28,42-49          
+ src/fs            |   88.37 |    83.87 |     100 |   95.65 |                   
+  safe-read.ts     |   88.88 |      100 |     100 |    87.5 | 26,33             
+  safe-walk.ts     |   88.23 |    81.81 |     100 |   98.11 | 116               
+ src/mcp           |     100 |    91.66 |     100 |     100 |                   
+  ...ve-handler.ts |     100 |       50 |     100 |     100 | 44                
+ src/quarantine    |   95.83 |    88.37 |      90 |   95.74 |                   
+  digest.ts        |     100 |    83.33 |     100 |     100 | 20                
+  pipeline.ts      |     100 |    96.87 |     100 |     100 | 59                
+  types.ts         |   77.77 |        0 |       0 |   77.77 | 116-117           
+ ...antine/sandbox |     100 |     87.5 |     100 |     100 |                   
+  ...box-runner.ts |     100 |     87.5 |     100 |     100 | 33                
+ ...ntine/scanners |   96.55 |    93.75 |     100 |     100 |                   
+  ...pt-scanner.ts |   94.11 |    91.66 |     100 |     100 | 36-38             
+ src/trust         |    91.3 |    72.22 |     100 |    90.9 |                   
+  trust-review.ts  |     100 |    83.33 |     100 |     100 | 34                
+  trust-revoke.ts  |      80 |       60 |     100 |      80 | 35-36             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 94.72% ( 575/607 )
+Branches     : 86.81% ( 316/364 )
+Functions    : 99.23% ( 130/131 )
+Lines        : 98.49% ( 525/533 )
+================================================================================
