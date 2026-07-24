@@ -101,4 +101,30 @@ describe("buildRealCliDependencies", () => {
     // Wired, not invoked: actually calling it here would fork a real daemon.
     expect(typeof deps.connectClient).toBe("function");
   });
+
+  /**
+   * `deps.trust` being absent is not a harmless default: `dispatch.ts`
+   * silently falls back to the typed `NOT_IMPLEMENTED` shape when it is,
+   * so a missing wiring here would leave `trust review|approve|revoke`
+   * dead in the SHIPPED binary while every backend unit test still passed.
+   * That is exactly the failure mode roadmap/12's exit criterion ("replaces
+   * 09's NOT_IMPLEMENTED stub end-to-end") is about, so it is asserted
+   * against the real wiring function rather than an injected bag.
+   */
+  it("wires the real trust backend by default, so `trust *` is not NOT_IMPLEMENTED in the shipped binary", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "trust-hash" });
+    expect(deps.trust).toBeDefined();
+
+    const minted = await deps.trust!.minter.mint("capability_digest", "d".repeat(64));
+    expect(minted.subjectKind).toBe("capability_digest");
+    // A fresh per-process key: the token verifies against THIS bag's minter
+    // and carries a real signature, not a placeholder.
+    expect(minted.token.length).toBeGreaterThan(0);
+    expect(() =>
+      deps.trust!.minter.verify(minted.token, {
+        subjectKind: "capability_digest",
+        digest: "d".repeat(64),
+      }),
+    ).not.toThrow();
+  });
 });

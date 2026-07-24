@@ -9,12 +9,21 @@
  * always FAILING even on an authenticated host. `buildRealCliDependencies`
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
+import { randomBytes } from "node:crypto";
 import {
   createJournalStore,
   readXdgEnvFromProcess,
   resolveJournalDir,
+  type JournalStore,
   type XdgEnv,
 } from "@eo/journal";
+import { ApprovalTokenMinter } from "@eo/contracts";
+import {
+  createApprovalLedger,
+  createCapabilityStore,
+  resolveCapabilityStoreDir,
+  type TrustCommandDependencies,
+} from "@eo/detect";
 import { resolveSupervisorSocketPath } from "@eo/supervisor";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
@@ -35,6 +44,8 @@ export interface BuildRealCliDependenciesOverrides {
   readonly resolveAuthState?: AuthProbeFn;
   /** Defaults to `process.cwd()`'s own real installer wiring (roadmap/10-plugin-and-installer.md) — `../commands/dispatch.ts` only invokes it for `install`/`upgrade`/`uninstall`. */
   readonly installer?: InstallerDependencies;
+  /** roadmap/12's `trust *` bag. Tests inject a tmp-dir-rooted one so no real XDG cache directory is created or read. */
+  readonly trust?: TrustCommandDependencies;
   /** Spawn-on-demand knobs for `connectClient` (roadmap/05 §Lifecycle). Tests inject `spawnDaemon` plus tight retry bounds so no real daemon process is forked; production takes the defaults. */
   readonly supervisorSpawn?: {
     readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
@@ -81,5 +92,33 @@ export function buildRealCliDependencies(
     resolveAuthState:
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
     installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
+    trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal),
+  };
+}
+
+/**
+ * roadmap/12's `trust review|approve|revoke` bag, rooted at the pinned
+ * capability-store path (`$XDG_CACHE_HOME/engineering-orchestrator/
+ * <project-hash>/capability-store/`, interface-ledger Gap 14).
+ *
+ * The HMAC signing key is freshly random PER PROCESS — never a hardcoded
+ * or on-disk secret (`ApprovalTokenMinterOptions.secretKey`'s own
+ * contract). That is deliberate, not a limitation: a minted token is
+ * single-use and verified by `capability.approve` within the same process
+ * tree, which is the scope `docs/evidence/phase-09/README.md` ("#6
+ * (approval-token cross-process durability)") already settled. A key that
+ * outlived the process would let a token outlive it too, which is exactly
+ * what the single-use gate exists to prevent.
+ */
+function buildRealTrustDependencies(
+  xdgEnv: XdgEnv,
+  projectHash: string,
+  journal: JournalStore,
+): TrustCommandDependencies {
+  const storeRoot = resolveCapabilityStoreDir(xdgEnv, projectHash);
+  return {
+    store: createCapabilityStore(storeRoot),
+    minter: new ApprovalTokenMinter({ secretKey: randomBytes(32), journal }),
+    approvalLedger: createApprovalLedger(storeRoot),
   };
 }

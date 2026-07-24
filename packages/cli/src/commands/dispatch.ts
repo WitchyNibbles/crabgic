@@ -7,7 +7,9 @@
  * `./real-handlers.ts` unconditionally; `install`/`upgrade`/`uninstall`
  * (roadmap/10-plugin-and-installer.md) delegate to
  * `./installer-handlers.ts` only when `deps.installer` is supplied;
- * everything else returns `notImplementedResult`.
+ * `learn-*` and `trust-*` likewise delegate to their real backends only
+ * when `deps.learning` / `deps.trust` is supplied; everything else returns
+ * `notImplementedResult`.
  */
 import { EXIT_GENERAL_ERROR, EXIT_SUPERVISOR_UNAVAILABLE } from "../exit-codes.js";
 import { SupervisorUnavailableError, toErrorMessage } from "../errors.js";
@@ -29,6 +31,7 @@ import {
   runLearnRejectCommand,
   runLearnRollbackCommand,
 } from "../learning/learn-command-backend.js";
+import { runTrustApproveCommand, runTrustReviewCommand, runTrustRevokeCommand } from "@eo/detect";
 import { renderHelp } from "./help.js";
 
 export async function dispatchCommand(
@@ -96,6 +99,25 @@ export async function dispatchCommand(
           ? await runLearnRollbackCommand(command, deps.learning)
           : notImplementedResult(command.command, command.json);
 
+      // roadmap/12-stack-detection-quarantine.md wires these three real
+      // backends (implemented in `@eo/detect`) — but ONLY when `deps.trust`
+      // is supplied, for the identical reason as `installer`/`learning`
+      // above. Phase 12 could not wire these itself: reaching `@eo/detect`
+      // from here closed a dependency cycle until the shared primitives
+      // moved to `@eo/contracts` (2026-07-25).
+      case "trust-review":
+        return deps.trust !== undefined
+          ? runTrustReviewCommand(command, deps.trust)
+          : notImplementedResult(command.command, command.json);
+      case "trust-approve":
+        return deps.trust !== undefined
+          ? await runTrustApproveCommand(command, deps.trust)
+          : notImplementedResult(command.command, command.json);
+      case "trust-revoke":
+        return deps.trust !== undefined
+          ? runTrustRevokeCommand(command, deps.trust)
+          : notImplementedResult(command.command, command.json);
+
       // Every command below has no backend wired at this phase's own build
       // time (roadmap/09 §Out of scope names the owning later phase for
       // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
@@ -105,9 +127,6 @@ export async function dispatchCommand(
       case "connection-list":
       case "connection-doctor":
       case "connection-capabilities":
-      case "trust-review":
-      case "trust-approve":
-      case "trust-revoke":
         return notImplementedResult(command.command, command.json);
 
       case "gateway-mcp":
