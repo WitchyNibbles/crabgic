@@ -21,7 +21,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/test-support/**"
   ],
   "scripts": {
     "build": "tsc -b"

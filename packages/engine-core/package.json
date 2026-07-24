@@ -18,6 +18,8 @@
   },
   "files": [
     "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/test-support/**",
     "goldens"
   ],
   "scripts": {
