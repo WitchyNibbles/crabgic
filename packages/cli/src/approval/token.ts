@@ -57,7 +57,19 @@ export class ApprovalTokenSignatureError extends Error {
   }
 }
 
-interface TokenPayload {
+/**
+ * Exported (2026-07-24, roadmap/11-intake-contract-approval.md carry-forward
+ * fix) so a cross-process, durable consumption ledger
+ * (`./durable-approval-ledger.ts`) can verify a token's signature/expiry/
+ * subject-binding WITHOUT depending on this class's own in-memory
+ * `#pendingById` map — the in-memory `verify()` below only works when
+ * called against the SAME `ApprovalTokenMinter` instance that minted the
+ * token, which breaks across a real process boundary (the `run` CLI
+ * invocation that mints vs. the separately-spawned `gateway mcp` stdio
+ * process that later calls `contract.approve`). Purely additive: no
+ * existing behavior of this module changes.
+ */
+export interface TokenPayload {
   readonly tokenId: string;
   readonly subjectKind: ApprovalTokenSubjectKind;
   readonly digest: string;
@@ -88,7 +100,8 @@ function signPayload(secretKey: Buffer, payload: TokenPayload): string {
   return Buffer.from(`${body}.${signature}`, "utf8").toString("base64url");
 }
 
-function verifySignature(secretKey: Buffer, token: string): TokenPayload {
+/** Exported alongside `TokenPayload` (see that type's own doc comment) — pure signature/shape verification only; carries no single-use state of its own. */
+export function verifySignature(secretKey: Buffer, token: string): TokenPayload {
   let decoded: string;
   try {
     decoded = Buffer.from(token, "base64url").toString("utf8");

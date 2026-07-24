@@ -35,3 +35,8 @@ packages/engine-core/goldens/
 # contract (recursively key-sorted, fixed 2-space `JSON.stringify`, trailing
 # newline) — identical rationale to packages/engine-core/goldens/ above.
 packages/engine-claude/goldens/
+
+# Phase 11: packages/supervisor/goldens/*.json are machine-generated golden
+# intake artifacts (envelope/manifest/contract) with the same byte-stability
+# contract — identical rationale to the golden directories above.
+packages/supervisor/goldens/

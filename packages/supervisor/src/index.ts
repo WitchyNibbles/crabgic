@@ -47,6 +47,7 @@ export * from "./router/build-router.js";
 export * from "./registries/registry.js";
 export * from "./registries/runs-registry.js";
 export * from "./registries/change-sets-registry.js";
+export * from "./registries/authorization-envelopes-registry.js";
 export * from "./registries/work-units-registry.js";
 export * from "./registries/workers-registry.js";
 export * from "./registries/artifact-index-registry.js";
@@ -71,3 +72,18 @@ export * from "./idle-budget/heartbeat-scheduler.js";
 
 // ---- The UDS control-plane server itself: peer-auth -> handshake -> router dispatch ----
 export * from "./socket/uds-server.js";
+
+// ---- Intake, IntentContract, approval-envelope flow (roadmap/11) ----
+export * from "./intake/canonical-hash.js";
+export * from "./intake/stable-id.js";
+export * from "./intake/envelope-builder.js";
+export * from "./intake/capability-manifest-builder.js";
+export * from "./intake/dag-builder.js";
+export * from "./intake/contract-builder.js";
+export * from "./intake/performance-contract-builder.js";
+export * from "./intake/change-set-transition.js";
+export * from "./intake/readiness-gate.js";
+export * from "./intake/stop-conditions.js";
+export * from "./intake/project-inspect.js";
+export * from "./intake/amendment.js";
+export * from "./intake/intake-pipeline.js";

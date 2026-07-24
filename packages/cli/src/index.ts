@@ -28,6 +28,13 @@ export * from "./gateway-mcp/stdio-server.js";
 // ---- Approval-token minting primitive + terminal prompt (Interfaces produced item 6) ----
 export * from "./approval/token.js";
 export * from "./approval/prompt.js";
+export * from "./approval/durable-approval-ledger.js";
+
+// ---- project.inspect / contract.approve MCP tools (roadmap/11) ----
+export * from "./intake/tool-definitions.js";
+export * from "./intake/project-inspect-handler.js";
+export * from "./intake/contract-approve-handler.js";
+export * from "./intake/run-intake-command.js";
 
 // ---- Doctor framework + every named check (Interfaces produced item 4) ----
 export * from "./doctor/framework.js";

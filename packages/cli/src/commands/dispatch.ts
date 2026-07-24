@@ -19,6 +19,7 @@ import {
   runCancelCommand,
   runDoctorCommand,
   runEvidenceCommand,
+  runRunCommand,
   runStatusCommand,
 } from "./real-handlers.js";
 import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
@@ -59,11 +60,18 @@ export async function dispatchCommand(
           ? await runUninstallCommand(command, deps.installer)
           : notImplementedResult(command.command, command.json);
 
+      // roadmap/11-intake-contract-approval.md wires this real backend —
+      // but ONLY when `deps.intake` is supplied (kept optional on
+      // `CliDependencies` precisely so every pre-existing roadmap/09 test,
+      // which never supplies it, keeps observing the exact same typed
+      // NOT_IMPLEMENTED shape unchanged).
+      case "run":
+        return await runRunCommand(command, deps);
+
       // Every command below has no backend wired at this phase's own build
       // time (roadmap/09 §Out of scope names the owning later phase for
       // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
       // behavior here, not a gap.
-      case "run":
       case "resume":
       case "connection-add":
       case "connection-list":

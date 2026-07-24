@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "9244b019-465b-46c0-8ece-eb5b4e488c41",
+  "changeSetId": "11111111-1111-4111-8111-111111111111",
+  "createdAt": "2026-07-15T12:00:00.000Z",
+  "budgetSource": "requirement_acceptance_criteria",
+  "variant": "provisional",
+  "budgets": [
+    {
+      "metric": "latency",
+      "percentile": 95,
+      "threshold": 200,
+      "unit": "ms"
+    }
+  ],
+  "budgetHash": "sha256:0301821d8678f1a326e10dec1ef8761ee2eae6c6b533c9d8aa7857f91e7e04ca"
+}

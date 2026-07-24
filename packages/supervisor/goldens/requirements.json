@@ -1,0 +1,38 @@
+[
+  {
+    "schemaVersion": 1,
+    "id": "08d52995-36d6-470c-8cab-35ed868e498e",
+    "intentContractId": "2b6ead49-606e-4fcc-9690-487abbe1e207",
+    "section": "scope",
+    "title": "Add login form",
+    "description": "Render a login form and wire it to the existing session API.",
+    "acceptanceCriteria": [
+      "A user can submit valid credentials and reach the dashboard."
+    ],
+    "workUnitIds": [
+      "22222222-1111-4111-8111-111111111111"
+    ],
+    "renderedArtifactIds": [],
+    "testIdentifiers": [],
+    "evidenceRecordIds": [],
+    "createdAt": "2026-07-15T12:00:00.000Z"
+  },
+  {
+    "schemaVersion": 1,
+    "id": "ab2ee531-db1a-4d88-95f6-73064a4029c7",
+    "intentContractId": "2b6ead49-606e-4fcc-9690-487abbe1e207",
+    "section": "security",
+    "title": "Rate-limit login attempts",
+    "description": "Reject a 6th attempt within 60s from the same account.",
+    "acceptanceCriteria": [
+      "The 6th attempt within 60s is rejected with a 429."
+    ],
+    "workUnitIds": [
+      "33333333-1111-4111-8111-111111111111"
+    ],
+    "renderedArtifactIds": [],
+    "testIdentifiers": [],
+    "evidenceRecordIds": [],
+    "createdAt": "2026-07-15T12:00:00.000Z"
+  }
+]

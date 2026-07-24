@@ -5,7 +5,7 @@
  * returns the typed `NOT_IMPLEMENTED` shape (`./not-implemented.ts`)
  * because its real backend belongs to a phase that hasn't landed yet.
  */
-import { EXIT_DOCTOR_FINDINGS, EXIT_OK } from "../exit-codes.js";
+import { EXIT_DOCTOR_FINDINGS, EXIT_OK, EXIT_GENERAL_ERROR } from "../exit-codes.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
@@ -15,10 +15,12 @@ import type {
   CancelCommand,
   DoctorCommand,
   EvidenceCommand,
+  RunCommand,
   StatusCommand,
 } from "../argv/types.js";
 import type { CliDependencies } from "./types.js";
 import { notImplementedResult } from "./not-implemented.js";
+import { runIntakeCommand } from "../intake/run-intake-command.js";
 
 interface RunRecordLike {
   readonly runId: string;
@@ -174,5 +176,53 @@ export async function runDoctorCommand(
   return {
     exitCode: report.allPassed ? EXIT_OK : EXIT_DOCTOR_FINDINGS,
     stdout: `${lines.join("\n")}\n`,
+  };
+}
+
+/**
+ * `run [--json]` — roadmap/11-intake-contract-approval.md's pre-dispatch
+ * intake -> contract -> approval sequence. Wired ONLY when
+ * `deps.intake` is supplied (`../commands/types.ts`'s own doc comment
+ * explains why this mirrors `installer`'s identical optionality); real
+ * interactive I/O defaults to `process.stdin`/`process.stdout`, matching
+ * `../gateway-mcp/stdio-server.ts`'s own default-stream convention.
+ */
+export async function runRunCommand(
+  cmd: RunCommand,
+  deps: CliDependencies,
+): Promise<CommandResult> {
+  if (deps.intake === undefined) {
+    return notImplementedResult(cmd.command, cmd.json);
+  }
+
+  const result = await runIntakeCommand({
+    journal: deps.intake.journal,
+    changeSets: deps.intake.changeSets,
+    workUnits: deps.intake.workUnits,
+    envelopes: deps.intake.envelopes,
+    minter: deps.intake.minter,
+    io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
+    readIntakeRequest: deps.intake.readIntakeRequest,
+  });
+
+  if (cmd.json) {
+    return { exitCode: EXIT_OK, stdout: formatJson(result) };
+  }
+
+  if (result.outcome.status === "conflict") {
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      stderr: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+    };
+  }
+  if (result.declined === true) {
+    return {
+      exitCode: EXIT_OK,
+      stdout: "approval declined — no token minted; ChangeSet remains awaiting_approval\n",
+    };
+  }
+  return {
+    exitCode: EXIT_OK,
+    stdout: `ChangeSet ${result.outcome.artifacts.changeSet.id} approved (token minted); awaiting contract.approve verification to reach ready\n`,
   };
 }

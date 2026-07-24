@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "2b6ead49-606e-4fcc-9690-487abbe1e207",
+  "changeSetId": "11111111-1111-4111-8111-111111111111",
+  "createdAt": "2026-07-15T12:00:00.000Z",
+  "sections": {
+    "scope": "Add a login form to the example app.",
+    "non-goals": "No SSO/OAuth integration in this change.",
+    "audience": "End users of the example app.",
+    "compatibility": "No breaking changes to the existing session API.",
+    "security": "Rate-limit login attempts; never log raw passwords.",
+    "performance": "Login submit responds within the p95 budget below.",
+    "observability": "Emit a login_attempt metric with outcome label.",
+    "rollout": "Ship behind no flag — small, additive UI change.",
+    "acceptance": "A user can log in with valid credentials and is rate-limited after 5 failures."
+  },
+  "requirementIds": [
+    "08d52995-36d6-470c-8cab-35ed868e498e",
+    "ab2ee531-db1a-4d88-95f6-73064a4029c7"
+  ]
+}
