@@ -1,0 +1,306 @@
+# Security posture — threat model vs. implementation
+
+**Status:** Phase 23 (release hardening) work item 8 — the security-review pass
+`roadmap/23-release-hardening.md` requires against `docs/threat-model.md` (produced by
+phase 02), focused on the 03/16 security keystones and 17's blocking-lint surface, mirroring
+14's gate semantics: **a CRITICAL/HIGH finding blocks release.**
+
+**Reviewer:** this orchestrated documentation pass, conducted by reading
+`docs/threat-model.md` in full, then cross-checking every mitigation it cites against the
+actual implementation evidence recorded under `docs/evidence/phase-*/README.md` (and the
+per-file capture logs alongside those README's) for every phase the threat model names —
+02, 03, 05, 06, 07, 09, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22. This review does not
+re-run any test itself; it verifies that the cited mitigation exists in the shipped code and
+that every finding an adversarial validator raised against it was actually fixed and
+re-verified, per the evidence trail already on record.
+
+**Date:** 2026-07-24.
+
+## Method
+
+`docs/threat-model.md` was written at the design stage (2026-07-15, "Review note": "phases
+03/05/06/10/12/16/17/22 are unimplemented as of this writing... every mitigation cited is a
+specification commitment... not a verified-in-running-code fact"). It explicitly designates
+phase 23 as "the roadmap's designated re-verification point" and asks that this document "be
+revisited (not just re-cited)" once each phase lands. All nine surfaces have since landed;
+every one of them was also subjected to at least one independent adversarial-validation pass
+after its initial TDD build, and the fixes from those passes are the load-bearing evidence
+this review cites. This document does not repeat the full STRIDE table — it states, per
+surface, whether the design-time mitigation held up against implementation, citing the exact
+file and evidence record, and calls out every CRITICAL/HIGH/MAJOR finding the adversarial
+rounds found, with its fix and current status.
+
+## Sign-off
+
+**No unresolved CRITICAL or HIGH security finding blocks this release.** Every CRITICAL and
+HIGH finding raised by an adversarial-validation pass against any of the nine threat-model
+surfaces was fixed with a RED (reproduced against the pre-fix code) → GREEN (fixed,
+re-verified) test pair, recorded in the cited evidence file, before that phase's own build
+was considered closed. The table in "CRITICAL/HIGH findings found and fixed" below lists all
+of them, by surface, with the exact fix and its regression test.
+
+Three items are recorded as **disclosed, non-blocking residual risk** — each is a known,
+intentional design limitation or a carry-forward already named in the owning phase's own
+evidence, not a live exploitable gap discovered and left open. These are listed in "Residual
+risk — disclosed, non-blocking" below, per the same disclosure discipline the threat model
+itself already uses ("a cell with 'none material' as its residual risk... every other cell
+names something concrete").
+
+This mirrors 14's own gate semantics (`docs/evidence/phase-14/README.md`: a CRITICAL/HIGH
+finding blocks; a fixed finding, re-verified, does not).
+
+## CRITICAL/HIGH findings found and fixed
+
+Every row below was raised by an independent adversarial-validation pass against an
+otherwise-green TDD build, fixed with a failing-test-first regression, and re-verified
+(several surfaces received a second, independent re-audit after the fix). Severity as
+recorded by the validator that found it.
+
+| Surface (threat-model §)                                                          | Severity              | Finding                                                                                                                                                                                                                                                                                                                                                                                                                | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                               | Evidence                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Envelope compiler (§3)                                                            | CRITICAL              | `compileEnvelope`'s `//`-anchor emission for `ownedPaths` had no validation and no worktree anchoring — a relative path like `["etc/cron.d"]` compiled to the filesystem-root grant `Edit(//etc/cron.d/**)`, an absolute system write from an innocuous input. No Edit/Write deny backstop existed.                                                                                                                    | `owned-path.ts`'s `validateOwnedPath` now rejects absolute/home-anchored/`..`-bearing/glob-bearing paths; every validated path is emitted worktree-anchored via a shared placeholder token; Edit/Write deny backstops added for every sensitive root plus the worktree's own `.git`. The property suite's "no allow outside the envelope" check was rewritten from a tautological string-equality test to a genuinely semantic confinement check. | `docs/evidence/phase-03/README.md` "CRITICAL 1 — owned-path confinement escape"; `fix-crit1-owned-path-escape-{failing,passing}.txt`; independently re-audited 2026-07-18 (~28 hostile paths, PASS, no new CRITICAL/MAJOR)        |
+| Git control repo / worktrees (§ worker runtime, transitively)                     | CRITICAL              | Argument injection / option smuggling: `control-clone.ts`'s `fetchRefresh` and `overlap-analyzer.ts`'s `detectRenamesFromWorktree` passed caller-influenced values as bare positionals, letting a leading-`-` value (e.g. `--upload-pack=touch <marker>;git-upload-pack`) be parsed as a `git` flag — reproduced as a live RCE (a smuggled `touch`) and a live arbitrary-file-overwrite, both against real git 2.43.0. | Every named call site now inserts `--end-of-options` (or, for `rev-parse`, `--verify --end-of-options`, the one subcommand that doesn't honor a bare terminator) before any caller-influenced positional, plus boundary validation (`assertSafeRefPositional`, `assertObjectId`) rejecting a leading-`-` value before git is ever spawned.                                                                                                        | `docs/evidence/phase-07/README.md` "CRITICAL 1 — argument injection / option smuggling"; `fix-crit1-argument-injection-{failing,passing}.txt`; `argument-injection.regression.test.ts` reproduces both exploits, then blocks them |
+| Intake / IntentContract / approval envelope (§ envelope compiler, upstream of §3) | CRITICAL              | Confused deputy: `contract.approve`'s handler took `changeSetId`/`digest`/`token` as three independent inputs and verified the token against the CALLER's own supplied `digest`, never confirming the token actually belonged to that `changeSetId`'s envelope — a token minted for ChangeSet A's envelope could flip a different ChangeSet B to `ready`.                                                              | The handler now derives the expected digest **server-side** (`changeSetId → envelope registry → canonicalHash`), cross-checks the caller's digest against it before the token is even touched, and verifies the token against the server-derived digest, never the caller-supplied one.                                                                                                                                                           | `docs/evidence/phase-11/README.md` "CRITICAL C1 (confused deputy)"; `contract-approve-handler.test.ts`'s "a valid token minted for a DIFFERENT ChangeSet's envelope cannot approve this ChangeSet" test                           |
+| Renderer (§8)                                                                     | CRITICAL              | `secret-scan.ts`'s generic `sk-[A-Za-z0-9]{20,}` pattern broke at the first hyphen — hyphenated modern key formats (`sk-ant-...`, `sk-proj-...`) passed the lint clean, meaning a real Anthropic/OpenAI-shaped secret could reach a rendered Jira comment or PR body undetected.                                                                                                                                       | `secret-scan.ts` gained dedicated Anthropic-style, OpenAI-style, and hyphen-inclusive generic patterns.                                                                                                                                                                                                                                                                                                                                           | `docs/evidence/phase-17/README.md` "C1 (CRITICAL)"; `secret-scan.test.ts` new cases; new corpus fixtures `attack-secret-anthropic-key.json`, `attack-secret-openai-project-key.json`                                              |
+| Gateway (§5)                                                                      | HIGH (#1)             | DNS-rebind TOCTOU: `http-client.ts` resolved+validated the hostname's IP for the SSRF check, but `http-transport.ts` dialed by hostname, which `node:https` re-resolves at connect time — a rebinding resolver could return a public IP at check time and a private/metadata IP at connect time, bypassing the SSRF guard entirely.                                                                                    | `http-transport.ts` now dials the one literal, pre-validated IP (`pinnedAddress`), preserving the hostname only as TLS SNI/`Host` header; `http-client.ts`'s preflight threads that single validated address through every hop — the address checked is the address dialed, never re-resolved.                                                                                                                                                    | `docs/evidence/phase-16/README.md` "HIGH #1"; `http-transport.test.ts`/`http-client.test.ts` "DNS pinning" describe blocks (rebinding-resolver simulation)                                                                        |
+| Gateway (§5)                                                                      | HIGH (#2, "the crux") | `tracker.apply`/`observability.apply` dispatched straight to the raw provider client, bypassing `executeMutationPlan` entirely — no journal-before-I/O, no idempotency, no read-back/verify, and no SSRF-guarded `GatewayHttpClient` on the mutate path at all.                                                                                                                                                        | Mutating tools were split into a dedicated, schema-validated `RemoteMutationPlan`-only tool; `executeMutationPlan` is now the sole issuer of the mutation's network I/O, via the SSRF-guarded `GatewayHttpClient`.                                                                                                                                                                                                                                | `docs/evidence/phase-16/README.md` "HIGH #2"; `native-registry.test.ts`'s "HIGH #2 adversarial-review fix" describe block (journal-before-I/O + SSRF-guard proof)                                                                 |
+| Gateway (§5)                                                                      | MEDIUM/HIGH (#3)      | The exactly-once crash matrix was proven only against a self-idempotent PUT; the pre-I/O bookkeeping record used a different `operationId` than the real dedup key, so a real restart never saw it — a kill-after-commit-before-record crash could re-apply a genuinely non-idempotent POST/create.                                                                                                                    | `mutation-pipeline.ts` now owns the full `pending → recorded/conflict/failed` state machine directly over the journal, using the **same** `operationId` for the pending write and every terminal write.                                                                                                                                                                                                                                           | `docs/evidence/phase-16/README.md` "MEDIUM/HIGH #3"; new kill-harness fixture `nonidempotent-post-and-crash.mjs`; "restart finds a pending record" / "a prior TERMINAL record is never silently re-run" test blocks               |
+| Jira Cloud connector (§6, connectors)                                             | HIGH (H2)             | `planIssueTransition` trusted a caller-supplied `targetStageIsDone` boolean rather than resolving the transition's real target status server-side — a forged `false` on a genuinely closing transition skipped the done-transition evidence gate and the closing-transitions high-impact-capability flag, while the write still closed the issue for real.                                                             | `issues.planTransition` is now `async` and no longer accepts the boolean at all — it resolves the transition's real target status itself via a live `issues.transitions(issueKey)` read, and an unrecognized transition is refused, never guessed.                                                                                                                                                                                                | `docs/evidence/phase-18/README.md` "H2 (HIGH)"; rewritten `jira-resource-client.test.ts` `planTransition` suite                                                                                                                   |
+| Stack detection / capability quarantine (§7)                                      | HIGH                  | `walkRepoTree`'s symlink handling had no visited-realpath tracking and a `maxEntries` bound that only decremented on files — a directory of self-referential symlinks recursed with unbounded branching factor, an unkillable synchronous CPU-bound hang (a DoS against any untrusted/cloned project this detector scans).                                                                                             | Every directory visit now carries a per-branch ancestor-realpath set; re-entering an already-visited realpath on the current path is refused, turning the walk into a true tree traversal regardless of symlink aliasing; a directory-visit budget was added as defense-in-depth.                                                                                                                                                                 | `docs/evidence/phase-12/README.md` "1 (HIGH, confirmed DoS)"; `safe-walk.test.ts`'s termination-bound and diamond-non-false-positive cases                                                                                        |
+| Grafana connector (§6, connectors)                                                | HIGH                  | `verify()`/`reconcileAmbiguous()` compared the remote read-back against the raw, un-marked input, but `annotation`'s create request always injects an `eo-marker:<uid>` tag before sending — every genuinely successful annotation create was recorded `failed` against a real Grafana (an integration-safety defect: the exactly-once pipeline could never confirm its own successful writes for this resource kind). | Added a `canonicalizeDesiredInput` method every resource definition implements — the connector's actual desired wire state, never the raw caller input — and `verify()`/`reconcileAmbiguous()` now compare against it.                                                                                                                                                                                                                            | `docs/evidence/phase-20/README.md` "HIGH (annotation read-back verify structurally broken)"; `mutation-apply-client.test.ts`'s regression case                                                                                    |
+
+No unresolved CRITICAL or HIGH finding remains against any of the nine threat-model surfaces
+as of this review.
+
+## Per-surface review (threat model §1–§9)
+
+### 1. UDS control plane
+
+Implementation: `packages/supervisor` (05). The design-time mitigations (`SO_PEERCRED`
+uid-check, versioned handshake, journal-before-effect, `0600`/`0700` socket mode, 1 MiB
+per-worker log ring buffer with backpressure) were all built and unit/property-tested; two
+independent adversarial passes returned **no CRITICAL/MAJOR finding** for this package
+(`docs/evidence/phase-05/README.md`: "Two independent Opus validators PASSED this phase's
+exit criteria... no CRITICAL/MAJOR findings"). Three smaller items were raised and two fixed
+in the same pass: a weak drop-count test oracle (fixed, mutant-killed) and an unbounded
+ndjson line-read buffer on the real `uds-server.ts` connection handler that could OOM the
+host from an admitted same-uid peer (fixed with a 1 MiB `MAX_LINE_BYTES` cap,
+`LineTooLongError`). The residual same-uid trust-flattening risk the threat model names
+(§Cross-surface residual theme 1) is a stated design choice, unchanged by implementation —
+see "Residual risk" below.
+
+### 2. Worker runtime
+
+Implementation: `packages/engine-claude` (06), layered on `packages/engine-core`'s compiled
+profile (03). The static allow/deny + OS sandbox enforcement core — the load-bearing
+layer — was found **solid and unchanged** by 06's own pre-commit adversarial pass
+(`docs/evidence/phase-06/wi7-adversarial-validation.md`: "The static enforcement core...
+was found SOLID and is unchanged"). That same pass found one CONFIRMED CRITICAL, fixed
+before the phase's first commit: `resume()`/`fork()` crashed permanently on the
+`credentialsFile` auth path (`provisionWorkerAuth`'s exclusive-create threw on the second
+call to the same, already-provisioned directory, indistinguishable from an ordinary crash —
+a crash-loop for the confirmed-PASS credential fallback). Fixed by making
+`provisionWorkerAuth` idempotent for that path (byte-identical dest accepted, mismatched dest
+refused, symlink/non-regular dest still refused). A separate, earlier adversarial round
+(06's own `wi6-security-hardening.md`) found and fixed five MAJOR/MINOR findings, most
+notably **Finding 5**: `.credentials.json` provisioning followed a destination symlink with
+no exclusivity check — a pre-planted symlink at the config-dir destination could leak the
+owner's real subscription credentials. Fixed with an exclusive, no-follow create
+(`O_CREAT|O_EXCL|O_WRONLY|O_NOFOLLOW`) that refuses both a pre-existing dest and a symlinked
+dest, never following it. See "Residual risk" for the one carried-forward guarantee downgrade
+(the per-call adjudication-**journaling** backstop is live-unverified pending an
+engine-fact probe) — the load-bearing static enforcement is unaffected by it.
+
+### 3. Envelope compiler
+
+Implementation: `packages/engine-core` (03), the design's explicitly named "security
+keystone." The CRITICAL owned-path confinement escape (table above) was the headline
+finding; two MAJORs were fixed alongside it: a fake-engine shell-metacharacter smuggling gap
+(`&`, `$`, backtick, `<`, `>`, newline could smuggle a command past the conformance oracle —
+fixed by denying any segment carrying one, closing this fake engine, which 05/06 reuse as
+their conformance oracle) and tautological tests (the "no allow outside the envelope"
+property re-derived the compiler's own emitted string and could never detect a confinement
+escape by construction — rewritten to a genuinely semantic check). A fresh, independent
+re-audit after all fixes landed re-attacked all five findings (~28 hostile `ownedPaths`
+through the real compiler, the full shell-metacharacter battery, an independent check that
+the new confinement matcher is non-vacuous) and returned **PASS**, raising only three LOW
+residuals, all disposed of or accepted as documented, non-exploitable hardening gaps
+(`docs/evidence/phase-03/README.md`, "Independent re-audit (2026-07-18)").
+
+### 4. Installer
+
+Implementation: `packages/plugin` + `packages/cli`'s `src/installer/` (10). An adversarial
+pass found one MEDIUM (confirmed monotonicity violation: `mergeSettingsJson`/`mergeMcpJson`
+treated a present-but-non-object `enabledPlugins`/`mcpServers` value as absent and silently
+overwrote it, destroying the user's own value — fixed by checking key presence, not
+object-shape, before ever touching a key) and one LOW/MEDIUM (`eo-reviewer.md`'s subagent
+declared `Bash` in its tool list, defeating the "manager subagents are never write-capable"
+requirement since `Bash` isn't read-only-constrainable at the declaration level — fixed by
+removing it and extending the plugin-manifest validator's `WRITE_CAPABLE_TOOLS` rejection set
+to also cover `Bash`/`NotebookEdit`). Both fixed with regression tests
+(`docs/evidence/phase-10/README.md`, "Adversarial-review fixes"). The `enabledPlugins` key
+format (`<plugin-name>@<marketplace-name>`, not the bare name) was verified live against the
+real `claude` 2.1.218 binary rather than assumed — see `docs/engine-baseline.md` §12.
+
+### 5. Gateway
+
+Implementation: `packages/gateway` (16), the design's other explicit "security keystone."
+Five interrelated findings were found and fixed (table above: HIGH #1 DNS-pinning TOCTOU,
+HIGH #2 the mutate-path SSRF/exactly-once bypass, MEDIUM/HIGH #3 the exactly-once
+identity-mismatch, MEDIUM #4 an IPv4-mapped/NAT64-embedded IPv6 SSRF-classifier gap, MEDIUM
+#5 no concurrency serialization on same-idempotency-key calls). All five are fixed and
+re-verified against the full 278-test suite (`docs/evidence/phase-16/README.md`). The one
+threat-model-acknowledged open item — the optional upstream-MCP-client wrap's quarantine
+status — is unchanged by implementation and carried forward; see "Residual risk" below.
+
+### 6. Connectors
+
+Implementation: `packages/connectors-jira` (18, reused by 19) and `packages/connectors-grafana`
+(20). Jira's H2 (forged `targetStageIsDone`, table above) was the headline finding; a MEDIUM
+(M3) improved test coverage of the done-category resolution's own documented, intentional
+"trust Jira's own fixed-enum `statusCategory.key`" choice, and two LOW findings (an
+unrecognized MIME-type lookup-table gap) were fixed alongside. Grafana's HIGH annotation
+verify-mismatch (table above) was fixed alongside two LOW findings (nested-secret redaction
+missed a non-top-level key; a result-budget check was unasserted on one collapse branch — both
+fixed). Phase 19 (Jira Data Center) found and fixed one residual MAJOR: `codeBlock` content in
+DC wiki-markup rendering wasn't routed through the round-1 escaping path, so a `{code}`/
+`{noformat}` breakout token inside a fenced block could re-enter live wiki-markup parsing (the
+same stored-content class round 1 closed for inline text, reachable through a different path)
+— fixed with a zero-width-space neutralization technique that leaves rendered output visually
+identical (`docs/evidence/phase-19/README.md`, "MAJOR (residual)"). Phase 21 added a
+`remote_verification` gate binding every requirement's `EvidenceRecord` to a confirmed remote
+revision, plus a security-fixture manifest naming 7 blocking entries (forged admin/delete,
+tenant boundary, redaction across Jira/Grafana/gateway) — see "13. Cross-cutting: connector
+evidence & drift" below.
+
+### 7. Capability quarantine
+
+Implementation: `packages/detect` (12). The confirmed-DoS HIGH finding (table above) was the
+headline result; the pipeline's structural no-child-process-during-detection guarantee and
+its model-self-approval-fails-closed test were confirmed sound. Two items the threat model
+itself named as unresolved remain unresolved, unchanged by implementation (both disclosed,
+non-blocking — see "Residual risk"): the capability-audit-verdict `JournalEntryType` gap, and
+the stage-5 sandboxed-test harness's exact invocation API, which 12's own risk text already
+flagged as an unverified build-time spike.
+
+### 8. Renderer
+
+Implementation: `packages/renderer` (17). Eleven real defects were found in a second
+adversarial round after the initial build, headlined by the CRITICAL secret-scan gap (table
+above); the rest were HIGH/MEDIUM/LOW precision gaps in the Unicode-defense, URL-policy, ADF
+safe-subset, and evidence-claims stages (missing GCP/GitHub-fine-grained-PAT/raw-JWT
+patterns; a slash-delimited-attribute XSS bypass in the HTML-tag check; an ADF `link` mark
+whose `href` attribute was never validated; a ticket-key-shaped false-positive on standard
+tokens like `SHA-256`; missing Greek-lowercase confusables; missing directional/line-separator
+Unicode codepoints). All eleven were fixed with a corpus fixture added per attack, growing the
+corpus from 22 to 33 fixtures (`docs/evidence/phase-17/README.md`, "Adversarial-review
+remediation (round 2)").
+
+### 9. Learning store
+
+Implementation: `packages/learning` (22). The originally-reported build had **no unfixed
+CRITICAL**, but an adversarial pass found the flagship self-promotion invariant was
+**vacuously tested** and the actual promotion guard checked only `tokenId` string
+distinctness, never authenticity/subject/binding — a direct in-process call with two
+fabricated (never-minted) token strings could reach `promoted` with a real `ChangeSet`,
+bypassing the CLI/terminal-approval/HMAC chain entirely. Classified MAJOR by the validator
+(reachable only via direct in-process API calls, not via any model-invokable or MCP path — see
+below). Fixed by removing the caller-suppliable `reviewApprovals` parameter shape entirely and
+requiring every approval to pass through an injected, real `LearningReviewTokenVerifier` that
+independently verifies signature, subject kind, and proposal binding before anything is
+recorded (`docs/evidence/phase-22/README.md`, "Adversarial-validation repair pass"). The same
+pass corrected an earlier, **false** claim in this package's own evidence doc that the guard
+made an in-process call "structurally incapable" of promoting — no in-process library guard
+can defend against a caller supplying its own hostile verifier implementation, and the
+document now states the actually-enforced, actually-meetable invariant precisely: **no
+MCP/model-invokable promotion path exists at all** (a permanent CI grep confirms zero
+`learning.*` tool registrations), which is the real, load-bearing boundary a sandboxed worker
+process cannot cross regardless of the in-process guard's own strength.
+
+## Residual risk — disclosed, non-blocking
+
+Every item below is a known, intentional design limitation already named in the owning
+phase's own evidence or the threat model itself — not a newly-discovered live gap, and none
+meets the CRITICAL/HIGH bar that would block this release per 14's gate semantics.
+
+- **Same-uid trust flattening (§1, Cross-surface theme 1).** The UDS control plane trusts
+  every same-uid process identically; there is no in-protocol distinction between the CLI and
+  the gateway's forwarded calls. Stated design choice (`docs/threat-model.md` §1, §Cross-
+  surface themes); unchanged by implementation.
+- **`canUseTool`-under-`dontAsk` is an unprobed engine fact (§2).** 06's per-call
+  adjudication-**journaling** backstop is live-unverified because whether the SDK invokes
+  `canUseTool` at all under `permissionMode: "dontAsk"` was never directly probed by
+  `docs/engine-baseline.md`. The **load-bearing, verified** enforcement layer — the static
+  allow/deny + OS sandbox — is unaffected and holds regardless
+  (`docs/evidence/phase-06/wi6-security-hardening.md`, "Finding 2"). A live probe
+  (`src/live/adjudication-bridge.live.test.ts`) exists and converts this into a live-gated
+  assertion whenever the `@live` suite runs.
+- **Worktree-anchor (`//<worktree>/…/**`) matching semantics are unprobed on the live engine
+  (§3).** `docs/engine-baseline.md` has no path-anchor probe covering this exact substituted
+  form; 03's own compiler commits to it as its confinement mechanism, but its real-engine
+  matching behavior is owed to phase 06's `@live` suite, per the same pattern
+  `docs/engine-baseline.md` §3's Bash colon-spacing probe already resolved for a different
+  fact (`docs/evidence/phase-03/README.md`, "Engine-fact-drift gap recorded by this round").
+- **Bash compound-command splitting is quote-unaware (§2, worker runtime).** An allowed
+  command whose quoted argument contains an operator character can be over-split and
+  false-denied. Confirmed by trace to fail only in the safe direction (over-denial, never a
+  merge that would hide a real separator) — a reliability defect, not a privilege-escalation
+  bypass (`docs/evidence/phase-06/wi7-adversarial-validation.md`, carry-forward 1).
+- **Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member (§7).**
+  Only the subsequent approval-token mint is centrally journaled; the audit pass/fail verdict
+  itself lives only in the capability store's own artifact. `JournalEntryType` is deliberately
+  closed at 13 members pending a coordinated resolution round (interface-ledger Gap 5) — this
+  is the one item the threat model's own review flagged as "needs a follow-up decision," not a
+  residual-risk acceptance, and it remains open, unchanged by implementation.
+- **Stage-5 sandboxed-test harness invocation API is an unverified build-time spike (§7).**
+  12's own risk text names this directly; not yet closed by an `engine-baseline.md`-style
+  probe.
+- **Optional upstream-MCP-client wrap's quarantine status is unresolved (§5/§6).** 16's own
+  text states this is "addressed by neither file" between 16 and 12; this flag is modeled but
+  disabled by default and not exercised against a real upstream server by any phase's exit
+  criteria.
+- **Renderer (17) and quality/security gates (14) maintain independent secret-pattern sets**
+  with no shared dependency edge — both phases state this as a deliberate scope boundary.
+- **Performance-budget tamper-evidence is journal-anchored, not signature-bound (15).** The
+  MAJOR finding here (a self-checksum with no external binding, allowing a consistent
+  widen-and-recompute attack) was fixed by binding the budget to 04's append-only journal at
+  approval time — a real improvement, not cosmetic — but the human approval token itself
+  (11's HMAC) is minted over the `AuthorizationEnvelope` hash only, never over the perf
+  budget. The journal anchor proves "this is what got committed at intake time," not "this is
+  what a human actually approved." Closing this fully requires a coordinated 02/11 schema
+  change (folding the budget into the signed envelope content) that must reconcile with
+  `docs/interface-ledger.md`; explicitly flagged as a named, high-priority follow-up in
+  `docs/evidence/phase-15/README.md`'s own carry-forwards, not silently assumed resolved.
+  Not classified CRITICAL/HIGH by any adversarial pass (the MAJOR itself is fixed); recorded
+  here as the honest, disclosed limit of the current fix.
+- **Inbound content is generally less scrutinized than outbound content (§Cross-surface
+  theme 4).** What the renderer emits is heavily hardened (Unicode attacks, secret patterns);
+  what a connector reads back from Jira/Grafana is bounded by size budgets and canonical-error
+  redaction, not by the same content-level scrutiny. No surface claims otherwise.
+
+## Cross-cutting: connector evidence & drift (phase 21)
+
+Phase 21 wires the `remote_verification` gate (blocks `final_verifying` → `published_local`
+on `unsupported`/`ambiguous_write` outcomes or a missing confirmed remote revision — never a
+silent pass), a materiality classifier that halts a run on a mid-run tracked-field edit before
+`final_verifying` (11's stop-condition/re-approval mechanics), and a
+`SECURITY_FIXTURE_MANIFEST` naming 7 blocking security-fixture entries spanning
+forged-admin/delete, tenant-boundary, and redaction categories across Jira, Grafana, and the
+gateway. An adversarial pass found this phase's units were built but **unwired** (MAJOR-1: zero
+non-test callers existed for the gate/pointer/classifier primitives) and that the
+done-transition evidence bridge's own evidence doc had **overclaimed** a wiring that didn't
+exist (MAJOR-2) — both fixed by adding a real integration suite firing the gate through the
+actual registry, and by genuinely wiring the bridge into Jira's `planIssueTransition` as an
+additive optional dependency (`docs/evidence/phase-21/README.md`, "Adversarial-validation
+repair pass"). The drift-CI job's live sandbox replay remains fixture-modeled, not live — an
+honestly disclosed gap identical in kind to 18/19/20's own cassette-modeled precedent, closed
+once phase 23's disposable environments are wired into it (see
+`docs/compatibility-matrix.md`).
+
+## What this review does not claim
+
+This is a documentation-and-evidence-cross-check review, not a fresh independent penetration
+test. Every finding cited above was discovered by an adversarial-validation pass already
+recorded in this repository's evidence trail; this review's own contribution is confirming
+each cited fix is present in the current source and that no severity was silently downgraded
+between the finding and the fix record. No new attack surface was probed by this pass itself.
