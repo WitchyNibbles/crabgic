@@ -1,0 +1,40 @@
+version: "3.8"
+
+# roadmap/19-jira-datacenter-adapter.md §Interfaces produced: "DC 10.3 and
+# 11.3 container recipes + teardown, reusable by 23." A disposable,
+# single-node Jira Data Center 11.3 instance for boot/health-probe
+# smoke-testing and (later, live-capture) cassette recording — never a
+# production topology (no clustered index, no shared home, no external
+# Postgres by default). No Jira license is baked in or required to reach
+# the "RUNNING" health state this recipe's smoke test checks for; a
+# license is only needed past the first-run setup wizard, which this
+# recipe's smoke test never proceeds into.
+#
+# Usage:
+#   docker compose -f docker/jira-datacenter/11.3/docker-compose.yml up -d
+#   ../smoke-test.sh 11.3
+#   docker compose -f docker/jira-datacenter/11.3/docker-compose.yml down -v   # teardown
+services:
+  jira:
+    image: atlassian/jira-software:11.3
+    ports:
+      - "8080:8080"
+    environment:
+      ATL_TOMCAT_PORT: "8080"
+      JVM_MINIMUM_MEMORY: "1024m"
+      JVM_MAXIMUM_MEMORY: "2048m"
+    volumes:
+      - jira-11_3-home:/var/atlassian/application-data/jira
+    healthcheck:
+      # `/status` reaches HTTP 200 with state RUNNING once Tomcat has
+      # finished booting — reachable with NO license applied (the setup
+      # wizard itself requires one; this recipe's smoke test only proves
+      # the container reaches that wizard, not that it completes it).
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
+
+volumes:
+  jira-11_3-home:

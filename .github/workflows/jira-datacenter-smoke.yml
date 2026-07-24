@@ -1,0 +1,28 @@
+name: jira-datacenter-smoke
+
+# roadmap/19-jira-datacenter-adapter.md §Exit criteria: "DC 10.3 and 11.3
+# container recipes boot and pass a smoke test in CI, reusable unmodified
+# by 23's disposable-environment tooling." Mirrors the `engine-live`
+# job's shape (manual `workflow_dispatch` trigger — a multi-minute
+# container boot is a deliberate, not push-triggered, cost) but requires
+# NO secret at all: this is a boot/health-probe smoke test only, never a
+# live REST call requiring a Jira license (docker/jira-datacenter/
+# README.md's honesty note explains why the cassette fixtures stay
+# hand-authored/modeled rather than live-captured for now).
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  jira-datacenter-smoke:
+    name: jira-datacenter-smoke (${{ matrix.edition }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: ["10.3", "11.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot, health-probe, and tear down Jira Data Center ${{ matrix.edition }}
+        run: docker/jira-datacenter/smoke-test.sh "${{ matrix.edition }}"

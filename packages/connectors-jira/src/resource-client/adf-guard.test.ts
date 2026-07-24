@@ -93,4 +93,56 @@ describe("assertSafeAdfDocument", () => {
       expect((err as ConnectorError).message).not.toContain("AKIAABCDEFGHIJKLMNOP");
     }
   });
+
+  /**
+   * MINOR-1 (adversarial-review, phase 19): this guard runs on BOTH the
+   * Jira Cloud AND Jira Data Center paths (18's plan builders are reused
+   * verbatim by 19's DC resource client; 19's own DC apply client
+   * re-checks at the apply boundary too) — every thrown `ConnectorError`
+   * must be attributed to whichever provider actually produced it, never
+   * hardcoded to Cloud's `"jira-cloud"` regardless of caller.
+   */
+  describe("provider attribution (optional 3rd parameter, additive)", () => {
+    const invalidDoc = "not an adf doc";
+
+    it("defaults to jira-cloud when no provider is passed — phase-18 behavior is completely unchanged", () => {
+      try {
+        assertSafeAdfDocument(invalidDoc, "test");
+        throw new Error("expected throw");
+      } catch (err) {
+        expect((err as ConnectorError).provider).toBe("jira-cloud");
+      }
+    });
+
+    it("attributes the thrown error to an explicitly-passed provider name (e.g. jira-datacenter)", () => {
+      try {
+        assertSafeAdfDocument(invalidDoc, "test", "jira-datacenter");
+        throw new Error("expected throw");
+      } catch (err) {
+        expect((err as ConnectorError).provider).toBe("jira-datacenter");
+      }
+    });
+
+    it("carries the correct provider across every rejection branch (shape / safe-subset / secret-content)", () => {
+      const disallowedNodeDoc = {
+        type: "doc",
+        version: 1,
+        content: [{ type: "layoutSection", content: [] }],
+      };
+      const secretDoc = {
+        type: "doc",
+        version: 1,
+        content: [{ type: "paragraph", content: [{ type: "text", text: "AKIAABCDEFGHIJKLMNOP" }] }],
+      };
+
+      for (const doc of [invalidDoc, disallowedNodeDoc, secretDoc]) {
+        try {
+          assertSafeAdfDocument(doc, "test", "jira-datacenter");
+          throw new Error("expected throw");
+        } catch (err) {
+          expect((err as ConnectorError).provider).toBe("jira-datacenter");
+        }
+      }
+    });
+  });
 });

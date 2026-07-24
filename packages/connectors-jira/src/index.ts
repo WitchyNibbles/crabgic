@@ -168,3 +168,82 @@ export {
   type ScenarioResults,
 } from "./testkit/scripted-read-scenario.js";
 export { JIRA_FAULT_MATRIX } from "./testkit/fault-matrix.js";
+
+// ============================================================
+// Phase 19 (Jira Data Center adapter) — everything below is new.
+// ============================================================
+
+// ---- Deployment-type / auth-mode config (work item 1) ----
+export {
+  JIRA_AUTH_MODES,
+  JIRA_DEPLOYMENT_TYPES,
+  JiraConnectionConfigSchema,
+  assertBasicAuthPermitted,
+  type JiraAuthMode,
+  type JiraConnectionConfig,
+  type JiraDeploymentType,
+} from "./provider/jira-connection-config.js";
+export {
+  JIRA_DATACENTER_PROVIDER_NAME,
+  mapJiraDatacenterStatusToConnectorErrorKind,
+} from "./errors/jira-error-mapping.js";
+
+// ---- PAT/basic auth + doctor checks (work item 1) ----
+export {
+  buildJiraBasicAuthHeaderProvider,
+  buildJiraPatAuthHeaderProvider,
+  resolveJiraDatacenterAuthHeaderProvider,
+  type JiraAuthHeaderProvider,
+} from "./auth/jira-datacenter-auth.js";
+export {
+  runJiraDatacenterConnectionDoctor,
+  type JiraDatacenterConnectionDoctorInput,
+  type JiraDatacenterConnectionDoctorResult,
+} from "./auth/connection-doctor-datacenter.js";
+
+// ---- DcEditionFeatureMatrix (work item 3) ----
+export {
+  isActionSupportedForDcEdition,
+  normalizeDcEdition,
+  resolveDcEditionFeatures,
+  type DcEditionEntry,
+} from "./capability/dc-edition-feature-matrix.js";
+export { discoverJiraDatacenterCapabilitySnapshot } from "./capability/discovery-datacenter.js";
+
+// ---- DC resource-client implementation (REST v2 + Agile, work item 2) ----
+export type { JiraDatacenterHttpContext } from "./resource-client/datacenter/jira-datacenter-http-context.js";
+export { jiraDatacenterGetJson } from "./resource-client/datacenter/jira-datacenter-http-context.js";
+export {
+  createJiraDatacenterResourceClient,
+  type CreateJiraDatacenterResourceClientDeps,
+} from "./resource-client/datacenter/jira-datacenter-resource-client.js";
+export {
+  createJiraDatacenterMutationApplyClient,
+  type JiraDatacenterMutationApplyDeps,
+} from "./resource-client/datacenter/jira-mutation-apply-client-dc.js";
+
+// ---- wikiMarkupRenderProfile (work item 4) ----
+export { adfDocumentToWikiMarkup } from "./resource-client/datacenter/wiki-markup-render-profile.js";
+
+// ---- Reconciliation (DC entity-property marker) ----
+export { createJiraDatacenterEntityPropertyMarkerReconciler } from "./reconciliation/entity-property-marker-dc.js";
+
+// ---- Provider registration (the DC <-> @eo/gateway seam) ----
+export {
+  JIRA_DATACENTER_PROVIDER_KEY,
+  registerJiraDatacenterProvider,
+  type RegisterJiraDatacenterProviderDeps,
+} from "./provider/register-datacenter.js";
+export {
+  JiraDatacenterConnectionNotRegisteredError,
+  JiraDatacenterConnectionRegistry,
+  type JiraDatacenterConnectionEntry,
+  type RegisterJiraDatacenterConnectionOptions,
+} from "./provider/jira-datacenter-connection-registry.js";
+
+// ---- Testkit: DC fault matrix + cassette fixtures (work items 6-7) ----
+export { JIRA_DATACENTER_FAULT_MATRIX } from "./testkit/fault-matrix-dc.js";
+export {
+  loadDatacenterReadScenarioCassette,
+  runDatacenterScriptedReadScenario,
+} from "./testkit/scripted-read-scenario-dc.js";

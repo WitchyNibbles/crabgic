@@ -35,6 +35,19 @@ import { containsSecretShapedContent } from "../security/secret-patterns.js";
  *
  * Never echoes the raw document or the matched secret text in the
  * thrown error — only a bounded, structural finding summary.
+ *
+ * MINOR-1 fix (adversarial-review, phase 19): this guard runs on the
+ * Data Center path too — 19's DC resource client reuses `./issue-plans.ts`/
+ * `./comment-worklog-attachment-plans.ts` VERBATIM (so their internal
+ * calls here still default to Cloud attribution — a known, documented
+ * residual gap for that specific plan-BUILD call path, see
+ * docs/evidence/phase-19/README.md), and 19's own DC apply client
+ * (`./datacenter/jira-mutation-apply-client-dc.ts`) re-checks at the
+ * apply boundary, explicitly passing its own provider name. `provider`
+ * below is an OPTIONAL third parameter, defaulting to `JIRA_PROVIDER_NAME`
+ * — every existing (phase-18) call site's behavior is byte-for-byte
+ * unchanged; only a caller that explicitly passes a different provider
+ * name gets its `ConnectorError`s attributed to that name instead.
  */
 function isAdfDocumentShape(value: unknown): value is AdfDocument {
   if (typeof value !== "object" || value === null) return false;
@@ -51,11 +64,15 @@ function extractPlainText(node: AdfNode, into: string[]): void {
   }
 }
 
-export function assertSafeAdfDocument(candidate: unknown, label: string): AdfDocument {
+export function assertSafeAdfDocument(
+  candidate: unknown,
+  label: string,
+  provider: string = JIRA_PROVIDER_NAME,
+): AdfDocument {
   if (!isAdfDocumentShape(candidate)) {
     throw ConnectorError.policyBlocked({
       message: `${label}: expected a safe-subset ADF document ({type:"doc", content:[...]}), got an invalid or missing shape`,
-      provider: JIRA_PROVIDER_NAME,
+      provider,
       retryable: false,
     });
   }
@@ -66,7 +83,7 @@ export function assertSafeAdfDocument(candidate: unknown, label: string): AdfDoc
       message: `${label}: ADF safe-subset validation failed (${findings.length} finding(s)): ${findings
         .map((finding) => finding.message)
         .join("; ")}`,
-      provider: JIRA_PROVIDER_NAME,
+      provider,
       retryable: false,
     });
   }
@@ -78,7 +95,7 @@ export function assertSafeAdfDocument(candidate: unknown, label: string): AdfDoc
   if (containsSecretShapedContent(textParts.join("\n"))) {
     throw ConnectorError.policyBlocked({
       message: `${label}: embedded secret-shaped content detected in ADF text`,
-      provider: JIRA_PROVIDER_NAME,
+      provider,
       retryable: false,
     });
   }
