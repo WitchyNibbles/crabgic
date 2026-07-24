@@ -170,3 +170,7 @@ export {
   measureGrafanaOperation,
 } from "./fixtures/latency-counters.js";
 export type { GrafanaLatencyCounters, GrafanaLatencyStat } from "./fixtures/latency-counters.js";
+
+// ---- Revision stamping (additive, phase 21 work item 6) ----
+export { stampGrafanaRemoteResource } from "./evidence/stamp-grafana-remote-resource.js";
+export type { StampGrafanaRemoteResourceInput } from "./evidence/stamp-grafana-remote-resource.js";

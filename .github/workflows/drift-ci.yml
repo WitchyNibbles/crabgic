@@ -1,0 +1,99 @@
+name: drift-ci
+
+# roadmap/21-connector-evidence-integration.md work item 5 / §Exit criteria:
+# "Drift-CI job run against an intentionally bumped fixture produces exactly
+# one DriftProposal artifact and a red CI check, with zero pinned-fixture/
+# config changes applied by the job itself." Scheduled replay of 18/20's
+# pinned cassette/version fixtures against live/sandbox endpoints; on
+# divergence it emits a DriftProposal artifact for HUMAN review — NEVER an
+# automatic pin/routing change (see packages/gates/src/drift/README below
+# and docs/evidence/phase-21/README.md, "cassette-modeled vs live").
+#
+# HONESTY NOTE (mirrors 19/20's own precedent): this environment has no live
+# Jira Cloud / Grafana sandbox to replay against yet (roadmap/21 §Risks:
+# "Live sandbox availability ... depends on the disposable environments
+# 18/20 provision for phase 23"). Until those sandboxes exist, this job's
+# "observed" half is fixture-modeled (packages/gates/src/drift/pinned-
+# fixtures.ts's documented default), never a real live HTTP call — the job
+# itself, the debounce, the artifact upload, and the red-check exit code are
+# all real and already wired for the day a real probe step is dropped in.
+#
+# Debounced (roadmap/21 §Risks: "require repeated failing runs before
+# emitting a DriftProposal ... transient flakiness must not masquerade as
+# drift") via persisted per-key counters in the `drift-ci-debounce-state`
+# cache, keyed across scheduled runs.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      jira_observed_version:
+        description: "Override JIRA_OBSERVED_VERSION (manual drift-simulation run)"
+        required: false
+        type: string
+      grafana_observed_version:
+        description: "Override GRAFANA_OBSERVED_VERSION (manual drift-simulation run)"
+        required: false
+        type: string
+
+jobs:
+  drift-ci:
+    name: drift-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # Debounce state persists ACROSS scheduled runs (never reset per-run) —
+      # this IS the mitigation against a single transient failing sample
+      # masquerading as drift. `packages/gates/src/drift/cli.ts`'s own
+      # default paths live under `os.tmpdir()` (`/tmp/eo-drift-ci/...` on
+      # every GitHub-hosted Linux runner) — never inside the repo tree, so
+      # this cache step is the only thing that makes the state outlive one
+      # job run.
+      - name: Restore drift debounce state
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/eo-drift-ci/debounce-state.json
+          # A run-id-suffixed key never hits on restore (each run's own key
+          # is brand new) — `restore-keys`' prefix match against the MOST
+          # RECENT previous run's key is what actually recovers persisted
+          # state; `save` below always succeeds because its key is likewise
+          # unique to this run (GitHub's cache is immutable per exact key).
+          key: drift-ci-debounce-state-${{ github.run_id }}
+          restore-keys: |
+            drift-ci-debounce-state-
+
+      # Runs the exact same `runDriftCiCli()` entrypoint
+      # `packages/gates/src/drift/cli.test.ts` exercises — no separate
+      # inline script, no path beyond its own default debounce-state/
+      # proposals-output files (see `./cli.ts`'s own doc comment for why
+      # that's true by construction).
+      - name: Run drift-CI job (fixture-modeled until 18/20/23's live sandboxes exist)
+        env:
+          JIRA_OBSERVED_VERSION: ${{ inputs.jira_observed_version }}
+          GRAFANA_OBSERVED_VERSION: ${{ inputs.grafana_observed_version }}
+        run: node packages/gates/dist/drift/cli.js
+
+      - name: Save drift debounce state (always — even on a red check)
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/eo-drift-ci/debounce-state.json
+          key: drift-ci-debounce-state-${{ github.run_id }}
+
+      # For HUMAN review only — this job never applies the proposal itself;
+      # zero pinned-fixture/config changes are made by any step above.
+      - name: Upload DriftProposal artifact (for human review)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-proposals
+          path: /tmp/eo-drift-ci/drift-proposals.json
+          if-no-files-found: ignore

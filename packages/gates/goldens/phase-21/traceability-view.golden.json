@@ -1,0 +1,63 @@
+{
+  "entries": [
+    {
+      "requirementId": "10000000-0000-4000-8000-000000000001",
+      "workUnitIds": [
+        "30000000-0000-4000-8000-000000000001"
+      ],
+      "objectIds": [
+        "object-id-req1"
+      ],
+      "remoteResources": [
+        {
+          "remoteResourceId": "20000000-0000-4000-8000-000000000001",
+          "relation": "tracking-issue",
+          "confirmedRevision": "7"
+        }
+      ]
+    },
+    {
+      "requirementId": "10000000-0000-4000-8000-000000000002",
+      "workUnitIds": [
+        "30000000-0000-4000-8000-000000000002"
+      ],
+      "objectIds": [
+        "object-id-req2"
+      ],
+      "remoteResources": [
+        {
+          "remoteResourceId": "20000000-0000-4000-8000-000000000002",
+          "relation": "tracking-issue",
+          "confirmedRevision": "3"
+        }
+      ]
+    },
+    {
+      "requirementId": "10000000-0000-4000-8000-000000000003",
+      "workUnitIds": [
+        "30000000-0000-4000-8000-000000000003"
+      ],
+      "objectIds": [
+        "object-id-req3"
+      ],
+      "remoteResources": [
+        {
+          "remoteResourceId": "20000000-0000-4000-8000-000000000003",
+          "relation": "dashboard",
+          "confirmedRevision": "etag-9"
+        }
+      ]
+    }
+  ],
+  "byRemoteResourceId": {
+    "20000000-0000-4000-8000-000000000001": [
+      "10000000-0000-4000-8000-000000000001"
+    ],
+    "20000000-0000-4000-8000-000000000002": [
+      "10000000-0000-4000-8000-000000000002"
+    ],
+    "20000000-0000-4000-8000-000000000003": [
+      "10000000-0000-4000-8000-000000000003"
+    ]
+  }
+}

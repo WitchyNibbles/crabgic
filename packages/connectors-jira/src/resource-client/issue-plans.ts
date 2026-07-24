@@ -3,6 +3,10 @@ import {
   assertCustomFieldWritesAreDiscovered,
   type FieldMetadataIndex,
 } from "../capability/field-metadata.js";
+import {
+  hasExactRevisionVerification,
+  type RemoteVerificationPointer,
+} from "../evidence/done-transition-verification.js";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import {
   requiredCapabilityFlagsForIssueUpdate,
@@ -100,6 +104,22 @@ export function planIssueUpdate(
   });
 }
 
+/**
+ * MAJOR-2 fix (roadmap/21 adversarial-validation round): `resolveVerificationPointer`
+ * is an ADDITIVE, OPTIONAL 8th parameter — omitted entirely, behavior is
+ * byte-identical to before this fix (every existing caller/test is
+ * unaffected). When supplied, it is called with `issueKey` and expected to
+ * return the `RemoteVerificationPointer` 21's own evidence-pointer lookup
+ * (`@eo/gates`'s `findRemoteResourcePointersForRequirement`) already
+ * resolved for the requirement/resource this transition targets — by
+ * convention, its own `remoteResourceId` field is expected to equal
+ * `issueKey` for this specific call (the caller has already selected the
+ * one pointer relevant to THIS issue before invoking this resolver; this
+ * function does not itself search a list). `hasVerificationEvidence`
+ * remains a fully-supported fallback/override: EITHER it being `true` OR
+ * the resolved pointer being an exact revision match satisfies the guard —
+ * never a MORE permissive combination than either alone.
+ */
 export function planIssueTransition(
   planCtx: JiraPlanBuildContext,
   issueKey: string,
@@ -108,8 +128,13 @@ export function planIssueTransition(
   targetStageIsDone: boolean,
   envelopeId: string,
   hasVerificationEvidence = false,
+  resolveVerificationPointer?: (issueKey: string) => RemoteVerificationPointer | undefined,
 ): RemoteMutationPlan {
-  assertDoneTransitionHasEvidence(targetStageIsDone, hasVerificationEvidence);
+  const resolvedPointer = resolveVerificationPointer?.(issueKey);
+  const verifiedViaPointer =
+    resolvedPointer !== undefined &&
+    hasExactRevisionVerification(resolvedPointer, issueKey, expectedRevision);
+  assertDoneTransitionHasEvidence(targetStageIsDone, hasVerificationEvidence || verifiedViaPointer);
   const requiredCapabilityFlags = requiredCapabilityFlagsForTransition(targetStageIsDone);
   return buildJiraMutationPlan({
     ...planCtx,

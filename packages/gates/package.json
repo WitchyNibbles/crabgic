@@ -23,9 +23,12 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@eo/connectors-grafana": "0.0.0",
+    "@eo/connectors-jira": "0.0.0",
     "@eo/contracts": "0.0.0",
     "@eo/detect": "0.0.0",
     "@eo/engine-core": "0.0.0",
+    "@eo/gateway": "0.0.0",
     "@eo/journal": "0.0.0",
     "@eo/scheduler": "0.0.0",
     "zod": "3.25.76"

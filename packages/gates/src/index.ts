@@ -93,3 +93,94 @@ export {
   findGreenEngineLiveRecord,
 } from "./engine-conformance-gate.js";
 export type { EngineConformanceGateInput, EngineLiveRecord } from "./engine-conformance-gate.js";
+
+// ---- Phase 21: connector evidence integration & drift CI ----
+
+// Evidence-pointer linkage (work item 1)
+export {
+  findRemoteResourcePointersForRequirement,
+  findRequirementsForRemoteResource,
+  isRemoteResourceRelation,
+  recordEvidencePointer,
+  REMOTE_RESOURCE_RELATIONS,
+} from "./remote-evidence-pointer.js";
+export type {
+  RemoteEvidencePointer,
+  RemoteEvidencePointerInput,
+  RemoteResourceRelation,
+} from "./remote-evidence-pointer.js";
+
+// `remote_verification` gate (work item 3)
+export { createRemoteVerificationGate } from "./remote-verification-gate.js";
+export type {
+  ConnectorOutcomeInput,
+  RemoteVerificationGateInput,
+  RequiredRemoteResourceIdsInput,
+} from "./remote-verification-gate.js";
+
+// Materiality classifier + amendment-trigger signal (work item 4)
+export {
+  buildMaterialAmendmentSignal,
+  classifyMateriality,
+  MATERIAL_TRACKED_FIELDS,
+} from "./materiality-classifier.js";
+export type {
+  FieldDiff,
+  MaterialAmendmentSignal,
+  MaterialityResult,
+  MaterialTrackedField,
+} from "./materiality-classifier.js";
+
+// Material-amendment halt proof (MAJOR-1 fix, adversarial-validation round)
+export {
+  MaterialAmendmentDetectedError,
+  throwIfMaterialAmendment,
+} from "./material-amendment-guard.js";
+
+// Jira field-identifier -> tracked-field normalizer (MAJOR-1 fix, closes the
+// custom-field false-negative gap — adversarial-validation round)
+export { buildJiraFieldDiffs, normalizeJiraFieldId } from "./materiality-jira-adapter.js";
+export type { JiraIssueFieldSnapshot } from "./materiality-jira-adapter.js";
+
+// Traceability view (work item 1 / exit criterion 4)
+export { buildTraceabilityView } from "./traceability-view.js";
+export type {
+  BuildTraceabilityViewInput,
+  TraceabilityEntry,
+  TraceabilityRemoteBinding,
+  TraceabilityView,
+} from "./traceability-view.js";
+
+// Drift-CI job (work item 5)
+export { compareDriftFixture, SUPPORTED_DRIFT_CONNECTORS } from "./drift/drift-proposal.js";
+export type {
+  DriftComparison,
+  DriftConnector,
+  DriftFixtureSnapshot,
+  DriftProposal,
+} from "./drift/drift-proposal.js";
+export { DEFAULT_DRIFT_DEBOUNCE_THRESHOLD, DriftDebounceTracker } from "./drift/debounce.js";
+export type { DriftDebounceOutcome, DriftDebounceState } from "./drift/debounce.js";
+export { runDriftCi } from "./drift/run-drift-ci.js";
+export type { RunDriftCiDeps, RunDriftCiInput, RunDriftCiResult } from "./drift/run-drift-ci.js";
+export {
+  buildPinnedFixtureSnapshots,
+  PINNED_GRAFANA_VERSION,
+  PINNED_JIRA_VERSION,
+} from "./drift/pinned-fixtures.js";
+export type { ObservedOverride } from "./drift/pinned-fixtures.js";
+export {
+  DEFAULT_DEBOUNCE_STATE_PATH,
+  DEFAULT_PROPOSALS_OUTPUT_PATH,
+  runDriftCiCli,
+} from "./drift/cli.js";
+export type { DriftCiCliOptions } from "./drift/cli.js";
+
+// Cross-gate wiring: security fixture manifest (work item 6)
+export {
+  assertTenantBoundary,
+  registerSecurityFixtureManifest,
+  REQUIRED_SECURITY_FIXTURE_IDS,
+  SECURITY_FIXTURE_MANIFEST,
+} from "./security-fixture-manifest.js";
+export type { SecurityFixtureEntry, SecurityFixtureId } from "./security-fixture-manifest.js";

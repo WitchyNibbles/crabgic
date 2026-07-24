@@ -1,5 +1,6 @@
 import { ConnectorError } from "@eo/contracts";
 import type { FieldMetadataIndex } from "../capability/field-metadata.js";
+import type { RemoteVerificationPointer } from "../evidence/done-transition-verification.js";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { mapJiraStatusToWorkflowStage } from "../workflow/workflow-stage.js";
 import {
@@ -39,6 +40,20 @@ export interface CreateJiraResourceClientDeps {
   readonly payloadRegistry: JiraPlanPayloadRegistry;
   /** Overrides the derived `tenant` used on every built `RemoteMutationPlan` — defaults to the connection's first `projectAllowlist` entry, or its own `id`. */
   readonly tenant?: string;
+  /**
+   * MAJOR-2 fix (roadmap/21 adversarial-validation round): optional bridge
+   * into 21's real evidence-pointer lookup — when supplied,
+   * `issues.planTransition`'s done-transition guard consults it (via
+   * `planIssueTransition`'s `resolveVerificationPointer` parameter) instead
+   * of relying SOLELY on a caller-hand-passed `hasVerificationEvidence`
+   * boolean. Omitted entirely, behavior is byte-identical to before this
+   * fix. A typical real wiring is a closure over `@eo/gates`'s
+   * `findRemoteResourcePointersForRequirement` result for the requirement
+   * this issue tracks — this package has no dependency of its own on
+   * `@eo/gates` (that would invert the roadmap's own 18→21 dependency
+   * direction), so the caller supplies the already-resolved lookup.
+   */
+  readonly resolveVerificationPointer?: (issueKey: string) => RemoteVerificationPointer | undefined;
 }
 
 /**
@@ -127,6 +142,7 @@ export function createJiraResourceClient(deps: CreateJiraResourceClientDeps): Ji
           targetStage === "done",
           envelopeId,
           hasVerificationEvidence,
+          deps.resolveVerificationPointer,
         );
       },
       planLink: (input, envelopeId) => planIssueLink(planCtx, input, envelopeId),

@@ -46,3 +46,9 @@ packages/supervisor/goldens/
 # `JSON.stringify`, trailing newline) — identical rationale to the golden
 # directories above.
 packages/scheduler/goldens/
+
+# Phase 21: packages/gates/goldens/phase-21/*.json is a hand-authored (but
+# byte-stable, fixed 2-space JSON.stringify + trailing newline) golden
+# traceability-view fixture — identical rationale to the golden
+# directories above.
+packages/gates/goldens/

@@ -9,9 +9,12 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../connectors-grafana" },
+    { "path": "../connectors-jira" },
     { "path": "../contracts" },
     { "path": "../detect" },
     { "path": "../engine-core" },
+    { "path": "../gateway" },
     { "path": "../journal" },
     { "path": "../scheduler" },
     { "path": "../testkit" }

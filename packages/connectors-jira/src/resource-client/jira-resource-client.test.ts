@@ -317,6 +317,51 @@ describe("JiraResourceClient — plan builders (local, no I/O)", () => {
     );
   });
 
+  // MAJOR-2 fix (adversarial-validation round): `resolveVerificationPointer`
+  // is threaded from `CreateJiraResourceClientDeps` all the way through to
+  // `planIssueTransition`'s done-transition guard — real, reachable wiring
+  // via the actual client-construction factory, not just the underlying
+  // `planIssueTransition` function in isolation.
+  it("failing-first: a resolveVerificationPointer dep resolving an exact-match pointer satisfies planTransition's done-guard with NO hand-passed hasVerificationEvidence", async () => {
+    const { ctx } = buildCtx([
+      transitionsResponse([
+        { id: "31", name: "Close", toStatusName: "Done", toStatusCategoryKey: "done" },
+      ]),
+    ]);
+    const c = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      resolveVerificationPointer: (issueKey) => ({
+        remoteResourceId: issueKey,
+        confirmedRevision: "rev-1",
+      }),
+    });
+    await expect(
+      c.issues.planTransition("PROJ-1", "rev-1", "31", ENVELOPE_ID),
+    ).resolves.toBeDefined();
+  });
+
+  it("a resolveVerificationPointer dep resolving a DIFFERENT revision still refuses (not an exact match)", async () => {
+    const { ctx } = buildCtx([
+      transitionsResponse([
+        { id: "31", name: "Close", toStatusName: "Done", toStatusCategoryKey: "done" },
+      ]),
+    ]);
+    const c = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      resolveVerificationPointer: (issueKey) => ({
+        remoteResourceId: issueKey,
+        confirmedRevision: "stale-rev",
+      }),
+    });
+    await expect(c.issues.planTransition("PROJ-1", "rev-1", "31", ENVELOPE_ID)).rejects.toThrow(
+      ConnectorError,
+    );
+  });
+
   it("issues.planTransition refuses (never guesses) a transitionId absent from the server's reported transitions", async () => {
     const { client: c } = client([
       transitionsResponse([{ id: "21", name: "Start", toStatusName: "In Progress" }]),

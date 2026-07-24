@@ -247,3 +247,11 @@ export {
   loadDatacenterReadScenarioCassette,
   runDatacenterScriptedReadScenario,
 } from "./testkit/scripted-read-scenario-dc.js";
+
+// ---- Done-transition verification bridge (additive, phase 21 work item 6) ----
+export { hasExactRevisionVerification } from "./evidence/done-transition-verification.js";
+export type { RemoteVerificationPointer } from "./evidence/done-transition-verification.js";
+
+// ---- Shared secret-pattern detector (newly exported, phase 21 work item 6 —
+// previously internal-only; 21's security-fixture manifest reuses it) ----
+export { containsSecretShapedContent, JIRA_SECRET_PATTERNS } from "./security/secret-patterns.js";
