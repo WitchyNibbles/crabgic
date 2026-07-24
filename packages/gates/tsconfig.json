@@ -4,8 +4,16 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "composite": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["node"]
   },
   "include": ["src"],
-  "references": []
+  "references": [
+    { "path": "../contracts" },
+    { "path": "../detect" },
+    { "path": "../engine-core" },
+    { "path": "../journal" },
+    { "path": "../scheduler" },
+    { "path": "../testkit" }
+  ]
 }

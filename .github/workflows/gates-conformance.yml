@@ -1,0 +1,46 @@
+name: gates-conformance
+
+# roadmap/14-quality-security-gates.md §Interfaces produced: "`gates-
+# conformance` CI job — the named, standalone-runnable seeded-fault matrix
+# (mirrors 15's `perf-conformance` naming precedent). This is the exact
+# artifact 23's 'seeded-fault matrices from 14/15/22' bullet re-invokes for
+# this phase." §Exit criteria: "blocks correctly on all seven seeded
+# fixtures independently: coverage regression, flaky-then-passing test,
+# planted secret, vulnerable dependency, SAST finding, disabled-check diff,
+# missing green `engine-live` record" — plus the named
+# `engine-conformance-binding.test` (work item 7's exit criterion).
+#
+# Entirely fixture-based (no live engine, no real scanner binaries, no
+# secrets) — runs on every push/PR like the main CI job, unlike
+# `engine-live`/`jira-datacenter-smoke`'s manual-dispatch-only pattern
+# (those need a real host/license this job never does).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: gates-conformance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates-conformance:
+    name: gates-conformance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: seeded-fault matrix (7 independent fixtures) blocks correctly
+        run: npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false
+      - name: engine-conformance-binding.test — fails closed / runId round-trip
+        run: npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false
