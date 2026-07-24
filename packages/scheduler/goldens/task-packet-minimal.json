@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "bbbbbbbb-0000-4000-8000-000000000001",
+  "workUnitId": "bbbbbbbb-0000-4000-8000-000000000002",
+  "requirementIds": [],
+  "objective": "Implement the deterministic golden fixture's minimal case.",
+  "nonGoals": [],
+  "baseObjectId": "0123456789abcdef0123456789abcdef01234567",
+  "relevantInterfaces": [],
+  "ownedPaths": [
+    "packages/example/src/"
+  ],
+  "constraints": [
+    "Allowed command: npm run build",
+    "Allowed command: npm run test",
+    "Allowed command: git status",
+    "Allowed command: git diff"
+  ],
+  "resourceLimits": {
+    "maxTurns": 20
+  },
+  "gates": [],
+  "resultSchema": {
+    "type": "object"
+  }
+}

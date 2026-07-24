@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "cccccccc-0000-4000-8000-000000000001",
+  "workUnitId": "cccccccc-0000-4000-8000-000000000002",
+  "requirementIds": [
+    "dddddddd-0000-4000-8000-000000000001"
+  ],
+  "objective": "Implement the deterministic golden fixture's fully-populated case.",
+  "nonGoals": [
+    "Do not refactor unrelated modules."
+  ],
+  "baseObjectId": "0123456789abcdef0123456789abcdef01234567",
+  "relevantInterfaces": [
+    "@eo/contracts#WorkUnit",
+    "@eo/engine-core#EngineAdapter"
+  ],
+  "ownedPaths": [
+    "packages/example/src/",
+    "packages/example/src/nested/"
+  ],
+  "constraints": [
+    "Allowed command: npm run build",
+    "Allowed command: npm run test",
+    "Never modify packages/example/src/legacy/**."
+  ],
+  "resourceLimits": {
+    "maxTurns": 40,
+    "maxBudgetUsd": 5
+  },
+  "gates": [
+    "coverage",
+    "lint"
+  ],
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "outcome": {
+        "type": "string"
+      }
+    }
+  }
+}

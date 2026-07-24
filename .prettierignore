@@ -40,3 +40,9 @@ packages/engine-claude/goldens/
 # intake artifacts (envelope/manifest/contract) with the same byte-stability
 # contract — identical rationale to the golden directories above.
 packages/supervisor/goldens/
+
+# Phase 13: packages/scheduler/goldens/*.json are machine-generated golden
+# TaskPacket fixtures with the same byte-stability contract (fixed 2-space
+# `JSON.stringify`, trailing newline) — identical rationale to the golden
+# directories above.
+packages/scheduler/goldens/
