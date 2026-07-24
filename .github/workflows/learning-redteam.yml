@@ -1,0 +1,47 @@
+name: learning-redteam
+
+# roadmap/22-learning-system.md §Interfaces produced: "Red-team fixture
+# suite, tagged `@learning-redteam` (mirrors the `@live` tagging convention
+# P01/P06 use for engine conformance, Gap 15) — self-promotion,
+# grader-tampering, contamination scenarios. This is the concrete artifact
+# P23's 'seeded-fault matrices from 14/15/22' bullet ... invokes for this
+# phase." §Exit criteria: "self-promotion attempt ... grader-tampering
+# attempt ... contamination ... expiry + rollback work — each a separate
+# passing case in the `@learning-redteam` suite," plus the grep-based
+# no-`learning.*`-MCP-tool-family CI check (interface-ledger Gap 1) and the
+# no-bypass gate-firing proof.
+#
+# Entirely fixture-based (fake engine via @eo/testkit, real fs-permission
+# `chmod` boundaries, no live engine, no real secrets) — runs on every
+# push/PR like the main CI job, unlike `engine-live`'s manual-dispatch-only
+# pattern.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: learning-redteam-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  learning-redteam:
+    name: learning-redteam (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: "@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep"
+        run: npx vitest run packages/learning/src/red-team --coverage.enabled=false
+      - name: full packages/learning + packages/cli suite (state machine, eval infra, shadow comparator, CLI backend, E2E)
+        run: npx vitest run packages/learning packages/cli --coverage.enabled=false

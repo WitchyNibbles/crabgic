@@ -16,6 +16,12 @@ describe("renderApprovalPrompt", () => {
       "capability manifest",
     );
   });
+
+  it("labels a learning_review subject distinctly (roadmap/22's independent-review token)", () => {
+    expect(renderApprovalPrompt("learning_review", "learning-digest")).toContain(
+      "learning proposal (independent review)",
+    );
+  });
 });
 
 describe("runApprovalFlow", () => {

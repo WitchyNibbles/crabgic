@@ -23,6 +23,12 @@ import {
   runStatusCommand,
 } from "./real-handlers.js";
 import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
+import {
+  runLearnApproveCommand,
+  runLearnListCommand,
+  runLearnRejectCommand,
+  runLearnRollbackCommand,
+} from "../learning/learn-command-backend.js";
 import { renderHelp } from "./help.js";
 
 export async function dispatchCommand(
@@ -68,6 +74,28 @@ export async function dispatchCommand(
       case "run":
         return await runRunCommand(command, deps);
 
+      // roadmap/22-learning-system.md wires these four real backends —
+      // but ONLY when `deps.learning` is supplied (kept optional on
+      // `CliDependencies` precisely so every pre-existing roadmap/09 test,
+      // which never supplies it, keeps observing the exact same typed
+      // NOT_IMPLEMENTED shape unchanged).
+      case "learn-list":
+        return deps.learning !== undefined
+          ? await runLearnListCommand(command, deps.learning)
+          : notImplementedResult(command.command, command.json);
+      case "learn-approve":
+        return deps.learning !== undefined
+          ? await runLearnApproveCommand(command, deps.learning)
+          : notImplementedResult(command.command, command.json);
+      case "learn-reject":
+        return deps.learning !== undefined
+          ? await runLearnRejectCommand(command, deps.learning)
+          : notImplementedResult(command.command, command.json);
+      case "learn-rollback":
+        return deps.learning !== undefined
+          ? await runLearnRollbackCommand(command, deps.learning)
+          : notImplementedResult(command.command, command.json);
+
       // Every command below has no backend wired at this phase's own build
       // time (roadmap/09 §Out of scope names the owning later phase for
       // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
@@ -80,10 +108,6 @@ export async function dispatchCommand(
       case "trust-review":
       case "trust-approve":
       case "trust-revoke":
-      case "learn-list":
-      case "learn-approve":
-      case "learn-reject":
-      case "learn-rollback":
         return notImplementedResult(command.command, command.json);
 
       case "gateway-mcp":

@@ -12,6 +12,7 @@ import type { AuthState } from "../doctor/checks/auth-probe.js";
 import type { InstallerDependencies } from "../installer/types.js";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
+import type { LearningDependencies } from "../learning/learning-dependencies.js";
 
 /**
  * roadmap/11-intake-contract-approval.md's `run` backend — kept OPTIONAL for
@@ -50,4 +51,13 @@ export interface CliDependencies {
   readonly installer?: InstallerDependencies;
   /** roadmap/11's `run` backend — see `IntakeDependencies`'s own doc comment above for why this is optional. */
   readonly intake?: IntakeDependencies;
+  /**
+   * roadmap/22-learning-system.md's `learn list|approve|reject|rollback`
+   * backend — kept OPTIONAL for the identical reason `intake`/`installer`
+   * are: every pre-existing roadmap/09 test builds a `CliDependencies`
+   * without it and must keep observing the exact same typed
+   * `NOT_IMPLEMENTED` shape for `learn-*` unchanged; `../bootstrap.ts`'s
+   * real wiring supplies it.
+   */
+  readonly learning?: LearningDependencies;
 }

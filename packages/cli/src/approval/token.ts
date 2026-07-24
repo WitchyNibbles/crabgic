@@ -14,11 +14,24 @@
  * folds `subjectKind`+`digest` into that `scope` string (`"<subjectKind>:<digest>"`)
  * since 04 doesn't carry a richer shape for this member; this primitive is
  * the sole place that convention is defined and parsed back.
+ *
+ * THIRD SUBJECT KIND (roadmap/22-learning-system.md, 2026-07-24): `learn
+ * approve`'s independent-review step reuses this EXACT mechanism — never a
+ * second, parallel HMAC implementation — for a THIRD, distinct subject
+ * kind, `"learning_review"`. Additive only: `envelope_hash` (11) and
+ * `capability_digest` (12) are completely unchanged; a `learning_review`
+ * token can never verify against either of the other two subject kinds
+ * (the existing `subjectKind` cross-check in `verify`/
+ * `verifyApprovalTokenDurable` already enforces this, unmodified). See
+ * `../learning/learn-command-backend.ts` for the caller that mints/
+ * verifies against this subject kind — `@eo/learning` itself never holds
+ * the signing secret or verifies a signature (see that package's own
+ * `VerifiedApprovalRecord` doc comment for why).
  */
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { JournalStore } from "@eo/journal";
 
-export type ApprovalTokenSubjectKind = "envelope_hash" | "capability_digest";
+export type ApprovalTokenSubjectKind = "envelope_hash" | "capability_digest" | "learning_review";
 
 export interface MintedApprovalToken {
   readonly tokenId: string;

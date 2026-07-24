@@ -14,11 +14,27 @@ import {
   type MintedApprovalToken,
 } from "./token.js";
 
+/** Human-readable label per subject kind — exhaustive over `ApprovalTokenSubjectKind` (a `never` default branch fails to compile if a 4th kind is ever added without a matching label here). */
+function subjectKindLabel(subjectKind: ApprovalTokenSubjectKind): string {
+  switch (subjectKind) {
+    case "envelope_hash":
+      return "authorization envelope";
+    case "capability_digest":
+      return "capability manifest";
+    case "learning_review":
+      return "learning proposal (independent review)";
+    default: {
+      const exhaustive: never = subjectKind;
+      throw new Error(`unknown approval-token subject kind: ${String(exhaustive)}`);
+    }
+  }
+}
+
 export function renderApprovalPrompt(
   subjectKind: ApprovalTokenSubjectKind,
   digest: string,
 ): string {
-  const label = subjectKind === "envelope_hash" ? "authorization envelope" : "capability manifest";
+  const label = subjectKindLabel(subjectKind);
   return (
     `About to approve the following ${label} digest:\n\n` +
     `  ${digest}\n\n` +
