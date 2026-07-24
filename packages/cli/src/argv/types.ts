@@ -49,10 +49,29 @@ export interface EvidenceCommand extends JsonFlag {
 
 export type ConnectionProvider = "jira" | "grafana";
 
+/**
+ * roadmap/19 §Out of scope, line 97: "This phase asserts no CLI flag names
+ * ... as settled — that surface belongs to 09/23. Whoever wires the CLI
+ * should read `JiraConnectionConfig` (this phase) as the contract to
+ * expose, not invent a parallel shape." Accordingly the fields below are
+ * exactly the ones `ExternalConnectionSchema` (02) requires or accepts —
+ * `baseUrl` is mandatory because the schema has no default for it, and the
+ * list/TTL fields are optional because `./parse-command.ts` can derive
+ * safe defaults (redirect origins default to the base URL's own origin;
+ * the TTL to 16's 15-minute `CapabilitySnapshot` default).
+ */
 export interface ConnectionAddCommand extends JsonFlag {
   readonly command: "connection-add";
   readonly provider: ConnectionProvider;
   readonly reference: SecretReference;
+  /** Must be `https://` — `ExternalConnectionSchema` refuses anything else. */
+  readonly baseUrl: string;
+  /** Provider-interpreted opaque string (Jira cloud/datacenter, Grafana cloud/oss/enterprise). */
+  readonly deploymentType?: string;
+  readonly allowedRedirectOrigins: readonly string[];
+  readonly allowedResources: readonly string[];
+  readonly allowedActions: readonly string[];
+  readonly discoveryTtlSeconds: number;
 }
 
 export interface ConnectionListCommand extends JsonFlag {

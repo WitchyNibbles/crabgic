@@ -14,6 +14,7 @@ import type { TrustCommandDependencies } from "@eo/detect";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
 import type { LearningDependencies } from "../learning/learning-dependencies.js";
+import type { ConnectionDependencies } from "../connection/connection-commands.js";
 
 /**
  * roadmap/11-intake-contract-approval.md's `run` backend — kept OPTIONAL for
@@ -74,4 +75,11 @@ export interface CliDependencies {
    * closing a `cli -> learning -> gates -> detect -> cli` dependency cycle.
    */
   readonly trust?: TrustCommandDependencies;
+  /**
+   * roadmap/16-gateway-core.md's `connection add|list|doctor` backend —
+   * kept OPTIONAL for the identical reason the bags above are. roadmap/16
+   * §Out of scope explicitly left the command surface to 09 ("ships it
+   * `NOT_IMPLEMENTED` until wired"); this is the wiring.
+   */
+  readonly connection?: ConnectionDependencies;
 }

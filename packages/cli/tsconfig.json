@@ -11,6 +11,7 @@
   "references": [
     { "path": "../contracts" },
     { "path": "../detect" },
+    { "path": "../gateway" },
     { "path": "../journal" },
     { "path": "../learning" },
     { "path": "../plugin" },

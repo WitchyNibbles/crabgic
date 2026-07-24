@@ -29,6 +29,7 @@
   "dependencies": {
     "@eo/contracts": "0.0.0",
     "@eo/detect": "0.0.0",
+    "@eo/gateway": "0.0.0",
     "@eo/journal": "0.0.0",
     "@eo/learning": "0.0.0",
     "@eo/plugin": "0.0.0",

@@ -10,13 +10,16 @@
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
 import { randomBytes } from "node:crypto";
+import { join } from "node:path";
 import {
   createJournalStore,
   readXdgEnvFromProcess,
   resolveJournalDir,
+  resolveStateRoot,
   type JournalStore,
   type XdgEnv,
 } from "@eo/journal";
+import { FileExternalConnectionStore, probeConnectionReachability } from "@eo/gateway";
 import { ApprovalTokenMinter } from "@eo/contracts";
 import {
   createApprovalLedger,
@@ -37,6 +40,10 @@ import {
 import { deriveProjectHash } from "./project-hash.js";
 import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
 import type { InstallerDependencies } from "./installer/types.js";
+import type { ConnectionDependencies } from "./connection/connection-commands.js";
+
+/** The durable connection store's file name under the project's XDG state root. */
+const CONNECTIONS_FILE_NAME = "connections.json";
 
 export interface BuildRealCliDependenciesOverrides {
   readonly xdgEnv?: XdgEnv;
@@ -46,6 +53,8 @@ export interface BuildRealCliDependenciesOverrides {
   readonly installer?: InstallerDependencies;
   /** roadmap/12's `trust *` bag. Tests inject a tmp-dir-rooted one so no real XDG cache directory is created or read. */
   readonly trust?: TrustCommandDependencies;
+  /** roadmap/16's `connection *` bag. Tests inject one with a fake probe so no real network I/O occurs. */
+  readonly connection?: ConnectionDependencies;
   /** Spawn-on-demand knobs for `connectClient` (roadmap/05 §Lifecycle). Tests inject `spawnDaemon` plus tight retry bounds so no real daemon process is forked; production takes the defaults. */
   readonly supervisorSpawn?: {
     readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
@@ -93,6 +102,29 @@ export function buildRealCliDependencies(
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
     installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal),
+    connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
+  };
+}
+
+/**
+ * roadmap/16's `connection add|list|doctor` bag. The repository is the
+ * DURABLE, file-backed one: each `connection` invocation is its own
+ * short-lived process, so `InMemoryExternalConnectionStore` would drop
+ * every connection the instant `connection add` exited.
+ *
+ * Stored under the project's XDG state root (not cache) because a
+ * connection an operator configured is durable state, not a regenerable
+ * artifact — `resolveCacheRoot` would invite cleaners to delete it.
+ */
+function buildRealConnectionDependencies(
+  xdgEnv: XdgEnv,
+  projectHash: string,
+): ConnectionDependencies {
+  return {
+    repository: new FileExternalConnectionStore(
+      join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
+    ),
+    probe: (connection) => probeConnectionReachability(connection),
   };
 }
 

@@ -10,7 +10,7 @@
  */
 import { CliUsageError } from "../errors.js";
 import { parseSecretReference } from "./secret-reference.js";
-import { readBooleanFlag, readValueFlag, tokenize } from "./tokenize.js";
+import { readBooleanFlag, readValueFlag, tokenize, type Tokenized } from "./tokenize.js";
 import type { ConnectionProvider, ParsedCommand } from "./types.js";
 
 function requirePositional(positionals: readonly string[], index: number, label: string): string {
@@ -21,10 +21,64 @@ function requirePositional(positionals: readonly string[], index: number, label:
   return value;
 }
 
+/** 16's `CapabilitySnapshot` cache default (15 minutes), used when `connection add` names no explicit `--discovery-ttl`. */
+const DEFAULT_DISCOVERY_TTL_SECONDS = 15 * 60;
+
+/** Rejects a non-https base URL at the PARSE boundary, so a downgraded origin never reaches the SSRF-guarded HTTP client (`ExternalConnectionSchema` refuses it too — this just fails earlier, with a usage error rather than a schema dump). */
+function parseHttpsUrl(raw: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new CliUsageError(`flag "--base-url" is not a valid URL: "${raw}"`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new CliUsageError(`flag "--base-url" must use https:// (got "${parsed.protocol}//")`);
+  }
+  return raw;
+}
+
+/**
+ * Comma-separated list flag. `./tokenize.ts`'s flag map is last-wins and
+ * carries no repeatable-flag support; widening that well-tested phase-09
+ * primitive for these three flags alone is not worth the blast radius, so
+ * the list flags take `--allow-resource=a,b,c` instead.
+ */
+function parseCsvFlag(tokenized: Tokenized, name: string): readonly string[] | undefined {
+  const raw = readValueFlag(tokenized, name);
+  if (raw === undefined) return undefined;
+  const items = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  if (items.length === 0) {
+    throw new CliUsageError(`flag "--${name}" was supplied with no non-empty values`);
+  }
+  return items;
+}
+
+function parsePositiveIntFlag(tokenized: Tokenized, name: string): number | undefined {
+  const raw = readValueFlag(tokenized, name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new CliUsageError(`flag "--${name}" must be a positive integer (got "${raw}")`);
+  }
+  return value;
+}
+
 function parseConnection(rest: readonly string[]): ParsedCommand {
   const [verb, ...remainder] = rest;
   if (verb === "add") {
-    const t = tokenize(remainder, ["reference"]);
+    const t = tokenize(remainder, [
+      "reference",
+      "base-url",
+      "deployment",
+      "allow-redirect",
+      "allow-resource",
+      "allow-action",
+      "discovery-ttl",
+    ]);
     const provider = requirePositional(t.positionals, 0, "provider (jira|grafana)");
     if (provider !== "jira" && provider !== "grafana") {
       throw new CliUsageError(`unknown connection provider "${provider}" (expected jira|grafana)`);
@@ -34,10 +88,28 @@ function parseConnection(rest: readonly string[]): ParsedCommand {
       throw new CliUsageError('"connection add" requires --reference <secret-reference>');
     }
     const reference = parseSecretReference("--reference", rawReference);
+
+    const rawBaseUrl = readValueFlag(t, "base-url");
+    if (rawBaseUrl === undefined) {
+      throw new CliUsageError('"connection add" requires --base-url <https-url>');
+    }
+    const baseUrl = parseHttpsUrl(rawBaseUrl);
+    const deploymentType = readValueFlag(t, "deployment");
+
     return {
       command: "connection-add",
       provider: provider as ConnectionProvider,
       reference,
+      baseUrl,
+      ...(deploymentType !== undefined ? { deploymentType } : {}),
+      // Defaults to the base URL's OWN origin: a connection that never
+      // redirects off its own host is the safe default, and widening it is
+      // an explicit operator act (roadmap/16's SSRF-guard allowlist).
+      allowedRedirectOrigins: parseCsvFlag(t, "allow-redirect") ?? [new URL(baseUrl).origin],
+      allowedResources: parseCsvFlag(t, "allow-resource") ?? [],
+      allowedActions: parseCsvFlag(t, "allow-action") ?? [],
+      discoveryTtlSeconds:
+        parsePositiveIntFlag(t, "discovery-ttl") ?? DEFAULT_DISCOVERY_TTL_SECONDS,
       json: readBooleanFlag(t, "json"),
     };
   }

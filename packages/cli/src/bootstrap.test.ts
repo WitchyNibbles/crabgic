@@ -127,4 +127,34 @@ describe("buildRealCliDependencies", () => {
       }),
     ).not.toThrow();
   });
+
+  /**
+   * Same failure mode as the `trust` case above, plus a durability one: the
+   * repository must be the FILE-backed store, because `connection add` and
+   * `connection list` are separate processes. Wiring the in-memory store
+   * here would pass every unit test and still lose every connection an
+   * operator added.
+   */
+  it("wires the real, DURABLE connection backend by default — a connection added in one process survives into the next", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "conn-hash" });
+    expect(deps.connection).toBeDefined();
+
+    const created = await deps.connection!.repository.create({
+      provider: "jira",
+      baseUrl: "https://example.atlassian.net",
+      allowedRedirectOrigins: ["https://example.atlassian.net"],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "JIRA_TOKEN" },
+    });
+
+    // A SECOND bag built exactly as the next CLI invocation would build it,
+    // against the same HOME — the connection must still be there.
+    const nextInvocation = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "conn-hash",
+    });
+    expect(await nextInvocation.connection!.repository.get(created.id)).toEqual(created);
+  });
 });

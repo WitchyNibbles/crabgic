@@ -44,7 +44,7 @@ export const COMMAND_HELP: Readonly<Record<string, CommandHelpEntry>> = {
     summary: "Show every EvidenceRecord journaled for a ChangeSet.",
   },
   connection: {
-    usage: `${BINARY_NAME} connection add jira|grafana / list / doctor <id> / capabilities <id>`,
+    usage: `${BINARY_NAME} connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>`,
     summary: "Manage external connector connections.",
   },
   trust: {

@@ -19,6 +19,10 @@ export {
 } from "./connection-store/external-connection-store.js";
 export type { ExternalConnectionRepository } from "./connection-store/external-connection-store.js";
 
+// Durable, file-backed repository — what 09's `connection *` commands need,
+// since each runs in its own short-lived process (2026-07-25).
+export { FileExternalConnectionStore } from "./connection-store/file-external-connection-store.js";
+
 export {
   buildHttpClientForConnection,
   buildAllowlistForConnection,

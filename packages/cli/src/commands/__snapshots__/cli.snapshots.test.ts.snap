@@ -64,7 +64,7 @@ exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = 
     "summary": "Show every EvidenceRecord journaled for a ChangeSet."
   },
   "connection": {
-    "usage": "engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>",
+    "usage": "engineering-orchestrator connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>",
     "summary": "Manage external connector connections."
   },
   "trust": {
@@ -108,7 +108,7 @@ exports[`help text snapshots > top-level help (human) is snapshot-stable 1`] = `
       Cancel a run or a single task within it.
   engineering-orchestrator evidence <change-set-id>
       Show every EvidenceRecord journaled for a ChangeSet.
-  engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>
+  engineering-orchestrator connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>
       Manage external connector connections.
   engineering-orchestrator trust review|approve|revoke
       Review and approve high-impact capability grants.
@@ -130,7 +130,7 @@ exports[`help text snapshots > topic help for every declared command is snapshot
 `;
 
 exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-connection 1`] = `
-"engineering-orchestrator connection add jira|grafana / list / doctor <id> / capabilities <id>
+"engineering-orchestrator connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>
     Manage external connector connections.
 "
 `;

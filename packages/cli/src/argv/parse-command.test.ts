@@ -58,13 +58,103 @@ describe("parseCommand", () => {
     expect(() => parseCommand(["evidence"])).toThrow(CliUsageError);
   });
 
-  it("parses connection add with a valid secret reference", () => {
-    expect(parseCommand(["connection", "add", "jira", "--reference", "env:JIRA_TOKEN"])).toEqual({
+  it("parses connection add with a valid secret reference, defaulting the redirect origin to the base URL's own origin", () => {
+    expect(
+      parseCommand([
+        "connection",
+        "add",
+        "jira",
+        "--reference",
+        "env:JIRA_TOKEN",
+        "--base-url",
+        "https://example.atlassian.net",
+      ]),
+    ).toEqual({
       command: "connection-add",
       provider: "jira",
       reference: { raw: "env:JIRA_TOKEN" },
+      baseUrl: "https://example.atlassian.net",
+      // Never widened implicitly: a connection that redirects only to its
+      // own origin is the safe default for roadmap/16's SSRF allowlist.
+      allowedRedirectOrigins: ["https://example.atlassian.net"],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
       json: false,
     });
+  });
+
+  it("requires --base-url on connection add — ExternalConnectionSchema has no default for it", () => {
+    expect(() =>
+      parseCommand(["connection", "add", "jira", "--reference", "env:JIRA_TOKEN"]),
+    ).toThrow(CliUsageError);
+  });
+
+  it("rejects a non-https --base-url at the parse boundary, before it can reach the HTTP client", () => {
+    expect(() =>
+      parseCommand([
+        "connection",
+        "add",
+        "jira",
+        "--reference",
+        "env:JIRA_TOKEN",
+        "--base-url",
+        "http://insecure.test",
+      ]),
+    ).toThrow(CliUsageError);
+  });
+
+  it("parses the comma-separated list flags and an explicit discovery TTL", () => {
+    expect(
+      parseCommand([
+        "connection",
+        "add",
+        "grafana",
+        "--reference",
+        "env:GRAFANA_TOKEN",
+        "--base-url",
+        "https://grafana.test",
+        "--deployment",
+        "oss",
+        "--allow-redirect",
+        "https://grafana.test,https://cdn.grafana.test",
+        "--allow-resource",
+        "dashboard,alert-rule",
+        "--allow-action",
+        "read",
+        "--discovery-ttl",
+        "60",
+      ]),
+    ).toEqual({
+      command: "connection-add",
+      provider: "grafana",
+      reference: { raw: "env:GRAFANA_TOKEN" },
+      baseUrl: "https://grafana.test",
+      deploymentType: "oss",
+      allowedRedirectOrigins: ["https://grafana.test", "https://cdn.grafana.test"],
+      allowedResources: ["dashboard", "alert-rule"],
+      allowedActions: ["read"],
+      discoveryTtlSeconds: 60,
+      json: false,
+    });
+  });
+
+  it("rejects a non-positive or non-integer --discovery-ttl", () => {
+    for (const ttl of ["0", "-5", "1.5", "soon"]) {
+      expect(() =>
+        parseCommand([
+          "connection",
+          "add",
+          "jira",
+          "--reference",
+          "env:JIRA_TOKEN",
+          "--base-url",
+          "https://example.atlassian.net",
+          "--discovery-ttl",
+          ttl,
+        ]),
+      ).toThrow(CliUsageError);
+    }
   });
 
   it("rejects connection add with a literal secret value", () => {

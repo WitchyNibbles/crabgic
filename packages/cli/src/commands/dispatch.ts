@@ -32,6 +32,11 @@ import {
   runLearnRollbackCommand,
 } from "../learning/learn-command-backend.js";
 import { runTrustApproveCommand, runTrustReviewCommand, runTrustRevokeCommand } from "@eo/detect";
+import {
+  runConnectionAddCommand,
+  runConnectionDoctorCommand,
+  runConnectionListCommand,
+} from "../connection/connection-commands.js";
 import { renderHelp } from "./help.js";
 
 export async function dispatchCommand(
@@ -118,14 +123,32 @@ export async function dispatchCommand(
           ? runTrustRevokeCommand(command, deps.trust)
           : notImplementedResult(command.command, command.json);
 
+      // roadmap/16's `ExternalConnection` store + reachability probe, wired
+      // through `../connection/connection-commands.ts` when `deps.connection`
+      // is supplied — same optional-bag convention as above.
+      case "connection-add":
+        return deps.connection !== undefined
+          ? await runConnectionAddCommand(command, deps.connection)
+          : notImplementedResult(command.command, command.json);
+      case "connection-list":
+        return deps.connection !== undefined
+          ? await runConnectionListCommand(command, deps.connection)
+          : notImplementedResult(command.command, command.json);
+      case "connection-doctor":
+        return deps.connection !== undefined
+          ? await runConnectionDoctorCommand(command, deps.connection)
+          : notImplementedResult(command.command, command.json);
+
       // Every command below has no backend wired at this phase's own build
       // time (roadmap/09 §Out of scope names the owning later phase for
       // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
       // behavior here, not a gap.
+      //
+      // `connection-capabilities` specifically: live CapabilitySnapshot
+      // discovery has no production HTTP plumbing in either connector
+      // (phase 19/20 gap) — see `../connection/connection-commands.ts`'s
+      // own doc comment for exactly what is missing.
       case "resume":
-      case "connection-add":
-      case "connection-list":
-      case "connection-doctor":
       case "connection-capabilities":
         return notImplementedResult(command.command, command.json);
 
