@@ -5,6 +5,7 @@
  * `argv` is turned into one of these, and `../commands/dispatch.ts` is the
  * sole place one of these is turned into a `CommandResult`.
  */
+import type { TrustApproveCommand, TrustReviewCommand, TrustRevokeCommand } from "@eo/contracts";
 import type { SecretReference } from "./secret-reference.js";
 
 interface JsonFlag {
@@ -68,19 +69,14 @@ export interface ConnectionCapabilitiesCommand extends JsonFlag {
   readonly connectionId: string;
 }
 
-export interface TrustReviewCommand extends JsonFlag {
-  readonly command: "trust-review";
-}
-
-export interface TrustApproveCommand extends JsonFlag {
-  readonly command: "trust-approve";
-  readonly digest: string;
-}
-
-export interface TrustRevokeCommand extends JsonFlag {
-  readonly command: "trust-revoke";
-  readonly tokenId: string;
-}
+/**
+ * The three `trust *` shapes are the only members of this union whose
+ * backend lives outside this package (phase 12 owns them, in
+ * `@eo/detect`), so they are declared in `@eo/contracts` and re-exported
+ * here — see `packages/contracts/src/cli-surface/trust-commands.ts`. They
+ * remain ordinary members of `ParsedCommand` below; nothing else changes.
+ */
+export type { TrustApproveCommand, TrustReviewCommand, TrustRevokeCommand };
 
 export interface LearnListCommand extends JsonFlag {
   readonly command: "learn-list";

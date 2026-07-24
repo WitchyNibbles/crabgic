@@ -31,7 +31,8 @@
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:release-notes": "node scripts/check-release-notes.mjs",
     "check:engine-pin": "node scripts/check-engine-pin.mjs",
-    "check:all": "npm run check:workspace-count && npm run check:hygiene && npm run check:release-notes && npm run check:engine-pin"
+    "check:all": "npm run check:workspace-count && npm run check:package-graph && npm run check:hygiene && npm run check:release-notes && npm run check:engine-pin",
+    "check:package-graph": "node scripts/check-package-graph-acyclic.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

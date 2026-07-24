@@ -41,8 +41,22 @@ export * from "./learning/learning-proposal-state.js";
 export * from "./journal/journal-entry-type.js";
 
 // GATEWAY_MCP_SERVER_NAME (interface-ledger Gap 11 — see ./gateway/server-name.ts
-// for the sole-definition-site scanner this file must not trip).
+// for the sole-definition-site scanner this file must not trip), plus the
+// MCP tool registry hosted under that name (relocated from packages/cli,
+// 2026-07-25 — see ./gateway/tool-registry.ts for why).
 export * from "./gateway/server-name.js";
+export * from "./gateway/tool-registry.js";
+
+// Human-only approval-token minting primitive, shared by 09/11/12/22
+// (relocated from packages/cli, 2026-07-25 — see ./approval/token.ts).
+export * from "./approval/token.js";
+
+// The CLI surface every command backend builds against, including the
+// backends implemented outside packages/cli (relocated 2026-07-25 — see
+// ./cli-surface/exit-codes.ts for why).
+export * from "./cli-surface/exit-codes.js";
+export * from "./cli-surface/command-result.js";
+export * from "./cli-surface/trust-commands.js";
 
 // Config precedence resolver + its security-key declarations.
 export * from "./config/security-keys.js";

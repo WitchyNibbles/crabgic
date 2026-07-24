@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalTokenMinter } from "engineering-orchestrator";
+import { ApprovalTokenMinter } from "@eo/contracts";
 import { freshTmpDir, removeDirTree } from "../test-support/fixture-repo.js";
 import { createCapabilityStore } from "../capability-store/store.js";
 import { createApprovalLedger } from "../capability-store/approval-ledger.js";

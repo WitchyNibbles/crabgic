@@ -13,21 +13,28 @@
  * package needed to WRITE a journal entry directly (every write went
  * through the supervisor). `trust approve`'s `ApprovalTokenMinter` needs
  * `appendEntry` to journal `approval_token_mint` (mirroring 09's OWN
- * `approval/token.ts`, which takes exactly this same `Pick<JournalStore,
- * "appendEntry">` shape) — widening `CliDependencies` itself is a
- * `packages/cli` edit this task is barred from making unilaterally. The
- * two bags are structurally compatible (a caller wiring both together
- * needs only to add `store`/`minter`/`approvalLedger` alongside 09's
- * existing fields), so reconciling them is a small, low-risk follow-up
- * once this package is allowed to touch `packages/cli` again.
+ * `approval/token.ts`, which takes exactly this same one-method sink
+ * shape). The two bags stay structurally compatible: a caller wiring both
+ * together needs only to add `store`/`minter`/`approvalLedger` alongside
+ * 09's existing fields.
+ *
+ * **Resolved (2026-07-25):** the original note here said reconciling the
+ * two bags was blocked "once this package is allowed to touch
+ * `packages/cli` again". That framing is obsolete — the primitives this
+ * bag needs (`ApprovalTokenMinter`, and the `CommandResult`/`EXIT_*`
+ * vocabulary the three backends return) were relocated to `@eo/contracts`,
+ * so `@eo/detect` no longer depends on the CLI package in either
+ * direction. This bag stays distinct from `CliDependencies` on the merits
+ * — it names capability-store collaborators that mean nothing to the other
+ * commands — not because of a dependency restriction.
  */
-import type { ApprovalTokenMinter } from "engineering-orchestrator";
+import type { ApprovalTokenMinter } from "@eo/contracts";
 import type { ApprovalLedger } from "../capability-store/approval-ledger.js";
 import type { CapabilityStore } from "../capability-store/store.js";
 
 export interface TrustCommandDependencies {
   readonly store: CapabilityStore;
-  /** A fully-configured minter — if durable journaling of `approval_token_mint` is desired, construct it with `ApprovalTokenMinterOptions.journal` already wired (mirroring `packages/cli/src/approval/token.ts`'s own convention); this bag does not re-journal on its own. */
+  /** A fully-configured minter — if durable journaling of `approval_token_mint` is desired, construct it with `ApprovalTokenMinterOptions.journal` already wired (mirroring `@eo/contracts`'s `approval/token.ts` convention); this bag does not re-journal on its own. */
   readonly minter: ApprovalTokenMinter;
   readonly approvalLedger: ApprovalLedger;
 }

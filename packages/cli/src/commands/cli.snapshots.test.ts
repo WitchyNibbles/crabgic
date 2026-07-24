@@ -77,6 +77,24 @@ describe("gateway mcp — exact stdio boot invocation (byte-compared against 10'
   it("package.json's own bin entry is keyed exactly BINARY_NAME — the literal 10's .mcp.json command field must match", async () => {
     const raw = await readFile(join(PACKAGE_ROOT, "package.json"), "utf8");
     const pkg = JSON.parse(raw) as { readonly bin?: Record<string, string> };
-    expect(pkg.bin).toEqual({ [BINARY_NAME]: "./dist/bin.js" });
+    expect(pkg.bin?.[BINARY_NAME]).toBe("./dist/bin.js");
+  });
+
+  /**
+   * The supervisor daemon's entry point moved here from `packages/supervisor`
+   * (2026-07-25) because the real `ClaudeEngineAdapter` it must construct
+   * lives in `@eo/engine-claude`, which already depends on `@eo/supervisor` —
+   * composing them there would have been a cycle. It is a SECOND, separately
+   * named binary: `engineering-orchestrator` itself is untouched, so 10's
+   * `.mcp.json` command field still resolves exactly as asserted above.
+   * Pinned here so a third bin entry cannot appear unnoticed.
+   */
+  it("declares exactly the two expected bin entries — the CLI and the separately-named supervisor daemon", async () => {
+    const raw = await readFile(join(PACKAGE_ROOT, "package.json"), "utf8");
+    const pkg = JSON.parse(raw) as { readonly bin?: Record<string, string> };
+    expect(pkg.bin).toEqual({
+      [BINARY_NAME]: "./dist/bin.js",
+      [`${BINARY_NAME}-supervisord`]: "./dist/bin/supervisord.js",
+    });
   });
 });

@@ -2,21 +2,24 @@
  * roadmap/12 exit criterion: "`capability.audit`/`capability.approve`
  * resolve over the shared `GATEWAY_MCP_SERVER_NAME` registry against a stub MCP
  * client." Reuses 09's real `createToolRegistry`/`startGatewayMcpServer`
- * (`engineering-orchestrator`) — this is the SAME registry/stdio-server
- * `gateway mcp` boots in production, not a reimplementation.
+ * — this is the SAME registry/stdio-server `gateway mcp` boots in
+ * production, not a reimplementation.
+ *
+ * Lives in `packages/cli` rather than `packages/detect` (2026-07-25): it is
+ * an integration test across the 09/12 seam, and it is the composition side
+ * that owns both halves. Keeping it in `packages/detect` would have forced
+ * that package to depend on the CLI's stdio server, closing the
+ * `cli -> learning -> gates -> detect -> cli` cycle this relocation broke.
  */
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  createToolRegistry,
-  startGatewayMcpServer,
-  type GatewayMcpServerHandle,
-} from "engineering-orchestrator";
-import {
   CAPABILITY_AUDIT_TOOL,
   CAPABILITY_APPROVE_TOOL,
   registerCapabilityTools,
-} from "./tool-definitions.js";
+} from "@eo/detect";
+import { createToolRegistry } from "./registry.js";
+import { startGatewayMcpServer, type GatewayMcpServerHandle } from "./stdio-server.js";
 
 interface StubMcpClient {
   request(method: string): Promise<{ tools?: readonly { name: string }[] }>;

@@ -8,7 +8,7 @@
  * revoke find WHICH capability-store entry to flip back.
  *
  * Deliberately independent of `ApprovalTokenMinter`'s own internal
- * single-use bookkeeping (`engineering-orchestrator`) — that primitive
+ * single-use bookkeeping (`@eo/contracts`) — that primitive
  * forgets a token once verified/expired (by design, per its own doc
  * comment), so it cannot answer "which digest did this tokenId belong
  * to?" after the fact. This ledger's own record persists regardless.

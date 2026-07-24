@@ -6,12 +6,7 @@
  * what is `pending` (awaiting `trust approve`), already `approved`, or
  * `rejected`.
  */
-import {
-  EXIT_OK,
-  formatJson,
-  type CommandResult,
-  type TrustReviewCommand,
-} from "engineering-orchestrator";
+import { EXIT_OK, formatJson, type CommandResult, type TrustReviewCommand } from "@eo/contracts";
 import type { TrustCommandDependencies } from "./dependencies.js";
 
 function renderEntryLine(entry: {

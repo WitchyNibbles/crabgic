@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createToolRegistry, DuplicateToolError } from "./registry.js";
+import { createToolRegistry, DuplicateToolError } from "./tool-registry.js";
 
 describe("createToolRegistry", () => {
   it("lists zero tools for a freshly-created registry", () => {
