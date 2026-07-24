@@ -1,0 +1,44 @@
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+      Coverage enabled with v8
+
+
+ Test Files  30 passed (30)
+      Tests  264 passed (264)
+   Start at  09:46:13
+   Duration  2.99s (transform 10.63s, setup 0ms, import 17.10s, tests 1.82s, environment 5ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.95 |    92.49 |   99.37 |   99.26 |                   
+ src               |     100 |     87.5 |     100 |     100 |                   
+  ...gistration.ts |     100 |       50 |     100 |     100 | 64                
+ src/annotations   |   85.71 |    83.33 |     100 |     100 |                   
+  ...n-renderer.ts |   85.71 |    83.33 |     100 |     100 | 31                
+ src/fixtures      |      98 |    81.25 |   93.75 |      98 |                   
+  ...ion-matrix.ts |   96.15 |       70 |   85.71 |   96.15 | 45                
+ src/mutation      |   98.64 |    96.96 |     100 |   99.26 |                   
+  ...ith-rebase.ts |     100 |       90 |     100 |     100 | 86                
+  ...ply-client.ts |   97.18 |       95 |     100 |   98.38 | 43                
+ src/query         |   98.03 |    95.83 |     100 |   97.91 |                   
+  query-layer.ts   |   98.03 |    95.83 |     100 |   97.91 | 91                
+ ...es/definitions |   99.23 |    80.59 |     100 |    99.2 |                   
+  alert-rule.ts    |     100 |       75 |     100 |     100 | 41                
+  annotation.ts    |     100 |     87.5 |     100 |     100 | 82                
+  contact-point.ts |     100 |       75 |     100 |     100 | 63                
+  dashboard.ts     |     100 |       75 |     100 |     100 | 53,63-64,71       
+  folder.ts        |     100 |    83.33 |     100 |     100 | 41                
+  mute-timing.ts   |     100 |       75 |     100 |     100 | 41                
+  ...n-template.ts |     100 |    83.33 |     100 |     100 | 63                
+  shared.ts        |   94.11 |    84.21 |     100 |   93.75 | 27                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.95% ( 570/576 )
+Branches     : 92.49% ( 271/293 )
+Functions    : 99.37% ( 159/160 )
+Lines        : 99.26% ( 539/543 )
+================================================================================
+EXIT=0
