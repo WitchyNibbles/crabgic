@@ -36,14 +36,49 @@ function renderRunRecord(run: RunRecordLike | undefined, runId: string): string 
   return `run ${run.runId}: ${run.runState} (changeSet ${run.changeSetId}, updated ${run.updatedAt})\n`;
 }
 
-/** `status [run-id] [--watch] [--json]`. Listing every run (no `run-id` supplied) has no backing UDS operation yet (05's router has no `registry.runs.list`) — that shape is `NOT_IMPLEMENTED` until wired; a specific `run-id` is fully wired via `run.status`. */
+/**
+ * The no-`run-id` shape of `status`: every run the daemon knows about.
+ * `--watch` is deliberately not honored here — 05 emits per-run events, not
+ * a registry-wide stream, so "watch everything" would be a poll loop
+ * pretending to be a subscription. Watching a specific run still works.
+ */
+async function runStatusAllCommand(
+  cmd: StatusCommand,
+  deps: CliDependencies,
+): Promise<CommandResult> {
+  const client = await deps.connectClient();
+  try {
+    const { runs } = await client.request<{ runs: readonly RunRecordLike[] }>(
+      "registry.runs.list",
+      {},
+    );
+
+    if (cmd.json) return { exitCode: EXIT_OK, stdout: formatJson({ runs }) };
+    if (runs.length === 0) return { exitCode: EXIT_OK, stdout: "no runs\n" };
+    return {
+      exitCode: EXIT_OK,
+      stdout: runs.map((run) => renderRunRecord(run, run.runId)).join(""),
+    };
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * `status [run-id] [--watch] [--json]`. Both shapes are wired: a specific
+ * `run-id` goes through `run.status`, and the no-argument "every run" form
+ * through `registry.runs.list` (added to 05's router 2026-07-25 — before
+ * that it had no backing UDS operation at all, so this branch could only
+ * return `NOT_IMPLEMENTED`, leaving an operator who had not written down a
+ * run id with no way to find one).
+ */
 export async function runStatusCommand(
   cmd: StatusCommand,
   deps: CliDependencies,
   options: { readonly watchSignal?: AbortSignal; readonly emitLine?: (line: string) => void } = {},
 ): Promise<CommandResult> {
   if (cmd.runId === undefined) {
-    return notImplementedResult("status (all runs)", cmd.json);
+    return runStatusAllCommand(cmd, deps);
   }
 
   const client = await deps.connectClient();

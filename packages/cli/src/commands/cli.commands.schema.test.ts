@@ -123,10 +123,21 @@ describe("dispatchCommand — real backends", () => {
     expect(result.stdout).toContain("unknown");
   });
 
-  it("status with no run-id: NOT_IMPLEMENTED (no registry.runs.list op wired yet)", async () => {
+  /**
+   * Was NOT_IMPLEMENTED until 2026-07-25, when `registry.runs.list` was
+   * added to 05's router — without it an operator who had not written a run
+   * id down had no way to discover one.
+   */
+  it("status with no run-id lists every run over registry.runs.list — empty but valid on a fresh daemon", async () => {
     const result = await dispatchCommand({ command: "status", watch: false, json: true }, deps);
-    expect(result.exitCode).toBe(EXIT_NOT_IMPLEMENTED);
-    expect(JSON.parse(result.stdout!)).toMatchObject({ status: "NOT_IMPLEMENTED" });
+    expect(result.exitCode).toBe(EXIT_OK);
+    expect(JSON.parse(result.stdout!)).toEqual({ runs: [] });
+  });
+
+  it("status with no run-id renders a human-readable empty state in non-json mode", async () => {
+    const result = await dispatchCommand({ command: "status", watch: false, json: false }, deps);
+    expect(result.exitCode).toBe(EXIT_OK);
+    expect(result.stdout).toBe("no runs\n");
   });
 
   it("cancel: an unknown run is reported as not-accepted, exit OK, --json shape", async () => {

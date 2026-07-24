@@ -20,6 +20,8 @@ import {
   RegistryChangeSetGetResultSchema,
   RegistryChangeSetListParamsSchema,
   RegistryChangeSetListResultSchema,
+  RegistryRunsListParamsSchema,
+  RegistryRunsListResultSchema,
   RegistryWorkUnitGetParamsSchema,
   RegistryWorkUnitGetResultSchema,
   RegistryWorkUnitListParamsSchema,
@@ -86,6 +88,13 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
       const changeSet = deps.changeSets.get(changeSetId);
       return Promise.resolve({ ...(changeSet !== undefined ? { changeSet } : {}) });
     },
+  );
+
+  router.register(
+    "registry.runs.list",
+    RegistryRunsListParamsSchema,
+    RegistryRunsListResultSchema,
+    () => Promise.resolve({ runs: deps.runs.list() }),
   );
 
   router.register(

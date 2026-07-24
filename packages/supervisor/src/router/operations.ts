@@ -89,6 +89,23 @@ export const RegistryChangeSetGetResultSchema = z
   .object({ changeSet: ChangeSetSchema.optional() })
   .strict();
 
+/**
+ * Lists every run the daemon currently knows about — what `status` with no
+ * run-id needs (roadmap/09 §Commands: "`status [run-id]`"). Added 2026-07-25:
+ * without it the CLI could only ever ask about a run whose id the operator
+ * already had, so the no-argument form of the command was unimplementable
+ * and returned NOT_IMPLEMENTED.
+ *
+ * This is an INTERNAL UDS operation, not a gateway MCP tool: the interface
+ * ledger's Gap 1 fixes the MCP tool surface (and forwards only
+ * `run.status`/`run.cancel` over UDS) and never enumerates the `registry.*`
+ * family, so adding a member here changes no ledger ruling. It mirrors the
+ * existing `registry.changeSets.list`/`registry.workUnits.list` shape
+ * exactly, and returns the same `RunRecord` that `run.status` already does.
+ */
+export const RegistryRunsListParamsSchema = EmptyParamsSchema;
+export const RegistryRunsListResultSchema = z.object({ runs: z.array(RunRecordSchema) }).strict();
+
 export const RegistryChangeSetListParamsSchema = EmptyParamsSchema;
 export const RegistryChangeSetListResultSchema = z
   .object({ changeSets: z.array(ChangeSetSchema) })
@@ -137,6 +154,7 @@ export const WorkerReapOrphansResultSchema = z
 export const SUPERVISOR_OPERATIONS = [
   "run.status",
   "run.cancel",
+  "registry.runs.list",
   "registry.changeSets.get",
   "registry.changeSets.list",
   "registry.workUnits.list",
