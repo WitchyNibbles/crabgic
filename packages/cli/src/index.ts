@@ -19,6 +19,8 @@ export * from "./argv/tokenize.js";
 
 // ---- Typed UDS client (Interfaces produced item 2) ----
 export * from "./uds-client/client.js";
+// ---- Spawn-on-demand daemon connection (roadmap/05 §Lifecycle, wired in the phase-23 final pass) ----
+export * from "./uds-client/ensure-supervisor.js";
 
 // ---- gateway mcp: extensible tool registry + stdio boot (Gap 1/Gap 2) ----
 export * from "./gateway-mcp/registry.js";

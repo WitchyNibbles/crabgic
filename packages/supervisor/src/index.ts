@@ -73,6 +73,10 @@ export * from "./idle-budget/heartbeat-scheduler.js";
 // ---- The UDS control-plane server itself: peer-auth -> handshake -> router dispatch ----
 export * from "./socket/uds-server.js";
 
+// ---- Daemon composition root (phase-23 final wiring): news up journal + registries + recovery + orphan-reap + router + UDS server into a live daemon ----
+export * from "./compose/compose-supervisor.js";
+export * from "./compose/boot-supervisor.js";
+
 // ---- Intake, IntentContract, approval-envelope flow (roadmap/11) ----
 export * from "./intake/canonical-hash.js";
 export * from "./intake/stable-id.js";

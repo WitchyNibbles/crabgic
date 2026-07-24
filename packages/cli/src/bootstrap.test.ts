@@ -13,6 +13,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildRealCliDependencies } from "./bootstrap.js";
+import { SupervisorUnavailableError } from "./errors.js";
+import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
 
 let home: string;
 
@@ -61,6 +63,42 @@ describe("buildRealCliDependencies", () => {
     const deps = buildRealCliDependencies({ xdgEnv: { HOME: home } });
     expect(deps.projectHash).toBeDefined();
     expect(deps.journal).toBeDefined();
+    expect(typeof deps.connectClient).toBe("function");
+  });
+
+  /**
+   * roadmap/05-supervisor-daemon.md §Lifecycle: the daemon is "started on
+   * demand by the CLI (09)". Until this wiring, `connectClient` called
+   * `connectUdsClient` directly, so a project with no live daemon simply
+   * failed with `SupervisorUnavailableError` and NOTHING ever started one.
+   * These two prove the shipped `connectClient` now routes through
+   * `ensureSupervisorConnection`: a real connect attempt against a real
+   * (absent) socket path, one spawn, bounded retries, and the original
+   * unavailable error once the budget is spent.
+   */
+  it("spawns the daemon on demand — once — when no socket is serving the project, passing the derived projectHash", async () => {
+    const spawnCalls: SpawnSupervisorDaemonOptions[] = [];
+    const deps = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "spawn-hash",
+      supervisorSpawn: {
+        spawnDaemon: (options) => {
+          spawnCalls.push(options);
+        },
+        maxAttempts: 3,
+        retryDelayMs: 1,
+      },
+    });
+
+    // No daemon will ever come up (the fake spawner starts nothing), so the
+    // call exhausts its budget and rethrows the unavailable error verbatim.
+    await expect(deps.connectClient()).rejects.toBeInstanceOf(SupervisorUnavailableError);
+    expect(spawnCalls).toEqual([{ projectHash: "spawn-hash" }]);
+  });
+
+  it("defaults to the real detached spawner when no override is supplied", () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "default-hash" });
+    // Wired, not invoked: actually calling it here would fork a real daemon.
     expect(typeof deps.connectClient).toBe("function");
   });
 });

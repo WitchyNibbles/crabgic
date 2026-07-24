@@ -20,6 +20,11 @@ import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
 import type { CliDependencies } from "./commands/types.js";
 import { connectUdsClient } from "./uds-client/client.js";
+import {
+  ensureSupervisorConnection,
+  spawnSupervisorDaemon,
+  type SpawnSupervisorDaemonOptions,
+} from "./uds-client/ensure-supervisor.js";
 import { deriveProjectHash } from "./project-hash.js";
 import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
 import type { InstallerDependencies } from "./installer/types.js";
@@ -30,6 +35,12 @@ export interface BuildRealCliDependenciesOverrides {
   readonly resolveAuthState?: AuthProbeFn;
   /** Defaults to `process.cwd()`'s own real installer wiring (roadmap/10-plugin-and-installer.md) — `../commands/dispatch.ts` only invokes it for `install`/`upgrade`/`uninstall`. */
   readonly installer?: InstallerDependencies;
+  /** Spawn-on-demand knobs for `connectClient` (roadmap/05 §Lifecycle). Tests inject `spawnDaemon` plus tight retry bounds so no real daemon process is forked; production takes the defaults. */
+  readonly supervisorSpawn?: {
+    readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
+    readonly maxAttempts?: number;
+    readonly retryDelayMs?: number;
+  };
 }
 
 export function buildRealCliDependencies(
@@ -40,8 +51,26 @@ export function buildRealCliDependencies(
   const socketPath = resolveSupervisorSocketPath(xdgEnv, projectHash);
   const journal = createJournalStore({ journalDir: resolveJournalDir(xdgEnv, projectHash) });
 
+  const supervisorSpawn = overrides.supervisorSpawn ?? {};
+  const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;
+
   return {
-    connectClient: () => connectUdsClient({ socketPath }),
+    // roadmap/05-supervisor-daemon.md §Lifecycle: the daemon is "started on
+    // demand by the CLI (09)". Every command that talks to the supervisor
+    // reaches it through here, so this is the one place the spawn-on-demand
+    // policy has to live — connect, and only if the socket is unreachable,
+    // start the daemon once and retry until it answers.
+    connectClient: () =>
+      ensureSupervisorConnection({
+        connect: () => connectUdsClient({ socketPath }),
+        spawnDaemon: () => spawnDaemon({ projectHash }),
+        ...(supervisorSpawn.maxAttempts !== undefined
+          ? { maxAttempts: supervisorSpawn.maxAttempts }
+          : {}),
+        ...(supervisorSpawn.retryDelayMs !== undefined
+          ? { retryDelayMs: supervisorSpawn.retryDelayMs }
+          : {}),
+      }),
     journal,
     projectHash,
     // Honors the SAME HOME the rest of this function resolved paths
