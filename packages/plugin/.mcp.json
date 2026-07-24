@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "eo_gateway": {
+      "command": "engineering-orchestrator",
+      "args": ["gateway", "mcp"]
+    }
+  }
+}

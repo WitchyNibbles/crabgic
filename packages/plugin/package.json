@@ -2,7 +2,7 @@
   "name": "@eo/plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "Claude Code plugin, installer, upgrade/uninstall (empty stub — phase 10).",
+  "description": "Claude Code plugin: skills, subagents, advisory hooks, gateway MCP registration reference (roadmap/10-plugin-and-installer.md).",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -14,12 +14,23 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    ".claude-plugin",
+    ".mcp.json",
+    "skills",
+    "agents",
+    "hooks"
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@eo/contracts": "0.0.0",
+    "@eo/engine-claude": "0.0.0",
+    "zod": "3.25.76"
   }
 }

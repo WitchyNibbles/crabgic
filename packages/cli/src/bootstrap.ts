@@ -21,11 +21,15 @@ import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
 import type { CliDependencies } from "./commands/types.js";
 import { connectUdsClient } from "./uds-client/client.js";
 import { deriveProjectHash } from "./project-hash.js";
+import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
+import type { InstallerDependencies } from "./installer/types.js";
 
 export interface BuildRealCliDependenciesOverrides {
   readonly xdgEnv?: XdgEnv;
   readonly projectHash?: string;
   readonly resolveAuthState?: AuthProbeFn;
+  /** Defaults to `process.cwd()`'s own real installer wiring (roadmap/10-plugin-and-installer.md) — `../commands/dispatch.ts` only invokes it for `install`/`upgrade`/`uninstall`. */
+  readonly installer?: InstallerDependencies;
 }
 
 export function buildRealCliDependencies(
@@ -47,5 +51,6 @@ export function buildRealCliDependencies(
     // (overriding `xdgEnv` deterministically controls auth resolution too).
     resolveAuthState:
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
+    installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
   };
 }

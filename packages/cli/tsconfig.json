@@ -11,6 +11,8 @@
   "references": [
     { "path": "../contracts" },
     { "path": "../journal" },
+    { "path": "../plugin" },
+    { "path": "../renderer" },
     { "path": "../supervisor" },
     { "path": "../testkit" }
   ]

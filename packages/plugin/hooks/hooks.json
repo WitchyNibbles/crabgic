@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use-format-warning.mjs\""
+          }
+        ],
+        "description": "Advisory-only formatting/console.log reminder after a Write/Edit — never blocks (always exits 0), per roadmap/10-plugin-and-installer.md's advisory-hook scope (distinct from the worker-context blocking hooks owned by 03/06)."
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-reminder.mjs\""
+          }
+        ],
+        "description": "Advisory-only end-of-session reminder (e.g. pending approvals) — never blocks (always exits 0)."
+      }
+    ]
+  }
+}

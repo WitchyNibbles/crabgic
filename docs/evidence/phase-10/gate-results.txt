@@ -1,0 +1,55 @@
+=== npx tsc -b packages/plugin packages/cli ===
+(clean, no output means success)
+
+=== npx vitest run packages/plugin packages/cli --coverage.enabled=false ===
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+
+ Test Files  59 passed (59)
+      Tests  382 passed (382)
+   Start at  08:06:28
+   Duration  5.57s (transform 10.27s, setup 0ms, import 18.17s, tests 14.19s, environment 7ms)
+
+
+=== npx eslint packages/plugin packages/cli ===
+(clean, no output means success)
+
+=== npx prettier --check packages/plugin packages/cli docs/evidence/phase-10 ===
+Checking formatting...
+All matched files use Prettier code style!
+
+=== Coverage scoped to this phase's new/substantially-modified files ===
+(packages/plugin/src/**, packages/cli/src/installer/**, commands/installer-handlers.ts,
+ doctor/checks/{checksum-drift,plugin-trust-pin,capability-manifest-freshness}.ts)
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.01 |    90.57 |     100 |   98.09 |                   
+ cli/src/commands  |     100 |       75 |     100 |     100 |                   
+  ...r-handlers.ts |     100 |       75 |     100 |     100 | 26,43             
+ .../doctor/checks |     100 |    85.71 |     100 |     100 |                   
+  ...-trust-pin.ts |     100 |    66.66 |     100 |     100 | 29,51             
+ cli/src/installer |    97.5 |    92.09 |     100 |   97.67 |                   
+  diff-renderer.ts |   93.93 |      100 |     100 |   93.54 | 52-53             
+  ...t-detector.ts |   91.66 |    83.33 |     100 |    90.9 | 48                
+  ...repo-state.ts |   92.59 |    94.11 |     100 |   95.83 | 57                
+  install.ts       |   98.24 |    94.44 |     100 |   98.14 | 72                
+  merge-text.ts    |     100 |    94.44 |     100 |     100 | 83                
+  ...pendencies.ts |     100 |       80 |     100 |     100 | 23-24             
+  state-store.ts   |   97.67 |     87.5 |     100 |   97.43 | 138               
+  uninstall.ts     |   96.29 |    91.66 |     100 |   96.15 | 60                
+  upgrade.ts       |     100 |    84.37 |     100 |     100 | 109,129,150-168   
+ plugin/src        |   98.55 |     91.3 |     100 |   98.44 |                   
+  ...ent-digest.ts |     100 |       75 |     100 |     100 | 45-50             
+  ...s-manifest.ts |     100 |    83.33 |     100 |     100 | 50                
+  ...n-manifest.ts |   95.74 |    89.28 |     100 |   95.55 | 97,102            
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.01% ( 493/503 )
+Branches     : 90.57% ( 250/276 )
+Functions    : 100% ( 103/103 )
+Lines        : 98.09% ( 464/473 )
+================================================================================

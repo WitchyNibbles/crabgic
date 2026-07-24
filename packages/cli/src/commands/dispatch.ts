@@ -3,8 +3,11 @@
  * item 1's failing-first framing: "invoking a command with no backend
  * registered yet returns the exact `NOT_IMPLEMENTED` typed shape, not a
  * crash or an untyped error." Every command name in `../argv/types.ts` has
- * a branch below; the four with a real backend delegate to
- * `./real-handlers.ts`, everything else returns `notImplementedResult`.
+ * a branch below; `status`/`cancel`/`evidence`/`doctor` delegate to
+ * `./real-handlers.ts` unconditionally; `install`/`upgrade`/`uninstall`
+ * (roadmap/10-plugin-and-installer.md) delegate to
+ * `./installer-handlers.ts` only when `deps.installer` is supplied;
+ * everything else returns `notImplementedResult`.
  */
 import { EXIT_GENERAL_ERROR, EXIT_SUPERVISOR_UNAVAILABLE } from "../exit-codes.js";
 import { SupervisorUnavailableError, toErrorMessage } from "../errors.js";
@@ -18,6 +21,7 @@ import {
   runEvidenceCommand,
   runStatusCommand,
 } from "./real-handlers.js";
+import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
 import { renderHelp } from "./help.js";
 
 export async function dispatchCommand(
@@ -37,11 +41,28 @@ export async function dispatchCommand(
       case "evidence":
         return await runEvidenceCommand(command, deps);
 
+      // roadmap/10-plugin-and-installer.md wires these three real backends
+      // — but ONLY when `deps.installer` is supplied (kept optional on
+      // `CliDependencies` precisely so every pre-existing roadmap/09 test,
+      // which never supplies it, keeps observing the exact same typed
+      // NOT_IMPLEMENTED shape unchanged).
+      case "install":
+        return deps.installer !== undefined
+          ? await runInstallCommand(command, deps.installer)
+          : notImplementedResult(command.command, command.json);
+      case "upgrade":
+        return deps.installer !== undefined
+          ? await runUpgradeCommand(command, deps.installer)
+          : notImplementedResult(command.command, command.json);
+      case "uninstall":
+        return deps.installer !== undefined
+          ? await runUninstallCommand(command, deps.installer)
+          : notImplementedResult(command.command, command.json);
+
       // Every command below has no backend wired at this phase's own build
       // time (roadmap/09 §Out of scope names the owning later phase for
       // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
       // behavior here, not a gap.
-      case "install":
       case "run":
       case "resume":
       case "connection-add":
@@ -55,8 +76,6 @@ export async function dispatchCommand(
       case "learn-approve":
       case "learn-reject":
       case "learn-rollback":
-      case "upgrade":
-      case "uninstall":
         return notImplementedResult(command.command, command.json);
 
       case "gateway-mcp":

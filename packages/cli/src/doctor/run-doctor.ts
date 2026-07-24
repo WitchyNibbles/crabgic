@@ -26,6 +26,9 @@ import { createGitPlumbingCheck } from "./checks/git-plumbing.js";
 import { createXdgPermissionsCheck } from "./checks/xdg-permissions.js";
 import { createJournalChainCheck } from "./checks/journal-chain.js";
 import { createWsl2WarningsCheck } from "./checks/wsl2-warnings.js";
+import { createChecksumDriftCheck } from "./checks/checksum-drift.js";
+import { createPluginTrustPinCheck } from "./checks/plugin-trust-pin.js";
+import { createCapabilityManifestFreshnessCheck } from "./checks/capability-manifest-freshness.js";
 
 export interface RunDoctorOptions {
   readonly projectHash: string;
@@ -34,6 +37,14 @@ export interface RunDoctorOptions {
   readonly resolveAuthState?: () => Promise<AuthState>;
   /** Injectable XDG env — defaults to `readXdgEnvFromProcess()` (real process env). Overridable for tests that need a deterministic state/cache/socket path without mutating real process env. */
   readonly xdgEnv?: XdgEnv;
+  /**
+   * roadmap/10-plugin-and-installer.md's own three doctor checks
+   * (checksum-drift, plugin-trust-pin, CapabilityManifest-digest-freshness)
+   * are registered ONLY when this is supplied — kept optional so every
+   * pre-existing roadmap/09 caller/test (which never supplies it) keeps
+   * observing the exact same 8-check default set unchanged.
+   */
+  readonly installer?: { readonly targetDir: string; readonly pluginSourceDir: string };
 }
 
 async function detectWsl2(): Promise<boolean> {
@@ -76,6 +87,16 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
       stateRootPath: stateRoot,
       cacheRootPath: cacheRoot,
     }),
+    ...(options.installer !== undefined
+      ? [
+          createChecksumDriftCheck({ targetDir: options.installer.targetDir }),
+          createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),
+          createCapabilityManifestFreshnessCheck({
+            targetDir: options.installer.targetDir,
+            pluginSourceDir: options.installer.pluginSourceDir,
+          }),
+        ]
+      : []),
   ];
 }
 

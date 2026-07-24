@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "engineering-orchestrator-marketplace",
+  "description": "Marketplace listing for the Engineering Orchestrator Claude Code plugin (roadmap/10-plugin-and-installer.md §In scope, \"Distribution\").",
+  "owner": {
+    "name": "Engineering Orchestrator",
+    "email": "eng-orchestrator@example.invalid"
+  },
+  "plugins": [
+    {
+      "name": "engineering-orchestrator",
+      "source": "./",
+      "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
+      "version": "0.0.0",
+      "license": "Apache-2.0",
+      "commit": "0000000000000000000000000000000000000000",
+      "digest": "74133f0efe20e705e22f8bb53a4fa78b5ce0a5f7c513ab6f64dfeae216b203a8"
+    }
+  ]
+}

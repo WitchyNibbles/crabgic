@@ -1,0 +1,9 @@
+{
+  "name": "engineering-orchestrator",
+  "version": "0.0.0",
+  "description": "Engineering Orchestrator — autonomous engineering orchestration for Claude Code. Wraps the engineering-orchestrator CLI/gateway with slash commands, review subagents, and advisory hooks (roadmap/10-plugin-and-installer.md).",
+  "license": "Apache-2.0",
+  "author": { "name": "Engineering Orchestrator" },
+  "keywords": ["engineering-orchestrator", "orchestration", "gateway", "eo"],
+  "mcpServers": "./.mcp.json"
+}

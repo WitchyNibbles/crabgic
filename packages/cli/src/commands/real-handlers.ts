@@ -140,6 +140,20 @@ export async function runDoctorCommand(
     projectHash: deps.projectHash,
     journal: deps.journal,
     ...(deps.resolveAuthState !== undefined ? { resolveAuthState: deps.resolveAuthState } : {}),
+    // roadmap/10-plugin-and-installer.md's own 3 doctor checks
+    // (checksum-drift, plugin-trust-pin, CapabilityManifest-digest-
+    // freshness) register into the default set ONLY when `deps.installer`
+    // is present — see `../doctor/run-doctor.ts`'s own optionality
+    // comment; every pre-existing roadmap/09 test (no `deps.installer`)
+    // keeps observing the exact same 8-check default set unchanged.
+    ...(deps.installer !== undefined
+      ? {
+          installer: {
+            targetDir: deps.installer.targetDir,
+            pluginSourceDir: deps.installer.pluginSourceDir,
+          },
+        }
+      : {}),
   });
   const report = await runDoctorChecks(checks);
   const repairPlan = cmd.repairPlan ? buildRepairPlan(report) : undefined;
