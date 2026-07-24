@@ -1,0 +1,29 @@
+{
+  "responses": [
+    {
+      "status": 200,
+      "bodyText": "{\"values\":[{\"id\":\"10000\",\"key\":\"PROJ\",\"name\":\"Project\"}]}"
+    },
+    {
+      "status": 200,
+      "bodyText": "{\"values\":[{\"id\":1,\"name\":\"Board 1\",\"type\":\"scrum\",\"location\":{\"projectKey\":\"PROJ\"}}]}"
+    },
+    {
+      "status": 200,
+      "bodyText": "{\"values\":[{\"id\":10,\"name\":\"Sprint 1\",\"state\":\"active\",\"originBoardId\":1}]}"
+    },
+    {
+      "status": 200,
+      "bodyText": "{\"issues\":[{\"id\":\"20001\",\"key\":\"PROJ-1\",\"fields\":{\"summary\":\"Epic summary\",\"issuetype\":{\"name\":\"Epic\"},\"status\":{\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}},\"updated\":\"rev-1\"}}]}"
+    },
+    {
+      "status": 200,
+      "bodyText": "{\"id\":\"20002\",\"key\":\"PROJ-2\",\"fields\":{\"summary\":\"Story summary\",\"issuetype\":{\"name\":\"Story\"},\"status\":{\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}},\"updated\":\"rev-2\"}}"
+    },
+    {
+      "status": 200,
+      "bodyText": "{\"comments\":[{\"id\":\"50001\",\"body\":{\"type\":\"doc\"},\"properties\":{\"marker\":\"m-1\"},\"updated\":\"rev-3\"}]}"
+    },
+    { "status": 200, "bodyText": "{\"worklogs\":[{\"id\":\"30001\",\"timeSpentSeconds\":3600}]}" }
+  ]
+}

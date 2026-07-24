@@ -2,7 +2,7 @@
   "name": "@eo/connectors-jira",
   "version": "0.0.0",
   "private": true,
-  "description": "Jira Cloud/Data Center adapter (empty stub — phases 18/19).",
+  "description": "Jira Cloud/Data Center adapter (phase 18: Cloud).",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -21,5 +21,16 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@eo/contracts": "0.0.0",
+    "@eo/gateway": "0.0.0",
+    "@eo/renderer": "0.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eo/journal": "0.0.0",
+    "@eo/testkit": "0.0.0",
+    "fast-check": "4.9.0"
   }
 }
