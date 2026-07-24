@@ -9,7 +9,7 @@
   {
     "probe": "tool-catalog.sdk-vs-cli-transport",
     "expectation": "determine whether the surprising catalog is an SDK-transport surface by comparing against the CLI transport under the same allowlisted env",
-    "observed": "CLI/allowlisted tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; engine versions: sdk=2.1.210, cli=2.1.210; sdk-vs-cli identical=true",
+    "observed": "CLI/allowlisted tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; engine versions: sdk=2.1.218, cli=2.1.218; sdk-vs-cli identical=true",
     "verdict": "PASS"
   },
   {

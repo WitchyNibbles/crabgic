@@ -37,8 +37,8 @@ entries.push(verdict({
   probe: "ratelimit.trigger-safety-and-simulation-strategy",
   expectation: "either safely trigger a real subscription rate/usage-limit signal, or document why not and record a simulation strategy (roadmap-sanctioned alternative)",
   observed:
-    "NOT triggered deliberately. The owner's Claude subscription already hit a session/usage limit earlier today (2026-07-15), before this phase began; " +
-    "every spike in this phase (01-06) authenticates as the SAME account. Deliberately exhausting it further to observe the live signal risks " +
+    "NOT triggered deliberately, on any run of this script to date (originally 2026-07-15, re-verified 2026-07-24 at engine 2.1.218 — same policy both times). " +
+    "The owner's Claude subscription hit a session/usage limit on 2026-07-15, before the original phase-00 pass began, and spikes 01-06 all authenticate as the SAME account on every re-run. Deliberately exhausting it further to observe the live signal risks " +
     "blocking the owner's own concurrent work and any other phase-00 worker sharing this login for the remainder of the reset window, for a payoff " +
     "that is not even guaranteed to include the STRUCTURED stream-json event shape (only the error-string channel has been observed so far, see probe B). " +
     "SIMULATION STRATEGY for downstream phases: " +
@@ -113,8 +113,8 @@ entries.push(verdict({
   probe: "ratelimit.exhausted-variant-shape",
   expectation: "capture the EXHAUSTED/blocked variant (SDK-typed status:'rejected', and/or the terminal result/error emitted when a request is actually refused) verbatim",
   observed:
-    `NOT yet observed as a structured event: every committed rate_limit_event carries status 'allowed' or 'allowed_warning' (see ratelimit.structured-event-shape); the 'rejected' status exists in the SDK type but no live sample was captured. ` +
-    `The only exhausted-limit sample from this host (2026-07-15) is the plain error STRING surfaced to a headless agent process: "${OBSERVED_SIGNAL}" — a human-readable sentence naming the limit kind and a localized reset time, ` +
+    `NOT yet observed as a structured event: every committed rate_limit_event carries status 'allowed' or 'allowed_warning' (see ratelimit.structured-event-shape); the 'rejected' status exists in the SDK type but no live sample was captured, on this pass (2026-07-24, engine 2.1.218) or the original (2026-07-15, engine 2.1.210). ` +
+    `The only exhausted-limit sample from this host, still from 2026-07-15, is the plain error STRING surfaced to a headless agent process: "${OBSERVED_SIGNAL}" — a human-readable sentence naming the limit kind and a localized reset time, ` +
     "which does not reveal how (or whether) a status:'rejected' rate_limit_event and/or a distinct terminal result message accompany the refusal in-stream.",
   verdict: "UNRESOLVED",
   note: "MITIGATION: the next time ANY worker on this host naturally hits a subscription limit while streaming, capture the RAW message sequence verbatim into spikes/fixtures/07-ratelimit.live-capture.sanitized.jsonl and update this verdict; never trigger deliberately on the owner's subscription (see probe A).",

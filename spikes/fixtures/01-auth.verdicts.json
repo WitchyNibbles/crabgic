@@ -2,9 +2,8 @@
   {
     "probe": "auth.oauth-token-resolution",
     "expectation": "SDK worker (settingSources: [] + isolated CLAUDE_CONFIG_DIR) resolves CLAUDE_CODE_OAUTH_TOKEN without interactive login",
-    "observed": "no token available: CLAUDE_CODE_OAUTH_TOKEN unset and no handoff file at ~/.claude/.eo-oauth-token today.",
-    "verdict": "UNRESOLVED",
-    "note": "MITIGATION: handoff file pending; re-run spikes/01-auth.mjs once ~/.claude/.eo-oauth-token exists (0600). Alternatively export CLAUDE_CODE_OAUTH_TOKEN directly after `claude setup-token`."
+    "observed": "result received, subtype=success, is_error=false [token source: file:$HOME/.claude/.eo-oauth-token (mode 0600 confirmed)]",
+    "verdict": "PASS"
   },
   {
     "probe": "auth.credentials-json-fallback",

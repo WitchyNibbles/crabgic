@@ -2,37 +2,37 @@
   {
     "probe": "permissions.dontask-auto-deny-unlisted-tool",
     "expectation": "dontAsk mode auto-denies a tool (Write) not covered by any allow rule, with no interactive prompt",
-    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; Write denied=true",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01J3myCimqtqnQEhBTN65Tnw\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Echo x and then curl example.com\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01DZ1dD9XvhXefaXSWee7mHS\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Run curl with nohup in foreground\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01DoRKYMzMKDgu7ZH8rWETF3\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\\n\"}}]; Write denied=true",
     "verdict": "PASS"
   },
   {
     "probe": "permissions.compound-command-smuggling",
     "expectation": "`echo x && curl ...` is denied because the curl subcommand does not independently match the Bash(echo:*) allow rule",
-    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; compound denied=true; control echo-only allowed=true",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01J3myCimqtqnQEhBTN65Tnw\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Echo x and then curl example.com\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01DZ1dD9XvhXefaXSWee7mHS\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Run curl with nohup in foreground\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01DoRKYMzMKDgu7ZH8rWETF3\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\\n\"}}]; compound denied=true; control echo-only allowed=true",
     "verdict": "PASS"
   },
   {
     "probe": "permissions.process-wrapper-smuggling",
     "expectation": "`nohup curl ...` is denied because the wrapper is stripped and curl still does not match Bash(echo:*)",
-    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_016RqNbFFBr7f5jPxchKqjXc\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Test chained echo and curl\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_012bzJZqUnt7BrxkvxjhjVqJ\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Test nohup with curl\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01PNkC1yf1HKtJGQossEPvxU\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\"}}]; wrapper denied=true",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01J3myCimqtqnQEhBTN65Tnw\",\"tool_input\":{\"command\":\"echo x && curl http://example.com\",\"description\":\"Echo x and then curl example.com\"}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01DZ1dD9XvhXefaXSWee7mHS\",\"tool_input\":{\"command\":\"nohup curl http://example.com\",\"description\":\"Run curl with nohup in foreground\"}},{\"tool_name\":\"Write\",\"tool_use_id\":\"toolu_01DoRKYMzMKDgu7ZH8rWETF3\",\"tool_input\":{\"file_path\":\"/tmp/test.txt\",\"content\":\"This is a test file.\\n\"}}]; wrapper denied=true",
     "verdict": "PASS"
   },
   {
     "probe": "permissions.deny-wins-same-level",
     "expectation": "a rule present in both permissions.allow and permissions.deny at the same settings level is denied (deny wins)",
-    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01A9Jf5DcqymZ1361cHKtqdm\",\"tool_input\":{\"command\":\"echo same-level-test\",\"description\":\"Echo the text 'same-level-test'\"}}]",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_015H1t7txNHMF1eWTk7gSiSJ\",\"tool_input\":{\"command\":\"echo same-level-test\",\"description\":\"Echo the string \\\"same-level-test\\\"\"}}]",
     "verdict": "PASS"
   },
   {
     "probe": "permissions.deny-wins-cross-level",
     "expectation": "user-tier deny (~/.claude equiv settings.json) wins over project-tier allow for the same Bash(echo:*) rule",
-    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01Siyr6LqE87aUgkmSPP8vRi\",\"tool_input\":{\"command\":\"echo cross-level-test\",\"description\":\"Echo the text cross-level-test\"}}]",
+    "observed": "permission_denials=[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01WeMuAoxPnY49Gs4Yu3BraK\",\"tool_input\":{\"command\":\"echo cross-level-test\",\"description\":\"Echo the string cross-level-test\"}}]",
     "verdict": "PASS"
   },
   {
     "probe": "permissions.edit-outside-allowed-path",
-    "expectation": "Edit is denied for a path outside the allow rule (Edit(//tmp/crabgic-spike03-allowed-uyiban/**)); the file on disk is left unmodified",
-    "observed": "permission_denials=[{\"tool_name\":\"Edit\",\"tool_use_id\":\"toolu_01PAzfrKnuqh39bo1a9r5TGU\",\"tool_input\":{\"file_path\":\"/tmp/crabgic-spike03-forbidden-gBccCq/target.txt\",\"old_string\":\"old\",\"new_string\":\"new\",\"replace_all\":false}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01F3C49sDZCU81ySvKuYGHnG\",\"tool_input\":{\"command\":\"sed -i 's/old/new/g' /tmp/crabgic-spike03-forbidden-gBccCq/target.txt\",\"description\":\"Replace \\\"old\\\" with \\\"new\\\" in target.txt\"}}]; file still contains original content=true",
+    "expectation": "Edit is denied for a path outside the allow rule (Edit(//tmp/crabgic-spike03-allowed-kdSyMJ/**)); the file on disk is left unmodified",
+    "observed": "permission_denials=[{\"tool_name\":\"Edit\",\"tool_use_id\":\"toolu_01M91gwExtevuMZgAHJKjdL9\",\"tool_input\":{\"file_path\":\"/tmp/crabgic-spike03-forbidden-0Oo4q0/target.txt\",\"old_string\":\"old content\",\"new_string\":\"new content\",\"replace_all\":false}},{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01S6p8se44KjUFHseY7E4HzU\",\"tool_input\":{\"command\":\"sed -i 's/old/new/g' /tmp/crabgic-spike03-forbidden-0Oo4q0/target.txt\",\"description\":\"Replace \\\"old\\\" with \\\"new\\\" in target.txt\"}}]; file still contains original content=true",
     "verdict": "PASS"
   },
   {

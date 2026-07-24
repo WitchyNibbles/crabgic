@@ -79,7 +79,9 @@ if (!oauthToken && existsSync(TOKEN_HANDOFF_FILE)) {
   const mode = st.mode & 0o777;
   tokenModeNote = mode !== 0o600 ? ` (WARNING: handoff file mode is ${mode.toString(8)}, expected 0600)` : " (mode 0600 confirmed)";
   oauthToken = readFileSync(TOKEN_HANDOFF_FILE, "utf8").trim();
-  tokenSource = `file:${TOKEN_HANDOFF_FILE}`;
+  // Sanitized for display/fixture purposes only: never embed the real $HOME
+  // path in anything written to disk (verdict fixtures are committed).
+  tokenSource = `file:$HOME/.claude/.eo-oauth-token`;
 }
 
 if (oauthToken) {
@@ -118,7 +120,7 @@ if (!existsSync(REAL_CREDS)) {
   entries.push(verdict({
     probe: "auth.credentials-json-fallback",
     expectation: "copying ~/.claude/.credentials.json (mode 0600) into an isolated CLAUDE_CONFIG_DIR lets an SDK worker (settingSources: []) resolve auth without interactive login",
-    observed: `no credentials file found at ${REAL_CREDS}`,
+    observed: "no credentials file found at $HOME/.claude/.credentials.json",
     verdict: "UNRESOLVED",
     note: "MITIGATION: log in interactively once (`claude`, normal session) to populate ~/.claude/.credentials.json, then re-run this script.",
   }));
