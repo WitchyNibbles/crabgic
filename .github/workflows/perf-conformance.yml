@@ -1,0 +1,50 @@
+name: perf-conformance
+
+# roadmap/15-performance-contracts.md §Interfaces produced: "`perf-
+# conformance` fixture matrix — a named, standalone-runnable CI job: covers
+# 20%-CPU-regression-blocks, 3%-noise-passes, noisy-critical-inconclusive-
+# blocking, and methodology-violation-refusal (too-few-reps, no-interleave).
+# This is the exact artifact 23's 'seeded-fault matrices from 14/15/22'
+# bullet re-invokes." §Exit criteria: "`perf-conformance` runs as a
+# standalone, named CI job invocable without the full release harness — the
+# exact entry point 23 re-runs."
+#
+# Entirely fixture-based (no live twin-worktree runs, no real ProjectProfile
+# benchmark commands) — runs on every push/PR like the main CI job, unlike
+# `engine-live`/`jira-datacenter-smoke`'s manual-dispatch-only pattern (those
+# need a real host/license this job never does). Mirrors 14's own
+# `gates-conformance.yml` naming/shape precedent exactly.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: perf-conformance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf-conformance:
+    name: perf-conformance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: perf-conformance fixture matrix (4 independent fixtures) decides correctly
+        run: npx vitest run packages/perf/src/conformance/perf-conformance.test.ts --coverage.enabled=false
+      - name: methodology-violation unit tests (too-few-reps, no-interleave — typed refusal)
+        run: npx vitest run packages/perf/src/runner/methodology.test.ts --coverage.enabled=false
+      - name: decision-engine boundary + property tests (5%/10%/15% exact boundaries, order-independence, monotonicity)
+        run: npx vitest run packages/perf/src/stats --coverage.enabled=false
+      - name: hash-link tamper fixture (fail-closed) + gate registration E2E
+        run: npx vitest run packages/perf/src/gate --coverage.enabled=false
