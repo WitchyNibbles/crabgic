@@ -105,6 +105,18 @@ export type { ParkStatus, ParkTimerPayload, ParkWorkUnitOptions } from "./parkin
 export { runShadowAttempt, SHADOW_RUN_MARKER_DECISION } from "./shadow-run.js";
 export type { RunShadowAttemptOptions, ShadowRunResult } from "./shadow-run.js";
 
+// ---- DAG run driver: the dispatch LOOP composing readiness/fan-out/executor (work item 1) ----
+export { driveRun } from "./run-driver.js";
+export type {
+  DriveRunOptions,
+  DriveRunResult,
+  DriveRunStopReason,
+  DriverTerminableWorker,
+  RunDriverDependencies,
+  UnitAttemptOutcome,
+  WorkerDispatchContext,
+} from "./run-driver.js";
+
 // ---- Executor: dispatch/resume + evidence seam (work item 1) ----
 export { dispatchAttempt, resumeAttempt } from "./executor.js";
 export type {

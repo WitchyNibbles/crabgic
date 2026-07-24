@@ -66,6 +66,7 @@ import type {
   EngineAdapter,
   EngineEvent,
   SessionRef,
+  WorkerHandle,
 } from "@eo/engine-core";
 import type { TaskPacket, WorkerResult } from "@eo/contracts";
 import { assertPacketWithinBudget } from "./budgets.js";
@@ -207,6 +208,8 @@ export interface DispatchAttemptOptions {
   readonly runId?: string;
   /** Epoch-seconds clock, for `assertNotGloballyPaused` — overridable for deterministic tests. Defaults to the real wall clock. */
   readonly nowSeconds?: () => number;
+  /** Invoked with the spawned worker's handle immediately after spawn and before any event is consumed — the only way a caller can obtain the handle `EngineAdapter.cancel` requires. See the call site's own comment. */
+  readonly onWorkerHandle?: (handle: WorkerHandle) => void;
 }
 
 /**
@@ -236,6 +239,14 @@ export async function dispatchAttempt(
   const handle = options.adapter.spawn(options.packet, options.profile, options.adjudicate);
   const sessionId = handle.sessionRef.sessionId;
   const workUnitId = options.packet.workUnitId;
+
+  // Handed to the caller BEFORE any event is consumed, so a supervising
+  // loop can register a terminable handle for exactly the window in which
+  // the worker is actually running (`./run-driver.ts` uses this to make
+  // 05's `worker.terminate` operation able to reach a live worker at all —
+  // `EngineAdapter.cancel` needs the handle, which never escapes this
+  // function otherwise).
+  options.onWorkerHandle?.(handle);
 
   await options.journal.appendEntry({
     type: "session_assignment",

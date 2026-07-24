@@ -1,0 +1,280 @@
+/**
+ * The DAG run driver — roadmap/13-scheduler-packets-context.md §Goal: "the
+ * DAG approved in 11 executes to completion without further human
+ * intervention: a default-serial, evidence-gated dispatch loop turns each
+ * ready WorkUnit into a bounded attempt via 06's EngineAdapter, fans out
+ * only when independence is proven (≤4 concurrent, delegation depth 1,
+ * rationale journaled)."
+ *
+ * This is work item 1's "Executor" sentence completed. Before it, every
+ * ingredient existed and was independently tested — `computeReadyUnits`
+ * (readiness), `selectDispatchSet` (fan-out), `dispatchAttempt` (one bounded
+ * attempt), `parkWorkUnit` (limit parking) — but nothing composed them into
+ * a loop, so `dispatchAttempt` had ZERO production callers and an approved
+ * DAG could never actually execute. `driveRun` is the missing composition.
+ *
+ * WHAT THIS MODULE DELIBERATELY DOES NOT DO — every engine-, git- and
+ * envelope-touching concern is an injected seam, never constructed here:
+ *
+ *   - `createAdapter` — 06 owns the real `ClaudeEngineAdapter` (and its
+ *     per-attempt worktree `cwd`). This package must not depend on
+ *     `@eo/engine-claude`: that package already depends on `@eo/supervisor`,
+ *     and the daemon composes both. The driver speaks only 03's
+ *     `EngineAdapter` interface.
+ *   - `buildPacket` — the caller owns the approved envelope, frozen base
+ *     object id, and result schema that `./task-packet-builder.ts` needs;
+ *     the driver never invents packet scope.
+ *   - `compileProfile` — 03's envelope compiler output.
+ *
+ * `liveWorkers` is the same map `@eo/supervisor`'s composition root hands to
+ * its router, structurally typed here so this package needs no dependency on
+ * the supervisor: registering an in-flight attempt there is what makes 05's
+ * `worker.terminate` operation able to reach a running worker at all.
+ */
+import type { JournalStore } from "@eo/journal";
+import type { AdjudicationCallback, CompiledWorkerProfile, EngineAdapter } from "@eo/engine-core";
+import type { TaskPacket, WorkUnit, WorkUnitAttemptStatus } from "@eo/contracts";
+import type { CollisionVerdict } from "@eo/git-engine";
+import { computeReadyUnits } from "./readiness.js";
+import {
+  DEFAULT_CONCURRENCY_CAP,
+  journalFanoutRationaleIfFannedOut,
+  selectDispatchSet,
+} from "./fanout.js";
+import { dispatchAttempt, type DispatchAttemptOutcome } from "./executor.js";
+import { GlobalPauseActiveError } from "./errors.js";
+import { isGloballyPaused } from "./parking.js";
+import { resolveModelForRole } from "./router.js";
+
+/** The per-attempt context every injected seam receives — enough to construct a worktree-scoped adapter, a packet, and a compiled profile without the driver knowing how any of them are built. */
+export interface WorkerDispatchContext {
+  readonly workUnit: WorkUnit;
+  /** Role-routed model alias (`./router.ts`), resolved at dispatch time per roadmap/13 §Model routing. */
+  readonly model: string;
+  readonly runId: string;
+  readonly changeSetId: string;
+}
+
+/**
+ * A worker handle the control plane can terminate mid-flight. Structurally
+ * identical to `@eo/supervisor`'s `TerminableWorker` — declared here rather
+ * than imported so this package keeps no dependency on the supervisor (13
+ * layers ON TOP of 05; the edge must not point back).
+ */
+export interface DriverTerminableWorker {
+  terminate(graceMs: number): Promise<{ readonly outcome: string }>;
+}
+
+export interface RunDriverDependencies {
+  readonly journal: JournalStore;
+  /** The supervisor's live-worker map — an in-flight attempt is registered under its work-unit id for the duration of the attempt. */
+  readonly liveWorkers: Map<string, DriverTerminableWorker>;
+  readonly adjudicate: AdjudicationCallback;
+  readonly createAdapter: (ctx: WorkerDispatchContext) => Promise<EngineAdapter>;
+  readonly buildPacket: (ctx: WorkerDispatchContext) => Promise<TaskPacket>;
+  readonly compileProfile: (ctx: WorkerDispatchContext) => Promise<CompiledWorkerProfile>;
+  /** Role -> model alias. Defaults to `./router.ts`'s balanced-default map. */
+  readonly resolveModel?: (role: string) => string;
+  /** Epoch-SECONDS clock (matching `EngineLimitSignalEvent.resetsAt`, docs/engine-baseline.md §8) used for the global-pause window check. Defaults to the real wall clock. */
+  readonly nowSeconds?: () => number;
+}
+
+export interface DriveRunOptions {
+  readonly runId: string;
+  readonly changeSetId: string;
+  readonly workUnits: readonly WorkUnit[];
+  /** 07's rename-aware path-collision verdicts — units that collide are never dispatched in the same round. */
+  readonly overlapVerdicts?: readonly CollisionVerdict[];
+  /** Max concurrent attempts per round. Defaults to `DEFAULT_CONCURRENCY_CAP` (roadmap/13: cap 4). */
+  readonly concurrencyCap?: number;
+  /** Hard upper bound on dispatch rounds — a loop backstop, never the normal termination condition. Defaults to `workUnits.length + 1`. */
+  readonly maxRounds?: number;
+}
+
+/**
+ * Why the loop stopped.
+ * - `completed`: every unit reached a terminal status.
+ * - `blocked`: units remain pending but none is ready (a dependency failed
+ *   or was cancelled) — the run needs repair or human intervention.
+ * - `parked`: an account-wide rate limit halted dispatch; resumable once
+ *   the reset window passes (`./parking.ts`).
+ * - `roundLimit`: the backstop tripped — a bug, not an expected outcome.
+ */
+export type DriveRunStopReason = "completed" | "blocked" | "parked" | "roundLimit";
+
+export interface UnitAttemptOutcome {
+  readonly workUnitId: string;
+  readonly outcome: DispatchAttemptOutcome;
+}
+
+export interface DriveRunResult {
+  readonly statusById: ReadonlyMap<string, WorkUnitAttemptStatus>;
+  readonly outcomes: readonly UnitAttemptOutcome[];
+  readonly stopped: DriveRunStopReason;
+  /** Dispatch rounds actually executed — one round may carry up to `concurrencyCap` attempts. */
+  readonly rounds: number;
+}
+
+/** Maps one attempt outcome onto the work unit's next `WorkUnitAttemptStatus`. A crash is a failure for readiness purposes: the unit is not retried by this loop (repair is 13's evidence-gated `resumeAttempt` path, driven deliberately, never automatically). */
+function statusForOutcome(outcome: DispatchAttemptOutcome): WorkUnitAttemptStatus {
+  switch (outcome.kind) {
+    case "succeeded":
+      return "succeeded";
+    case "cancelled":
+      return "cancelled";
+    case "parked":
+      return "parked:rate_limit";
+    case "failed":
+    case "crashed":
+      return "failed";
+  }
+}
+
+/** Runs one bounded attempt, keeping the supervisor's live-worker map accurate for exactly the attempt's duration. */
+async function runOneAttempt(
+  ctx: WorkerDispatchContext,
+  deps: RunDriverDependencies,
+): Promise<DispatchAttemptOutcome> {
+  const [adapter, packet, profile] = await Promise.all([
+    deps.createAdapter(ctx),
+    deps.buildPacket(ctx),
+    deps.compileProfile(ctx),
+  ]);
+
+  try {
+    return await dispatchAttempt({
+      adapter,
+      journal: deps.journal,
+      packet,
+      profile,
+      adjudicate: deps.adjudicate,
+      // First dispatch of a unit needs no repair evidence; a repair
+      // re-dispatch is `resumeAttempt`'s evidence-gated path, never this
+      // loop's (`./attempt-policy.ts`).
+      evidenceKind: "none",
+      runId: ctx.runId,
+      // Registered the moment the worker exists and retired in `finally`
+      // below, so the control plane can terminate it for exactly the window
+      // it is actually running — and never holds a handle to a dead one.
+      onWorkerHandle: (handle) => {
+        deps.liveWorkers.set(ctx.workUnit.id, {
+          terminate: async (graceMs) => {
+            // `EngineAdapter.cancel` takes an absolute deadline Timestamp,
+            // not a duration — the grace window is relative to now.
+            await adapter.cancel(handle, new Date(Date.now() + graceMs).toISOString());
+            return { outcome: "terminated" };
+          },
+        });
+      },
+    });
+  } finally {
+    deps.liveWorkers.delete(ctx.workUnit.id);
+  }
+}
+
+/**
+ * Drives an approved DAG to completion. See the file-level doc comment for
+ * the injected-seam boundary. Each round: compute the ready set, select a
+ * non-colliding dispatch subset within the concurrency cap, journal a
+ * fan-out rationale if it fanned out, run those attempts concurrently, fold
+ * their outcomes back into the status map, and repeat.
+ */
+export async function driveRun(
+  options: DriveRunOptions,
+  deps: RunDriverDependencies,
+): Promise<DriveRunResult> {
+  const overlapVerdicts = options.overlapVerdicts ?? [];
+  const concurrencyCap = options.concurrencyCap ?? DEFAULT_CONCURRENCY_CAP;
+  const maxRounds = options.maxRounds ?? options.workUnits.length + 1;
+  const resolveModel = deps.resolveModel ?? resolveModelForRole;
+  const nowSeconds = deps.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
+
+  const statusById = new Map<string, WorkUnitAttemptStatus>(
+    options.workUnits.map((unit) => [unit.id, unit.attemptStatus]),
+  );
+  const outcomes: UnitAttemptOutcome[] = [];
+  const unitById = new Map(options.workUnits.map((unit) => [unit.id, unit]));
+
+  let rounds = 0;
+  let globallyPaused = false;
+  const finish = (stopped: DriveRunStopReason): DriveRunResult => ({
+    statusById,
+    outcomes,
+    stopped,
+    rounds,
+  });
+
+  /**
+   * No unit is ready — classify why. A parked unit is NOT terminal (it is
+   * retained and resumable), so a run holding one is `parked`, never
+   * `completed`; a pending-but-never-ready unit means an upstream
+   * dependency failed or was cancelled.
+   */
+  const classifyIdleRun = (): DriveRunStopReason => {
+    const statuses = [...statusById.values()];
+    if (statuses.includes("parked:rate_limit")) return "parked";
+    if (statuses.includes("pending")) return "blocked";
+    return "completed";
+  };
+
+  for (;;) {
+    const ready = computeReadyUnits({ workUnits: options.workUnits, statusById, overlapVerdicts });
+    if (ready.length === 0) return finish(classifyIdleRun());
+
+    if (rounds >= maxRounds) return finish("roundLimit");
+
+    // Checked BEFORE any adapter/worktree is constructed for this round.
+    // `dispatchAttempt` enforces the same gate itself (and the catch below
+    // still covers a pause established concurrently mid-round), but
+    // discovering it here avoids standing up a worktree and an engine
+    // process for a dispatch that is going to be refused anyway.
+    if (await isGloballyPaused(deps.journal, nowSeconds())) return finish("parked");
+    rounds += 1;
+
+    const selected = selectDispatchSet(ready, overlapVerdicts, concurrencyCap);
+    await journalFanoutRationaleIfFannedOut({
+      journal: deps.journal,
+      dispatchedUnitIds: selected,
+      runId: options.runId,
+      changeSetId: options.changeSetId,
+    });
+
+    const roundOutcomes = await Promise.all(
+      selected.map(async (unitId) => {
+        const workUnit = unitById.get(unitId);
+        /* c8 ignore next -- unreachable: every selected id came from options.workUnits */
+        if (workUnit === undefined) throw new Error(`run driver: unknown work unit "${unitId}"`);
+        try {
+          const outcome = await runOneAttempt(
+            {
+              workUnit,
+              model: resolveModel(workUnit.role),
+              runId: options.runId,
+              changeSetId: options.changeSetId,
+            },
+            deps,
+          );
+          return { workUnitId: unitId, outcome };
+        } catch (err) {
+          // An account-wide pause established by ANY unit (this run's or
+          // another's) refuses dispatch at the executor's own gate. That is
+          // a resumable condition, not a daemon-fatal one: leave the unit
+          // pending so a later run picks it up once the window resets.
+          if (err instanceof GlobalPauseActiveError) return { workUnitId: unitId };
+          throw err;
+        }
+      }),
+    );
+
+    for (const entry of roundOutcomes) {
+      if (entry.outcome === undefined) {
+        globallyPaused = true;
+        continue;
+      }
+      statusById.set(entry.workUnitId, statusForOutcome(entry.outcome));
+      outcomes.push({ workUnitId: entry.workUnitId, outcome: entry.outcome });
+    }
+
+    if (globallyPaused) return finish("parked");
+  }
+}
