@@ -12,7 +12,7 @@
  *
  * No semver dependency: engine/SDK versions here are always plain
  * `<major>.<minor>.<patch>` numeric triples (docs/engine-baseline.md's own
- * observed forms, `2.1.210`/`0.3.210`), so a small numeric-triple
+ * observed forms, `2.1.218`/`0.3.218`), so a small numeric-triple
  * comparator is sufficient and keeps this package dependency-free for the
  * comparison itself.
  */
@@ -25,23 +25,26 @@ export interface EngineVersionRange {
 
 /**
  * The accepted `claude` CLI / engine version range (docs/engine-baseline.md
- * headline: "Accepted range: **2.1.207–2.1.210**").
+ * headline: "Accepted range: **2.1.207–2.1.218**" — re-baselined 2026-07-24,
+ * phase 23; range extended, not re-pinned, after the full phase-00 spike
+ * suite reproduced every PASS at 2.1.218 with zero load-bearing deltas).
  */
-export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.210" };
+export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.218" };
 
 /**
  * The accepted `@anthropic-ai/claude-agent-sdk` version range
  * (docs/engine-baseline.md §10: "`@anthropic-ai/claude-agent-sdk` moves
- * outside 0.3.207–0.3.210").
+ * outside 0.3.207–0.3.218" — re-baselined 2026-07-24 alongside the engine
+ * range above).
  */
-export const ACCEPTED_SDK_VERSION_RANGE: EngineVersionRange = { min: "0.3.207", max: "0.3.210" };
+export const ACCEPTED_SDK_VERSION_RANGE: EngineVersionRange = { min: "0.3.207", max: "0.3.218" };
 
 /**
  * The exact engine version phase 00's baseline was verified against
  * (docs/engine-baseline.md headline: "Tested version:** `claude` CLI
- * **2.1.210**").
+ * **2.1.218**" — re-baselined 2026-07-24, phase 23).
  */
-export const TESTED_ENGINE_VERSION = "2.1.210";
+export const TESTED_ENGINE_VERSION = "2.1.218";
 
 /**
  * Thrown by `assertEngineVersionAccepted` when a version string is either
