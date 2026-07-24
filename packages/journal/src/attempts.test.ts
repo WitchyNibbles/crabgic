@@ -62,6 +62,43 @@ describe("recordAttempt — basic persistence", () => {
   });
 });
 
+describe("recordAttempt — optional runId threading (crash-recovery correctness fix)", () => {
+  it("persists the work_unit_transition entry WITHOUT a top-level runId when none is supplied (backward-compatible default)", async () => {
+    const { store } = freshStore();
+    const workUnitId = randomUUID();
+    const sessionId = randomUUID();
+
+    await recordAttempt(store, workUnitId, sessionId, "dispatched");
+
+    const entries = [];
+    for await (const entry of store.queryEntries({ type: "work_unit_transition" })) {
+      entries.push(entry);
+    }
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.runId).toBeUndefined();
+  });
+
+  it("persists the work_unit_transition entry carrying a top-level runId when one IS supplied — mirroring session_assignment's own convention", async () => {
+    const { store } = freshStore();
+    const workUnitId = randomUUID();
+    const sessionId = randomUUID();
+    const runId = randomUUID();
+
+    await recordAttempt(store, workUnitId, sessionId, "dispatched", runId);
+
+    const entries = [];
+    for await (const entry of store.queryEntries({ type: "work_unit_transition", runId })) {
+      entries.push(entry);
+    }
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.runId).toBe(runId);
+    if (entries[0]?.type === "work_unit_transition") {
+      expect(entries[0].payload.status).toBe("dispatched");
+      expect(entries[0].payload.sessionId).toBe(sessionId);
+    }
+  });
+});
+
 describe("getLatestAttempt — read-back path", () => {
   it("returns undefined when no attempts exist for a work unit", async () => {
     const { store } = freshStore();

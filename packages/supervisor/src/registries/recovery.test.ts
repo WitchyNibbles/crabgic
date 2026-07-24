@@ -1,11 +1,23 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@eo/journal";
+import {
+  buildFakeEngineScript,
+  buildTaskPacket,
+  buildWorkerResult,
+  FakeEngineAdapter,
+} from "@eo/testkit";
 import { recoverRun, RunRecoveryDataError } from "./recovery.js";
 import { createRunsRegistry } from "./runs-registry.js";
 import { createWorkersRegistry } from "./workers-registry.js";
+import { spawnManagedWorker } from "../worker-lifecycle/worker-lifecycle-manager.js";
+import {
+  allowAllAdjudicate,
+  buildMinimalCompiledProfile,
+} from "../worker-lifecycle/test-support/minimal-compiled-profile.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
@@ -169,5 +181,59 @@ describe("recoverRun — wired against @eo/journal's real recover(runId)", () =>
     const result = await recoverRun("no-such-run-in-journal", { journal: store, runs, workers });
     expect(result.replayed).toEqual([]);
     expect(runs.get("no-such-run-in-journal")).toBeUndefined();
+  });
+
+  describe("CRASH-RECOVERY CORRECTNESS FIX: a genuinely SUCCEEDED worker dispatched via the REAL production recordAttempt path (spawnManagedWorker, not a hand-crafted fixture) recovers as succeeded, not crashed", () => {
+    it("reports SUCCEEDED (never crashed) for a worker that cleanly succeeded before a simulated supervisor restart", async () => {
+      const runId = randomUUID();
+      const workUnitId = randomUUID();
+      const sessionId = randomUUID();
+
+      const script = buildFakeEngineScript({
+        sessionId,
+        structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+      });
+      const adapter = new FakeEngineAdapter(script);
+      const workers = createWorkersRegistry();
+
+      // The REAL production path: @eo/supervisor's own worker-lifecycle
+      // manager, exactly as the live supervisor daemon drives it — NOT a
+      // hand-crafted `store.appendEntry` fixture (which is what every
+      // other test in this file uses, and which is why they never caught
+      // this defect: hand-set entries always set `runId` directly,
+      // bypassing @eo/journal's `recordAttempt` entirely).
+      const managed = await spawnManagedWorker({
+        adapter,
+        journal: store,
+        workers,
+        packet: buildTaskPacket({ workUnitId }),
+        profile: buildMinimalCompiledProfile(),
+        adjudicate: allowAllAdjudicate,
+        runId,
+      });
+      const outcome = await managed.settled;
+      expect(outcome).toBe("succeeded");
+      expect(workers.get(managed.workerId)?.status).toBe("terminated");
+
+      // Simulated FULL supervisor restart: a brand-new JournalStore
+      // instance over the SAME on-disk directory, plus brand-new, EMPTY
+      // in-memory RunsRegistry/WorkersRegistry — zero in-memory state
+      // carried over, exactly what a real process restart looks like.
+      const freshStore = createJournalStore({ journalDir });
+      const freshRuns = createRunsRegistry();
+      const freshWorkers = createWorkersRegistry();
+      await recoverRun(runId, { journal: freshStore, runs: freshRuns, workers: freshWorkers });
+
+      const recovered = freshWorkers.query((w) => w.sessionId === sessionId)[0];
+      // THE FIX, made concrete: before it, this worker — which genuinely
+      // succeeded — was reconstructed as "crashed" (or not reconstructed
+      // as a worker record found by sessionId with the right status at
+      // all), because `recover(runId)`'s runId-scoped replay could never
+      // see the runId-less work_unit_transition entries recordAttempt used
+      // to write. After the fix, no orphan is synthesized for this session
+      // at all (its terminal status IS visible), so `recovered` is
+      // `undefined` — not `"crashed"`.
+      expect(recovered).toBeUndefined();
+    });
   });
 });

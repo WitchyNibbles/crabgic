@@ -83,7 +83,7 @@ export async function spawnManagedWorker(
     startedAt: nowFn().toISOString(),
   });
 
-  await recordAttempt(options.journal, workUnitId, sessionId, "dispatched");
+  await recordAttempt(options.journal, workUnitId, sessionId, "dispatched", options.runId);
 
   const logBuffer = createRingBuffer();
   const iterator = handle.events[Symbol.asyncIterator]();
@@ -98,6 +98,7 @@ export async function spawnManagedWorker(
     sessionId,
     onCrash: options.onCrash,
     now: nowFn,
+    runId: options.runId,
   });
 
   return {
@@ -120,6 +121,8 @@ interface PumpOptions {
   readonly sessionId: string;
   readonly onCrash: WorkerRecoveryHook | undefined;
   readonly now: () => Date;
+  /** Threaded onto every `recordAttempt` this pump records — see `SpawnManagedWorkerOptions.runId`'s own doc comment (crash-recovery correctness fix). */
+  readonly runId: string | undefined;
 }
 
 async function pumpWorkerEvents(options: PumpOptions): Promise<WorkerSettledOutcome> {
@@ -158,13 +161,25 @@ async function pumpWorkerEvents(options: PumpOptions): Promise<WorkerSettledOutc
   if (!sawTerminalResult) {
     const crashed: WorkerRecord = { ...base, status: "crashed", terminatedAt: nowIso };
     options.workers.upsert(crashed);
-    await recordAttempt(options.journal, options.workUnitId, options.sessionId, "failed");
+    await recordAttempt(
+      options.journal,
+      options.workUnitId,
+      options.sessionId,
+      "failed",
+      options.runId,
+    );
     await options.onCrash?.(crashed, "crashed");
     return "crashed";
   }
 
   const terminated: WorkerRecord = { ...base, status: "terminated", terminatedAt: nowIso };
   options.workers.upsert(terminated);
-  await recordAttempt(options.journal, options.workUnitId, options.sessionId, resultOutcome);
+  await recordAttempt(
+    options.journal,
+    options.workUnitId,
+    options.sessionId,
+    resultOutcome,
+    options.runId,
+  );
   return resultOutcome;
 }

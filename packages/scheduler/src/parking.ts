@@ -137,6 +137,8 @@ export interface ParkWorkUnitOptions {
   readonly resetsAt: number;
   /** `true` for an account-wide signal (roadmap/13: "account-wide signals pause globally") — additionally records a GLOBAL park timer. */
   readonly accountWide?: boolean;
+  /** Threaded onto the recorded `parked:rate_limit` attempt — see `@eo/journal`'s `recordAttempt` doc comment (crash-recovery correctness fix). Optional; omitted by callers with no runId in scope. */
+  readonly runId?: string;
 }
 
 /**
@@ -152,6 +154,7 @@ export async function parkWorkUnit(options: ParkWorkUnitOptions): Promise<WorkUn
     options.workUnitId,
     options.sessionId,
     "parked:rate_limit",
+    options.runId,
   );
   await recordParkTimer(options.journal, options.workUnitId, {
     workUnitId: options.workUnitId,

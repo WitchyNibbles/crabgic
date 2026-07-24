@@ -101,6 +101,13 @@ interface ConsumeEventsParams {
   readonly journal: JournalStore;
   readonly workUnitId: string;
   readonly sessionId: string;
+  /**
+   * CRASH-RECOVERY CORRECTNESS FIX: threaded onto every `recordAttempt`
+   * call below exactly as it already was onto `session_assignment` — see
+   * `@eo/journal`'s `recordAttempt` doc comment for why an entry missing
+   * `runId` was invisible to `@eo/supervisor`'s `recoverRun`.
+   */
+  readonly runId?: string;
 }
 
 /** Shared event-consumption loop between a fresh dispatch and a resume — see file-level doc comment. */
@@ -114,6 +121,7 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
         sessionId: params.sessionId,
         resetsAt: event.resetsAt,
         accountWide,
+        ...(params.runId !== undefined ? { runId: params.runId } : {}),
       });
       return { kind: "parked", sessionId: params.sessionId, resetsAt: event.resetsAt, accountWide };
     }
@@ -122,7 +130,13 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
       const validation = validateWorkerResult(event);
 
       if (validation.kind === "schemaViolation") {
-        await recordAttempt(params.journal, params.workUnitId, params.sessionId, "failed");
+        await recordAttempt(
+          params.journal,
+          params.workUnitId,
+          params.sessionId,
+          "failed",
+          params.runId,
+        );
         return {
           kind: "failed",
           sessionId: params.sessionId,
@@ -133,15 +147,33 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
 
       if (validation.result.outcome === "succeeded") {
         // Post-succeeded GREEN candidate-availability marker.
-        await recordAttempt(params.journal, params.workUnitId, params.sessionId, "succeeded");
+        await recordAttempt(
+          params.journal,
+          params.workUnitId,
+          params.sessionId,
+          "succeeded",
+          params.runId,
+        );
         return { kind: "succeeded", sessionId: params.sessionId, result: validation.result };
       }
       if (validation.result.outcome === "cancelled") {
-        await recordAttempt(params.journal, params.workUnitId, params.sessionId, "cancelled");
+        await recordAttempt(
+          params.journal,
+          params.workUnitId,
+          params.sessionId,
+          "cancelled",
+          params.runId,
+        );
         return { kind: "cancelled", sessionId: params.sessionId, result: validation.result };
       }
       // outcome === "failed"
-      await recordAttempt(params.journal, params.workUnitId, params.sessionId, "failed");
+      await recordAttempt(
+        params.journal,
+        params.workUnitId,
+        params.sessionId,
+        "failed",
+        params.runId,
+      );
       return {
         kind: "failed",
         sessionId: params.sessionId,
@@ -153,7 +185,7 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
   }
 
   // Stream ended with no terminal result/limitSignal event at all — a crash.
-  await recordAttempt(params.journal, params.workUnitId, params.sessionId, "failed");
+  await recordAttempt(params.journal, params.workUnitId, params.sessionId, "failed", params.runId);
   return { kind: "crashed", sessionId: params.sessionId, evidenceKind: "crash" };
 }
 
@@ -212,9 +244,15 @@ export async function dispatchAttempt(
     payload: { sessionId },
   });
   // Pre-dispatch base-revision RED evidence capture point.
-  await recordAttempt(options.journal, workUnitId, sessionId, "dispatched");
+  await recordAttempt(options.journal, workUnitId, sessionId, "dispatched", options.runId);
 
-  return consumeEvents({ events: handle.events, journal: options.journal, workUnitId, sessionId });
+  return consumeEvents({
+    events: handle.events,
+    journal: options.journal,
+    workUnitId,
+    sessionId,
+    ...(options.runId !== undefined ? { runId: options.runId } : {}),
+  });
 }
 
 /**
@@ -241,6 +279,8 @@ export interface ResumeAttemptOptions {
   readonly trigger: ResumeTrigger;
   /** Epoch-seconds clock, for `assertNotGloballyPaused` — overridable for deterministic tests. Defaults to the real wall clock. */
   readonly nowSeconds?: () => number;
+  /** Threaded onto every `recordAttempt`/`parkWorkUnit` call this resume produces — see `ConsumeEventsParams`'s own doc comment. Optional: a caller resuming without a known run id (e.g. a standalone work-unit-scoped test) simply omits it, unchanged from before this fix. */
+  readonly runId?: string;
 }
 
 /**
@@ -276,12 +316,13 @@ export async function resumeAttempt(
   const handle = options.adapter.resume(options.sessionRef, options.adjudicate);
   const sessionId = handle.sessionRef.sessionId;
 
-  await recordAttempt(options.journal, options.workUnitId, sessionId, "dispatched");
+  await recordAttempt(options.journal, options.workUnitId, sessionId, "dispatched", options.runId);
 
   return consumeEvents({
     events: handle.events,
     journal: options.journal,
     workUnitId: options.workUnitId,
     sessionId,
+    ...(options.runId !== undefined ? { runId: options.runId } : {}),
   });
 }

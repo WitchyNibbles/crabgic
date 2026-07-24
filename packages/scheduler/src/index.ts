@@ -18,6 +18,7 @@
 
 // ---- Errors (typed refusals every module below can throw) ----
 export {
+  GlobalPauseActiveError,
   PacketBudgetExceededError,
   PacketEnvelopeViolationError,
   RepairEvidenceRequiredError,

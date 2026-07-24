@@ -57,17 +57,36 @@ export function toAttemptRecord(entry: JournalEntry): WorkUnitAttemptRecord {
  * prior attempt (a read-back convenience for humans/CLI readers; not
  * required for the closed-union round-trip itself — see
  * `../codec/journal-payloads.ts`).
+ *
+ * `runId` is an OPTIONAL 5th parameter (added, backward-compatible —
+ * every pre-existing 4-arg call site keeps compiling unchanged),
+ * threaded onto the entry's top-level envelope field exactly as
+ * `session_assignment` entries already carry it (`../codec/journal-
+ * entry.ts`'s `envelopeFields.runId`, already optional — no schema
+ * change). CRASH-RECOVERY CORRECTNESS FIX: `@eo/journal`'s own
+ * `recover(runId)` (`./store/snapshot-io.ts`) replays only entries
+ * matching `queryEntries({ runId })`'s EXACT-match filter
+ * (`./store/query-entries.ts`) — an entry with no `runId` at all is
+ * invisible to it. Before this fix, EVERY `work_unit_transition` entry
+ * this function wrote carried no `runId`, so `@eo/supervisor`'s
+ * `recoverRun` could never see a work unit's true terminal status after
+ * a restart and misreported genuinely succeeded workers as crashed. See
+ * `@eo/scheduler`'s `executor.ts` and `@eo/supervisor`'s
+ * `worker-lifecycle-manager.ts`, both of which now thread their own
+ * already-in-scope `runId` through to every call here.
  */
 export async function recordAttempt(
   store: JournalStore,
   workUnitId: string,
   sessionId: string,
   status: WorkUnitAttemptStatus,
+  runId?: string,
 ): Promise<WorkUnitAttemptRecord> {
   const previous = await getLatestAttempt(store, workUnitId);
 
   const entry = await store.appendEntry({
     type: "work_unit_transition",
+    ...(runId !== undefined ? { runId } : {}),
     workUnitId,
     payload: {
       status,

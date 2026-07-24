@@ -89,6 +89,47 @@ describe("dispatchAttempt", () => {
     expect(sessionEntries[0]?.runId).toBe(runId);
   });
 
+  it("CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @eo/supervisor's recoverRun see a real dispatch's terminal status after a restart", async () => {
+    const script = buildFakeEngineScript({
+      structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+    });
+    const adapter = new FakeEngineAdapter(script);
+    const runId = "99999999-9999-4999-8999-999999999999";
+
+    const outcome = await dispatchAttempt({
+      adapter,
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      runId,
+    });
+    expect(outcome.kind).toBe("succeeded");
+
+    const transitionEntries: { runId?: string; type: string }[] = [];
+    for await (const entry of store.queryEntries({
+      type: "work_unit_transition",
+      workUnitId: WORK_UNIT_ID,
+    })) {
+      transitionEntries.push(entry as { runId?: string; type: string });
+    }
+    // Both the "dispatched" and "succeeded" transitions must carry runId.
+    expect(transitionEntries.length).toBeGreaterThanOrEqual(2);
+    for (const entry of transitionEntries) {
+      expect(entry.runId).toBe(runId);
+    }
+
+    // The SAME runId-scoped query recoverRun's recover(runId) itself uses
+    // must also see these entries — proving they are not merely present,
+    // but genuinely reachable by runId-filtered replay.
+    const scoped: unknown[] = [];
+    for await (const entry of store.queryEntries({ type: "work_unit_transition", runId })) {
+      scoped.push(entry);
+    }
+    expect(scoped.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("returns 'failed' with evidenceKind 'workerResultFailure' for a self-reported failure", async () => {
     const script = buildFakeEngineScript({
       structuredOutput: buildWorkerResult({ outcome: "failed", diagnostics: ["it broke"] }),
