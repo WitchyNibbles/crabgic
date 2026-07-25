@@ -27,13 +27,14 @@ function buildProfile(
   const sandbox = {
     enabled: true as const,
     failIfUnavailable: true as const,
+    autoAllowBashIfSandboxed: false as const,
     allowUnsandboxedCommands: false as const,
     network: {
       allowedDomains: [],
       allowAllUnixSockets: true as const,
       allowLocalBinding: false as const,
     },
-    filesystem: { allowWrite: ["<worktree>"], denyRead: ["~/.ssh/**"] },
+    filesystem: { allowWrite: ["<worktree>"], denyWrite: [], denyRead: ["~/.ssh/**"] },
     credentials: { envVars: [] },
   };
   return {

@@ -59,6 +59,7 @@
   "permissionMode": "dontAsk",
   "sandbox": {
     "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": false,
     "credentials": {
       "envVars": [
         {
@@ -75,6 +76,14 @@
         "/fixture/worker-tmp"
       ],
       "denyRead": [
+        "~/.local/state/engineering-orchestrator/**",
+        "~/.cache/engineering-orchestrator/**",
+        "~/.ssh/**",
+        "~/.aws/**"
+      ],
+      "denyWrite": [
+        "/fixture/worktree/.git",
+        "/fixture/worktree/.git/**",
         "~/.local/state/engineering-orchestrator/**",
         "~/.cache/engineering-orchestrator/**",
         "~/.ssh/**",
@@ -128,6 +137,7 @@
     },
     "sandbox": {
       "allowUnsandboxedCommands": false,
+      "autoAllowBashIfSandboxed": false,
       "credentials": {
         "envVars": [
           {
@@ -144,6 +154,14 @@
           "/fixture/worker-tmp"
         ],
         "denyRead": [
+          "~/.local/state/engineering-orchestrator/**",
+          "~/.cache/engineering-orchestrator/**",
+          "~/.ssh/**",
+          "~/.aws/**"
+        ],
+        "denyWrite": [
+          "/fixture/worktree/.git",
+          "/fixture/worktree/.git/**",
           "~/.local/state/engineering-orchestrator/**",
           "~/.cache/engineering-orchestrator/**",
           "~/.ssh/**",

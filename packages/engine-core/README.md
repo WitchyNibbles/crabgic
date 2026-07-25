@@ -18,8 +18,10 @@ package owns two things:
    envelopes.
 
 Everything here is engine-touching and therefore cites `docs/engine-baseline.md` (phase 00's
-verified-fact record, pinned range `2.1.207`–`2.1.210`) — never memory — per
-`roadmap/README.md`'s engine-fact-drift ground rule.
+verified-fact record; accepted range `2.1.207`–`2.1.220` for the `claude` CLI and
+`0.3.207`–`0.3.218` for the Agent SDK — deliberately asymmetric, since only the CLI transport
+reaches 2.1.220; the full spike suite was last run at `2.1.218`/`0.3.218`) — never memory —
+per `roadmap/README.md`'s engine-fact-drift ground rule.
 
 ## Adapter-responsibility doc (roadmap/03 deliverable 4)
 

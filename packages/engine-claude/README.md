@@ -2,8 +2,12 @@
 
 Claude Code worker runtime over the Agent SDK — the first real implementation of 03's
 `EngineAdapter` (`roadmap/06-claude-engine-adapter.md`). Every engine fact below cites
-`docs/engine-baseline.md` (accepted range: engine 2.1.207–2.1.210, SDK 0.3.207–0.3.210;
-tested 2.1.210 / 0.3.210) — never memory.
+`docs/engine-baseline.md` (accepted range: engine 2.1.207–2.1.220, SDK 0.3.207–0.3.218; full
+spike suite last run at 2.1.218 / 0.3.218) — never memory. The two ranges are deliberately
+asymmetric: only the CLI transport reaches 2.1.220, while this package's SDK transport runs
+the engine binary bundled with `@anthropic-ai/claude-agent-sdk` 0.3.218, which reports
+`2.1.218` — which is why `TESTED_ENGINE_VERSION` (`src/version-gate.ts`) stays `2.1.218` and
+the live canary asserts that exact version before any live probe runs.
 
 ## Design decisions (phase-06 build record)
 

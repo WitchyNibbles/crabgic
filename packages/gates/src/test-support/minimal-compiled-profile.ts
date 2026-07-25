@@ -23,9 +23,10 @@ export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
+      autoAllowBashIfSandboxed: false,
       allowUnsandboxedCommands: false,
       network: { allowedDomains: [], allowAllUnixSockets: true, allowLocalBinding: false },
-      filesystem: { allowWrite: [], denyRead: [] },
+      filesystem: { allowWrite: [], denyWrite: [], denyRead: [] },
       credentials: { envVars: [] },
     },
     settingsJson: {
@@ -39,9 +40,10 @@ export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
       sandbox: {
         enabled: true,
         failIfUnavailable: true,
+        autoAllowBashIfSandboxed: false,
         allowUnsandboxedCommands: false,
         network: { allowedDomains: [], allowAllUnixSockets: true, allowLocalBinding: false },
-        filesystem: { allowWrite: [], denyRead: [] },
+        filesystem: { allowWrite: [], denyWrite: [], denyRead: [] },
         credentials: { envVars: [] },
       },
     },

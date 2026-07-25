@@ -25,7 +25,10 @@ export type PermissionProfile = z.infer<typeof PermissionProfileSchema>;
  * the fields this worker's brief enumerates: `enabled`,
  * `failIfUnavailable`, `allowUnsandboxedCommands`, `network.{allowedDomains,
  * allowAllUnixSockets, allowLocalBinding}`, `filesystem.{allowWrite,
- * denyRead}`, `credentials.envVars`. Adaptation §4.2's own illustrative
+ * denyRead}`, `credentials.envVars` — plus two fields added by the phase-06
+ * sandbox-containment security-fix round (`autoAllowBashIfSandboxed` and
+ * `filesystem.denyWrite`), each documented at its own declaration below.
+ * Adaptation §4.2's own illustrative
  * sketch additionally shows `credentials.files` (deny-listing `~/.ssh`,
  * `~/.aws/credentials` file paths directly) and `excludedCommands` —
  * omitted here because they are not named by this phase's binding work
@@ -53,9 +56,23 @@ export const SandboxNetworkProfileSchema = z
   })
   .strict();
 
+/**
+ * `denyWrite` (phase-06 sandbox-containment security-fix round) is REQUIRED,
+ * not optional. The SDK documents it as "Additional paths to deny writing
+ * within the sandbox. Merged with paths from `Edit(...)` deny permission
+ * rules" (`@anthropic-ai/claude-agent-sdk` `sdk.d.ts`, `SandboxSettings.
+ * filesystem.denyWrite`) — the write-side sibling of `denyRead`. It exists
+ * here because `allowWrite` deliberately grants the WHOLE worktree (see
+ * `sandbox-profile.ts`'s own justification for why narrowing it to owned
+ * paths is not safe), which would otherwise hand a sandboxed shell command
+ * write access to the worktree's own git internals — and `.git/hooks/*` /
+ * `.git/config` are HOST code execution the next time the supervisor runs
+ * git, i.e. code that escapes the sandbox entirely.
+ */
 export const SandboxFilesystemProfileSchema = z
   .object({
     allowWrite: z.array(z.string()),
+    denyWrite: z.array(z.string()),
     denyRead: z.array(z.string()),
   })
   .strict();
@@ -77,6 +94,24 @@ export const SandboxProfileSchema = z
   .object({
     enabled: z.literal(true),
     failIfUnavailable: z.literal(true),
+    /**
+     * `z.literal(false)`, REQUIRED — never optional, never absent. The SDK's
+     * `SandboxSettings.autoAllowBashIfSandboxed` DEFAULTS TO TRUE (its own
+     * typings say so verbatim: "sandbox.autoAllowBashIfSandboxed is
+     * independent and still defaults to true, so set it to false to keep
+     * prompting for sandboxed commands"), so omitting the key is not a
+     * neutral choice — it silently auto-allows the `Bash` tool and voids
+     * `permission-profile.ts`'s four-literal `MANDATORY_BASH_ALLOWLIST`
+     * outright. Proven live, not inferred: see
+     * `docs/evidence/phase-06/sandbox-containment-determination.json`'s
+     * `compiled-bash-allowlist-sandboxed` / `-unsandboxed` arm pair — the
+     * SAME compiled permission object denied un-allowlisted `printf > file`
+     * commands with the sandbox off and PERMITTED them with it on. Modelled
+     * as a required literal (exactly like `allowUnsandboxedCommands`) so a
+     * hand-built or future profile cannot regress to the unsafe default by
+     * simply forgetting the field.
+     */
+    autoAllowBashIfSandboxed: z.literal(false),
     allowUnsandboxedCommands: z.literal(false),
     network: SandboxNetworkProfileSchema,
     filesystem: SandboxFilesystemProfileSchema,

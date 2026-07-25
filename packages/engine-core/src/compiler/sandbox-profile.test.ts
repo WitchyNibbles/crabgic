@@ -54,6 +54,23 @@ describe("emitSandboxProfile — fixed sandbox posture", () => {
     expect(profile.allowUnsandboxedCommands).toBe(false);
   });
 
+  it("autoAllowBashIfSandboxed is always false — the SDK default is TRUE and would void the Bash allowlist (live finding, see sandbox-profile.ts)", () => {
+    expect(emitSandboxProfile(buildEnvelopeFixture()).autoAllowBashIfSandboxed).toBe(false);
+  });
+
+  it("autoAllowBashIfSandboxed is false regardless of what the envelope authorizes", () => {
+    expect(
+      emitSandboxProfile(
+        buildEnvelopeFixture({
+          ownedPaths: ["packages/a/src"],
+          commands: ["npm run test", "git status"],
+          networkDestinations: ["api.example.com"],
+          credentialReferences: ["EO_TOKEN_A"],
+        }),
+      ).autoAllowBashIfSandboxed,
+    ).toBe(false);
+  });
+
   it("network.allowAllUnixSockets is always true — the Linux/WSL2 UDS gate (docs/engine-baseline.md §6)", () => {
     expect(emitSandboxProfile(buildEnvelopeFixture()).network.allowAllUnixSockets).toBe(true);
   });
@@ -73,6 +90,48 @@ describe("emitSandboxProfile — fixed sandbox posture", () => {
       WORKTREE_WRITE_PLACEHOLDER,
       WORKER_TMP_WRITE_PLACEHOLDER,
     ]);
+  });
+
+  it("filesystem.denyWrite carves the worktree's own git internals back OUT of the whole-worktree allowWrite grant", () => {
+    const profile = emitSandboxProfile(buildEnvelopeFixture());
+    expect(profile.filesystem.denyWrite).toEqual(
+      expect.arrayContaining([
+        `${WORKTREE_WRITE_PLACEHOLDER}/.git`,
+        `${WORKTREE_WRITE_PLACEHOLDER}/.git/**`,
+      ]),
+    );
+  });
+
+  it("filesystem.denyWrite mirrors every mandatory denyRead root, so an Edit allow rule can never merge write access into one", () => {
+    const profile = emitSandboxProfile(buildEnvelopeFixture());
+    expect(profile.filesystem.denyWrite).toEqual(
+      expect.arrayContaining([
+        CONTROL_REPO_STATE_ROOT_DENY_PATH,
+        CONTROL_REPO_CACHE_ROOT_DENY_PATH,
+        SSH_DENY_PATH,
+        AWS_DENY_PATH,
+      ]),
+    );
+  });
+
+  it("filesystem.denyWrite is identical regardless of what the envelope authorizes", () => {
+    const empty = emitSandboxProfile(buildEnvelopeFixture());
+    const full = emitSandboxProfile(
+      buildEnvelopeFixture({
+        ownedPaths: ["packages/a/src"],
+        commands: ["npm run build"],
+        networkDestinations: ["api.example.com"],
+      }),
+    );
+    expect([...empty.filesystem.denyWrite].sort()).toEqual([...full.filesystem.denyWrite].sort());
+  });
+
+  it("filesystem.allowWrite still grants the WHOLE worktree — narrowing it to owned paths would break every allowlisted command (see sandbox-profile.ts's justification)", () => {
+    const profile = emitSandboxProfile(buildEnvelopeFixture({ ownedPaths: ["packages/a/src"] }));
+    expect(profile.filesystem.allowWrite).toContain(WORKTREE_WRITE_PLACEHOLDER);
+    expect(profile.filesystem.allowWrite).not.toContain(
+      `${WORKTREE_WRITE_PLACEHOLDER}/packages/a/src`,
+    );
   });
 });
 

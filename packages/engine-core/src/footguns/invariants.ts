@@ -147,6 +147,61 @@ export function assertEditWriteDenyBackstopPresent(profile: CompiledWorkerProfil
   }
 }
 
+export class SandboxAutoAllowsBashError extends Error {
+  constructor(readonly observed: unknown) {
+    super(
+      "compiled sandbox profile does not set autoAllowBashIfSandboxed to false " +
+        `(observed: ${JSON.stringify(observed)}) — the SDK default is TRUE, which auto-allows the ` +
+        "Bash tool whenever the sandbox is enabled and silently voids the compiled four-literal " +
+        "Bash allowlist (proven live: docs/evidence/phase-06/" +
+        "sandbox-containment-determination.json).",
+    );
+    this.name = "SandboxAutoAllowsBashError";
+  }
+}
+
+/**
+ * THE fix this invariant exists to hold: the sandbox must never auto-allow
+ * `Bash`. Checked (not merely typed) because this runs on the real spawn path
+ * — `@eo/engine-claude`'s `substituteWorktreePlaceholders` calls
+ * `assertNoFootguns` before every worker spawn — so a profile that reached
+ * the adapter from anywhere other than `compileEnvelope` still cannot spawn
+ * with the unsafe SDK default in force.
+ */
+export function assertSandboxNeverAutoAllowsBash(profile: CompiledWorkerProfile): void {
+  if (profile.sandbox.autoAllowBashIfSandboxed !== false) {
+    throw new SandboxAutoAllowsBashError(profile.sandbox.autoAllowBashIfSandboxed);
+  }
+}
+
+export class MissingSandboxGitInternalsDenyWriteError extends Error {
+  constructor(readonly missingPath: string) {
+    super(
+      "compiled sandbox profile's filesystem.denyWrite is missing mandatory git-internals path: " +
+        `${missingPath} — filesystem.allowWrite grants the WHOLE worktree, and this list is the ` +
+        "sandbox-layer carve-out standing between that grant and .git/hooks/* + .git/config, " +
+        "which are HOST code execution outside the sandbox the next time the supervisor runs git " +
+        "(see sandbox-profile.ts for the measured, honest scope of this layer's contribution).",
+    );
+    this.name = "MissingSandboxGitInternalsDenyWriteError";
+  }
+}
+
+const MANDATORY_SANDBOX_DENY_WRITE_PATHS: readonly string[] = [
+  `${WORKTREE_WRITE_PLACEHOLDER}/.git`,
+  `${WORKTREE_WRITE_PLACEHOLDER}/.git/**`,
+  ...MANDATORY_SANDBOX_DENY_READ_PATHS,
+];
+
+/** The sandbox's `filesystem.denyWrite` must always carve the worktree's git internals — and every sensitive root — back out of the whole-worktree `allowWrite` grant. */
+export function assertSandboxDenyWritePathsPresent(profile: CompiledWorkerProfile): void {
+  for (const path of MANDATORY_SANDBOX_DENY_WRITE_PATHS) {
+    if (!profile.sandbox.filesystem.denyWrite.includes(path)) {
+      throw new MissingSandboxGitInternalsDenyWriteError(path);
+    }
+  }
+}
+
 /** Runs every footgun invariant check against `profile`; throws on the first violation found. */
 export function assertNoFootguns(profile: CompiledWorkerProfile): void {
   assertNoBlanketMcpDeny(profile);
@@ -154,4 +209,6 @@ export function assertNoFootguns(profile: CompiledWorkerProfile): void {
   assertNoSpaceBeforeColonBashLiteral(profile);
   assertAllOwnedPathAllowRulesAreWorktreeScoped(profile);
   assertEditWriteDenyBackstopPresent(profile);
+  assertSandboxNeverAutoAllowsBash(profile);
+  assertSandboxDenyWritePathsPresent(profile);
 }

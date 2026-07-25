@@ -32,6 +32,7 @@
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
+    "autoAllowBashIfSandboxed": false,
     "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [],
@@ -42,6 +43,14 @@
       "allowWrite": [
         "<worktree>",
         "<worker-tmp>"
+      ],
+      "denyWrite": [
+        "<worktree>/.git",
+        "<worktree>/.git/**",
+        "~/.local/state/engineering-orchestrator/**",
+        "~/.cache/engineering-orchestrator/**",
+        "~/.ssh/**",
+        "~/.aws/**"
       ],
       "denyRead": [
         "~/.local/state/engineering-orchestrator/**",

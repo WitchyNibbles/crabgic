@@ -26,9 +26,13 @@ export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
+      // Enabling the sandbox auto-allows Bash unless this is explicitly
+      // false, which silently voids the compiled Bash allowlist — see
+      // `packages/engine-core/src/compiler/sandbox-profile.ts`.
+      autoAllowBashIfSandboxed: false,
       allowUnsandboxedCommands: false,
       network: { allowedDomains: [], allowAllUnixSockets: true, allowLocalBinding: false },
-      filesystem: { allowWrite: [], denyRead: [] },
+      filesystem: { allowWrite: [], denyWrite: [], denyRead: [] },
       credentials: { envVars: [] },
     },
     settingsJson: {
@@ -42,9 +46,10 @@ export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
       sandbox: {
         enabled: true,
         failIfUnavailable: true,
+        autoAllowBashIfSandboxed: false,
         allowUnsandboxedCommands: false,
         network: { allowedDomains: [], allowAllUnixSockets: true, allowLocalBinding: false },
-        filesystem: { allowWrite: [], denyRead: [] },
+        filesystem: { allowWrite: [], denyWrite: [], denyRead: [] },
         credentials: { envVars: [] },
       },
     },

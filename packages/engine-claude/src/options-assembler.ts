@@ -264,6 +264,12 @@ function toSdkSandboxSettings(sandbox: CompiledWorkerProfile["sandbox"]): Sandbo
   return {
     enabled: sandbox.enabled,
     failIfUnavailable: sandbox.failIfUnavailable,
+    // MUST be forwarded explicitly: the SDK's own default for
+    // `autoAllowBashIfSandboxed` is TRUE, so dropping it here would re-open
+    // the exact hole `engine-core`'s `sandbox-profile.ts` compiles shut —
+    // an enabled sandbox auto-allowing `Bash` and voiding the compiled
+    // four-literal allowlist.
+    autoAllowBashIfSandboxed: sandbox.autoAllowBashIfSandboxed,
     allowUnsandboxedCommands: sandbox.allowUnsandboxedCommands,
     network: {
       allowedDomains: [...sandbox.network.allowedDomains],
@@ -272,6 +278,7 @@ function toSdkSandboxSettings(sandbox: CompiledWorkerProfile["sandbox"]): Sandbo
     },
     filesystem: {
       allowWrite: [...sandbox.filesystem.allowWrite],
+      denyWrite: [...sandbox.filesystem.denyWrite],
       denyRead: [...sandbox.filesystem.denyRead],
     },
     credentials: {

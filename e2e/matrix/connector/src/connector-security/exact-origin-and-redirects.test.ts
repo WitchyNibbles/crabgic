@@ -18,13 +18,25 @@ import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
   emitScenarioEvidence,
+  recordEmittedEvidenceIds,
 } from "../support/evidence.js";
 import type { ScenarioJournal } from "../support/evidence.js";
 
 let tj: ScenarioJournal;
 
+/**
+ * The ids of every `EvidenceRecord` THIS FILE appended, accumulated across
+ * the whole file (module scope, so it survives the per-test `beforeEach`
+ * journal). The tagging test below reads only these back — under a shared
+ * journal (`EO_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
+ * sibling harness's entries, tagged for other release-gate items.
+ */
+const emittedIds = new Set<string>();
+let recording: ReturnType<typeof recordEmittedEvidenceIds>;
+
 beforeEach(async () => {
   tj = await createScenarioJournal();
+  recording = recordEmittedEvidenceIds(tj.store, emittedIds);
 });
 
 afterEach(async () => {
@@ -83,7 +95,7 @@ describe("exact-origin credential binding", () => {
     expect(calls).toEqual(["https://connection-a.atlassian.invalid/rest/api/3/issue/PROJ-1"]);
 
     await emitScenarioEvidence({
-      journal: tj.store,
+      journal: recording,
       command:
         "connector-matrix: exact-origin credential binding — cross-connection origin refused pre-network",
       exitStatus: 0,
@@ -149,7 +161,7 @@ describe("redirect revalidation", () => {
     expect(calls).toEqual(["https://origin-a.invalid/start"]);
 
     await emitScenarioEvidence({
-      journal: tj.store,
+      journal: recording,
       command:
         "connector-matrix: redirect revalidation — disallowed redirect origin refused before credentials attach",
       exitStatus: 0,
@@ -158,9 +170,15 @@ describe("redirect revalidation", () => {
   });
 
   it("all scenarios in this file emit EvidenceRecords tagged release-gate:connector-matrix", async () => {
+    // Scoped to the ids this file itself appended (see `emittedIds`): a
+    // bare journal-wide read is only "this file's evidence" while the
+    // journal is private, and under `EO_RELEASE_GATE_JOURNAL_DIR` it would
+    // instead assert this tag over every OTHER harness's records too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
-      entries.push(entry as { payload: { gateTag?: string } });
+      if (entry.type === "evidence_pointer" && emittedIds.has(entry.payload.id)) {
+        entries.push(entry as { payload: { gateTag?: string } });
+      }
     }
     for (const entry of entries) {
       expect((entry as { payload: { gateTag?: string } }).payload.gateTag).toBe(

@@ -17,10 +17,12 @@ function buildSandboxProfile(overrides: Partial<SandboxProfile> = {}): SandboxPr
   return {
     enabled: true,
     failIfUnavailable: true,
+    autoAllowBashIfSandboxed: false,
     allowUnsandboxedCommands: false,
     network: { allowedDomains: [], allowAllUnixSockets: true, allowLocalBinding: false },
     filesystem: {
       allowWrite: ["<worktree>", "<worker-tmp>"],
+      denyWrite: [],
       denyRead: ["~/.ssh/**", "~/.aws/**"],
     },
     credentials: { envVars: [] },

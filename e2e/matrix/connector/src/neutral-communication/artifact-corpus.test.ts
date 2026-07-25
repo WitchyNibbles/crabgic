@@ -110,7 +110,7 @@ describe("neutral-communication — real @eo/renderer lint() over every Artifact
     // skips coverage.
     expect(ARTIFACT_KINDS).toHaveLength(8);
 
-    await emitScenarioEvidence({
+    const record = await emitScenarioEvidence({
       journal: tj.store,
       command:
         "connector-matrix: neutral-communication golden corpus (all 8 ArtifactKinds, real lint())",
@@ -118,8 +118,17 @@ describe("neutral-communication — real @eo/renderer lint() over every Artifact
       outcomeContent: JSON.stringify(outcomes),
     });
 
+    // Scoped to this record's own freshly-minted `changeSetId`: what is
+    // proved is unchanged — that one `emitScenarioEvidence` call appended
+    // exactly ONE durable, correctly-tagged, readable-back entry. A bare
+    // journal-wide count only means that while the journal is private;
+    // under `EO_RELEASE_GATE_JOURNAL_DIR` (see `../support/evidence.ts`)
+    // every sibling harness's evidence is visible here too.
     const evidence: unknown[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({
+      type: "evidence_pointer",
+      changeSetId: record.changeSetId,
+    })) {
       evidence.push(entry);
     }
     expect(evidence).toHaveLength(1);

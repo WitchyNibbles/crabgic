@@ -37,13 +37,25 @@ import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
   emitScenarioEvidence,
+  recordEmittedEvidenceIds,
 } from "../support/evidence.js";
 import type { ScenarioJournal } from "../support/evidence.js";
 
 let tj: ScenarioJournal;
 
+/**
+ * The ids of every `EvidenceRecord` THIS FILE appended, accumulated across
+ * the whole file (module scope, so it survives the per-test `beforeEach`
+ * journal). The tagging test below reads only these back — under a shared
+ * journal (`EO_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
+ * sibling harness's entries, tagged for other release-gate items.
+ */
+const emittedIds = new Set<string>();
+let recording: ReturnType<typeof recordEmittedEvidenceIds>;
+
 beforeEach(async () => {
   tj = await createScenarioJournal();
+  recording = recordEmittedEvidenceIds(tj.store, emittedIds);
 });
 
 afterEach(async () => {
@@ -217,7 +229,7 @@ describe("gateway MCP tool surface — no raw HTTP-passthrough / generic-execute
       }
 
       await emitScenarioEvidence({
-        journal: tj.store,
+        journal: recording,
         command:
           "connector-matrix: raw-tool denial — real gateway MCP surface contains no raw/passthrough tool",
         exitStatus: 0,
@@ -252,9 +264,14 @@ describe("gateway MCP tool surface — no raw HTTP-passthrough / generic-execute
 
 describe("evidence tagging", () => {
   it("every EvidenceRecord emitted in this file is tagged release-gate:connector-matrix", async () => {
+    // Scoped to the ids this file itself appended (see `emittedIds`): a
+    // bare journal-wide read is only "this file's evidence" while the
+    // journal is private, and under `EO_RELEASE_GATE_JOURNAL_DIR` it would
+    // instead assert this tag over every OTHER harness's records too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
-      entries.push(entry);
+      if (entry.type === "evidence_pointer" && emittedIds.has(entry.payload.id))
+        entries.push(entry);
     }
     for (const entry of entries) {
       expect((entry as { payload: { gateTag?: string } }).payload.gateTag).toBe(

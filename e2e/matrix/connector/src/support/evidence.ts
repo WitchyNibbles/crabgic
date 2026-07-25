@@ -19,7 +19,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createJournalStore, type JournalStore } from "@eo/journal";
@@ -37,8 +37,52 @@ export interface ScenarioJournal {
   cleanup(): Promise<void>;
 }
 
-/** A fresh, real `@eo/journal` `JournalStore` over a temp directory — one per test file/scenario, never shared across concurrent vitest workers. */
+/**
+ * A fresh, real `@eo/journal` `JournalStore` over a temp directory — one
+ * per test file/scenario, never shared across concurrent vitest workers.
+ *
+ * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): the private temp
+ * directory is exactly why every `EvidenceRecord` this harness genuinely
+ * emitted used to be unreadable by `e2e/report`'s generator — it was
+ * written to a directory that ceased to exist before the report ran, so
+ * this harness's two `release-gate:connector-matrix` checklist items
+ * scored EVIDENCE-PENDING against real, green runs. When that env var is
+ * set, this helper writes into that ONE directory instead, the same one
+ * `e2e/report/src/cli.ts` resolves its READ journal from, so a whole
+ * release run accumulates into a single journal the report can actually
+ * link evidence out of. Mirrors the six sibling helpers that already do
+ * this (`e2e/live/src/testJournal.ts`, `e2e/matrix/git/src/test-support/
+ * test-journal.ts`, ...).
+ *
+ * `cleanup()` is a deliberate NO-OP in that mode. Removing the shared
+ * journal would delete every OTHER harness's evidence along with this
+ * one's — the precise records the report is about to be generated from —
+ * and the deletion would happen in an `afterEach`, long before the report
+ * step runs. The directory is CI's (or the invoking operator's) to own and
+ * dispose of, never an individual test's.
+ *
+ * With the env var unset — the default, and how the normal gate runs —
+ * behaviour is unchanged: a private `mkdtemp` directory, really removed on
+ * `cleanup()`. An empty value counts as unset, since it is never a usable
+ * journal directory and must not silently redirect writes to the process
+ * CWD.
+ *
+ * Because a shared journal makes every sibling harness's entries visible
+ * to this one's reads, any assertion over an EXACT journal-wide set would
+ * break (or pass vacuously) in that mode — see `recordEmittedEvidenceIds`
+ * and the `changeSetId`-scoped queries the scenario files use.
+ */
 export async function createScenarioJournal(): Promise<ScenarioJournal> {
+  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
+    await mkdir(sharedJournalDir, { recursive: true });
+    return {
+      store: createJournalStore({ journalDir: sharedJournalDir }),
+      journalDir: sharedJournalDir,
+      cleanup: () => Promise.resolve(),
+    };
+  }
+
   const journalDir = await mkdtemp(join(tmpdir(), "eo-connector-matrix-"));
   const store = createJournalStore({ journalDir });
   return {
@@ -46,6 +90,34 @@ export async function createScenarioJournal(): Promise<ScenarioJournal> {
     journalDir,
     cleanup: async () => {
       await rm(journalDir, { recursive: true, force: true });
+    },
+  };
+}
+
+/**
+ * Wraps an `appendEntry` seam so that the `id` of every `EvidenceRecord`
+ * appended THROUGH the returned seam is recorded into `into`.
+ *
+ * This is how a scenario file whose emitters mint their `changeSetId`
+ * internally (and never surface it) scopes a later read back to its OWN
+ * records: it reads the journal, then keeps only the entries whose
+ * `payload.id` this recorder saw. Under a shared journal
+ * (`EO_RELEASE_GATE_JOURNAL_DIR`) a bare journal-wide read also sweeps up
+ * every sibling harness's entries — including ones tagged for a different
+ * release-gate item entirely — so "every entry in the journal is tagged
+ * `release-gate:connector-matrix`" would stop being a statement about this
+ * file at all. Same approach `e2e/matrix/git` / `e2e/matrix/installation`
+ * use for their own internally-minted ids.
+ */
+export function recordEmittedEvidenceIds(
+  journal: Pick<JournalStore, "appendEntry">,
+  into: Set<string>,
+): Pick<JournalStore, "appendEntry"> {
+  return {
+    appendEntry: async (input) => {
+      const entry = await journal.appendEntry(input);
+      if (entry.type === "evidence_pointer") into.add(entry.payload.id);
+      return entry;
     },
   };
 }

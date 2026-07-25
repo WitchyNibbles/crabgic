@@ -8,12 +8,16 @@ import {
   assertNoSpaceBeforeColonBashLiteral,
   assertAllOwnedPathAllowRulesAreWorktreeScoped,
   assertEditWriteDenyBackstopPresent,
+  assertSandboxNeverAutoAllowsBash,
+  assertSandboxDenyWritePathsPresent,
   assertNoFootguns,
   BlanketMcpDenyViolationError,
   MissingMandatoryDenyReadPathError,
   SpaceBeforeColonBashLiteralError,
   UnanchoredOwnedPathAllowError,
   MissingEditWriteDenyBackstopError,
+  SandboxAutoAllowsBashError,
+  MissingSandboxGitInternalsDenyWriteError,
 } from "./invariants.js";
 
 /**
@@ -106,6 +110,52 @@ export function withDroppedEditWriteDenyBackstopBug(
   };
 }
 
+/**
+ * Seed 6 (phase-06 sandbox-containment security-fix round): reintroduces the
+ * pre-fix sandbox profile, which simply never set
+ * `autoAllowBashIfSandboxed` at all. The SDK's own default for that key is
+ * TRUE, so an ABSENT key is not a neutral state — it auto-allows `Bash`
+ * whenever the sandbox is enabled and voids the compiled four-literal Bash
+ * allowlist. Modelled here exactly as the defect appeared: the property
+ * deleted, not set to `true`.
+ */
+export function withAbsentAutoAllowBashKeyBug(
+  profile: CompiledWorkerProfile,
+): CompiledWorkerProfile {
+  const { autoAllowBashIfSandboxed: _dropped, ...sandboxWithoutKey } = profile.sandbox;
+  return { ...profile, sandbox: sandboxWithoutKey as CompiledWorkerProfile["sandbox"] };
+}
+
+/** Seed 7 (same round): the same key present but flipped back to the unsafe SDK default. */
+export function withAutoAllowBashEnabledBug(profile: CompiledWorkerProfile): CompiledWorkerProfile {
+  return {
+    ...profile,
+    sandbox: {
+      ...profile.sandbox,
+      autoAllowBashIfSandboxed: true as unknown as false,
+    },
+  };
+}
+
+/**
+ * Seed 8 (same round): drops the sandbox `denyWrite` carve-out, leaving
+ * `filesystem.allowWrite`'s whole-worktree grant covering the worktree's own
+ * git internals — i.e. `.git/hooks/*` and `.git/config` writable from a
+ * sandboxed shell, which is HOST code execution outside the sandbox the next
+ * time the supervisor runs git.
+ */
+export function withDroppedSandboxDenyWriteBug(
+  profile: CompiledWorkerProfile,
+): CompiledWorkerProfile {
+  return {
+    ...profile,
+    sandbox: {
+      ...profile.sandbox,
+      filesystem: { ...profile.sandbox.filesystem, denyWrite: [] },
+    },
+  };
+}
+
 const envelope = buildEnvelopeFixture({
   ownedPaths: ["packages/a/src"],
   commands: ["git status", "git diff"],
@@ -172,12 +222,51 @@ describe("mutation suite — seed 5: dropped Edit/Write deny backstop (CRITICAL 
   });
 });
 
-describe("assertNoFootguns — runs all five checks together", () => {
+describe("mutation suite — seeds 6+7: sandbox auto-allows Bash (phase-06 containment fix)", () => {
+  it("the real compiler's own output never trips assertSandboxNeverAutoAllowsBash", () => {
+    expect(() => assertSandboxNeverAutoAllowsBash(baseline)).not.toThrow();
+  });
+
+  it("the ABSENT-key variant IS caught (the SDK default is true, so absence is not neutral)", () => {
+    expect(() => assertSandboxNeverAutoAllowsBash(withAbsentAutoAllowBashKeyBug(baseline))).toThrow(
+      SandboxAutoAllowsBashError,
+    );
+  });
+
+  it("the explicitly-true variant IS caught", () => {
+    expect(() => assertSandboxNeverAutoAllowsBash(withAutoAllowBashEnabledBug(baseline))).toThrow(
+      SandboxAutoAllowsBashError,
+    );
+  });
+});
+
+describe("mutation suite — seed 8: dropped sandbox denyWrite carve-out (phase-06 containment fix)", () => {
+  it("the real compiler's own output never trips assertSandboxDenyWritePathsPresent", () => {
+    expect(() => assertSandboxDenyWritePathsPresent(baseline)).not.toThrow();
+  });
+
+  it("the seeded variant IS caught", () => {
+    expect(() =>
+      assertSandboxDenyWritePathsPresent(withDroppedSandboxDenyWriteBug(baseline)),
+    ).toThrow(MissingSandboxGitInternalsDenyWriteError);
+  });
+});
+
+describe("assertNoFootguns — runs every check together", () => {
   it("never throws against the real compiler's own output", () => {
     expect(() => assertNoFootguns(baseline)).not.toThrow();
   });
 
-  it("catches each of the five seeded variants in turn", () => {
+  it("catches each of the eight seeded variants in turn", () => {
+    expect(() => assertNoFootguns(withAbsentAutoAllowBashKeyBug(baseline))).toThrow(
+      SandboxAutoAllowsBashError,
+    );
+    expect(() => assertNoFootguns(withAutoAllowBashEnabledBug(baseline))).toThrow(
+      SandboxAutoAllowsBashError,
+    );
+    expect(() => assertNoFootguns(withDroppedSandboxDenyWriteBug(baseline))).toThrow(
+      MissingSandboxGitInternalsDenyWriteError,
+    );
     expect(() => assertNoFootguns(withBlanketMcpDenyBug(baseline))).toThrow(
       BlanketMcpDenyViolationError,
     );

@@ -96,18 +96,30 @@ never sweeps ignored/secret-shaped files into that first commit
 ## Engine-version-drift handling
 
 This system pins its accepted Claude Code / Agent SDK version range in
-`docs/engine-baseline.md` (currently **2.1.207–2.1.218** / SDK **0.3.207–0.3.218**). `doctor`
-enforces a **version gate**: it refuses to proceed against a `claude --version` outside the
-currently accepted range on the release host, rather than silently trusting an untested engine
-(`docs/threat-model.md` §2, "Repudiation"; `roadmap/23-release-hardening.md`'s test-matrix
-mapping, "Version drift" row: "Doctor refuses an untested `claude --version` on the release
-host").
+`docs/engine-baseline.md` (currently **2.1.207–2.1.220** for the `claude` CLI / SDK
+**0.3.207–0.3.218**). `doctor` enforces a **version gate**: it refuses to proceed against a
+`claude --version` outside the currently accepted range on the release host, rather than
+silently trusting an untested engine (`docs/threat-model.md` §2, "Repudiation";
+`roadmap/23-release-hardening.md`'s test-matrix mapping, "Version drift" row: "Doctor refuses
+an untested `claude --version` on the release host").
+
+**The two ranges are deliberately asymmetric — do not "sync" them.** Only the CLI transport
+(`claude` resolved from `PATH`) is accepted up to 2.1.220. The SDK transport runs the engine
+binary bundled with `@anthropic-ai/claude-agent-sdk` **0.3.218**, which reports
+`2.1.218 (Claude Code)`, so the SDK range stops at 0.3.218 and `EXPECTED_SDK_PIN`
+(`e2e/release/src/enginePinCheck.ts`) stays `0.3.218`. The 1:1 release correspondence between
+the two version lines (`0.3.218`↔`2.1.218`) describes how the vendor ships them, not an
+obligation to move both ranges together: bumping the SDK dependency is a separate act with its
+own evidence requirement (`docs/engine-baseline.md` §10, final bullet). Note also that the
+**accepted range and the tested version are different things** — `TESTED_ENGINE_VERSION`
+(`packages/engine-claude/src/version-gate.ts`) remains `2.1.218`, because that is the version
+the recorded probe verdicts were actually produced at.
 
 ### Re-baseline procedure
 
 When Claude Code ships a new version and the operator wants to move the accepted range
-forward, the procedure this repository's own re-baseline already followed (2026-07-15 →
-2026-07-24, extending 2.1.207–2.1.210 to 2.1.207–2.1.218) is:
+forward, the procedure this repository's own **full** re-baseline already followed
+(2026-07-15 → 2026-07-24, extending 2.1.207–2.1.210 to 2.1.207–2.1.218) is:
 
 1. Bump the SDK dependency in `spikes/package.json` to the matching `0.3.x` release (the SDK
    bundles its own pinned native `claude` binary per-platform — this is independent of
@@ -125,14 +137,28 @@ forward, the procedure this repository's own re-baseline already followed (2026-
 5. Update `docs/engine-baseline.md` itself with the new range, the re-run date, and every
    changed/reconfirmed fact, citing the exact fixture files regenerated.
 
-This is not a hypothetical procedure — it is exactly what produced the current
-2.1.207–2.1.218 range recorded in `docs/engine-baseline.md`, including one real behavioral
+This is not a hypothetical procedure — it is exactly what produced the 2.1.207–2.1.218 span of
+the accepted range recorded in `docs/engine-baseline.md`, including one real behavioral
 resolution along the way (the `CLAUDE_CODE_OAUTH_TOKEN` handoff-file auth path flipped from
 UNRESOLVED to PASS once the owner populated the token file out-of-band — an environmental
 resolution, not an engine-behavior change) and one deliberate retention decision (four
 transcript fixtures were restored to their richer original captures rather than left at a
 narrower incidental re-capture, since the underlying facts were confirmed unchanged either
 way — see `docs/engine-baseline.md` §8's "Fixture-retention decision").
+
+**The range's current 2.1.220 upper end did NOT come from this procedure**, and an operator
+reading the range should not assume it did. On 2026-07-25 the host's `PATH` `claude` moved to
+2.1.220 — outside the then-accepted range, i.e. a re-baseline trigger — and the owner chose to
+extend the accepted range to 2.1.220 rather than pin the host back. That round was
+deliberately narrow: **no spike was re-run, no fixture was regenerated, the verdict tally is
+unchanged (and remains a set of 2.1.218 figures), and the invalidation list was not re-checked
+item-by-item.** Nothing therefore passed "at 2.1.220" in the spike-suite sense; the two facts
+that round did record were gathered outside the eight-script suite
+(`docs/engine-baseline.md` §14, §15). A full-suite re-run at 2.1.220 — which requires bumping
+`spikes/package.json` to the SDK release matching 2.1.220 and reinstalling, per step 1 above,
+since upgrading the system binary alone does not change what the SDK transport runs — is
+recorded as **owed** (`docs/engine-baseline.md` §11). Treat the range's upper end as resting
+on a weaker evidentiary base than its 2.1.218 point until that re-run lands.
 
 ## `enabledPlugins` settings-key format
 

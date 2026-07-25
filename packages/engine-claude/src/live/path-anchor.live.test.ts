@@ -24,41 +24,73 @@
  * expectation (triple-slash honored); a failure here is the signal to
  * exercise that authority.
  *
- * ── SETTLED 2026-07-25 (live, pinned engine; artifact:
+ * ── MEASURED 2026-07-25 (live, pinned engine; artifact:
  * `docs/evidence/phase-06/path-anchor-determination.json`) ────────────────
  *
- * The authority above was NOT exercised, because its premise turned out to be
- * false. The determination, from 16 live probes:
+ * The authority above was NOT exercised. What these 20 recorded probes
+ * establish — and ONLY this:
  *
- *   The pinned engine honors NO path-anchored form of a `Write(...)`
- *   permission rule. Not triple-slash, not double-slash, not plain-absolute,
- *   not cwd-relative — and not merely as a globbing problem either: an EXACT
- *   absolute filename (`Write(/abs/worktree/owned/inside.txt)`) does not
- *   match either, nor does `/*` in place of `/**`. Only the BARE, unanchored
- *   tool name `Write` is honored. This holds identically in BOTH channels a
- *   compiled profile's deny entries travel through
+ *   An ISOLATED path-scoped `Write(...)` rule, supplied ALONE against an
+ *   otherwise minimal permission object and a single-segment owned path,
+ *   was NOT honored. Not triple-slash, not double-slash, not
+ *   plain-absolute, not cwd-relative — and not merely as a globbing problem
+ *   either: an EXACT absolute filename (`Write(/abs/worktree/owned/
+ *   inside.txt)`) did not match, nor did `/*` in place of `/**`. In that
+ *   setup only the BARE, unanchored tool name `Write` matched, identically
+ *   in BOTH channels a compiled profile's deny entries travel through
  *   (`settings.permissions.deny` and `Options.disallowedTools`), each with
  *   its own bare-`Write` control proving the channel was live.
  *
+ * ── DO NOT GENERALIZE THAT (correction, same day) ─────────────────────────
+ *
+ * This header previously read the result above as "the engine honors NO
+ * path-anchored form of a `Write(...)` rule; the compiler's anchoring is
+ * inert at runtime". That generalization is RETRACTED.
+ * `sandbox-containment.live.test.ts` (artifact
+ * `docs/evidence/phase-06/sandbox-containment-determination.json`) then
+ * measured the SAME triple-slash anchor form inside the COMPILER'S OWN full
+ * permission object — `defaultMode: "dontAsk"`,
+ * `disableBypassPermissionsMode: "disable"`, the populated `deny` array, no
+ * bare `Write` anywhere, nested owned path `packages/example/src` — and it
+ * demonstrably SCOPES: the in-owned-path Write is allowed while a Write one
+ * directory up is denied, reproduced across four samples including
+ * `compiled-profile-no-sandbox` (both `Options.sandbox` and
+ * `settingsJson.sandbox` removed), which rules the sandbox out.
+ *
+ * Both results are real and were gathered with working controls; they
+ * differ in SETUP, and WHICH difference is causal is UNDETERMINED — lone
+ * rule vs. full permission object, deny-side vs. allow-side, single-segment
+ * vs. nested owned path, target geometry. Do not assert one. The settled,
+ * citable statement of both observations is `docs/engine-baseline.md` §14.
+ *
  * Consequences, in order of importance:
  *
- *  1. NO production change is warranted. The conditional authority fires only
- *     when the engine honors a form DIFFERENT from the one
- *     `substituteWorktreePlaceholders` emits. The engine honors none, so
- *     rewriting `///abs/…` to `//abs/…` or `/abs/…` would swap one inert
- *     string for another — a change with no evidence of improvement, made to
- *     a security-relevant compiler. The triple-slash form stays.
- *  2. Owned-path write CONFINEMENT does not come from permission-rule path
- *     anchoring, because that mechanism does not exist here. These probes ran
- *     with NO sandbox by design (see above), so they say nothing about
+ *  1. NO production change is warranted — from EITHER result. The
+ *     conditional authority fires only when the engine honors a form
+ *     DIFFERENT from the one `substituteWorktreePlaceholders` emits. These
+ *     probes honored no form in their setup, and the compiled-profile probe
+ *     found the emitted triple-slash form working in production's own
+ *     configuration. Neither points at a different form; the triple-slash
+ *     form stays. In particular, the compiler's `//<worktree>/…/**`
+ *     template must NOT be deleted or "simplified" as dead weight on the
+ *     strength of this file — see baseline §14.4.
+ *  2. These probes say nothing about owned-path CONFINEMENT in production.
+ *     They ran with NO sandbox by design (see above) and with a hand-built
+ *     permission object, so they say nothing about
  *     `sandbox.filesystem.allowWrite`, the adjudication callback, or the
- *     `assertNoFootguns` gate — the layers confinement must actually rest on.
- *     Which of those actually confines writes is a SEPARATE owed probe.
- *  3. The four allow-side probes below cannot answer this question at all and
- *     never could; the first `it` therefore still fails live. Its recorded
- *     dead end is deliberately preserved rather than inverted — see the
- *     block comment above the deny probes for why the allow shape measures
- *     tool ENABLEMENT rather than path anchoring.
+ *     `assertNoFootguns` gate. `sandbox-containment.live.test.ts` is where
+ *     the compiled shape is measured; whole-system containment remains a
+ *     separate open question (baseline §11).
+ *  3. The four allow-side probes below cannot answer this question at all
+ *     and never could; the first `it` therefore still fails live. Its
+ *     recorded dead end is deliberately preserved rather than inverted —
+ *     see the block comment above the deny probes for why the allow shape
+ *     measures tool ENABLEMENT rather than path anchoring. Note that the
+ *     allow shape is precisely what the compiled profile exercises, which
+ *     is one of the candidate explanations above.
+ *
+ * The probes and assertions below are UNCHANGED and remain correct about
+ * what they measured. Read them as "in this setup", never as "in general".
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -380,18 +412,21 @@ describe("owned-path rule anchor form honored by the real engine (03 carry-forwa
    *
    * This probe used to assert that the triple-slash form honors its allow —
    * the phase-03 expectation. Twenty live probes across both permission
-   * channels have since settled the question the other way: NO path-anchored
-   * form is honored, as allow or as deny (see this file's header table and
-   * the determination artifact). Leaving the old assertion in place would
-   * hold the `engine-live` job permanently red against a question that is
-   * now answered, which teaches everyone to ignore it.
+   * channels measured the opposite IN THIS SETUP: an isolated path-scoped
+   * rule, supplied alone, was honored in neither channel (see this file's
+   * header and the determination artifact). Leaving the old assertion in
+   * place would hold the `engine-live` job permanently red against an
+   * outcome that is now recorded, which teaches everyone to ignore it.
    *
    * So the assertion is INVERTED rather than deleted, and it still earns its
-   * live run: if a future engine version starts honoring path anchors, this
-   * goes red and tells us the compiler's inert `//<worktree>/…/**` template
-   * has become load-bearing again — which is exactly when someone must
-   * revisit `substituteWorktreePlaceholders`. The executed-call guards are
-   * unchanged; without them "not allowed" could mean "never attempted".
+   * live run: if a future engine version starts honoring an isolated path
+   * anchor in THIS configuration, this goes red — which is both a real
+   * engine change and the collapse of one candidate explanation for why the
+   * compiled profile scopes and this shape does not (header, "DO NOT
+   * GENERALIZE"). Either way, someone must revisit
+   * `substituteWorktreePlaceholders` and baseline §14. The executed-call
+   * guards are unchanged; without them "not allowed" could mean "never
+   * attempted".
    */
   it("the triple-slash form is NOT honored — the settled determination, asserted so a reversal goes red", async () => {
     const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
@@ -412,10 +447,12 @@ describe("owned-path rule anchor form honored by the real engine (03 carry-forwa
 
       expect(
         outcome.insideAllowed,
-        "REVERSAL: the engine now HONORS the triple-slash path-anchored allow rule. That " +
-          "contradicts the settled determination this suite recorded — path-scoped Write(<pattern>) " +
-          "rules matched nothing, in either channel. Re-open the anchor question and revisit " +
-          "substituteWorktreePlaceholders, which currently emits an inert rule.",
+        "REVERSAL: the engine now HONORS the triple-slash path-anchored allow rule supplied ALONE. " +
+          "That contradicts what this suite recorded — an isolated path-scoped Write(<pattern>) rule " +
+          "was not honored, in either channel — while the same form inside the compiler's full " +
+          "permission object DID scope (docs/evidence/phase-06/sandbox-containment-determination." +
+          "json). Re-open the anchor question, and update docs/engine-baseline.md §14, whose two " +
+          "observations this result would reconcile.",
       ).toBe(false);
     } finally {
       await scratch.cleanup();

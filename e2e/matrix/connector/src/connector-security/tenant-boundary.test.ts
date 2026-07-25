@@ -11,13 +11,25 @@ import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
   emitScenarioEvidence,
+  recordEmittedEvidenceIds,
 } from "../support/evidence.js";
 import type { ScenarioJournal } from "../support/evidence.js";
 
 let tj: ScenarioJournal;
 
+/**
+ * The ids of every `EvidenceRecord` THIS FILE appended, accumulated across
+ * the whole file (module scope, so it survives the per-test `beforeEach`
+ * journal). The tagging test below reads only these back — under a shared
+ * journal (`EO_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
+ * sibling harness's entries, tagged for other release-gate items.
+ */
+const emittedIds = new Set<string>();
+let recording: ReturnType<typeof recordEmittedEvidenceIds>;
+
 beforeEach(async () => {
   tj = await createScenarioJournal();
+  recording = recordEmittedEvidenceIds(tj.store, emittedIds);
 });
 
 afterEach(async () => {
@@ -43,7 +55,7 @@ describe("tenant/org boundary — checkGrafanaConnectionDoctor", () => {
     expect(result.reason).toMatch(/outside this connection's org allowlist/);
 
     await emitScenarioEvidence({
-      journal: tj.store,
+      journal: recording,
       command:
         "connector-matrix: tenant boundary — a token bound to an out-of-allowlist org is refused",
       exitStatus: 0,
@@ -71,9 +83,14 @@ describe("tenant/org boundary — checkGrafanaConnectionDoctor", () => {
   });
 
   it("emitted evidence for this file is tagged release-gate:connector-matrix", async () => {
+    // Scoped to the ids this file itself appended (see `emittedIds`): a
+    // bare journal-wide read is only "this file's evidence" while the
+    // journal is private, and under `EO_RELEASE_GATE_JOURNAL_DIR` it would
+    // instead assert this tag over every OTHER harness's records too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
-      entries.push(entry);
+      if (entry.type === "evidence_pointer" && emittedIds.has(entry.payload.id))
+        entries.push(entry);
     }
     for (const entry of entries) {
       expect((entry as { payload: { gateTag?: string } }).payload.gateTag).toBe(
