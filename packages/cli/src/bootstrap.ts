@@ -18,7 +18,12 @@ import {
   type JournalStore,
   type XdgEnv,
 } from "@eo/journal";
-import { FileExternalConnectionStore, probeConnectionReachability } from "@eo/gateway";
+import {
+  FileExternalConnectionStore,
+  probeConnectionReachability,
+  type GatewayToolRegistry,
+} from "@eo/gateway";
+import { buildProductionGatewayToolRegistry } from "./gateway-mcp/build-tool-registry.js";
 import {
   ApprovalTokenMinter,
   AuthorizationEnvelopeSchema,
@@ -146,6 +151,49 @@ export function buildRealCliDependencies(
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
     intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
   };
+}
+
+/**
+ * The `gateway mcp` server's real tool registry — every family the shipped
+ * binary exposes, bound to the SAME durable state the CLI's own commands
+ * use. That sharing is the point: `run` mints an approval token and writes
+ * the ChangeSet in one process, and `contract.approve` verifies and flips it
+ * from this one.
+ *
+ * Deliberately reuses `buildRealCliDependencies` rather than re-resolving
+ * the registries itself, so there is exactly one definition of where this
+ * project's state lives — and so `capability.approve` verifies against the
+ * very same `ApprovalTokenMinter` instance `trust approve` minted from.
+ */
+export function buildRealGatewayToolRegistry(
+  overrides: BuildRealCliDependenciesOverrides = {},
+): GatewayToolRegistry {
+  const xdgEnv = overrides.xdgEnv ?? readXdgEnvFromProcess();
+  const projectHash = overrides.projectHash ?? deriveProjectHash(process.cwd());
+  const deps = buildRealCliDependencies({ ...overrides, xdgEnv, projectHash });
+
+  // Non-null assertions are sound here and nowhere else: this function
+  // resolves its own `xdgEnv`/`projectHash` and passes them down, so the
+  // three optional bags are the real ones built above unless a test
+  // deliberately injected replacements.
+  const intake = deps.intake!;
+  const trust = deps.trust!;
+
+  return buildProductionGatewayToolRegistry({
+    journal: intake.journal,
+    connections: deps.connection!.repository,
+    supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
+    approvalSigningKey: loadOrCreateApprovalSigningKey(
+      resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+    ),
+    changeSets: intake.changeSets,
+    workUnits: intake.workUnits,
+    envelopes: intake.envelopes,
+    intentContracts: intake.intentContracts,
+    capability: { store: trust.store },
+    approvalTokenVerifier: trust.minter,
+    resolveCapabilityStoreKey: (digest) => trust.store.findByDigest(digest)?.key,
+  });
 }
 
 /**

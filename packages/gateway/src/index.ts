@@ -136,6 +136,8 @@ export type {
 } from "./mcp/tool-registry.js";
 
 export { buildGatewayMcpServer, connectGatewayMcpServer } from "./mcp/server.js";
+export { connectGatewayMcpStdio } from "./mcp/stdio-boot.js";
+export type { GatewayMcpStdioOptions } from "./mcp/stdio-boot.js";
 
 export { buildNativeToolRegistry } from "./mcp/native-registry.js";
 export type { NativeRegistryDeps } from "./mcp/native-registry.js";

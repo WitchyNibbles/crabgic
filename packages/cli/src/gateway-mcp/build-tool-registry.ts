@@ -1,0 +1,207 @@
+/**
+ * The gateway MCP server's production composition root — the single place
+ * every tool family the shipped binary exposes is actually registered.
+ *
+ * Until 2026-07-25 `cli-entry.ts` booted an EMPTY registry: the eight
+ * families interface-ledger Gap 1 counts all existed, fully built and
+ * tested, and none of them was reachable from the binary. 16's native
+ * families lived behind a dependency edge `packages/cli` did not have; 11's
+ * `project.inspect`/`contract.approve` and 12's `capability.audit`/
+ * `capability.approve` shipped as descriptor constants plus plain handler
+ * functions with no production caller at all. This module is the seam every
+ * one of those phases deferred, and it is deliberately the ONLY new
+ * coupling: neither `@eo/gateway` nor `@eo/detect` learns about the other,
+ * because `packages/cli` already depends on both.
+ *
+ * The descriptor constants stay the single source of truth for each tool's
+ * name and description — this module re-expresses only the input SHAPE, as
+ * zod (which `GatewayToolDefinition` needs and the SDK converts to JSON
+ * Schema on the wire), never a second copy of the prose.
+ *
+ * Provider-dispatch population — registering 18/19's Jira and 20's Grafana
+ * clients into `ProviderRegistry` — is deliberately NOT done here. It is
+ * per-connection work that needs resolved credentials and belongs to
+ * connection lifecycle; Grafana additionally needs the durable
+ * plan-payload/rollback stores phase 20 left in memory. `tracker.*`/
+ * `observability.*` therefore register and dispatch correctly but resolve
+ * to a typed `UnknownProviderError` until that lands, which is honest
+ * behaviour for "no connector configured" rather than a silent hole. It is
+ * tracked as its own allowlist entry.
+ */
+import { z } from "zod";
+import type { JournalStore } from "@eo/journal";
+import {
+  buildNativeToolRegistry,
+  GatewayToolRegistry,
+  ProviderRegistry,
+  type AnyGatewayToolDefinition,
+  type GatewayToolDefinition,
+  type GenericProviderClient,
+  type MutationApplyClient,
+  type ExternalConnectionRepository,
+} from "@eo/gateway";
+import {
+  CAPABILITY_APPROVE_TOOL,
+  CAPABILITY_AUDIT_TOOL,
+  runCapabilityApprove,
+  runCapabilityAudit,
+  type CapabilityApproveDeps,
+  type CapabilityAuditDeps,
+} from "@eo/detect";
+import type { ProjectInspectDeps, Registry } from "@eo/supervisor";
+import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
+import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
+import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
+import { runContractApprove } from "../intake/contract-approve-handler.js";
+
+/** Everything the composed registry needs, all of it already built by `../bootstrap.ts` for the CLI's own command surface. */
+export interface ProductionGatewayToolRegistryDeps {
+  readonly journal: JournalStore;
+  readonly connections: ExternalConnectionRepository;
+  readonly supervisorSocketPath: string;
+  /** The project's durable approval signing key — the same one `run` minted its token under (see `../approval/signing-key.ts`). */
+  readonly approvalSigningKey: Buffer;
+  readonly changeSets: Registry<ChangeSet>;
+  readonly workUnits: Registry<WorkUnit>;
+  readonly envelopes: Registry<AuthorizationEnvelope>;
+  readonly intentContracts: Registry<IntentContract>;
+  readonly capability: CapabilityAuditDeps;
+  /** Verifies a `trust approve` token — the process-wide minter `../bootstrap.ts` builds. */
+  readonly approvalTokenVerifier: CapabilityApproveDeps["minter"];
+  /** Resolves the capability-store key a digest belongs to — 12's `capability.approve` needs it and deliberately does not guess. */
+  readonly resolveCapabilityStoreKey: (digest: string) => string | undefined;
+}
+
+/** JSON-serialized tool output — every one of these tools answers with a single structured text block, matching 16's native families. */
+function jsonResult(payload: unknown): { content: [{ type: "text"; text: string }] } {
+  return { content: [{ type: "text", text: JSON.stringify(payload) }] };
+}
+
+function errorResult(message: string): {
+  content: [{ type: "text"; text: string }];
+  isError: true;
+} {
+  return { content: [{ type: "text", text: JSON.stringify({ error: message }) }], isError: true };
+}
+
+const PROJECT_INSPECT_SHAPE = { changeSetId: z.string().optional() };
+const CONTRACT_APPROVE_SHAPE = {
+  changeSetId: z.string(),
+  digest: z.string(),
+  token: z.string(),
+};
+const CAPABILITY_AUDIT_SHAPE = { candidate: z.unknown() };
+const CAPABILITY_APPROVE_SHAPE = { digest: z.string(), token: z.string() };
+
+/** 11's two tools, bound to the durable registries the `run` command writes. */
+function buildIntakeTools(
+  deps: ProductionGatewayToolRegistryDeps,
+): readonly AnyGatewayToolDefinition[] {
+  const projectInspectDeps: ProjectInspectDeps = {
+    journal: deps.journal,
+    changeSets: deps.changeSets,
+  };
+
+  const projectInspect: GatewayToolDefinition<typeof PROJECT_INSPECT_SHAPE> = {
+    name: PROJECT_INSPECT_TOOL.name,
+    description: PROJECT_INSPECT_TOOL.description,
+    inputSchema: PROJECT_INSPECT_SHAPE,
+    handler: async (args) =>
+      jsonResult(
+        await runProjectInspectTool(
+          args.changeSetId !== undefined ? { changeSetId: args.changeSetId } : {},
+          projectInspectDeps,
+        ),
+      ),
+  };
+
+  const contractApprove: GatewayToolDefinition<typeof CONTRACT_APPROVE_SHAPE> = {
+    name: CONTRACT_APPROVE_TOOL.name,
+    description: CONTRACT_APPROVE_TOOL.description,
+    inputSchema: CONTRACT_APPROVE_SHAPE,
+    handler: async (args) => {
+      // The requirement set is resolved SERVER-SIDE from this ChangeSet's
+      // own IntentContract — never taken from the caller — for the same
+      // confused-deputy reason `runContractApprove` derives the expected
+      // digest from the ChangeSet's own envelope.
+      const changeSet = deps.changeSets.get(args.changeSetId);
+      if (changeSet === undefined) {
+        return errorResult(`unknown ChangeSet "${args.changeSetId}"`);
+      }
+      const contract = deps.intentContracts.get(changeSet.intentContractId);
+      if (contract === undefined) {
+        return errorResult(
+          `ChangeSet "${args.changeSetId}" has no resolvable IntentContract — refusing to approve without its declared requirements`,
+        );
+      }
+
+      return jsonResult(
+        await runContractApprove(args, {
+          secretKey: deps.approvalSigningKey,
+          journal: deps.journal,
+          changeSets: deps.changeSets,
+          envelopes: deps.envelopes,
+          workUnits: deps.workUnits.list(),
+          requirementIds: contract.requirementIds,
+        }),
+      );
+    },
+  };
+
+  return [projectInspect, contractApprove];
+}
+
+/** 12's two tools, bound to the pinned capability store. */
+function buildCapabilityTools(
+  deps: ProductionGatewayToolRegistryDeps,
+): readonly AnyGatewayToolDefinition[] {
+  const capabilityAudit: GatewayToolDefinition<typeof CAPABILITY_AUDIT_SHAPE> = {
+    name: CAPABILITY_AUDIT_TOOL.name,
+    description: CAPABILITY_AUDIT_TOOL.description,
+    inputSchema: CAPABILITY_AUDIT_SHAPE,
+    handler: async (args) =>
+      jsonResult(runCapabilityAudit({ candidate: args.candidate }, deps.capability)),
+  };
+
+  const capabilityApprove: GatewayToolDefinition<typeof CAPABILITY_APPROVE_SHAPE> = {
+    name: CAPABILITY_APPROVE_TOOL.name,
+    description: CAPABILITY_APPROVE_TOOL.description,
+    inputSchema: CAPABILITY_APPROVE_SHAPE,
+    handler: async (args) => {
+      const storeKey = deps.resolveCapabilityStoreKey(args.digest);
+      if (storeKey === undefined) {
+        return errorResult(`no audited capability is stored under digest "${args.digest}"`);
+      }
+      return jsonResult(
+        runCapabilityApprove(args, {
+          minter: deps.approvalTokenVerifier,
+          store: deps.capability.store,
+          storeKey,
+        }),
+      );
+    },
+  };
+
+  return [capabilityAudit, capabilityApprove];
+}
+
+/**
+ * Assembles every tool the shipped `gateway mcp` server exposes: 16's 18
+ * native leaves across five families, plus 11's two and 12's two.
+ */
+export function buildProductionGatewayToolRegistry(
+  deps: ProductionGatewayToolRegistryDeps,
+): GatewayToolRegistry {
+  const registry = buildNativeToolRegistry({
+    connections: deps.connections,
+    providers: new ProviderRegistry<GenericProviderClient>(),
+    mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    journal: deps.journal,
+    supervisorSocketPath: deps.supervisorSocketPath,
+  });
+
+  for (const tool of buildIntakeTools(deps)) registry.register(tool);
+  for (const tool of buildCapabilityTools(deps)) registry.register(tool);
+
+  return registry;
+}
