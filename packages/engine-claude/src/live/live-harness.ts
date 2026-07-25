@@ -370,6 +370,29 @@ export interface DirectQuerySpec {
   readonly homeDir: string;
   readonly tmpDir: string;
   readonly allow?: readonly string[];
+  /**
+   * Tool-ENABLEMENT list, separate from `allow` (the permission RULES).
+   *
+   * These are two different things this harness used to conflate: it passed
+   * the same array to both `allowedTools` and `settings.permissions.allow`.
+   * Harmless when the entries are bare tool names — but a probe passing a
+   * path-scoped RULE (`Write(/abs/**)`) then had no bare `Write` in
+   * `allowedTools` at all, and under `permissionMode: "dontAsk"` a tool in
+   * no allow rule is auto-denied (baseline §3). Such a probe denies its own
+   * in-scope write no matter which path form it is testing, which is
+   * indistinguishable from the path form itself being wrong. Supply this to
+   * enable the tool and let `allow` carry only the rule under test.
+   * Defaults to `allow` when omitted, preserving every existing call site.
+   */
+  readonly allowedTools?: readonly string[];
+  /**
+   * Tool-DISABLEMENT list (`Options.disallowedTools`), the second channel a
+   * compiled profile's deny entries travel through: `assembleWorkerOptions`
+   * emits the SAME array as both `settings.permissions.deny` and
+   * `disallowedTools`. The path-anchor probe needs them separable, because
+   * whether a path-scoped rule is honored is a per-channel fact.
+   */
+  readonly disallowedTools?: readonly string[];
   readonly settings?: Record<string, unknown>;
   readonly sandbox?: Options["sandbox"];
   readonly maxTurns?: number;
@@ -419,7 +442,12 @@ export async function runDirectQuery(
       ...(spec.allow !== undefined || spec.settings !== undefined
         ? { settings: { permissions: { allow: [...(spec.allow ?? [])] }, ...spec.settings } }
         : {}),
-      ...(spec.allow !== undefined ? { allowedTools: [...spec.allow] } : {}),
+      ...(spec.allowedTools !== undefined
+        ? { allowedTools: [...spec.allowedTools] }
+        : spec.allow !== undefined
+          ? { allowedTools: [...spec.allow] }
+          : {}),
+      ...(spec.disallowedTools !== undefined ? { disallowedTools: [...spec.disallowedTools] } : {}),
       ...(spec.sandbox !== undefined ? { sandbox: spec.sandbox } : {}),
     };
     for await (const message of query({ prompt: spec.prompt, options })) {

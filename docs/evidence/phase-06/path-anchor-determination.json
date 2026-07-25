@@ -1,0 +1,186 @@
+{
+  "probedAt": "2026-07-25T10:33:25.715Z",
+  "legend": {
+    "allow-probe (unprefixed keys)": "The candidate form was the ONLY entry in both allowedTools and settings.permissions.allow. insideAllowed=true would mean the form matched. Every form recorded insideAllowed=false AND outsideDenied=true — identically — because permissions.allow only GRANTS: with no bare Write in allowedTools the Write tool was disabled outright (under permissionMode 'dontAsk' a tool in no allow rule is auto-denied, docs/engine-baseline.md §3). These entries therefore measure tool ENABLEMENT, not path anchoring, and settle nothing about anchor form.",
+    "deny-probe (deny-* keys)": "Write is enabled broadly (bare 'Write' in allowedTools and in settings.permissions.allow) and the candidate form is the ONLY entry in settings.permissions.deny. insideDenied=true means the form MATCHED the in-owned-path Write; outsideAllowed=true is the control proving the denial was scoped rather than blanket. Deny is the only thing that can produce a denial here, so this shape measures anchoring directly — and it is the shape production depends on, since phase 03's compiled envelope carries Edit/Write DENY backstop entries rather than relying on allow-scoping."
+  },
+  "forms": {
+    "triple-slash": {
+      "rule": "Write(///tmp/eo-live-C0rKlQ/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideAllowed": false,
+      "outsideAttempted": true,
+      "outsideDenied": true
+    },
+    "double-slash": {
+      "rule": "Write(//tmp/eo-live-d1yzLf/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideAllowed": false,
+      "outsideAttempted": true,
+      "outsideDenied": true
+    },
+    "plain-absolute": {
+      "rule": "Write(/tmp/eo-live-OKEWiF/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideAllowed": false,
+      "outsideAttempted": true,
+      "outsideDenied": true
+    },
+    "cwd-relative": {
+      "rule": "Write(owned/**)",
+      "insideAttempted": true,
+      "insideAllowed": false,
+      "outsideAttempted": true,
+      "outsideDenied": true
+    },
+    "deny-triple-slash": {
+      "probe": "deny",
+      "rule": "Write(///tmp/eo-live-FEoBAG/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-double-slash": {
+      "probe": "deny",
+      "rule": "Write(//tmp/eo-live-zcgfBF/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-plain-absolute": {
+      "probe": "deny",
+      "rule": "Write(/tmp/eo-live-DnNXwS/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-cwd-relative": {
+      "probe": "deny",
+      "rule": "Write(owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-control-bare-tool": {
+      "probe": "deny",
+      "rule": "Write",
+      "insideAttempted": true,
+      "insideDenied": true,
+      "outsideAttempted": true,
+      "outsideAllowed": false,
+      "matched": true
+    },
+    "deny-exact-plain-absolute": {
+      "probe": "deny",
+      "rule": "Write(/tmp/eo-live-vF4cGR/worktree/owned/inside.txt)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-exact-cwd-relative": {
+      "probe": "deny",
+      "rule": "Write(owned/inside.txt)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-exact-triple-slash": {
+      "probe": "deny",
+      "rule": "Write(///tmp/eo-live-0UINgV/worktree/owned/inside.txt)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-exact-double-slash": {
+      "probe": "deny",
+      "rule": "Write(//tmp/eo-live-78QSi1/worktree/owned/inside.txt)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-single-star-triple-slash": {
+      "probe": "deny",
+      "rule": "Write(///tmp/eo-live-wUFEbx/worktree/owned/*)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-single-star-double-slash": {
+      "probe": "deny",
+      "rule": "Write(//tmp/eo-live-DKDz1j/worktree/owned/*)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-dt-control-bare-tool": {
+      "probe": "deny",
+      "channel": "disallowed-tools",
+      "rule": "Write",
+      "insideAttempted": true,
+      "insideDenied": true,
+      "outsideAttempted": true,
+      "outsideAllowed": false,
+      "matched": true
+    },
+    "deny-dt-triple-slash": {
+      "probe": "deny",
+      "channel": "disallowed-tools",
+      "rule": "Write(///tmp/eo-live-29nxgv/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-dt-double-slash": {
+      "probe": "deny",
+      "channel": "disallowed-tools",
+      "rule": "Write(//tmp/eo-live-xDz3aW/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-dt-plain-absolute": {
+      "probe": "deny",
+      "channel": "disallowed-tools",
+      "rule": "Write(/tmp/eo-live-4KwfJm/worktree/owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    },
+    "deny-dt-cwd-relative": {
+      "probe": "deny",
+      "channel": "disallowed-tools",
+      "rule": "Write(owned/**)",
+      "insideAttempted": true,
+      "insideDenied": false,
+      "outsideAttempted": true,
+      "outsideAllowed": true,
+      "matched": false
+    }
+  }
+}

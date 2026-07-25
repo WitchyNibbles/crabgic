@@ -54,7 +54,14 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
   it("a subagent (eo-explore) is spawnable in a real session", async () => {
     assertLiveEnabled();
     const pluginRoot = resolvePluginRoot();
-    const { stdout } = await execFileAsync(
+    // `--allowedTools` is declared VARIADIC (`<tools...>`) on the CLI, so in its
+    // space-separated form it keeps consuming following operands: a trailing
+    // prompt is absorbed as a second *tool name*, leaving the run with no prompt
+    // at all ("Input must be provided either through stdin or as a prompt
+    // argument when using --print"). The `=` form binds exactly one value, which
+    // is what keeps the prompt below a prompt. Harness-only concern — nothing
+    // about the plugin under test changes.
+    const invocation = execFileAsync(
       "claude",
       [
         "--plugin-dir",
@@ -62,12 +69,17 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
         "--print",
         "--output-format",
         "json",
-        "--allowedTools",
-        "Task",
+        "--allowedTools=Task",
         "Use the Task tool to launch the eo-explore subagent and ask it to report the number of files in the current directory. Report only the subagent's finding.",
       ],
       { timeout: 120_000 },
     );
+    // Node hands the child an open stdin pipe it never closes, and `--print`
+    // spends 3s waiting on that pipe before proceeding without it. The prompt is
+    // already in argv, so there is nothing to wait for — close it and skip the
+    // stall (and the accompanying warning on stderr).
+    invocation.child.stdin?.end();
+    const { stdout } = await invocation;
     const result = JSON.parse(stdout) as { result?: string };
     // A structural, non-exact-wording assertion (per this phase's own risk
     // note): the eo-explore subagent name surfaces somewhere in the

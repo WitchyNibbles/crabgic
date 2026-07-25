@@ -13,8 +13,9 @@ const execFile = promisify(execFileCb);
 /**
  * Pinned-range gate wiring — roadmap/23-release-hardening.md work item 7:
  * "assert the live `claude --version` is within `docs/engine-baseline.md`'s
- * accepted range using `@eo/engine-claude`'s version-gate (now
- * 2.1.207-2.1.218)." This module never re-derives the range or the
+ * accepted range using `@eo/engine-claude`'s version-gate (2.1.207-2.1.218
+ * when that work item was written; 2.1.207-2.1.220 as of the 2026-07-25
+ * narrow re-baseline)." This module never re-derives the range or the
  * comparison logic — both are `@eo/engine-claude`'s own (`./version-gate.
  * ts`, re-exported from that package's public barrel) — it only wires an
  * injectable "how do we get the live version string" probe onto that

@@ -25,24 +25,37 @@ export interface EngineVersionRange {
 
 /**
  * The accepted `claude` CLI / engine version range (docs/engine-baseline.md
- * headline: "Accepted range: **2.1.207–2.1.218**" — re-baselined 2026-07-24,
- * phase 23; range extended, not re-pinned, after the full phase-00 spike
- * suite reproduced every PASS at 2.1.218 with zero load-bearing deltas).
+ * headline: "Accepted range: **2.1.207–2.1.220**" — re-baselined twice:
+ * 2026-07-24 (phase 23) extended it to 2.1.218 after the full phase-00
+ * spike suite reproduced every PASS at 2.1.218 with zero load-bearing
+ * deltas, and 2026-07-25 extended it again to 2.1.220 (owner-approved)
+ * after the host's `PATH` CLI drifted there. The second extension rests on
+ * a NARROWER basis — no spike re-run; see that document's "Narrow
+ * re-baseline (2026-07-25)" header paragraph, §14 and §15.
  */
-export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.218" };
+export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.220" };
 
 /**
  * The accepted `@anthropic-ai/claude-agent-sdk` version range
  * (docs/engine-baseline.md §10: "`@anthropic-ai/claude-agent-sdk` moves
  * outside 0.3.207–0.3.218" — re-baselined 2026-07-24 alongside the engine
- * range above).
+ * range above, and deliberately NOT extended on 2026-07-25: the SDK
+ * dependency is still pinned at 0.3.218, so the engine binary the SDK
+ * transport actually runs is still 2.1.218 no matter what is on `PATH`.
+ * The 1:1 release correspondence between the two lines does not oblige
+ * syncing these ranges — only an actual SDK bump, with its own evidence,
+ * does.
  */
 export const ACCEPTED_SDK_VERSION_RANGE: EngineVersionRange = { min: "0.3.207", max: "0.3.218" };
 
 /**
  * The exact engine version phase 00's baseline was verified against
- * (docs/engine-baseline.md headline: "Tested version:** `claude` CLI
- * **2.1.218**" — re-baselined 2026-07-24, phase 23).
+ * (docs/engine-baseline.md headline: "Tested version (full spike suite):**
+ * `claude` CLI **2.1.218**" — re-baselined 2026-07-24, phase 23).
+ * Deliberately NOT moved to 2.1.220 by the 2026-07-25 narrow re-baseline:
+ * that round re-ran no spike, so 2.1.218 remains the version the recorded
+ * verdicts were produced at — and it is also the version the SDK-bundled
+ * engine reports, which the live harness's canary asserts against.
  */
 export const TESTED_ENGINE_VERSION = "2.1.218";
 

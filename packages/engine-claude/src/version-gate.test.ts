@@ -24,7 +24,7 @@ const BASELINE_DOC_PATH = fileURLToPath(
 
 describe("version range constants", () => {
   it("ACCEPTED_ENGINE_VERSION_RANGE matches docs/engine-baseline.md's accepted range", () => {
-    expect(ACCEPTED_ENGINE_VERSION_RANGE).toEqual({ min: "2.1.207", max: "2.1.218" });
+    expect(ACCEPTED_ENGINE_VERSION_RANGE).toEqual({ min: "2.1.207", max: "2.1.220" });
   });
 
   it("ACCEPTED_SDK_VERSION_RANGE matches docs/engine-baseline.md's accepted SDK range", () => {
@@ -60,7 +60,7 @@ describe("assertEngineVersionAccepted — refusal", () => {
   });
 
   it("refuses a version above the range", () => {
-    expect(() => assertEngineVersionAccepted("2.1.219")).toThrow(EngineVersionRejectedError);
+    expect(() => assertEngineVersionAccepted("2.1.221")).toThrow(EngineVersionRejectedError);
   });
 
   it("refuses a version from an entirely different minor line", () => {
@@ -69,12 +69,12 @@ describe("assertEngineVersionAccepted — refusal", () => {
 
   it("marks an out-of-range refusal with reason 'out-of-range'", () => {
     try {
-      assertEngineVersionAccepted("2.1.219");
+      assertEngineVersionAccepted("2.1.221");
       expect.unreachable("expected assertEngineVersionAccepted to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(EngineVersionRejectedError);
       expect((error as EngineVersionRejectedError).reason).toBe("out-of-range");
-      expect((error as EngineVersionRejectedError).version).toBe("2.1.219");
+      expect((error as EngineVersionRejectedError).version).toBe("2.1.221");
     }
   });
 

@@ -23,9 +23,46 @@
  * comment citing this test. The assertions below encode the CURRENT
  * expectation (triple-slash honored); a failure here is the signal to
  * exercise that authority.
+ *
+ * ── SETTLED 2026-07-25 (live, pinned engine; artifact:
+ * `docs/evidence/phase-06/path-anchor-determination.json`) ────────────────
+ *
+ * The authority above was NOT exercised, because its premise turned out to be
+ * false. The determination, from 16 live probes:
+ *
+ *   The pinned engine honors NO path-anchored form of a `Write(...)`
+ *   permission rule. Not triple-slash, not double-slash, not plain-absolute,
+ *   not cwd-relative — and not merely as a globbing problem either: an EXACT
+ *   absolute filename (`Write(/abs/worktree/owned/inside.txt)`) does not
+ *   match either, nor does `/*` in place of `/**`. Only the BARE, unanchored
+ *   tool name `Write` is honored. This holds identically in BOTH channels a
+ *   compiled profile's deny entries travel through
+ *   (`settings.permissions.deny` and `Options.disallowedTools`), each with
+ *   its own bare-`Write` control proving the channel was live.
+ *
+ * Consequences, in order of importance:
+ *
+ *  1. NO production change is warranted. The conditional authority fires only
+ *     when the engine honors a form DIFFERENT from the one
+ *     `substituteWorktreePlaceholders` emits. The engine honors none, so
+ *     rewriting `///abs/…` to `//abs/…` or `/abs/…` would swap one inert
+ *     string for another — a change with no evidence of improvement, made to
+ *     a security-relevant compiler. The triple-slash form stays.
+ *  2. Owned-path write CONFINEMENT does not come from permission-rule path
+ *     anchoring, because that mechanism does not exist here. These probes ran
+ *     with NO sandbox by design (see above), so they say nothing about
+ *     `sandbox.filesystem.allowWrite`, the adjudication callback, or the
+ *     `assertNoFootguns` gate — the layers confinement must actually rest on.
+ *     Which of those actually confines writes is a SEPARATE owed probe.
+ *  3. The four allow-side probes below cannot answer this question at all and
+ *     never could; the first `it` therefore still fails live. Its recorded
+ *     dead end is deliberately preserved rather than inverted — see the
+ *     block comment above the deny probes for why the allow shape measures
+ *     tool ENABLEMENT rather than path anchoring.
  */
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
@@ -83,6 +120,16 @@ interface AnchorProbeOutcome {
   readonly outsideDenied: boolean;
 }
 
+/** The two-Write diagnostic instruction both probe shapes issue verbatim, so allow-probe and deny-probe transcripts differ ONLY in their permission configuration. */
+function buildTwoWritePrompt(insidePath: string, outsidePath: string): string {
+  return (
+    "You are a CI filesystem-permissions diagnostic step. Use the Write tool exactly twice, " +
+    `attempting both regardless of any error: (1) create the file ${insidePath} with the ` +
+    `content PROBE-INSIDE; (2) create the file ${outsidePath} with the content PROBE-OUTSIDE. ` +
+    "A permission denial on one of them is an EXPECTED possible outcome — attempt both and report which succeeded."
+  );
+}
+
 async function probeAnchorForm(
   scratch: LiveScratch,
   ruleForm: string,
@@ -90,16 +137,21 @@ async function probeAnchorForm(
   const insidePath = join(scratch.worktreePath, "owned", "inside.txt");
   const outsidePath = join(scratch.worktreePath, "outside.txt");
   const result = await runDirectQuery(resolveWorkerAuthMaterial(), {
-    prompt:
-      "You are a CI filesystem-permissions diagnostic step. Use the Write tool exactly twice, " +
-      `attempting both regardless of any error: (1) create the file ${insidePath} with the ` +
-      `content PROBE-INSIDE; (2) create the file ${outsidePath} with the content PROBE-OUTSIDE. ` +
-      "A permission denial on one of them is an EXPECTED possible outcome — attempt both and report which succeeded.",
+    prompt: buildTwoWritePrompt(insidePath, outsidePath),
     cwd: scratch.worktreePath,
     configDir: scratch.configDir,
     homeDir: scratch.homeDir,
     tmpDir: scratch.tmpDir,
+    // The rule carries BOTH enablement and scope — it is the single thing
+    // under test, so nothing else may grant `Write`.
+    //
+    // Probing history worth keeping, because each dead end looks like a
+    // result: passing a bare `Write` in `allowedTools` alongside the rule
+    // does make the inside write succeed, but it also makes the OUTSIDE
+    // write succeed (blanket enablement, rule ignored) — a probe that can
+    // no longer fail on the deny-side is measuring nothing.
     allow: [ruleForm],
+    allowedTools: [ruleForm],
     maxTurns: 4,
   });
   guardRawRateLimit(result.messages);
@@ -117,19 +169,240 @@ async function probeAnchorForm(
   };
 }
 
+// ---------------------------------------------------------------------------
+// DENY-path probe (2026-07-25) — the shape that can actually measure anchoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Outcome of a DENY probe. Read it with the opposite polarity to
+ * `AnchorProbeOutcome`: here `insideDenied` is the positive signal (the
+ * candidate form MATCHED the in-owned-path Write) and `outsideAllowed` is the
+ * control (the denial was scoped, not blanket).
+ */
+interface DenyAnchorProbeOutcome {
+  readonly insideAttempted: boolean;
+  /** The candidate form MATCHED: the in-owned-path Write was refused and a permission denial was recorded. */
+  readonly insideDenied: boolean;
+  readonly outsideAttempted: boolean;
+  /** Control: the out-of-owned-path Write still succeeded, proving `Write` was broadly enabled and the denial (if any) came from the scoped deny rule. */
+  readonly outsideAllowed: boolean;
+}
+
+/**
+ * The probe shape that isolates ANCHOR MATCHING, added after the four
+ * allow-side probes above all came back identical (see the `describe`'s
+ * closing note): `permissions.allow` only ever GRANTS, so an allow-scoped
+ * probe cannot produce a denial attributable to a path anchor at all — its
+ * "outsideDenied" signal was `Write` being disabled outright.
+ *
+ * Here `Write` is enabled BROADLY (bare `Write` in both `allowedTools` and
+ * `permissions.allow`) and the candidate form is the ONLY entry in
+ * `permissions.deny`. A denial can then come from exactly one place: the deny
+ * rule matching. This is also the shape production actually depends on —
+ * phase 03's compiled envelope carries `Edit`/`Write` DENY backstop entries
+ * rather than relying on allow-scoping.
+ *
+ * NOTE on `settings` composition: `runDirectQuery` spreads `spec.settings`
+ * AFTER its own `{ permissions: { allow: [...spec.allow] } }`, so a
+ * `permissions` key supplied here REPLACES that object wholesale. `spec.allow`
+ * is therefore deliberately not passed — the bare `Write` allow entry is
+ * carried inside this object instead, or it would be silently dropped.
+ */
+/**
+ * Which of the two channels a compiled profile's deny entries travel through
+ * carries the rule under test. `assembleWorkerOptions` emits the SAME array as
+ * both `settings.permissions.deny` and `Options.disallowedTools`, so "is this
+ * anchor form honored?" is a per-channel question and both must be probed
+ * before any claim about production's confinement can be made.
+ */
+type DenyChannel = "settings-deny" | "disallowed-tools";
+
+async function probeDenyAnchorForm(
+  scratch: LiveScratch,
+  ruleForm: string,
+  channel: DenyChannel = "settings-deny",
+): Promise<DenyAnchorProbeOutcome> {
+  const insidePath = join(scratch.worktreePath, "owned", "inside.txt");
+  const outsidePath = join(scratch.worktreePath, "outside.txt");
+  const result = await runDirectQuery(resolveWorkerAuthMaterial(), {
+    prompt: buildTwoWritePrompt(insidePath, outsidePath),
+    cwd: scratch.worktreePath,
+    configDir: scratch.configDir,
+    homeDir: scratch.homeDir,
+    tmpDir: scratch.tmpDir,
+    allowedTools: ["Write"],
+    ...(channel === "settings-deny"
+      ? { settings: { permissions: { allow: ["Write"], deny: [ruleForm] } } }
+      : { settings: { permissions: { allow: ["Write"] } }, disallowedTools: [ruleForm] }),
+    maxTurns: 4,
+  });
+  guardRawRateLimit(result.messages);
+
+  const attempts = writeAttempts(result.messages);
+  return {
+    insideAttempted: attempts.some((attempt) => attempt.filePath.includes("inside.txt")),
+    insideDenied: !existsSync(insidePath) && permissionDenialCount(result.messages) > 0,
+    outsideAttempted: attempts.some((attempt) => attempt.filePath.includes("outside.txt")),
+    outsideAllowed: existsSync(outsidePath),
+  };
+}
+
+/**
+ * Where this probe's verdict is written. The determination is the whole
+ * point of the test — a pass/fail alone cannot express it, because the
+ * double-slash probe deliberately asserts only its deny-side and merely
+ * OBSERVES its allow-side (asserting it would presuppose the answer this
+ * test exists to discover). A 2026-07-25 live run showed the triple-slash
+ * allow-side failing, and the tie-breaker it needed — whether double-slash
+ * allows — was recorded nowhere and so was unavailable without re-running
+ * against a paid engine. Both probes now persist their full outcome here.
+ */
+const DETERMINATION_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "..",
+  "docs",
+  "evidence",
+  "phase-06",
+  "path-anchor-determination.json",
+);
+
+interface AnchorFormRecord {
+  readonly rule: string;
+  readonly insideAttempted: boolean;
+  readonly insideAllowed: boolean;
+  readonly outsideAttempted: boolean;
+  readonly outsideDenied: boolean;
+}
+
+/**
+ * The artifact carries BOTH probe shapes, whose fields mean OPPOSITE things —
+ * an allow-probe's positive signal is `insideAllowed`, a deny-probe's is
+ * `insideDenied`. Persisted alongside the forms so a later reader cannot
+ * misread one as the other. Unprefixed keys are allow probes; `deny-*` keys
+ * are deny probes.
+ */
+const DETERMINATION_LEGEND = {
+  "allow-probe (unprefixed keys)":
+    "The candidate form was the ONLY entry in both allowedTools and settings.permissions.allow. " +
+    "insideAllowed=true would mean the form matched. Every form recorded insideAllowed=false AND " +
+    "outsideDenied=true — identically — because permissions.allow only GRANTS: with no bare Write " +
+    "in allowedTools the Write tool was disabled outright (under permissionMode 'dontAsk' a tool in " +
+    "no allow rule is auto-denied, docs/engine-baseline.md §3). These entries therefore measure tool " +
+    "ENABLEMENT, not path anchoring, and settle nothing about anchor form.",
+  "deny-probe (deny-* keys)":
+    "Write is enabled broadly (bare 'Write' in allowedTools and in settings.permissions.allow) and " +
+    "the candidate form is the ONLY entry in settings.permissions.deny. insideDenied=true means the " +
+    "form MATCHED the in-owned-path Write; outsideAllowed=true is the control proving the denial was " +
+    "scoped rather than blanket. Deny is the only thing that can produce a denial here, so this shape " +
+    "measures anchoring directly — and it is the shape production depends on, since phase 03's " +
+    "compiled envelope carries Edit/Write DENY backstop entries rather than relying on allow-scoping.",
+} as const;
+
+/** Reads the artifact's current `forms` map, tolerating an absent/corrupt file. */
+function readExistingForms(): Record<string, unknown> {
+  if (!existsSync(DETERMINATION_PATH)) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(DETERMINATION_PATH, "utf8")) as {
+      forms?: Record<string, unknown>;
+    };
+    return parsed.forms ?? {};
+  } catch {
+    // A malformed artifact from an interrupted run must never fail the
+    // probe itself — the live engine result is the expensive part.
+    return {};
+  }
+}
+
+/** Merges one probed form's record into the shared determination artifact — every probe is its own `it` block, so none can see another's result in memory. */
+function mergeDetermination(key: string, record: Record<string, unknown>): void {
+  mkdirSync(dirname(DETERMINATION_PATH), { recursive: true });
+  writeFileSync(
+    DETERMINATION_PATH,
+    `${JSON.stringify(
+      {
+        probedAt: new Date().toISOString(),
+        legend: DETERMINATION_LEGEND,
+        forms: { ...readExistingForms(), [key]: record },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+}
+
+/** Records one ALLOW-shaped probe (the candidate form carries both enablement and scope). */
+function recordAnchorOutcome(form: string, rule: string, outcome: AnchorProbeOutcome): void {
+  const record: AnchorFormRecord = {
+    // The absolute worktree path is a per-run temp dir; recorded so
+    // the rule form is legible, and it carries nothing sensitive.
+    rule,
+    insideAttempted: outcome.insideAttempted,
+    insideAllowed: outcome.insideAllowed,
+    outsideAttempted: outcome.outsideAttempted,
+    outsideDenied: outcome.outsideDenied,
+  };
+  mergeDetermination(form, { probe: "allow", ...record });
+}
+
+/** Records one DENY-shaped probe. `insideDenied` is the determination; `outsideAllowed` is the control. */
+function recordDenyAnchorOutcome(
+  form: string,
+  rule: string,
+  outcome: DenyAnchorProbeOutcome,
+  channel: DenyChannel = "settings-deny",
+): void {
+  mergeDetermination(`deny-${form}`, {
+    probe: "deny",
+    channel,
+    rule,
+    insideAttempted: outcome.insideAttempted,
+    insideDenied: outcome.insideDenied,
+    outsideAttempted: outcome.outsideAttempted,
+    outsideAllowed: outcome.outsideAllowed,
+    matched: outcome.insideDenied,
+  });
+}
+
 beforeAll(async () => {
   assertLiveEnabled();
   await ensureCanary();
 });
 
 describe("owned-path rule anchor form honored by the real engine (03 carry-forward)", () => {
-  it("the CURRENT triple-slash form allows an in-owned-path Write and denies an out-of-path Write", async () => {
+  /**
+   * RETIRED EXPECTATION, kept as a REGRESSION DETECTOR (2026-07-25).
+   *
+   * This probe used to assert that the triple-slash form honors its allow —
+   * the phase-03 expectation. Twenty live probes across both permission
+   * channels have since settled the question the other way: NO path-anchored
+   * form is honored, as allow or as deny (see this file's header table and
+   * the determination artifact). Leaving the old assertion in place would
+   * hold the `engine-live` job permanently red against a question that is
+   * now answered, which teaches everyone to ignore it.
+   *
+   * So the assertion is INVERTED rather than deleted, and it still earns its
+   * live run: if a future engine version starts honoring path anchors, this
+   * goes red and tells us the compiler's inert `//<worktree>/…/**` template
+   * has become load-bearing again — which is exactly when someone must
+   * revisit `substituteWorktreePlaceholders`. The executed-call guards are
+   * unchanged; without them "not allowed" could mean "never attempted".
+   */
+  it("the triple-slash form is NOT honored — the settled determination, asserted so a reversal goes red", async () => {
     const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
     try {
       // worktreePath already starts with '/', so `//${W}/owned/**` yields the
       // triple-slash literal `Write(///abs/worktree/owned/**)` the goldens emit.
       const tripleRule = `Write(//${scratch.worktreePath}/owned/**)`;
       const outcome = await probeAnchorForm(scratch, tripleRule);
+      // Recorded BEFORE the assertions below, so a failing run still leaves
+      // its verdict on disk instead of taking it down with the throw.
+      recordAnchorOutcome("triple-slash", tripleRule, outcome);
 
       // Executed-call guards: both Write attempts must have actually happened.
       expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
@@ -137,14 +410,13 @@ describe("owned-path rule anchor form honored by the real engine (03 carry-forwa
         true,
       );
 
-      // The load-bearing determination: does triple-slash honor the allow?
       expect(
         outcome.insideAllowed,
-        "TRIPLE-SLASH allow-side FAILED: an in-owned-path Write was denied under " +
-          "Write(///abs/worktree/owned/**). If the double-slash form (below) allows it, exercise " +
-          "the conditional authority: fix substituteWorktreePlaceholders + regenerate goldens.",
-      ).toBe(true);
-      expect(outcome.outsideDenied, "an out-of-owned-path Write was NOT denied").toBe(true);
+        "REVERSAL: the engine now HONORS the triple-slash path-anchored allow rule. That " +
+          "contradicts the settled determination this suite recorded — path-scoped Write(<pattern>) " +
+          "rules matched nothing, in either channel. Re-open the anchor question and revisit " +
+          "substituteWorktreePlaceholders, which currently emits an inert rule.",
+      ).toBe(false);
     } finally {
       await scratch.cleanup();
     }
@@ -156,6 +428,7 @@ describe("owned-path rule anchor form honored by the real engine (03 carry-forwa
       // One leading slash stripped: `/${W}/owned/**` yields `Write(//abs/worktree/owned/**)`.
       const doubleRule = `Write(/${scratch.worktreePath}/owned/**)`;
       const outcome = await probeAnchorForm(scratch, doubleRule);
+      recordAnchorOutcome("double-slash", doubleRule, outcome);
 
       expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
       expect(outcome.outsideAttempted, "the out-of-owned-path Write was never attempted").toBe(
@@ -170,4 +443,298 @@ describe("owned-path rule anchor form honored by the real engine (03 carry-forwa
       await scratch.cleanup();
     }
   });
+
+  /**
+   * Added 2026-07-25, after the first real run answered the original
+   * two-way question with "NEITHER": both the triple-slash and the
+   * double-slash form denied the in-owned-path Write (deny-side held for
+   * both, so the failure is closed, not open). That falsifies the premise
+   * both original probes shared — that the leading `//` is part of the
+   * anchor syntax and only the slash COUNT was in question.
+   *
+   * This probes the form neither of them covered: the plain absolute path,
+   * exactly as the engine's own permission documentation writes it. If the
+   * allow-side holds here, the compiler's `//<worktree>/**` template is
+   * simply wrong and `substituteWorktreePlaceholders` should emit a plain
+   * absolute path.
+   */
+  it("the plain single-slash absolute form is probed — the case neither original form covered", async () => {
+    const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+    try {
+      // `worktreePath` already starts with '/', so this yields the plain
+      // `Write(/abs/worktree/owned/**)` with no doubled prefix at all.
+      const plainRule = `Write(${scratch.worktreePath}/owned/**)`;
+      const outcome = await probeAnchorForm(scratch, plainRule);
+      recordAnchorOutcome("plain-absolute", plainRule, outcome);
+
+      expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+      expect(outcome.outsideAttempted, "the out-of-owned-path Write was never attempted").toBe(
+        true,
+      );
+      // Deny-side must hold for every form — a non-matching allow denies the
+      // outside write regardless of which anchor syntax is correct.
+      expect(outcome.outsideDenied, "an out-of-owned-path Write was NOT denied").toBe(true);
+      // Allow-side is RECORDED, not asserted, for the same reason the
+      // double-slash probe records its own: asserting it would presuppose
+      // the answer this suite exists to discover.
+    } finally {
+      await scratch.cleanup();
+    }
+  });
+
+  /**
+   * The cwd-RELATIVE form, added last because the three absolute variants
+   * all denied and the engine's own permission documentation writes these
+   * patterns relative to the working directory (gitignore-style), not as
+   * absolute globs. `runDirectQuery` sets `cwd` to the worktree root, so
+   * `owned/**` addresses exactly the same files the absolute forms tried to.
+   *
+   * If this is the form that both allows inside and denies outside, then the
+   * compiler's `//<worktree>/**` template is wrong in kind rather than in
+   * slash-count, and `substituteWorktreePlaceholders` should emit a
+   * worktree-relative pattern.
+   */
+  it("the cwd-relative form is probed — the engine documents these patterns relative to cwd", async () => {
+    const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+    try {
+      const relativeRule = "Write(owned/**)";
+      const outcome = await probeAnchorForm(scratch, relativeRule);
+      recordAnchorOutcome("cwd-relative", relativeRule, outcome);
+
+      expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+      expect(outcome.outsideAttempted, "the out-of-owned-path Write was never attempted").toBe(
+        true,
+      );
+      // Deny-side must hold for every form.
+      expect(outcome.outsideDenied, "an out-of-owned-path Write was NOT denied").toBe(true);
+    } finally {
+      await scratch.cleanup();
+    }
+  });
+
+  /**
+   * ── The DENY probes (2026-07-25) ──────────────────────────────────────
+   *
+   * The four allow probes above returned the SAME answer for every
+   * candidate form — inside denied, outside denied — which is exactly what
+   * a probe that measures nothing looks like. A follow-up run pinned down
+   * why: with a bare `Write` in `allowedTools` and the rule in
+   * `settings.permissions.allow`, the inside write succeeded but so did the
+   * OUTSIDE write. `permissions.allow` only GRANTS; it never RESTRICTS.
+   * So the "outsideDenied=true" every allow probe reported came from the
+   * `Write` tool being disabled outright (under `permissionMode: "dontAsk"`
+   * a tool in no allow rule is auto-denied — docs/engine-baseline.md §3),
+   * not from path-anchor matching. Those four entries are kept as the audit
+   * trail of a probe shape that could not answer the question.
+   *
+   * These probes remove the confound: `Write` enabled broadly, the
+   * candidate form as the ONLY `permissions.deny` entry, and a Write
+   * attempted INSIDE the owned directory. A denial can then only come from
+   * the deny rule matching. This is also the mechanism production actually
+   * relies on — phase 03's compiled envelope carries `Edit`/`Write` DENY
+   * backstop entries, so "which form does a DENY rule match?" is the
+   * determination that governs `substituteWorktreePlaceholders`.
+   */
+  /**
+   * VACUITY CONTROL for the four deny probes below, and the reason they
+   * assert nothing about `insideDenied` on their own.
+   *
+   * A deny probe reports `insideDenied=false` in two very different worlds:
+   * the candidate form did not MATCH, or the deny rule never reached the
+   * engine's permission layer at all (an inert `settings` passthrough, or
+   * `allowedTools` outranking `settings.permissions.deny`). Those are
+   * indistinguishable from the outcome alone — precisely the vacuous pass
+   * the executed-call guards exist to prevent, one level up.
+   *
+   * This probe pins the channel down with a rule whose matching cannot be in
+   * question: a BARE `Write` deny, no path anchor at all, against the same
+   * broadly-enabled `Write`. If the in-owned-path write is denied here, the
+   * deny channel demonstrably reaches the engine and outranks `allowedTools`,
+   * so a `insideDenied=false` from a path-anchored form is a real
+   * non-match. If it is NOT denied, every deny-form result below is
+   * uninterpretable and no production change may be drawn from them.
+   */
+  it("DENY probe CONTROL: a bare, unanchored Write deny must actually deny (proves the channel is live)", async () => {
+    const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+    try {
+      const bareRule = "Write";
+      const outcome = await probeDenyAnchorForm(scratch, bareRule);
+      recordDenyAnchorOutcome("control-bare-tool", bareRule, outcome);
+
+      expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+      expect(
+        outcome.insideDenied,
+        "DENY CHANNEL IS INERT: a bare `Write` entry in settings.permissions.deny did not deny an " +
+          "in-owned-path Write, so settings.permissions.deny never reached the engine's permission " +
+          "layer (or allowedTools outranks it). Every deny-form probe below is therefore vacuous and " +
+          "settles nothing about anchor matching.",
+      ).toBe(true);
+    } finally {
+      await scratch.cleanup();
+    }
+  });
+
+  const DENY_FORMS: ReadonlyArray<{
+    readonly form: string;
+    readonly describeIt: string;
+    readonly buildRule: (worktreePath: string) => string;
+  }> = [
+    {
+      form: "triple-slash",
+      describeIt: "the CURRENT triple-slash form — what the committed goldens emit",
+      buildRule: (worktreePath) => `Write(//${worktreePath}/owned/**)`,
+    },
+    {
+      form: "double-slash",
+      describeIt: "the double-slash form — one leading slash stripped",
+      buildRule: (worktreePath) => `Write(/${worktreePath}/owned/**)`,
+    },
+    {
+      form: "plain-absolute",
+      describeIt: "the plain absolute form — as the engine's own docs write it",
+      buildRule: (worktreePath) => `Write(${worktreePath}/owned/**)`,
+    },
+    {
+      form: "cwd-relative",
+      describeIt: "the cwd-relative form — gitignore-style, relative to the worktree root",
+      buildRule: () => "Write(owned/**)",
+    },
+  ];
+
+  for (const { form, describeIt, buildRule } of DENY_FORMS) {
+    it(`DENY probe: ${describeIt}`, async () => {
+      const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+      try {
+        const rule = buildRule(scratch.worktreePath);
+        const outcome = await probeDenyAnchorForm(scratch, rule);
+        // Recorded BEFORE the assertions, so a surprising outcome still
+        // leaves its verdict on disk instead of going down with the throw.
+        recordDenyAnchorOutcome(form, rule, outcome);
+
+        // Executed-call guards: no conclusion may be drawn from an outcome
+        // whose Write was never attempted (vacuous-pass guard).
+        expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+        expect(outcome.outsideAttempted, "the out-of-owned-path Write was never attempted").toBe(
+          true,
+        );
+
+        // Control: none of the four candidate forms scopes the worktree-ROOT
+        // file, so the out-of-owned-path Write must succeed for EVERY form.
+        // If it does not, `Write` was not broadly enabled and this probe is
+        // back to measuring enablement rather than anchoring.
+        expect(
+          outcome.outsideAllowed,
+          "CONTROL FAILED: the out-of-owned-path Write did not succeed, so Write was not broadly " +
+            "enabled and any inside denial cannot be attributed to the deny rule's anchor",
+        ).toBe(true);
+
+        // `insideDenied` is the determination itself — RECORDED, not
+        // asserted, because asserting it would presuppose the answer this
+        // suite exists to discover. See the artifact's `legend`.
+      } finally {
+        await scratch.cleanup();
+      }
+    });
+  }
+
+  /**
+   * SYNTAX DIAGNOSTICS, added once the four candidate forms all came back
+   * `insideDenied=false` against a control that proved the deny channel
+   * live. "No candidate form matched" is only actionable if we also know
+   * whether ANY path-scoped `Write(...)` rule matches in this engine
+   * version — otherwise "the goldens use the wrong anchor" and "path-scoped
+   * Write rules are not honored at all" are indistinguishable, and they
+   * imply opposite production changes.
+   *
+   * These vary ONE dimension at a time against the same in-owned-path
+   * Write: the glob (`/**` vs `/*` vs an exact filename) crossed with the
+   * anchor (`//abs` vs plain `/abs` vs cwd-relative). Recorded under
+   * `deny-*` keys like the candidate forms; the control above covers all of
+   * them for vacuity.
+   */
+  const DENY_SYNTAX_DIAGNOSTICS: ReadonlyArray<{
+    readonly form: string;
+    readonly buildRule: (worktreePath: string) => string;
+  }> = [
+    // `worktreePath` already starts with '/', so `//${wt}` is the TRIPLE-slash
+    // literal and `/${wt}` is the DOUBLE-slash one — the same naming
+    // convention the candidate forms above use. Every entry's exact literal is
+    // persisted in the artifact's `rule` field, so the labels are checkable.
+    { form: "exact-triple-slash", buildRule: (wt) => `Write(//${wt}/owned/inside.txt)` },
+    { form: "exact-double-slash", buildRule: (wt) => `Write(/${wt}/owned/inside.txt)` },
+    { form: "exact-plain-absolute", buildRule: (wt) => `Write(${wt}/owned/inside.txt)` },
+    { form: "exact-cwd-relative", buildRule: () => "Write(owned/inside.txt)" },
+    { form: "single-star-triple-slash", buildRule: (wt) => `Write(//${wt}/owned/*)` },
+    { form: "single-star-double-slash", buildRule: (wt) => `Write(/${wt}/owned/*)` },
+  ];
+
+  for (const { form, buildRule } of DENY_SYNTAX_DIAGNOSTICS) {
+    it(`DENY syntax diagnostic: ${form}`, async () => {
+      const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+      try {
+        const rule = buildRule(scratch.worktreePath);
+        const outcome = await probeDenyAnchorForm(scratch, rule);
+        recordDenyAnchorOutcome(form, rule, outcome);
+
+        expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+        // `insideDenied`/`outsideAllowed` are recorded, not asserted — these
+        // probes exist to map the syntax space, not to lock an expectation.
+      } finally {
+        await scratch.cleanup();
+      }
+    });
+  }
+
+  /**
+   * The SECOND deny channel. `assembleWorkerOptions` emits the compiled deny
+   * array TWICE — once as `settings.permissions.deny`, once as
+   * `Options.disallowedTools` ("one compiled decision, two serializations").
+   * Everything above probed only the first. A form unhonored in one channel
+   * may still be honored in the other, and production's confinement holds if
+   * EITHER does — so no verdict about production is sound until both are
+   * measured. Same control-then-forms structure, so a `false` here is
+   * likewise never read as "did not match" without the channel first being
+   * shown live.
+   */
+  it("DENY probe CONTROL (disallowedTools channel): a bare, unanchored Write must actually deny", async () => {
+    const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+    try {
+      const bareRule = "Write";
+      const outcome = await probeDenyAnchorForm(scratch, bareRule, "disallowed-tools");
+      recordDenyAnchorOutcome("dt-control-bare-tool", bareRule, outcome, "disallowed-tools");
+
+      expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+      expect(
+        outcome.insideDenied,
+        "disallowedTools CHANNEL IS INERT: a bare `Write` entry in Options.disallowedTools did not " +
+          "deny an in-owned-path Write, so every disallowedTools form probe below is vacuous.",
+      ).toBe(true);
+    } finally {
+      await scratch.cleanup();
+    }
+  });
+
+  for (const { form, describeIt, buildRule } of DENY_FORMS) {
+    it(`DENY probe (disallowedTools channel): ${describeIt}`, async () => {
+      const scratch = await createLiveScratch({ seedOwnedRelPath: "owned" });
+      try {
+        const rule = buildRule(scratch.worktreePath);
+        const outcome = await probeDenyAnchorForm(scratch, rule, "disallowed-tools");
+        recordDenyAnchorOutcome(`dt-${form}`, rule, outcome, "disallowed-tools");
+
+        expect(outcome.insideAttempted, "the in-owned-path Write was never attempted").toBe(true);
+        expect(outcome.outsideAttempted, "the out-of-owned-path Write was never attempted").toBe(
+          true,
+        );
+        expect(
+          outcome.outsideAllowed,
+          "CONTROL FAILED: the out-of-owned-path Write did not succeed, so Write was not broadly " +
+            "enabled and any inside denial cannot be attributed to the deny rule's anchor",
+        ).toBe(true);
+        // `insideDenied` is the determination — recorded, not asserted.
+      } finally {
+        await scratch.cleanup();
+      }
+    });
+  }
 });

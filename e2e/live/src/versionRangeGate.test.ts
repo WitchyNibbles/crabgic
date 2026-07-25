@@ -55,9 +55,9 @@ describe("checkPinnedRange", () => {
     }
   });
 
-  it("reports out-of-range for a version above the max (e.g. this dev host's drifted engine)", async () => {
+  it("reports out-of-range for a version above the max (a future engine that has drifted past the re-baselined 2.1.220 ceiling)", async () => {
     const verdict = await checkPinnedRange(
-      fakeProbe({ ok: true, rawOutput: "2.1.219", version: "2.1.219" }),
+      fakeProbe({ ok: true, rawOutput: "2.1.221", version: "2.1.221" }),
     );
     expect(verdict.status).toBe("out-of-range");
   });
