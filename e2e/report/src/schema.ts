@@ -81,8 +81,22 @@ export const ReleaseGateEvidenceLinkSchema = z
     evidenceRecordId: IdSchema,
     /** The linked `EvidenceRecord.objectId` — must equal the report's own `releaseCandidateObjectId` for this link to have been made at all (see `generator.ts`). */
     objectId: NonEmptyStringSchema,
-    /** The linked `EvidenceRecord.artifactDigests` — copied verbatim, never re-derived. */
-    artifactDigests: z.array(NonEmptyStringSchema).min(1),
+    /**
+     * The linked `EvidenceRecord.artifactDigests` — copied verbatim, never
+     * re-derived.
+     *
+     * Deliberately NOT `.min(1)`. It was, until 2026-07-25, and that
+     * contradicted the very record it copies: 02's `EvidenceRecordSchema`
+     * declares `z.array(NonEmptyStringSchema)` with no minimum, and real
+     * emitters (`e2e/live/src/evidence.ts`,
+     * `e2e/matrix/orchestration/src/evidence.ts`) legitimately emit `[]`.
+     * A schema that copies a field verbatim must not impose a constraint
+     * its source does not have. The bug was unreachable only because no
+     * evidence had ever successfully linked; the moment the shared
+     * release-candidate journal made linking work, generating a report
+     * hard-failed with `ZodError: too_small`.
+     */
+    artifactDigests: z.array(NonEmptyStringSchema),
     /** The linked `EvidenceRecord.gateTag`, when present. */
     gateTag: NonEmptyStringSchema.optional(),
     /** The linked `EvidenceRecord.exitStatus` (0 = green, nonzero = a genuine negative run). */

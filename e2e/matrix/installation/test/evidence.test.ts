@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   INSTALLATION_MATRIX_GATE_TAG,
@@ -43,16 +44,29 @@ describe("evidence emission", () => {
   });
 
   it("emitScenarioEvidence appends exactly one evidence_pointer journal entry, queryable back", async () => {
+    // Freshly generated, NOT the shared fixture literal the sibling git
+    // matrix also uses: under a shared journal
+    // (`EO_RELEASE_GATE_JOURNAL_DIR`) both harnesses write to one place, and
+    // a hardcoded id would make each harness see the other's record.
+    const changeSetId = randomUUID();
     await emitScenarioEvidence(journal.store, {
-      changeSetId: "8f14e45f-ceea-467e-adde-0000000000bb",
+      changeSetId,
       command: "install --json (unborn-head)",
       exitStatus: 0,
       objectId: "cafef00d",
       detail: "status=installed repoState=unborn-head",
     });
 
+    // changeSetId-scoped: under a shared journal
+    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
+    // test-journal.ts`) every sibling scenario's evidence is visible here
+    // too, so "exactly one entry in the journal" would stop meaning "this
+    // call appended exactly one entry".
     const entries = [];
-    for await (const entry of journal.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of journal.store.queryEntries({
+      type: "evidence_pointer",
+      changeSetId,
+    })) {
       entries.push(entry);
     }
     expect(entries).toHaveLength(1);

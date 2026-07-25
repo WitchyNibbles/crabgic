@@ -37,8 +37,13 @@ describe("emitLiveConformanceEvidence", () => {
     expect(records[0]?.objectId).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
     expect(records[0]?.command).toBe("not-implemented-sweep");
 
+    // Scoped to THIS test's own freshly-generated changeSetId, never the
+    // whole journal: under a shared journal (`EO_RELEASE_GATE_JOURNAL_DIR`,
+    // see `./testJournal.ts`) every other harness's evidence is visible
+    // here too, and an unfiltered "the journal contains exactly these two
+    // records" assertion would either break or start passing vacuously.
     const fromJournal: string[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type === "evidence_pointer") fromJournal.push(entry.payload.id);
     }
     expect(fromJournal.sort()).toEqual([records[0]?.id, records[1]?.id].sort());

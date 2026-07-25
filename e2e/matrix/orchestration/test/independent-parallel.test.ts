@@ -61,7 +61,17 @@ describe("Orchestration matrix: independent parallel change sets", () => {
     const selected = selectDispatchSet(ready, [], DEFAULT_CONCURRENCY_CAP);
     expect(selected).toHaveLength(3);
 
-    await journalFanoutRationaleIfFannedOut({ journal: store, dispatchedUnitIds: selected });
+    // A per-test runId so the fan-out assertion below is scoped to THIS
+    // round's own entry: under a shared journal
+    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/testJournal.ts`) sibling
+    // scenarios' `fanout_rationale` entries land in the same journal, and
+    // an unscoped "exactly one" count would break.
+    const runId = randomUUID();
+    await journalFanoutRationaleIfFannedOut({
+      journal: store,
+      runId,
+      dispatchedUnitIds: selected,
+    });
 
     const outcomes = await Promise.all(
       selected.map((workUnitId) =>
@@ -87,7 +97,7 @@ describe("Orchestration matrix: independent parallel change sets", () => {
     }
 
     const fanoutEntries: unknown[] = [];
-    for await (const entry of store.queryEntries({ type: "fanout_rationale" })) {
+    for await (const entry of store.queryEntries({ type: "fanout_rationale", runId })) {
       fanoutEntries.push(entry);
     }
     expect(fanoutEntries).toHaveLength(1);

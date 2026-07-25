@@ -83,9 +83,14 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     });
     expect(result.verdict).toBe("PASS");
 
+    // Scoped to THIS test's own freshly-generated changeSetId, not just its
+    // objectId: `objectId` here is a fixed literal, so under a shared
+    // journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) a
+    // second run's records would accumulate under the same id and this
+    // exact-set assertion would break.
     const tags: string[] = [];
     const exitStatuses: number[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type !== "evidence_pointer") continue;
       if (entry.payload.objectId !== objectId) continue;
       if (entry.payload.gateTag !== undefined) tags.push(entry.payload.gateTag);
@@ -101,8 +106,11 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     const changeSetId = randomUUID();
     await runAndEmitNotImplementedSweepEvidence({ journal: tj.store, changeSetId });
 
+    // changeSetId-scoped: an unfiltered sweep would, under a shared journal
+    // (`EO_RELEASE_GATE_JOURNAL_DIR`), pick up every other harness's
+    // objectIds and turn "the default was used" into a false negative.
     const objectIds: string[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type === "evidence_pointer") objectIds.push(entry.payload.objectId);
     }
     expect(new Set(objectIds)).toEqual(new Set(["deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"]));
@@ -124,9 +132,12 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     });
     expect(result.verdict).toBe("FAIL");
 
+    // changeSetId-scoped for the same reason as the PASS case above: the
+    // literal `objectId` alone does not isolate this test's own records
+    // from a shared journal's accumulated contents.
     const tags: string[] = [];
     const exitStatuses: number[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type !== "evidence_pointer") continue;
       if (entry.payload.objectId !== objectId) continue;
       if (entry.payload.gateTag !== undefined) tags.push(entry.payload.gateTag);

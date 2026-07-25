@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -127,9 +128,16 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
     const objectId = (
       await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })
     ).stdout.trim();
+    // A per-run id, not a fixed literal: `objectId` below is this repo's
+    // REAL `HEAD` — i.e. exactly the release-candidate object id every
+    // OTHER harness also tags its evidence with during a release run — so
+    // under a shared journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see
+    // `./testJournal.ts`) objectId alone cannot isolate this test's own
+    // records. The changeSetId is what does.
+    const changeSetId = randomUUID();
     const result = await runAndEmitReleaseGateSummaryEvidence({
       journal: tj.store,
-      changeSetId: "33333333-3333-4333-8333-333333333333",
+      changeSetId,
       objectId,
       repoRoot,
       commitIsh: "HEAD",
@@ -162,7 +170,7 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
     expect(result.tagScript).toContain("git tag -a 'v1.0.0'");
 
     const tags: string[] = [];
-    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type !== "evidence_pointer") continue;
       if (entry.payload.objectId !== objectId) continue;
       if (entry.payload.gateTag !== undefined) tags.push(entry.payload.gateTag);

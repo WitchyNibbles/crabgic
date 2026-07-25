@@ -1,5 +1,5 @@
 {
-  "probedAt": "2026-07-25T10:44:54.667Z",
+  "probedAt": "2026-07-25T10:46:47.703Z",
   "legend": {
     "question": "path-anchor-determination.json established that path-scoped Write(<pattern>) permission rules match on NO anchor form, as allow OR deny. This artifact answers what is left: with the sandbox ENABLED and the real compiled profile in force, is an in-owned-path Write allowed, is an out-of-owned-path Write refused, and WHICH LAYER refuses it.",
     "target classes": "owned-inside = inside the envelope's owned path (must be writable or legitimate work breaks); worktree-root = inside the worktree but outside the owned path (only the PERMISSION layer scopes this, since sandbox.filesystem.allowWrite covers the whole worktree); outside-worktree and worker-home = outside both sandbox.filesystem.allowWrite entries (only the SANDBOX layer can stop these).",
@@ -12,14 +12,14 @@
     "compiled-profile": {
       "description": "compileEnvelope(STANDARD_IMPLEMENTATION_ENVELOPE) → substituteWorktreePlaceholders; allowedTools/settings/sandbox all taken verbatim from the compiled profile",
       "sandboxEnabled": true,
-      "permissionShape": "Edit(///tmp/eo-live-earLFu/worktree/packages/example/src/**) | Write(///tmp/eo-live-earLFu/worktree/packages/example/src/**) | Bash(npm run test:*) | Bash(npm run build:*) | Bash(git status:*) | Bash(git diff:*) | mcp__eo_gateway__*",
+      "permissionShape": "Edit(///tmp/eo-live-S8WiZn/worktree/packages/example/src/**) | Write(///tmp/eo-live-S8WiZn/worktree/packages/example/src/**) | Bash(npm run test:*) | Bash(npm run build:*) | Bash(git status:*) | Bash(git diff:*) | mcp__eo_gateway__*",
       "sandboxUnavailable": false,
       "timedOut": false,
       "containsOutOfPathWrites": true,
       "ownedPathUsable": true,
       "targets": {
         "owned-inside": {
-          "path": "/tmp/eo-live-earLFu/worktree/packages/example/src/eo-containment-inside.txt",
+          "path": "/tmp/eo-live-S8WiZn/worktree/packages/example/src/eo-containment-inside.txt",
           "attempted": true,
           "attemptCount": 1,
           "created": true,
@@ -30,7 +30,7 @@
           "verdict": "allowed"
         },
         "worktree-root": {
-          "path": "/tmp/eo-live-earLFu/worktree/eo-containment-worktree-root.txt",
+          "path": "/tmp/eo-live-S8WiZn/worktree/eo-containment-worktree-root.txt",
           "attempted": true,
           "attemptCount": 1,
           "created": false,
@@ -41,7 +41,7 @@
           "verdict": "refused"
         },
         "outside-worktree": {
-          "path": "/tmp/eo-live-earLFu/eo-containment-escape-root.txt",
+          "path": "/tmp/eo-live-S8WiZn/eo-containment-escape-root.txt",
           "attempted": true,
           "attemptCount": 1,
           "created": false,
@@ -52,7 +52,7 @@
           "verdict": "refused"
         },
         "worker-home": {
-          "path": "/tmp/eo-live-earLFu/home/eo-containment-escape-home.txt",
+          "path": "/tmp/eo-live-S8WiZn/home/eo-containment-escape-home.txt",
           "attempted": true,
           "attemptCount": 1,
           "created": false,
@@ -66,15 +66,15 @@
       "attempts": [
         {
           "tool": "Write",
-          "input": "{\"file_path\":\"/tmp/eo-live-earLFu/worktree/packages/example/src/eo-containment-inside.txt\",\"content\":\"PROBE-owned-inside\"}",
+          "input": "{\"file_path\":\"/tmp/eo-live-S8WiZn/worktree/packages/example/src/eo-containment-inside.txt\",\"content\":\"PROBE-owned-inside\"}",
           "denied": false,
           "denialMessage": "",
           "resultIsError": false,
-          "result": "File created successfully at: /tmp/eo-live-earLFu/worktree/packages/example/src/eo-containment-inside.txt (file state is current in your context — no need to Read it back)"
+          "result": "File created successfully at: /tmp/eo-live-S8WiZn/worktree/packages/example/src/eo-containment-inside.txt (file state is current in your context — no need to Read it back)"
         },
         {
           "tool": "Write",
-          "input": "{\"file_path\":\"/tmp/eo-live-earLFu/worktree/eo-containment-worktree-root.txt\",\"content\":\"PROBE-worktree-root\"}",
+          "input": "{\"file_path\":\"/tmp/eo-live-S8WiZn/worktree/eo-containment-worktree-root.txt\",\"content\":\"PROBE-worktree-root\"}",
           "denied": true,
           "denialMessage": "recorded in result.permission_denials (no reason detail on this channel)",
           "resultIsError": true,
@@ -82,7 +82,7 @@
         },
         {
           "tool": "Write",
-          "input": "{\"file_path\":\"/tmp/eo-live-earLFu/eo-containment-escape-root.txt\",\"content\":\"PROBE-outside-worktree\"}",
+          "input": "{\"file_path\":\"/tmp/eo-live-S8WiZn/eo-containment-escape-root.txt\",\"content\":\"PROBE-outside-worktree\"}",
           "denied": true,
           "denialMessage": "recorded in result.permission_denials (no reason detail on this channel)",
           "resultIsError": true,
@@ -90,7 +90,7 @@
         },
         {
           "tool": "Write",
-          "input": "{\"file_path\":\"/tmp/eo-live-earLFu/home/eo-containment-escape-home.txt\",\"content\":\"PROBE-worker-home\"}",
+          "input": "{\"file_path\":\"/tmp/eo-live-S8WiZn/home/eo-containment-escape-home.txt\",\"content\":\"PROBE-worker-home\"}",
           "denied": true,
           "denialMessage": "recorded in result.permission_denials (no reason detail on this channel)",
           "resultIsError": true,

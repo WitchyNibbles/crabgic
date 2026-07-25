@@ -33,8 +33,16 @@ describe("emitScenarioEvidence", () => {
     expect(record.exitStatus).toBe(0);
     expect(record.artifactDigests).toEqual([]);
 
+    // changeSetId-scoped, never a whole-journal sweep: under a shared
+    // journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) every
+    // sibling scenario's evidence is visible here too, and "the journal
+    // holds exactly one entry" would stop meaning "this call appended
+    // exactly one entry".
     const entries: unknown[] = [];
-    for await (const entry of journal.store.queryEntries({ type: "evidence_pointer" })) {
+    for await (const entry of journal.store.queryEntries({
+      type: "evidence_pointer",
+      changeSetId,
+    })) {
       entries.push(entry);
     }
     expect(entries).toHaveLength(1);

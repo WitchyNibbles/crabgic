@@ -53,9 +53,24 @@ describe("ReleaseGateEvidenceLinkSchema", () => {
     expect(ReleaseGateEvidenceLinkSchema.parse(validLink)).toEqual(validLink);
   });
 
-  it("requires at least one artifactDigest (never an evidence link with zero digests)", () => {
+  /**
+   * INVERTED 2026-07-25. This asserted a `.min(1)` that contradicted the
+   * record it copies: 02's `EvidenceRecordSchema` sets no minimum, and real
+   * emitters legitimately produce `[]`. The constraint was unreachable while
+   * no evidence ever linked; the moment the shared release-candidate journal
+   * made linking work, report generation hard-failed with `ZodError:
+   * too_small` on genuine records. A schema copying a field verbatim must
+   * not be stricter than its source.
+   */
+  it("accepts an empty artifactDigests, exactly as EvidenceRecordSchema does", () => {
+    expect(
+      ReleaseGateEvidenceLinkSchema.parse({ ...validLink, artifactDigests: [] }).artifactDigests,
+    ).toEqual([]);
+  });
+
+  it("still rejects a digest entry that is an empty string", () => {
     expect(() =>
-      ReleaseGateEvidenceLinkSchema.parse({ ...validLink, artifactDigests: [] }),
+      ReleaseGateEvidenceLinkSchema.parse({ ...validLink, artifactDigests: [""] }),
     ).toThrow();
   });
 

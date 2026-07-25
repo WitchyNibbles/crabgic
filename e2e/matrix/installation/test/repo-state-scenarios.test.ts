@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { JournalStore } from "@eo/journal";
 import {
   runDirtyRepoScenario,
   runEmptyDirScenario,
@@ -52,12 +53,31 @@ describe("installation matrix: repo-state scenarios (live)", () => {
   });
 
   it("every repo-state scenario emits exactly one evidence_pointer entry tagged release-gate:installation-matrix", async () => {
-    await runEmptyDirScenario(journal.store);
-    await runInvalidGitScenario(journal.store);
+    // Scoped by recording the ids these two scenario calls append, rather
+    // than counting the whole journal: these scenarios mint their own
+    // `changeSetId` internally, and under a shared journal
+    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
+    // test-journal.ts`) `all-scenarios.test.ts` runs the SAME two scenarios
+    // into the SAME journal, under the same deterministic stand-in object
+    // ids. What is proved is unchanged: two scenarios, two durable,
+    // correctly-tagged entries.
+    const emittedIds = new Set<string>();
+    const recording: JournalStore = {
+      ...journal.store,
+      appendEntry: async (input) => {
+        const entry = await journal.store.appendEntry(input);
+        if (entry.type === "evidence_pointer") emittedIds.add(entry.payload.id);
+        return entry;
+      },
+    };
+
+    await runEmptyDirScenario(recording);
+    await runInvalidGitScenario(recording);
 
     const entries = [];
     for await (const entry of journal.store.queryEntries({ type: "evidence_pointer" })) {
-      entries.push(entry);
+      if (entry.type === "evidence_pointer" && emittedIds.has(entry.payload.id))
+        entries.push(entry);
     }
     expect(entries).toHaveLength(2);
     for (const entry of entries) {

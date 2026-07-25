@@ -138,7 +138,23 @@ async function journalEvidence(record: EvidenceRecord): Promise<void> {
 }
 
 describe("generateReleaseGateReport — end-to-end over a real @eo/journal JournalStore", () => {
-  const CANDIDATE = "release-candidate-object-id";
+  /**
+   * A FRESH release-candidate object id per test, not one shared constant.
+   * The generator's only scoping mechanism is exact-`objectId` matching, so
+   * a shared literal makes every test in this file visible to every other
+   * one the moment the underlying journal stops being per-test — which is
+   * exactly what `EO_RELEASE_GATE_JOURNAL_DIR` does (see
+   * `./test-support/test-journal.ts`). The "zero evidence at all" tests in
+   * particular would silently start scoring against a sibling test's
+   * records. A per-test id keeps every assertion below meaning what it
+   * says in both modes.
+   */
+  let candidate: string;
+
+  beforeEach(() => {
+    candidate = randomUUID();
+  });
+
   const checklist: readonly ReleaseGateChecklistItemSpec[] = [
     {
       id: "item-a",
@@ -157,7 +173,7 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
   it("FAILs every item closed (final mode) when the journal has zero evidence at all", async () => {
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "final",
       checklist,
     });
@@ -168,7 +184,7 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
   it("reports EVIDENCE-PENDING for every item (interim mode) when the journal has zero evidence at all", async () => {
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "interim",
       checklist,
     });
@@ -178,11 +194,11 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
 
   it("matches an item to its EvidenceRecord by (gateTag, exact release-candidate objectId) and PASSes only that item", async () => {
     await journalEvidence(
-      fixtureRecord({ objectId: CANDIDATE, gateTag: "release-gate:item-a", exitStatus: 0 }),
+      fixtureRecord({ objectId: candidate, gateTag: "release-gate:item-a", exitStatus: 0 }),
     );
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "final",
       checklist,
     });
@@ -203,7 +219,7 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
     );
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "final",
       checklist,
     });
@@ -213,11 +229,11 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
 
   it("NEVER matches an EvidenceRecord whose gateTag isn't in the item's requiredGateTags, even at the right object ID", async () => {
     await journalEvidence(
-      fixtureRecord({ objectId: CANDIDATE, gateTag: "unrelated-tag", exitStatus: 0 }),
+      fixtureRecord({ objectId: candidate, gateTag: "unrelated-tag", exitStatus: 0 }),
     );
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "final",
       checklist,
     });
@@ -227,7 +243,7 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
   it("uses the injected clock for generatedAt", async () => {
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "interim",
       checklist,
       now: () => "2026-01-01T00:00:00.000Z",
@@ -238,7 +254,7 @@ describe("generateReleaseGateReport — end-to-end over a real @eo/journal Journ
   it("defaults to the full 15-item RELEASE_GATE_CHECKLIST when none is supplied", async () => {
     const report = await generateReleaseGateReport({
       journal: tj.store,
-      releaseCandidateObjectId: CANDIDATE,
+      releaseCandidateObjectId: candidate,
       scoringMode: "interim",
     });
     expect(report.items).toHaveLength(15);
