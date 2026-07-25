@@ -73,6 +73,8 @@ import { startSupervisorServer, type SupervisorServer } from "../socket/uds-serv
 export const CHANGE_SETS_FILE_NAME = "change-sets.json";
 export const WORK_UNITS_FILE_NAME = "work-units.json";
 export const AUTHORIZATION_ENVELOPES_FILE_NAME = "authorization-envelopes.json";
+/** Written by the CLI's intake wiring only — the daemon has no read of its own yet; `contract.approve`, served from the gateway MCP process, is the reader. */
+export const INTENT_CONTRACTS_FILE_NAME = "intent-contracts.json";
 
 /** A `SupervisorDependencies` whose `liveWorkers` map is mutable — the composition root owns the map so the execution driver (slice D) can register/retire `TerminableWorker` handles as workers spawn and settle. */
 export interface ComposedSupervisorDependencies extends SupervisorDependencies {

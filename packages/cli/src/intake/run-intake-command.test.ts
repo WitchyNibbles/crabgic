@@ -9,6 +9,7 @@ import {
   createChangeSetsRegistry,
   createWorkUnitsRegistry,
   createAuthorizationEnvelopesRegistry,
+  createIntentContractsRegistry,
   type IntakeRequest,
 } from "@eo/supervisor";
 import { ApprovalTokenMinter } from "../approval/token.js";
@@ -66,6 +67,7 @@ describe("runIntakeCommand", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
     const input = new PassThrough();
     const output = new PassThrough();
@@ -75,6 +77,7 @@ describe("runIntakeCommand", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input, output },
       readIntakeRequest: async () => fixtureRequest(),
@@ -91,6 +94,7 @@ describe("runIntakeCommand", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
     const input = new PassThrough();
     const output = new PassThrough();
@@ -100,6 +104,7 @@ describe("runIntakeCommand", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input, output },
       readIntakeRequest: async () => fixtureRequest(),
@@ -115,6 +120,7 @@ describe("runIntakeCommand", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
 
     const firstInput = new PassThrough();
@@ -123,6 +129,7 @@ describe("runIntakeCommand", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input: firstInput, output: new PassThrough() },
       readIntakeRequest: async () => fixtureRequest(),
@@ -141,6 +148,7 @@ describe("runIntakeCommand", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input: new PassThrough(), output },
       readIntakeRequest: async () => fixtureRequest({ rollbackStrategy: "A different strategy." }),
@@ -154,6 +162,7 @@ describe("runIntakeCommand", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const boomMinter = {
       mint: async () => {
         throw new Error("boom");
@@ -166,6 +175,7 @@ describe("runIntakeCommand", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter: boomMinter,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => fixtureRequest({ requestKey: "repo:boom" }),

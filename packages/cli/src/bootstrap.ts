@@ -23,9 +23,11 @@ import {
   ApprovalTokenMinter,
   AuthorizationEnvelopeSchema,
   ChangeSetSchema,
+  IntentContractSchema,
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
+  type IntentContract,
   type WorkUnit,
 } from "@eo/contracts";
 import {
@@ -38,6 +40,7 @@ import {
   AUTHORIZATION_ENVELOPES_FILE_NAME,
   CHANGE_SETS_FILE_NAME,
   createFileRegistry,
+  INTENT_CONTRACTS_FILE_NAME,
   resolveSupervisorSocketPath,
   WORK_UNITS_FILE_NAME,
   type IntakeRequest,
@@ -185,6 +188,14 @@ function buildRealIntakeDependencies(
     envelopes: createFileRegistry<AuthorizationEnvelope>({
       path: join(stateRoot, AUTHORIZATION_ENVELOPES_FILE_NAME),
       schema: AuthorizationEnvelopeSchema,
+    }),
+    // File-backed for the same reason as the three above: `contract.approve`
+    // reads this ChangeSet's declared `requirementIds` from a DIFFERENT
+    // process (the gateway MCP server), and journal replay does not rebuild
+    // intake artifacts.
+    intentContracts: createFileRegistry<IntentContract>({
+      path: join(stateRoot, INTENT_CONTRACTS_FILE_NAME),
+      schema: IntentContractSchema,
     }),
     minter,
     readIntakeRequest: readIntakeRequestFromStdin,

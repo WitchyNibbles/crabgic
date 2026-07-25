@@ -19,6 +19,7 @@ import {
   createChangeSetsRegistry,
   createWorkUnitsRegistry,
   createAuthorizationEnvelopesRegistry,
+  createIntentContractsRegistry,
   type IntakeRequest,
 } from "@eo/supervisor";
 import { EXIT_OK } from "../exit-codes.js";
@@ -107,6 +108,7 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
         changeSets: createChangeSetsRegistry(),
         workUnits: createWorkUnitsRegistry(),
         envelopes: createAuthorizationEnvelopesRegistry(),
+        intentContracts: createIntentContractsRegistry(),
         minter: new ApprovalTokenMinter({ secretKey: randomBytes(32) }),
         readIntakeRequest: async () => fixtureRequest(),
         io: { input, output },

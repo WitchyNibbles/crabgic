@@ -273,6 +273,7 @@ export async function runRunCommand(
     changeSets: deps.intake.changeSets,
     workUnits: deps.intake.workUnits,
     envelopes: deps.intake.envelopes,
+    intentContracts: deps.intake.intentContracts,
     minter: deps.intake.minter,
     io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
     readIntakeRequest: deps.intake.readIntakeRequest,

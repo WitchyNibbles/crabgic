@@ -6,6 +6,7 @@ import { createJournalStore, type JournalStore } from "@eo/journal";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
+import { createIntentContractsRegistry } from "../registries/intent-contracts-registry.js";
 import { runIntake, type IntakeDeps, type IntakeRequest } from "./intake-pipeline.js";
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
@@ -81,6 +82,7 @@ function freshDeps(): IntakeDeps {
     changeSets: createChangeSetsRegistry(),
     workUnits: createWorkUnitsRegistry(),
     envelopes: createAuthorizationEnvelopesRegistry(),
+    intentContracts: createIntentContractsRegistry(),
   };
 }
 
@@ -95,6 +97,32 @@ describe("runIntake", () => {
     expect(outcome.artifacts.changeSet.state).toBe("awaiting_approval");
     expect(deps.changeSets.list()).toHaveLength(1);
     expect(deps.envelopes.get(outcome.artifacts.envelope.id)).toEqual(outcome.artifacts.envelope);
+  });
+
+  /**
+   * The `IntentContract` is the ONLY durable source of a ChangeSet's
+   * `requirementIds`, and `contract.approve` needs them to run its
+   * unmapped-requirement readiness pre-check server-side. Persisting the
+   * ChangeSet/envelope/work-units but not this left that check with nothing
+   * to read from a second process — the same class of gap that made an
+   * approved DAG invisible to the daemon before the registries went
+   * file-backed.
+   *
+   * Deriving the ids from the work units instead would be worse than
+   * useless: `findUnmappedRequirements` compares requirements AGAINST the
+   * work-unit mapping, so sourcing them from that same mapping makes it
+   * vacuously always-empty — a gate that can never fail.
+   */
+  it("persists the IntentContract, the sole durable source of the requirementIds contract.approve gates on", async () => {
+    const deps = freshDeps();
+
+    const outcome = await runIntake(deps, baseRequest());
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const stored = deps.intentContracts.get(outcome.artifacts.intentContract.id);
+    expect(stored).toEqual(outcome.artifacts.intentContract);
+    expect(stored!.requirementIds.length).toBeGreaterThan(0);
+    expect(stored!.id).toBe(outcome.artifacts.changeSet.intentContractId);
   });
 
   it("re-inspecting an unchanged repo never creates a second ChangeSet (journal-verified)", async () => {

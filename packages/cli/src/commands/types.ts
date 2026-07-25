@@ -5,7 +5,7 @@
  * unless a specific test wants to.
  */
 import type { JournalStore } from "@eo/journal";
-import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@eo/contracts";
+import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
 import type { Registry, IntakeRequest } from "@eo/supervisor";
 import type { UdsClient } from "../uds-client/client.js";
 import type { AuthState } from "../doctor/checks/auth-probe.js";
@@ -31,6 +31,8 @@ export interface IntakeDependencies {
   readonly workUnits: Registry<WorkUnit>;
   /** CRITICAL C1 repair: durable envelope store — see `../intake/run-intake-command.ts`'s own doc comment on `RunIntakeCommandDeps.envelopes`. */
   readonly envelopes: Registry<AuthorizationEnvelope>;
+  /** Durable contract store — see `../intake/run-intake-command.ts`'s own doc comment on `RunIntakeCommandDeps.intentContracts`. */
+  readonly intentContracts: Registry<IntentContract>;
   readonly minter: ApprovalTokenMinter;
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
   /** Defaults to `process.stdin`/`process.stdout` (real interactive usage) when omitted — injectable so tests never block on real stdio. */

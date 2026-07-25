@@ -103,6 +103,16 @@ export interface IntakeDeps {
    * registry.ts`'s own doc comment).
    */
   readonly envelopes: Registry<AuthorizationEnvelope>;
+  /**
+   * Added 2026-07-25, for the same reason `envelopes` was: `ChangeSet` holds
+   * only an `intentContractId`, and `contract.approve` — which now runs in a
+   * different process, served from the gateway MCP server — must resolve
+   * this ChangeSet's OWN declared `requirementIds` to run its
+   * unmapped-requirement readiness gate. Sourcing those ids from the work
+   * units instead would make that gate vacuous (see
+   * `../registries/intent-contracts-registry.ts`).
+   */
+  readonly intentContracts: Registry<IntentContract>;
 }
 
 function requestContentHash(request: IntakeRequest): string {
@@ -225,6 +235,7 @@ export async function runIntake(deps: IntakeDeps, request: IntakeRequest): Promi
   if (!alreadyKnown) {
     deps.changeSets.put(artifacts.changeSet);
     deps.envelopes.put(artifacts.envelope);
+    deps.intentContracts.put(artifacts.intentContract);
     for (const workUnit of artifacts.workUnits) deps.workUnits.put(workUnit);
     await transitionChangeSet({
       journal: deps.journal,

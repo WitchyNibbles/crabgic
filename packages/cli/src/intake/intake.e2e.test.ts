@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@eo/journal";
 import {
   createAuthorizationEnvelopesRegistry,
+  createIntentContractsRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -101,6 +102,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey });
     const changeSetId = "11111111-1111-4111-8111-111111111111";
 
@@ -110,6 +112,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:approve", changeSetId),
@@ -137,6 +140,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey });
     const changeSetId = "22222222-2222-4222-8222-222222222222";
 
@@ -146,6 +150,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       changeSets,
       workUnits,
       envelopes,
+      intentContracts,
       minter,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:replay", changeSetId),
