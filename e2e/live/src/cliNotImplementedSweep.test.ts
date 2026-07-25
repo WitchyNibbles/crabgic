@@ -1,4 +1,9 @@
-import { EXIT_NOT_IMPLEMENTED, EXIT_OK, type CliDependencies } from "engineering-orchestrator";
+import {
+  EXIT_NOT_IMPLEMENTED,
+  EXIT_OK,
+  SupervisorUnavailableError,
+  type CliDependencies,
+} from "engineering-orchestrator";
 import { describe, expect, it } from "vitest";
 import {
   checkProductionDependencyWiring,
@@ -11,12 +16,22 @@ import {
 } from "./cliNotImplementedSweep.js";
 
 describe("sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli)", () => {
+  /**
+   * DISPATCH-LEVEL, absent every optional dependency — deliberately not the
+   * same question as "what is broken in the shipped binary": a command with
+   * a real conditional branch shows up here and is then resolved against
+   * real production wiring by `combineFindings`.
+   *
+   * `resume` and `status` left this list when they became unconditional
+   * (both need only the UDS client). `gateway-mcp` stays: `cli-entry.ts`
+   * still intercepts it before `dispatchCommand`, so its branch remains
+   * structurally unreachable dead code rather than a gap.
+   */
   it("finds every dispatch-level NOT_IMPLEMENTED command among the 18 probes, absent any optional dependency", async () => {
     const findings = await sweepDispatchLevelNotImplemented();
     const commands = findings.map((f) => f.command).sort();
     expect(commands).toEqual(
       [
-        "resume",
         "connection-add",
         "connection-list",
         "connection-doctor",
@@ -29,7 +44,6 @@ describe("sweepDispatchLevelNotImplemented — genuine integration (real dispatc
         "learn-approve",
         "learn-reject",
         "learn-rollback",
-        "status",
         "gateway-mcp",
         "install",
         "upgrade",
@@ -44,12 +58,23 @@ describe("sweepDispatchLevelNotImplemented — genuine integration (real dispatc
     expect(new Set(SWEEP_COMMAND_PROBES.map((p) => p.command)).size).toBe(18);
   });
 
-  it("a hand-built deps bag that never reaches connectClient/journal proves the probe set never touches either seam", async () => {
+  /**
+   * The sweep used to assert it NEVER reached `connectClient`, which held
+   * only while every supervisor-backed command was a stub. `resume` and
+   * `status` are now unconditional, so the probe set does reach that seam
+   * — and the property that actually matters is unchanged and asserted
+   * here instead: a throwing/offline supervisor seam must never turn into a
+   * NOT_IMPLEMENTED finding. A command that fails because no daemon is
+   * running is not an unimplemented command, and conflating the two would
+   * make this whole audit report phantom gaps on any machine without a
+   * live supervisor.
+   */
+  it("never mistakes an unreachable supervisor for an unimplemented command", async () => {
     let connectClientCalled = false;
     const deps: CliDependencies = {
       connectClient: async () => {
         connectClientCalled = true;
-        throw new Error("should never be called for a stub command");
+        throw new SupervisorUnavailableError("no daemon in this test");
       },
       journal: {
         queryEntries: async function* () {},
@@ -59,16 +84,24 @@ describe("sweepDispatchLevelNotImplemented — genuine integration (real dispatc
       },
       projectHash: "test",
     };
-    await sweepDispatchLevelNotImplemented(SWEEP_COMMAND_PROBES, deps);
-    expect(connectClientCalled).toBe(false);
+
+    const findings = await sweepDispatchLevelNotImplemented(SWEEP_COMMAND_PROBES, deps);
+
+    expect(connectClientCalled).toBe(true);
+    expect(findings.map((f) => f.command)).not.toContain("resume");
+    expect(findings.map((f) => f.command)).not.toContain("status");
+    expect(findings.every((f) => f.exitCode === EXIT_NOT_IMPLEMENTED)).toBe(true);
   });
 });
 
 describe("checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies)", () => {
-  it("reflects today's real production wiring: installer IS wired, intake/learning are NOT", () => {
+  /** installer/intake/trust/connection are all wired as of the phase-23 composition-root work; learning is the one bag that is still not. */
+  it("reflects today's real production wiring: installer/intake/trust/connection ARE wired, learning is NOT", () => {
     const wiring = checkProductionDependencyWiring();
     expect(wiring.installerWired).toBe(true);
-    expect(wiring.intakeWired).toBe(false);
+    expect(wiring.intakeWired).toBe(true);
+    expect(wiring.trustWired).toBe(true);
+    expect(wiring.connectionWired).toBe(true);
     expect(wiring.learningWired).toBe(false);
   });
 });
@@ -86,6 +119,8 @@ describe("combineFindings", () => {
       installerWired: true,
       intakeWired: true,
       learningWired: true,
+      trustWired: true,
+      connectionWired: true,
     };
     const [resume] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "resume"),
@@ -99,6 +134,8 @@ describe("combineFindings", () => {
       installerWired: false,
       intakeWired: false,
       learningWired: false,
+      trustWired: false,
+      connectionWired: false,
     };
     const [gatewayMcp] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "gateway-mcp"),
@@ -112,6 +149,8 @@ describe("combineFindings", () => {
       installerWired: true,
       intakeWired: false,
       learningWired: false,
+      trustWired: false,
+      connectionWired: false,
     };
     const [install] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "install"),
@@ -125,6 +164,8 @@ describe("combineFindings", () => {
       installerWired: true,
       intakeWired: false,
       learningWired: false,
+      trustWired: false,
+      connectionWired: false,
     };
     const [run] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "run"),
@@ -147,26 +188,35 @@ describe("combineFindings", () => {
       .map((f) => f.command)
       .sort();
 
-    // installer-backed commands are genuinely wired in production today.
-    expect(notRealGaps).toEqual(["gateway-mcp", "install", "upgrade", "uninstall"].sort());
-    // Everything else — including run/learn-* despite their real backends
-    // existing — is a genuine, currently-shipped NOT_IMPLEMENTED gap.
-    expect(realGaps).toEqual(
+    // Every command whose dispatch branch is gated by a bag production
+    // actually supplies: installer, intake, trust and connection are all
+    // wired, so their branches are reachable and none of these is a gap.
+    // Plus `gateway-mcp`, whose branch is unreachable dead code.
+    expect(notRealGaps).toEqual(
       [
-        "resume",
-        "connection-add",
-        "connection-list",
-        "connection-doctor",
-        "connection-capabilities",
+        "gateway-mcp",
+        "install",
+        "upgrade",
+        "uninstall",
+        "run",
         "trust-review",
         "trust-approve",
         "trust-revoke",
-        "run",
+        "connection-add",
+        "connection-list",
+        "connection-doctor",
+      ].sort(),
+    );
+    // What genuinely remains: learn-* (a real backend exists, but
+    // deps.learning is still not supplied) and connection-capabilities
+    // (no backend at all). These are exactly the allowlist's five entries.
+    expect(realGaps).toEqual(
+      [
+        "connection-capabilities",
         "learn-list",
         "learn-approve",
         "learn-reject",
         "learn-rollback",
-        "status",
       ].sort(),
     );
   });

@@ -11,12 +11,18 @@ import {
 } from "./notImplementedSweepGate.js";
 import { createTestJournal, type TestJournal } from "./testJournal.js";
 
-describe("runNotImplementedSweepGate — genuine integration (real dispatch, real cli-entry.ts, real stdio-server)", () => {
-  it("finds exactly the 23 currently-tracked, actionable gaps and reports PASS (the allowlist matches today's live reality)", async () => {
+describe("runNotImplementedSweepGate — genuine integration (real dispatch, real cli-entry.ts, real MCP server)", () => {
+  /**
+   * Was 23 gaps with `toolsCallSupported: false`. The phase-23
+   * composition-root work closed 18 of them, and this sweep is what proved
+   * it: run live, it reported every newly-wired id as a STALE allowlist
+   * entry until the allowlist was shrunk to match reality.
+   */
+  it("finds exactly the 5 remaining tracked gaps and reports PASS (the allowlist matches today's live reality)", async () => {
     const result = await runNotImplementedSweepGate();
 
-    expect(result.toolsCallSupported).toBe(false);
-    expect(result.liveFindingIds).toHaveLength(23);
+    expect(result.toolsCallSupported).toBe(true);
+    expect(result.liveFindingIds).toHaveLength(5);
     expect(result.newUnlistedFindings).toEqual([]);
     expect(result.staleAllowlistEntries).toEqual([]);
     expect(result.verdict).toBe("PASS");
@@ -34,16 +40,16 @@ describe("runNotImplementedSweepGate — genuine integration (real dispatch, rea
 describe("runNotImplementedSweepGate — FAIL-FIRST proof: a new, unlisted gap must fail the gate", () => {
   it("genuinely reports FAIL when the live-discovered set contains an id absent from the (deliberately shrunk) allowlist", async () => {
     // Proves the comparison logic is genuinely fail-closed, without
-    // introducing an actual new production gap (which this task is
-    // explicitly forbidden from doing): pass runNotImplementedSweepGate's
-    // own injectable allowlist seam a set missing one real, currently-true
-    // entry ("cli.resume") — exactly what a brand-new, undocumented stub
-    // would look like from this gate's point of view.
+    // introducing an actual new production gap: pass
+    // runNotImplementedSweepGate's own injectable allowlist seam a set
+    // missing one real, currently-true entry ("cli.learn-list") — exactly
+    // what a brand-new, undocumented stub would look like to this gate.
+    // The sentinel used to be "cli.resume", which is now genuinely wired.
     const shrunkAllowlist = new Set(
-      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.resume"),
+      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.learn-list"),
     );
     const result = await runNotImplementedSweepGate(shrunkAllowlist);
-    expect(result.newUnlistedFindings).toEqual(["cli.resume"]);
+    expect(result.newUnlistedFindings).toEqual(["cli.learn-list"]);
     expect(result.verdict).toBe("FAIL");
   });
 
@@ -103,7 +109,7 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     const changeSetId = randomUUID();
     const objectId = "2222222222222222222222222222222222222222";
     const shrunkAllowlist = new Set(
-      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.resume"),
+      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.learn-list"),
     );
     const result = await runAndEmitNotImplementedSweepEvidence({
       journal: tj.store,

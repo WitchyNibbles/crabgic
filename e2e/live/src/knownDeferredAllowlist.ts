@@ -13,104 +13,43 @@
  * sweep result is an EXACT set match against this list: adding a genuinely
  * new deferral requires a deliberate edit here (visible in review); a
  * brand-new, undocumented gap fails closed.
+ *
+ * SHRUNK 2026-07-25, from 24 entries to 5. The composition-root work of
+ * phase 23 wired 18 of them for real, and the sweep — run live, not
+ * reasoned about — reported each as a STALE allowlist entry, which is this
+ * mechanism working as designed in the opposite direction. Closed:
+ * `resume`, `run`, `status-all-runs`, all three `trust-*`, all three
+ * `connection-add|list|doctor`, every one of the eight gateway families,
+ * `gateway.protocol.tools-call` (the transport is now the real MCP SDK, so
+ * a registered tool can actually be invoked), and the `gateway-mcp` dead
+ * branch (the hand-rolled server it described no longer exists).
  */
 
-export type KnownDeferredKind = "cli-command" | "gateway-family" | "gateway-protocol";
+export type KnownDeferredKind =
+  "cli-command" | "gateway-family" | "gateway-protocol" | "gateway-provider";
 
 export interface KnownDeferredEntry {
-  /** Stable slug — `cli.<command>` or `gateway.<family>` or `gateway.protocol.<method>`. */
+  /** Stable slug — `cli.<command>` or `gateway.<family>` or `gateway.protocol.<method>` or `gateway.provider.<key>`. */
   readonly id: string;
   readonly kind: KnownDeferredKind;
   /** File(s) where the gap lives, relative to the repo root. */
   readonly location: readonly string[];
-  /** The roadmap phase that owns wiring the real backend/registration into production — "none (dead branch)" for the one structurally-unreachable entry. */
+  /** The roadmap phase that owns wiring the real backend/registration into production. */
   readonly ownerPhase: string;
   readonly description: string;
 }
 
 export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [
   {
-    id: "cli.resume",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase:
-      "06/13 (session-resume + parked-work-unit re-dispatch semantics; CLI wiring itself unowned)",
-    description:
-      '"resume <run-id>" has no backend at all — no CliDependencies field, no conditional branch.',
-  },
-  {
-    id: "cli.connection-add",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase:
-      "18/19/20 (connector connection lifecycle) + 09/23 (CLI wiring, per those phases' own text)",
-    description: '"connection-add" has no backend wired.',
-  },
-  {
-    id: "cli.connection-list",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase: "18/19/20 + 09/23",
-    description: '"connection-list" has no backend wired.',
-  },
-  {
-    id: "cli.connection-doctor",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase: "18/19/20 + 09/23",
-    description:
-      '"connection-doctor" has no backend wired — 18/19/20 each built their own connection-doctor probe function, but CLI invocation is explicitly deferred per those phases’ own text ("CLI invocation of this check is 09/23’s wiring concern, not asserted here").',
-  },
-  {
     id: "cli.connection-capabilities",
     kind: "cli-command",
     location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase: "18/19/20 + 09/23",
-    description: '"connection-capabilities" has no backend wired.',
-  },
-  {
-    id: "cli.trust-review",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/commands/dispatch.ts",
-      "packages/detect/src/trust/trust-review.ts",
-    ],
-    ownerPhase: "12",
+    ownerPhase: "18/19/20 (connector capability discovery) + 23 (CLI wiring)",
     description:
-      "A REAL backend exists (packages/detect/src/trust/trust-review.ts’s runTrustReviewCommand) but " +
-      "packages/cli/src/commands/dispatch.ts never imports it — CliDependencies has no trust field at " +
-      "all, unlike installer/intake/learning’s established optional-dependency pattern.",
-  },
-  {
-    id: "cli.trust-approve",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/commands/dispatch.ts",
-      "packages/detect/src/trust/trust-approve.ts",
-    ],
-    ownerPhase: "12",
-    description: "Same unwired-despite-built gap as cli.trust-review, for trust-approve.",
-  },
-  {
-    id: "cli.trust-revoke",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/commands/dispatch.ts",
-      "packages/detect/src/trust/trust-revoke.ts",
-    ],
-    ownerPhase: "12",
-    description: "Same unwired-despite-built gap as cli.trust-review, for trust-revoke.",
-  },
-  {
-    id: "cli.run",
-    kind: "cli-command",
-    location: ["packages/cli/src/bootstrap.ts", "packages/cli/src/commands/real-handlers.ts"],
-    ownerPhase: "11",
-    description:
-      "A REAL backend exists (runIntakeCommand) and dispatch.ts’s conditional branch is real, but " +
-      "packages/cli/src/bootstrap.ts’s buildRealCliDependencies() never supplies deps.intake — " +
-      '"run" is unconditionally NOT_IMPLEMENTED in the real, shipped binary today, despite that ' +
-      "type’s own doc comment claiming bootstrap.ts supplies it.",
+      '"connection-capabilities" has no backend wired. Its three siblings (connection-add|list|' +
+      "doctor) were wired against the durable FileExternalConnectionStore; this one reports a " +
+      "connection's discovered CapabilitySnapshot, which needs a live provider client — the same " +
+      "per-connection credential work gateway.provider.dispatch below is blocked on.",
   },
   {
     id: "cli.learn-list",
@@ -121,8 +60,13 @@ export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [
     ],
     ownerPhase: "22",
     description:
-      "Same unwired-despite-built gap as cli.run: buildRealCliDependencies() never supplies " +
-      "deps.learning.",
+      "A REAL backend exists (learn-command-backend.ts) and dispatch.ts's conditional branch is " +
+      "real, but buildRealCliDependencies() never supplies deps.learning. Wiring it needs one " +
+      "genuine design decision first, which is why this was NOT closed alongside trust/connection: " +
+      "LearningDependencies requires ChangeSetReferences, and a promoted lesson's ChangeSet " +
+      "references have to come from a real intake. Supplying empty/placeholder ids would make " +
+      "learn-list and learn-reject work while leaving learn-approve's promotion path failing on an " +
+      "opaque schema error — a worse outcome than an honest NOT_IMPLEMENTED.",
   },
   {
     id: "cli.learn-approve",
@@ -154,126 +98,37 @@ export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [
     ownerPhase: "22",
     description: "Same unwired-despite-built gap as cli.learn-list, for learn-rollback.",
   },
-  {
-    id: "cli.status-all-runs",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/real-handlers.ts"],
-    ownerPhase: "05",
-    description:
-      '"status" with no run-id (list every run) has no backing UDS operation yet — 05’s router ' +
-      "has no registry.runs.list; a specific run-id is fully wired via run.status.",
-  },
-  {
-    id: "cli.gateway-mcp-dead-branch",
-    kind: "cli-command",
-    location: ["packages/cli/src/commands/dispatch.ts"],
-    ownerPhase: "none (dead branch, not a real gap)",
-    description:
-      'dispatch.ts has a "gateway-mcp" case returning NOT_IMPLEMENTED, but cli-entry.ts intercepts ' +
-      "that command before ever calling dispatchCommand for it in the real binary — structurally " +
-      "unreachable, kept only so the CommandName union stays exhaustively handled.",
-  },
 ];
 
-export const KNOWN_DEFERRED_GATEWAY_FAMILIES: readonly KnownDeferredEntry[] = [
-  {
-    id: "gateway.tracker",
-    kind: "gateway-family",
-    location: [
-      "packages/cli/src/cli-entry.ts",
-      "packages/gateway/src/mcp/native-tools/tracker-tools.ts",
-    ],
-    ownerPhase: "16",
-    description:
-      "buildTrackerTools exists in packages/gateway but packages/cli/src/cli-entry.ts’s " +
-      "defaultRunGatewayMcp (the real gateway-mcp boot path) never registers it — packages/cli has " +
-      "zero dependency edge on @eo/gateway at all.",
-  },
-  {
-    id: "gateway.observability",
-    kind: "gateway-family",
-    location: [
-      "packages/cli/src/cli-entry.ts",
-      "packages/gateway/src/mcp/native-tools/observability-tools.ts",
-    ],
-    ownerPhase: "16",
-    description:
-      "Same unwired-at-production-entrypoint gap as gateway.tracker, for observability.*.",
-  },
-  {
-    id: "gateway.evidence",
-    kind: "gateway-family",
-    location: [
-      "packages/cli/src/cli-entry.ts",
-      "packages/gateway/src/mcp/native-tools/evidence-tools.ts",
-    ],
-    ownerPhase: "16",
-    description:
-      "Same unwired-at-production-entrypoint gap as gateway.tracker, for evidence.get/evidence.attach.",
-  },
-  {
-    id: "gateway.result",
-    kind: "gateway-family",
-    location: [
-      "packages/cli/src/cli-entry.ts",
-      "packages/gateway/src/mcp/native-tools/result-tools.ts",
-    ],
-    ownerPhase: "16",
-    description: "Same unwired-at-production-entrypoint gap as gateway.tracker, for result.submit.",
-  },
-  {
-    id: "gateway.run-forward",
-    kind: "gateway-family",
-    location: [
-      "packages/cli/src/cli-entry.ts",
-      "packages/gateway/src/mcp/native-tools/run-forward-tools.ts",
-    ],
-    ownerPhase: "16",
-    description:
-      "Same unwired-at-production-entrypoint gap as gateway.tracker, for forwarded " +
-      "run.status/run.cancel.",
-  },
-  {
-    id: "gateway.project-inspect",
-    kind: "gateway-family",
-    location: ["packages/cli/src/cli-entry.ts", "packages/cli/src/intake/tool-definitions.ts"],
-    ownerPhase: "11",
-    description:
-      "registerIntakeTools (project.inspect + contract.approve) exists in this very package but " +
-      "defaultRunGatewayMcp never calls it either.",
-  },
-  {
-    id: "gateway.contract-approve",
-    kind: "gateway-family",
-    location: ["packages/cli/src/cli-entry.ts", "packages/cli/src/intake/tool-definitions.ts"],
-    ownerPhase: "11",
-    description:
-      "Same unwired-at-production-entrypoint gap as gateway.project-inspect, for contract.approve.",
-  },
-  {
-    id: "gateway.capability-audit-approve",
-    kind: "gateway-family",
-    location: ["packages/cli/src/cli-entry.ts", "packages/detect/src/mcp/tool-definitions.ts"],
-    ownerPhase: "12",
-    description:
-      "registerCapabilityTools (capability.audit + capability.approve) exists in @eo/detect but " +
-      "defaultRunGatewayMcp never calls it either.",
-  },
-];
+export const KNOWN_DEFERRED_GATEWAY_FAMILIES: readonly KnownDeferredEntry[] = [];
 
-export const KNOWN_DEFERRED_GATEWAY_PROTOCOL: readonly KnownDeferredEntry[] = [
+export const KNOWN_DEFERRED_GATEWAY_PROTOCOL: readonly KnownDeferredEntry[] = [];
+
+/**
+ * Not a `NOT_IMPLEMENTED` stub, and deliberately NOT part of the live
+ * sweep's exact-match set — recorded here so that "every family is wired"
+ * is not read as more than it is. The sweep structurally cannot find this
+ * one: the tools ARE registered and their dispatch path IS real, so there
+ * is no stub to discover.
+ */
+export const KNOWN_DEFERRED_GATEWAY_PROVIDERS: readonly KnownDeferredEntry[] = [
   {
-    id: "gateway.protocol.tools-call",
-    kind: "gateway-protocol",
-    location: ["packages/cli/src/gateway-mcp/stdio-server.ts"],
-    ownerPhase:
-      "09/16 (protocol handler itself owned by 09; a real tools/call dispatch exists in " +
-      "packages/gateway/src/mcp/server.ts but that module is never invoked from packages/cli)",
+    id: "gateway.provider.dispatch",
+    kind: "gateway-provider",
+    location: [
+      "packages/cli/src/gateway-mcp/build-tool-registry.ts",
+      "packages/connectors-jira/src/provider/register.ts",
+      "packages/connectors-grafana/src/provider-registration.ts",
+    ],
+    ownerPhase: "18/19/20 (connector connection lifecycle) + 23",
     description:
-      "The hand-rolled JSON-RPC handler in packages/cli/src/gateway-mcp/stdio-server.ts implements " +
-      'only "initialize"/"tools/list" — "tools/call" returns JSON_RPC_METHOD_NOT_FOUND ' +
-      "unconditionally, so even a fully-populated registry could never actually be invoked through " +
-      "this code path.",
+      "buildProductionGatewayToolRegistry constructs EMPTY ProviderRegistry instances, so every " +
+      "tracker.*/observability.* call resolves to a typed UnknownProviderError. The tool families " +
+      "themselves are genuinely registered and invocable — this is the provider-dispatch axis, " +
+      "which is distinct. Populating it is per-connection work needing resolved credentials (Jira " +
+      "needs a JiraTokenManager per site; Grafana additionally needs the durable plan-payload and " +
+      "rollback stores phase 20 left in memory), so it belongs to connection lifecycle rather than " +
+      "to MCP boot.",
   },
 ];
 
@@ -281,4 +136,10 @@ export const KNOWN_DEFERRED_ALLOWLIST: readonly KnownDeferredEntry[] = [
   ...KNOWN_DEFERRED_CLI_COMMANDS,
   ...KNOWN_DEFERRED_GATEWAY_FAMILIES,
   ...KNOWN_DEFERRED_GATEWAY_PROTOCOL,
+];
+
+/** Every tracked deferral, including the ones the live sweep structurally cannot discover. */
+export const ALL_TRACKED_DEFERRALS: readonly KnownDeferredEntry[] = [
+  ...KNOWN_DEFERRED_ALLOWLIST,
+  ...KNOWN_DEFERRED_GATEWAY_PROVIDERS,
 ];

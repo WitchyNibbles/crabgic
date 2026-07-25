@@ -4,14 +4,29 @@ import {
   KNOWN_DEFERRED_CLI_COMMANDS,
   KNOWN_DEFERRED_GATEWAY_FAMILIES,
   KNOWN_DEFERRED_GATEWAY_PROTOCOL,
+  KNOWN_DEFERRED_GATEWAY_PROVIDERS,
+  ALL_TRACKED_DEFERRALS,
 } from "./knownDeferredAllowlist.js";
 
 describe("KNOWN_DEFERRED_ALLOWLIST — schema sanity", () => {
-  it("has exactly 15 CLI-command entries (14 real gaps + 1 dead-branch), 8 gateway-family entries, and 1 gateway-protocol entry (24 total)", () => {
-    expect(KNOWN_DEFERRED_CLI_COMMANDS).toHaveLength(15);
-    expect(KNOWN_DEFERRED_GATEWAY_FAMILIES).toHaveLength(8);
-    expect(KNOWN_DEFERRED_GATEWAY_PROTOCOL).toHaveLength(1);
-    expect(KNOWN_DEFERRED_ALLOWLIST).toHaveLength(24);
+  /**
+   * Was 24 (15 CLI + 8 gateway-family + 1 gateway-protocol) until the
+   * phase-23 composition-root work wired 18 of them. Every gateway family
+   * and the tools/call protocol gap are now genuinely closed, so those two
+   * buckets are empty rather than merely shorter.
+   */
+  it("has exactly 5 CLI-command entries and no remaining gateway-family or gateway-protocol entries", () => {
+    expect(KNOWN_DEFERRED_CLI_COMMANDS).toHaveLength(5);
+    expect(KNOWN_DEFERRED_GATEWAY_FAMILIES).toHaveLength(0);
+    expect(KNOWN_DEFERRED_GATEWAY_PROTOCOL).toHaveLength(0);
+    expect(KNOWN_DEFERRED_ALLOWLIST).toHaveLength(5);
+  });
+
+  /** The provider-dispatch deferral is tracked but deliberately outside the sweep's exact-match set — it has no stub for the sweep to discover. */
+  it("tracks the provider-dispatch deferral separately from the sweep-matched allowlist", () => {
+    expect(KNOWN_DEFERRED_GATEWAY_PROVIDERS).toHaveLength(1);
+    expect(KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id)).not.toContain("gateway.provider.dispatch");
+    expect(ALL_TRACKED_DEFERRALS.map((e) => e.id)).toContain("gateway.provider.dispatch");
   });
 
   it("every entry has a unique, non-empty id", () => {

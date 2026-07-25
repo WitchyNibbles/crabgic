@@ -1,51 +1,33 @@
-import { readFileSync } from "node:fs";
-import { PassThrough } from "node:stream";
+/**
+ * Gateway family-completeness audit — roadmap/23 work item 7's "is every
+ * MCP tool family the ledger counts actually reachable from the shipped
+ * binary?" check.
+ *
+ * HISTORY, because it explains this module's shape. When first written,
+ * every one of the eight families was UNREACHABLE: `packages/cli` had no
+ * `@eo/gateway` dependency edge at all, `cli-entry.ts`'s `gateway mcp` boot
+ * created an empty registry, and the hand-rolled stdio server answered
+ * `tools/call` with METHOD_NOT_FOUND unconditionally. The audit could
+ * therefore only ENUMERATE the gap, which it did by grepping
+ * `cli-entry.ts`'s source for each family's builder identifier.
+ *
+ * That static grep is now the wrong instrument (2026-07-25). The families
+ * are wired through a composition root — `buildRealGatewayToolRegistry` —
+ * so no builder identifier appears in `cli-entry.ts` at all, and a source
+ * scan would report a false gap. More importantly, a grep never proved
+ * reachability in the first place: an identifier can appear in a comment,
+ * or be called on a branch that never runs. This module now BUILDS the real
+ * production registry and asks it what it actually contains, and boots a
+ * real MCP server to invoke a real tool. Both are behavioural.
+ */
+
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  createToolRegistry,
-  startGatewayMcpServer,
-  type GatewayMcpServerHandle,
-} from "engineering-orchestrator";
-
-/**
- * Gateway MCP 8-family completeness check — roadmap/23-release-hardening.md
- * work item 7: "full 8-family gateway MCP tool-surface completeness — zero
- * `NOT_IMPLEMENTED` remaining across 09's CLI and 16's gateway (Gap 1/Gap
- * 2's explicit phase-23 release-gate obligation)." `docs/interface-
- * ledger.md`'s settled count (Gap 1): `tracker.*`, `observability.*`,
- * `evidence.get`/`evidence.attach` (one family), `result.submit`,
- * forwarded `run.status`/`run.cancel` (one family), `project.inspect`,
- * `contract.approve`, `capability.audit`/`capability.approve` (one
- * family) = 8.
- *
- * THIS IS A REAL FINDING, NOT A FIXTURE: the actual production `gateway
- * mcp` boot path (`packages/cli/src/cli-entry.ts`'s unexported
- * `defaultRunGatewayMcp`, invoked by `./bin.ts` whenever the installed
- * plugin's `.mcp.json` entry — `packages/cli/src/installer/mcp-json-
- * merge.ts`'s `{command: "engineering-orchestrator", args: ["gateway",
- * "mcp"]}`, golden-tested byte-for-byte — launches the gateway process)
- * currently boots a permanently-EMPTY `createToolRegistry()` with ZERO
- * families ever registered onto it. The fully-capable implementation
- * (`packages/gateway/src/mcp/server.ts`'s `buildGatewayMcpServer`, wired to
- * `packages/gateway/src/mcp/native-registry.ts`'s `buildNativeToolRegistry`
- * — the real 18-tool-name, 8-family assembly, built on the real MCP SDK
- * with a working `tools/call` dispatch) exists and is unit-tested in
- * `packages/gateway`'s own suite, but `packages/cli` has ZERO dependency
- * edge on `@eo/gateway` (confirmed both by this module's own
- * `checkGatewayDependencyEdge` and by `packages/cli/package.json` itself)
- * — it is never invoked from the shipped executable. Separately,
- * `packages/cli/src/gateway-mcp/stdio-server.ts`'s hand-rolled JSON-RPC
- * handler implements only `initialize`/`tools/list`; `tools/call` is
- * entirely unimplemented (`checkToolsCallSupported` below proves this
- * empirically, safely, with no real stdio/process involved) — so even a
- * fully-populated registry would not let a worker actually INVOKE a tool
- * through this code path today.
- *
- * This module's job, per this work item's own instruction, is to
- * ENUMERATE this gap accurately and report it — never to silently wire a
- * fix (explicitly out of scope for this task).
- */
+import { PassThrough } from "node:stream";
+import { connectGatewayMcpStdio } from "@eo/gateway";
+import { buildRealGatewayToolRegistry } from "engineering-orchestrator";
 
 export type GatewayFamily =
   | "tracker"
@@ -60,90 +42,65 @@ export type GatewayFamily =
 export interface FamilyWiringResult {
   readonly family: GatewayFamily;
   readonly toolNames: readonly string[];
-  /** The identifier this check greps `cli-entry.ts`'s source for as evidence the family's builder is actually invoked at the production entrypoint. */
-  readonly builderIdentifier: string;
   readonly wiredAtProductionEntrypoint: boolean;
   readonly ownerPhase: string;
+  /** Tool names this family declares that the real production registry does NOT contain — empty when the family is fully wired. */
+  readonly missingToolNames: readonly string[];
 }
 
-/** The 8 families, their tool names (interface-ledger Gap 1's settled count), and the builder-function identifier that would have to appear in `cli-entry.ts` for that family to be genuinely wired at the production `gateway mcp` boot path. */
-const FAMILY_SPECS: readonly Omit<FamilyWiringResult, "wiredAtProductionEntrypoint">[] = [
+/**
+ * The 8 families and the tool names each contributes (interface-ledger Gap
+ * 1's settled count: 18 native leaves + 11's two + 12's two).
+ *
+ * These are the names the CODE registers, verified against the real
+ * registry. An earlier revision of this list was transcribed from roadmap
+ * prose and had drifted from the implementation (`tracker.create` for
+ * `tracker.plan_create`, `observability.plan_alert` for
+ * `observability.search`, and so on) — harmless while every family was
+ * reported missing anyway, actively misleading now that the check passes.
+ */
+const FAMILY_SPECS: readonly Omit<
+  FamilyWiringResult,
+  "wiredAtProductionEntrypoint" | "missingToolNames"
+>[] = [
   {
     family: "tracker",
     toolNames: [
       "tracker.search",
       "tracker.get",
-      "tracker.create",
-      "tracker.update",
-      "tracker.transition",
-      "tracker.comment",
+      "tracker.plan_create",
+      "tracker.plan_update",
+      "tracker.plan_transition",
+      "tracker.plan_comment",
       "tracker.apply",
     ],
-    builderIdentifier: "buildTrackerTools",
     ownerPhase: "16",
   },
   {
     family: "observability",
     toolNames: [
-      "observability.query",
+      "observability.search",
       "observability.get",
-      "observability.plan_alert",
-      "observability.plan_dashboard",
-      "observability.plan_comment",
+      "observability.query",
+      "observability.plan_create",
+      "observability.plan_update",
       "observability.apply",
     ],
-    builderIdentifier: "buildObservabilityTools",
     ownerPhase: "16",
   },
-  {
-    family: "evidence",
-    toolNames: ["evidence.get", "evidence.attach"],
-    builderIdentifier: "buildEvidenceTools",
-    ownerPhase: "16",
-  },
-  {
-    family: "result",
-    toolNames: ["result.submit"],
-    builderIdentifier: "buildResultTools",
-    ownerPhase: "16",
-  },
-  {
-    family: "run-forward",
-    toolNames: ["run.status", "run.cancel"],
-    builderIdentifier: "buildRunForwardTools",
-    ownerPhase: "16",
-  },
-  {
-    family: "project-inspect",
-    toolNames: ["project.inspect"],
-    builderIdentifier: "registerIntakeTools",
-    ownerPhase: "11",
-  },
-  {
-    family: "contract-approve",
-    toolNames: ["contract.approve"],
-    builderIdentifier: "registerIntakeTools",
-    ownerPhase: "11",
-  },
+  { family: "evidence", toolNames: ["evidence.get", "evidence.attach"], ownerPhase: "16" },
+  { family: "result", toolNames: ["result.submit"], ownerPhase: "16" },
+  { family: "run-forward", toolNames: ["run.status", "run.cancel"], ownerPhase: "16" },
+  { family: "project-inspect", toolNames: ["project.inspect"], ownerPhase: "11" },
+  { family: "contract-approve", toolNames: ["contract.approve"], ownerPhase: "11" },
   {
     family: "capability-audit-approve",
     toolNames: ["capability.audit", "capability.approve"],
-    builderIdentifier: "registerCapabilityTools",
     ownerPhase: "12",
   },
 ];
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_CLI_ENTRY_PATH = join(
-  HERE,
-  "..",
-  "..",
-  "..",
-  "packages",
-  "cli",
-  "src",
-  "cli-entry.ts",
-);
 const DEFAULT_CLI_PACKAGE_JSON_PATH = join(
   HERE,
   "..",
@@ -154,24 +111,39 @@ const DEFAULT_CLI_PACKAGE_JSON_PATH = join(
   "package.json",
 );
 
-/**
- * Statically scans `cli-entry.ts`'s source text (read-only, deterministic —
- * mirrors `packages/contracts/src/gateway/server-name.test.ts`'s own
- * established literal-scan convention in this repo) for each family's
- * builder identifier. Injectable `cliEntrySourcePath` so tests can point
- * this at a fixture file rather than the real, shared source tree.
- */
-export function checkFamilyWiringAtProductionEntrypoint(
-  cliEntrySourcePath: string = DEFAULT_CLI_ENTRY_PATH,
-): readonly FamilyWiringResult[] {
-  const source = readFileSync(cliEntrySourcePath, "utf8");
-  return FAMILY_SPECS.map((spec) => ({
-    ...spec,
-    wiredAtProductionEntrypoint: source.includes(spec.builderIdentifier),
-  }));
+/** Builds the real production registry against a throwaway state root, so the audit never reads or writes the operator's own project state. */
+function withThrowawayRegistry<T>(use: (toolNames: ReadonlySet<string>) => T): T {
+  const home = mkdtempSync(join(tmpdir(), "eo-family-audit-"));
+  try {
+    const registry = buildRealGatewayToolRegistry({
+      xdgEnv: { HOME: home },
+      projectHash: "family-completeness-audit",
+    });
+    return use(new Set(registry.toolNames));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 }
 
-/** Reads `packages/cli/package.json`'s own dependency graph and reports whether it declares `@eo/gateway` — corroborating evidence for the family-wiring gap above (no dependency edge, no possible import). */
+/**
+ * Builds the REAL production tool registry — the exact one `gateway mcp`
+ * boots — and reports, per family, whether every tool name it declares is
+ * actually registered.
+ */
+export function checkFamilyWiringAtProductionEntrypoint(): readonly FamilyWiringResult[] {
+  return withThrowawayRegistry((registered) =>
+    FAMILY_SPECS.map((spec) => {
+      const missingToolNames = spec.toolNames.filter((name) => !registered.has(name));
+      return {
+        ...spec,
+        missingToolNames,
+        wiredAtProductionEntrypoint: missingToolNames.length === 0,
+      };
+    }),
+  );
+}
+
+/** Reads `packages/cli/package.json`'s own dependency graph and reports whether it declares `@eo/gateway` — the edge without which no native family could be imported at all. */
 export function checkGatewayDependencyEdge(
   cliPackageJsonPath: string = DEFAULT_CLI_PACKAGE_JSON_PATH,
 ): { readonly hasGatewayDependency: boolean } {
@@ -190,16 +162,6 @@ export interface ToolsCallSupportResult {
   readonly evidence: string;
 }
 
-/**
- * Behavioral (not merely static) proof that `packages/cli/src/gateway-mcp/
- * stdio-server.ts`'s JSON-RPC handler has no `tools/call` support: boots a
- * REAL `startGatewayMcpServer` over `PassThrough` streams (exactly
- * `gateway-mcp.boot.test.ts`'s own established, hang-safe pattern — never
- * real `process.stdin`/`process.stdout`, so this can never block a test
- * run) with one fake tool registered, sends a real `tools/call` JSON-RPC
- * request over the wire, and asserts the response is the same
- * `JSON_RPC_METHOD_NOT_FOUND` shape any genuinely-unknown method gets.
- */
 export interface RawJsonRpcResponse {
   readonly error?: { readonly code: number; readonly message: string };
   readonly result?: unknown;
@@ -207,15 +169,14 @@ export interface RawJsonRpcResponse {
 
 /**
  * Pure interpretation of a `tools/call` JSON-RPC response — split out from
- * `checkToolsCallSupported`'s own real-stdio plumbing so both outcomes
- * (unimplemented today; a real result, if this gap is ever fixed) are
- * directly unit-testable without needing to fabricate a capable server.
+ * the real-stdio plumbing below so both outcomes are directly unit-testable
+ * without needing to fabricate a server in either state.
  */
 export function interpretToolsCallResponse(response: RawJsonRpcResponse): ToolsCallSupportResult {
   if (response.error !== undefined) {
     return {
       supported: false,
-      evidence: `"tools/call" returned a JSON-RPC error: ${response.error.message} (code ${String(response.error.code)}) — the stdio server never implements tool invocation, only "initialize"/"tools/list"`,
+      evidence: `"tools/call" returned a JSON-RPC error: ${response.error.message} (code ${String(response.error.code)}) — tool invocation is not implemented on this transport`,
     };
   }
   return {
@@ -224,33 +185,70 @@ export function interpretToolsCallResponse(response: RawJsonRpcResponse): ToolsC
   };
 }
 
+/**
+ * Behavioural proof that a worker can actually INVOKE a tool: boots the
+ * real MCP stdio server over `PassThrough` streams (never real
+ * `process.stdin`/`process.stdout`, so this can never block a test run),
+ * completes the handshake the protocol requires, and calls a real
+ * registered tool — `project.inspect`, chosen because it needs no external
+ * connection and no pre-minted token.
+ */
 export async function checkToolsCallSupported(): Promise<ToolsCallSupportResult> {
-  const registry = createToolRegistry();
-  registry.register({ name: "fake.tool", description: "a fake tool", inputSchema: {} });
-
+  const home = mkdtempSync(join(tmpdir(), "eo-tools-call-audit-"));
   const input = new PassThrough();
   const output = new PassThrough();
-  let handle: GatewayMcpServerHandle | undefined;
+  let server: Awaited<ReturnType<typeof connectGatewayMcpStdio>> | undefined;
+
   try {
-    handle = startGatewayMcpServer({ registry, input, output });
+    const registry = buildRealGatewayToolRegistry({
+      xdgEnv: { HOME: home },
+      projectHash: "tools-call-audit",
+    });
+    server = await connectGatewayMcpStdio(registry, { input, output });
 
     const response = await new Promise<RawJsonRpcResponse>((resolve) => {
       let buffer = "";
       output.on("data", (chunk: Buffer) => {
         buffer += chunk.toString("utf8");
-        const newlineIndex = buffer.indexOf("\n");
-        if (newlineIndex !== -1) {
-          resolve(JSON.parse(buffer.slice(0, newlineIndex)) as RawJsonRpcResponse);
+        let newline = buffer.indexOf("\n");
+        while (newline !== -1) {
+          const line = buffer.slice(0, newline).trim();
+          buffer = buffer.slice(newline + 1);
+          if (line.length > 0) {
+            const message = JSON.parse(line) as RawJsonRpcResponse & { id?: unknown };
+            if (message.id === 2) resolve(message);
+          }
+          newline = buffer.indexOf("\n");
         }
       });
+
       input.write(
-        `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "fake.tool", arguments: {} } })}\n`,
+        `${JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "family-completeness-audit", version: "0.0.0" },
+          },
+        })}\n`,
+      );
+      input.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
+      input.write(
+        `${JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "project.inspect", arguments: {} },
+        })}\n`,
       );
     });
 
     return interpretToolsCallResponse(response);
   } finally {
-    handle?.stop();
+    await server?.close();
     input.end();
+    rmSync(home, { recursive: true, force: true });
   }
 }

@@ -24,8 +24,7 @@ export * from "./uds-client/ensure-supervisor.js";
 
 // ---- gateway mcp: extensible tool registry + stdio boot (Gap 1/Gap 2) ----
 export * from "./gateway-mcp/registry.js";
-export * from "./gateway-mcp/protocol.js";
-export * from "./gateway-mcp/stdio-server.js";
+export * from "./gateway-mcp/build-tool-registry.js";
 
 // ---- Approval-token minting primitive + terminal prompt (Interfaces produced item 6) ----
 export * from "./approval/token.js";

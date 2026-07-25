@@ -138,6 +138,10 @@ export interface ProductionDependencyWiring {
   readonly installerWired: boolean;
   readonly intakeWired: boolean;
   readonly learningWired: boolean;
+  /** roadmap/12's `trust *` bag — wired 2026-07-25; this audit reported `trust-*` as a real gap until it was. */
+  readonly trustWired: boolean;
+  /** roadmap/16's `connection *` bag — wired 2026-07-25, same as `trustWired`. */
+  readonly connectionWired: boolean;
 }
 
 /**
@@ -152,6 +156,8 @@ export function checkProductionDependencyWiring(): ProductionDependencyWiring {
     installerWired: deps.installer !== undefined,
     intakeWired: deps.intake !== undefined,
     learningWired: deps.learning !== undefined,
+    trustWired: deps.trust !== undefined,
+    connectionWired: deps.connection !== undefined,
   };
 }
 
@@ -168,6 +174,12 @@ const DEPENDENCY_GATED_COMMANDS: Readonly<Record<string, keyof ProductionDepende
   "learn-approve": "learningWired",
   "learn-reject": "learningWired",
   "learn-rollback": "learningWired",
+  "trust-review": "trustWired",
+  "trust-approve": "trustWired",
+  "trust-revoke": "trustWired",
+  "connection-add": "connectionWired",
+  "connection-list": "connectionWired",
+  "connection-doctor": "connectionWired",
 };
 
 export interface CliNotImplementedFinding {
