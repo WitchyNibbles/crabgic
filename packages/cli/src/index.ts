@@ -31,6 +31,7 @@ export * from "./gateway-mcp/stdio-server.js";
 export * from "./approval/token.js";
 export * from "./approval/prompt.js";
 export * from "./approval/durable-approval-ledger.js";
+export * from "./approval/signing-key.js";
 
 // ---- project.inspect / contract.approve MCP tools (roadmap/11) ----
 export * from "./intake/tool-definitions.js";

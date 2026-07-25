@@ -9,7 +9,6 @@
  * always FAILING even on an authenticated host. `buildRealCliDependencies`
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
-import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import {
   createJournalStore,
@@ -43,6 +42,10 @@ import {
   WORK_UNITS_FILE_NAME,
   type IntakeRequest,
 } from "@eo/supervisor";
+import {
+  loadOrCreateApprovalSigningKey,
+  resolveApprovalSigningKeyPath,
+} from "./approval/signing-key.js";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
 import type { CliDependencies, IntakeDependencies } from "./commands/types.js";
@@ -90,10 +93,21 @@ export function buildRealCliDependencies(
   const journal = createJournalStore({ journalDir: resolveJournalDir(xdgEnv, projectHash) });
 
   // ONE minter per process, shared by `trust` (capability_digest) and
-  // `run` (envelope_hash). A second instance would have its own signing key
-  // and its own single-use table, so a token minted by one could never be
-  // verified by the other.
-  const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32), journal });
+  // `run` (envelope_hash). A second instance would have its own single-use
+  // table, so a token minted by one could never be verified by the other.
+  //
+  // The signing key is the project's DURABLE one (2026-07-25), not a
+  // per-process `randomBytes(32)`: `eo run` mints an approval token in one
+  // short-lived process and `contract.approve` verifies it in another (the
+  // `gateway mcp` stdio server), so a per-process key made cross-process
+  // approval structurally impossible. Single-use is unaffected — it is
+  // enforced durably by `./approval/durable-approval-ledger.ts`, not by the
+  // key's lifetime. See `./approval/signing-key.ts` for the full rationale
+  // and the fail-closed mode/symlink checks it applies.
+  const minter = new ApprovalTokenMinter({
+    secretKey: loadOrCreateApprovalSigningKey(resolveApprovalSigningKeyPath(xdgEnv, projectHash)),
+    journal,
+  });
 
   const supervisorSpawn = overrides.supervisorSpawn ?? {};
   const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;

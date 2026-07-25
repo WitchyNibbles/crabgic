@@ -12,7 +12,12 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ChangeSetSchema, type ChangeSet } from "@eo/contracts";
+import {
+  ApprovalTokenAlreadyVerifiedError,
+  ApprovalTokenSignatureError,
+  ChangeSetSchema,
+  type ChangeSet,
+} from "@eo/contracts";
 import { resolveStateRoot } from "@eo/journal";
 import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@eo/supervisor";
 import { buildChangeSet } from "@eo/testkit";
@@ -121,8 +126,8 @@ describe("buildRealCliDependencies", () => {
 
     const minted = await deps.trust!.minter.mint("capability_digest", "d".repeat(64));
     expect(minted.subjectKind).toBe("capability_digest");
-    // A fresh per-process key: the token verifies against THIS bag's minter
-    // and carries a real signature, not a placeholder.
+    // The token verifies against THIS bag's minter and carries a real
+    // signature, not a placeholder.
     expect(minted.token.length).toBeGreaterThan(0);
     expect(() =>
       deps.trust!.minter.verify(minted.token, {
@@ -130,6 +135,69 @@ describe("buildRealCliDependencies", () => {
         digest: "d".repeat(64),
       }),
     ).not.toThrow();
+  });
+
+  /**
+   * The reason `./approval/signing-key.ts` exists. Every approval token in
+   * this system is minted by one short-lived process (`eo run`, `eo trust
+   * approve`) and verified by a DIFFERENT one — `contract.approve` is
+   * served from the long-lived `gateway mcp` stdio server. While the
+   * signing key was a per-process `randomBytes(32)`, that cross-process
+   * verify could never succeed, so any tool wired onto it would be a
+   * registered-but-dead surface. Two independently-built bags stand in for
+   * the two processes here.
+   *
+   * Single-use is NOT what this proves and is not weakened by it: replay
+   * protection is enforced durably, independent of the key's lifetime —
+   * which is exactly what the assertion below pins. A second process
+   * presenting an already-claimed token must be rejected as a REPLAY
+   * (`ApprovalTokenAlreadyVerifiedError`), never as a bad signature: the
+   * signature-error branch is what a per-process key produced, and is the
+   * regression this test exists to catch.
+   */
+  it("signs with the project's DURABLE key — a second process rejects a token as a replay, not as a bad signature", async () => {
+    const mintingProcess = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "cross-process-hash",
+    });
+    const minted = await mintingProcess.trust!.minter.mint("capability_digest", "e".repeat(64));
+
+    const verifyingProcess = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "cross-process-hash",
+    });
+
+    expect(() =>
+      verifyingProcess.trust!.minter.verify(minted.token, {
+        subjectKind: "capability_digest",
+        digest: "e".repeat(64),
+      }),
+    ).toThrow(ApprovalTokenAlreadyVerifiedError);
+  });
+
+  /**
+   * The key is project-scoped: another project's minter holds different key
+   * material, so the token fails at the SIGNATURE — the precise error the
+   * same-project case above must never produce.
+   */
+  it("scopes the signing key per project — another project rejects the token's signature", async () => {
+    const projectA = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "project-a",
+    });
+    const minted = await projectA.trust!.minter.mint("capability_digest", "f".repeat(64));
+
+    const projectB = buildRealCliDependencies({
+      xdgEnv: { HOME: home },
+      projectHash: "project-b",
+    });
+
+    expect(() =>
+      projectB.trust!.minter.verify(minted.token, {
+        subjectKind: "capability_digest",
+        digest: "f".repeat(64),
+      }),
+    ).toThrow(ApprovalTokenSignatureError);
   });
 
   /**
