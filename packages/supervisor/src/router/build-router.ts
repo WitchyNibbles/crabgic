@@ -6,7 +6,7 @@
  * (09) and the gateway's (16) forwarded `run.status`/`run.cancel` calls
  * through this SAME router instance.
  */
-import type { ChangeSet, WorkUnit } from "@eo/contracts";
+import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@eo/contracts";
 import type { JournalStore } from "@eo/journal";
 import { transitionRun } from "../run-lifecycle/run-transition.js";
 import { reapOrphansAtStartup } from "../worker-lifecycle/orphan-reaper.js";
@@ -53,6 +53,15 @@ export interface SupervisorDependencies {
   readonly runs: RunsRegistry;
   readonly changeSets: Registry<ChangeSet>;
   readonly workUnits: Registry<WorkUnit>;
+  /**
+   * The approved AuthorizationEnvelopes. Needed by the run dispatcher —
+   * compiling a worker profile and bounding a TaskPacket both require the
+   * envelope the DAG was approved under. Optional so the pre-existing
+   * construction sites (which predate `run.dispatch`) keep compiling;
+   * deliberately NOT exposed as a router operation, since an envelope is
+   * an authorization boundary and is never listed over the wire.
+   */
+  readonly envelopes?: Registry<AuthorizationEnvelope>;
   readonly workers: WorkersRegistry;
   readonly artifactIndex: Registry<ArtifactIndexEntry>;
   readonly liveWorkers: ReadonlyMap<string, TerminableWorker>;

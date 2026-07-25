@@ -49,6 +49,9 @@ export * from "./router/run-dispatcher.js";
 
 // ---- Registries (WI3): runs, change sets, work units, workers, artifact index; recovery ----
 export * from "./registries/registry.js";
+// Durable Registry<T> — what lets an approved DAG outlive the CLI process
+// that approved it, and therefore what makes run.dispatch/resume possible.
+export * from "./registries/file-registry.js";
 export * from "./registries/runs-registry.js";
 export * from "./registries/change-sets-registry.js";
 export * from "./registries/authorization-envelopes-registry.js";

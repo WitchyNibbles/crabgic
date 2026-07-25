@@ -20,17 +20,33 @@ import {
   type XdgEnv,
 } from "@eo/journal";
 import { FileExternalConnectionStore, probeConnectionReachability } from "@eo/gateway";
-import { ApprovalTokenMinter } from "@eo/contracts";
+import {
+  ApprovalTokenMinter,
+  AuthorizationEnvelopeSchema,
+  ChangeSetSchema,
+  WorkUnitSchema,
+  type AuthorizationEnvelope,
+  type ChangeSet,
+  type WorkUnit,
+} from "@eo/contracts";
 import {
   createApprovalLedger,
   createCapabilityStore,
   resolveCapabilityStoreDir,
   type TrustCommandDependencies,
 } from "@eo/detect";
-import { resolveSupervisorSocketPath } from "@eo/supervisor";
+import {
+  AUTHORIZATION_ENVELOPES_FILE_NAME,
+  CHANGE_SETS_FILE_NAME,
+  createFileRegistry,
+  resolveSupervisorSocketPath,
+  WORK_UNITS_FILE_NAME,
+  type IntakeRequest,
+} from "@eo/supervisor";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
-import type { CliDependencies } from "./commands/types.js";
+import type { CliDependencies, IntakeDependencies } from "./commands/types.js";
+import { CliUsageError } from "./errors.js";
 import { connectUdsClient } from "./uds-client/client.js";
 import {
   ensureSupervisorConnection,
@@ -55,6 +71,8 @@ export interface BuildRealCliDependenciesOverrides {
   readonly trust?: TrustCommandDependencies;
   /** roadmap/16's `connection *` bag. Tests inject one with a fake probe so no real network I/O occurs. */
   readonly connection?: ConnectionDependencies;
+  /** roadmap/11's `run` bag. Tests inject one with tmp-dir registries and a scripted `readIntakeRequest` so nothing reads real stdin. */
+  readonly intake?: IntakeDependencies;
   /** Spawn-on-demand knobs for `connectClient` (roadmap/05 §Lifecycle). Tests inject `spawnDaemon` plus tight retry bounds so no real daemon process is forked; production takes the defaults. */
   readonly supervisorSpawn?: {
     readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
@@ -70,6 +88,12 @@ export function buildRealCliDependencies(
   const projectHash = overrides.projectHash ?? deriveProjectHash(process.cwd());
   const socketPath = resolveSupervisorSocketPath(xdgEnv, projectHash);
   const journal = createJournalStore({ journalDir: resolveJournalDir(xdgEnv, projectHash) });
+
+  // ONE minter per process, shared by `trust` (capability_digest) and
+  // `run` (envelope_hash). A second instance would have its own signing key
+  // and its own single-use table, so a token minted by one could never be
+  // verified by the other.
+  const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32), journal });
 
   const supervisorSpawn = overrides.supervisorSpawn ?? {};
   const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;
@@ -101,9 +125,77 @@ export function buildRealCliDependencies(
     resolveAuthState:
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
     installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
-    trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal),
+    trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
+    intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
   };
+}
+
+/**
+ * roadmap/11's `run` backend. The three registries are DURABLE and rooted
+ * at the project's XDG state root, at the exact paths `@eo/supervisor`'s
+ * `composeSupervisor` reads (`CHANGE_SETS_FILE_NAME` etc.).
+ *
+ * That sharing is the whole point. `run` executes in this short-lived CLI
+ * process; the daemon that must actually drive the approved DAG
+ * (`run.dispatch`) is a different, long-lived one. Registries used to be
+ * in-memory on both sides, and journal replay rebuilds only runs/workers
+ * (`recovery.ts`), so an approved DAG died with the CLI invocation that
+ * produced it and the daemon could never see one. Writing to the same
+ * files both processes agree on is what closes that gap.
+ *
+ * `readIntakeRequest` reads the request as JSON on stdin (`eo run <
+ * intake.json`): an `IntakeRequest` is a document — sections, requirements,
+ * work-unit drafts, envelope content, performance budgets — not something
+ * typed at a prompt. There is no `IntakeRequestSchema`; the pipeline's own
+ * builders each `*Schema.parse` what they construct, so malformed input
+ * fails closed with a precise error rather than being half-accepted.
+ */
+function buildRealIntakeDependencies(
+  xdgEnv: XdgEnv,
+  projectHash: string,
+  journal: JournalStore,
+  minter: ApprovalTokenMinter,
+): IntakeDependencies {
+  const stateRoot = resolveStateRoot(xdgEnv, projectHash);
+  return {
+    journal,
+    changeSets: createFileRegistry<ChangeSet>({
+      path: join(stateRoot, CHANGE_SETS_FILE_NAME),
+      schema: ChangeSetSchema,
+    }),
+    workUnits: createFileRegistry<WorkUnit>({
+      path: join(stateRoot, WORK_UNITS_FILE_NAME),
+      schema: WorkUnitSchema,
+    }),
+    envelopes: createFileRegistry<AuthorizationEnvelope>({
+      path: join(stateRoot, AUTHORIZATION_ENVELOPES_FILE_NAME),
+      schema: AuthorizationEnvelopeSchema,
+    }),
+    minter,
+    readIntakeRequest: readIntakeRequestFromStdin,
+  };
+}
+
+/** Reads the whole of stdin and parses it as an `IntakeRequest`. */
+async function readIntakeRequestFromStdin(): Promise<IntakeRequest> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  }
+  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  if (raw.length === 0) {
+    throw new CliUsageError(
+      "`run` reads an intake request as JSON on stdin — e.g. `engineering-orchestrator run < intake.json`",
+    );
+  }
+  try {
+    return JSON.parse(raw) as IntakeRequest;
+  } catch (err) {
+    throw new CliUsageError(
+      `intake request on stdin is not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 /**
@@ -145,12 +237,13 @@ function buildRealConnectionDependencies(
 function buildRealTrustDependencies(
   xdgEnv: XdgEnv,
   projectHash: string,
-  journal: JournalStore,
+  _journal: JournalStore,
+  minter: ApprovalTokenMinter,
 ): TrustCommandDependencies {
   const storeRoot = resolveCapabilityStoreDir(xdgEnv, projectHash);
   return {
     store: createCapabilityStore(storeRoot),
-    minter: new ApprovalTokenMinter({ secretKey: randomBytes(32), journal }),
+    minter,
     approvalLedger: createApprovalLedger(storeRoot),
   };
 }

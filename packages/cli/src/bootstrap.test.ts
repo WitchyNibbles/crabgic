@@ -12,6 +12,10 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ChangeSetSchema, type ChangeSet } from "@eo/contracts";
+import { resolveStateRoot } from "@eo/journal";
+import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@eo/supervisor";
+import { buildChangeSet } from "@eo/testkit";
 import { buildRealCliDependencies } from "./bootstrap.js";
 import { SupervisorUnavailableError } from "./errors.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
@@ -156,5 +160,48 @@ describe("buildRealCliDependencies", () => {
       projectHash: "conn-hash",
     });
     expect(await nextInvocation.connection!.repository.get(created.id)).toEqual(created);
+  });
+
+  /**
+   * The bug this pins was total: intake registries were in-memory, and
+   * journal replay rebuilds only runs/workers, so an approved DAG died with
+   * the `run` invocation that produced it. The supervisor daemon — a
+   * DIFFERENT process — could therefore never see a DAG to drive, which is
+   * why `driveRun` had no production caller that could possibly work.
+   *
+   * Asserting through `composeSupervisor`'s own exported file-name
+   * constants is deliberate: if either side ever renames its path, the two
+   * processes stop sharing state and this fails, rather than silently
+   * regressing to "the daemon sees nothing".
+   */
+  it("persists intake artifacts where the supervisor daemon reads them, so an approved DAG outlives the CLI process", () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "intake-hash" });
+    expect(deps.intake).toBeDefined();
+
+    const changeSet = buildChangeSet({ id: "33333333-3333-4333-8333-333333333333" });
+    deps.intake!.changeSets.put(changeSet);
+
+    // Read back exactly as the daemon does: a fresh file registry over the
+    // path composeSupervisor resolves, not the CLI's own object.
+    const daemonView = createFileRegistry<ChangeSet>({
+      path: join(resolveStateRoot({ HOME: home }, "intake-hash"), CHANGE_SETS_FILE_NAME),
+      schema: ChangeSetSchema,
+    });
+    expect(daemonView.get(changeSet.id)).toEqual(changeSet);
+  });
+
+  it("shares ONE approval-token minter between trust and run, so both subject kinds verify in-process", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "minter-hash" });
+    // Same instance, not merely equivalent: two minters would each hold a
+    // distinct signing key and single-use table.
+    expect(deps.intake!.minter).toBe(deps.trust!.minter);
+
+    const envelopeToken = await deps.intake!.minter.mint("envelope_hash", "e".repeat(64));
+    expect(() =>
+      deps.trust!.minter.verify(envelopeToken.token, {
+        subjectKind: "envelope_hash",
+        digest: "e".repeat(64),
+      }),
+    ).not.toThrow();
   });
 });

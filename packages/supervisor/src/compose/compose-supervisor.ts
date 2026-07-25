@@ -13,9 +13,11 @@
  *
  *   1. resolve all paths from a single `XdgEnv` + `projectHash` (the same
  *      resolution the CLI uses, so both sides agree on the socket path);
- *   2. construct the durable journal (04) and the five in-memory registries
- *      (runs/changeSets/workUnits/workers/artifactIndex) — the registries
- *      are never themselves persisted, only the journal is;
+ *   2. construct the durable journal (04), the three DURABLE file-backed
+ *      registries (changeSets/workUnits/envelopes — an approved DAG is
+ *      produced by `run` in the CLI process and must outlive it) and the
+ *      three in-memory ones (runs/workers/artifactIndex, which journal
+ *      replay genuinely does rebuild);
  *   3. recover run + worker state by replaying the journal for every run it
  *      knows about (`enumerateJournalRunIds` -> `recoverRun`), then formally
  *      reap the orphaned workers that replay surfaced;
@@ -29,11 +31,25 @@
  * dispatch against the SAME registries/journal/liveWorkers the control
  * plane serves, never a second copy.
  */
-import { createJournalStore, resolveJournalDir, type JournalStore, type XdgEnv } from "@eo/journal";
+import { join } from "node:path";
+import {
+  createJournalStore,
+  resolveJournalDir,
+  resolveStateRoot,
+  type JournalStore,
+  type XdgEnv,
+} from "@eo/journal";
+import {
+  AuthorizationEnvelopeSchema,
+  ChangeSetSchema,
+  WorkUnitSchema,
+  type AuthorizationEnvelope,
+  type ChangeSet,
+  type WorkUnit,
+} from "@eo/contracts";
+import { createFileRegistry } from "../registries/file-registry.js";
 import type { PeerAuthOptions } from "../peer-auth/peer-auth-middleware.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";
-import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
-import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
 import { recoverRun } from "../registries/recovery.js";
@@ -52,6 +68,11 @@ import {
   resolveSupervisorSocketPath,
 } from "../runtime/xdg-supervisor-layout.js";
 import { startSupervisorServer, type SupervisorServer } from "../socket/uds-server.js";
+
+/** Backing files for the three durable registries, under the project's XDG state root. `packages/cli`'s intake wiring writes these exact names. */
+export const CHANGE_SETS_FILE_NAME = "change-sets.json";
+export const WORK_UNITS_FILE_NAME = "work-units.json";
+export const AUTHORIZATION_ENVELOPES_FILE_NAME = "authorization-envelopes.json";
 
 /** A `SupervisorDependencies` whose `liveWorkers` map is mutable — the composition root owns the map so the execution driver (slice D) can register/retire `TerminableWorker` handles as workers spawn and settle. */
 export interface ComposedSupervisorDependencies extends SupervisorDependencies {
@@ -124,13 +145,32 @@ export async function composeSupervisor(
   const { env, projectHash } = config;
 
   const journalDir = resolveJournalDir(env, projectHash);
+  const stateRoot = resolveStateRoot(env, projectHash);
   const runtimeDir = resolveSupervisorRuntimeDir(env, projectHash);
   const socketPath = resolveSupervisorSocketPath(env, projectHash);
 
   const journal = createJournalStore({ journalDir });
   const runs = createRunsRegistry();
-  const changeSets = createChangeSetsRegistry();
-  const workUnits = createWorkUnitsRegistry();
+  // DURABLE (2026-07-25): a ChangeSet, its WorkUnits and the approved
+  // envelope are produced by `run` in the CLI process and consumed by
+  // `run.dispatch` here, in a different process — and journal replay
+  // rebuilds only runs/workers (`../registries/recovery.ts`), so an
+  // in-memory registry meant the daemon could never see an approved DAG at
+  // all. These three share the exact paths `packages/cli`'s intake wiring
+  // writes. `runs`/`workers`/`artifactIndex` stay in-memory on purpose:
+  // replay genuinely does rebuild them.
+  const changeSets = createFileRegistry<ChangeSet>({
+    path: join(stateRoot, CHANGE_SETS_FILE_NAME),
+    schema: ChangeSetSchema,
+  });
+  const workUnits = createFileRegistry<WorkUnit>({
+    path: join(stateRoot, WORK_UNITS_FILE_NAME),
+    schema: WorkUnitSchema,
+  });
+  const envelopes = createFileRegistry<AuthorizationEnvelope>({
+    path: join(stateRoot, AUTHORIZATION_ENVELOPES_FILE_NAME),
+    schema: AuthorizationEnvelopeSchema,
+  });
   const workers = createWorkersRegistry();
   const artifactIndex = createArtifactIndexRegistry();
   const liveWorkers = new Map<string, TerminableWorker>();
@@ -153,6 +193,7 @@ export async function composeSupervisor(
     runs,
     changeSets,
     workUnits,
+    envelopes,
     workers,
     artifactIndex,
     liveWorkers,
