@@ -48,10 +48,20 @@ import {
 export const SWEEP_COMMAND_PROBES: readonly ParsedCommand[] = [
   { command: "resume", json: false, runId: "sweep-probe-run-id" },
   {
+    // Fully-populated since `connection-add` was wired: the command type
+    // gained the fields `ExternalConnectionSchema` requires, and a probe
+    // missing them no longer type-checks. Values are inert — the sweep
+    // only ever observes which dispatch branch was taken, never a store
+    // write or a network call.
     command: "connection-add",
     json: false,
     provider: "jira",
     reference: { raw: "env:SWEEP_PROBE_TOKEN" },
+    baseUrl: "https://sweep-probe.invalid",
+    allowedRedirectOrigins: [],
+    allowedResources: [],
+    allowedActions: [],
+    discoveryTtlSeconds: 900,
   },
   { command: "connection-list", json: false },
   { command: "connection-doctor", json: false, connectionId: "sweep-probe-connection-id" },
