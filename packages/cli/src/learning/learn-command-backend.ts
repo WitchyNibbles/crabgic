@@ -187,7 +187,7 @@ export async function runLearnApproveCommand(
     const result = await promoteProposal({
       registry: deps.registry,
       proposalId: proposal.id,
-      changeSetRefs: deps.changeSetRefs,
+      changeSetRefs: deps.resolveChangeSetRefs(),
     });
     return cmd.json
       ? { exitCode: EXIT_OK, stdout: formatJson({ promoted: true, changeSet: result.changeSet }) }
@@ -232,7 +232,7 @@ export async function runLearnRollbackCommand(
     const result = await rollbackProposal({
       registry: deps.registry,
       proposalId: cmd.proposalId,
-      changeSetRefs: deps.changeSetRefs,
+      changeSetRefs: deps.resolveChangeSetRefs(),
     });
     return cmd.json
       ? {

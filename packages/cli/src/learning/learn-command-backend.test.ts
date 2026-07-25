@@ -41,7 +41,10 @@ beforeEach(async () => {
     journal,
     minter: new ApprovalTokenMinter({ secretKey: sharedKey, journal }),
     secretKey: sharedKey,
-    changeSetRefs,
+    // Resolved lazily in production from the ongoing intake's ChangeSet;
+    // these tests pin the refs directly so they exercise promote/rollback
+    // rather than intake resolution (covered by ./ongoing-intake-refs.test.ts).
+    resolveChangeSetRefs: () => changeSetRefs,
   };
 });
 

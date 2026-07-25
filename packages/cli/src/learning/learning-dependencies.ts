@@ -24,7 +24,18 @@ export interface LearningDependencies {
   readonly journal: JournalStore;
   readonly minter: ApprovalTokenMinter;
   readonly secretKey: Buffer;
-  readonly changeSetRefs: ChangeSetReferences;
+  /**
+   * Resolved LAZILY, at promote/rollback time — never at wiring time.
+   *
+   * Per the owner's 2026-07-25 ruling a promoted lesson rides an intake
+   * that is already in flight (`./ongoing-intake-refs.ts`), and whether one
+   * is in flight is a fact about *now*, not about when the CLI booted.
+   * Eager resolution would also make `learn list`/`learn reject` — which
+   * never construct a ChangeSet — fail on a project with no active run.
+   * Throws (never returns placeholder ids) when there is no unambiguous
+   * intake to attach to.
+   */
+  readonly resolveChangeSetRefs: () => ChangeSetReferences;
   readonly clock?: () => number;
   /** Defaults to `process.stdin`/`process.stdout` when omitted — injectable so tests never block on real stdio (mirrors `IntakeDependencies.io`). */
   readonly io?: ApprovalPromptIo;

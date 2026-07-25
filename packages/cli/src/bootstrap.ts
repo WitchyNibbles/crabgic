@@ -54,6 +54,9 @@ import {
   loadOrCreateApprovalSigningKey,
   resolveApprovalSigningKeyPath,
 } from "./approval/signing-key.js";
+import { ProposalRegistry, resolveRegistryDir } from "@eo/learning";
+import { resolveOngoingIntakeRefs } from "./learning/ongoing-intake-refs.js";
+import type { LearningDependencies } from "./learning/learning-dependencies.js";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
 import type { AuthProbeFn } from "./doctor/checks/auth-probe.js";
 import type { CliDependencies, IntakeDependencies } from "./commands/types.js";
@@ -84,6 +87,8 @@ export interface BuildRealCliDependenciesOverrides {
   readonly connection?: ConnectionDependencies;
   /** roadmap/11's `run` bag. Tests inject one with tmp-dir registries and a scripted `readIntakeRequest` so nothing reads real stdin. */
   readonly intake?: IntakeDependencies;
+  /** roadmap/22's `learn *` bag. Tests inject one with a tmp-dir proposal registry and a scripted `resolveChangeSetRefs` so no real learning state is written. */
+  readonly learning?: LearningDependencies;
   /** Spawn-on-demand knobs for `connectClient` (roadmap/05 §Lifecycle). Tests inject `spawnDaemon` plus tight retry bounds so no real daemon process is forked; production takes the defaults. */
   readonly supervisorSpawn?: {
     readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
@@ -112,10 +117,10 @@ export function buildRealCliDependencies(
   // enforced durably by `./approval/durable-approval-ledger.ts`, not by the
   // key's lifetime. See `./approval/signing-key.ts` for the full rationale
   // and the fail-closed mode/symlink checks it applies.
-  const minter = new ApprovalTokenMinter({
-    secretKey: loadOrCreateApprovalSigningKey(resolveApprovalSigningKeyPath(xdgEnv, projectHash)),
-    journal,
-  });
+  const signingKey = loadOrCreateApprovalSigningKey(
+    resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+  );
+  const minter = new ApprovalTokenMinter({ secretKey: signingKey, journal });
 
   const supervisorSpawn = overrides.supervisorSpawn ?? {};
   const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;
@@ -150,6 +155,52 @@ export function buildRealCliDependencies(
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
     intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
+    learning:
+      overrides.learning ??
+      buildRealLearningDependencies(xdgEnv, projectHash, journal, minter, signingKey),
+  };
+}
+
+/**
+ * roadmap/22's `learn list|approve|reject|rollback` bag.
+ *
+ * `@eo/learning`'s own `ProposalRegistry` is already file-backed, rooted at
+ * the project's pinned learning dir — which matters here for the same
+ * reason it did for connections: every `learn` invocation is its own
+ * short-lived process, so a proposal recorded by one must be visible to the
+ * next.
+ *
+ * `secretKey` is the project's DURABLE signing key and `minter` is this
+ * process's single shared instance: `learn approve` mints and verifies
+ * under the third, distinct `"learning_review"` subject kind, never
+ * `"envelope_hash"`/`"capability_digest"`.
+ *
+ * `resolveChangeSetRefs` implements the owner's ruling that a promoted
+ * lesson rides an intake already in flight — read from the SAME durable
+ * ChangeSet registry `run` writes, at promote time, refusing rather than
+ * inventing references. See `./learning/ongoing-intake-refs.ts`.
+ */
+function buildRealLearningDependencies(
+  xdgEnv: XdgEnv,
+  projectHash: string,
+  journal: JournalStore,
+  minter: ApprovalTokenMinter,
+  secretKey: Buffer,
+): LearningDependencies {
+  const changeSets = createFileRegistry<ChangeSet>({
+    path: join(resolveStateRoot(xdgEnv, projectHash), CHANGE_SETS_FILE_NAME),
+    schema: ChangeSetSchema,
+  });
+
+  return {
+    registry: new ProposalRegistry({
+      registryDir: resolveRegistryDir(xdgEnv, projectHash),
+      journal,
+    }),
+    journal,
+    minter,
+    secretKey,
+    resolveChangeSetRefs: () => resolveOngoingIntakeRefs(changeSets),
   };
 }
 

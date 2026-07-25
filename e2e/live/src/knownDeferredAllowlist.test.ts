@@ -11,15 +11,16 @@ import {
 describe("KNOWN_DEFERRED_ALLOWLIST — schema sanity", () => {
   /**
    * Was 24 (15 CLI + 8 gateway-family + 1 gateway-protocol) until the
-   * phase-23 composition-root work wired 18 of them. Every gateway family
+   * phase-23 composition-root work wired 18 of them, then the four learn-*
+   * entries closed once promotion was bound to an ongoing intake. Every gateway family
    * and the tools/call protocol gap are now genuinely closed, so those two
    * buckets are empty rather than merely shorter.
    */
-  it("has exactly 5 CLI-command entries and no remaining gateway-family or gateway-protocol entries", () => {
-    expect(KNOWN_DEFERRED_CLI_COMMANDS).toHaveLength(5);
+  it("has exactly 1 CLI-command entry and no remaining gateway-family or gateway-protocol entries", () => {
+    expect(KNOWN_DEFERRED_CLI_COMMANDS).toHaveLength(1);
     expect(KNOWN_DEFERRED_GATEWAY_FAMILIES).toHaveLength(0);
     expect(KNOWN_DEFERRED_GATEWAY_PROTOCOL).toHaveLength(0);
-    expect(KNOWN_DEFERRED_ALLOWLIST).toHaveLength(5);
+    expect(KNOWN_DEFERRED_ALLOWLIST).toHaveLength(1);
   });
 
   /** The provider-dispatch deferral is tracked but deliberately outside the sweep's exact-match set — it has no stub for the sweep to discover. */

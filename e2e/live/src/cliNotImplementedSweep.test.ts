@@ -95,14 +95,14 @@ describe("sweepDispatchLevelNotImplemented — genuine integration (real dispatc
 });
 
 describe("checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies)", () => {
-  /** installer/intake/trust/connection are all wired as of the phase-23 composition-root work; learning is the one bag that is still not. */
-  it("reflects today's real production wiring: installer/intake/trust/connection ARE wired, learning is NOT", () => {
+  /** Every optional bag is wired as of the phase-23 composition-root work — learning closed last, once promotion was bound to an ongoing intake. */
+  it("reflects today's real production wiring: every optional bag is now supplied", () => {
     const wiring = checkProductionDependencyWiring();
     expect(wiring.installerWired).toBe(true);
     expect(wiring.intakeWired).toBe(true);
     expect(wiring.trustWired).toBe(true);
     expect(wiring.connectionWired).toBe(true);
-    expect(wiring.learningWired).toBe(false);
+    expect(wiring.learningWired).toBe(true);
   });
 });
 
@@ -205,20 +205,15 @@ describe("combineFindings", () => {
         "connection-add",
         "connection-list",
         "connection-doctor",
-      ].sort(),
-    );
-    // What genuinely remains: learn-* (a real backend exists, but
-    // deps.learning is still not supplied) and connection-capabilities
-    // (no backend at all). These are exactly the allowlist's five entries.
-    expect(realGaps).toEqual(
-      [
-        "connection-capabilities",
         "learn-list",
         "learn-approve",
         "learn-reject",
         "learn-rollback",
       ].sort(),
     );
+    // All that genuinely remains: connection-capabilities, which has no
+    // backend at all. It is the allowlist's single entry.
+    expect(realGaps).toEqual(["connection-capabilities"]);
   });
 });
 

@@ -18,11 +18,11 @@ describe("runNotImplementedSweepGate — genuine integration (real dispatch, rea
    * it: run live, it reported every newly-wired id as a STALE allowlist
    * entry until the allowlist was shrunk to match reality.
    */
-  it("finds exactly the 5 remaining tracked gaps and reports PASS (the allowlist matches today's live reality)", async () => {
+  it("finds exactly the 1 remaining tracked gap and reports PASS (the allowlist matches today's live reality)", async () => {
     const result = await runNotImplementedSweepGate();
 
     expect(result.toolsCallSupported).toBe(true);
-    expect(result.liveFindingIds).toHaveLength(5);
+    expect(result.liveFindingIds).toHaveLength(1);
     expect(result.newUnlistedFindings).toEqual([]);
     expect(result.staleAllowlistEntries).toEqual([]);
     expect(result.verdict).toBe("PASS");
@@ -42,14 +42,17 @@ describe("runNotImplementedSweepGate — FAIL-FIRST proof: a new, unlisted gap m
     // Proves the comparison logic is genuinely fail-closed, without
     // introducing an actual new production gap: pass
     // runNotImplementedSweepGate's own injectable allowlist seam a set
-    // missing one real, currently-true entry ("cli.learn-list") — exactly
+    // missing one real, currently-true entry ("cli.connection-capabilities") — exactly
     // what a brand-new, undocumented stub would look like to this gate.
-    // The sentinel used to be "cli.resume", which is now genuinely wired.
+    // The sentinel has moved twice as gaps closed: "cli.resume", then
+    // "cli.learn-list", both now genuinely wired.
     const shrunkAllowlist = new Set(
-      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.learn-list"),
+      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter(
+        (id) => id !== "cli.connection-capabilities",
+      ),
     );
     const result = await runNotImplementedSweepGate(shrunkAllowlist);
-    expect(result.newUnlistedFindings).toEqual(["cli.learn-list"]);
+    expect(result.newUnlistedFindings).toEqual(["cli.connection-capabilities"]);
     expect(result.verdict).toBe("FAIL");
   });
 
@@ -109,7 +112,9 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     const changeSetId = randomUUID();
     const objectId = "2222222222222222222222222222222222222222";
     const shrunkAllowlist = new Set(
-      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter((id) => id !== "cli.learn-list"),
+      KNOWN_DEFERRED_ALLOWLIST.map((e) => e.id).filter(
+        (id) => id !== "cli.connection-capabilities",
+      ),
     );
     const result = await runAndEmitNotImplementedSweepEvidence({
       journal: tj.store,

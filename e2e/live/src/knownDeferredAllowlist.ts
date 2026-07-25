@@ -14,7 +14,7 @@
  * new deferral requires a deliberate edit here (visible in review); a
  * brand-new, undocumented gap fails closed.
  *
- * SHRUNK 2026-07-25, from 24 entries to 5. The composition-root work of
+ * SHRUNK 2026-07-25, from 24 entries to 1. The composition-root work of
  * phase 23 wired 18 of them for real, and the sweep — run live, not
  * reasoned about — reported each as a STALE allowlist entry, which is this
  * mechanism working as designed in the opposite direction. Closed:
@@ -23,6 +23,12 @@
  * `gateway.protocol.tools-call` (the transport is now the real MCP SDK, so
  * a registered tool can actually be invoked), and the `gateway-mcp` dead
  * branch (the hand-rolled server it described no longer exists).
+ *
+ * The four `learn-*` entries closed last, once the owner ruled that a
+ * promoted lesson rides an intake ALREADY in flight rather than needing an
+ * intake of its own — which is what unblocked supplying `deps.learning`
+ * without fabricating ChangeSet references. See
+ * `packages/cli/src/learning/ongoing-intake-refs.ts`.
  */
 
 export type KnownDeferredKind =
@@ -50,53 +56,6 @@ export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [
       "doctor) were wired against the durable FileExternalConnectionStore; this one reports a " +
       "connection's discovered CapabilitySnapshot, which needs a live provider client — the same " +
       "per-connection credential work gateway.provider.dispatch below is blocked on.",
-  },
-  {
-    id: "cli.learn-list",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/bootstrap.ts",
-      "packages/cli/src/learning/learn-command-backend.ts",
-    ],
-    ownerPhase: "22",
-    description:
-      "A REAL backend exists (learn-command-backend.ts) and dispatch.ts's conditional branch is " +
-      "real, but buildRealCliDependencies() never supplies deps.learning. Wiring it needs one " +
-      "genuine design decision first, which is why this was NOT closed alongside trust/connection: " +
-      "LearningDependencies requires ChangeSetReferences, and a promoted lesson's ChangeSet " +
-      "references have to come from a real intake. Supplying empty/placeholder ids would make " +
-      "learn-list and learn-reject work while leaving learn-approve's promotion path failing on an " +
-      "opaque schema error — a worse outcome than an honest NOT_IMPLEMENTED.",
-  },
-  {
-    id: "cli.learn-approve",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/bootstrap.ts",
-      "packages/cli/src/learning/learn-command-backend.ts",
-    ],
-    ownerPhase: "22",
-    description: "Same unwired-despite-built gap as cli.learn-list, for learn-approve.",
-  },
-  {
-    id: "cli.learn-reject",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/bootstrap.ts",
-      "packages/cli/src/learning/learn-command-backend.ts",
-    ],
-    ownerPhase: "22",
-    description: "Same unwired-despite-built gap as cli.learn-list, for learn-reject.",
-  },
-  {
-    id: "cli.learn-rollback",
-    kind: "cli-command",
-    location: [
-      "packages/cli/src/bootstrap.ts",
-      "packages/cli/src/learning/learn-command-backend.ts",
-    ],
-    ownerPhase: "22",
-    description: "Same unwired-despite-built gap as cli.learn-list, for learn-rollback.",
   },
 ];
 
