@@ -8,14 +8,26 @@ import {
 } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/test-support/test-journal.js";
 
+const RC_ENV = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+
 describe("evidence emission", () => {
   let journal: TestJournal;
+  let savedRc: string | undefined;
 
   beforeEach(async () => {
     journal = await createTestJournal();
+    // Every assertion below about a scenario-local `objectId` is only
+    // meaningful OUTSIDE a release run. `npm run test:e2e:release-evidence`
+    // exports this variable for the whole chain, so these tests must control
+    // it explicitly rather than inherit it — otherwise they would assert one
+    // thing locally and something else in CI.
+    savedRc = process.env[RC_ENV];
+    delete process.env[RC_ENV];
   });
 
   afterEach(async () => {
+    if (savedRc === undefined) delete process.env[RC_ENV];
+    else process.env[RC_ENV] = savedRc;
     await journal.cleanup();
   });
 
@@ -74,6 +86,54 @@ describe("evidence emission", () => {
       expect(entries[0].payload.gateTag).toBe(GIT_MATRIX_GATE_TAG);
       expect(entries[0].payload.objectId).toBe("cafef00d");
     }
+  });
+
+  /**
+   * Regression (2026-07-25). This harness is the SOLE evidence source for
+   * the `no-engine-attribution` checklist item, and it stamped each
+   * scenario's own throwaway-repo object ID. `e2e/report`'s generator links
+   * evidence only at the exact `releaseCandidateObjectId`, so every record
+   * emitted here was structurally unlinkable and the item sat at
+   * EVIDENCE-PENDING while the scenario proving it ran green.
+   */
+  it("stamps the release candidate under a release run, so the evidence can actually link", () => {
+    process.env[RC_ENV] = "5e2c6b5144743e2b8d846aac5c0454bb5c3ef16e";
+    const record = buildScenarioEvidence({
+      changeSetId: randomUUID(),
+      command: "publishLocal (attribution leak)",
+      exitStatus: 0,
+      objectId: "throwaway-repo-oid",
+      detail: "no leak",
+    });
+    expect(record.objectId).toBe("5e2c6b5144743e2b8d846aac5c0454bb5c3ef16e");
+  });
+
+  it("preserves the scenario's own object ID as a digest rather than losing it", () => {
+    process.env[RC_ENV] = "5e2c6b5144743e2b8d846aac5c0454bb5c3ef16e";
+    const record = buildScenarioEvidence({
+      changeSetId: randomUUID(),
+      command: "publishLocal (attribution leak)",
+      exitStatus: 0,
+      objectId: "throwaway-repo-oid",
+      detail: "no leak",
+    });
+    expect(record.artifactDigests).toHaveLength(2);
+    expect(record.artifactDigests).toContain(
+      digestArtifact("scenario-object-id:throwaway-repo-oid"),
+    );
+  });
+
+  it("treats an empty release-candidate value as unset", () => {
+    process.env[RC_ENV] = "";
+    const record = buildScenarioEvidence({
+      changeSetId: randomUUID(),
+      command: "preflightMerge (clean)",
+      exitStatus: 0,
+      objectId: "deadbeef",
+      detail: "treeId=abc123",
+    });
+    expect(record.objectId).toBe("deadbeef");
+    expect(record.artifactDigests).toHaveLength(1);
   });
 
   it("a nonzero exitStatus is recorded verbatim", async () => {

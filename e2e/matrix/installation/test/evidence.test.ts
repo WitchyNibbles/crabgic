@@ -8,15 +8,63 @@ import {
 } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/test-support/test-journal.js";
 
+const RC_ENV = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+
 describe("evidence emission", () => {
   let journal: TestJournal;
+  let savedRc: string | undefined;
 
   beforeEach(async () => {
     journal = await createTestJournal();
+    // Every assertion below about a scenario-local `objectId` is only
+    // meaningful OUTSIDE a release run. `npm run test:e2e:release-evidence`
+    // exports this variable for the whole chain, so these tests must control
+    // it explicitly rather than inherit it — otherwise they would assert one
+    // thing locally and something else in CI.
+    savedRc = process.env[RC_ENV];
+    delete process.env[RC_ENV];
   });
 
   afterEach(async () => {
+    if (savedRc === undefined) delete process.env[RC_ENV];
+    else process.env[RC_ENV] = savedRc;
     await journal.cleanup();
+  });
+
+  /**
+   * Regression (2026-07-25): this emitter stamped each scenario's own
+   * throwaway-repo object ID, which `e2e/report`'s generator can never link
+   * to the release candidate. Masked here only because
+   * `release-gate:connector-matrix` independently covers the one checklist
+   * item this harness feeds — the defect was real either way.
+   */
+  it("stamps the release candidate under a release run, so the evidence can actually link", () => {
+    process.env[RC_ENV] = "5e2c6b5144743e2b8d846aac5c0454bb5c3ef16e";
+    const record = buildScenarioEvidence({
+      changeSetId: randomUUID(),
+      command: "install --json (empty-dir)",
+      exitStatus: 0,
+      objectId: "throwaway-repo-oid",
+      detail: "status=installed",
+    });
+    expect(record.objectId).toBe("5e2c6b5144743e2b8d846aac5c0454bb5c3ef16e");
+    expect(record.artifactDigests).toHaveLength(2);
+    expect(record.artifactDigests).toContain(
+      digestArtifact("scenario-object-id:throwaway-repo-oid"),
+    );
+  });
+
+  it("treats an empty release-candidate value as unset", () => {
+    process.env[RC_ENV] = "";
+    const record = buildScenarioEvidence({
+      changeSetId: randomUUID(),
+      command: "install --json (empty-dir)",
+      exitStatus: 0,
+      objectId: "deadbeef",
+      detail: "status=installed",
+    });
+    expect(record.objectId).toBe("deadbeef");
+    expect(record.artifactDigests).toHaveLength(1);
   });
 
   it("digestArtifact is deterministic and content-sensitive", () => {
