@@ -132,13 +132,15 @@ describe("RealPublishRunner + runPublishDryRun — genuine integration (real npm
     expect(result.skippedDueToPrivate).toBe(true);
     expect(result.dryRun.exitCode).toBe(0);
 
-    // Today's real, reportable gap: license/access/name are all correct,
-    // but no "repository" field is declared yet.
+    // The publish metadata is now complete: license, access, name, and —
+    // as of the phase-23 publish-prep pass — the "repository" field, which
+    // was the last outstanding gap here and is what npm provenance and the
+    // registry's source links read.
     expect(result.metadata.hasLicenseApache2).toBe(true);
     expect(result.metadata.hasPublicAccess).toBe(true);
     expect(result.metadata.hasName).toBe(true);
-    expect(result.metadata.hasRepositoryField).toBe(false);
-    expect(result.metadata.ready).toBe(false);
+    expect(result.metadata.hasRepositoryField).toBe(true);
+    expect(result.metadata.ready).toBe(true);
   }, 30_000);
 
   it("RealPublishRunner reports a nonzero exitCode (real catch-branch, never actually publishing) for a directory with no package.json at all", async () => {

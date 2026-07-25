@@ -4,6 +4,15 @@
   "private": true,
   "description": "engineering-orchestrator CLI & doctor (roadmap/09-cli-and-doctor.md).",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WitchyNibbles/crabgic.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/WitchyNibbles/crabgic#readme",
+  "bugs": {
+    "url": "https://github.com/WitchyNibbles/crabgic/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"

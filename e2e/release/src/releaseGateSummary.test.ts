@@ -139,16 +139,24 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       version: "1.0.0",
     });
 
-    // Real, current facts this harness has already independently verified:
-    // tarball reproducibility PASSES, the SDK pin PASSES, but publish
-    // metadata is NOT YET provenance-ready (missing "repository" field) —
-    // so today's real overall verdict is FAIL, for an honestly-reported
-    // reason, not a fabricated one.
+    // Real, current facts this harness has independently verified: tarball
+    // reproducibility PASSES, the SDK pin PASSES, and publish metadata is
+    // now provenance-ready — the "repository" field that made this FAIL
+    // was added in the phase-23 publish-prep pass.
+    //
+    // A PASS here is emphatically NOT "ready to publish": packages/cli
+    // remains "private": true by the owner's PREPARE-DON'T-PUBLISH
+    // decision, so npm refuses the publish itself regardless of this gate.
+    // What this asserts is narrower and true — the release ARTIFACT and its
+    // metadata are in order. The two assertions below pin that guard so a
+    // PASS can never quietly come to mean a publish was attempted.
     expect(result.reproducibleBuild.comparison.match).toBe(true);
     expect(result.enginePin.match).toBe(true);
     expect(result.enginePin.matchesBaseline).toBe(true);
-    expect(result.publishDryRun.metadata.ready).toBe(false);
-    expect(result.verdict).toBe("FAIL");
+    expect(result.publishDryRun.metadata.ready).toBe(true);
+    expect(result.publishDryRun.skippedDueToPrivate).toBe(true);
+    expect(result.publishDryRun.realPublishAttempted).toBe(false);
+    expect(result.verdict).toBe("PASS");
     expect(result.marketplaceEntry.version).toBe("1.0.0");
     expect(result.changelogDraft).toContain("## 1.0.0");
     expect(result.tagScript).toContain("git tag -a 'v1.0.0'");
