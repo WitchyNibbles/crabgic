@@ -134,6 +134,23 @@ describe("dispatchCommand — real backends", () => {
     expect(JSON.parse(result.stdout!)).toEqual({ runs: [] });
   });
 
+  /**
+   * `resume` was NOT_IMPLEMENTED until 2026-07-25. It now reaches the real
+   * `run.dispatch` operation; this daemon is composed WITHOUT a run
+   * dispatcher, so the refusal proves the command genuinely round-trips to
+   * the supervisor rather than short-circuiting in the CLI.
+   */
+  it("resume reaches run.dispatch and surfaces the daemon's refusal reason", async () => {
+    const result = await dispatchCommand(
+      { command: "resume", runId: "11111111-1111-4111-8111-111111111111", json: true },
+      deps,
+    );
+    expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED);
+    const parsed = JSON.parse(result.stdout!) as { accepted: boolean; reason?: string };
+    expect(parsed.accepted).toBe(false);
+    expect(parsed.reason).toMatch(/dispatcher/i);
+  });
+
   it("status with no run-id renders a human-readable empty state in non-json mode", async () => {
     const result = await dispatchCommand({ command: "status", watch: false, json: false }, deps);
     expect(result.exitCode).toBe(EXIT_OK);
@@ -186,7 +203,6 @@ describe("dispatchCommand — NOT_IMPLEMENTED stubs", () => {
   it.each([
     { command: "install", dryRun: false, json: true } as const,
     { command: "run", json: true } as const,
-    { command: "resume", runId: "run-1", json: true } as const,
     {
       command: "connection-add",
       provider: "jira",

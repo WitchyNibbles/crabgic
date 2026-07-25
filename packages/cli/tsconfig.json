@@ -11,11 +11,15 @@
   "references": [
     { "path": "../contracts" },
     { "path": "../detect" },
+    { "path": "../engine-claude" },
+    { "path": "../engine-core" },
+    { "path": "../git-engine" },
     { "path": "../gateway" },
     { "path": "../journal" },
     { "path": "../learning" },
     { "path": "../plugin" },
     { "path": "../renderer" },
+    { "path": "../scheduler" },
     { "path": "../supervisor" },
     { "path": "../testkit" }
   ]

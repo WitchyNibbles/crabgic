@@ -30,7 +30,13 @@ import {
   bootSupervisor,
   readPeerCredentialsLinux,
   SupervisorAlreadyRunningError,
+  type SupervisorDependencies,
 } from "@eo/supervisor";
+import {
+  createRealRunDispatcher,
+  resolveWorkerAuthMaterial,
+  type RealRunDispatcherOptions,
+} from "../daemon/run-dispatcher.js";
 
 const EXIT_OK = 0;
 const EXIT_GENERAL_ERROR = 1;
@@ -47,15 +53,54 @@ async function main(): Promise<void> {
     return;
   }
 
+  const xdgEnv = readXdgEnvFromProcess();
+
+  // The daemon drives runs, which means freezing the repository and cutting
+  // per-attempt worktrees — both need the actual checkout, which a project
+  // HASH cannot locate. The spawning CLI passes it (see
+  // `../uds-client/ensure-supervisor.ts`).
+  const projectDir = process.env.EO_PROJECT_DIR;
+  const auth = await resolveWorkerAuthMaterial(xdgEnv.HOME);
+
   try {
     const booted = await bootSupervisor({
-      env: readXdgEnvFromProcess(),
+      env: xdgEnv,
       projectHash,
       peerAuth: { reader: readPeerCredentialsLinux },
+      // Missing projectDir or credentials degrades ONLY dispatch: the
+      // daemon still serves status/cancel/evidence/registry, none of which
+      // need either, and `run.dispatch` refuses with a typed reason. Dying
+      // here instead would take the whole control plane down over a
+      // capability most commands never use.
+      ...(projectDir !== undefined && projectDir.length > 0 && auth !== undefined
+        ? {
+            createRunDispatcher: (deps: SupervisorDependencies) =>
+              createRealRunDispatcher({
+                deps: deps as RealRunDispatcherOptions["deps"],
+                projectDir,
+                xdgEnv,
+                projectHash,
+                auth,
+                onDriveError: (runId, err) => {
+                  process.stderr.write(
+                    `supervisord: run ${runId} failed to drive: ${toErrorMessage(err)}\n`,
+                  );
+                },
+              }),
+          }
+        : {}),
       onShutdown: () => {
         process.exitCode = EXIT_OK;
       },
     });
+    if (projectDir === undefined || projectDir.length === 0) {
+      process.stderr.write("supervisord: EO_PROJECT_DIR unset — `run dispatch` is unavailable\n");
+    } else if (auth === undefined) {
+      process.stderr.write(
+        "supervisord: no engine credentials found — `run dispatch` is unavailable " +
+          "(set CLAUDE_CODE_OAUTH_TOKEN or run `claude setup-token`)\n",
+      );
+    }
     process.stderr.write(`supervisord: ready on ${booted.composed.socketPath}\n`);
   } catch (err) {
     if (err instanceof SupervisorAlreadyRunningError) {

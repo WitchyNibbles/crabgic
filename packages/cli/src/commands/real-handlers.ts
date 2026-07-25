@@ -15,6 +15,7 @@ import type {
   CancelCommand,
   DoctorCommand,
   EvidenceCommand,
+  ResumeCommand,
   RunCommand,
   StatusCommand,
 } from "../argv/types.js";
@@ -34,6 +35,43 @@ function renderRunRecord(run: RunRecordLike | undefined, runId: string): string 
     return `run "${runId}" is unknown (not yet started, or never existed)\n`;
   }
   return `run ${run.runId}: ${run.runState} (changeSet ${run.changeSetId}, updated ${run.updatedAt})\n`;
+}
+
+/**
+ * `resume <run-id>` — asks the daemon to (re-)drive an existing run's DAG.
+ *
+ * A thin wrapper over `run.dispatch` on purpose. The daemon owns the
+ * driver, its dispatcher is idempotent per run (a resume of a run already
+ * in flight is refused, not duplicated), and `driveRun` recomputes
+ * readiness from each unit's current attempt status — so units that already
+ * succeeded are simply not ready again, and the resume picks up exactly
+ * where the run stopped. There is nothing for the CLI to reconstruct.
+ */
+export async function runResumeCommand(
+  cmd: ResumeCommand,
+  deps: CliDependencies,
+): Promise<CommandResult> {
+  const client = await deps.connectClient();
+  try {
+    const result = await client.request<{ accepted: boolean; reason?: string }>("run.dispatch", {
+      runId: cmd.runId,
+    });
+
+    if (cmd.json) {
+      return {
+        exitCode: result.accepted ? EXIT_OK : EXIT_GENERAL_ERROR,
+        stdout: formatJson(result),
+      };
+    }
+    return result.accepted
+      ? { exitCode: EXIT_OK, stdout: `run ${cmd.runId}: resumed\n` }
+      : {
+          exitCode: EXIT_GENERAL_ERROR,
+          stderr: `run ${cmd.runId} was not resumed: ${result.reason ?? "refused"}\n`,
+        };
+  } finally {
+    client.close();
+  }
 }
 
 /**

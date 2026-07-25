@@ -75,6 +75,8 @@ export async function ensureSupervisorConnection(
 
 export interface SpawnSupervisorDaemonOptions {
   readonly projectHash: string;
+  /** The repository checkout the daemon will freeze and cut worktrees from. Defaults to the spawning CLI's own cwd, which is already inside the project. */
+  readonly projectDir?: string;
 }
 
 /**
@@ -95,7 +97,15 @@ export function spawnSupervisorDaemon(options: SpawnSupervisorDaemonOptions): vo
   const child = spawn(process.execPath, [supervisordBin], {
     detached: true,
     stdio: "ignore",
-    env: { ...process.env, EO_PROJECT_HASH: options.projectHash },
+    env: {
+      ...process.env,
+      EO_PROJECT_HASH: options.projectHash,
+      // The daemon drives runs (`run.dispatch`), which means freezing the
+      // repository and creating per-attempt worktrees — both need the
+      // actual checkout path. A project HASH cannot locate a repository, so
+      // the spawning CLI, which is already running inside it, passes it.
+      EO_PROJECT_DIR: options.projectDir ?? process.cwd(),
+    },
   });
   child.unref();
 }

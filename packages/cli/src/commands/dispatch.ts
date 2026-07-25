@@ -21,6 +21,7 @@ import {
   runCancelCommand,
   runDoctorCommand,
   runEvidenceCommand,
+  runResumeCommand,
   runRunCommand,
   runStatusCommand,
 } from "./real-handlers.js";
@@ -82,6 +83,14 @@ export async function dispatchCommand(
       case "run":
         return await runRunCommand(command, deps);
 
+      // `resume <run-id>` asks the daemon to (re-)drive an existing run.
+      // Unconditional like `status`/`cancel`: it needs only the UDS client,
+      // since the DRIVER lives in the daemon (roadmap/05 owns worker
+      // lifecycle; `driveRun` registers into the supervisor's own
+      // `liveWorkers`), not in this process.
+      case "resume":
+        return await runResumeCommand(command, deps);
+
       // roadmap/22-learning-system.md wires these four real backends —
       // but ONLY when `deps.learning` is supplied (kept optional on
       // `CliDependencies` precisely so every pre-existing roadmap/09 test,
@@ -139,16 +148,10 @@ export async function dispatchCommand(
           ? await runConnectionDoctorCommand(command, deps.connection)
           : notImplementedResult(command.command, command.json);
 
-      // Every command below has no backend wired at this phase's own build
-      // time (roadmap/09 §Out of scope names the owning later phase for
-      // each) — the typed NOT_IMPLEMENTED shape is the correct, tested
-      // behavior here, not a gap.
-      //
-      // `connection-capabilities` specifically: live CapabilitySnapshot
+      // The one command still without a backend: live CapabilitySnapshot
       // discovery has no production HTTP plumbing in either connector
       // (phase 19/20 gap) — see `../connection/connection-commands.ts`'s
       // own doc comment for exactly what is missing.
-      case "resume":
       case "connection-capabilities":
         return notImplementedResult(command.command, command.json);
 
