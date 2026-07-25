@@ -5,8 +5,17 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Test / coverage
-coverage/
+# Test / coverage — ANCHORED ON PURPOSE. A bare `coverage/` matches a directory
+# of that name at ANY depth, which silently untracked the 15 real source files in
+# `packages/gates/src/coverage/` (the coverage-ratchet store and its four
+# ecosystem adapters, re-exported from `packages/gates/src/index.ts`). The repo
+# built locally and only locally: a clean checkout was missing the directory
+# entirely and `tsc -b` failed with 12 TS2307s, so CI was red on every leg and
+# no ARM64 evidence could ever be produced. Anchor every new entry the same way.
+/coverage/
+/packages/*/coverage/
+/e2e/*/coverage/
+/e2e/matrix/*/coverage/
 .vitest-cache/
 
 # Logs
