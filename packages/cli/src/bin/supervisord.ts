@@ -32,11 +32,15 @@ import {
   SupervisorAlreadyRunningError,
   type SupervisorDependencies,
 } from "@eo/supervisor";
-import {
-  createRealRunDispatcher,
-  resolveWorkerAuthMaterial,
-  type RealRunDispatcherOptions,
-} from "../daemon/run-dispatcher.js";
+// Neither import may pull `../daemon/run-dispatcher.js` into the boot path:
+// it statically imports `@eo/engine-claude` -> `@anthropic-ai/claude-agent-sdk`,
+// measured at +40.9 MiB, which alone put this daemon's idle RSS over
+// roadmap/05's <100 MiB budget. `RealRunDispatcherOptions` is a TYPE-only
+// import (erased under `verbatimModuleSyntax`), and the dispatcher itself is
+// loaded on first dispatch — see `../daemon/lazy-run-dispatcher.ts`.
+import { createLazyRunDispatcher } from "../daemon/lazy-run-dispatcher.js";
+import { resolveWorkerAuthMaterial } from "../daemon/worker-auth.js";
+import type { RealRunDispatcherOptions } from "../daemon/run-dispatcher.js";
 
 const EXIT_OK = 0;
 const EXIT_GENERAL_ERROR = 1;
@@ -75,7 +79,7 @@ async function main(): Promise<void> {
       ...(projectDir !== undefined && projectDir.length > 0 && auth !== undefined
         ? {
             createRunDispatcher: (deps: SupervisorDependencies) =>
-              createRealRunDispatcher({
+              createLazyRunDispatcher({
                 deps: deps as RealRunDispatcherOptions["deps"],
                 projectDir,
                 xdgEnv,

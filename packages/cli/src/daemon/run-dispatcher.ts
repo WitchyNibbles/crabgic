@@ -29,7 +29,6 @@
  * duration. `inFlight` makes dispatch idempotent per run, so a second
  * `run.dispatch` never starts a competing driver over the same work units.
  */
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@eo/contracts";
@@ -304,36 +303,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 }
 
 /**
- * Resolves engine credentials in the exact order docs/engine-baseline.md §1
- * records, matching `doctor`'s own auth probe so the two can never disagree
- * about which credential a worker will use:
- *   1. `CLAUDE_CODE_OAUTH_TOKEN`
- *   2. `~/.claude/.eo-oauth-token`
- *   3. `~/.claude/.credentials.json`
- * Returns `undefined` when none is present, so the daemon can refuse to
- * dispatch rather than spawning workers that are certain to fail.
+ * `resolveWorkerAuthMaterial` deliberately no longer lives here — it moved
+ * to `./worker-auth.js`. The daemon calls it at STARTUP, and this module
+ * statically imports `@eo/engine-claude` (and through it
+ * `@anthropic-ai/claude-agent-sdk`, +40.9 MiB), so resolving a token from
+ * here loaded the whole engine into a daemon that may never dispatch a run.
+ * See `./lazy-run-dispatcher.ts` for the rest of that story.
  */
-export async function resolveWorkerAuthMaterial(
-  homeDir: string,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<WorkerAuthMaterial | undefined> {
-  const fromEnv = env.CLAUDE_CODE_OAUTH_TOKEN;
-  if (fromEnv !== undefined && fromEnv.length > 0) {
-    return { kind: "oauthToken", token: fromEnv };
-  }
-
-  try {
-    const token = (await readFile(join(homeDir, ".claude", ".eo-oauth-token"), "utf8")).trim();
-    if (token.length > 0) return { kind: "oauthToken", token };
-  } catch {
-    /* fall through to the credentials file */
-  }
-
-  const credentialsPath = join(homeDir, ".claude", ".credentials.json");
-  try {
-    await readFile(credentialsPath, "utf8");
-    return { kind: "credentialsFile", sourcePath: credentialsPath };
-  } catch {
-    return undefined;
-  }
-}
