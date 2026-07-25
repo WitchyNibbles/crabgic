@@ -148,12 +148,16 @@ evidence source is this harness, stays `EVIDENCE-PENDING` forever.
 
 ## Outcome
 
-The gate moved from **9 PASS / 5 FAIL / 1 EVIDENCE-PENDING** to **12 PASS / 3 FAIL / 0
-EVIDENCE-PENDING** at `5e2c6b5`. Nothing is unreported any more: every item is now either
-proven or failing for a stated, actionable reason.
+The gate moved from **9 PASS / 5 FAIL / 1 EVIDENCE-PENDING** to **11 PASS / 4 FAIL / 0
+EVIDENCE-PENDING**, measured at `a1ae9cc`. Nothing is unreported any more: every item is now
+either proven or failing for a stated, actionable reason.
 
-Two of the three remaining failures are **real product findings**, not unfinished harness work
-— they are the gate doing its job:
+(An earlier draft of this section recorded 12 PASS / 3 FAIL. That count does not reproduce:
+`performance-contracts` FAILs on its CPU half for a methodology reason, not a budget breach —
+see §"Correction: `performance-contracts` fails on a statistic, not a budget" below.)
+
+Two of the remaining failures are **real product findings**, not unfinished harness work — they
+are the gate doing its job:
 
 1. **Supervisor idle RSS breaches 05's budget.** Measured on a verified-quiet host (load
    0.03/core, 97.8% idle) after excluding startup: **104.7 MiB and 113.9 MiB across
@@ -228,8 +232,10 @@ CI-measured budget **so running it costs nothing when there is no work**."
 | 99.8 / 108.2 / 100.2 MiB | 66.2 / 65.6 / 66.1 / 66.0 / 65.8 MiB |
 
 The budget now holds with **~34% headroom**, and run-to-run spread collapses from 8.4 MiB to
-0.6 MiB — so `performance-contracts` passes on merit rather than by luck. **05's documented
-number stands unchanged; no spec amendment is needed.**
+0.6 MiB — so the RSS contract passes on merit rather than by luck. **05's documented number
+stands unchanged; no spec amendment is needed.** (The `performance-contracts` gate ITEM still
+fails, on its separate CPU contract — see the correction below. Nothing in this section is
+retracted: `supervisor-idle-rss` scores `pass` with a 0.00% noise bound.)
 
 Two notes carried forward, neither blocking:
 
@@ -267,3 +273,47 @@ exist in this environment. Every requirement therefore reports `bound to no remo
 
 Weakening the check to pass without remote bindings would manufacture a green gate for a
 property that was never verified, so the item stays FAILing.
+
+## Correction: `performance-contracts` fails on a statistic, not a budget
+
+Measured three consecutive times at `a1ae9cc` on a verified-quiet host (load/core 0.01–0.02,
+98.6–98.7% idle), `performance-contracts` FAILs every time. Both underlying budgets are met;
+the gate cannot say so.
+
+| Contract              | Outcome                 | Mean                 | Budget    | Bootstrap noise bound |
+| --------------------- | ----------------------- | -------------------- | --------- | --------------------- |
+| `supervisor-idle-rss` | `pass`                  | 66.1 MiB             | 100 MiB   | 0.00%                 |
+| `supervisor-idle-cpu` | `inconclusive_blocking` | 0.00233 (0.23% core) | 0.01 (1%) | **100.00%**           |
+
+The daemon idles at **0.23% of a core against a 1% budget** — four times under, not over. What
+blocks is the SHAPE of the series, not its magnitude. Over a ~17 s window an idle daemon
+produces 16 zero CPU samples and one 0.0397 blip, the 5 s heartbeat firing once.
+`computeNoiseBoundPct` (`packages/perf/src/stats/bootstrap-ci.ts`) bootstraps a **relative**
+delta of the resampled mean; against a 94%-zero series that saturates at 100%, far past
+`CRITICAL_PATH_INCONCLUSIVE_NOISE_THRESHOLD_PCT` (15), so `decide()` returns
+`inconclusive_blocking` at its noise gate — which sits AFTER the absolute-budget check but is
+reached because the mean never breached the budget in the first place. The RSS series is smooth,
+so the identical machinery scores it at 0.00% noise.
+
+Two structural observations, both prerequisites to fixing this properly:
+
+1. **The A/B apparatus is inert on this contract.** `decideReleaseContracts` passes
+   `baseSamples === candidateSamples`, so `regressionPct` is identically 0. `decide()` is built
+   to compare a candidate against a base in a twin-worktree benchmark. An absolute idle budget
+   over a sparse counter is a different question wearing the same interface, and only `decide()`'s
+   `absoluteBudget` path carries any meaning for it. Routing it through the noise gate imports a
+   precondition — a well-conditioned continuous series — that an idle-CPU measurement structurally
+   cannot satisfy.
+
+2. **The check reports one statistic and decides on another.** `checkPerformanceContracts`
+   renders `observed max` in its detail line while `decide()` acts on the mean. Hence the reading
+   "observed max 0.0398 against budget 0.01" printed beside an outcome that is not a budget
+   breach. Whatever is done about the noise gate, these two should be the same statistic, or the
+   detail line should name which is which.
+
+Deliberately NOT done here, because each manufactures a green gate rather than earning one:
+dropping the CPU contract, raising the noise threshold, or demoting `pathSensitivity` below
+`critical`. The remedy is a decision about what statistic an absolute idle budget is decided on —
+plausibly the mean (or a high percentile) against the budget with no noise gate at all, since
+`assertMethodologySound`'s sample-count floor is the methodology guard that actually applies to a
+single-sided absolute measurement.

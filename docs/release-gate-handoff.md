@@ -14,20 +14,21 @@ deleted. The durable analysis lives in `docs/release-gate-remediation-plan.md`.
 
 | Verdict          | Count |
 | ---------------- | ----- |
-| PASS             | 12    |
-| FAIL             | 3     |
+| PASS             | 11    |
+| FAIL             | 4     |
 | EVIDENCE-PENDING | 0     |
 
 Started this session at 7 PASS / 8 EVIDENCE-PENDING. Every checklist item now either passes or
 fails for a stated, actionable reason — nothing is silently unreported.
 
-### The three remaining failures
+### The four remaining failures
 
-| Item                                   | Why it fails                                                                                                                                                                | Action                                                                                                                            |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `jira-grafana-version-support-windows` | **Real finding.** Grafana 11.6 left vendor support 2026-06-25, a month before this cut, while `docs/compatibility-matrix.md` and `docker/grafana/11.6/` still commit to it. | **Deferred by the owner** — to become a future task. Do not "fix" it by weakening the check.                                      |
-| `arm64-verification`                   | No ARM64 CI run has been archived yet.                                                                                                                                      | Mechanism is complete end to end; turns green on the first successful `ubuntu-24.04-arm` leg once CI runs. Nothing to build.      |
-| `requirement-traceability`             | Every requirement reports `bound to no remote (Jira/Grafana) resource`.                                                                                                     | Environment-blocked: needs a live Jira Cloud tenant, and no credentials exist on this host. Corpus and evidence-linking are done. |
+| Item                                   | Why it fails                                                                                                                                                                | Action                                                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `jira-grafana-version-support-windows` | **Real finding.** Grafana 11.6 left vendor support 2026-06-25, a month before this cut, while `docs/compatibility-matrix.md` and `docker/grafana/11.6/` still commit to it. | **Deferred by the owner** — to become a future task. Do not "fix" it by weakening the check.                                          |
+| `arm64-verification`                   | No ARM64 CI run has been archived yet.                                                                                                                                      | Mechanism is complete end to end; turns green on the first successful `ubuntu-24.04-arm` leg once CI runs. Nothing to build.          |
+| `requirement-traceability`             | Every requirement reports `bound to no remote (Jira/Grafana) resource`.                                                                                                     | Environment-blocked: needs a live Jira Cloud tenant, and no credentials exist on this host. Corpus and evidence-linking are done.     |
+| `performance-contracts`                | `supervisor-idle-cpu` decides `inconclusive_blocking`. **Methodology defect, not a budget breach** — see the correction below.                                              | Open. Needs a decision on how an absolute idle budget over a sparse counter is decided; do not "fix" it by dropping the CPU contract. |
 
 ---
 
@@ -52,11 +53,48 @@ breach was an eager engine import". In short:
   boots — ~34% headroom**, spread down from 8.4 MiB to 0.6 MiB.
 
 **05's documented budget stands unchanged — no spec amendment, so no owner decision was
-needed.** The contract now passes on merit.
+needed.** The RSS contract now passes on merit: `supervisor-idle-rss` scores `pass` at a 66.1 MiB
+mean against the 104,857,600-byte budget, with a bootstrap noise bound of **0.00%**.
 
 Two non-blocking notes carried into the remediation plan: the Node `>=24` floor alone eats 41%
 of the budget, and two zod majors (v3 hoisted, v4 under `engine-claude`) both load once the
 engine does.
+
+### CORRECTION — `performance-contracts` still FAILs, on its CPU half
+
+An earlier draft of this file recorded 12 PASS / 3 FAIL with `performance-contracts` green. That
+does not reproduce. Re-measured three consecutive times at `a1ae9cc` on a verified-quiet host
+(load/core 0.01–0.02, 98.6–98.7% idle), the item FAILs every time, and the RSS fix above is not
+what is wrong with it:
+
+| Contract              | Outcome                 | Mean                 | Budget    | Noise bound |
+| --------------------- | ----------------------- | -------------------- | --------- | ----------- |
+| `supervisor-idle-rss` | `pass`                  | 66.1 MiB             | 100 MiB   | 0.00%       |
+| `supervisor-idle-cpu` | `inconclusive_blocking` | 0.00233 (0.23% core) | 0.01 (1%) | **100.00%** |
+
+**Both budgets are genuinely met.** The daemon idles at 0.23% of a core against a 1% budget. The
+gate cannot say so because of how the series is shaped, not how big it is: an idle daemon's
+CPU-tick series over a ~17 s window is 16 zero samples and one 0.0397 blip (the 5 s heartbeat
+firing once). `computeNoiseBoundPct` bootstraps a **relative** delta of the resampled mean, which
+against a 94%-zero series saturates at 100% — far past
+`CRITICAL_PATH_INCONCLUSIVE_NOISE_THRESHOLD_PCT` (15), so `decide()` returns
+`inconclusive_blocking` before the absolute-budget comparison is ever reported. The RSS series is
+smooth, so the same machinery scores it cleanly.
+
+Two structural points about this seam, worth having before anyone changes it:
+
+- `decideReleaseContracts` passes `baseSamples === candidateSamples`, so `regressionPct` is
+  identically 0 and the entire A/B apparatus is inert here. `decide()` is built for twin-worktree
+  benchmark comparison; this contract is an **absolute idle budget over a sparse counter**, which
+  is a different question wearing the same interface.
+- The check's own detail line reports `observed max`, while `decide()` acts on the **mean**. That
+  is why the line reads "observed max 0.0398 against budget 0.01" and yet no absolute-budget
+  breach fired — they are two different statistics. Reporting one and deciding on the other is
+  its own defect, independent of the noise problem.
+
+Deliberately **not** fixed here: dropping the CPU contract, widening the noise threshold, or
+switching `pathSensitivity` off `critical` would each manufacture a green gate, and the remedy is
+a design decision about what statistic an absolute idle budget should be decided on.
 
 ---
 
