@@ -87,6 +87,20 @@ function defaultReleaseDate(): string {
 }
 
 /**
+ * The exact sentence `draftChangelog` emits when there was nothing to
+ * draft FROM. Exported (rather than hand-retyped at the call site) so
+ * `releaseGateSummary`'s scoring of the prepared draft cannot silently
+ * drift from the text this module actually produces.
+ */
+export const CHANGELOG_PLACEHOLDER_MARKER =
+  "_No `.changeset/*.md` entries were recorded at draft time";
+
+/** `true` iff `draft` is the header-only placeholder — i.e. no reviewed change notes back this release. */
+export function isPlaceholderChangelogDraft(draft: string): boolean {
+  return draft.includes(CHANGELOG_PLACEHOLDER_MARKER);
+}
+
+/**
  * Synthesizes a `CHANGELOG.md`-style v1.0.0 draft as a plain string —
  * never written to any file by this function. When `entries` is empty
  * (this repo's own current, real state — zero `.changeset/*.md` files
@@ -99,7 +113,7 @@ export function draftChangelog(options: DraftChangelogOptions): string {
   if (options.entries.length === 0) {
     return (
       `${header}\n\n` +
-      "_No `.changeset/*.md` entries were recorded at draft time — this is a header-only " +
+      `${CHANGELOG_PLACEHOLDER_MARKER} — this is a header-only ` +
       "placeholder. Author real changesets (`npx changeset add`) before the actual v1.0.0 cut so " +
       "this section reflects real, reviewed change notes._\n"
     );

@@ -12,9 +12,17 @@ import { RealPackRunner, SequentialFakePackRunner, type PackRunner } from "./pac
 import {
   checkReproducibleBuild,
   createCopyCurrentDistPopulator,
+  type BuildOutputPopulator,
 } from "./reproducibleBuildCheck.js";
 
 const execFileAsync = promisify(execFile);
+
+const NOOP_POPULATOR: BuildOutputPopulator = {
+  rebuildsFromCleanCheckout: false,
+  populate: async () => {
+    // no build output needed for the fixture-driven cases
+  },
+};
 
 describe("checkReproducibleBuild — unit (fake exporter + fake pack runner)", () => {
   it("reports match:true for two exports of the identical fixture commit, packed to identical content", async () => {
@@ -31,9 +39,7 @@ describe("checkReproducibleBuild — unit (fake exporter + fake pack runner)", (
       packRunner,
       commitIsh: "c1",
       packageSubPath: "sub",
-      populateBuildOutput: async () => {
-        // no build output needed for this fixture
-      },
+      populateBuildOutput: NOOP_POPULATOR,
     });
 
     expect(result.comparison.match).toBe(true);
@@ -53,10 +59,67 @@ describe("checkReproducibleBuild — unit (fake exporter + fake pack runner)", (
       packRunner,
       commitIsh: "c1",
       packageSubPath: "sub",
-      populateBuildOutput: async () => {},
+      populateBuildOutput: NOOP_POPULATOR,
     });
 
     expect(result.comparison.match).toBe(false);
+  });
+
+  it("exports the WHOLE repository (no subPath) and packs from <checkout>/<packageSubPath>", async () => {
+    const exporter = new FakeCheckoutExporter(new Map([["c1", { "a.txt": "x" }]]));
+    const requestedSubPaths: (string | undefined)[] = [];
+    const packedDirs: string[] = [];
+    const recordingExporter: CheckoutExporter = {
+      exportCheckout: async (commitIsh, subPath) => {
+        requestedSubPaths.push(subPath);
+        return exporter.exportCheckout(commitIsh, subPath);
+      },
+      cleanup: (dir) => exporter.cleanup(dir),
+    };
+    const packRunner: PackRunner = {
+      pack: async (packageDir, destDir) => {
+        packedDirs.push(packageDir);
+        return new SequentialFakePackRunner([Buffer.from("same")]).pack(packageDir, destDir);
+      },
+    };
+
+    await checkReproducibleBuild({
+      exporter: recordingExporter,
+      packRunner,
+      commitIsh: "c1",
+      packageSubPath: "packages/cli",
+      populateBuildOutput: NOOP_POPULATOR,
+    });
+
+    expect(requestedSubPaths).toEqual([undefined, undefined]);
+    expect(packedDirs.every((dir) => dir.endsWith(join("packages", "cli")))).toBe(true);
+  });
+
+  it("records whether the checkouts were genuinely REBUILT or merely populated from the current dist/", async () => {
+    const exporter = new FakeCheckoutExporter(new Map([["c1", { "a.txt": "x" }]]));
+    const packRunner = new SequentialFakePackRunner([Buffer.from("same"), Buffer.from("same")]);
+    const rebuilding: BuildOutputPopulator = {
+      rebuildsFromCleanCheckout: true,
+      populate: async () => {},
+    };
+
+    const copied = await checkReproducibleBuild({
+      exporter,
+      packRunner: new SequentialFakePackRunner([Buffer.from("same"), Buffer.from("same")]),
+      commitIsh: "c1",
+      packageSubPath: "sub",
+      populateBuildOutput: NOOP_POPULATOR,
+    });
+    const rebuilt = await checkReproducibleBuild({
+      exporter,
+      packRunner,
+      commitIsh: "c1",
+      packageSubPath: "sub",
+      populateBuildOutput: rebuilding,
+    });
+
+    expect(copied.rebuiltFromCleanCheckout).toBe(false);
+    expect(rebuilt.rebuiltFromCleanCheckout).toBe(true);
   });
 
   it("cleans up both exported directories even when packing throws", async () => {
@@ -83,7 +146,7 @@ describe("checkReproducibleBuild — unit (fake exporter + fake pack runner)", (
         packRunner: failingPackRunner,
         commitIsh: "c1",
         packageSubPath: "sub",
-        populateBuildOutput: async () => {},
+        populateBuildOutput: NOOP_POPULATOR,
       }),
     ).rejects.toThrow("simulated pack failure");
     expect(cleanedUp).toHaveLength(2);
@@ -91,7 +154,7 @@ describe("checkReproducibleBuild — unit (fake exporter + fake pack runner)", (
 });
 
 describe("createCopyCurrentDistPopulator — unit", () => {
-  it("copies the given dist directory's contents into <checkoutDir>/dist", async () => {
+  it("copies the given dist directory's contents into <checkoutDir>/<packageSubPath>/dist", async () => {
     const os = await import("node:os");
     const fsp = await import("node:fs/promises");
     const sourceRoot = await fsp.mkdtemp(join(os.tmpdir(), "eo-populator-source-"));
@@ -100,10 +163,11 @@ describe("createCopyCurrentDistPopulator — unit", () => {
       await fsp.mkdir(join(sourceRoot, "pkg", "dist"), { recursive: true });
       await writeFile(join(sourceRoot, "pkg", "dist", "index.js"), "export {};");
 
-      const populate = createCopyCurrentDistPopulator(sourceRoot, "pkg");
-      await populate(checkoutDir);
+      const populator = createCopyCurrentDistPopulator(sourceRoot, "pkg");
+      expect(populator.rebuildsFromCleanCheckout).toBe(false);
+      await populator.populate(checkoutDir);
 
-      const copied = await readFile(join(checkoutDir, "dist", "index.js"), "utf8");
+      const copied = await readFile(join(checkoutDir, "pkg", "dist", "index.js"), "utf8");
       expect(copied).toBe("export {};");
     } finally {
       await rm(sourceRoot, { recursive: true, force: true });
@@ -133,7 +197,9 @@ describe("checkReproducibleBuild — genuine integration (real git archive, real
     expect(result.comparison.match).toBe(true);
     expect(result.packA.name).toBe("engineering-orchestrator");
     expect(result.packB.name).toBe("engineering-orchestrator");
-  }, 30_000);
+    // The honest qualifier this result now carries: nothing was rebuilt.
+    expect(result.rebuiltFromCleanCheckout).toBe(false);
+  }, 60_000);
 
   it("FAIL-FIRST PROOF, real end to end: perturbing one checkout's copied dist by one byte after populateBuildOutput fails the real comparator", async () => {
     const { stdout: repoRootRaw } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
@@ -141,30 +207,32 @@ describe("checkReproducibleBuild — genuine integration (real git archive, real
     });
     const repoRoot = repoRootRaw.trim();
     const exporter = new GitArchiveExporter({ repoRoot });
-    const packRunner = new RealPackRunner();
-    const realPopulate = createCopyCurrentDistPopulator(repoRoot, "packages/cli");
+    const realPopulator = createCopyCurrentDistPopulator(repoRoot, "packages/cli");
 
     let checkoutCount = 0;
-    const perturbingPopulate = async (checkoutDir: string): Promise<void> => {
-      await realPopulate(checkoutDir);
-      checkoutCount += 1;
-      if (checkoutCount === 2) {
-        // Perturb only the SECOND checkout — simulates a genuine
-        // from-clean-checkout drift.
-        const target = join(checkoutDir, "dist", "index.js");
-        const existing = await readFile(target, "utf8").catch(() => "");
-        await writeFile(target, `${existing}\n// perturbed\n`);
-      }
+    const perturbingPopulator: BuildOutputPopulator = {
+      rebuildsFromCleanCheckout: false,
+      populate: async (checkoutDir: string): Promise<void> => {
+        await realPopulator.populate(checkoutDir);
+        checkoutCount += 1;
+        if (checkoutCount === 2) {
+          // Perturb only the SECOND checkout — simulates a genuine
+          // from-clean-checkout drift.
+          const target = join(checkoutDir, "packages", "cli", "dist", "index.js");
+          const existing = await readFile(target, "utf8").catch(() => "");
+          await writeFile(target, `${existing}\n// perturbed\n`);
+        }
+      },
     };
 
     const result = await checkReproducibleBuild({
       exporter,
-      packRunner,
+      packRunner: new RealPackRunner(),
       commitIsh: "HEAD",
       packageSubPath: "packages/cli",
-      populateBuildOutput: perturbingPopulate,
+      populateBuildOutput: perturbingPopulator,
     });
 
     expect(result.comparison.match).toBe(false);
-  }, 30_000);
+  }, 60_000);
 });

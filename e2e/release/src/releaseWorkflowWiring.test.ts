@@ -1,0 +1,145 @@
+import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import { beforeAll, describe, expect, it } from "vitest";
+import { REBUILD_CHECKOUTS_ENV_VAR } from "./rebuildPopulator.js";
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * Producer/consumer binding for the rebuild flag.
+ *
+ * `resolveBuildOutputPopulator` only ever selects the REBUILDING populator
+ * when `EO_RELEASE_REBUILD_CHECKOUTS=1` is present in the environment. A
+ * flag no workflow sets is unreachable code, and the reproducible-build
+ * exit criterion's first clause ("two independent from-clean-checkout
+ * BUILDS") could then never be satisfied in ANY CI configuration — the
+ * gate would emit its "rebuild leg did not run" reason forever, which is
+ * honest but permanently unclearable.
+ *
+ * `.github/workflows/release-e2e.yml` is the single leg with network (it
+ * runs `npm ci` itself), so it is the one place the flag belongs. This
+ * test reads the REAL workflow file — not a fixture — so the flag's
+ * producer (the workflow) and its consumer (`rebuildPopulator.ts`) cannot
+ * drift apart with every test still green. It also asserts the env-var
+ * NAME against the exported constant rather than a second copy of the
+ * string literal.
+ */
+
+let repoRoot: string;
+let workflow: string;
+
+beforeAll(async () => {
+  repoRoot = (
+    await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
+  ).stdout.trim();
+  workflow = readFileSync(join(repoRoot, ".github", "workflows", "release-e2e.yml"), "utf8");
+});
+
+/**
+ * Splits the `steps:` sequence into one text block per step. Steps in this
+ * workflow are list items at indent 6 (`      - `); everything indented
+ * further, plus blank lines, belongs to the step that opened the block.
+ * Deliberately hand-rolled: this repo has no YAML dependency, and adding
+ * one to assert two lines of CI wiring is not worth the supply-chain
+ * surface.
+ */
+function stepBlocks(yaml: string): readonly string[] {
+  const blocks: string[][] = [];
+  let current: string[] | undefined;
+  for (const line of yaml.split("\n")) {
+    if (/^ {6}- /.test(line)) {
+      current = [line];
+      blocks.push(current);
+      continue;
+    }
+    if (current === undefined) continue;
+    if (line.trim() === "" || /^ {8}/.test(line)) current.push(line);
+    else current = undefined;
+  }
+  return blocks.map((lines) => lines.join("\n"));
+}
+
+describe("release-e2e.yml wires the rebuild flag it is the only consumer of", () => {
+  it("has exactly one step that runs the e2e harnesses", () => {
+    const running = stepBlocks(workflow).filter((block) => block.includes("npm run test:e2e"));
+    expect(running).toHaveLength(1);
+  });
+
+  it(`sets ${REBUILD_CHECKOUTS_ENV_VAR}="1" on that step, so the rebuilding populator is reachable`, () => {
+    const [step] = stepBlocks(workflow).filter((block) => block.includes("npm run test:e2e"));
+    expect(step).toBeDefined();
+    expect(step).toMatch(/^ {8}env:$/m);
+    expect(step).toMatch(new RegExp(`^ {10}${REBUILD_CHECKOUTS_ENV_VAR}: "1"$`, "m"));
+  });
+
+  it("does not set the flag anywhere else — no other leg has network for `npm ci`", () => {
+    // Counts real YAML ASSIGNMENTS (`NAME: …` at some indent), not prose
+    // mentions: a `#` comment line can never match, because `#` is the
+    // first non-space character on it.
+    const assignments = workflow
+      .split("\n")
+      .filter((line) => new RegExp(`^\\s*${REBUILD_CHECKOUTS_ENV_VAR}:`).test(line));
+    expect(assignments).toHaveLength(1);
+  });
+
+  it("budgets enough job time for two real `npm ci` + `tsc -b` rebuilds", () => {
+    const match = /^ {4}timeout-minutes: (\d+)$/m.exec(workflow);
+    expect(match).not.toBeNull();
+    // Measured on a WARM local npm cache: ~7.5s `npm ci` + ~14.0s `tsc -b`
+    // per checkout, two checkouts populated SEQUENTIALLY, i.e. ~46s for the
+    // rebuild leg alone. A cold CI cache is far slower, and this budget
+    // also has to cover `npm ci` + `npm run build` + every other harness in
+    // `npm run test:e2e`. 30 minutes was set before the rebuild leg existed.
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(60);
+  });
+});
+
+/**
+ * THE RELEASE CANDIDATE MUST BE RESOLVED ONCE, IN A STEP — NOT READ RAW
+ * FROM THE WORKFLOW INPUT.
+ *
+ * `release_candidate_object_id` is an OPTIONAL `workflow_dispatch` input,
+ * and a GitHub Actions `${{ inputs.<omitted-optional> }}` expression
+ * renders as the EMPTY STRING rather than as an absent variable. Wiring it
+ * straight into `EO_RELEASE_CANDIDATE_OBJECT_ID` therefore hands every
+ * consumer a present-but-empty variable: `e2e/report/src/cli.ts`'s fallback
+ * chain sees `""`, the generator scores all 15 checklist items against
+ * object ID `""` and links zero evidence, and `ReleaseGateReportSchema`'s
+ * `min(1)` then aborts the generator step outright.
+ *
+ * These assertions are structural on purpose. A whole-file `toContain`
+ * cannot distinguish the wiring from the workflow's own prose about the
+ * wiring, and a guard that a revert leaves green is not a guard.
+ */
+describe("release-e2e.yml resolves the release candidate once, in a step", () => {
+  it("never wires the raw workflow input into the object-ID env var", () => {
+    expect(workflow).not.toMatch(/EO_RELEASE_CANDIDATE_OBJECT_ID: \$\{\{ inputs\./);
+  });
+
+  it("has a `release-candidate` step that writes `object_id` to $GITHUB_OUTPUT", () => {
+    const [resolver] = stepBlocks(workflow).filter((block) =>
+      /^ {8}id: release-candidate$/m.test(block),
+    );
+    expect(resolver).toBeDefined();
+    expect(resolver).toMatch(/echo "object_id=\$OBJECT_ID" >> "\$GITHUB_OUTPUT"/);
+    // Both halves of the fallback live in that step: an explicitly supplied
+    // ref is verified as a real commit, an omitted one becomes HEAD.
+    expect(resolver).toContain("git rev-parse --verify");
+    expect(resolver).toContain("git rev-parse HEAD");
+  });
+
+  it("feeds BOTH consumers from that step's output, and from nothing else", () => {
+    // Counts real YAML ASSIGNMENTS (`NAME: …` at some indent), never prose:
+    // a `#` comment line cannot match, because `#` is its first non-space
+    // character. The two consumers are the harness step and the generator.
+    const assignments = workflow
+      .split("\n")
+      .filter((line) => /^\s*EO_RELEASE_CANDIDATE_OBJECT_ID: \S/.test(line));
+    expect(assignments).toHaveLength(2);
+    for (const line of assignments) {
+      expect(line).toContain("steps.release-candidate.outputs.object_id");
+    }
+  });
+});

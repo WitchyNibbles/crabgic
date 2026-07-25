@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { ENABLED_PLUGIN_KEY } from "./enabled-plugin-key.js";
 import { PLUGIN_CAPABILITY_NAME } from "./capability-entry.js";
 import { MARKETPLACE_NAME } from "./marketplace-schema.js";
-import { loadMarketplace } from "./marketplace-schema.js";
+// Identity-only read: this repo's committed marketplace.json is not yet
+// pinned at a release commit (its `commit` is the all-zero placeholder), so
+// strict `loadMarketplace` rightly refuses it — see
+// `marketplace-schema.test.ts`. These NAME-freshness assertions are
+// unrelated to pinning.
+import { loadUnpinnedMarketplace } from "./marketplace-schema.js";
 import { resolvePluginRoot } from "./plugin-root.js";
 
 describe("ENABLED_PLUGIN_KEY — live-verified against a real claude 2.1.218 binary", () => {
@@ -17,12 +22,12 @@ describe("ENABLED_PLUGIN_KEY — live-verified against a real claude 2.1.218 bin
   });
 
   it("MARKETPLACE_NAME matches this package's own real, committed marketplace.json name field (freshness)", () => {
-    const marketplace = loadMarketplace(resolvePluginRoot());
+    const marketplace = loadUnpinnedMarketplace(resolvePluginRoot());
     expect(MARKETPLACE_NAME).toBe(marketplace.name);
   });
 
   it("PLUGIN_CAPABILITY_NAME matches the real marketplace.json's plugin entry name (freshness)", () => {
-    const marketplace = loadMarketplace(resolvePluginRoot());
+    const marketplace = loadUnpinnedMarketplace(resolvePluginRoot());
     expect(PLUGIN_CAPABILITY_NAME).toBe(marketplace.plugins[0]!.name);
   });
 });

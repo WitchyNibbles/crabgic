@@ -78,6 +78,37 @@ describe("GitArchiveExporter — genuine integration (real git archive + tar, th
     }
   });
 
+  it("exports the WHOLE repository — a buildable tree — when no subPath is given", async () => {
+    const { stdout: repoRootRaw } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: import.meta.dirname,
+    });
+    const repoRoot = repoRootRaw.trim();
+    const exporter = new GitArchiveExporter({ repoRoot });
+    const dir = await exporter.exportCheckout("HEAD");
+    try {
+      // The three things a `npm ci && npm run build` in this export needs,
+      // and which a `HEAD:packages/cli` sub-path export never contained:
+      // the workspace root manifest, the lockfile, and the sibling
+      // workspaces the CLI's own build depends on.
+      const rootManifest = JSON.parse(await readFile(join(dir, "package.json"), "utf8")) as {
+        readonly workspaces?: readonly string[];
+      };
+      expect(rootManifest.workspaces).toBeDefined();
+      await expect(readFile(join(dir, "package-lock.json"), "utf8")).resolves.toContain(
+        "lockfileVersion",
+      );
+      await expect(readFile(join(dir, "tsconfig.base.json"), "utf8")).resolves.toContain(
+        "compilerOptions",
+      );
+      const cliManifest = JSON.parse(
+        await readFile(join(dir, "packages", "cli", "package.json"), "utf8"),
+      ) as { readonly name: string };
+      expect(cliManifest.name).toBe("engineering-orchestrator");
+    } finally {
+      await exporter.cleanup(dir);
+    }
+  }, 30_000);
+
   it("two independent exports of the identical commit-ish produce byte-identical committed content", async () => {
     const { stdout: repoRootRaw } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
       cwd: import.meta.dirname,

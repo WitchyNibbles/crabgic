@@ -27,7 +27,7 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 
-async function seedUnpinnedMarketplace(pluginSourceDir: string): Promise<void> {
+async function seedMarketplace(pluginSourceDir: string, commit: string): Promise<void> {
   await mkdir(join(pluginSourceDir, ".claude-plugin"), { recursive: true });
   await writeFile(
     join(pluginSourceDir, ".claude-plugin", "marketplace.json"),
@@ -43,7 +43,7 @@ async function seedUnpinnedMarketplace(pluginSourceDir: string): Promise<void> {
           description: "d",
           version: "0.0.0",
           license: "Apache-2.0",
-          commit: "main", // unpinned branch ref — the seeded fault
+          commit,
           digest: "irrelevant",
         },
       ],
@@ -56,7 +56,7 @@ describe("doctor.plugin-faults.test — all three seeded faults are reported wit
   it("reports drift, an unpinned plugin source, and a stale CapabilityManifest digest simultaneously", async () => {
     const targetDir = await makeTmpDir();
     const pluginSourceDir = await makeTmpDir();
-    await seedUnpinnedMarketplace(pluginSourceDir);
+    await seedMarketplace(pluginSourceDir, "main"); // unpinned branch ref — the seeded fault
 
     // Seed drift: a tracked artifact whose on-disk content no longer
     // matches its recorded checksum.
@@ -103,7 +103,15 @@ describe("doctor.plugin-faults.test — all three seeded faults are reported wit
 
   it("reports all-clear when none of the three faults are present", async () => {
     const targetDir = await makeTmpDir();
-    const pluginSourceDir = new URL("../../../plugin", import.meta.url).pathname;
+    // A SEEDED, genuinely SHA-pinned plugin source. This deliberately no
+    // longer points at the real `packages/plugin` directory: that listing's
+    // `commit` is still git's all-zero null object ID (an unpinned
+    // placeholder), which `MarketplaceSchema` now rejects — so the real
+    // directory does have a fault today, and asserting otherwise here would
+    // restate the falsehood `packages/plugin/src/marketplace-schema.test.ts`
+    // was just corrected for. The fault-free case is what this test is for.
+    const pluginSourceDir = await makeTmpDir();
+    await seedMarketplace(pluginSourceDir, "a".repeat(40));
 
     const checks = [
       createChecksumDriftCheck({ targetDir }),
@@ -113,5 +121,30 @@ describe("doctor.plugin-faults.test — all three seeded faults are reported wit
     const report = await runDoctorChecks(checks);
     expect(report.allPassed).toBe(true);
     expect(buildRepairPlan(report)).toEqual([]);
+  });
+
+  it("runs the FULL check set against the REAL packages/plugin source and reports exactly one fault: the unpinned entry", async () => {
+    // The seeded all-clear case above keeps the fault-free shape under test,
+    // but it stopped exercising the real, shipped plugin source. This case
+    // puts it back, and pins the whole verdict rather than one check's:
+    // today the real directory has EXACTLY ONE fault — its marketplace entry
+    // is still git's all-zero null object ID — and the other two checks pass
+    // against it. When the owner pins the entry at the release commit this
+    // test flips to all-clear by DELETING nothing: the expectations below
+    // describe the fault, so the assertion that must then change is the one
+    // that names it, which is the point.
+    const targetDir = await makeTmpDir();
+    const realPluginSourceDir = new URL("../../../plugin", import.meta.url).pathname;
+
+    const report = await runDoctorChecks([
+      createChecksumDriftCheck({ targetDir }),
+      createPluginTrustPinCheck({ pluginSourceDir: realPluginSourceDir }),
+      createCapabilityManifestFreshnessCheck({ targetDir, pluginSourceDir: realPluginSourceDir }),
+    ]);
+
+    expect(report.allPassed).toBe(false);
+    const failed = report.findings.filter((f) => !f.passed).map((f) => f.id);
+    expect(failed).toEqual(["installer.plugin-trust-pin"]);
+    expect(buildRepairPlan(report)).toHaveLength(1);
   });
 });

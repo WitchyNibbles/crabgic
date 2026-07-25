@@ -13,7 +13,12 @@ import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { computeContentDigest, loadMarketplace } from "@eo/plugin";
+// Identity-only read (`loadUnpinnedMarketplace`): the DIGEST assertions
+// below are independent of the release `commit` pin, and this repo's
+// committed listing still carries the all-zero placeholder, which strict
+// `loadMarketplace` now refuses (see packages/plugin's
+// `marketplace-schema.test.ts`).
+import { computeContentDigest, loadUnpinnedMarketplace } from "@eo/plugin";
 
 const PLUGIN_ROOT = new URL("../../../plugin", import.meta.url).pathname;
 
@@ -36,13 +41,13 @@ describe("vendored-install.digest.test", () => {
     await cp(PLUGIN_ROOT, vendoredDir, { recursive: true });
 
     const vendoredDigest = computeContentDigest(vendoredDir);
-    const marketplace = loadMarketplace(PLUGIN_ROOT);
+    const marketplace = loadUnpinnedMarketplace(PLUGIN_ROOT);
 
     expect(vendoredDigest).toBe(marketplace.plugins[0]!.digest);
   });
 
   it("the marketplace listing's own recorded digest matches a fresh recomputation from the source plugin directory itself (freshness)", () => {
-    const marketplace = loadMarketplace(PLUGIN_ROOT);
+    const marketplace = loadUnpinnedMarketplace(PLUGIN_ROOT);
     expect(marketplace.plugins[0]!.digest).toBe(computeContentDigest(PLUGIN_ROOT));
   });
 });

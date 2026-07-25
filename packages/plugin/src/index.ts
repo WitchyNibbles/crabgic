@@ -24,12 +24,16 @@ export {
 } from "./capability-entry.js";
 export {
   loadMarketplace,
+  loadUnpinnedMarketplace,
   readMarketplaceJson,
   MarketplaceSchema,
   MarketplacePluginEntrySchema,
+  UnpinnedMarketplaceSchema,
   MARKETPLACE_NAME,
+  NULL_GIT_OBJECT_ID,
   type Marketplace,
   type MarketplacePluginEntry,
+  type UnpinnedMarketplace,
 } from "./marketplace-schema.js";
 export {
   validateHooksManifest,

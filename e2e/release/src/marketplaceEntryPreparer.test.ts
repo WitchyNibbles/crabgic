@@ -34,10 +34,20 @@ const FIXTURE_MARKETPLACE = {
       description: "a fixture plugin",
       version: "0.0.0",
       license: "Apache-2.0",
+      // Deliberately the all-zero PLACEHOLDER — this repo's own committed
+      // marketplace.json state. The preparer must read it as a template
+      // (identity fields only) and compute the real `commit` itself, rather
+      // than throwing out of the middle of a gate run.
       commit: "0000000000000000000000000000000000000000",
       digest: "placeholder",
     },
   ],
+};
+
+/** The same fixture with a genuine pin — `renderPreparedMarketplace` re-validates STRICTLY, as a rendered release listing must. */
+const PINNED_FIXTURE_MARKETPLACE = {
+  ...FIXTURE_MARKETPLACE,
+  plugins: [{ ...FIXTURE_MARKETPLACE.plugins[0], commit: "d".repeat(40) }],
 };
 
 describe("prepareMarketplaceEntry — unit (fixture plugin root + injected gitRevParse)", () => {
@@ -99,7 +109,7 @@ describe("prepareMarketplaceEntry — unit (fixture plugin root + injected gitRe
 
 describe("renderPreparedMarketplace", () => {
   it("substitutes the prepared entry in for the matching-by-name existing entry, leaving other fields untouched", () => {
-    const existing = MarketplaceSchema.parse(FIXTURE_MARKETPLACE);
+    const existing = MarketplaceSchema.parse(PINNED_FIXTURE_MARKETPLACE);
     const prepared = {
       ...existing.plugins[0]!,
       version: "1.0.0",

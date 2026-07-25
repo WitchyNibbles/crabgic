@@ -14,8 +14,22 @@ import { dirname, join } from "node:path";
  * own genuine integration test.
  */
 export interface CheckoutExporter {
-  /** Exports the committed tree at `commitIsh:subPath` into a FRESH, independent directory (never the same directory twice) and returns its path. */
-  exportCheckout(commitIsh: string, subPath: string): Promise<string>;
+  /**
+   * Exports a committed tree into a FRESH, independent directory (never
+   * the same directory twice) and returns its path.
+   *
+   * With no `subPath` the export is the WHOLE repository at `commitIsh` —
+   * root manifest, lockfile, `tsconfig.base.json` and every workspace —
+   * i.e. a tree an `npm ci && npm run build` can actually run in. That is
+   * what the reproducible-build comparator needs: a
+   * `<commitIsh>:packages/cli` export contains one package's source with
+   * no lockfile and no sibling workspaces, so nothing can be built from
+   * it. `subPath` narrows the export to `commitIsh:subPath` for callers
+   * that only need to READ one package's committed files (the SDK-pin
+   * cross-check reads a single `package.json`), where exporting 11 MB per
+   * checkout would buy nothing.
+   */
+  exportCheckout(commitIsh: string, subPath?: string): Promise<string>;
   /** Removes a directory this exporter previously returned. Safe to call more than once. */
   cleanup(exportedDir: string): Promise<void>;
 }
@@ -29,7 +43,7 @@ export interface GitArchiveExporterOptions {
 }
 
 /**
- * Real `CheckoutExporter`: `git archive <commitIsh>:<subPath> | tar -x`,
+ * Real `CheckoutExporter`: `git archive <commitIsh>[:<subPath>] | tar -x`,
  * piped without a shell, into a fresh `os.tmpdir()` scratch directory. Two
  * calls with the same `commitIsh`/`subPath` always extract byte-identical
  * committed content into two INDEPENDENT directories — exactly "two
@@ -40,14 +54,14 @@ export interface GitArchiveExporterOptions {
 export class GitArchiveExporter implements CheckoutExporter {
   constructor(private readonly options: GitArchiveExporterOptions) {}
 
-  async exportCheckout(commitIsh: string, subPath: string): Promise<string> {
+  async exportCheckout(commitIsh: string, subPath?: string): Promise<string> {
     const destDir = await mkdtemp(join(tmpdir(), "eo-release-checkout-"));
+    const treeIsh = subPath === undefined ? commitIsh : `${commitIsh}:${subPath}`;
     await new Promise<void>((resolve, reject) => {
-      const archive = spawn(
-        this.options.gitBinary ?? "git",
-        ["archive", "--format=tar", `${commitIsh}:${subPath}`],
-        { cwd: this.options.repoRoot, stdio: ["ignore", "pipe", "pipe"] },
-      );
+      const archive = spawn(this.options.gitBinary ?? "git", ["archive", "--format=tar", treeIsh], {
+        cwd: this.options.repoRoot,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
       const extract = spawn(this.options.tarBinary ?? "tar", ["-x", "-C", destDir], {
         stdio: ["pipe", "ignore", "pipe"],
       });
@@ -125,7 +139,7 @@ export class FakeCheckoutExporter implements CheckoutExporter {
     private readonly filesByCommit: ReadonlyMap<string, Readonly<Record<string, string>>>,
   ) {}
 
-  async exportCheckout(commitIsh: string, _subPath: string): Promise<string> {
+  async exportCheckout(commitIsh: string, _subPath?: string): Promise<string> {
     const files = this.filesByCommit.get(commitIsh);
     if (files === undefined) {
       throw new Error(

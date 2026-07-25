@@ -6,6 +6,7 @@ import {
   computeContentDigest,
   MarketplacePluginEntrySchema,
   MarketplaceSchema,
+  UnpinnedMarketplaceSchema,
   type Marketplace,
   type MarketplacePluginEntry,
 } from "@eo/plugin";
@@ -60,7 +61,15 @@ export async function prepareMarketplaceEntry(
     join(options.pluginRoot, ".claude-plugin", "marketplace.json"),
     "utf8",
   );
-  const existing = MarketplaceSchema.parse(JSON.parse(existingRaw));
+  // TEMPLATE read, so `UnpinnedMarketplaceSchema` rather than the strict
+  // `MarketplaceSchema`: this preparer takes only the fields it does not
+  // recompute (name/source/description/license) from the committed file and
+  // then computes `commit` itself from git. Parsing strictly here would
+  // make an un-pinned committed listing — exactly this repo's own state,
+  // and the very fact `marketplacePinCheck.ts` exists to REPORT — throw out
+  // of the middle of the gate run, turning an honest FAIL into a hard
+  // ERROR. The PREPARED entry is still validated strictly below.
+  const existing = UnpinnedMarketplaceSchema.parse(JSON.parse(existingRaw));
   // `MarketplaceSchema` itself enforces `plugins.length >= 1`
   // (`z.array(...).min(1)`), so `existing.plugins[0]` having just passed
   // schema validation guarantees this is defined — the non-null assertion

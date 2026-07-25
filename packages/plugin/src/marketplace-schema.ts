@@ -13,6 +13,25 @@ import { z } from "zod";
 const FULL_GIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
 
 /**
+ * Git's null object ID — 40 hex zeros. It matches `FULL_GIT_SHA_PATTERN`
+ * exactly, yet by definition names no object in any repository, so an
+ * entry carrying it is an UNPINNED placeholder wearing a pin's shape. It
+ * is rejected explicitly below (and named in the message) so a listing
+ * that has never been cut at a real release commit can never be reported
+ * as "SHA-pinned" — the precise falsehood a regex-only check let through.
+ */
+export const NULL_GIT_OBJECT_ID = "0".repeat(40);
+
+const CommitPinSchema = z
+  .string()
+  .regex(FULL_GIT_SHA_PATTERN, "commit must be a full 40-hex-char git SHA, not a branch/tag ref")
+  .refine((commit) => commit !== NULL_GIT_OBJECT_ID, {
+    message:
+      "commit is the all-zero placeholder (git's null object ID) — it resolves to no commit in " +
+      "any repository, so the entry is NOT SHA-pinned; pin it to the real release commit",
+  });
+
+/**
  * This marketplace's own `name` field, byte-identical to
  * `.claude-plugin/marketplace.json`'s top-level `name` — the sole
  * definition site; `./enabled-plugin-key.ts` composes the real
@@ -22,36 +41,70 @@ const FULL_GIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
  */
 export const MARKETPLACE_NAME = "engineering-orchestrator-marketplace" as const;
 
+/** Every plugin-entry field except `commit`, whose strictness is the one thing the two entry schemas below differ on. */
+const pluginEntryCommonShape = {
+  name: z.string().min(1),
+  source: z.string().min(1),
+  description: z.string().min(1),
+  version: z.string().min(1),
+  license: z.string().min(1),
+  /** Content digest (`./content-digest.ts`), cross-checked against a vendored `--plugin-dir` install at install time. */
+  digest: z.string().min(1),
+} as const;
+
 export const MarketplacePluginEntrySchema = z
   .object({
-    name: z.string().min(1),
-    source: z.string().min(1),
-    description: z.string().min(1),
-    version: z.string().min(1),
-    license: z.string().min(1),
-    /** Full 40-hex-char git commit SHA — a branch/tag ref (e.g. "main") is rejected, never an unpinned source. */
+    ...pluginEntryCommonShape,
+    /** Full 40-hex-char git commit SHA that is not the null object ID — a branch/tag ref (e.g. "main") and the all-zero placeholder are both rejected, never an unpinned source. */
+    commit: CommitPinSchema,
+  })
+  .strict();
+export type MarketplacePluginEntry = z.infer<typeof MarketplacePluginEntrySchema>;
+
+const UnpinnedPluginEntrySchema = z
+  .object({
+    ...pluginEntryCommonShape,
     commit: z
       .string()
       .regex(
         FULL_GIT_SHA_PATTERN,
         "commit must be a full 40-hex-char git SHA, not a branch/tag ref",
       ),
-    /** Content digest (`./content-digest.ts`), cross-checked against a vendored `--plugin-dir` install at install time. */
-    digest: z.string().min(1),
   })
   .strict();
-export type MarketplacePluginEntry = z.infer<typeof MarketplacePluginEntrySchema>;
+
+/** Every marketplace-level field except `plugins`, whose entry strictness is the one thing the two marketplace schemas below differ on. */
+const marketplaceCommonShape = {
+  $schema: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  owner: z.object({ name: z.string().min(1), email: z.string().min(1) }).strict(),
+} as const;
 
 export const MarketplaceSchema = z
-  .object({
-    $schema: z.string().min(1),
-    name: z.string().min(1),
-    description: z.string().min(1),
-    owner: z.object({ name: z.string().min(1), email: z.string().min(1) }).strict(),
-    plugins: z.array(MarketplacePluginEntrySchema).min(1),
-  })
+  .object({ ...marketplaceCommonShape, plugins: z.array(MarketplacePluginEntrySchema).min(1) })
   .strict();
 export type Marketplace = z.infer<typeof MarketplaceSchema>;
+
+/**
+ * IDENTITY-ONLY variant of `MarketplaceSchema`: structurally identical
+ * except that `commit` is allowed to be the all-zero placeholder. It
+ * exists for the narrow set of callers that need a listing's IDENTITY
+ * (marketplace `name`, plugin `name`, `digest`) out of a file that has not
+ * yet been pinned at a release commit — e.g. this package's own
+ * digest-freshness tests, and phase 23's marketplace-entry PREPARER, which
+ * reads the committed file only as a template and computes the real
+ * `commit` itself.
+ *
+ * NEVER use this to decide whether a plugin source is trustworthy or
+ * release-ready: that is `MarketplaceSchema`'s job, and it deliberately
+ * refuses the placeholder (see `NULL_GIT_OBJECT_ID`). A branch/tag ref is
+ * rejected here too — the leniency is scoped to the placeholder alone.
+ */
+export const UnpinnedMarketplaceSchema = z
+  .object({ ...marketplaceCommonShape, plugins: z.array(UnpinnedPluginEntrySchema).min(1) })
+  .strict();
+export type UnpinnedMarketplace = z.infer<typeof UnpinnedMarketplaceSchema>;
 
 /**
  * Reads and JSON-parses `<pluginRoot>/.claude-plugin/marketplace.json`
@@ -66,7 +119,12 @@ export function readMarketplaceJson(pluginRoot: string): unknown {
   return JSON.parse(raw);
 }
 
-/** Reads and schema-validates `<pluginRoot>/.claude-plugin/marketplace.json`. Throws (via `.parse`) on any schema violation — never silently coerces. */
+/** Reads and schema-validates `<pluginRoot>/.claude-plugin/marketplace.json`. Throws (via `.parse`) on any schema violation — including an entry left on the all-zero placeholder `commit`. Never silently coerces. */
 export function loadMarketplace(pluginRoot: string): Marketplace {
   return MarketplaceSchema.parse(readMarketplaceJson(pluginRoot));
+}
+
+/** Reads and validates `<pluginRoot>/.claude-plugin/marketplace.json` against `UnpinnedMarketplaceSchema` — see that schema's own doc comment for the narrow set of callers this is for, and why it is never a trust/readiness decision. */
+export function loadUnpinnedMarketplace(pluginRoot: string): UnpinnedMarketplace {
+  return UnpinnedMarketplaceSchema.parse(readMarketplaceJson(pluginRoot));
 }

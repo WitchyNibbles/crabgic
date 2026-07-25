@@ -68,9 +68,24 @@ describe("createPluginTrustPinCheck", () => {
     expect(finding.passed).toBe(false);
   });
 
-  it("this package's own real @eo/plugin marketplace.json passes", async () => {
+  it("fails a source pinned to the all-zero null object ID — a placeholder with a pin's shape", async () => {
+    const dir = await makeTmpDir();
+    await seedMarketplace(dir, [validEntry({ commit: "0".repeat(40) })]);
+    const finding = await createPluginTrustPinCheck({ pluginSourceDir: dir }).run();
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("all-zero placeholder");
+  });
+
+  // WAS: "this package's own real @eo/plugin marketplace.json passes".
+  // It does not, and never did in any meaningful sense: the committed entry
+  // carries git's all-zero null object ID, which the old regex-only pin
+  // check accepted. The listing has never been cut at a release commit, so
+  // the honest doctor verdict for this repo's own plugin source is a FAULT
+  // until the owner pins it.
+  it("this package's own real @eo/plugin marketplace.json FAILS today — its commit is still the unpinned placeholder", async () => {
     const pluginRoot = new URL("../../../../plugin", import.meta.url).pathname;
     const finding = await createPluginTrustPinCheck({ pluginSourceDir: pluginRoot }).run();
-    expect(finding.passed).toBe(true);
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("all-zero placeholder");
   });
 });
