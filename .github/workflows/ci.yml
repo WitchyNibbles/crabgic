@@ -77,11 +77,33 @@ jobs:
       #
       # `uname -m` is recorded rather than assumed: the record must prove
       # the leg genuinely ran on aarch64 hardware, not merely that a job
-      # named "arm" was scheduled. The step is skipped on the x86-64 leg,
-      # and `if: success()` means a record is only ever written for a leg
-      # whose build+test actually passed.
+      # named "arm" was scheduled. The step is skipped on the x86-64 leg.
+      #
+      # `conclusion` IS OBSERVED, NOT ASSERTED. This step used to be
+      # `if: success()` and write the literal `"conclusion": "success"`.
+      # That was technically true (the record only existed for a green leg)
+      # and useless: the field carried no information, and the consumer's
+      # "did not conclude success" branch in
+      # `e2e/attestation/src/arm64Verification.ts` was dead code that could
+      # never fire. It is now `if: always()` + `${{ job.status }}`, so the
+      # recorded conclusion is an OBSERVED value rather than a literal, and
+      # a red or cancelled ARM64 leg produces a record that SAYS SO.
+      #
+      # DO NOT READ THAT AS "and the gate then reports the red leg". It does
+      # not, on the only wired path. `release-e2e.yml`'s ingest step selects
+      # ci.yml runs with `status=success`, which is the WHOLE RUN's
+      # conclusion: a failing `ubuntu-24.04-arm` leg fails the `test` job
+      # (`fail-fast: false` does not change the job's conclusion), the run
+      # is excluded from the query, and the red leg's record is never
+      # downloaded. Through CI the gate therefore reports "no ARM64 CI run
+      # record was found for this candidate", NOT 'concluded "failure"'.
+      # The consumer's non-success branch is defence in depth: it fires only
+      # on a record hand-archived at `ARM64_RUN_RECORD_PATH` for post-hoc
+      # audit. `e2e/attestation/src/arm64Verification.test.ts` reads this
+      # heredoc out of this file and validates it against
+      # `Arm64RunRecordSchema`, so producer and consumer cannot drift.
       - name: record ARM64 build+test evidence
-        if: success() && matrix.os == 'ubuntu-24.04-arm'
+        if: always() && matrix.os == 'ubuntu-24.04-arm'
         run: |
           mkdir -p arm64-evidence
           cat > arm64-evidence/arm64-run-record.json <<EOF
@@ -94,13 +116,13 @@ jobs:
             "arch": "$(uname -m)",
             "kernel": "$(uname -sr)",
             "nodeVersion": "$(node --version)",
-            "conclusion": "success",
+            "conclusion": "${{ job.status }}",
             "capturedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
           cat arm64-evidence/arm64-run-record.json
       - name: upload ARM64 run record
-        if: success() && matrix.os == 'ubuntu-24.04-arm'
+        if: always() && matrix.os == 'ubuntu-24.04-arm'
         uses: actions/upload-artifact@v4
         with:
           name: arm64-run-record

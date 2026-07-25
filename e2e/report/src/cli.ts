@@ -44,6 +44,56 @@ function isScoringMode(value: string): value is ReleaseGateScoringMode {
   return value === "interim" || value === "final";
 }
 
+/**
+ * EMPTY MEANS UNSET, and a bare `??` cannot express that — `"" ?? x` is `""`.
+ *
+ * A GitHub Actions `${{ inputs.<optional> }}`/`${{ env.<unset> }}` expression
+ * renders as the EMPTY STRING when nothing supplies it, so the variable
+ * arrives present-and-empty rather than absent. Every env override this CLI
+ * reads goes through here, not just the object ID: `journalDir` and `outFile`
+ * are PATHS, and an empty one is the path `""` — a silently wrong journal (a
+ * zero-evidence report that looks perfectly healthy) or a write to nowhere.
+ * `e2e/attestation/src/testJournal.ts` already treats empty as unset on the
+ * producing side; this is the consuming side of the same contract.
+ */
+function envOrUndefined(name: string): string | undefined {
+  const value = process.env[name];
+  return value === undefined || value.length === 0 ? undefined : value;
+}
+
+/** Everything `runReleaseGateReportCli` resolves before it touches disk. */
+export interface ReleaseGateCliSettings {
+  readonly journalDir: string;
+  readonly releaseCandidateObjectId: string;
+  readonly scoringMode: ReleaseGateScoringMode;
+  readonly outFile: string;
+}
+
+/**
+ * The pure `options` -> env -> default precedence chain, exported so each
+ * site can be asserted in isolation. In particular the `outFile` empty-value
+ * case cannot be exercised through `runReleaseGateReportCli` without writing
+ * to `DEFAULT_OUT_FILE`, which is the repo's real committed
+ * `e2e/release-gate-report.json`.
+ */
+export function resolveReleaseGateCliSettings(
+  options: RunReleaseGateReportCliOptions = {},
+): ReleaseGateCliSettings {
+  const envMode = envOrUndefined("EO_RELEASE_GATE_MODE");
+  return {
+    journalDir:
+      options.journalDir ?? envOrUndefined("EO_RELEASE_GATE_JOURNAL_DIR") ?? DEFAULT_JOURNAL_DIR,
+    releaseCandidateObjectId:
+      options.releaseCandidateObjectId ??
+      envOrUndefined("EO_RELEASE_CANDIDATE_OBJECT_ID") ??
+      resolveDefaultReleaseCandidateObjectId(),
+    scoringMode:
+      options.scoringMode ??
+      (envMode !== undefined && isScoringMode(envMode) ? envMode : "interim"),
+    outFile: options.outFile ?? envOrUndefined("EO_RELEASE_GATE_OUT_FILE") ?? DEFAULT_OUT_FILE,
+  };
+}
+
 async function writeReportFile(path: string, report: ReleaseGateReport): Promise<void> {
   // Fail loudly (never silently persist a schema-invalid report) — the
   // archived file is this phase's audit trail; a shape violation here
@@ -68,29 +118,31 @@ export interface RunReleaseGateReportCliOptions {
 export interface RunReleaseGateReportCliResult {
   readonly report: ReleaseGateReport;
   readonly outFile: string;
+  /**
+   * The journal directory actually read — the exact value handed to
+   * `createJournalStore`. Reported (not merely resolved internally) because
+   * it is the load-bearing wiring for every checklist item's evidence: a CI
+   * run that silently read the wrong directory produces a zero-evidence
+   * report that is indistinguishable from a healthy one.
+   */
+  readonly journalDir: string;
 }
 
 /**
  * Reads env-var overrides (`EO_RELEASE_GATE_JOURNAL_DIR`,
  * `EO_RELEASE_CANDIDATE_OBJECT_ID`, `EO_RELEASE_GATE_MODE`,
- * `EO_RELEASE_GATE_OUT_FILE`) layered under explicit `options`, generates
- * the report, and archives it to `outFile`. Returns the generated report
- * so the CI-job glue (and tests) can inspect `overallVerdict` directly
+ * `EO_RELEASE_GATE_OUT_FILE`) layered under explicit `options` — all of them
+ * through `resolveReleaseGateCliSettings`, where an EMPTY env value means
+ * unset — generates the report, and archives it to `outFile`. Returns the
+ * generated report plus the paths it actually resolved, so the CI-job glue
+ * (and tests) can inspect `overallVerdict` and the journal it read directly
  * without re-reading the file back.
  */
 export async function runReleaseGateReportCli(
   options: RunReleaseGateReportCliOptions = {},
 ): Promise<RunReleaseGateReportCliResult> {
-  const journalDir =
-    options.journalDir ?? process.env["EO_RELEASE_GATE_JOURNAL_DIR"] ?? DEFAULT_JOURNAL_DIR;
-  const releaseCandidateObjectId =
-    options.releaseCandidateObjectId ??
-    process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"] ??
-    resolveDefaultReleaseCandidateObjectId();
-  const envMode = process.env["EO_RELEASE_GATE_MODE"];
-  const scoringMode: ReleaseGateScoringMode =
-    options.scoringMode ?? (envMode !== undefined && isScoringMode(envMode) ? envMode : "interim");
-  const outFile = options.outFile ?? process.env["EO_RELEASE_GATE_OUT_FILE"] ?? DEFAULT_OUT_FILE;
+  const { journalDir, releaseCandidateObjectId, scoringMode, outFile } =
+    resolveReleaseGateCliSettings(options);
   const journal = options.journal ?? createJournalStore({ journalDir });
 
   const report = await generateReleaseGateReport({
@@ -103,7 +155,7 @@ export async function runReleaseGateReportCli(
 
   await writeReportFile(outFile, report);
 
-  return { report, outFile };
+  return { report, outFile, journalDir };
 }
 
 /* c8 ignore start -- process.exit / import.meta CLI entrypoint glue, not unit-testable logic. */
@@ -111,10 +163,11 @@ const isMainModule =
   process.argv[1]?.endsWith("cli.js") === true || process.argv[1]?.endsWith("cli.ts") === true;
 if (isMainModule) {
   runReleaseGateReportCli()
-    .then(({ report, outFile }) => {
+    .then(({ report, outFile, journalDir }) => {
       console.log(
         `release-gate-report: wrote ${outFile} — overallVerdict=${report.overallVerdict} ` +
-          `(scoringMode=${report.scoringMode}, releaseCandidateObjectId=${report.releaseCandidateObjectId})`,
+          `(scoringMode=${report.scoringMode}, releaseCandidateObjectId=${report.releaseCandidateObjectId}, ` +
+          `journalDir=${journalDir})`,
       );
       process.exit(report.overallVerdict === "FAIL" ? 1 : 0);
     })

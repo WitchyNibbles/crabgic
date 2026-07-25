@@ -40,7 +40,33 @@ export const ARM64_ARCH = "arm64";
 /** The heading that documents ARM64 status. Recorded, but never sufficient on its own. */
 export const ARM64_CLOSE_OUT_HEADING = "### ARM64 close-out";
 
-/** Where a CI-produced run record is looked for; `$EO_ARM64_RUN_RECORD` overrides it. */
+/**
+ * Where a CI-produced run record is looked for; `$EO_ARM64_RUN_RECORD` overrides it.
+ *
+ * THE OVERRIDE IS THE PRIMARY PATH IN CI, AND THE SHA CATCH-22 IS WHY.
+ * `checkArm64Verification` requires `record.commitSha === releaseCandidateObjectId`.
+ * If the downloaded record were COMMITTED to `ARM64_RUN_RECORD_PATH` so the
+ * in-repo path could find it, that commit would advance `HEAD` past the very
+ * object ID the record names — the release candidate would no longer be the
+ * commit anything was verified against, and the check could never pass. The
+ * two conditions are unsatisfiable together.
+ *
+ * `release-e2e.yml`'s ingest step therefore downloads `ci.yml`'s
+ * `arm64-run-record` artifact into `$RUNNER_TEMP` (outside the checkout, never
+ * committed, nothing staged) and exports `$EO_ARM64_RUN_RECORD`. `HEAD` stays
+ * exactly on the release candidate, and the ingest selects the `ci.yml` run by
+ * `head_sha = <release candidate>` rather than "most recent", so the equality
+ * this check enforces is a real binding rather than a coincidence.
+ *
+ * The `pull_request` half of the catch-22 is handled the same way: on a PR,
+ * `github.sha` is a synthetic merge commit that exists in no checkout, so the
+ * ingest never uses it — it resolves the candidate from the workflow input, or
+ * from `git rev-parse HEAD` of the checked-out ref.
+ *
+ * The in-repo path is kept for the case it is honestly good for: a record
+ * deliberately archived alongside the release for post-hoc audit, checked
+ * against whatever object ID the auditor names.
+ */
 export const ARM64_RUN_RECORD_PATH = "docs/evidence/phase-23/arm64-run-record.json";
 export const ARM64_RUN_RECORD_ENV = "EO_ARM64_RUN_RECORD";
 
@@ -66,9 +92,28 @@ export const Arm64RunRecordSchema = z
   .strict();
 export type Arm64RunRecord = z.infer<typeof Arm64RunRecordSchema>;
 
+/**
+ * The outcome of LOOKING FOR a run record, kept distinct from the record
+ * itself. `malformed` exists because `Arm64RunRecordSchema` is `.strict()`:
+ * any producer drift used to throw a `ZodError` straight out of
+ * `readArm64RunRecord`, aborting the entire attestation suite and taking
+ * every OTHER checklist item's evidence down with it. An unreadable record
+ * is a FAIL of THIS item with a quotable reason — never a crash.
+ */
+export type Arm64RunRecordRead =
+  | { readonly outcome: "absent" }
+  | { readonly outcome: "malformed"; readonly path: string; readonly problem: string }
+  | { readonly outcome: "ok"; readonly path: string; readonly record: Arm64RunRecord };
+
 export interface Arm64NativeRunResult {
   readonly command: string;
   readonly exitStatus: number;
+  /**
+   * The commit the native run actually built — `git rev-parse HEAD` of the
+   * tree it ran in, `undefined` when that could not be resolved. Without it
+   * a green build of ANY checkout would satisfy the item.
+   */
+  readonly commitSha: string | undefined;
 }
 
 export interface CheckArm64VerificationInput {
@@ -78,8 +123,8 @@ export interface CheckArm64VerificationInput {
   readonly releaseCandidateObjectId: string;
   /** The `### ARM64 close-out` section, if the docs disclose ARM64 status. Reported, never sufficient alone. */
   readonly closeOutSection: string | undefined;
-  /** A CI run record proving an ARM64 build+test actually executed. */
-  readonly runRecord: Arm64RunRecord | undefined;
+  /** The result of looking for a CI run record proving an ARM64 build+test actually executed. */
+  readonly runRecord: Arm64RunRecordRead;
   /** Present only when `hostArch` is arm64: the result of the native build+test this check ran. */
   readonly nativeRun?: Arm64NativeRunResult;
 }
@@ -100,10 +145,27 @@ export function checkArm64Verification(input: CheckArm64VerificationInput): Atte
         "host is ARM64 but no native build+test was run — the hardware route was available and not taken.",
       );
     } else {
-      details.push(`native run: ${input.nativeRun.command} -> exit ${input.nativeRun.exitStatus}`);
-      if (input.nativeRun.exitStatus !== 0) {
+      const native = input.nativeRun;
+      details.push(
+        `native run: ${native.command} -> exit ${native.exitStatus} ` +
+          `(built ${native.commitSha ?? "an unresolved commit"})`,
+      );
+      if (native.exitStatus !== 0) {
         reasons.push(
-          `native ARM64 build+test FAILED (${input.nativeRun.command} exited ${input.nativeRun.exitStatus}).`,
+          `native ARM64 build+test FAILED (${native.command} exited ${native.exitStatus}).`,
+        );
+      }
+      // Same binding route 2 enforces: a green build proves nothing about
+      // the release candidate unless it is a build OF the release candidate.
+      if (native.commitSha === undefined) {
+        reasons.push(
+          "the commit the native ARM64 build+test ran against could not be resolved, so the run " +
+            `cannot be tied to the release candidate ${input.releaseCandidateObjectId}.`,
+        );
+      } else if (native.commitSha !== input.releaseCandidateObjectId) {
+        reasons.push(
+          `the native ARM64 build+test ran against ${native.commitSha}, not the release candidate ` +
+            `${input.releaseCandidateObjectId} — it verifies a different artifact.`,
         );
       }
     }
@@ -111,7 +173,7 @@ export function checkArm64Verification(input: CheckArm64VerificationInput): Atte
   }
 
   // Route 2: a real ARM64 CI run.
-  if (input.runRecord === undefined) {
+  if (input.runRecord.outcome === "absent") {
     reasons.push(
       `host is ${input.hostArch} and no ARM64 CI run record was found (expected ${ARM64_RUN_RECORD_PATH} ` +
         `or $${ARM64_RUN_RECORD_ENV}). A documented substitute MECHANISM is not a substitute ` +
@@ -120,7 +182,16 @@ export function checkArm64Verification(input: CheckArm64VerificationInput): Atte
     return buildCheckResult(reasons, details);
   }
 
-  const record = input.runRecord;
+  if (input.runRecord.outcome === "malformed") {
+    reasons.push(
+      `the ARM64 CI run record at ${input.runRecord.path} is not a valid Arm64RunRecord ` +
+        `(${input.runRecord.problem}) — a record that cannot be read is not evidence, and the ` +
+        "producer in `.github/workflows/ci.yml` has drifted from what this check consumes.",
+    );
+    return buildCheckResult(reasons, details);
+  }
+
+  const record = input.runRecord.record;
   details.push(
     `CI run ${record.workflow}#${record.runId} (${record.jobName}) on ${record.arch}, ` +
       `conclusion=${record.conclusion}, commit=${record.commitSha}.`,
@@ -154,27 +225,67 @@ export function extractCloseOutSection(markdown: string): string | undefined {
   return next === -1 ? rest : rest.slice(0, next);
 }
 
-/** Reads the CI-produced run record, if one has been archived or downloaded into the workspace. */
-export function readArm64RunRecord(repoRoot: string): Arm64RunRecord | undefined {
+/**
+ * Reads the CI-produced run record, if one has been archived or downloaded
+ * into the workspace. NEVER throws: a record it cannot read is reported as
+ * `malformed` so this one item FAILs with a reason, instead of a `ZodError`
+ * escaping into the release-evidence run and aborting every other item's
+ * emitter along with it.
+ */
+export function readArm64RunRecord(repoRoot: string): Arm64RunRecordRead {
   const override = process.env[ARM64_RUN_RECORD_ENV];
   const path =
     override !== undefined && override.length > 0
       ? override
       : join(repoRoot, ARM64_RUN_RECORD_PATH);
-  if (!existsSync(path)) return undefined;
-  return Arm64RunRecordSchema.parse(JSON.parse(readFileSync(path, "utf-8")));
+  if (!existsSync(path)) return { outcome: "absent" };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf-8"));
+  } catch (error) {
+    return { outcome: "malformed", path, problem: `unparseable JSON: ${String(error)}` };
+  }
+
+  const result = Arm64RunRecordSchema.safeParse(parsed);
+  if (!result.success) {
+    const problem = result.error.issues
+      .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
+      .join("; ");
+    return { outcome: "malformed", path, problem };
+  }
+  return { outcome: "ok", path, record: result.data };
+}
+
+/**
+ * The commit a native run is building — `git rev-parse HEAD` of the tree it
+ * runs in. `undefined` when there is no repository to ask (an exported
+ * tarball, a `git archive` checkout), which the check reports as a reason
+ * rather than silently treating as a match.
+ */
+export function resolveBuiltCommitSha(repoRoot: string): string | undefined {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return undefined;
+  }
 }
 
 /** Runs the real native build+test on an ARM64 host. Never invoked on other architectures. */
 function runNativeBuildAndTest(repoRoot: string): Arm64NativeRunResult {
   const command = "npm run typecheck && npm test";
+  const commitSha = resolveBuiltCommitSha(repoRoot);
   try {
     execFileSync("npm", ["run", "typecheck"], { cwd: repoRoot, stdio: "pipe" });
     execFileSync("npm", ["test"], { cwd: repoRoot, stdio: "pipe" });
-    return { command, exitStatus: 0 };
+    return { command, exitStatus: 0, commitSha };
   } catch (error) {
     const status = (error as { status?: number }).status;
-    return { command, exitStatus: typeof status === "number" ? status : 1 };
+    return { command, exitStatus: typeof status === "number" ? status : 1, commitSha };
   }
 }
 
