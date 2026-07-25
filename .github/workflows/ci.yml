@@ -64,6 +64,49 @@ jobs:
       - name: test with 80% line+branch coverage gate
         run: npm test
 
+      # roadmap/23 Exit criteria: "ARM64 build+test verified on real
+      # hardware/CI, or an explicitly documented substitute recorded —
+      # closes 01's deferred ARM64 gate."
+      #
+      # This matrix leg IS that verification: `ubuntu-24.04-arm` is a real
+      # aarch64 runner, and the build+test above just ran natively on it.
+      # What was missing until now is the BINDING — nothing tied a green
+      # ARM64 leg to a specific object ID, so `e2e/attestation`'s
+      # arm64-verification check had no run record to read and the release
+      # gate scored the item FAIL.
+      #
+      # `uname -m` is recorded rather than assumed: the record must prove
+      # the leg genuinely ran on aarch64 hardware, not merely that a job
+      # named "arm" was scheduled. The step is skipped on the x86-64 leg,
+      # and `if: success()` means a record is only ever written for a leg
+      # whose build+test actually passed.
+      - name: record ARM64 build+test evidence
+        if: success() && matrix.os == 'ubuntu-24.04-arm'
+        run: |
+          mkdir -p arm64-evidence
+          cat > arm64-evidence/arm64-run-record.json <<EOF
+          {
+            "workflow": "ci",
+            "jobName": "unit-test+coverage (${{ matrix.os }})",
+            "runId": "${{ github.run_id }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "commitSha": "${{ github.sha }}",
+            "arch": "$(uname -m)",
+            "kernel": "$(uname -sr)",
+            "nodeVersion": "$(node --version)",
+            "conclusion": "success",
+            "capturedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat arm64-evidence/arm64-run-record.json
+      - name: upload ARM64 run record
+        if: success() && matrix.os == 'ubuntu-24.04-arm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm64-run-record
+          path: arm64-evidence/arm64-run-record.json
+          if-no-files-found: error
+
   commitlint:
     name: commitlint
     runs-on: ubuntu-latest
