@@ -50,6 +50,32 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      # roadmap/23 Exit criteria: "Jira DC / Grafana version-support windows
+      # re-confirmed current at release time; fixtures refreshed if vendor
+      # support windows moved (19's deferred note)."
+      #
+      # Runs here rather than in a workflow of its own because it answers
+      # the same question drift-ci already exists to ask — "has something on
+      # the vendor's side moved under us?" — on the same weekly cadence, and
+      # follows the same propose-never-apply discipline: it writes an
+      # evidence record and NEVER edits a pinned version, a compose recipe,
+      # or the compatibility matrix.
+      #
+      # `continue-on-error` because a registry rate limit or outage must not
+      # turn the whole drift job red. The probe already records an
+      # indeterminate publication status as "skipped" rather than as
+      # "unpublished", and a skipped target fails the release gate's own
+      # coverage rule later — which is where that failure belongs.
+      - name: Re-confirm vendor support windows
+        continue-on-error: true
+        run: npm run probe:support-windows
+      - name: Upload vendor support-window record
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor-support-windows
+          path: docs/evidence/phase-23/vendor-support-windows.json
+          if-no-files-found: warn
+
       # Debounce state persists ACROSS scheduled runs (never reset per-run) —
       # this IS the mitigation against a single transient failing sample
       # masquerading as drift. `packages/gates/src/drift/cli.ts`'s own

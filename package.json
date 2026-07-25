@@ -28,6 +28,7 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish",
+    "probe:support-windows": "tsx e2e/provisioning/src/supportWindowsCli.ts",
     "check:workspace-count": "node scripts/check-workspace-count.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:release-notes": "node scripts/check-release-notes.mjs",
@@ -47,6 +48,7 @@
     "eslint-config-prettier": "10.1.8",
     "globals": "17.7.0",
     "prettier": "3.9.5",
+    "tsx": "4.23.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0",
     "vitest": "4.1.10"
