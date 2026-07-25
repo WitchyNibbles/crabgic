@@ -40,13 +40,36 @@ export const GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG = "release-gate:gateway-cli-s
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * — this harness's own unit/integration tests run against this repo's
  * current working tree, not a frozen release cut, so a real invocation
- * (the `release-e2e` CI job) is expected to pass the actual
- * `git rev-parse HEAD` of the release candidate into `emitLiveConformance
- * Evidence`'s `objectId` override instead of this default. Mirrors
+ * (the `release-e2e` CI job) supplies the actual `git rev-parse HEAD` of
+ * the release candidate instead — either via `emitLiveConformanceEvidence`'s
+ * explicit `objectId` option or, for the callers that never pass one, via
+ * `$EO_RELEASE_CANDIDATE_OBJECT_ID` (see
+ * `resolveReleaseCandidateObjectId` below). Mirrors
  * `e2e/matrix/orchestration/src/evidence.ts`'s identical `FAKE_RELEASE_
  * CANDIDATE_OBJECT_ID` convention.
  */
 export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+
+/**
+ * The object ID this harness stamps on emitted evidence when no explicit
+ * `objectId` override is supplied: `$EO_RELEASE_CANDIDATE_OBJECT_ID` when
+ * set and non-empty (the same env-var convention `e2e/report/src/cli.ts`
+ * and `e2e/matrix/connector/src/support/evidence.ts` already honor), else
+ * `FAKE_RELEASE_CANDIDATE_OBJECT_ID` — so an ordinary `npm run test:e2e`
+ * run is byte-identical to before this seam existed, while a real
+ * release-gate run (`EO_RELEASE_GATE_JOURNAL_DIR` + this var, as
+ * `.github/workflows/release-e2e.yml` drives it) accumulates evidence the
+ * report generator can actually link to its `releaseCandidateObjectId`.
+ *
+ * Deliberately NOT cached: this is a pure env read (no subprocess), and an
+ * uncached read keeps the function honest under tests that set/restore the
+ * var within one process.
+ */
+export function resolveReleaseCandidateObjectId(): string {
+  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv;
+  return FAKE_RELEASE_CANDIDATE_OBJECT_ID;
+}
 
 export interface EmitLiveConformanceEvidenceOptions {
   readonly journal: JournalStore;
@@ -84,7 +107,7 @@ export async function emitLiveConformanceEvidence(
       toolchainFingerprint: options.toolchainFingerprint ?? "e2e/live/@live-conformance-harness@1",
       capturedAt,
       artifactDigests: options.artifactDigests !== undefined ? [...options.artifactDigests] : [],
-      objectId: options.objectId ?? FAKE_RELEASE_CANDIDATE_OBJECT_ID,
+      objectId: options.objectId ?? resolveReleaseCandidateObjectId(),
       gateTag,
     };
     // Sequential by design: each append must land as its own journal entry,

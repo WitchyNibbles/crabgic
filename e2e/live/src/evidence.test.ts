@@ -6,8 +6,34 @@ import {
   GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG,
   LIVE_CONFORMANCE_GATE_TAG,
   NOT_IMPLEMENTED_SWEEP_GATE_TAG,
+  resolveReleaseCandidateObjectId,
 } from "./evidence.js";
 import { createTestJournal, type TestJournal } from "./testJournal.js";
+
+describe("resolveReleaseCandidateObjectId", () => {
+  const ENV_KEY = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const original = process.env[ENV_KEY];
+
+  afterEach(() => {
+    if (original === undefined) delete process.env[ENV_KEY];
+    else process.env[ENV_KEY] = original;
+  });
+
+  it("falls back to FAKE_RELEASE_CANDIDATE_OBJECT_ID when the env var is unset", () => {
+    delete process.env[ENV_KEY];
+    expect(resolveReleaseCandidateObjectId()).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
+  });
+
+  it("falls back to FAKE_RELEASE_CANDIDATE_OBJECT_ID when the env var is set but empty", () => {
+    process.env[ENV_KEY] = "";
+    expect(resolveReleaseCandidateObjectId()).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
+  });
+
+  it("honors $EO_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
+    process.env[ENV_KEY] = "1234567890abcdef1234567890abcdef12345678";
+    expect(resolveReleaseCandidateObjectId()).toBe("1234567890abcdef1234567890abcdef12345678");
+  });
+});
 
 describe("emitLiveConformanceEvidence", () => {
   let tj: TestJournal;
@@ -34,7 +60,13 @@ describe("emitLiveConformanceEvidence", () => {
     expect(records[0]?.gateTag).toBe(NOT_IMPLEMENTED_SWEEP_GATE_TAG);
     expect(records[1]?.gateTag).toBe(GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG);
     expect(records[0]?.id).not.toBe(records[1]?.id);
-    expect(records[0]?.objectId).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
+    // The DEFAULT, not a hard-coded literal: unset `$EO_RELEASE_CANDIDATE_
+    // OBJECT_ID` (the ordinary `npm run test:e2e` gate) this is exactly
+    // `FAKE_RELEASE_CANDIDATE_OBJECT_ID`; under a real release-gate run it
+    // is the release candidate's own object ID. Asserting the resolver's
+    // value keeps this test true in both modes without ever letting the
+    // emitter silently stop using the default.
+    expect(records[0]?.objectId).toBe(resolveReleaseCandidateObjectId());
     expect(records[0]?.command).toBe("not-implemented-sweep");
 
     // Scoped to THIS test's own freshly-generated changeSetId, never the
@@ -72,7 +104,18 @@ describe("emitLiveConformanceEvidence", () => {
       command: "not-implemented-sweep",
       exitStatus: 1,
       artifactDigests: ["sha256:deadbeef"],
+      // EXPLICIT fixture objectId, never the resolved default: this record
+      // is a SEEDED demo of the emitter's nonzero-exitStatus branch, not a
+      // genuine negative run of any release candidate. Under a shared
+      // release-gate journal (`EO_RELEASE_GATE_JOURNAL_DIR` +
+      // `EO_RELEASE_CANDIDATE_OBJECT_ID`) the default would stamp this
+      // synthetic failure with the REAL candidate's object ID, and
+      // `e2e/report`'s generator — correctly, and by design — would then
+      // FAIL `gateway-cli-surface-complete` and `quality-security-perf-
+      // learning-gates` on a lie this unit test invented.
+      objectId: "f00dfeedf00dfeedf00dfeedf00dfeedf00dfeed",
     });
+    expect(record?.objectId).toBe("f00dfeedf00dfeedf00dfeedf00dfeedf00dfeed");
     expect(record?.exitStatus).toBe(1);
     expect(record?.artifactDigests).toEqual(["sha256:deadbeef"]);
   });

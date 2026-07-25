@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG,
   NOT_IMPLEMENTED_SWEEP_GATE_TAG,
+  resolveReleaseCandidateObjectId,
 } from "./evidence.js";
 import { KNOWN_DEFERRED_ALLOWLIST } from "./knownDeferredAllowlist.js";
 import {
@@ -102,7 +103,7 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     expect(exitStatuses.every((s) => s === 0)).toBe(true);
   });
 
-  it("defaults objectId to FAKE_RELEASE_CANDIDATE_OBJECT_ID when omitted", async () => {
+  it("defaults objectId to the resolved release-candidate object ID when omitted", async () => {
     const changeSetId = randomUUID();
     await runAndEmitNotImplementedSweepEvidence({ journal: tj.store, changeSetId });
 
@@ -113,7 +114,12 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type === "evidence_pointer") objectIds.push(entry.payload.objectId);
     }
-    expect(new Set(objectIds)).toEqual(new Set(["deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"]));
+    // `resolveReleaseCandidateObjectId()`, not the bare literal: unset
+    // `$EO_RELEASE_CANDIDATE_OBJECT_ID` this IS
+    // "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"; under a real
+    // release-gate run it is the release candidate's own object ID. Either
+    // way what is under test is "the default seam was used".
+    expect(new Set(objectIds)).toEqual(new Set([resolveReleaseCandidateObjectId()]));
   });
 
   it("journals only the sweep's own tag (never the checklist-matching tag) and exitStatus 1 when the gate FAILs", async () => {

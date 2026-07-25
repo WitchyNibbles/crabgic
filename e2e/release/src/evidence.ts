@@ -28,11 +28,31 @@ export const ENGINE_PIN_RECORDED_GATE_TAG = "release-gate:engine-pin-recorded";
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * — this harness's own tests run against this repo's current working
  * tree/HEAD, not a frozen release cut. A real `release-e2e` CI invocation
- * is expected to pass the actual `git rev-parse HEAD` of the release
- * candidate into `emitReproducibleBuildEvidence`'s `objectId` override
- * instead of this default.
+ * supplies the actual `git rev-parse HEAD` of the release candidate
+ * instead — either via `emitReproducibleBuildEvidence`'s explicit
+ * `objectId` option or, for callers that never pass one, via
+ * `$EO_RELEASE_CANDIDATE_OBJECT_ID` (see
+ * `resolveReleaseCandidateObjectId` below).
  */
 export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+
+/**
+ * The object ID this harness stamps on emitted evidence when no explicit
+ * `objectId` override is supplied: `$EO_RELEASE_CANDIDATE_OBJECT_ID` when
+ * set and non-empty (the same env-var convention `e2e/report/src/cli.ts`
+ * already honors), else `FAKE_RELEASE_CANDIDATE_OBJECT_ID` — so an
+ * ordinary `npm run test:e2e` run is byte-identical to before this seam
+ * existed, while a real release-gate run accumulates evidence the report
+ * generator can actually link to its `releaseCandidateObjectId`.
+ *
+ * Deliberately NOT cached: a pure env read, so tests that set/restore the
+ * var within one process see the truth.
+ */
+export function resolveReleaseCandidateObjectId(): string {
+  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv;
+  return FAKE_RELEASE_CANDIDATE_OBJECT_ID;
+}
 
 export interface EmitReproducibleBuildEvidenceOptions {
   readonly journal: JournalStore;
@@ -63,7 +83,7 @@ export async function emitReproducibleBuildEvidence(
       toolchainFingerprint: options.toolchainFingerprint ?? "e2e/release/@reproducible-build@1",
       capturedAt,
       artifactDigests: options.artifactDigests !== undefined ? [...options.artifactDigests] : [],
-      objectId: options.objectId ?? FAKE_RELEASE_CANDIDATE_OBJECT_ID,
+      objectId: options.objectId ?? resolveReleaseCandidateObjectId(),
       gateTag,
     };
     // Sequential by design: each append must land as its own journal entry,
