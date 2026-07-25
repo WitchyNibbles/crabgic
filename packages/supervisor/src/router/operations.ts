@@ -103,6 +103,21 @@ export const RegistryChangeSetGetResultSchema = z
  * existing `registry.changeSets.list`/`registry.workUnits.list` shape
  * exactly, and returns the same `RunRecord` that `run.status` already does.
  */
+/**
+ * Begins driving an approved DAG (roadmap/13's `driveRun`). Added
+ * 2026-07-25 — before it, an approved run had no way to execute at all.
+ *
+ * `accepted: false` is a normal answer (already in flight, unknown run, no
+ * dispatcher configured), never an error, mirroring `run.cancel`'s own
+ * accepted/reason shape. Like `run.status`/`run.cancel` this is UDS-only
+ * and is NOT registered as a gateway MCP tool: dispatching a run is an
+ * operator action, never a model-satisfiable one.
+ */
+export const RunDispatchParamsSchema = z.object({ runId: IdSchema }).strict();
+export const RunDispatchResultSchema = z
+  .object({ accepted: z.boolean(), reason: NonEmptyStringSchema.optional() })
+  .strict();
+
 export const RegistryRunsListParamsSchema = EmptyParamsSchema;
 export const RegistryRunsListResultSchema = z.object({ runs: z.array(RunRecordSchema) }).strict();
 
@@ -154,6 +169,7 @@ export const WorkerReapOrphansResultSchema = z
 export const SUPERVISOR_OPERATIONS = [
   "run.status",
   "run.cancel",
+  "run.dispatch",
   "registry.runs.list",
   "registry.changeSets.get",
   "registry.changeSets.list",

@@ -106,6 +106,9 @@ export async function bootSupervisor(config: BootSupervisorConfig): Promise<Boot
       ...(config.onOrphanDetected !== undefined
         ? { onOrphanDetected: config.onOrphanDetected }
         : {}),
+      ...(config.createRunDispatcher !== undefined
+        ? { createRunDispatcher: config.createRunDispatcher }
+        : {}),
       ...(config.onConnectionError !== undefined
         ? { onConnectionError: config.onConnectionError }
         : {}),

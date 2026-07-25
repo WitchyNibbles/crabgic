@@ -22,6 +22,8 @@ import {
   RegistryChangeSetListResultSchema,
   RegistryRunsListParamsSchema,
   RegistryRunsListResultSchema,
+  RunDispatchParamsSchema,
+  RunDispatchResultSchema,
   RegistryWorkUnitGetParamsSchema,
   RegistryWorkUnitGetResultSchema,
   RegistryWorkUnitListParamsSchema,
@@ -39,6 +41,7 @@ import {
   type ArtifactIndexEntry,
 } from "./operations.js";
 import { SupervisorRouter } from "./router.js";
+import type { RunDispatcher } from "./run-dispatcher.js";
 
 /** A live, in-memory terminable worker handle — distinct from `WorkersRegistry`'s own data-only records; not every process holds one for every registry entry (e.g. right after a restart, before any worker is re-spawned). */
 export interface TerminableWorker {
@@ -53,6 +56,15 @@ export interface SupervisorDependencies {
   readonly workers: WorkersRegistry;
   readonly artifactIndex: Registry<ArtifactIndexEntry>;
   readonly liveWorkers: ReadonlyMap<string, TerminableWorker>;
+  /**
+   * Drives approved DAGs (roadmap/13's `driveRun`). OPTIONAL because this
+   * package cannot construct one — the real implementation needs
+   * `@eo/engine-claude`, which already depends on this package — so the
+   * daemon entry point in `packages/cli` injects it. A daemon booted
+   * without one still serves every other operation; `run.dispatch` simply
+   * refuses. See `./run-dispatcher.ts`.
+   */
+  readonly runDispatcher?: RunDispatcher;
 }
 
 const NON_CANCELLABLE_STATES = new Set(["published_local", "failed", "blocked", "cancelled"]);
@@ -87,6 +99,24 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
     ({ changeSetId }) => {
       const changeSet = deps.changeSets.get(changeSetId);
       return Promise.resolve({ ...(changeSet !== undefined ? { changeSet } : {}) });
+    },
+  );
+
+  router.register(
+    "run.dispatch",
+    RunDispatchParamsSchema,
+    RunDispatchResultSchema,
+    async ({ runId }) => {
+      // Refusing is a normal answer, not an error: a daemon composed
+      // without a dispatcher still serves the whole control plane.
+      if (deps.runDispatcher === undefined) {
+        return { accepted: false, reason: "no run dispatcher is configured on this daemon" };
+      }
+      // Resolves when OWNERSHIP is decided, never when the run finishes —
+      // see `./run-dispatcher.ts`. Awaiting the run here would hold the
+      // control socket for its full duration, making `status`/`cancel`
+      // unanswerable exactly while they matter most.
+      return deps.runDispatcher.dispatch(runId);
     },
   );
 

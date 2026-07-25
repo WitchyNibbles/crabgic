@@ -42,6 +42,10 @@ export * from "./peer-auth/peer-auth-middleware.js";
 export * from "./router/operations.js";
 export * from "./router/router.js";
 export * from "./router/build-router.js";
+// The `run.dispatch` seam — implemented in packages/cli's daemon entry
+// point, since the real driver needs @eo/engine-claude (which depends on
+// this package). See ./router/run-dispatcher.ts.
+export * from "./router/run-dispatcher.js";
 
 // ---- Registries (WI3): runs, change sets, work units, workers, artifact index; recovery ----
 export * from "./registries/registry.js";

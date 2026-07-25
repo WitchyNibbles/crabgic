@@ -46,6 +46,7 @@ import {
   type SupervisorDependencies,
   type TerminableWorker,
 } from "../router/build-router.js";
+import type { RunDispatcher } from "../router/run-dispatcher.js";
 import {
   resolveSupervisorRuntimeDir,
   resolveSupervisorSocketPath,
@@ -68,6 +69,18 @@ export interface ComposeSupervisorConfig {
   readonly onOrphanDetected?: OrphanRecoveryHook;
   /** Observability hook forwarded to the UDS server — a single bad peer connection can never take down the server. */
   readonly onConnectionError?: (err: Error) => void;
+  /**
+   * Builds the `run.dispatch` driver (roadmap/13's `driveRun`). A FACTORY
+   * rather than a value because the dispatcher needs the journal,
+   * registries and `liveWorkers` map this function itself creates — the
+   * caller cannot construct it in advance.
+   *
+   * Optional: this package cannot build one (the real driver needs
+   * `@eo/engine-claude`, which depends on this package), so the daemon
+   * entry point in `packages/cli` supplies it. Without it the control
+   * plane serves normally and `run.dispatch` refuses.
+   */
+  readonly createRunDispatcher?: (deps: SupervisorDependencies) => RunDispatcher;
 }
 
 export interface ComposedSupervisor {
@@ -135,7 +148,7 @@ export async function composeSupervisor(
     ...(config.onOrphanDetected !== undefined ? { onOrphanDetected: config.onOrphanDetected } : {}),
   });
 
-  const deps: ComposedSupervisorDependencies = {
+  const baseDeps: ComposedSupervisorDependencies = {
     journal,
     runs,
     changeSets,
@@ -144,6 +157,16 @@ export async function composeSupervisor(
     artifactIndex,
     liveWorkers,
   };
+
+  // The dispatcher is built FROM the dependency bundle (it needs the same
+  // journal, registries and liveWorkers map the router serves), then folded
+  // back into it — so `run.dispatch`'s driver and `worker.terminate` share
+  // one `liveWorkers`, which is exactly what lets terminate reach a worker
+  // the driver spawned.
+  const deps: ComposedSupervisorDependencies =
+    config.createRunDispatcher !== undefined
+      ? { ...baseDeps, runDispatcher: config.createRunDispatcher(baseDeps) }
+      : baseDeps;
 
   const router = buildSupervisorRouter(deps);
   const server = await startSupervisorServer({
