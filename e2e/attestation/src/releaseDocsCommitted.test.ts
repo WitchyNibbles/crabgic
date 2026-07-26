@@ -1,3 +1,4 @@
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -140,5 +141,32 @@ describe("readReleaseDocsInput — against the real repository", () => {
     const input = readReleaseDocsInput(REPO_ROOT);
     expect(input.pathExists("docs/engine-baseline.md")).toBe(true);
     expect(input.pathExists("docs/this-file-does-not-exist.md")).toBe(false);
+  });
+
+  /**
+   * THE ENVIRONMENT-INDEPENDENCE GUARD. `pathExists` used `existsSync`, so a
+   * citation to a generated-but-gitignored artifact resolved on any machine
+   * that had run the generator and dangled in every fresh checkout. This check
+   * therefore passed locally and failed on its first real CI run — the same
+   * shape as the `.gitignore` P0 in e431710, where the tree built locally and
+   * only locally.
+   *
+   * `e2e/release-gate-report.json` is the canonical instance: gitignored by
+   * design, and the thing two release docs used to cite. Asserting on it
+   * directly would be brittle once it is absent, so this writes its own
+   * gitignored file and asserts that PRESENT-ON-DISK is not enough.
+   */
+  it("does not resolve a gitignored artifact, even when it is present on disk", () => {
+    const generated = join(REPO_ROOT, "e2e", "release-gate-report.json");
+    const preexisting = existsSync(generated);
+    if (!preexisting) writeFileSync(generated, "{}\n", "utf-8");
+    try {
+      expect(existsSync(generated)).toBe(true);
+      expect(readReleaseDocsInput(REPO_ROOT).pathExists("e2e/release-gate-report.json")).toBe(
+        false,
+      );
+    } finally {
+      if (!preexisting) rmSync(generated, { force: true });
+    }
   });
 });

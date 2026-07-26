@@ -173,9 +173,12 @@ criterion 5) — the plan is only proposed, never auto-executed.
 
 ## 10. Reading the release-gate report
 
-`e2e/release-gate-report.json` is the checklist-item → `EvidenceRecord` audit trail phase 23
-itself produces and the `release-e2e` CI job archives — it is not an operator-facing CLI
-command, but operators verifying a release candidate's readiness should read it directly. Each
+The release-gate report — written to e2e/release-gate-report.json, which is **generated, not
+committed**, so download it from the `release-gate-report` artifact of a `release-e2e` run, defined
+in `.github/workflows/release-e2e.yml` — is the checklist-item → `EvidenceRecord` audit trail phase
+23 itself produces. The item list it scores is committed, at `e2e/report/src/checklist.ts`. It is
+not an operator-facing CLI command, but operators verifying a release candidate's readiness should
+read it directly. Each
 item names its own `id`, a plain-English `description`, whether it's `required`, its current
 `verdict` (`PASS` / `EVIDENCE-PENDING` / a failing verdict — **never PASS-by-default on
 missing evidence**, per the generator's own design), the `linkedEvidence` array of matching

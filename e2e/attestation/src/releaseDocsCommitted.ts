@@ -177,6 +177,24 @@ export function readReleaseDocsInput(repoRoot: string): CheckReleaseDocsCommitte
   }
   return {
     docs,
-    pathExists: (repoRelativePath) => existsSync(join(repoRoot, repoRelativePath)),
+    // GIT-TRACKED, NOT `existsSync` — the same standard this module already
+    // applies to the docs themselves ("'Committed' is not 'present on disk'",
+    // above), now applied to what they cite.
+    //
+    // Resolving citations against the working directory made this check
+    // ENVIRONMENT-DEPENDENT, and it silently passed on a local-only truth for
+    // as long as it has existed. `docs/compatibility-matrix.md` and
+    // `docs/operator-guide.md` both cite `e2e/release-gate-report.json`, which
+    // is gitignored by design; it is present on any machine that has run the
+    // generator, and absent from every fresh checkout. So the check passed
+    // locally and failed on its first real CI run — the same class of defect
+    // as the `.gitignore` P0 in e431710, where a tree built locally and only
+    // locally.
+    //
+    // A regenerable, uncommitted artifact is not a verifiable citation: a
+    // reader of the release tag cannot open it. Whether a given document
+    // SHOULD cite it is a documentation question; whether this check can
+    // report the same verdict everywhere is not.
+    pathExists: (repoRelativePath) => isTrackedByGit(repoRoot, repoRelativePath),
   };
 }
