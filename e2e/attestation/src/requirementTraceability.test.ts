@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EvidenceRecord, RemoteResource } from "@eo/contracts";
 import type { RemoteEvidencePointer } from "@eo/gates";
 import {
@@ -346,6 +346,26 @@ describe("readRequirementTraceabilityInput — against the real repository", () 
 describe("readRequirementTraceabilityInput — the artifact is validated, never trusted", () => {
   const created: string[] = [];
 
+  /**
+   * THESE TESTS ARE ABOUT THE IN-REPO PATH, so the override must be off.
+   *
+   * `.github/workflows/release-e2e.yml` exports
+   * `$EO_REQUIREMENT_TRACEABILITY_RECORD` at JOB level, so it is set for the
+   * whole harness run in CI — and with it set, `readRequirementTraceabilityInput`
+   * correctly ignores the `repoRoot` these tests hand it and reads the real
+   * artifact instead. Every assertion below then describes the wrong file.
+   * That is not hypothetical: it turned this file red in CI while it stayed
+   * green on every developer machine, which is precisely the failure mode
+   * `e2e/release/src/testJournal.ts`'s own note warns about for
+   * `$EO_RELEASE_CANDIDATE_OBJECT_ID`. A test that depends on a variable
+   * being unset has to unset it.
+   */
+  const savedOverride = process.env[TRACEABILITY_RECORD_ENV];
+
+  beforeEach(() => {
+    delete process.env[TRACEABILITY_RECORD_ENV];
+  });
+
   function repoWithArtifact(contents: string): string {
     const root = mkdtempSync(join(tmpdir(), "eo-attest-trace-"));
     created.push(root);
@@ -355,6 +375,8 @@ describe("readRequirementTraceabilityInput — the artifact is validated, never 
   }
 
   afterEach(() => {
+    if (savedOverride === undefined) delete process.env[TRACEABILITY_RECORD_ENV];
+    else process.env[TRACEABILITY_RECORD_ENV] = savedOverride;
     for (const root of created.splice(0)) rmSync(root, { recursive: true, force: true });
   });
 
