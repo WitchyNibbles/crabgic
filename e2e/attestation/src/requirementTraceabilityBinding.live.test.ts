@@ -1,5 +1,5 @@
 import { execFile, execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -46,12 +46,22 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
  * fronts it with TLS, and drives a real create through the real
  * `executeMutationPlan`.
  *
- * IT BINDS EXACTLY ONE REQUIREMENT — the traceability criterion itself,
- * which is the one this dashboard genuinely evidences. Binding all 16
- * release requirements to one throwaway dashboard would be fabrication, and
- * the release-gate item stays FAIL for the other 15 for the honest reason
- * ("bound to no remote (Jira/Grafana) resource"). That FAIL is the correct
- * outcome, not a defect in this test.
+ * IT BINDS THE REQUIREMENTS WHOSE SUBJECT IS A REMOTE SYSTEM, and only
+ * those. Binding all 16 release criteria to one throwaway dashboard would be
+ * fabrication — "two independent from-clean-checkout builds produce
+ * byte-identical tarball hashes" is not evidenced by a Grafana revision, and
+ * `checkRequirementTraceability` no longer asks it to be (see
+ * `releaseRequirements.ts`'s `REMOTE_SUBJECT_CRITERIA`, owner-ratified
+ * 2026-07-26). The set is DERIVED from that scope rather than hardcoded
+ * here, so producer and rule cannot drift apart.
+ *
+ * Each bound requirement gets its own `EvidenceRecord` through 21's
+ * `bindRemoteResourceEvidence`; no record is shared between them. One real
+ * mutation with a read-back-confirmed `appliedRevision` legitimately
+ * evidences more than one criterion — it is both the "remote (Jira/Grafana)
+ * revisions" the traceability criterion names and the live "exactly-once and
+ * read-back verification" the connector one does — but nothing is asserted
+ * that this run did not observe.
  *
  * Never run by the default attestation gate (`vitest.config.ts` excludes
  * `**{/}*.live.test.ts`) — it needs a live Docker daemon. Run via
@@ -67,8 +77,39 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
 // so this constant and `docker/grafana/12.4/docker-compose.yml` cannot drift.
 const COMPOSE_FILE = "docker/grafana/12.4/docker-compose.yml";
 const CONTAINER_IMAGE = "grafana/grafana-oss:12.4.3";
-const CONTAINER_HTTP_PORT = 3000;
 const COMPOSE_PROJECT = `eo-attestation-traceability-${process.pid}`;
+
+/**
+ * The HOST port the recipe publishes, read from the recipe itself.
+ *
+ * WAS A HARDCODED `3000`, AND THAT IS EXACTLY THE BUG THE MOVE OFF 11.6
+ * EXPOSED. Every `docker/grafana/<version>/` recipe maps a different host
+ * port onto the container's 3000 so the versions can run side by side —
+ * 11.6 publishes `3000:3000`, 12.4 publishes `3002:3000`. The constant was
+ * written against 11.6's mapping and silently became wrong the moment this
+ * harness was pointed at 12.4: the container came up healthy (`docker ps`
+ * agreed) while `waitForHealthy` polled a port nothing was listening on, and
+ * the run died 150 s later on the misleading "Grafana container never
+ * reported database:ok".
+ *
+ * Deriving it from the compose file removes the whole class of failure: the
+ * recipe is the single source of truth for its own published port, exactly
+ * as it already is for the image tag, and re-pointing this harness at
+ * another version needs no second edit here.
+ */
+function publishedHostPort(composeFile: string): number {
+  const recipe = readFileSync(join(REPO_ROOT, composeFile), "utf-8");
+  const mapping = /^\s*-\s*"(\d+):3000"\s*$/m.exec(recipe);
+  const host = mapping?.[1];
+  if (host === undefined) {
+    throw new Error(
+      `${composeFile} publishes no "<host>:3000" port mapping — this harness cannot reach it.`,
+    );
+  }
+  return Number(host);
+}
+
+const CONTAINER_HTTP_PORT = publishedHostPort(COMPOSE_FILE);
 
 /**
  * The compose recipe's own `GF_SECURITY_ADMIN_PASSWORD`. Published in each
