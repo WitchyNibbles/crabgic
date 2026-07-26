@@ -89,14 +89,24 @@ jobs:
     # Measured on a warm local npm cache: ~7.5s `npm ci` + ~14.0s `tsc -b`
     # per checkout (~46s for the leg); a cold CI cache is far slower.
     timeout-minutes: 60
-    env:
+    steps:
       # THE one journal both the harnesses and the generator read/write.
       # Deliberately under `$RUNNER_TEMP` rather than `$GITHUB_WORKSPACE`:
       # several harnesses assert against the checked-out tree, and an
       # untracked journal directory inside it would be a foreign object in
       # the release candidate they are attesting to.
-      EO_RELEASE_GATE_JOURNAL_DIR: ${{ runner.temp }}/release-gate-journal
-    steps:
+      #
+      # Exported HERE rather than in a job-level `env:` because the `runner`
+      # context is NOT available in `jobs.<id>.env` — only `github`, `needs`,
+      # `strategy`, `matrix`, `vars`, `inputs` and `secrets` are. Referencing
+      # `${{ runner.temp }}` there does not fail the step, it makes the whole
+      # workflow file INVALID: GitHub then creates a run named after the raw
+      # file path, with zero jobs and a `failure` conclusion, which is exactly
+      # what happened on the first push of this file. `$GITHUB_ENV` makes the
+      # value visible to every subsequent step in the job, which is the
+      # behaviour the job-level block was reaching for.
+      - name: Export the shared release-gate journal directory
+        run: echo "EO_RELEASE_GATE_JOURNAL_DIR=$RUNNER_TEMP/release-gate-journal" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

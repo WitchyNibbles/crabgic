@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -141,5 +141,71 @@ describe("release-e2e.yml resolves the release candidate once, in a step", () =>
     for (const line of assignments) {
       expect(line).toContain("steps.release-candidate.outputs.object_id");
     }
+  });
+});
+
+/**
+ * Context availability, which YAML validity does not cover.
+ *
+ * `${{ runner.temp }}` in a JOB-level `env:` block parses as perfectly valid
+ * YAML and is still an INVALID workflow: the `runner` context is only
+ * available to `jobs.<id>.steps.*`, never to `jobs.<id>.env`, whose allowed
+ * contexts are `github`, `needs`, `strategy`, `matrix`, `vars`, `inputs` and
+ * `secrets`. GitHub does not fail the step — it refuses the whole file,
+ * creating a run named after the raw workflow path with ZERO jobs and a
+ * `failure` conclusion.
+ *
+ * This is not hypothetical: it is exactly what the first push of the
+ * shared-journal wiring produced, and nothing in this repository caught it.
+ * `js-yaml` would not have either, because the document is well-formed. The
+ * fix is to export the value through `$GITHUB_ENV` from a step, which reaches
+ * every later step in the job — the behaviour the job-level block wanted.
+ *
+ * Scanned across ALL workflows rather than just this one, because the trap is
+ * a property of GitHub's context model and not of any single file.
+ */
+describe("no workflow references a step-only context from a job-level `env:`", () => {
+  /** Job-level `env:` is indented 4 (under `  <job-id>:`); step-level is 8. */
+  function jobLevelEnvBodies(yaml: string): readonly string[] {
+    const bodies: string[][] = [];
+    let current: string[] | undefined;
+    for (const line of yaml.split("\n")) {
+      if (/^ {4}env:\s*$/.test(line)) {
+        current = [];
+        bodies.push(current);
+        continue;
+      }
+      if (current === undefined) continue;
+      if (line.trim() === "" || /^ {6}/.test(line)) current.push(line);
+      else current = undefined;
+    }
+    return bodies.map((lines) => lines.join("\n"));
+  }
+
+  it("never uses `runner.*` in a job-level env block, in any workflow", () => {
+    const dir = join(repoRoot, ".github", "workflows");
+    const offenders: string[] = [];
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))) {
+      const body = readFileSync(join(dir, file), "utf8");
+      for (const env of jobLevelEnvBodies(body)) {
+        // Only the `${{ }}` expression form matters. `$RUNNER_TEMP` as a shell
+        // variable inside a `run:` script is a different thing and is fine.
+        if (/\$\{\{\s*runner\./.test(env)) offenders.push(`${file}: ${env.trim()}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("detects the offending shape, so the guard above cannot pass vacuously", () => {
+    const seeded = [
+      "jobs:",
+      "  a-job:",
+      "    runs-on: ubuntu-latest",
+      "    env:",
+      "      X: ${{ runner.temp }}/thing",
+      "    steps:",
+      "      - run: true",
+    ].join("\n");
+    expect(jobLevelEnvBodies(seeded).some((e) => /\$\{\{\s*runner\./.test(e))).toBe(true);
   });
 });
