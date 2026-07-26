@@ -280,15 +280,24 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
 
       // ...and the clauses of the SAME exit criterion that are NOT met.
       // This item is FAIL today by design: making it green means cutting a
-      // real release (CHANGELOG, tag, marketplace pin, npm re-check, an
-      // actual publish), which is the owner's action, not this harness's.
+      // real release (CHANGELOG, tag, marketplace pin, an actual publish),
+      // which is the owner's action, not this harness's.
       expect(result.verdict).toBe("FAIL");
       const joined = result.reasons.join("\n");
       expect(joined).toContain("CHANGELOG.md");
       expect(joined).toContain("v1.0.0 tag");
       expect(joined).toContain("all-zero placeholder");
-      expect(joined).toContain("npm view");
       expect(joined).toContain("package published");
+
+      // The npm-name re-check is NO LONGER among them, and its absence is
+      // asserted rather than merely dropped. It was a blocking reason for as
+      // long as the recorded verdict was phase 01's; re-probing the registry
+      // for the renamed package (`docs/release-notes-prep.md`, 2026-07-26)
+      // put it back inside its release-time window. Asserting the absence is
+      // what keeps this list honest in both directions — a silently dropped
+      // expectation would let the clause regress unnoticed.
+      expect(result.npmNameRecheck.fresh).toBe(true);
+      expect(joined).not.toContain("npm view");
       // TWO publication reasons, both true and both independently checked:
       // the manifest is `"private": true` (so `npm publish` would refuse it
       // outright), AND the real registry says the name has nothing
@@ -305,13 +314,16 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // the two whole-repo exports, the clause is genuinely satisfied, and
       // the reason is correctly absent. Asserting its presence
       // unconditionally would turn the flag path red on a false failure.
+      // Counts dropped by one on 2026-07-26 (7->6 and 8->7) when the
+      // npm-name re-check stopped being a blocking reason — see the
+      // `not.toContain("npm view")` assertion above.
       expect(result.reproducibleBuild.rebuiltFromCleanCheckout).toBe(rebuilding);
       if (rebuilding) {
         expect(joined).not.toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(7);
+        expect(result.reasons).toHaveLength(6);
       } else {
         expect(joined).toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(8);
+        expect(result.reasons).toHaveLength(7);
       }
 
       const byTag = new Map<string, number>();
