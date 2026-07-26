@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { getResourceDefinition } from "../resources/definitions/index.js";
+import { supportsApisFamily } from "../resources/resource-definitions.js";
 import { GRAFANA_RESOURCE_KINDS, type GrafanaResourceKind } from "../resource-kinds.js";
 import {
   BUILD_INFO_CLOUD_CURRENT,
@@ -44,20 +46,29 @@ describe("route selection per pinned build-info fixture (work item 2)", () => {
     expect(table["alert-rule"]?.family).toBe("legacy");
   });
 
-  it("13.1: folder/dashboard/annotation resolve to apis; alerting resources remain legacy", () => {
+  // ANNOTATION IS `legacy` HERE EVEN THOUGH 13.1 ADVERTISES `apis` FOR IT.
+  // The build offers the family; this connector cannot yet speak it — no
+  // App Platform behaviour has been verified for annotations against a real
+  // server (`annotation.grafana.app` is not even served by 12.4, the newest
+  // recipe this repo can boot). Routing it to `apis` regardless is precisely
+  // the defect that broke every 12.4+ write, so it falls back to the family
+  // that works. This expectation flips to "apis" when, and only when,
+  // `annotationDefinition` gains a verified `apis` behaviour.
+  it("13.1: folder/dashboard resolve to apis; annotation and alerting stay legacy", () => {
     const table = buildRouteTable(flagsFromFixture(BUILD_INFO_OSS_13_1));
     expect(table.folder?.family).toBe("apis");
     expect(table.dashboard?.family).toBe("apis");
-    expect(table.annotation?.family).toBe("apis");
+    expect(table.annotation?.family).toBe("legacy");
     expect(table["contact-point"]?.family).toBe("legacy");
     expect(table["mute-timing"]?.family).toBe("legacy");
     expect(table["notification-template"]?.family).toBe("legacy");
   });
 
-  it("current Cloud: same broad apis coverage as 13.1", () => {
+  it("current Cloud: same coverage as 13.1 — folder/dashboard on apis, the rest legacy", () => {
     const table = buildRouteTable(flagsFromFixture(BUILD_INFO_CLOUD_CURRENT));
     expect(table.folder?.family).toBe("apis");
-    expect(table.annotation?.family).toBe("apis");
+    expect(table.dashboard?.family).toBe("apis");
+    expect(table.annotation?.family).toBe("legacy");
     expect(table["alert-rule"]?.family).toBe("legacy");
   });
 
@@ -125,14 +136,46 @@ describe("route-table selection is a deterministic function of capability alone 
     );
   });
 
-  it("apis is always preferred over legacy when both are present, for every kind", () => {
+  /**
+   * CORRECTED CONTRACT (2026-07-26). This previously asserted that `apis`
+   * wins over `legacy` for EVERY kind whenever both are advertised, and that
+   * is exactly the rule that broke every write against a real Grafana 12.4+:
+   * no resource definition could build an App Platform request, so the
+   * classic path fragment and body were sent to the Kubernetes-style base
+   * path and the server answered with a `Status` object. Advertisement is
+   * necessary but not sufficient — the connector must also be able to speak
+   * the family. `supportsApisFamily` is the second condition.
+   */
+  it("prefers apis over legacy for every kind this connector can speak it for", () => {
     fc.assert(
       fc.property(kindArb, (kind) => {
         const flags = new Set([capabilityFlag(kind, "legacy"), capabilityFlag(kind, "apis")]);
-        expect(selectRouteFamily(kind, flags)).toBe("apis");
+        const expected = supportsApisFamily(getResourceDefinition(kind)) ? "apis" : "legacy";
+        expect(selectRouteFamily(kind, flags)).toBe(expected);
       }),
       { numRuns: 50 },
     );
+  });
+
+  it("falls back to legacy — never to a family it cannot build requests for", () => {
+    for (const kind of GRAFANA_RESOURCE_KINDS) {
+      if (supportsApisFamily(getResourceDefinition(kind))) continue;
+      const flags = new Set([capabilityFlag(kind, "legacy"), capabilityFlag(kind, "apis")]);
+      expect(selectRouteFamily(kind, flags)).toBe("legacy");
+    }
+  });
+
+  /**
+   * The honest end of the same rule: a kind offered ONLY on a family we
+   * cannot speak is unsupported on that build. Reporting it as absent makes
+   * `resolveRouteForKind` raise "no route available", which is a stated
+   * refusal — far better than routing a request somewhere it will fail.
+   */
+  it("reports a kind offered only on an unspeakable family as unsupported", () => {
+    for (const kind of GRAFANA_RESOURCE_KINDS) {
+      if (supportsApisFamily(getResourceDefinition(kind))) continue;
+      expect(selectRouteFamily(kind, new Set([capabilityFlag(kind, "apis")]))).toBeUndefined();
+    }
   });
 
   it("an empty capability set resolves every kind to undefined (unsupported)", () => {

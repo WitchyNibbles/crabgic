@@ -1,6 +1,7 @@
 import type { FakeProviderScriptEntry } from "@eo/gateway";
 import type { GrafanaResourceKind } from "../resource-kinds.js";
 import { deriveAnnotationMarkerTag } from "../reconciliation/marker-reconciler.js";
+import type { GrafanaRouteFamily } from "../discovery/build-info-fixtures.js";
 
 /**
  * Recorded per-kind create+verify cassette entries — roadmap/20-grafana-
@@ -91,6 +92,63 @@ const VERIFY_RESPONSE_BY_NON_ANNOTATION_KIND: Readonly<
   },
 };
 
+/**
+ * App Platform (`/apis`) cassette responses, for the kinds this connector
+ * routes there.
+ *
+ * SHAPED FROM REAL `grafana/grafana-oss:12.4.3` RESPONSES, not invented.
+ * The classic entries above are what every fixture used to replay, including
+ * the 12.4/13.1/Cloud ones that route `folder`/`dashboard` to `apis` — so the
+ * cassette suite replayed a shape no such server ever returns and stayed
+ * green while real writes failed. Keeping the two families' cassettes
+ * separate is what makes a replay actually correspond to the wire.
+ */
+const APIS_CREATE_RESPONSE_BY_KIND: Readonly<
+  Partial<Record<GrafanaResourceKind, FakeProviderScriptEntry>>
+> = {
+  folder: {
+    status: 200,
+    bodyText: JSON.stringify({
+      kind: "Folder",
+      apiVersion: "folder.grafana.app/v1beta1",
+      metadata: { name: "cassette-folder-1", resourceVersion: "1785080602027005" },
+      spec: { title: "Cassette Folder" },
+    }),
+  },
+  dashboard: {
+    status: 200,
+    bodyText: JSON.stringify({
+      kind: "Dashboard",
+      apiVersion: "dashboard.grafana.app/v1beta1",
+      metadata: { name: "cassette-dash-1", resourceVersion: "1785080577718989" },
+      spec: { title: "Cassette Dashboard", tags: ["cassette"] },
+    }),
+  },
+};
+
+const APIS_VERIFY_RESPONSE_BY_KIND: Readonly<
+  Partial<Record<GrafanaResourceKind, FakeProviderScriptEntry>>
+> = {
+  folder: {
+    status: 200,
+    bodyText: JSON.stringify({
+      metadata: { name: "cassette-folder-1", resourceVersion: "1785080602027005" },
+      spec: { title: "Cassette Folder" },
+    }),
+  },
+  dashboard: {
+    status: 200,
+    bodyText: JSON.stringify({
+      metadata: {
+        name: "cassette-dash-1",
+        resourceVersion: "1785080577718989",
+        annotations: { "grafana.app/folder": "cassette-folder-1" },
+      },
+      spec: { title: "Cassette Dashboard", tags: ["cassette"] },
+    }),
+  },
+};
+
 export const CREATE_INPUT_BY_KIND: Readonly<
   Record<GrafanaResourceKind, Readonly<Record<string, unknown>>>
 > = {
@@ -146,6 +204,8 @@ export function buildAnnotationVerifyResponse(
 export interface BuildKindCreateCassetteOptions {
   /** `annotation` only — the idempotency key THIS replay's `planCreate` call will use, so the returned verify response's embedded marker tag matches exactly (adversarial-review HIGH fix). Ignored for every other kind. */
   readonly annotationIdempotencyKey?: string;
+  /** Which route family this replay's build routes `kind` to. Defaults to `legacy`, the family every kind used before the App Platform path existed. */
+  readonly family?: GrafanaRouteFamily;
 }
 
 /** Builds the flat (create, verify) response sequence for one kind, in the exact order `@eo/gateway`'s pipeline issues them (mutating call first, read-back verify second). */
@@ -158,6 +218,21 @@ export function buildKindCreateCassette(
       CREATE_RESPONSE_BY_KIND.annotation,
       buildAnnotationVerifyResponse(options.annotationIdempotencyKey),
     ];
+  }
+  // The response shape follows the ROUTE FAMILY, not the kind: a build that
+  // routes `dashboard` to `/apis` answers with a Kubernetes-style object
+  // carrying `metadata.resourceVersion`, and replaying a classic body at it
+  // would test a fiction.
+  if (options.family === "apis") {
+    const create = APIS_CREATE_RESPONSE_BY_KIND[kind];
+    const verify = APIS_VERIFY_RESPONSE_BY_KIND[kind];
+    if (create === undefined || verify === undefined) {
+      throw new Error(
+        `no App Platform cassette recorded for kind "${kind}" — this connector should not be ` +
+          "routing it to the apis family (see selectRouteFamily's supportsApisFamily check).",
+      );
+    }
+    return [create, verify];
   }
   return [CREATE_RESPONSE_BY_KIND[kind], VERIFY_RESPONSE_BY_NON_ANNOTATION_KIND[kind]];
 }

@@ -1,7 +1,6 @@
 import type { MutationApplyClient, MutationApplyResult } from "@eo/gateway";
 import type { RemoteMutationPlan } from "@eo/contracts";
-import type { RouteTable } from "../discovery/route-table.js";
-import { getResourceDefinition } from "../resources/definitions/index.js";
+import { resolveRouteForKind, type RouteTable } from "../discovery/route-table.js";
 import {
   canonicalFieldsEqual,
   hashCanonicalFields,
@@ -34,17 +33,6 @@ export interface GrafanaMutationApplyClientDeps {
   readonly findAnnotationByTag?: (tag: string) => Promise<string | undefined>;
 }
 
-function requireBasePath(
-  routeTable: RouteTable,
-  kind: ReturnType<typeof parseCanonicalTarget>["kind"],
-): string {
-  const entry = routeTable[kind];
-  if (entry === undefined) {
-    throw new Error(`no route available for Grafana resource kind "${kind}" on this connection`);
-  }
-  return entry.basePath;
-}
-
 /** Resolves the plan's real remote externalId. Uid-addressable kinds set their uid explicitly at creation (`../resources/definitions/*.ts`'s `buildCreateRequest`), so `canonicalTarget`'s own id portion IS the real externalId in every case except an `annotation` create (annotations accept no caller-supplied id — the marker lives in `tags` instead). */
 async function resolveExternalId(
   definition: GrafanaResourceDefinition,
@@ -74,8 +62,7 @@ export function createGrafanaMutationApplyClient(
   return {
     buildRequest(plan) {
       const { kind, id } = parseCanonicalTarget(plan.canonicalTarget);
-      const definition = getResourceDefinition(kind);
-      const basePath = requireBasePath(deps.routeTable, kind);
+      const { basePath, definition } = resolveRouteForKind(deps.routeTable, kind);
       const payload = deps.payloadStore.get(plan.id);
       if (payload === undefined) {
         throw new Error(
@@ -102,7 +89,24 @@ export function createGrafanaMutationApplyClient(
       throw new Error(`GrafanaMutationApplyClient: unsupported action "${plan.action}"`);
     },
 
-    parseResponse(_plan, response): MutationApplyResult {
+    parseResponse(plan, response): MutationApplyResult {
+      // FAMILY-AWARE. This used to apply the classic extraction
+      // unconditionally — `ETag` header, else a `version` body field — and
+      // an App Platform response carries neither, so every apis-routed
+      // create reported `appliedRevision: "unknown"`. The mutation had
+      // genuinely succeeded, which is what made it dangerous: downstream the
+      // "confirmed revision" recorded in traceability evidence was the
+      // literal string "unknown".
+      const { kind } = parseCanonicalTarget(plan.canonicalTarget);
+      const { definition } = resolveRouteForKind(deps.routeTable, kind);
+      if (definition.revisionFromMutationResponse !== undefined) {
+        return {
+          appliedRevision: definition.revisionFromMutationResponse(
+            response.bodyText,
+            response.headers,
+          ),
+        };
+      }
       const raw = parseJsonBody(response.bodyText);
       return {
         appliedRevision: revisionFromEtagOrField(
@@ -114,8 +118,7 @@ export function createGrafanaMutationApplyClient(
 
     async verify(plan, _applied): Promise<boolean> {
       const { kind, id } = parseCanonicalTarget(plan.canonicalTarget);
-      const definition = getResourceDefinition(kind);
-      const basePath = requireBasePath(deps.routeTable, kind);
+      const { basePath, definition } = resolveRouteForKind(deps.routeTable, kind);
       const payload = deps.payloadStore.get(plan.id);
       if (payload === undefined) return false;
       // buildRequest already refused any action other than create/update
@@ -149,8 +152,7 @@ export function createGrafanaMutationApplyClient(
 
     async reconcileAmbiguous(plan, _cause): Promise<MutationApplyResult | undefined> {
       const { kind, id } = parseCanonicalTarget(plan.canonicalTarget);
-      const definition = getResourceDefinition(kind);
-      const basePath = requireBasePath(deps.routeTable, kind);
+      const { basePath, definition } = resolveRouteForKind(deps.routeTable, kind);
       const payload = deps.payloadStore.get(plan.id);
       if (payload === undefined) return undefined;
 

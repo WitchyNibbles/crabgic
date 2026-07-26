@@ -9,6 +9,7 @@ import {
   pickCanonicalFields,
   revisionFromEtagOrField,
 } from "./shared.js";
+import { FOLDER_ANNOTATION, appPlatformBehaviour } from "./app-platform.js";
 
 const CANONICAL_FIELD_KEYS = ["title", "parentUid"] as const;
 
@@ -61,4 +62,44 @@ export const folderDefinition: GrafanaResourceDefinition = {
   // this kind (the injected uid is never itself a canonical field) —
   // identity (adversarial-review HIGH fix's general interface).
   canonicalizeDesiredInput: (input) => input,
+
+  /**
+   * App Platform shapes, confirmed against `grafana/grafana-oss:12.4.3`.
+   *
+   * `parentUid` is carried by the same `grafana.app/folder` metadata
+   * annotation dashboards use for their folder — the App Platform models
+   * "which folder contains this" uniformly, so a folder's parent and a
+   * dashboard's folder are the same mechanism rather than two.
+   *
+   * The precondition also changes family: the classic folder update sends
+   * `If-Match: <etag>`, while the App Platform takes
+   * `metadata.resourceVersion` in the body and answers 409 Conflict. Both
+   * are optimistic concurrency; only one of them is an HTTP header.
+   */
+  apis: {
+    ...appPlatformBehaviour({
+      kind: "folder",
+      canonicalFieldKeys: CANONICAL_FIELD_KEYS,
+      buildSpec: (input) => ({ title: input.title }),
+      buildAnnotations: (input) =>
+        typeof input.parentUid === "string" && input.parentUid.length > 0
+          ? { [FOLDER_ANNOTATION]: input.parentUid }
+          : undefined,
+      // ABSENT ANNOTATION MEANS A TOP-LEVEL FOLDER, and for THIS kind that
+      // canonicalises to `null` — deliberately NOT the `""` its dashboard
+      // counterpart uses. The two differ because Grafana's own APIs differ,
+      // verified against a live 12.4.3: the classic response for a top-level
+      // folder omits `parentUid` entirely (so `pickCanonicalFields` yields
+      // `null`), while a root dashboard's `meta.folderUid` is literally `""`.
+      // Emitting the key here would canonicalise a top-level folder as `""`
+      // and make it compare unequal to the same folder read through the
+      // classic family. Returning nothing lets `pickCanonicalFields` supply
+      // the `null` both families agree on.
+      fieldsFromAnnotations: (annotations) =>
+        typeof annotations[FOLDER_ANNOTATION] === "string"
+          ? { parentUid: annotations[FOLDER_ANNOTATION] }
+          : {},
+    }),
+    canonicalizeDesiredInput: (input) => input,
+  },
 };

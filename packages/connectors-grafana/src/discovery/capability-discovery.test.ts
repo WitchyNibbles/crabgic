@@ -66,10 +66,21 @@ describe("discoverGrafanaCapabilities — per-fixture route selection (work item
     expect(result.isReadOnly).toBe(false);
   });
 
-  it("13.1 and current-Cloud both discover the broader apis surface", async () => {
+  /**
+   * A discovered family is one the connector will actually USE, not merely
+   * one the build offers. 13.1 and Cloud advertise `annotation:apis`, but no
+   * verified App Platform behaviour exists for annotations, so the resolved
+   * surface records `annotation:legacy` — the family that works. Recording
+   * the advertisement instead is what sent classic bodies to Kubernetes-style
+   * endpoints and failed every 12.4+ write.
+   */
+  it("13.1 and current-Cloud resolve the kinds this connector can speak on apis", async () => {
     for (const fixture of [BUILD_INFO_OSS_13_1, BUILD_INFO_CLOUD_CURRENT]) {
       const result = await discoverGrafanaCapabilities(depsFromFixture(fixture));
-      expect(result.apiFamilies).toContain("annotation:apis");
+      expect(result.apiFamilies).toContain("dashboard:apis");
+      expect(result.apiFamilies).toContain("folder:apis");
+      expect(result.apiFamilies).toContain("annotation:legacy");
+      expect(result.apiFamilies).not.toContain("annotation:apis");
       expect(result.isReadOnly).toBe(false);
     }
   });

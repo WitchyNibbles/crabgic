@@ -75,8 +75,17 @@ async function replayFullResourceFlow(fixture: GrafanaBuildInfoFixture): Promise
   const idempotencyKeyForKind = (kind: GrafanaResourceKind): string =>
     `${fixture.fixtureLabel}:${kind}:create`;
 
+  // The cassette must answer in the shape the family the route table
+  // ACTUALLY resolved returns — a build that routes `dashboard` to `/apis`
+  // replies with a Kubernetes-style object, and replaying a classic body at
+  // it tests a shape no such server ever sends. Taking the family from the
+  // discovered route table (rather than assuming legacy) is what ties this
+  // replay to the routing the connector will really perform.
   const script = RESOURCE_FLOW_ORDER.flatMap((kind) =>
-    buildKindCreateCassette(kind, { annotationIdempotencyKey: idempotencyKeyForKind(kind) }),
+    buildKindCreateCassette(kind, {
+      annotationIdempotencyKey: idempotencyKeyForKind(kind),
+      ...(routeTable[kind] !== undefined ? { family: routeTable[kind].family } : {}),
+    }),
   );
   const fakeTransport = createFakeProviderTransport({ responses: script });
   const httpClient = new GatewayHttpClient({

@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { CapabilitySnapshot, RemoteMutationPlan } from "@eo/contracts";
-import { decodeApiFamiliesToRouteTable, type RouteTable } from "./discovery/route-table.js";
-import { getResourceDefinition } from "./resources/definitions/index.js";
+import {
+  decodeApiFamiliesToRouteTable,
+  resolveRouteForKind,
+  type RouteTable,
+} from "./discovery/route-table.js";
 import type {
   GrafanaParsedResource,
   GrafanaResourceSummary,
@@ -72,14 +75,6 @@ async function resolveRouteTable(deps: GrafanaProviderAdapterDeps): Promise<Rout
   return decodeApiFamiliesToRouteTable(snapshot.apiFamilies);
 }
 
-function requireBasePath(routeTable: RouteTable, kind: GrafanaResourceKind): string {
-  const entry = routeTable[kind];
-  if (entry === undefined) {
-    throw new Error(`no route available for Grafana resource kind "${kind}" on this connection`);
-  }
-  return entry.basePath;
-}
-
 /** Builds a `GrafanaProviderAdapter` — roadmap/20's resource-client/discovery/serializer bundle. */
 export function createGrafanaProviderAdapter(
   deps: GrafanaProviderAdapterDeps,
@@ -89,8 +84,7 @@ export function createGrafanaProviderAdapter(
   return {
     async list(kind) {
       const routeTable = await resolveRouteTable(deps);
-      const basePath = requireBasePath(routeTable, kind);
-      const definition = getResourceDefinition(kind);
+      const { basePath, definition } = resolveRouteForKind(routeTable, kind);
       const listSpec = definition.buildListRequest(basePath);
       const response = await deps.send(listSpec);
       return definition.parseList(response.bodyText);
@@ -98,8 +92,7 @@ export function createGrafanaProviderAdapter(
 
     async get(kind, externalId) {
       const routeTable = await resolveRouteTable(deps);
-      const basePath = requireBasePath(routeTable, kind);
-      const definition = getResourceDefinition(kind);
+      const { basePath, definition } = resolveRouteForKind(routeTable, kind);
       const getSpec = definition.buildGetRequest(basePath, externalId);
       const response = await deps.send(getSpec);
       return definition.parseCanonical(externalId, response.bodyText, response.headers);
@@ -112,7 +105,7 @@ export function createGrafanaProviderAdapter(
       const snapshot = await deps.getSnapshot();
       assertWritableCapability(snapshot);
       const routeTable = decodeApiFamiliesToRouteTable(snapshot.apiFamilies);
-      requireBasePath(routeTable, kind); // fail fast if this build doesn't support the kind at all
+      resolveRouteForKind(routeTable, kind); // fail fast if this build doesn't support the kind at all
 
       const deterministicUid = deriveDeterministicUid(idempotencyKey);
       const planId = generatePlanId();
@@ -136,8 +129,7 @@ export function createGrafanaProviderAdapter(
       const snapshot = await deps.getSnapshot();
       assertWritableCapability(snapshot);
       const routeTable = decodeApiFamiliesToRouteTable(snapshot.apiFamilies);
-      const basePath = requireBasePath(routeTable, kind);
-      const definition = getResourceDefinition(kind);
+      const { basePath, definition } = resolveRouteForKind(routeTable, kind);
 
       // Capture the rollback snapshot + expected remote revision from ONE
       // authoritative GET, before any write is attempted (roadmap/20 §In

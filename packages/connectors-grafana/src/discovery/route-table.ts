@@ -1,4 +1,10 @@
 import { GRAFANA_RESOURCE_KINDS, type GrafanaResourceKind } from "../resource-kinds.js";
+import { getResourceDefinition } from "../resources/definitions/index.js";
+import {
+  resolveDefinitionForFamily,
+  supportsApisFamily,
+  type GrafanaResourceDefinition,
+} from "../resources/resource-definitions.js";
 import type { GrafanaRouteFamily } from "./build-info-fixtures.js";
 
 /** The base path each (kind, family) resolves to — data, not code (roadmap/20 §Risks: "the route table is data ... drift lands as a fixture update, never a routing-logic change"). */
@@ -64,9 +70,26 @@ export function selectRouteFamily(
   kind: GrafanaResourceKind,
   flags: CapabilityFlagSet,
 ): GrafanaRouteFamily | undefined {
-  if (flags.has(capabilityFlag(kind, "apis"))) return "apis";
+  // "Advertised" is necessary but NOT sufficient — the connector must also
+  // be able to SPEAK the family. This second condition was missing, and its
+  // absence was the defect: `apis` was selected for every kind a build
+  // advertised it for, while no resource definition could build an
+  // App Platform request, so the classic path fragment and body went to the
+  // Kubernetes-style base path and every write failed on the wire. Falling
+  // back to `legacy` for a kind we cannot speak is correct and lossless —
+  // Grafana keeps serving the classic API alongside the new one.
+  if (flags.has(capabilityFlag(kind, "apis")) && connectorSpeaksApis(kind)) return "apis";
   if (flags.has(capabilityFlag(kind, "legacy"))) return "legacy";
+  // A kind advertised ONLY on a family this connector cannot speak is
+  // unsupported on this build, and saying so is better than routing it
+  // somewhere it will fail: `buildRouteTable` omits the kind entirely, and
+  // `requireBasePath` raises "no route available for Grafana resource kind".
   return undefined;
+}
+
+/** Whether a resource definition for `kind` carries App Platform behaviour. */
+function connectorSpeaksApis(kind: GrafanaResourceKind): boolean {
+  return supportsApisFamily(getResourceDefinition(kind));
 }
 
 /** Builds the full `RouteTable` from a capability-flag set — the data-driven route table roadmap/20 names as a `CapabilitySnapshot`-scoped interface produced. */
@@ -99,4 +122,29 @@ export function decodeApiFamiliesToRouteTable(apiFamilies: readonly string[]): R
     table[kind] = { kind, family: familyRaw, basePath: FAMILY_BASE_PATHS[kind][familyRaw] };
   }
   return table;
+}
+
+/**
+ * Resolves both halves of "how do I talk to this kind on this connection":
+ * the base path, and the resource behaviour matching the family that base
+ * path belongs to.
+ *
+ * The two must be chosen together. Handing a caller a base path without the
+ * matching behaviour is exactly how classic request shapes ended up on
+ * App Platform endpoints — the base path came from the route table and the
+ * builders came from `getResourceDefinition`, and nothing tied them to the
+ * same family. Callers now take both from here, so they cannot drift.
+ */
+export function resolveRouteForKind(
+  routeTable: RouteTable,
+  kind: GrafanaResourceKind,
+): { readonly basePath: string; readonly definition: GrafanaResourceDefinition } {
+  const entry = routeTable[kind];
+  if (entry === undefined) {
+    throw new Error(`no route available for Grafana resource kind "${kind}" on this connection`);
+  }
+  return {
+    basePath: entry.basePath,
+    definition: resolveDefinitionForFamily(getResourceDefinition(kind), entry.family),
+  };
 }

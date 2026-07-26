@@ -45,8 +45,46 @@ export function canonicalFieldsEqual(
  * inputs, matching `MutationApplyClient.buildRequest`/`parseResponse`'s
  * own purity requirement (`@eo/gateway`).
  */
-export interface GrafanaResourceDefinition {
+export interface GrafanaResourceDefinition extends GrafanaFamilyBehaviour {
   readonly kind: GrafanaResourceKind;
+  /**
+   * App Platform (`/apis`) behaviour for this kind, when the connector can
+   * actually speak it. Absent means "legacy only", and
+   * `../discovery/route-table.ts` will then never route this kind to `apis`
+   * however loudly the server advertises it.
+   *
+   * WHY THIS EXISTS. The members of `GrafanaFamilyBehaviour` above are the
+   * CLASSIC (`/api`) shapes, and they were, for a long time, the only shapes
+   * this package had — while `selectRouteFamily` preferred `apis` whenever a
+   * build advertised it. The two facts together meant every write against a
+   * Grafana with the App Platform API enabled composed a classic path
+   * fragment onto a Kubernetes-style base and posted a classic body to it:
+   * `POST /apis/dashboard.grafana.app/v1beta1/namespaces/default/dashboards/db`
+   * carrying `{dashboard, folderUid, overwrite}`. Grafana answered with a
+   * Kubernetes `Status` object and the mutation failed. Nothing caught it:
+   * 11.6 — the only containerized recipe exercised, and now retired as EOL —
+   * is legacy-only, and this package's Grafana cassettes are hand-authored
+   * rather than recorded, so they encoded the same wrong shape on both
+   * sides. The defect surfaced the first time a write ran against a real
+   * 12.4 container.
+   *
+   * The optionality is therefore load-bearing, not convenience: it is what
+   * makes "the server offers a family we cannot speak" degrade to the family
+   * we can, instead of to garbage on the wire.
+   */
+  readonly apis?: GrafanaFamilyBehaviour;
+}
+
+/**
+ * The request-building and parsing surface of ONE route family.
+ *
+ * Split out of `GrafanaResourceDefinition` so a definition can carry a
+ * second, family-specific implementation without duplicating the kind or
+ * the family-independent members. `resolveDefinitionForFamily` picks between
+ * them, and returns something satisfying `GrafanaResourceDefinition` either
+ * way — so every call site keeps its existing signature.
+ */
+export interface GrafanaFamilyBehaviour {
   buildListRequest(basePath: string): GrafanaHttpRequestSpec;
   buildGetRequest(basePath: string, externalId: string): GrafanaHttpRequestSpec;
   buildCreateRequest(
@@ -60,6 +98,24 @@ export interface GrafanaResourceDefinition {
     input: Readonly<Record<string, unknown>>,
     expectedRevision: string,
   ): GrafanaHttpRequestSpec;
+  /**
+   * Extracts the revision from a MUTATION response (the immediate
+   * create/update reply), when this family does not carry it the classic way.
+   *
+   * Optional, and absent for the classic family, whose revision is
+   * `revisionFromEtagOrField(headers, body.version)` — the fallback
+   * `../mutation/mutation-apply-client.ts` applies. The App Platform carries
+   * neither an `ETag` nor a `version` field, so that fallback silently
+   * produced the literal string `"unknown"` for every apis-routed create:
+   * the mutation succeeded, the pipeline reported
+   * `appliedRevision: "unknown"`, and the traceability evidence recorded a
+   * "confirmed revision" that confirmed nothing. A revision that is not a
+   * real revision is worse than a failure, because it looks like success.
+   */
+  revisionFromMutationResponse?(
+    bodyText: string,
+    headers: Readonly<Record<string, string>>,
+  ): string;
   parseList(bodyText: string): readonly GrafanaResourceSummary[];
   /** The canonical serializer — the SAME function used for the immediate parse-response step and for a later independent read-back GET, so "mutate → read-back → compare" always compares apples to apples. */
   parseCanonical(
@@ -96,4 +152,33 @@ export interface GrafanaResourceDefinition {
     input: Readonly<Record<string, unknown>>,
     context: { readonly action: "create" | "update"; readonly deterministicUid: string },
   ): Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Picks the behaviour to use for `family`, as something satisfying the whole
+ * `GrafanaResourceDefinition` contract.
+ *
+ * Returning a full definition rather than a bare behaviour is deliberate:
+ * every consumer (`../adapter.ts`, `../mutation/mutation-apply-client.ts`,
+ * `../mutation/rollback.ts`) already holds a definition and calls builders on
+ * it, so family-awareness costs those call sites one changed LOOKUP and no
+ * changed signatures.
+ *
+ * A kind with no `apis` behaviour resolves to its legacy behaviour even when
+ * asked for `apis`. That is defence in depth rather than the primary
+ * mechanism — `../discovery/route-table.ts` already declines to route such a
+ * kind to `apis` — but the two together mean a classic body can never reach
+ * a Kubernetes-style endpoint by any path.
+ */
+export function resolveDefinitionForFamily(
+  definition: GrafanaResourceDefinition,
+  family: "legacy" | "apis",
+): GrafanaResourceDefinition {
+  if (family !== "apis" || definition.apis === undefined) return definition;
+  return { kind: definition.kind, ...definition.apis };
+}
+
+/** Whether this connector can speak the App Platform (`/apis`) family for `definition`'s kind. */
+export function supportsApisFamily(definition: GrafanaResourceDefinition): boolean {
+  return definition.apis !== undefined;
 }
