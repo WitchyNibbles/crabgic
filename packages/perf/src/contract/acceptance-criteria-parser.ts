@@ -2,7 +2,7 @@ import {
   PERFORMANCE_METRICS,
   PerformanceMetricSchema,
   type ProvisionalPerformanceBudgetEntry,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * Free-text `Requirement.acceptanceCriteria` parser — roadmap/15 §In scope,

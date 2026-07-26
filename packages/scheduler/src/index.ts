@@ -1,11 +1,11 @@
 /**
- * `@eo/scheduler` public barrel — roadmap/13-scheduler-packets-context.md.
+ * `@crabgic/scheduler` public barrel — roadmap/13-scheduler-packets-context.md.
  * Every cross-cutting type/function this package exposes to phase 14
  * (quality/security gates, built on this phase's dispatch/candidate seam),
  * 15 (PerformanceContract, this phase's artifact-store benchmark slot),
  * and 22 (learning, this phase's shadow-run mechanism) is exported from
  * exactly this one module — downstream packages import from
- * `@eo/scheduler` directly, never a submodule path.
+ * `@crabgic/scheduler` directly, never a submodule path.
  *
  * Excluded deliberately (test-support-only, not part of this package's
  * public API surface): `test-support/minimal-compiled-profile.ts` — a

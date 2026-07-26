@@ -9,7 +9,7 @@ engine-version-drift/re-baseline procedure this repository's own ground rules es
 ## Install
 
 ```
-engineering-orchestrator install [--dry-run] [--json]
+crabgic install [--dry-run] [--json]
 ```
 
 See `docs/operator-guide.md` §1 for the full description. The remainder of this document
@@ -18,7 +18,7 @@ covers upgrade, uninstall, and version-drift handling.
 ## Upgrade
 
 ```
-engineering-orchestrator upgrade [--dry-run]
+crabgic upgrade [--dry-run]
 ```
 
 ### Add-only merge (10's mechanism)
@@ -77,7 +77,7 @@ restored/cleaned by a prior partial recovery attempt," a documented no-op, never
 ## Uninstall
 
 ```
-engineering-orchestrator uninstall [--keep-state]
+crabgic uninstall [--keep-state]
 ```
 
 Restores every managed artifact's recorded pre-install snapshot verbatim (or deletes the file
@@ -167,7 +167,7 @@ The real `claude` binary's `enabledPlugins` settings key is keyed by
 `claude` 2.1.218 (not assumed from documentation), per `docs/engine-baseline.md` §12:
 
 ```json
-{ "enabledPlugins": { "engineering-orchestrator@engineering-orchestrator-marketplace": true } }
+{ "enabledPlugins": { "crabgic@crabgic-marketplace": true } }
 ```
 
 The installer composes this key from the committed `marketplace.json`'s own `name` field via

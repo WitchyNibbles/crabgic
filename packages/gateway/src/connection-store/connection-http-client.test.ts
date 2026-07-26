@@ -2,7 +2,7 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@crabgic/contracts";
 import {
   buildAllowlistForConnection,
   buildHttpClientForConnection,

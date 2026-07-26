@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type ProvisionalPerformanceContract } from "@eo/contracts";
-import type { GateContext } from "@eo/gates";
+import { CURRENT_SCHEMA_VERSION, type ProvisionalPerformanceContract } from "@crabgic/contracts";
+import type { GateContext } from "@crabgic/gates";
 import { canonicalHash } from "../contract/canonical-hash.js";
 import { journalApprovedProvisionalContract } from "../test-support/journal-anchor-fixture.js";
 import { createTestJournal, type TestJournal } from "../test-support/test-journal.js";

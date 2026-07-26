@@ -6,7 +6,7 @@
  * representative `path` (the schema requires exactly one non-empty path
  * per finding, not a list — see `StackEvidenceFindingSchema`).
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { type DetectionContext, type Detector } from "./types.js";
 
 const EXTENSION_ECOSYSTEMS: ReadonlyMap<string, string> = new Map([

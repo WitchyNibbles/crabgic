@@ -5,7 +5,7 @@
  * python, go, rust) at ANY depth (so a monorepo's nested
  * a nested `packages/<name>/package.json` is found too, not just the root).
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 
 interface ManifestRule {

@@ -10,7 +10,7 @@
  *
  * TARGET-STATE DECISION (documented, since the source material names two
  * possible targets without pinning which condition maps to which): 02's
- * own transition table (`@eo/contracts`'s `RUN_LIFECYCLE_TRANSITIONS`) only
+ * own transition table (`@crabgic/contracts`'s `RUN_LIFECYCLE_TRANSITIONS`) only
  * allows `-> awaiting_approval` FROM `draft` — no in-flight stage
  * (`ready`/`running`/`verifying`/`integrating`/`final_verifying`) has an
  * outgoing edge to `awaiting_approval`; every one of those stages CAN
@@ -28,7 +28,7 @@
  * token for a FUTURE re-dispatch, not by resurrecting the blocked run
  * in-place (flagged as 13's own hand-off concern, roadmap/11 §Risks).
  */
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import type { RunRecord } from "../router/operations.js";
 import type { RunsRegistry } from "../registries/runs-registry.js";
 import { transitionRun } from "../run-lifecycle/run-transition.js";

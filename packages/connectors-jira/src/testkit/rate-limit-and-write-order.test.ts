@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GatewayHttpClient } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
-import type { HttpTransportRequest, HttpTransportResponse } from "@eo/gateway";
+import { GatewayHttpClient } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
+import type { HttpTransportRequest, HttpTransportResponse } from "@crabgic/gateway";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { buildFieldMetadataIndex } from "../capability/field-metadata.js";
 import { createJiraResourceClient } from "../resource-client/jira-resource-client.js";

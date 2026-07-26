@@ -11,7 +11,7 @@
  */
 
 import { z } from "zod";
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import type { ExternalConnectionRepository } from "../../connection-store/external-connection-store.js";
 import {
   ProviderRegistry,

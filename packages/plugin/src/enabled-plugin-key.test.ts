@@ -11,10 +11,8 @@ import { loadUnpinnedMarketplace } from "./marketplace-schema.js";
 import { resolvePluginRoot } from "./plugin-root.js";
 
 describe("ENABLED_PLUGIN_KEY — live-verified against a real claude 2.1.218 binary", () => {
-  it('is the golden, live-verified value "engineering-orchestrator@engineering-orchestrator-marketplace"', () => {
-    expect(ENABLED_PLUGIN_KEY).toBe(
-      "engineering-orchestrator@engineering-orchestrator-marketplace",
-    );
+  it('is the golden, live-verified value "crabgic@crabgic-marketplace"', () => {
+    expect(ENABLED_PLUGIN_KEY).toBe("crabgic@crabgic-marketplace");
   });
 
   it("is composed from PLUGIN_CAPABILITY_NAME and MARKETPLACE_NAME, never a second hand-typed literal", () => {

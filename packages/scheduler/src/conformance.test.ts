@@ -4,7 +4,7 @@ import {
   WORK_UNIT_ATTEMPT_STATUSES,
   type JournalEntryType,
   type WorkUnitAttemptStatus,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * Exit criterion #7 — roadmap/13-scheduler-packets-context.md: "Every
@@ -13,7 +13,7 @@ import {
  * (exercised here against 02's discriminated-union exhaustiveness
  * harness)."
  *
- * The exhaustiveness MECHANISM (identical to `@eo/contracts`'s own
+ * The exhaustiveness MECHANISM (identical to `@crabgic/contracts`'s own
  * `JOURNAL_ENTRY_TYPE_DESCRIPTIONS`/`WORK_UNIT_ATTEMPT_STATUS_TRANSITIONS`
  * pattern): a `Record<K, V>`-typed object literal is valid TypeScript only
  * when it declares EXACTLY one property per union member — `npx tsc -b`

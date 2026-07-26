@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CONNECTOR_ERROR_KINDS, type ConnectorErrorKind } from "@eo/contracts";
+import { CONNECTOR_ERROR_KINDS, type ConnectorErrorKind } from "@crabgic/contracts";
 import { mapJiraStatusToConnectorErrorKind } from "./jira-error-mapping.js";
 
 /**
  * roadmap/18 §Test plan, Unit bullet: "canonical-error mapping table (every
  * Jira REST status code → exactly one of the 10 members)." This phase
- * reuses `@eo/gateway`'s `mapHttpStatusToConnectorError` (never
+ * reuses `@crabgic/gateway`'s `mapHttpStatusToConnectorError` (never
  * reimplements it — roadmap/18 §Out of scope: "Generic transport
  * security... canonical-error mapping mechanics... → 16"); this test
  * proves the exhaustive Jira-relevant status table this connector actually

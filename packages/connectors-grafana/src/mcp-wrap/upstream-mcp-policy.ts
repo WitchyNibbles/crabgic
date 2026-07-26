@@ -1,4 +1,4 @@
-import { McpServerCapabilityEntrySchema, type CapabilityManifestEntry } from "@eo/contracts";
+import { McpServerCapabilityEntrySchema, type CapabilityManifestEntry } from "@crabgic/contracts";
 
 /**
  * The optional official Grafana MCP wrap — roadmap/20-grafana-adapters.md

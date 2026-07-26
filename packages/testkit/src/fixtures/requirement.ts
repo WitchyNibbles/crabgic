@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, RequirementSchema, type Requirement } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, RequirementSchema, type Requirement } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `Requirement` fixture builder — roadmap/02 work item 10. */

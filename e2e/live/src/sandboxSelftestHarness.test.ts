@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ProcessProbeFn, ProbeResult } from "engineering-orchestrator";
+import type { ProcessProbeFn, ProbeResult } from "crabgic";
 import { realSandboxProbe, runSandboxSelftest } from "./sandboxSelftestHarness.js";
 
 function fakeProbe(

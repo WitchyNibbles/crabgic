@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildWorkerResult } from "@eo/testkit";
-import type { EngineResultEvent } from "@eo/engine-core";
+import { buildWorkerResult } from "@crabgic/testkit";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 import { validateWorkerResult } from "./worker-result-validation.js";
 
 function resultEvent(overrides: Partial<EngineResultEvent> = {}): EngineResultEvent {

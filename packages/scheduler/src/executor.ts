@@ -3,7 +3,7 @@
  * executor" + "Attempt policy" + "Scheduler half of the TDD evidence
  * protocol." Ties `./readiness.ts`, `./fanout.ts`, `./attempt-policy.ts`,
  * `./budgets.ts`, `./worker-result-validation.ts`, and `./parking.ts`
- * together into the actual dispatch loop over `@eo/engine-core`'s
+ * together into the actual dispatch loop over `@crabgic/engine-core`'s
  * `EngineAdapter` — the sole mechanism for turning a ready `WorkUnit` +
  * `TaskPacket` into a running attempt (roadmap/13 §Interfaces consumed).
  *
@@ -11,10 +11,10 @@
  * surface, 05) are NOT reimplemented here — this module calls
  * `EngineAdapter.spawn`/`resume` directly (the abstract 03 contract) and
  * does its own minimal journaling (`session_assignment`,
- * `work_unit_transition`) via `@eo/journal`'s existing `recordAttempt`,
+ * `work_unit_transition`) via `@crabgic/journal`'s existing `recordAttempt`,
  * exactly mirroring 05's own `worker-lifecycle-manager.ts` ordering
  * (`session_assignment` BEFORE consuming any events) without depending on
- * `@eo/supervisor` at all — this phase's own minimal-sufficient choice,
+ * `@crabgic/supervisor` at all — this phase's own minimal-sufficient choice,
  * documented in the evidence doc's deviations section.
  *
  * EVIDENCE SEAM (roadmap/13 §In scope, "Scheduler half of the TDD evidence
@@ -59,7 +59,7 @@
  * an exported, unconsulted predicate.
  */
 
-import { recordAttempt, type JournalStore } from "@eo/journal";
+import { recordAttempt, type JournalStore } from "@crabgic/journal";
 import type {
   AdjudicationCallback,
   CompiledWorkerProfile,
@@ -67,8 +67,8 @@ import type {
   EngineEvent,
   SessionRef,
   WorkerHandle,
-} from "@eo/engine-core";
-import type { TaskPacket, WorkerResult } from "@eo/contracts";
+} from "@crabgic/engine-core";
+import type { TaskPacket, WorkerResult } from "@crabgic/contracts";
 import { assertPacketWithinBudget } from "./budgets.js";
 import { assertRepairAllowed, type AttemptEvidenceKind } from "./attempt-policy.js";
 import { assertNotGloballyPaused, parkWorkUnit } from "./parking.js";
@@ -105,8 +105,8 @@ interface ConsumeEventsParams {
   /**
    * CRASH-RECOVERY CORRECTNESS FIX: threaded onto every `recordAttempt`
    * call below exactly as it already was onto `session_assignment` — see
-   * `@eo/journal`'s `recordAttempt` doc comment for why an entry missing
-   * `runId` was invisible to `@eo/supervisor`'s `recoverRun`.
+   * `@crabgic/journal`'s `recordAttempt` doc comment for why an entry missing
+   * `runId` was invisible to `@crabgic/supervisor`'s `recoverRun`.
    */
   readonly runId?: string;
 }

@@ -9,7 +9,7 @@ import { EXIT_OK } from "../exit-codes.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import type { HelpCommand } from "../argv/types.js";
 
-export const BINARY_NAME = "engineering-orchestrator";
+export const BINARY_NAME = "crabgic";
 
 export interface CommandHelpEntry {
   readonly usage: string;

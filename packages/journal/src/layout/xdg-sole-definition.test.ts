@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * roadmap/04-journal-idempotency-leases.md exit criterion 11:
- * "`$XDG_STATE_HOME`/`$XDG_CACHE_HOME` engineering-orchestrator roots are
+ * "`$XDG_STATE_HOME`/`$XDG_CACHE_HOME` crabgic roots are
  * defined exactly once in this package — evidence: repo-wide lint/grep CI
  * check fails if another package reimplements the root instead of
  * importing it." This is that check, run as a normal vitest test (this
@@ -17,15 +17,15 @@ import { describe, expect, it } from "vitest";
  *
  * DETECTION RULE: flags a PRODUCTION source file (`.ts`, NOT `.test.ts`)
  * OUTSIDE `packages/journal/src` only when it contains BOTH (a) the product
- * namespace literal `"engineering-orchestrator"` AND (b) an actual READ of
+ * namespace literal `"crabgic"` AND (b) an actual READ of
  * `process.env.XDG_STATE_HOME`/`process.env.XDG_CACHE_HOME` (dot- or
  * bracket-access). Reading the XDG env var itself and then building a
- * `.../engineering-orchestrator/<hash>/...` path IS the reimplementation
+ * `.../crabgic/<hash>/...` path IS the reimplementation
  * this exit criterion cares about — precisely "reimplements the root
  * instead of importing it." Requiring an actual env-var READ (not a mere
  * textual MENTION of the variable name) is what makes the rule faithful:
  * a downstream package that correctly IMPORTS `resolveStateRoot`/
- * `resolveCacheRoot`/`readXdgEnvFromProcess` from `@eo/journal` and only
+ * `resolveCacheRoot`/`readXdgEnvFromProcess` from `@crabgic/journal` and only
  * composes its own subpaths (as 05's `xdg-supervisor-layout.ts` and 07's
  * `layout.ts` do) still MENTIONS `$XDG_STATE_HOME` in its own doc comments
  * and re-exports, but never reads the env var itself — it must NOT be
@@ -42,8 +42,8 @@ import { describe, expect, it } from "vitest";
  *
  * DOCUMENTED SEAM (allowlist): `packages/engine-core` legitimately emits
  * DOCUMENTED, TILDE-ANCHORED DEFAULT literals
- * (`~/.local/state/engineering-orchestrator/**`,
- * `~/.cache/engineering-orchestrator/**`) in its compiled capability-deny
+ * (`~/.local/state/crabgic/**`,
+ * `~/.cache/crabgic/**`) in its compiled capability-deny
  * lists — phase 03 (engine-core) has no dependency edge to phase 04
  * (journal) per the roadmap graph, so it cannot import
  * `resolveStateRoot`/`resolveCacheRoot` and instead hardcodes the XDG
@@ -69,7 +69,7 @@ const XDG_ALLOWLISTED_RELATIVE_PATHS: readonly string[] = [
   "packages/engine-core/src/compiler/xdg-default-paths.ts",
 ];
 
-const NAMESPACE_LITERAL = "engineering-orchestrator";
+const NAMESPACE_LITERAL = "crabgic";
 /**
  * An actual READ of the XDG env vars: `process.env.XDG_STATE_HOME`,
  * `process.env["XDG_CACHE_HOME"]`, etc. A file that only names the variable
@@ -130,7 +130,7 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
     // edit accidentally weakening the regex/condition to always pass).
     const fakeReimplementation = `
       const stateHome = process.env.XDG_STATE_HOME ?? join(home, ".local", "state");
-      const root = join(stateHome, "engineering-orchestrator", projectHash);
+      const root = join(stateHome, "crabgic", projectHash);
     `;
     const hasNamespaceLiteral = fakeReimplementation.includes(NAMESPACE_LITERAL);
     const readsXdgEnv = XDG_ENV_READ_PATTERN.test(fakeReimplementation);
@@ -139,10 +139,10 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
 
   it("sanity: a correct importer that only MENTIONS the env var (doc comment, re-export, XdgEnv fixture key) is NOT flagged", () => {
     // The exact shape 05/07's layout modules take: import the resolver from
-    // @eo/journal, mention `$XDG_STATE_HOME` in prose, never read the env var.
+    // @crabgic/journal, mention `$XDG_STATE_HOME` in prose, never read the env var.
     const correctImporter = `
-      import { resolveStateRoot, type XdgEnv } from "@eo/journal";
-      // nests under 04's pinned $XDG_STATE_HOME/engineering-orchestrator/<hash>/ root
+      import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
+      // nests under 04's pinned $XDG_STATE_HOME/crabgic/<hash>/ root
       export const fixture: XdgEnv = { HOME: "/h", XDG_STATE_HOME: "/s" };
       export function dir(env: XdgEnv, h: string) { return resolveStateRoot(env, h); }
     `;
@@ -152,7 +152,7 @@ describe("XDG root sole-definition-site check (roadmap/04 exit criterion 11)", (
   });
 
   it("sanity: a tilde-anchored literal default with no XDG env-var read does NOT trigger the check (the engine-core seam)", () => {
-    const tildeDefault = `export const DEFAULT_STATE_DENY_ROOT = "~/.local/state/engineering-orchestrator/**";`;
+    const tildeDefault = `export const DEFAULT_STATE_DENY_ROOT = "~/.local/state/crabgic/**";`;
     const hasNamespaceLiteral = tildeDefault.includes(NAMESPACE_LITERAL);
     const readsXdgEnv = XDG_ENV_READ_PATTERN.test(tildeDefault);
     expect(hasNamespaceLiteral && readsXdgEnv).toBe(false);

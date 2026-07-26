@@ -3,14 +3,14 @@
  * work item 5: "filters, hooks." A REAL, executable `pre-commit` hook
  * script is installed that writes a marker file when it runs; the scenario
  * first proves the hook mechanism genuinely fires (not a vacuous test),
- * then proves `neutralizeHooksPath` (`@eo/git-engine`) genuinely stops it
+ * then proves `neutralizeHooksPath` (`@crabgic/git-engine`) genuinely stops it
  * from firing, AND that `validateRepository` correctly reports
  * `hooksPathNeutralized: true` afterward.
  *
  * REPO-LOCAL `core.hooksPath` IS SET EXPLICITLY before the "before
  * neutralization" commit (confirmed necessary against this project's own
  * dev host: a host-level `~/.gitconfig` `core.hooksPath` override — the
- * exact ambient-config class `@eo/git-engine`'s own `CONTROL_CONTEXT_ENV`
+ * exact ambient-config class `@crabgic/git-engine`'s own `CONTROL_CONTEXT_ENV`
  * exists to neutralize for CONTROL-context operations — otherwise silently
  * wins over an unconfigured repo-local hooks dir and the fixture's own
  * `.git/hooks/pre-commit` script never runs at all, regardless of
@@ -23,8 +23,8 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
-import { neutralizeHooksPath, validateRepository } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import { neutralizeHooksPath, validateRepository } from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import {
   buildBasicFixtureRepo,

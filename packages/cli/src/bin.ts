@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `engineering-orchestrator` executable entry point — roadmap/09-cli-and-
+ * `crabgic` executable entry point — roadmap/09-cli-and-
  * doctor.md §Interfaces produced item 1 (binary name), item 2 (typed UDS
  * client wiring), Gap 2 (`gateway mcp`'s exact stdio boot). This is the
  * ONLY file in this package that touches the real `process.stdout`/

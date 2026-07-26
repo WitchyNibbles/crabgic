@@ -1,4 +1,4 @@
-import type { TaskPacket, Timestamp } from "@eo/contracts";
+import type { TaskPacket, Timestamp } from "@crabgic/contracts";
 import type { AdjudicationCallback } from "./adjudication.js";
 import type { CompiledWorkerProfile } from "../compiler/compiled-worker-profile.js";
 import type { EngineAdapter } from "./engine-adapter.js";

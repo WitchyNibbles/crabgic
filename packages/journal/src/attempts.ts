@@ -17,7 +17,7 @@
  * a manual payload-level scan.
  */
 
-import type { WorkUnitAttemptStatus } from "@eo/contracts";
+import type { WorkUnitAttemptStatus } from "@crabgic/contracts";
 import type { JournalEntry } from "./codec/journal-entry.js";
 import type { JournalStore } from "./store/journal-store.js";
 
@@ -63,15 +63,15 @@ export function toAttemptRecord(entry: JournalEntry): WorkUnitAttemptRecord {
  * threaded onto the entry's top-level envelope field exactly as
  * `session_assignment` entries already carry it (`../codec/journal-
  * entry.ts`'s `envelopeFields.runId`, already optional — no schema
- * change). CRASH-RECOVERY CORRECTNESS FIX: `@eo/journal`'s own
+ * change). CRASH-RECOVERY CORRECTNESS FIX: `@crabgic/journal`'s own
  * `recover(runId)` (`./store/snapshot-io.ts`) replays only entries
  * matching `queryEntries({ runId })`'s EXACT-match filter
  * (`./store/query-entries.ts`) — an entry with no `runId` at all is
  * invisible to it. Before this fix, EVERY `work_unit_transition` entry
- * this function wrote carried no `runId`, so `@eo/supervisor`'s
+ * this function wrote carried no `runId`, so `@crabgic/supervisor`'s
  * `recoverRun` could never see a work unit's true terminal status after
  * a restart and misreported genuinely succeeded workers as crashed. See
- * `@eo/scheduler`'s `executor.ts` and `@eo/supervisor`'s
+ * `@crabgic/scheduler`'s `executor.ts` and `@crabgic/supervisor`'s
  * `worker-lifecycle-manager.ts`, both of which now thread their own
  * already-in-scope `runId` through to every call here.
  */

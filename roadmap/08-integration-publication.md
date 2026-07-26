@@ -18,7 +18,7 @@ Verified commits become a local branch in the user's repo — preflighted, compa
 - **Branch naming:** `<type>/[JIRA-KEY-]<short-slug>`; types feat/fix/perf/refactor/security/test/docs/ci/chore; ≤64 chars; numeric collision suffix; no engine/worker/run identifiers; git-ref charset/length legality enforced by construction, then passed through 17's `renderWithRegeneration()` for the `branch_name` `ArtifactKind`.
 - **Commit rendering:** subject `type(scope): outcome` ≤72; body ≤5 short lines (why/risk/compat/verification only); optional `Refs:` footer; assembled from already-produced `ChangeSet`/`WorkUnit`/`Requirement` fields (no free-text authorship) and routed through 17's `renderWithRegeneration()` for `commit_subject`/`commit_body` — 08 does not re-implement attribution/Unicode/secret scanning itself.
 - **Evidence attachment (Gap 6):** `pr_title`/`pr_body`/`review_comment` candidates assembled from the ChangeSet's `Requirement`/`EvidenceRecord` summaries (the same underlying data as the commit body, projected into the PR's 4-section and the review-comment's 1-finding shape), rendered via 17's `renderWithRegeneration()`; each lint-passed `RenderedArtifact` is wrapped in an `EvidenceRecord` (02) and journaled as an `evidence_pointer` entry (`JournalEntryType`, 02) against the ChangeSet — no delivery, no VCS-host call, ever.
-- **Publication:** final branch created in the **user's** repo without checkout or push (`git fetch <control-repo> <ref>:refs/heads/<branch>` run in the user repo; control-repo path per 07's `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/`); HEAD/index/worktree untouched.
+- **Publication:** final branch created in the **user's** repo without checkout or push (`git fetch <control-repo> <ref>:refs/heads/<branch>` run in the user repo; control-repo path per 07's `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/`); HEAD/index/worktree untouched.
 - **Belt-and-suspenders:** publication asserts rendered commits carry no engine attribution regardless of host settings, independent of whatever 03/06 configured in the worker's own settings — a redundant second enforcement layer, not a substitute for 17's lint.
 
 ## Out of scope
@@ -56,11 +56,11 @@ From **02** (`packages/contracts`):
 - `WorkUnitAttemptStatus` — this phase creates resolution `WorkUnit`s typed against it; it does not dispatch or attempt them (13 does).
 
 From **07** (`packages/git-engine`, shared package):
-- Control clone under `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/` (cache-root pinned in 04, Gap 14).
+- Control clone under `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` (cache-root pinned in 04, Gap 14).
 - Frozen target ref + exact base object ID + porcelain-v2 dirty snapshot (Intake freeze) — preflight's comparison baseline.
 - Per-work-unit worktrees + quarantine lifecycle — preflight's candidate source.
 - Rename-aware overlap-analysis output — the same data 13 uses for serialization; 08 uses it as merge-preflight input.
-- Git identity config (`user.name "Engineering Orchestrator"` + service email) — applied to the published branch's commits.
+- Git identity config (`user.name "Crabgic"` + service email) — applied to the published branch's commits.
 - Invariance harness (tree-hash before/after) — extended, not re-built, by this phase.
 
 From **17** (`packages/renderer`):

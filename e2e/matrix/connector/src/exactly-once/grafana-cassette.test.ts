@@ -1,9 +1,9 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "reuse ... 20's resource
- * clients + their cassettes." Drives the REAL `@eo/connectors-grafana`
+ * clients + their cassettes." Drives the REAL `@crabgic/connectors-grafana`
  * `createGrafanaMutationApplyClient` + `buildGrafanaMutationPlan` against
  * the REAL, already-recorded per-kind cassettes
- * (`@eo/connectors-grafana`'s own `fixtures/cassettes.ts` — the same data
+ * (`@crabgic/connectors-grafana`'s own `fixtures/cassettes.ts` — the same data
  * `integration-cassette-replay.test.ts` uses), through the REAL
  * `executeMutationPlan` exactly-once pipeline — proving replay +
  * changed-payload rejection against a Grafana `annotation` (the
@@ -15,7 +15,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
@@ -23,7 +23,7 @@ import {
   executeMutationPlan,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import {
   BUILD_INFO_OSS_13_1,
   buildGrafanaMutationPlan,
@@ -36,7 +36,7 @@ import {
   GrafanaPlanPayloadStore,
   GrafanaRollbackSnapshotStore,
   type GrafanaRawHttpResponse,
-} from "@eo/connectors-grafana";
+} from "@crabgic/connectors-grafana";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -61,7 +61,7 @@ afterEach(async () => {
   await tj.cleanup();
 });
 
-/** The real, discovered route table for a pinned build-info fixture — mirrors `@eo/connectors-grafana`'s own `integration-cassette-replay.test.ts`'s `discoveryDepsFromFixture` recipe exactly (never a hand-rolled route table). */
+/** The real, discovered route table for a pinned build-info fixture — mirrors `@crabgic/connectors-grafana`'s own `integration-cassette-replay.test.ts`'s `discoveryDepsFromFixture` recipe exactly (never a hand-rolled route table). */
 async function realRouteTableFor(fixture: typeof BUILD_INFO_OSS_13_1) {
   const discovery = await discoverGrafanaCapabilities({
     fetchBuildInfo: async () => fixture.buildInfo,
@@ -71,7 +71,7 @@ async function realRouteTableFor(fixture: typeof BUILD_INFO_OSS_13_1) {
   return decodeApiFamiliesToRouteTable(discovery.apiFamilies);
 }
 
-/** Builds the real Grafana annotation apply pipeline over the real recorded (create, verify) cassette pair — mirrors `@eo/connectors-grafana`'s own `integration-cassette-replay.test.ts` recipe. */
+/** Builds the real Grafana annotation apply pipeline over the real recorded (create, verify) cassette pair — mirrors `@crabgic/connectors-grafana`'s own `integration-cassette-replay.test.ts` recipe. */
 async function buildAnnotationHarness(idempotencyKey: string) {
   const script = buildKindCreateCassette("annotation", {
     annotationIdempotencyKey: idempotencyKey,

@@ -1,21 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
-import type { SessionRef } from "@eo/engine-core";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
+import type { SessionRef } from "@crabgic/engine-core";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { countPriorDispatches, dispatchAttempt, resumeAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { countPriorDispatches, dispatchAttempt, resumeAttempt } from "@crabgic/scheduler";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
 
 /**
  * Scenario 5/8 — roadmap/23-release-hardening.md work item 4: "worker crash
- * -> journaled attempt -> recovery." Drives the REAL `@eo/scheduler`
+ * -> journaled attempt -> recovery." Drives the REAL `@crabgic/scheduler`
  * executor's crash-detection path (`dispatchAttempt` returning
  * `kind: "crashed"` when the fake engine's stream ends with no terminal
  * event) followed by a genuine repair via `resumeAttempt`'s

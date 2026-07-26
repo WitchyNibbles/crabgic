@@ -1,4 +1,4 @@
-import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@eo/contracts";
+import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { createGrafanaProviderAdapter } from "../adapter.js";
 import { checkGrafanaConnectionDoctor } from "../auth/connection-doctor.js";
 import { GrafanaPlanPayloadStore } from "../mutation/plan-payload-store.js";

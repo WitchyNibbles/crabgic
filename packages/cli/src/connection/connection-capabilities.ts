@@ -21,7 +21,7 @@
  * then issues several requests). An unknown connection, a missing
  * discoverer and a discovery error are all typed non-zero results.
  */
-import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@eo/contracts";
+import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@crabgic/contracts";
 import type { ConnectionCapabilitiesCommand } from "../argv/types.js";
 import type { ConnectionDependencies } from "./connection-commands.js";
 

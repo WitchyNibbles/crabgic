@@ -3,7 +3,7 @@ import {
   EXIT_OK,
   SupervisorUnavailableError,
   type CliDependencies,
-} from "engineering-orchestrator";
+} from "crabgic";
 import { describe, expect, it } from "vitest";
 import {
   checkProductionDependencyWiring,

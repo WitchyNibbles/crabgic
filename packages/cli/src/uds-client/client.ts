@@ -6,7 +6,7 @@
  * send one `handshake` line, expect one `handshake_ack`, then pipeline any
  * number of `request` lines correlated by `id`. This module owns none of
  * the wire schemas themselves — every type/schema it uses is imported
- * directly from `@eo/supervisor` (05's own package), never re-declared.
+ * directly from `@crabgic/supervisor` (05's own package), never re-declared.
  */
 import { randomUUID } from "node:crypto";
 import { connect as netConnect, type Socket } from "node:net";
@@ -18,10 +18,10 @@ import {
   PROTOCOL_VERSION,
   tryDecodeMessageLine,
   type ResponseEnvelope,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { SupervisorUnavailableError, toErrorMessage } from "../errors.js";
 
-export const CLIENT_NAME = "engineering-orchestrator-cli";
+export const CLIENT_NAME = "crabgic-cli";
 
 /** A well-formed `response` came back with `ok:false` — the operation itself failed, not the transport. */
 export class UdsOperationError extends Error {

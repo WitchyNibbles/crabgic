@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createJournalStore } from "@eo/journal";
+import { createJournalStore } from "@crabgic/journal";
 import { createGitPlumbing, createNodeGitSpawn } from "./plumbing.js";
 import {
   buildBasicFixtureRepo,
@@ -87,7 +87,7 @@ describe("createWorktree (WI6)", () => {
     fixtureGit(record.worktreePath, ["commit", "-q", "-m", "worker commit", "--no-verify"]);
     const authorName = fixtureGit(record.worktreePath, ["log", "-1", "--format=%an"]).trim();
     const authorEmail = fixtureGit(record.worktreePath, ["log", "-1", "--format=%ae"]).trim();
-    expect(authorName).toBe("Engineering Orchestrator");
+    expect(authorName).toBe("Crabgic");
     expect(authorEmail).toBe("svc@example.invalid");
   });
 

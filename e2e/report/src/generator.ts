@@ -1,5 +1,5 @@
-import type { EvidenceRecord } from "@eo/contracts";
-import type { JournalEntry, JournalEntryFilter } from "@eo/journal";
+import type { EvidenceRecord } from "@crabgic/contracts";
+import type { JournalEntry, JournalEntryFilter } from "@crabgic/journal";
 import {
   RELEASE_GATE_SCHEMA_VERSION,
   type ReleaseGateChecklistItemResult,

@@ -2,12 +2,12 @@
  * Test-support-only helper (not part of this package's public barrel): a
  * minimal, schema-valid `CompiledWorkerProfile` for tests that spawn
  * against the fake engine and don't care about permission/sandbox content
- * — `@eo/engine-core` exports the schema/type but no fixture builder of
- * its own (that lives in `@eo/testkit`'s fixture registry for contracts,
+ * — `@crabgic/engine-core` exports the schema/type but no fixture builder of
+ * its own (that lives in `@crabgic/testkit`'s fixture registry for contracts,
  * not for this compiler-owned shape), so this package builds its own
  * literal instance, matching `CompiledWorkerProfileSchema` exactly.
  */
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 
 export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
   return {

@@ -37,14 +37,14 @@ export interface MeasureParams {
  * runner": "dispatches through 13's executor into per-attempt worktrees;
  * warmup + ≥10 interleaved repetitions."
  *
- * DEPENDENCY-DIRECTION NOTE (mirrors `@eo/gates`'s `final-candidate.ts`'s
+ * DEPENDENCY-DIRECTION NOTE (mirrors `@crabgic/gates`'s `final-candidate.ts`'s
  * own file-level doc comment for the identical reason): this module has NO
- * import of `@eo/scheduler` — worktree provisioning is 13's job
+ * import of `@crabgic/scheduler` — worktree provisioning is 13's job
  * (dispatched through its executor, 13's own dependency on 07), and this
  * phase "never spawns a worker or calls `packages/git-engine` itself"
  * (roadmap/15 §Out of scope). `dispatchWorktree`/`measure` are injected by
  * the CALLER, who is expected to implement `dispatchWorktree` on top of
- * `@eo/scheduler`'s real `dispatchAttempt` (see
+ * `@crabgic/scheduler`'s real `dispatchAttempt` (see
  * `./twin-worktree-runner.e2e.test.ts`, which proves exactly this
  * composition against a real `FakeEngineAdapter`/`dispatchAttempt`, mirroring
  * `packages/gates/src/final-candidate.e2e.test.ts`'s own pattern). This
@@ -54,7 +54,7 @@ export interface MeasureParams {
  * a dedicated E2E test.
  *
  * CARRY-FORWARD (documented, not silently papered over):
- * `@eo/scheduler`'s `dispatchAttempt` returns only `sessionId` on its
+ * `@crabgic/scheduler`'s `dispatchAttempt` returns only `sessionId` on its
  * `DispatchAttemptOutcome`, not the full `SessionRef` (which alone carries
  * `worktreePath`) — so a REAL (non-test) `dispatchWorktree` implementation
  * needs an additional worktree-path resolution 13 does not yet expose on

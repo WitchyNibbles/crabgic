@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { PERFORMANCE_OUTCOMES, type PerformanceOutcome } from "@eo/contracts";
+import { PERFORMANCE_OUTCOMES, type PerformanceOutcome } from "@crabgic/contracts";
 import { probeQuietHost, type QuietHostAssessment } from "./quietHost.js";
 import {
   PERFORMANCE_RERUN_RECORD_ENV,

@@ -9,7 +9,7 @@
 
 ## Goal
 
-When this phase is done, `engineering-orchestrator` v1.0.0 is installable from npm and the Claude Code plugin marketplace, every release-gate checklist item is backed by an `EvidenceRecord` from a live or containerized run of the release-candidate object ID — never a fake-engine substitute — and the reproducible build, security review, and compatibility documentation are complete. Before this phase, every subsystem (00–22) is proven only against fakes, cassettes, and unit/integration fixtures; after it, the whole system has been proven end-to-end against disposable live Jira/Grafana environments and the real Claude Code engine, and is publicly shippable.
+When this phase is done, `crabgic` v1.0.0 is installable from npm and the Claude Code plugin marketplace, every release-gate checklist item is backed by an `EvidenceRecord` from a live or containerized run of the release-candidate object ID — never a fake-engine substitute — and the reproducible build, security review, and compatibility documentation are complete. Before this phase, every subsystem (00–22) is proven only against fakes, cassettes, and unit/integration fixtures; after it, the whole system has been proven end-to-end against disposable live Jira/Grafana environments and the real Claude Code engine, and is publicly shippable.
 
 ## In scope
 
@@ -29,7 +29,7 @@ Every item below re-runs already-built (00–22) verification logic against live
 - **Security review pass**: `docs/threat-model.md` (02) vs. implementation, focused on the 03/16 security keystones and 17's blocking-lint surface.
 - **ARM64 verification**: real-hardware (or explicitly documented substitute) ARM64 build+test pass, closing 01's deferred CI gate if ARM64 runners were unavailable earlier.
 - **Docs**: `docs/compatibility-matrix.md` (Claude Code tested range; Jira Cloud/DC 10.3/11.3; Grafana Cloud/OSS/Enterprise 12.4/13.1; Linux x86-64/ARM64 + WSL2), `docs/operator-guide.md`, `docs/security-posture.md`, `docs/upgrade-guide.md`.
-- **Reproducible release pipeline**: npm build with provenance; `npm view engineering-orchestrator` re-check against 01's recorded result; SHA-pinned `marketplace.json` entry cut at the release commit (10's mechanism, plugin already quarantine-approved per 12); `CHANGELOG.md` via changesets; publication dry-run before the real publish + `v1.0.0` tag.
+- **Reproducible release pipeline**: npm build with provenance; `npm view crabgic` re-check against 01's recorded result; SHA-pinned `marketplace.json` entry cut at the release commit (10's mechanism, plugin already quarantine-approved per 12); `CHANGELOG.md` via changesets; publication dry-run before the real publish + `v1.0.0` tag.
 
 ## Out of scope
 
@@ -45,11 +45,11 @@ Every item below re-runs already-built (00–22) verification logic against live
 
 Phase 23 is the terminal phase (**Unlocks: —**); no roadmap phase consumes anything produced here. Listed for completeness as the release's external surface and audit trail:
 
-- Published package `engineering-orchestrator@1.0.0` on npm (public access, provenance-attested, Apache-2.0) — consumed by end users / the npm registry, not another phase.
+- Published package `crabgic@1.0.0` on npm (public access, provenance-attested, Apache-2.0) — consumed by end users / the npm registry, not another phase.
 - SHA-pinned `marketplace.json` entry (schema owned by 10) cut at the v1.0.0 release commit — consumed by the Claude Code plugin marketplace / end users.
 - `docs/compatibility-matrix.md`, `docs/operator-guide.md`, `docs/security-posture.md`, `docs/upgrade-guide.md` — consumed by operators/end users.
 - `CHANGELOG.md` v1.0.0 entry (changesets tool owned by 01) and git tag `v1.0.0`.
-- `e2e/release-gate-report.json` (introduced here; phase-23-internal) — the checklist-item → `EvidenceRecord` audit trail, archived by the `release-e2e` CI job (introduced here). Its inputs that are produced *outside* the checkout being scored (01's `arm64-run-record`, 15's `perf-contract-rerun`, 21's `requirement-traceability`) are read from `docs/evidence/phase-23/<record-name>.json` (introduced here; phase-23-internal), or — the path the `release-e2e` ingest actually takes, since committing such a record would advance `HEAD` past the release-candidate object ID it names — from the record's one `EO_<SUBJECT>` override holding an absolute path to it (`$EO_ARM64_RUN_RECORD`, `$EO_PERF_CONTRACT_RERUN_RECORD`, `$EO_REQUIREMENT_TRACEABILITY_RECORD`); each consuming check reports an absent, unparseable or schema-violating record as that one checklist item's FAIL rather than letting the error escape, per `docs/interface-ledger.md`'s Gap 16, which names 01, 15, 21 and 23 as the phases it binds.
+- `e2e/release-gate-report.json` (introduced here; phase-23-internal) — the checklist-item → `EvidenceRecord` audit trail, archived by the `release-e2e` CI job (introduced here). Its inputs that are produced *outside* the checkout being scored (01's `arm64-run-record`, 15's `perf-contract-rerun`, 21's `requirement-traceability`) are read from `docs/evidence/phase-23/<record-name>.json` (introduced here; phase-23-internal), or — the path the `release-e2e` ingest actually takes, since committing such a record would advance `HEAD` past the release-candidate object ID it names — from the record's one `CRABGIC_<SUBJECT>` override holding an absolute path to it (`$CRABGIC_ARM64_RUN_RECORD`, `$CRABGIC_PERF_CONTRACT_RERUN_RECORD`, `$CRABGIC_REQUIREMENT_TRACEABILITY_RECORD`); each consuming check reports an absent, unparseable or schema-violating record as that one checklist item's FAIL rather than letting the error escape, per `docs/interface-ledger.md`'s Gap 16, which names 01, 15, 21 and 23 as the phases it binds.
 
 ## Interfaces consumed
 
@@ -64,7 +64,7 @@ Phase 23 is the terminal phase (**Unlocks: —**); no roadmap phase consumes any
 | 04 | Journal chain + `EvidenceRecord` query surface; `$XDG_STATE_HOME`/`$XDG_CACHE_HOME` layout | Release-gate report generator reads EvidenceRecords directly from the journal |
 | 05 | UDS control plane; idle-budget numbers (<100 MiB RSS, <1% core, 5 s heartbeat) | Idle budget re-measured on a quiet host as a release gate (05's own deferred note) |
 | 06 | `@live`-tagged conformance suite; version-range gate; `resume`/`forkSession`; `session_id` | Re-run against the pinned range on the release candidate; version gate blocks an untested engine |
-| 07 | Invariance harness (tree-hash before/after); worktree quarantine; control clone under `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/` | Reused directly inside the Git-matrix harness |
+| 07 | Invariance harness (tree-hash before/after); worktree quarantine; control clone under `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` | Reused directly inside the Git-matrix harness |
 | 08 | Local publication routine; branch namer; commit renderer; invariance assertions; "never checked out, never pushed" invariant | Demo-run exit criterion invokes this path directly; re-asserts zero remote interaction |
 | 09 | Full CLI surface incl. `gateway mcp` (Gap 2); `doctor --repair-plan`; `evidence <change-set-id>` (Gap 6 clause) | 23 asserts zero `NOT_IMPLEMENTED` remains anywhere on this surface |
 | 10 | Installation matrix support; `marketplace.json` (SHA-pinned) mechanism; plugin's quarantine-approved `CapabilityManifest` entry | 23 cuts the release-tagged marketplace entry; installation-matrix harness runs against this installer |
@@ -133,7 +133,7 @@ This phase *is* mostly its own test plan — every matrix run emits `EvidenceRec
 - [ ] ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate.
 - [ ] Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).
 - [ ] `docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, and `upgrade-guide.md` are committed, and every claim in them cites a passing CI run or `EvidenceRecord` from the release candidate — no aspirational text.
-- [ ] Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view engineering-orchestrator` re-check passes.
+- [ ] Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view crabgic` re-check passes.
 - [ ] Release artifact records the exact pinned engine/SDK version (`@anthropic-ai/claude-agent-sdk`, exact-pinned per 01's `engine-pin-lint` policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; `docs/compatibility-matrix.md` states the pinned version alongside the tested Claude Code engine version range — evidenced by the `engine-pin-lint` CI run and the tarball manifest check cited in the release-gate report.
 
 ## Risks & open questions

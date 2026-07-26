@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { NonEmptyStringSchema } from "@eo/contracts";
+import { NonEmptyStringSchema } from "@crabgic/contracts";
 
 /**
  * `EvalCase` — roadmap/22-learning-system.md §In scope, "Eval infra":
@@ -19,7 +19,7 @@ export const EvalCaseSchema = z
     /** The expected pass/fail judgment a correct grading run should produce. */
     expectedJudgment: z.boolean(),
     provenanceId: NonEmptyStringSchema,
-    /** When present, this case's ground truth is graded against real `EvidenceRecord`(s) recorded for this `Requirement` id (14) rather than a bare structural comparison — roadmap/22 §In scope: "dev/held-out grading is executed against P14's gate framework and EvidenceRecords as ground truth." Matches `@eo/gates`'s `findEvidenceForRequirement(journal, requirementId)`. */
+    /** When present, this case's ground truth is graded against real `EvidenceRecord`(s) recorded for this `Requirement` id (14) rather than a bare structural comparison — roadmap/22 §In scope: "dev/held-out grading is executed against P14's gate framework and EvidenceRecords as ground truth." Matches `@crabgic/gates`'s `findEvidenceForRequirement(journal, requirementId)`. */
     groundTruthRequirementId: z.string().uuid().optional(),
   })
   .strict();

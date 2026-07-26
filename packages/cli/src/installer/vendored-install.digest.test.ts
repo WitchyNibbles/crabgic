@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it } from "vitest";
 // committed listing still carries the all-zero placeholder, which strict
 // `loadMarketplace` now refuses (see packages/plugin's
 // `marketplace-schema.test.ts`).
-import { computeContentDigest, loadUnpinnedMarketplace } from "@eo/plugin";
+import { computeContentDigest, loadUnpinnedMarketplace } from "@crabgic/plugin";
 
 const PLUGIN_ROOT = new URL("../../../plugin", import.meta.url).pathname;
 

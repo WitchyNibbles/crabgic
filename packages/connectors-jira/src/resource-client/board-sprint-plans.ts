@@ -1,4 +1,4 @@
-import type { RemoteMutationPlan } from "@eo/contracts";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
 import { unconditionalCapabilityFlagFor } from "../high-impact-capabilities.js";
 import { boardTarget, sprintTarget } from "./canonical-target.js";
 import { buildJiraMutationPlan, type JiraPlanBuildContext } from "./plan-builder.js";

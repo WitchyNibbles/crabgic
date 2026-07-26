@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { runKillHarness } from "@eo/journal";
+import { runKillHarness } from "@crabgic/journal";
 import { ensureControlClone } from "./control-clone.js";
 import { createGitPlumbing, createNodeGitSpawn } from "./plumbing.js";
 import { buildBasicFixtureRepo, freshTmpDir, removeDirTree } from "./test-support/fixture-repo.js";
@@ -10,7 +10,7 @@ import { buildBasicFixtureRepo, freshTmpDir, removeDirTree } from "./test-suppor
 /**
  * WI5 — roadmap/07-git-control-repo-worktrees.md Test plan: "crash tests
  * reusing 04's kill harness (kill -9 mid-clone ... each must recover
- * deterministically on next startup)." Reuses `@eo/journal`'s
+ * deterministically on next startup)." Reuses `@crabgic/journal`'s
  * `runKillHarness` directly. Recovery for the control clone is simple by
  * design: it is disposable cache (never shares state with the user's
  * checkout), so "recover" means "the next `ensureControlClone` call for

@@ -1,5 +1,5 @@
-import { ConnectorError, DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
-import { toADF, validateAdfSafeSubset, type AdfDocument } from "@eo/renderer";
+import { ConnectorError, DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
+import { toADF, validateAdfSafeSubset, type AdfDocument } from "@crabgic/renderer";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 
 /**
@@ -63,7 +63,7 @@ export function validateDraftIssueSummary(summary: string): void {
 
 /**
  * Converts a draft issue description to ADF and independently re-
- * validates the safe subset (defense-in-depth, mirroring `@eo/renderer`'s
+ * validates the safe subset (defense-in-depth, mirroring `@crabgic/renderer`'s
  * own `adf.ts` doc comment on why `validateAdfSafeSubset` is a separate
  * walker) before it is ever embedded in an `issue.create` plan's
  * payload. Throws `ConnectorError.policyBlocked` if the independent

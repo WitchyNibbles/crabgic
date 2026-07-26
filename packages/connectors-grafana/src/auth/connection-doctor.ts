@@ -1,7 +1,7 @@
 /**
  * Grafana connection-doctor check — roadmap/20-grafana-adapters.md §In
  * scope, "Auth": "a connection-doctor check validates token scope + org
- * binding before first use." Distinct from `@eo/gateway`'s
+ * binding before first use." Distinct from `@crabgic/gateway`'s
  * `probeConnectionReachability` (a provider-agnostic GET-only reachability
  * probe): this check is Grafana-specific — it inspects the AUTHENTICATED
  * identity a service-account token resolves to (its org + role) and
@@ -10,7 +10,7 @@
  *
  * Deliberately never receives the token/secret value itself — only an
  * already-authenticated `fetchTokenInfo` callback the caller wires up
- * (via `@eo/gateway`'s secret-reference resolver + HTTP client). No
+ * (via `@crabgic/gateway`'s secret-reference resolver + HTTP client). No
  * credential material is constructible from this module's own inputs.
  */
 

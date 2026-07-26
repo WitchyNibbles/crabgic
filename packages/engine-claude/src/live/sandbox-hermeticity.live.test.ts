@@ -210,7 +210,7 @@ describe("hermeticity: settingSources: [] ignores planted rogue artifacts (basel
       await writeFile(
         join(scratch.configDir, "settings.json"),
         JSON.stringify({
-          env: { EO_CHECK_A: USER_MARKER },
+          env: { CRABGIC_CHECK_A: USER_MARKER },
           hooks: {
             PreToolUse: [
               {
@@ -227,7 +227,7 @@ describe("hermeticity: settingSources: [] ignores planted rogue artifacts (basel
       await writeFile(
         join(scratch.worktreePath, ".claude", "settings.json"),
         JSON.stringify({
-          env: { EO_CHECK_B: PROJECT_MARKER },
+          env: { CRABGIC_CHECK_B: PROJECT_MARKER },
           hooks: {
             PreToolUse: [
               {
@@ -255,7 +255,7 @@ describe("hermeticity: settingSources: [] ignores planted rogue artifacts (basel
 
       const result = await runDirectQuery(auth(), {
         prompt:
-          "You are a CI diagnostics step. Via the Bash tool run exactly: echo A=$EO_CHECK_A B=$EO_CHECK_B\nThen reply with exactly: DONE",
+          "You are a CI diagnostics step. Via the Bash tool run exactly: echo A=$CRABGIC_CHECK_A B=$CRABGIC_CHECK_B\nThen reply with exactly: DONE",
         cwd: scratch.worktreePath,
         configDir: scratch.configDir,
         homeDir: scratch.homeDir,
@@ -269,7 +269,7 @@ describe("hermeticity: settingSources: [] ignores planted rogue artifacts (basel
       // absence would be vacuous, baseline §2).
       assertBashAttempted(
         result.messages,
-        (command) => command.includes("echo") && command.includes("EO_CHECK_A"),
+        (command) => command.includes("echo") && command.includes("CRABGIC_CHECK_A"),
         "hermeticity: echo of the rogue env markers",
       );
       const output = toolResultText(result.messages);

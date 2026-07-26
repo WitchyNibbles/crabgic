@@ -20,7 +20,12 @@
  * (`../bin/supervisord.ts`) stays thin and untested-by-design while every
  * branch here is unit-tested — the same split `packages/cli`'s `bin.ts` uses.
  */
-import { Lease, LeaseHeldError, resolveLeasesDir, type LeaseAcquireOptions } from "@eo/journal";
+import {
+  Lease,
+  LeaseHeldError,
+  resolveLeasesDir,
+  type LeaseAcquireOptions,
+} from "@crabgic/journal";
 import {
   composeSupervisor,
   type ComposedSupervisor,

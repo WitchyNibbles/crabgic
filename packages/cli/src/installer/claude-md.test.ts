@@ -7,7 +7,7 @@ describe("buildClaudeMdManagedBlockContent", () => {
   });
 
   it("uses the full instructions otherwise", () => {
-    expect(buildClaudeMdManagedBlockContent(false)).toContain("Engineering Orchestrator");
+    expect(buildClaudeMdManagedBlockContent(false)).toContain("Crabgic");
     expect(buildClaudeMdManagedBlockContent(false)).not.toBe("@AGENTS.md");
   });
 });

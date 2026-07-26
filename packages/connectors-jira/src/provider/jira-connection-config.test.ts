@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import {
   JIRA_AUTH_MODES,
   JIRA_DEPLOYMENT_TYPES,

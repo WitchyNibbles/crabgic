@@ -29,7 +29,7 @@
 import { randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { ExternalConnectionSchema, type ExternalConnection } from "@eo/contracts";
+import { ExternalConnectionSchema, type ExternalConnection } from "@crabgic/contracts";
 import {
   ExternalConnectionNotFoundError,
   type ExternalConnectionRepository,

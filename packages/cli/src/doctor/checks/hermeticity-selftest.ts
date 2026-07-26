@@ -2,7 +2,7 @@
  * Hermeticity self-test — roadmap/09-cli-and-doctor.md §Doctor checks:
  * "hermeticity self-test (planted rogue settings must not load)." A DIRECT
  * engine probe — plants a rogue settings/CLAUDE.md artifact in an isolated
- * scratch project dir, spawns `claude` directly (never `@eo/engine-claude`)
+ * scratch project dir, spawns `claude` directly (never `@crabgic/engine-claude`)
  * WITH THAT SCRATCH DIR AS ITS CWD AND AN ISOLATED, ALLOWLISTED ENV (never
  * the real ambient env, never a merge) so the planted artifact is actually
  * in scope, and asserts the planted marker never influenced the run.

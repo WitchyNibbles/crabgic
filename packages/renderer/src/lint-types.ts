@@ -1,4 +1,4 @@
-import type { CommunicationPolicy } from "@eo/contracts";
+import type { CommunicationPolicy } from "@crabgic/contracts";
 import type { ArtifactKind } from "./artifact-kind.js";
 
 /**

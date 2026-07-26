@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { evaluateSandboxLayer, extractNetworkDomain } from "./sandbox-evaluator.js";
-import type { SandboxProfile } from "@eo/engine-core";
+import type { SandboxProfile } from "@crabgic/engine-core";
 
 /**
  * Layer 4 (sandbox) — roadmap/03-envelope-compiler-engine-adapter.md §In
@@ -10,7 +10,7 @@ import type { SandboxProfile } from "@eo/engine-core";
  * egress via `network.allowedDomains`, and `filesystem.denyRead`
  * containment — NOT `filesystem.allowWrite`, which the compiled profile
  * only ever populates with worktree/tmp placeholder tokens
- * (`@eo/engine-core`'s own documented seam decision), un-testable without
+ * (`@crabgic/engine-core`'s own documented seam decision), un-testable without
  * phase 06/07's spawn-time path substitution.
  */
 function buildSandboxProfile(overrides: Partial<SandboxProfile> = {}): SandboxProfile {

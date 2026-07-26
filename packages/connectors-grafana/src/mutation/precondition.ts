@@ -3,7 +3,7 @@
  * §In scope, "Mutation safety": "optimistic-concurrency writes (409/412 →
  * fetch-compare-rebase or an explicit block, never a blind overwrite)."
  *
- * `@eo/gateway`'s own mutation pipeline treats a 409/412 response as a
+ * `@crabgic/gateway`'s own mutation pipeline treats a 409/412 response as a
  * terminal `failed`/`conflict` outcome (it never itself retries a
  * precondition failure — see `../transport/retry-ladder.js`'s
  * `"fetch-rebase-or-block"` action, which the gateway's `GatewayHttpClient`

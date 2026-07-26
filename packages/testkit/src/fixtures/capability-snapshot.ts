@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   CapabilitySnapshotSchema,
   type CapabilitySnapshot,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `CapabilitySnapshot` fixture builder — roadmap/02 work item 10. */

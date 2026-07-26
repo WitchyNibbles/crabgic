@@ -1,4 +1,4 @@
-# Engineering Orchestrator — Roadmap
+# Crabgic — Roadmap
 
 Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §0 confirmed decisions) into small, independently verifiable phases. One file per phase.
 
@@ -23,7 +23,7 @@ Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §
 | 06 | `06-claude-engine-adapter.md` | Claude Code worker runtime (SDK transport) | 03, 05 |
 | 07 | `07-git-control-repo-worktrees.md` | Git engine: control repo, worktrees, overlap analysis | 04 |
 | 08 | `08-integration-publication.md` | Merge preflight, CAS refs, neutral Git rendering, local publish | 02, 07, 17 |
-| 09 | `09-cli-and-doctor.md` | `engineering-orchestrator` CLI & doctor | 05 |
+| 09 | `09-cli-and-doctor.md` | `crabgic` CLI & doctor | 05 |
 | 10 | `10-plugin-and-installer.md` | Claude Code plugin, installer, upgrade/uninstall | 06, 09 |
 | 11 | `11-intake-contract-approval.md` | Intake, IntentContract, approval envelope flow | 06, 09, 10 |
 | 12 | `12-stack-detection-quarantine.md` | Stack detection & capability quarantine | 02, 09 |

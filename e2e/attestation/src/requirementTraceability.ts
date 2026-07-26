@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { EvidenceRecord, RemoteResource, Requirement } from "@eo/contracts";
-import { buildTraceabilityView, type RemoteEvidencePointer } from "@eo/gates";
+import type { EvidenceRecord, RemoteResource, Requirement } from "@crabgic/contracts";
+import { buildTraceabilityView, type RemoteEvidencePointer } from "@crabgic/gates";
 import { buildCheckResult, type AttestationCheckResult } from "./checkResult.js";
 import { readReleaseRequirements, type ReleaseRequirement } from "./releaseRequirements.js";
 import {
@@ -21,7 +21,7 @@ import {
  * (Jira/Grafana) revisions (21's traceability report)."
  *
  * This check does NOT re-implement traceability: it calls 21's own
- * `buildTraceabilityView` (`@eo/gates`) — the module that phase already
+ * `buildTraceabilityView` (`@crabgic/gates`) — the module that phase already
  * built and tested — and scores its output against the three things this
  * exit criterion actually demands of every requirement:
  *
@@ -61,8 +61,8 @@ export const TRACEABILITY_INPUT_PATH = "docs/evidence/phase-23/requirement-trace
 /**
  * Override holding an ABSOLUTE path to a traceability artifact produced
  * outside the checkout being scored — `docs/interface-ledger.md`'s Gap 16
- * convention, the same one `$EO_ARM64_RUN_RECORD` and
- * `$EO_PERF_CONTRACT_RERUN_RECORD` already follow.
+ * convention, the same one `$CRABGIC_ARM64_RUN_RECORD` and
+ * `$CRABGIC_PERF_CONTRACT_RERUN_RECORD` already follow.
  *
  * WHY IT IS NEEDED, AND WHY ITS ABSENCE WAS A STRUCTURAL DEFECT. This
  * artifact records the release-candidate object ID it was captured against,
@@ -78,7 +78,7 @@ export const TRACEABILITY_INPUT_PATH = "docs/evidence/phase-23/requirement-trace
  * A blank or unset value falls back to the in-repo path, so an ordinary
  * developer run is unchanged.
  */
-export const TRACEABILITY_RECORD_ENV = "EO_REQUIREMENT_TRACEABILITY_RECORD";
+export const TRACEABILITY_RECORD_ENV = "CRABGIC_REQUIREMENT_TRACEABILITY_RECORD";
 
 export interface CheckRequirementTraceabilityInput {
   readonly releaseCandidateObjectId: string;

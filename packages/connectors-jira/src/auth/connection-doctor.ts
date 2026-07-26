@@ -1,10 +1,10 @@
-import type { ExternalConnection } from "@eo/contracts";
-import { probeConnectionReachability, type ReachabilityProbeResult } from "@eo/gateway";
+import type { ExternalConnection } from "@crabgic/contracts";
+import { probeConnectionReachability, type ReachabilityProbeResult } from "@crabgic/gateway";
 import type { JiraTokenManager } from "./token-manager.js";
 
 /**
  * Connection-doctor scope/expiry check — roadmap/18 §In scope:
- * "connection doctor validates scopes." Built on top of `@eo/gateway`'s
+ * "connection doctor validates scopes." Built on top of `@crabgic/gateway`'s
  * `probeConnectionReachability` (16's own end-to-end, non-mutating GET
  * primitive — never reimplemented here) plus this phase's own
  * `JiraTokenManager`, which the same call proves is capable of minting a
@@ -14,7 +14,7 @@ export interface JiraConnectionDoctorInput {
   readonly connection: ExternalConnection;
   readonly tokenManager: JiraTokenManager;
   readonly requiredScopes: readonly string[];
-  /** Injectable — defaults to `@eo/gateway`'s `probeConnectionReachability` (test-only escape hatch, mirroring that function's own `buildClient` seam). */
+  /** Injectable — defaults to `@crabgic/gateway`'s `probeConnectionReachability` (test-only escape hatch, mirroring that function's own `buildClient` seam). */
   readonly probe?: (connection: ExternalConnection) => Promise<ReachabilityProbeResult>;
 }
 

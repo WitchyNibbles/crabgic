@@ -1,5 +1,5 @@
 /**
- * Stable exit codes — RELOCATED to `@eo/contracts` (2026-07-25) and
+ * Stable exit codes — RELOCATED to `@crabgic/contracts` (2026-07-25) and
  * re-exported here verbatim. Implementation:
  * `packages/contracts/src/cli-surface/exit-codes.ts`, which explains why
  * (command backends outside `packages/cli` — phase 12's `trust *`, in
@@ -14,5 +14,5 @@ export {
   EXIT_SECRET_REJECTED,
   EXIT_SUPERVISOR_UNAVAILABLE,
   EXIT_USAGE_ERROR,
-} from "@eo/contracts";
-export type { ExitCode } from "@eo/contracts";
+} from "@crabgic/contracts";
+export type { ExitCode } from "@crabgic/contracts";

@@ -1,5 +1,5 @@
 {
-  "name": "@eo/contracts",
+  "name": "@crabgic/contracts",
   "version": "0.0.0",
   "private": true,
   "description": "Core contracts, state machines, canonical errors, and shared schemas (empty stub — phase 02).",

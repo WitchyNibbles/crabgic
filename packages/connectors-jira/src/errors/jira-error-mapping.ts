@@ -1,5 +1,5 @@
-import type { ConnectorError } from "@eo/contracts";
-import { mapHttpStatusToConnectorError } from "@eo/gateway";
+import type { ConnectorError } from "@crabgic/contracts";
+import { mapHttpStatusToConnectorError } from "@crabgic/gateway";
 
 /**
  * Jira's own provider attribution string — used on every `ConnectorError`
@@ -24,7 +24,7 @@ export const JIRA_DATACENTER_PROVIDER_NAME = "jira-datacenter";
 /**
  * Maps an HTTP response status from a Jira Cloud REST v3/Agile call to
  * exactly one of P02's 10 canonical `ConnectorError` members — a thin,
- * Jira-attributed call site over `@eo/gateway`'s own
+ * Jira-attributed call site over `@crabgic/gateway`'s own
  * `mapHttpStatusToConnectorError` (16 owns the mapping mechanics; this
  * phase never reimplements it, roadmap/18 §Out of scope). `rawBody` is
  * accepted for redaction derivation ONLY — `mapHttpStatusToConnectorError`

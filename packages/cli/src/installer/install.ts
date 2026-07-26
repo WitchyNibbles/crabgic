@@ -14,7 +14,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { computeContentDigest, ENABLED_PLUGIN_KEY } from "@eo/plugin";
+import { computeContentDigest, ENABLED_PLUGIN_KEY } from "@crabgic/plugin";
 import { loadSubagentFilesToInstall } from "./agents-writer.js";
 import { computeChecksum } from "./checksum.js";
 import { mergeClaudeMd } from "./claude-md.js";
@@ -37,7 +37,7 @@ import type { InstallerDependencies } from "./types.js";
 
 /**
  * The `enabledPlugins` key this installer writes — LIVE-VERIFIED (2026-07-
- * 24, `@eo/plugin`'s `ENABLED_PLUGIN_KEY` own doc comment) against a real
+ * 24, `@crabgic/plugin`'s `ENABLED_PLUGIN_KEY` own doc comment) against a real
  * `claude` binary to be `<plugin-name>@<marketplace-name>`, NOT the bare
  * plugin name alone. Re-exported under this package's own established name
  * so existing call sites/tests didn't need renaming.

@@ -1,10 +1,10 @@
-import type { SecretReference } from "@eo/contracts";
-import { type GatewayHttpClient, resolveSecretReference } from "@eo/gateway";
+import type { SecretReference } from "@crabgic/contracts";
+import { type GatewayHttpClient, resolveSecretReference } from "@crabgic/gateway";
 import type { FetchJiraOAuthToken, JiraOAuthTokenResponse } from "./token-manager.js";
 
 /**
  * Production wiring for `JiraTokenManager`'s `fetchToken` — resolves the
- * service-account client id/secret via `@eo/gateway`'s secret-reference
+ * service-account client id/secret via `@crabgic/gateway`'s secret-reference
  * resolver (never a literal credential held anywhere in this module's own
  * state — resolved fresh on every call, used once, discarded) and POSTs
  * the OAuth 2.0 client-credentials grant through the SUPPLIED

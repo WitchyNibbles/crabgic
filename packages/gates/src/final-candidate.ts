@@ -21,9 +21,9 @@ import type { GateContext } from "./types.js";
  *
  * The TaskPacket-dispatch half of this work item ("dispatched as its own
  * `TaskPacket` through 13's executor") is proven in
- * `./final-candidate.e2e.test.ts` via `@eo/scheduler`'s real
+ * `./final-candidate.e2e.test.ts` via `@crabgic/scheduler`'s real
  * `dispatchAttempt` against a `FakeEngineAdapter` — this module itself has
- * no dependency on `@eo/scheduler`'s dispatch machinery (that would invert
+ * no dependency on `@crabgic/scheduler`'s dispatch machinery (that would invert
  * the dependency direction the roadmap's own dependency graph establishes,
  * 13 → 14, not 14 → 13's executor internals); it is the pure verification
  * primitive whatever wraps it as a `TaskPacket`'s "work" invokes.

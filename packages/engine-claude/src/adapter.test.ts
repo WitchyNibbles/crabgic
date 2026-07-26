@@ -2,7 +2,7 @@
  * roadmap/06-claude-engine-adapter.md work items 1/3/4/6 — the real
  * `ClaudeEngineAdapter`. Scripted `sdkQuery` fakes built from SDK-message-
  * shaped objects (never the real SDK); a real temp-dir `JournalStore`
- * (`@eo/journal`) so journal-write assertions are genuine, not mocked.
+ * (`@crabgic/journal`) so journal-write assertions are genuine, not mocked.
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -13,10 +13,10 @@ import {
   type JournalEntry,
   type JournalEntryInput,
   type JournalStore,
-} from "@eo/journal";
-import { compileEnvelope, READ_ONLY_ENVELOPE } from "@eo/engine-core";
-import { buildTaskPacket } from "@eo/testkit";
-import type { TaskPacket } from "@eo/contracts";
+} from "@crabgic/journal";
+import { compileEnvelope, READ_ONLY_ENVELOPE } from "@crabgic/engine-core";
+import { buildTaskPacket } from "@crabgic/testkit";
+import type { TaskPacket } from "@crabgic/contracts";
 import type {
   Options,
   PostToolUseHookInput,

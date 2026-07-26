@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as fc from "fast-check";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { compileEnvelope } from "../compiler/compile-envelope.js";
 import { buildEnvelopeFixture } from "../compiler/envelope-fixture.js";
 import { assertNoBlanketMcpDeny } from "./invariants.js";

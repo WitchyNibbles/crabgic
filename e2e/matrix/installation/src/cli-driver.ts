@@ -3,14 +3,14 @@
  * ("Installation-matrix harness against 10 ... harness runs the REAL
  * installer logic"). Every scenario in this project drives the installer
  * through EXACTLY the public surface a real invocation of the
- * `engineering-orchestrator` binary uses: `parseCommand(argv)` builds a
+ * `crabgic` binary uses: `parseCommand(argv)` builds a
  * `ParsedCommand` from argv tokens, `dispatchCommand(command, deps)` routes
  * it to the real `install`/`upgrade`/`uninstall` backend (only when
  * `deps.installer` is supplied — see `packages/cli/src/commands/
  * dispatch.ts`'s own doc comment). No internal, non-exported module of
- * `packages/cli`/`@eo/plugin` is imported anywhere in this project — every
- * import here is a name `engineering-orchestrator`/`@eo/plugin`/
- * `@eo/journal` actually exports from its public barrel.
+ * `packages/cli`/`@crabgic/plugin` is imported anywhere in this project — every
+ * import here is a name `crabgic`/`@crabgic/plugin`/
+ * `@crabgic/journal` actually exports from its public barrel.
  *
  * `CliDependencies.installer`'s own type (`InstallerDependencies`) is NOT
  * re-exported by `packages/cli`'s public barrel (`packages/cli/src/
@@ -26,16 +26,11 @@
  * package's own doc comments, so the literal is not a guess.
  */
 import { randomUUID } from "node:crypto";
-import type { JournalStore } from "@eo/journal";
-import { resolvePluginRoot } from "@eo/plugin";
-import {
-  dispatchCommand,
-  parseCommand,
-  type CliDependencies,
-  type CommandResult,
-} from "engineering-orchestrator";
+import type { JournalStore } from "@crabgic/journal";
+import { resolvePluginRoot } from "@crabgic/plugin";
+import { dispatchCommand, parseCommand, type CliDependencies, type CommandResult } from "crabgic";
 
-/** Always resolves to the same on-disk `@eo/plugin` root every scenario shares — real package resolution (`resolvePluginRoot()`), never a synthetic fixture directory. */
+/** Always resolves to the same on-disk `@crabgic/plugin` root every scenario shares — real package resolution (`resolvePluginRoot()`), never a synthetic fixture directory. */
 export function pluginSourceDir(): string {
   return resolvePluginRoot();
 }

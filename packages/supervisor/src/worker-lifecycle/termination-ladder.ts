@@ -9,7 +9,7 @@
  *   1. "SIGTERM" — ask the adapter to cancel, with a grace deadline
  *      (`EngineAdapter.cancel(handle, deadline)`; "the grace period an
  *      implementation has before it must force-terminate the underlying
- *      process," per `@eo/engine-core`'s own doc comment).
+ *      process," per `@crabgic/engine-core`'s own doc comment).
  *   2. "grace" — wait up to `graceMs` for the worker's own `events` stream
  *      to end on its own (a real adapter is expected to have force-killed
  *      the underlying process by its own `deadline`; this step is what
@@ -21,8 +21,8 @@
  *      lets a genuinely hung fake/real worker be reaped within a bounded
  *      deadline rather than staying stuck forever.
  */
-import type { EngineAdapter, EngineEvent, WorkerHandle } from "@eo/engine-core";
-import type { Timestamp } from "@eo/contracts";
+import type { EngineAdapter, EngineEvent, WorkerHandle } from "@crabgic/engine-core";
+import type { Timestamp } from "@crabgic/contracts";
 
 export type TerminationOutcome = "graceful" | "forced";
 

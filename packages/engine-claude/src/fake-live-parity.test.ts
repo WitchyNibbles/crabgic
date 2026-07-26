@@ -12,7 +12,7 @@
  * verdict + `classifyFixtureDenyMechanism`'s static classification), NOT
  * observed from a real engine run. So today this test is fake-vs-fake-
  * derived-baseline, not fake-vs-live — the parity claim is genuinely
- * circular until a green `@live` run (`npm run test:live` with `EO_LIVE=1`)
+ * circular until a green `@live` run (`npm run test:live` with `CRABGIC_LIVE=1`)
  * replaces the file with `source: "live"` real-engine observations. Only at
  * that point does this test become fake-vs-live in truth. The roadmap/06
  * "fake-vs-live parity" exit criterion therefore stays OPEN even though this
@@ -37,8 +37,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CONFORMANCE_FIXTURES, evaluateAllLayers, resolveConformanceFixture } from "@eo/testkit";
-import type { AdjudicationCallback } from "@eo/engine-core";
+import {
+  CONFORMANCE_FIXTURES,
+  evaluateAllLayers,
+  resolveConformanceFixture,
+} from "@crabgic/testkit";
+import type { AdjudicationCallback } from "@crabgic/engine-core";
 import { classifyFixtureDenyMechanism } from "./live/live-harness.js";
 
 // The fixtures' `expected.adjudication` is "allow" for all 7 (the fake

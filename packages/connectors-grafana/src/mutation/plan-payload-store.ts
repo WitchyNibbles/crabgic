@@ -8,7 +8,7 @@ import type { GrafanaResourceKind } from "../resource-kinds.js";
  * stash the actual create/update input here, keyed by the plan's own `id`,
  * so `apply()` (`./mutation-apply-client.js`) can later resolve it back —
  * "planning is local-only; no network call" (mirrors
- * `@eo/gateway`'s fake-tracker-provider's own comment on `planCreate`).
+ * `@crabgic/gateway`'s fake-tracker-provider's own comment on `planCreate`).
  *
  * The class below is in-memory, matching `./snapshot-store.js`'s same
  * scope decision. `./file-backed-store.js`'s

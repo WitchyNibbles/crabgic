@@ -1,5 +1,5 @@
-import type { JournalStore } from "@eo/journal";
-import type { ChangeSetReferences, ProposalRegistry } from "@eo/learning";
+import type { JournalStore } from "@crabgic/journal";
+import type { ChangeSetReferences, ProposalRegistry } from "@crabgic/learning";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
 

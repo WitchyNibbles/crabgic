@@ -13,7 +13,7 @@
  * same reason and have the identical shape; the composition roots wrap this
  * in `./file-registry.ts` to make it survive the process boundary.
  */
-import { type IntentContract } from "@eo/contracts";
+import { type IntentContract } from "@crabgic/contracts";
 import { createInMemoryRegistry, type Registry } from "./registry.js";
 
 export function createIntentContractsRegistry(): Registry<IntentContract> {

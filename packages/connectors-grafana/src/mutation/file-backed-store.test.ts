@@ -28,7 +28,7 @@ import type { GrafanaParsedResource } from "../resources/resource-definitions.js
  * process restart between the two turns every pending plan into "no stored
  * plan payload for plan <id>".
  *
- * These durable drop-ins copy `@eo/supervisor`'s `createFileRegistry`
+ * These durable drop-ins copy `@crabgic/supervisor`'s `createFileRegistry`
  * discipline verbatim — temp-file + atomic `renameSync`, `0o600`, schema
  * re-validation on every read, missing file = empty store — and stay
  * SYNCHRONOUS-READ because `MutationApplyClient.buildRequest` is

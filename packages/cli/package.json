@@ -1,8 +1,8 @@
 {
-  "name": "engineering-orchestrator",
+  "name": "crabgic",
   "version": "0.0.0",
   "private": true,
-  "description": "engineering-orchestrator CLI & doctor (roadmap/09-cli-and-doctor.md).",
+  "description": "crabgic CLI & doctor (roadmap/09-cli-and-doctor.md).",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -20,8 +20,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "engineering-orchestrator": "./dist/bin.js",
-    "engineering-orchestrator-supervisord": "./dist/bin/supervisord.js"
+    "crabgic": "./dist/bin.js",
+    "crabgic-supervisord": "./dist/bin/supervisord.js"
   },
   "exports": {
     ".": {
@@ -38,24 +38,24 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@eo/connectors-grafana": "0.0.0",
-    "@eo/connectors-jira": "0.0.0",
-    "@eo/contracts": "0.0.0",
-    "@eo/detect": "0.0.0",
-    "@eo/engine-claude": "0.0.0",
-    "@eo/engine-core": "0.0.0",
-    "@eo/gateway": "0.0.0",
-    "@eo/git-engine": "0.0.0",
-    "@eo/journal": "0.0.0",
-    "@eo/learning": "0.0.0",
-    "@eo/plugin": "0.0.0",
-    "@eo/scheduler": "0.0.0",
-    "@eo/supervisor": "0.0.0",
+    "@crabgic/connectors-grafana": "0.0.0",
+    "@crabgic/connectors-jira": "0.0.0",
+    "@crabgic/contracts": "0.0.0",
+    "@crabgic/detect": "0.0.0",
+    "@crabgic/engine-claude": "0.0.0",
+    "@crabgic/engine-core": "0.0.0",
+    "@crabgic/gateway": "0.0.0",
+    "@crabgic/git-engine": "0.0.0",
+    "@crabgic/journal": "0.0.0",
+    "@crabgic/learning": "0.0.0",
+    "@crabgic/plugin": "0.0.0",
+    "@crabgic/scheduler": "0.0.0",
+    "@crabgic/supervisor": "0.0.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@eo/renderer": "0.0.0",
-    "@eo/testkit": "0.0.0",
+    "@crabgic/renderer": "0.0.0",
+    "@crabgic/testkit": "0.0.0",
     "fast-check": "4.9.0"
   },
   "publishConfig": {

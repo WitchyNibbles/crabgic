@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ProviderRegistry } from "@eo/gateway";
-import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@eo/contracts";
+import { ProviderRegistry } from "@crabgic/gateway";
+import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { createGrafanaProviderAdapter } from "./adapter.js";
 import { GrafanaPlanPayloadStore } from "./mutation/plan-payload-store.js";
 import { GrafanaRollbackSnapshotStore } from "./mutation/snapshot-store.js";

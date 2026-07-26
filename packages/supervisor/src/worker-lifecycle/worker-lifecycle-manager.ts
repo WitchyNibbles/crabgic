@@ -18,9 +18,9 @@ import type {
   CompiledWorkerProfile,
   EngineAdapter,
   EngineEvent,
-} from "@eo/engine-core";
-import type { TaskPacket } from "@eo/contracts";
-import { recordAttempt, type JournalStore } from "@eo/journal";
+} from "@crabgic/engine-core";
+import type { TaskPacket } from "@crabgic/contracts";
+import { recordAttempt, type JournalStore } from "@crabgic/journal";
 import type { WorkerRecord } from "../router/operations.js";
 import type { WorkersRegistry } from "../registries/workers-registry.js";
 import { createRingBuffer, type RingBuffer } from "../event-bus/ring-buffer.js";

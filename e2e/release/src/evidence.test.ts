@@ -10,7 +10,7 @@ import {
 import { createTestJournal, type TestJournal } from "./testJournal.js";
 
 describe("resolveReleaseCandidateObjectId", () => {
-  const ENV_KEY = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const ENV_KEY = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
   const original = process.env[ENV_KEY];
 
   afterEach(() => {
@@ -28,7 +28,7 @@ describe("resolveReleaseCandidateObjectId", () => {
     expect(resolveReleaseCandidateObjectId()).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
   });
 
-  it("honors $EO_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
+  it("honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
     process.env[ENV_KEY] = "1234567890abcdef1234567890abcdef12345678";
     expect(resolveReleaseCandidateObjectId()).toBe("1234567890abcdef1234567890abcdef12345678");
   });
@@ -59,12 +59,12 @@ describe("emitReproducibleBuildEvidence", () => {
     expect(records[0]?.gateTag).toBe(REPRODUCIBLE_BUILD_GATE_TAG);
     expect(records[1]?.gateTag).toBe(ENGINE_PIN_RECORDED_GATE_TAG);
     // The DEFAULT seam, not a hard-coded literal — unset
-    // `$EO_RELEASE_CANDIDATE_OBJECT_ID` this is exactly
+    // `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` this is exactly
     // `FAKE_RELEASE_CANDIDATE_OBJECT_ID`.
     expect(records[0]?.objectId).toBe(resolveReleaseCandidateObjectId());
 
     // Scoped to THIS test's own freshly-generated changeSetId, never the
-    // whole journal: under a shared journal (`EO_RELEASE_GATE_JOURNAL_DIR`,
+    // whole journal: under a shared journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`,
     // see `./testJournal.ts`) every other harness's evidence is visible
     // here too, and an unfiltered "the journal contains exactly these two
     // records" assertion would either break or start passing vacuously.

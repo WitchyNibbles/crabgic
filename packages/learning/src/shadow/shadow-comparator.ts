@@ -2,7 +2,7 @@ import {
   runShadowAttempt,
   type RunShadowAttemptOptions,
   type ShadowRunResult,
-} from "@eo/scheduler";
+} from "@crabgic/scheduler";
 
 export type ShadowComparisonVerdict = "improved" | "regressed" | "unchanged";
 
@@ -23,7 +23,7 @@ export interface ShadowComparison {
  * primitive; outcome diffing." This module NEVER reimplements isolated
  * dispatch itself (13's `runShadowAttempt` already owns "worktree/session,
  * cache-bypassed, marker-only journal footprint" — see
- * `@eo/scheduler/src/shadow-run.ts`'s own file-level doc comment); it is a
+ * `@crabgic/scheduler/src/shadow-run.ts`'s own file-level doc comment); it is a
  * thin comparator layered on top, matching 13's own framing: "This phase
  * owns isolated execution only; comparison and grading logic belong to
  * 22."

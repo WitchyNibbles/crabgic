@@ -1,4 +1,4 @@
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 
 /**
  * Own copy (not an import) of `packages/scheduler/src/test-support/minimal-

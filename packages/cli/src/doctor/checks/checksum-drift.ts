@@ -47,7 +47,7 @@ export function createChecksumDriftCheck(options: ChecksumDriftCheckOptions): Do
         passed: false,
         evidence: `drift detected in ${findings.length} artifact(s): ${paths}`,
         repairStep:
-          "run `engineering-orchestrator upgrade --dry-run` to review the diff, then `upgrade` to reconcile " +
+          "run `crabgic upgrade --dry-run` to review the diff, then `upgrade` to reconcile " +
           "(or `uninstall` if the drift is an intentional local customization you want to keep unmanaged)",
       };
     },

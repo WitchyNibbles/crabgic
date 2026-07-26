@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * Monotonic coverage-ratchet store — roadmap/14 §In scope, "Coverage"
@@ -8,7 +8,7 @@ import type { JournalStore } from "@eo/journal";
  * project." `JournalEntryType` is closed at exactly 13 members
  * (interface-ledger Gap 5) and no dedicated member exists for a ratchet
  * update — this module reuses `adjudication_decision`'s already-generic
- * payload, the SAME documented precedent `@eo/scheduler`'s `parking.ts`/
+ * payload, the SAME documented precedent `@crabgic/scheduler`'s `parking.ts`/
  * `shadow-run.ts`/`attempt-policy.ts` already establish for exactly this
  * situation (their own file-level doc comments cite it explicitly). See the
  * phase-14 evidence doc's deviations section.
@@ -33,7 +33,7 @@ import type { JournalStore } from "@eo/journal";
  * another's (a brand-new project's genuinely-first, low observation being
  * misread as a "regression" against an unrelated project's already-high
  * floor). `projectId` is caller-supplied — the natural, already-existing
- * stable identifier is `ProjectProfile.id` (`@eo/contracts`), but this
+ * stable identifier is `ProjectProfile.id` (`@crabgic/contracts`), but this
  * module accepts any non-empty string so a caller without a resolved
  * `ProjectProfile` at hand can still supply a stable equivalent (documented
  * in `../coverage-gate.ts`'s own `CoverageGateInput.projectId` field).
@@ -62,7 +62,7 @@ export interface RatchetFloor {
   readonly branchPct: number;
 }
 
-/** Guarded parse — never throws on malformed/foreign journal content (mirrors `@eo/scheduler`'s `parking.ts`/`attempt-policy.ts` MINOR-4 precedent: "never trust file content"). */
+/** Guarded parse — never throws on malformed/foreign journal content (mirrors `@crabgic/scheduler`'s `parking.ts`/`attempt-policy.ts` MINOR-4 precedent: "never trust file content"). */
 function parseObservation(rationale: string): RatchetObservation | undefined {
   let parsed: unknown;
   try {

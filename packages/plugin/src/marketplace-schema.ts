@@ -39,7 +39,7 @@ const CommitPinSchema = z
  * copy. `marketplace-schema.test.ts`'s own citation test fails if this
  * drifts from the committed file.
  */
-export const MARKETPLACE_NAME = "engineering-orchestrator-marketplace" as const;
+export const MARKETPLACE_NAME = "crabgic-marketplace" as const;
 
 /** Every plugin-entry field except `commit`, whose strictness is the one thing the two entry schemas below differ on. */
 const pluginEntryCommonShape = {

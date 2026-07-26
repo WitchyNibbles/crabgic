@@ -1,5 +1,5 @@
 {
-  "name": "@eo/e2e",
+  "name": "@crabgic/e2e",
   "version": "0.0.0",
   "private": true,
   "description": "Phase 23 release-hardening top-level E2E tooling (not an npm workspace member — roadmap/23-release-hardening.md's own header: \"lives under top-level e2e/ (not an npm workspace member)\"). e2e/provisioning/ (this work item): disposable-environment provisioning + guaranteed-teardown harness. e2e/report/ is a sibling worker's directory (release-gate-report generator) and is untouched here.",

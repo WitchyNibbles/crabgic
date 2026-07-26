@@ -1,5 +1,5 @@
 /**
- * `engineering-orchestrator` (packages/cli) public barrel —
+ * `crabgic` (packages/cli) public barrel —
  * roadmap/09-cli-and-doctor.md. Every cross-cutting type/function this
  * package exposes for 10/11/12 to build their own command backends against
  * is exported from exactly this module; `./bin.ts` (the real executable

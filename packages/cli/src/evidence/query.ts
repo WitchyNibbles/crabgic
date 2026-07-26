@@ -4,12 +4,12 @@
  * Returns every journaled `EvidenceRecord` (02) for that `ChangeSet`...
  * Content is sparse before 11 creates `ChangeSet`s... it degrades
  * gracefully... rather than erroring." An `evidence_pointer` journal entry's
- * `payload` deserializes as `EvidenceRecord` verbatim (`@eo/journal`'s own
+ * `payload` deserializes as `EvidenceRecord` verbatim (`@crabgic/journal`'s own
  * codec property) — this module reads through `JournalStore.queryEntries`
  * directly; it never re-implements journal scanning.
  */
-import type { EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type { EvidenceRecord } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 
 export interface EvidenceReport {
   readonly changeSetId: string;

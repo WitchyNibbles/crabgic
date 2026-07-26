@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAuthorizationEnvelope } from "@eo/testkit";
+import { buildAuthorizationEnvelope } from "@crabgic/testkit";
 import { buildTaskPacket } from "./task-packet-builder.js";
 import { PacketBudgetExceededError, PacketEnvelopeViolationError } from "./errors.js";
 import { DEFAULT_PACKET_FIELD_BUDGETS } from "./budgets.js";

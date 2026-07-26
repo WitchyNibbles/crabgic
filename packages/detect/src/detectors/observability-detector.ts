@@ -5,7 +5,7 @@
  * dependencies/devDependencies, (2) a recognized observability config
  * file name anywhere in the tree.
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { parseJsonSafe } from "../fs/safe-read.js";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 

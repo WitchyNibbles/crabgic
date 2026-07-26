@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { RUN_LIFECYCLE_STATES } from "@eo/contracts";
-import { JIRA_WORKFLOW_STAGES } from "@eo/connectors-jira";
+import { RUN_LIFECYCLE_STATES } from "@crabgic/contracts";
+import { JIRA_WORKFLOW_STAGES } from "@crabgic/connectors-jira";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { recordEvidencePointer } from "./remote-evidence-pointer.js";
 import { createRemoteVerificationGate } from "./remote-verification-gate.js";

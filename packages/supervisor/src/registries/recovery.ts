@@ -2,7 +2,7 @@
  * Recovery wiring — roadmap/05-supervisor-daemon.md §Lifecycle: "a crash
  * at any point is always recoverable via 04's `recover(runId)` (latest
  * snapshot + journal replay)." This module never re-implements replay
- * itself — it calls `@eo/journal`'s own `recover(runId)` (via a bound
+ * itself — it calls `@crabgic/journal`'s own `recover(runId)` (via a bound
  * `JournalStore`) and rebuilds exactly this package's own registries
  * (`RunsRegistry`, `WorkersRegistry`) from the returned
  * `{ snapshot, replayed, verification, repair? }`.
@@ -15,7 +15,7 @@
  * error propagates to the caller (the supervisor's own startup sequence)
  * uncaught, exactly as 04's own contract requires.
  */
-import type { JournalStore, RecoverResult } from "@eo/journal";
+import type { JournalStore, RecoverResult } from "@crabgic/journal";
 import type { RunRecord } from "../router/operations.js";
 import type { RunsRegistry } from "./runs-registry.js";
 import type { WorkersRegistry } from "./workers-registry.js";

@@ -12,7 +12,7 @@
  * itself part of that content hash).
  */
 import { createHash } from "node:crypto";
-import { IdSchema, type Id } from "@eo/contracts";
+import { IdSchema, type Id } from "@crabgic/contracts";
 
 /** Deterministically derives an RFC-4122-shaped (version-4, variant-1) UUID from `seed` — the same seed always produces the same id, on any run, on any machine. */
 export function deriveStableId(seed: string): Id {

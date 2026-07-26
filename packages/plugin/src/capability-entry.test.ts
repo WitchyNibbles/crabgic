@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TESTED_ENGINE_VERSION } from "@eo/engine-claude";
+import { TESTED_ENGINE_VERSION } from "@crabgic/engine-claude";
 import {
   buildEngineCapabilityEntry,
   buildPluginCapabilityEntry,
@@ -29,7 +29,7 @@ describe("buildPluginCapabilityEntry", () => {
 });
 
 describe("buildEngineCapabilityEntry", () => {
-  it("reuses @eo/engine-claude's TESTED_ENGINE_VERSION and capability booleans, not a re-derived constant", () => {
+  it("reuses @crabgic/engine-claude's TESTED_ENGINE_VERSION and capability booleans, not a re-derived constant", () => {
     const entry = buildEngineCapabilityEntry();
     expect(entry).toEqual({
       kind: "engine",

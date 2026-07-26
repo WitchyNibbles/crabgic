@@ -1,7 +1,7 @@
 /**
  * roadmap/23-release-hardening.md work item 6's own fail-first instruction:
  * "harness FAILs on a seeded replay-with-changed-payload fixture (must be
- * rejected, not silently accepted)." Drives the REAL `@eo/gateway`
+ * rejected, not silently accepted)." Drives the REAL `@crabgic/gateway`
  * `executeMutationPlan` pipeline (never a reimplementation).
  *
  * This file's own dev history (reproduced in
@@ -20,16 +20,16 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@crabgic/contracts";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
   executeMutationPlan,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
-import type { HttpTransportResponse } from "@eo/gateway";
+} from "@crabgic/gateway";
+import type { HttpTransportResponse } from "@crabgic/gateway";
 import { CONNECTOR_MATRIX_GATE_TAG, emitScenarioEvidence } from "../support/evidence.js";
 
 function buildPlan(overrides: Partial<RemoteMutationPlan> = {}): RemoteMutationPlan {

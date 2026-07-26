@@ -17,13 +17,13 @@
  * genuinely cannot be recovered from the plan itself.
  *
  * SYNCHRONOUS ON PURPOSE — this is a hard constraint, not a preference.
- * `@eo/gateway`'s `MutationApplyClient.buildRequest` is synchronous by
+ * `@crabgic/gateway`'s `MutationApplyClient.buildRequest` is synchronous by
  * contract, and `./mutation-apply-client.ts`'s implementation of it calls
  * `deps.payloadStore.get(plan.id)` with no `await` available at that call
  * site. An async store would have to be threaded through a signature
- * change in `@eo/gateway`'s own contract, which is out of scope here.
+ * change in `@crabgic/gateway`'s own contract, which is out of scope here.
  *
- * Discipline copied verbatim from `@eo/supervisor`'s `createFileRegistry`
+ * Discipline copied verbatim from `@crabgic/supervisor`'s `createFileRegistry`
  * (`packages/supervisor/src/registries/file-registry.ts`): temp file +
  * atomic `renameSync` so a crash mid-write can never leave a truncated
  * store; `0o600` re-asserted after rename; a missing file is an EMPTY

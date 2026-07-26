@@ -23,8 +23,8 @@ import {
   type AuthorizationEnvelope,
   type ChangeSet,
   type WorkUnit,
-} from "@eo/contracts";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   createArtifactIndexRegistry,
   createFileRegistry,
@@ -32,7 +32,7 @@ import {
   createWorkersRegistry,
   type SupervisorDependencies,
   type TerminableWorker,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import {
   buildAuthorizationEnvelope,
   buildChangeSet,
@@ -40,7 +40,7 @@ import {
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import { createRealRunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { emitPermissionProfile } from "./permission-profile.js";
 import { buildEnvelopeFixture } from "./envelope-fixture.js";
 import {
@@ -140,7 +140,7 @@ describe("emitPermissionProfile — mandatory deny emission", () => {
         ownedPaths: ["packages/a/src"],
         commands: ["npm run test", "npm run build", "git status", "git diff"],
         networkDestinations: ["api.example.com"],
-        credentialReferences: ["EO_TOKEN"],
+        credentialReferences: ["CRABGIC_TOKEN"],
       }),
     );
     expect([...empty.deny].sort()).toEqual([...full.deny].sort());

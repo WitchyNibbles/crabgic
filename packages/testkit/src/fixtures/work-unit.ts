@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `WorkUnit` fixture builder — roadmap/02 work item 10. */

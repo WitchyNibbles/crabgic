@@ -15,7 +15,7 @@
  */
 
 import { join } from "node:path";
-import { RunSnapshotSchema, type RunSnapshot } from "@eo/contracts";
+import { RunSnapshotSchema, type RunSnapshot } from "@crabgic/contracts";
 import { durablyWriteFileAtomic } from "./durable-io.js";
 import { queryEntries } from "./query-entries.js";
 import { repairJournal, type JournalRepairReport } from "./repair-journal.js";

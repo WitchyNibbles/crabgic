@@ -1,11 +1,11 @@
 /**
- * Test-support helper — a fresh, real `@eo/journal` `JournalStore` over a
+ * Test-support helper — a fresh, real `@crabgic/journal` `JournalStore` over a
  * temp directory. Mirrors `e2e/report/src/test-support/test-journal.ts`'s
  * own documented pattern rather than importing it (that file is not part
  * of any public surface either, and this project's own dependency edge has
  * no other reason to touch `e2e/report`).
  *
- * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): a private temp
+ * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): a private temp
  * directory is why this harness's genuinely-emitted `EvidenceRecord`s were
  * invisible to `e2e/report`'s generator — they were written somewhere that
  * no longer existed by the time the report ran. When that env var is set
@@ -26,7 +26,7 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 
 export interface TestJournal {
   readonly store: JournalStore;
@@ -35,7 +35,7 @@ export interface TestJournal {
 }
 
 export async function createTestJournal(): Promise<TestJournal> {
-  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
     await mkdir(sharedJournalDir, { recursive: true });
     return {

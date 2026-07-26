@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdempotencyRegistry } from "@eo/journal";
+import { IdempotencyRegistry } from "@crabgic/journal";
 import {
   applySideEffectExactlyOnce,
   applySideEffectNaive,

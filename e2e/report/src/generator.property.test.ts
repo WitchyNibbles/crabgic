@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
 import type { ReleaseGateChecklistItemSpec } from "./checklist.js";
 import { generateReleaseGateReport } from "./generator.js";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
@@ -13,7 +13,7 @@ import { createTestJournal, type TestJournal } from "./test-support/test-journal
  * idempotent (re-running against the same journal segment yields the same
  * verdict)."
  *
- * One real `@eo/journal` `JournalStore` is shared across every `fc.assert`
+ * One real `@crabgic/journal` `JournalStore` is shared across every `fc.assert`
  * iteration (constructing a fresh temp-dir store per iteration would be
  * needlessly slow); each iteration instead uses its OWN freshly-generated
  * `randomUUID()` release-candidate object ID, which fully isolates one

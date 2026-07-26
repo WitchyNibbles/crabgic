@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStackEvidence } from "@eo/testkit";
+import { buildStackEvidence } from "@crabgic/testkit";
 import { detectPerformanceRisk } from "./detector.js";
 
 describe("detectPerformanceRisk", () => {

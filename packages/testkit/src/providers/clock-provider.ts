@@ -1,5 +1,5 @@
-import type { Timestamp } from "@eo/contracts";
-import { TimestampSchema } from "@eo/contracts";
+import type { Timestamp } from "@crabgic/contracts";
+import { TimestampSchema } from "@crabgic/contracts";
 
 /**
  * Deterministic clock provider — roadmap/02-contracts-and-schemas.md work

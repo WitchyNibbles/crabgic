@@ -2,13 +2,13 @@
  * Canonical-error mapping — roadmap/16-gateway-core.md §In scope,
  * "Mutation pipeline": "canonical-error mapping (provider bodies never
  * leak)." Work item 4. The one call site any HTTP-transport failure
- * passes through on its way into `@eo/contracts`'s 10-member
+ * passes through on its way into `@crabgic/contracts`'s 10-member
  * `ConnectorError` union — every branch instantiates via the redacting
  * static constructors, never exposing `rawProviderResponse` on the return
  * value (enforced at the type level by `ConnectorError` itself).
  */
 
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 
 export interface HttpStatusMappingInput {
   readonly status: number;

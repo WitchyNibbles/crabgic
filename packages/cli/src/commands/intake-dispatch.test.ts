@@ -14,14 +14,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   createChangeSetsRegistry,
   createWorkUnitsRegistry,
   createAuthorizationEnvelopesRegistry,
   createIntentContractsRegistry,
   type IntakeRequest,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { EXIT_OK } from "../exit-codes.js";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { dispatchCommand } from "./dispatch.js";

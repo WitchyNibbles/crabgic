@@ -19,7 +19,7 @@ import type {
   JiraTransition,
   JiraWorklog,
 } from "../types.js";
-import { collectAllPages, type FetchPage } from "@eo/gateway";
+import { collectAllPages, type FetchPage } from "@crabgic/gateway";
 import {
   jiraDatacenterGetJson,
   type JiraDatacenterHttpContext,

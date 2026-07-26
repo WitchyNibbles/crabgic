@@ -5,8 +5,8 @@ import {
   EXIT_OK,
   type CapabilitySnapshot,
   type ExternalConnection,
-} from "@eo/contracts";
-import { InMemoryExternalConnectionStore } from "@eo/gateway";
+} from "@crabgic/contracts";
+import { InMemoryExternalConnectionStore } from "@crabgic/gateway";
 import type { ConnectionDependencies } from "./connection-commands.js";
 import { runConnectionCapabilitiesCommand } from "./connection-capabilities.js";
 

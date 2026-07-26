@@ -18,7 +18,7 @@
  *
  *   - `createAdapter` — 06 owns the real `ClaudeEngineAdapter` (and its
  *     per-attempt worktree `cwd`). This package must not depend on
- *     `@eo/engine-claude`: that package already depends on `@eo/supervisor`,
+ *     `@crabgic/engine-claude`: that package already depends on `@crabgic/supervisor`,
  *     and the daemon composes both. The driver speaks only 03's
  *     `EngineAdapter` interface.
  *   - `buildPacket` — the caller owns the approved envelope, frozen base
@@ -26,15 +26,19 @@
  *     the driver never invents packet scope.
  *   - `compileProfile` — 03's envelope compiler output.
  *
- * `liveWorkers` is the same map `@eo/supervisor`'s composition root hands to
+ * `liveWorkers` is the same map `@crabgic/supervisor`'s composition root hands to
  * its router, structurally typed here so this package needs no dependency on
  * the supervisor: registering an in-flight attempt there is what makes 05's
  * `worker.terminate` operation able to reach a running worker at all.
  */
-import type { JournalStore } from "@eo/journal";
-import type { AdjudicationCallback, CompiledWorkerProfile, EngineAdapter } from "@eo/engine-core";
-import type { TaskPacket, WorkUnit, WorkUnitAttemptStatus } from "@eo/contracts";
-import type { CollisionVerdict } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import type {
+  AdjudicationCallback,
+  CompiledWorkerProfile,
+  EngineAdapter,
+} from "@crabgic/engine-core";
+import type { TaskPacket, WorkUnit, WorkUnitAttemptStatus } from "@crabgic/contracts";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 import { computeReadyUnits } from "./readiness.js";
 import {
   DEFAULT_CONCURRENCY_CAP,
@@ -57,7 +61,7 @@ export interface WorkerDispatchContext {
 
 /**
  * A worker handle the control plane can terminate mid-flight. Structurally
- * identical to `@eo/supervisor`'s `TerminableWorker` — declared here rather
+ * identical to `@crabgic/supervisor`'s `TerminableWorker` — declared here rather
  * than imported so this package keeps no dependency on the supervisor (13
  * layers ON TOP of 05; the edge must not point back).
  */

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type ProvisionalPerformanceContract } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type ProvisionalPerformanceContract } from "@crabgic/contracts";
 import {
   BudgetHashLinkMismatchError,
   BudgetJournalAnchorMissingError,

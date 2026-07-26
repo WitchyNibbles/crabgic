@@ -1,8 +1,8 @@
 // Kill-harness fixture entry — "kill -9 mid-worktree-creation" (WI6's own
 // RED requirement). Real `createWorktree` call, `onStep` wired to
 // `signalFaultPoint`.
-import { signalFaultPoint } from "@eo/journal";
-import { createGitPlumbing, createNodeGitSpawn, createWorktree } from "@eo/git-engine";
+import { signalFaultPoint } from "@crabgic/journal";
+import { createGitPlumbing, createNodeGitSpawn, createWorktree } from "@crabgic/git-engine";
 
 const [
   ,

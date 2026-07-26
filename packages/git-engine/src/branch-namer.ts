@@ -22,9 +22,9 @@
  * to enforce.
  */
 
-import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@eo/contracts";
-import type { LintFinding } from "@eo/renderer";
-import { renderWithRegeneration } from "@eo/renderer";
+import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@crabgic/contracts";
+import type { LintFinding } from "@crabgic/renderer";
+import { renderWithRegeneration } from "@crabgic/renderer";
 
 /** `<type>` — the closed set roadmap/08 names verbatim, reused identically for the commit-subject/PR-title `type(scope): outcome` convention (`./commit-renderer.ts`). */
 export const BRANCH_TYPES = [

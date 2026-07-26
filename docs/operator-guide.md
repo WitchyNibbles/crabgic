@@ -8,7 +8,7 @@ this repository's current build (no backend wired for this pass), that is stated
 ## 1. Installing
 
 ```
-engineering-orchestrator install [--dry-run] [--json]
+crabgic install [--dry-run] [--json]
 ```
 
 Scaffolds the plugin/managed configuration into the current project: the `CLAUDE.md` managed
@@ -27,7 +27,7 @@ quarantine").
 ## 2. Running a change set
 
 ```
-engineering-orchestrator run [--json]
+crabgic run [--json]
 ```
 
 `run` drives the full intake → contract → approval sequence before a `ChangeSet` is handed to
@@ -68,7 +68,7 @@ before the approval prompt is even reached — no token is spent on an incomplet
 ## 3. Checking status
 
 ```
-engineering-orchestrator status [run-id] [--watch] [--json]
+crabgic status [run-id] [--watch] [--json]
 ```
 
 - With a `run-id`: queries the supervisor's `run.status` operation over the UDS control plane
@@ -80,7 +80,7 @@ engineering-orchestrator status [run-id] [--watch] [--json]
   (`packages/cli/src/commands/real-handlers.ts`'s own doc comment).
 
 ```
-engineering-orchestrator cancel <run-id|task-id>
+crabgic cancel <run-id|task-id>
 ```
 
 Cancels a run (or, once 13's task-level semantics are wired, a single task within it) via the
@@ -89,7 +89,7 @@ supervisor's `run.cancel` operation.
 ## 4. Reviewing evidence
 
 ```
-engineering-orchestrator evidence <change-set-id>
+crabgic evidence <change-set-id>
 ```
 
 Queries 04's journal directly and prints every `EvidenceRecord` recorded against the given
@@ -104,7 +104,7 @@ attribution-free branch is the entire hand-off (interface-ledger Gap 6; see
 ## 5. Approving high-impact capability grants
 
 ```
-engineering-orchestrator trust review|approve|revoke
+crabgic trust review|approve|revoke
 ```
 
 **`NOT_IMPLEMENTED`** at this repository's current build — 12's `trust review|approve|revoke`
@@ -117,10 +117,10 @@ token; it is never model-satisfiable, mirroring `contract.approve`'s own treatme
 ## 6. Managing external connections
 
 ```
-engineering-orchestrator connection add jira|grafana
-engineering-orchestrator connection list
-engineering-orchestrator connection doctor <connection-id>
-engineering-orchestrator connection capabilities <connection-id>
+crabgic connection add jira|grafana
+crabgic connection list
+crabgic connection doctor <connection-id>
+crabgic connection capabilities <connection-id>
 ```
 
 **`NOT_IMPLEMENTED`** at this repository's current build — these commands are declared on the
@@ -133,10 +133,10 @@ same probe 16's connection-doctor implements and 18/19/20 extend
 ## 7. Reviewing and approving learning proposals
 
 ```
-engineering-orchestrator learn list
-engineering-orchestrator learn approve <proposal-id>
-engineering-orchestrator learn reject <proposal-id>
-engineering-orchestrator learn rollback <proposal-id>
+crabgic learn list
+crabgic learn approve <proposal-id>
+crabgic learn reject <proposal-id>
+crabgic learn rollback <proposal-id>
 ```
 
 - `learn list`: shows every learning proposal and its pipeline stage.
@@ -162,7 +162,7 @@ independent user edits.
 ## 9. Doctor
 
 ```
-engineering-orchestrator doctor [--repair-plan] [--json]
+crabgic doctor [--repair-plan] [--json]
 ```
 
 Runs the full seeded fault-check suite against the current host/project (hermeticity,
@@ -189,7 +189,7 @@ repository's current snapshot of that report.
 ## 11. The gateway MCP server (advanced / not a direct operator action)
 
 ```
-engineering-orchestrator gateway mcp
+crabgic gateway mcp
 ```
 
 Boots the gateway's MCP server over stdio — a long-running process with no user-facing flags,

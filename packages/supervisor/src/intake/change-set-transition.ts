@@ -1,6 +1,6 @@
 /**
  * `ChangeSet.state` transition surface — the `ChangeSet`-scoped twin of
- * `../run-lifecycle/run-transition.ts`, reusing the IDENTICAL `@eo/contracts`
+ * `../run-lifecycle/run-transition.ts`, reusing the IDENTICAL `@crabgic/contracts`
  * run-lifecycle transition table/validator (never a second state machine —
  * roadmap/11-intake-contract-approval.md §Interfaces produced item 9: "no
  * new state-machine states are added — 02's enum is unchanged"). A
@@ -10,11 +10,11 @@
  * `ready` `ChangeSet`), so this module transitions the `ChangeSet` record
  * itself via `../registries/change-sets-registry.ts`, journaling the same
  * `run_transition` entry type correlated by `changeSetId` (the envelope's
- * `runId` field is optional — see `@eo/journal`'s `journal-entry.ts` — and
+ * `runId` field is optional — see `@crabgic/journal`'s `journal-entry.ts` — and
  * is left unset here, matching "no Run exists yet").
  */
-import { runLifecycleTransition, type ChangeSet, type RunLifecycleState } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import { runLifecycleTransition, type ChangeSet, type RunLifecycleState } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 
 export interface TransitionChangeSetOptions {
@@ -35,7 +35,7 @@ export class ChangeSetNotFoundError extends Error {
  * Transitions `changeSetId`'s own `state` field. Validates against the
  * shared run-lifecycle transition table BEFORE any journal write (matching
  * `transitionRun`'s own journal-first-after-validation ordering) — an
- * illegal transition throws `IllegalTransitionError` (`@eo/contracts`)
+ * illegal transition throws `IllegalTransitionError` (`@crabgic/contracts`)
  * synchronously with no journal write at all. Throws
  * `ChangeSetNotFoundError` for an unknown id (never an implicit `draft`
  * fallback — unlike a fresh `Run`, a `ChangeSet` must already exist:

@@ -8,14 +8,14 @@ import type { CheckoutExporter } from "./checkoutExporter.js";
  * (0.3.218) in the packed artifact (Exit criterion: pin identical in both
  * from-clean-checkout tarballs)." `packages/cli`'s own `package.json` does
  * NOT declare this dependency directly — it flows in transitively
- * (`packages/cli` -> `@eo/plugin` -> `@eo/engine-claude`, confirmed by
+ * (`packages/cli` -> `@crabgic/plugin` -> `@crabgic/engine-claude`, confirmed by
  * reading each manifest) — so the pin this check verifies is
  * `packages/engine-claude/package.json`'s own `dependencies["@anthropic-ai/
  * claude-agent-sdk"]` entry, read from each of the SAME two independent
  * clean checkouts `reproducibleBuildCheck.ts` exports (reusing the same
  * `CheckoutExporter` seam, never a second export mechanism).
  *
- * `EXPECTED_SDK_PIN` mirrors `@eo/engine-claude`'s own `version-gate.ts`
+ * `EXPECTED_SDK_PIN` mirrors `@crabgic/engine-claude`'s own `version-gate.ts`
  * convention (`TESTED_ENGINE_VERSION = "2.1.218"`, hardcoded there with an
  * explicit citation to `docs/engine-baseline.md` rather than parsed from
  * that doc at runtime): the corresponding SDK point version

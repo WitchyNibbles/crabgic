@@ -1,4 +1,4 @@
-import { MarketplaceSchema, readMarketplaceJson } from "@eo/plugin";
+import { MarketplaceSchema, readMarketplaceJson } from "@crabgic/plugin";
 import { realGitCommitResolver, type GitCommitResolver } from "./gitCommitResolver.js";
 
 /**
@@ -11,7 +11,7 @@ import { realGitCommitResolver, type GitCommitResolver } from "./gitCommitResolv
  *
  * Three separate facts, each independently reportable:
  *   1. the committed file is readable and schema-valid, which since
- *      `@eo/plugin`'s `NULL_GIT_OBJECT_ID` refinement means genuinely
+ *      `@crabgic/plugin`'s `NULL_GIT_OBJECT_ID` refinement means genuinely
  *      SHA-pinned rather than "40 hex characters shaped like a pin";
  *   2. that pinned commit actually resolves to a commit in this
  *      repository; and

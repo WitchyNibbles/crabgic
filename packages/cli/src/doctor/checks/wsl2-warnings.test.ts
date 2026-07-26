@@ -27,8 +27,8 @@ describe("createWsl2WarningsCheck", () => {
   it("passes on WSL2 when roots are on the Linux filesystem", async () => {
     const check = createWsl2WarningsCheck({
       isWsl2: async () => true,
-      stateRootPath: "/home/me/.local/state/engineering-orchestrator",
-      cacheRootPath: "/home/me/.cache/engineering-orchestrator",
+      stateRootPath: "/home/me/.local/state/crabgic",
+      cacheRootPath: "/home/me/.cache/crabgic",
     });
     const finding = await check.run();
     expect(finding.passed).toBe(true);

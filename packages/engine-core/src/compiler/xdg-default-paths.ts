@@ -5,10 +5,10 @@
  *
  * Phase 03 depends only on phase 00 + phase 02 (roadmap/README.md
  * dependency graph: `P00 --> P03`, `P02 --> P03`) and must NOT import
- * `@eo/journal` (phase 04) — interface-ledger Gap 14 assigns phase 04
+ * `@crabgic/journal` (phase 04) — interface-ledger Gap 14 assigns phase 04
  * ownership of the canonical `$XDG_STATE_HOME`/`$XDG_CACHE_HOME` runtime
  * root constants (nested further under a per-project hash, e.g.
- * `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/`).
+ * `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/`).
  *
  * This compiler needs *some* concrete control-repo/journal deny path to
  * seed the mandatory sandbox `denyRead`/permission `Read(...)` deny
@@ -23,23 +23,23 @@
  * these literals are a legitimate (if deliberately non-dynamic) fallback,
  * not an arbitrary guess.
  *
- * State root (`~/.local/state/engineering-orchestrator/**`) is assumed to
+ * State root (`~/.local/state/crabgic/**`) is assumed to
  * hold journal + control data; cache root
- * (`~/.cache/engineering-orchestrator/**`) is assumed to hold the control
+ * (`~/.cache/crabgic/**`) is assumed to hold the control
  * clone — mirroring Gap 14's own state-root/cache-root split.
  *
- * Once phases 04 (`@eo/journal`) and 05/06 (this package's consumers) are
+ * Once phases 04 (`@crabgic/journal`) and 05/06 (this package's consumers) are
  * both linked, 05/06 must add a consistency test proving these defaults
- * never silently diverge from `@eo/journal`'s real runtime-resolved roots
+ * never silently diverge from `@crabgic/journal`'s real runtime-resolved roots
  * (e.g. an env override, or a non-default `$XDG_STATE_HOME`, must not
  * create a gap between what this compiler denies and where the journal
  * actually lives) — this package cannot add that test itself without
- * creating the forbidden `@eo/engine-core -> @eo/journal` edge.
+ * creating the forbidden `@crabgic/engine-core -> @crabgic/journal` edge.
  */
-export const CONTROL_REPO_STATE_ROOT_DENY_PATH = "~/.local/state/engineering-orchestrator/**";
+export const CONTROL_REPO_STATE_ROOT_DENY_PATH = "~/.local/state/crabgic/**";
 
 /** See `CONTROL_REPO_STATE_ROOT_DENY_PATH`'s doc comment — same seam decision. */
-export const CONTROL_REPO_CACHE_ROOT_DENY_PATH = "~/.cache/engineering-orchestrator/**";
+export const CONTROL_REPO_CACHE_ROOT_DENY_PATH = "~/.cache/crabgic/**";
 
 /** Mandatory credential-path deny (adaptation §4.2, §5.1, Appendix B). */
 export const SSH_DENY_PATH = "~/.ssh/**";

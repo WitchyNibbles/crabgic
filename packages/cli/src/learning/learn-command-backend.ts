@@ -7,15 +7,15 @@
  * `deps.learning` is supplied — mirrors `intake`/`installer`'s identical
  * optionality pattern).
  *
- * This is the ONLY place in `packages/cli` that calls `@eo/learning`'s
+ * This is the ONLY place in `packages/cli` that calls `@crabgic/learning`'s
  * `promoteProposal`/`rollbackProposal`/`ProposalRegistry.transition` — no
  * MCP tool anywhere calls them (interface-ledger Gap 1; verified by
- * `@eo/learning`'s own `red-team/no-mcp-tool-family.redteam.test.ts`), so
+ * `@crabgic/learning`'s own `red-team/no-mcp-tool-family.redteam.test.ts`), so
  * this backend, reached only via the real CLI argv path, is the sole
  * promotion/review surface, exactly as roadmap/22 requires.
  */
 import { createHash } from "node:crypto";
-import type { LearningProposal } from "@eo/contracts";
+import type { LearningProposal } from "@crabgic/contracts";
 import type {
   LearnApproveCommand,
   LearnListCommand,
@@ -32,7 +32,11 @@ import {
 } from "../approval/prompt.js";
 import { verifyApprovalTokenDurable } from "../approval/durable-approval-ledger.js";
 import { verifySignature } from "../approval/token.js";
-import { promoteProposal, rollbackProposal, type LearningReviewTokenVerifier } from "@eo/learning";
+import {
+  promoteProposal,
+  rollbackProposal,
+  type LearningReviewTokenVerifier,
+} from "@crabgic/learning";
 import type { LearningDependencies } from "./learning-dependencies.js";
 
 const LEARNING_REVIEW_SUBJECT_KIND = "learning_review" as const;
@@ -49,12 +53,12 @@ function resolveIo(deps: LearningDependencies): ApprovalPromptIo {
 
 /**
  * The REAL `LearningReviewTokenVerifier` this backend injects into
- * `@eo/learning`'s `ProposalRegistry.recordReviewApproval` — this is the
+ * `@crabgic/learning`'s `ProposalRegistry.recordReviewApproval` — this is the
  * ONLY place in the whole system a `learning_review` token is ever
  * genuinely checked, and it is 11's OWN mechanism (`verifyApprovalTokenDurable`,
  * unmodified) reused verbatim, never a second implementation.
  *
- * ADVERSARIAL-VALIDATION FIX (2026-07-24): `@eo/learning`'s promotion
+ * ADVERSARIAL-VALIDATION FIX (2026-07-24): `@crabgic/learning`'s promotion
  * guard previously trusted a caller-supplied `{tokenId, verifiedAt}`
  * object BY NAME, with no authenticity/subject/binding check performed
  * ANYWHERE — two fabricated strings promoted a proposal. This function is
@@ -154,7 +158,7 @@ export async function runLearnApproveCommand(
     return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };
   }
 
-  // Verification happens INSIDE `@eo/learning`'s own registry, via the
+  // Verification happens INSIDE `@crabgic/learning`'s own registry, via the
   // injected verifier below — never trusted by this backend's own claim.
   // A throw here (bad signature, wrong subject, wrong binding, expired,
   // replayed) propagates as-is; nothing is recorded.

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
-import { GatewayHttpClient, ProviderRegistry, createFakeProviderTransport } from "@eo/gateway";
-import type { GenericProviderClient, MutationApplyClient } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+import { ConnectorError } from "@crabgic/contracts";
+import { GatewayHttpClient, ProviderRegistry, createFakeProviderTransport } from "@crabgic/gateway";
+import type { GenericProviderClient, MutationApplyClient } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraConnectionConfigSchema } from "./jira-connection-config.js";
 import {
   JIRA_DATACENTER_PROVIDER_KEY,

@@ -13,7 +13,7 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@eo/supervisor";
+import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@crabgic/supervisor";
 import { createEngineVersionCheck } from "./checks/engine-version.js";
 import { createSandboxSelftestCheck } from "./checks/sandbox-selftest.js";
 import { createHermeticitySelftestCheck } from "./checks/hermeticity-selftest.js";

@@ -5,7 +5,7 @@
  * cross-checked against 17's renderer lint." Two independent checks:
  *  1. Structural: this installer's own written `.claude/settings.json` has
  *     `attribution: {commit: "", pr: ""}` and `sessionUrl: false`.
- *  2. Cross-check against `@eo/renderer`'s own `lint()` (17's own
+ *  2. Cross-check against `@crabgic/renderer`'s own `lint()` (17's own
  *     attribution-neutral stage): a synthetic post-install commit
  *     message/PR body — the kind of text a manager session would actually
  *     produce after running `install` — independently passes 17's own
@@ -16,8 +16,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { lint } from "@eo/renderer";
-import { buildCommunicationPolicy } from "@eo/testkit";
+import { lint } from "@crabgic/renderer";
+import { buildCommunicationPolicy } from "@crabgic/testkit";
 import { runInstall } from "./install.js";
 import type { InstallerDependencies } from "./types.js";
 
@@ -55,7 +55,7 @@ describe("attribution.none.test", () => {
     // renderer-produced commit body would be.
     const policy = buildCommunicationPolicy();
     const commitBody =
-      "feat: install the engineering-orchestrator plugin\n\n" +
+      "feat: install the crabgic plugin\n\n" +
       "Adds the managed instructions block, project settings, gateway MCP entry, and eo-* subagents.";
 
     const outcome = lint(commitBody, "commit_body", policy);

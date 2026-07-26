@@ -38,7 +38,7 @@ async function seedMarketplace(pluginSourceDir: string, commit: string): Promise
       owner: { name: "o", email: "o@example.invalid" },
       plugins: [
         {
-          name: "engineering-orchestrator",
+          name: "crabgic",
           source: "./",
           description: "d",
           version: "0.0.0",

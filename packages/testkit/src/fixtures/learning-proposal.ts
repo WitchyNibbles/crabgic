@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   LearningProposalSchema,
   type LearningProposal,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `LearningProposal` fixture builder — roadmap/02 work item 10. */

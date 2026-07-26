@@ -22,7 +22,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   type AuthorizationEnvelope,
   type RemoteResourceAuthorization,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { canonicalHash } from "./canonical-hash.js";
 
 export interface AuthorizationEnvelopeContent {

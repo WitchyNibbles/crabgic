@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { compileEnvelope, type CompiledWorkerProfile, type SessionRef } from "@eo/engine-core";
-import type { EngineEvent, EngineResultEvent, EngineToolUseEvent } from "@eo/engine-core";
-import { WorkerResultSchema } from "@eo/contracts";
+import { compileEnvelope, type CompiledWorkerProfile, type SessionRef } from "@crabgic/engine-core";
+import type { EngineEvent, EngineResultEvent, EngineToolUseEvent } from "@crabgic/engine-core";
+import { WorkerResultSchema } from "@crabgic/contracts";
 import { buildAuthorizationEnvelope } from "../fixtures/authorization-envelope.js";
 import { buildTaskPacket } from "../fixtures/task-packet.js";
 import { alwaysAllowAdjudicate } from "./adjudication-layer.js";

@@ -11,8 +11,8 @@
   ],
   "baseObjectId": "0123456789abcdef0123456789abcdef01234567",
   "relevantInterfaces": [
-    "@eo/contracts#WorkUnit",
-    "@eo/engine-core#EngineAdapter"
+    "@crabgic/contracts#WorkUnit",
+    "@crabgic/engine-core#EngineAdapter"
   ],
   "ownedPaths": [
     "packages/example/src/",

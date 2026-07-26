@@ -2,7 +2,7 @@
   {
     "probe": "hermeticity.rogue-settings-env",
     "expectation": "rogue user-tier and project-tier settings.json 'env' blocks are NOT injected into the worker's Bash environment (asserted from an EXECUTED echo of both vars)",
-    "observed": "Bash call executed (1 tool_use, command: \"echo A=$EO_CHECK_A B=$EO_CHECK_B\"); tool_result: \"A= B=\"; user-tier marker present=false; project-tier marker present=false (empty expansions expected if hermetic)",
+    "observed": "Bash call executed (1 tool_use, command: \"echo A=$CRABGIC_CHECK_A B=$CRABGIC_CHECK_B\"); tool_result: \"A= B=\"; user-tier marker present=false; project-tier marker present=false (empty expansions expected if hermetic)",
     "verdict": "PASS"
   },
   {

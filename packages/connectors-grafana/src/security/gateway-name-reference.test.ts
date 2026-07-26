@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 
 /**
  * Mirrors `packages/gateway/src/mcp/gateway-name-reference.test.ts`'s own

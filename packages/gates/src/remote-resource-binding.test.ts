@@ -19,7 +19,7 @@ import { findRemoteResourcePointersForRequirement } from "./remote-evidence-poin
  * pointers — could never bind anything.
  *
  * The confirmed revision is taken from `MutationApplyResult.appliedRevision`
- * (`@eo/gateway`'s mutation pipeline: "the confirmed remote revision this
+ * (`@crabgic/gateway`'s mutation pipeline: "the confirmed remote revision this
  * record's read-back step observed"), never from a caller-supplied literal.
  */
 

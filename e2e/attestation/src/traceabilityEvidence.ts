@@ -34,7 +34,7 @@ export const TRACEABILITY_EVIDENCE_SCHEMA_VERSION = 1;
 export const CONTAINERIZED_PROVENANCE_SOURCE = "containerized" as const;
 
 /** The shared-journal switch every `e2e/` harness already honours (`./testJournal.ts`), and the one `e2e/report`'s generator reads its evidence from. */
-export const SHARED_JOURNAL_ENV_VAR = "EO_RELEASE_GATE_JOURNAL_DIR";
+export const SHARED_JOURNAL_ENV_VAR = "CRABGIC_RELEASE_GATE_JOURNAL_DIR";
 
 /**
  * Says, on the artifact's face, whether its `pointers[].evidenceRecordId`
@@ -152,7 +152,7 @@ export type TraceabilityEvidenceFile = z.infer<typeof TraceabilityEvidenceFileSc
 /** Everything except the derived `statement`, which this module composes so it can never drift from the recorded facts. */
 export type TraceabilityProvenanceInput = Omit<TraceabilityProvenance, "statement">;
 
-/** Structural (not zod-`input`) shapes, so the writer accepts `RemoteResource`/`RemoteEvidencePointer` instances straight off `@eo/gates`'s production binding without an index-signature cast. */
+/** Structural (not zod-`input`) shapes, so the writer accepts `RemoteResource`/`RemoteEvidencePointer` instances straight off `@crabgic/gates`'s production binding without an index-signature cast. */
 export interface TraceabilityResourceInput {
   readonly id: string;
   readonly externalConnectionId: string;

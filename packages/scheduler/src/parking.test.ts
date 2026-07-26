@@ -7,7 +7,7 @@ import {
   getLatestAttempt,
   recordAttempt,
   type JournalStore,
-} from "@eo/journal";
+} from "@crabgic/journal";
 import {
   assertNotGloballyPaused,
   GLOBAL_PAUSE_SUBJECT_ID,

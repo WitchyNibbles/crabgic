@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
-import type { JournalEntryInput } from "@eo/journal";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
+import type { JournalEntryInput } from "@crabgic/journal";
 import { digestCheckResult, type AttestationCheckResult } from "./checkResult.js";
 
 /**
@@ -9,8 +9,8 @@ import { digestCheckResult, type AttestationCheckResult } from "./checkResult.js
  * pattern every sibling emitter in phase 23 already established
  * (`e2e/live/src/evidence.ts`, `e2e/release/src/evidence.ts`,
  * `e2e/matrix/orchestration/src/evidence.ts`): plain typed-literal
- * construction over `@eo/contracts` + `@eo/journal` only, with no
- * `@eo/gates` dependency — that package's `emitEvidence` is typed against
+ * construction over `@crabgic/contracts` + `@crabgic/journal` only, with no
+ * `@crabgic/gates` dependency — that package's `emitEvidence` is typed against
  * the closed `GateRiskTag` union, which does not include this phase's own
  * `release-gate:*` vocabulary.
  *
@@ -50,7 +50,7 @@ export const ATTESTATION_GATE_TAGS = [
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * — this harness's own tests run against the working tree, not a frozen
  * release cut. A real `release-e2e` CI invocation supplies the actual
- * `git rev-parse HEAD` via `$EO_RELEASE_CANDIDATE_OBJECT_ID`. Identical
+ * `git rev-parse HEAD` via `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID`. Identical
  * convention and identical literal to `e2e/live/src/evidence.ts` and
  * `e2e/release/src/evidence.ts`.
  */
@@ -58,7 +58,7 @@ export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbee
 
 /** Deliberately NOT cached: a pure env read, so a test that sets/restores the var within one process sees the truth. */
 export function resolveReleaseCandidateObjectId(): string {
-  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  const fromEnv = process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"];
   if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv;
   return FAKE_RELEASE_CANDIDATE_OBJECT_ID;
 }

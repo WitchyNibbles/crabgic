@@ -1,11 +1,11 @@
-import { ConnectorError, type RemoteMutationPlan } from "@eo/contracts";
+import { ConnectorError, type RemoteMutationPlan } from "@crabgic/contracts";
 import type {
   HttpTransportResponse,
   MarkerReconciler,
   MutationApplyClient,
   MutationApplyResult,
   MutationHttpRequestSpec,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import type { AttachmentStagingRegistry } from "../../attachments/attachment-staging.js";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";
 import { assertAllowedJiraOperation } from "../../security/preflight-capability-guard.js";

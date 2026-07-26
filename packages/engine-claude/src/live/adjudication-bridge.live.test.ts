@@ -23,15 +23,15 @@
  *       bus (and therefore the bridge) was invoked.
  *
  * Like every `*.live.test.ts` file it fails RED (never skips) without
- * `EO_LIVE=1` — `assertLiveEnabled()` in `beforeAll` throws so the
+ * `CRABGIC_LIVE=1` — `assertLiveEnabled()` in `beforeAll` throws so the
  * engine-live CI job goes red rather than vacuously green.
  */
 import { execFileSync } from "node:child_process";
 import { beforeAll, describe, expect, it } from "vitest";
-import { CANONICAL_ENVELOPE_CASES, compileEnvelope } from "@eo/engine-core";
-import type { AdjudicationCallback, EngineEvent } from "@eo/engine-core";
-import { createAdjudicationBus } from "@eo/supervisor";
-import { buildTaskPacket } from "@eo/testkit";
+import { CANONICAL_ENVELOPE_CASES, compileEnvelope } from "@crabgic/engine-core";
+import type { AdjudicationCallback, EngineEvent } from "@crabgic/engine-core";
+import { createAdjudicationBus } from "@crabgic/supervisor";
+import { buildTaskPacket } from "@crabgic/testkit";
 import { createEnvelopeAdjudicationPolicy } from "../adjudication-policy.js";
 import { substituteWorktreePlaceholders } from "../options-assembler.js";
 import { AdjudicationAuditViolationError } from "../adapter.js";

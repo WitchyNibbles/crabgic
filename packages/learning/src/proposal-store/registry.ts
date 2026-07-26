@@ -5,8 +5,8 @@ import {
   LearningProposalSchema,
   type LearningProposal,
   type LearningProposalState,
-} from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { LEARNING_DIR_MODE, LEARNING_REGISTRY_SUBDIR } from "../store/layout.js";
 import { atomicWriteFile, ensureDir, listJsonFiles, readJsonFile } from "../store/fs-utils.js";
 import { learningProposalTransition } from "../state-machine.js";
@@ -38,9 +38,9 @@ export interface VerifiedApprovalRecord {
  * the token's own `tokenId` on success; rejects (any typed error the
  * concrete verifier defines) otherwise — the rejection is never swallowed.
  *
- * INJECTED, never implemented by this package: `@eo/learning` holds no
+ * INJECTED, never implemented by this package: `@crabgic/learning` holds no
  * signing secret and never verifies HMAC signatures itself — that would
- * create an unwanted `@eo/learning` -> `@eo/cli` dependency (the wrong
+ * create an unwanted `@crabgic/learning` -> `@crabgic/cli` dependency (the wrong
  * direction: `packages/cli` depends on this package, not the reverse).
  * `packages/cli`'s `learn approve` backend supplies the REAL verifier,
  * wrapping 11's own `verifyApprovalTokenDurable`
@@ -49,7 +49,7 @@ export interface VerifiedApprovalRecord {
  * package's own tests inject a faithful-but-decoupled reference
  * implementation (`../test-support/reference-token-verifier.ts`) that
  * reproduces the same properties (HMAC signature, subject kind, proposal
- * binding, single-use) without depending on `@eo/cli`.
+ * binding, single-use) without depending on `@crabgic/cli`.
  *
  * ADVERSARIAL-VALIDATION FIX (2026-07-24): the ORIGINAL design trusted a
  * caller-supplied `VerifiedApprovalRecord` object BY NAME — `transition`
@@ -58,7 +58,7 @@ export interface VerifiedApprovalRecord {
  * with no verification at all. Two FABRICATED, merely-distinct strings
  * promoted a proposal with no minting, no CLI, no secret involved. This
  * type/function pair closes that hole: verification now happens INSIDE
- * `@eo/learning`, on the raw token, before anything is ever recorded or
+ * `@crabgic/learning`, on the raw token, before anything is ever recorded or
  * promoted.
  */
 export type LearningReviewTokenVerifier = (
@@ -106,7 +106,7 @@ export interface TransitionOptions {
  * its own (out of this package's authority to add one to a frozen 02
  * contract), so the existing optional cross-reference slot is reused,
  * matching this repo's own established convention of folding an
- * unmodeled correlation onto an available envelope field (e.g. `@eo/cli`'s
+ * unmodeled correlation onto an available envelope field (e.g. `@crabgic/cli`'s
  * `approval_token_mint` `scope` string folding `subjectKind`+`digest`).
  *
  * SELF-PROMOTION GUARD (roadmap/22 §In scope, "Separation of duties," the

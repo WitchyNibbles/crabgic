@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { GRAFANA_RESOURCE_DEFINITIONS, getResourceDefinition } from "./definitions/index.js";
 import { canonicalFieldsEqual, hashCanonicalFields } from "./resource-definitions.js";
@@ -97,7 +97,7 @@ describe.each(GRAFANA_RESOURCE_KINDS)(
       expect(summaries[0]?.externalId.length).toBeGreaterThan(0);
     });
 
-    it("buildCreateRequest never issues a GET/PUT/PATCH — always a fresh write, and its request is transportable through @eo/gateway", () => {
+    it("buildCreateRequest never issues a GET/PUT/PATCH — always a fresh write, and its request is transportable through @crabgic/gateway", () => {
       const createReq = definition.buildCreateRequest(
         basePath,
         { title: "x", name: "x", text: "x" },
@@ -151,7 +151,7 @@ describe.each(GRAFANA_RESOURCE_KINDS)(
       expect(withEtag.revision).toBe("etag-value-1");
     });
 
-    it("every request this definition builds is exercised end-to-end through @eo/gateway's real transport stack against a fake provider", async () => {
+    it("every request this definition builds is exercised end-to-end through @crabgic/gateway's real transport stack against a fake provider", async () => {
       const fakeTransport = createFakeProviderTransport({
         responses: [{ status: 200, bodyText: CANONICAL_FIXTURE_BODY[kind] }],
       });

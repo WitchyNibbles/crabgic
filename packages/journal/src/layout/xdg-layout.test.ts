@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ENGINEERING_ORCHESTRATOR_DIR_NAME,
+  CRABGIC_DIR_NAME,
   readXdgEnvFromProcess,
   resolveCacheRoot,
   resolveJournalDir,
@@ -32,14 +32,14 @@ describe("xdg-layout", () => {
     expect(resolveXdgCacheHome(env)).toBe("/custom/cache");
   });
 
-  it("pins the state root at $XDG_STATE_HOME/engineering-orchestrator/<project-hash>/", () => {
+  it("pins the state root at $XDG_STATE_HOME/crabgic/<project-hash>/", () => {
     const env: XdgEnv = { HOME: "/home/eimi", XDG_STATE_HOME: "/state" };
-    expect(resolveStateRoot(env, HASH)).toBe(`/state/${ENGINEERING_ORCHESTRATOR_DIR_NAME}/${HASH}`);
+    expect(resolveStateRoot(env, HASH)).toBe(`/state/${CRABGIC_DIR_NAME}/${HASH}`);
   });
 
-  it("pins the cache root at $XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/ (Gap 14)", () => {
+  it("pins the cache root at $XDG_CACHE_HOME/crabgic/<project-hash>/ (Gap 14)", () => {
     const env: XdgEnv = { HOME: "/home/eimi", XDG_CACHE_HOME: "/cache" };
-    expect(resolveCacheRoot(env, HASH)).toBe(`/cache/${ENGINEERING_ORCHESTRATOR_DIR_NAME}/${HASH}`);
+    expect(resolveCacheRoot(env, HASH)).toBe(`/cache/${CRABGIC_DIR_NAME}/${HASH}`);
   });
 
   it("nests journal/, journal/segments/, journal/snapshots/, and leases/ under the state root", () => {
@@ -51,13 +51,11 @@ describe("xdg-layout", () => {
     expect(resolveLeasesDir(env, HASH)).toBe(`${root}/leases`);
   });
 
-  it("keeps <project-hash> immediately under engineering-orchestrator/, subpaths nested beneath it (Gap 14 path-segment order)", () => {
+  it("keeps <project-hash> immediately under crabgic/, subpaths nested beneath it (Gap 14 path-segment order)", () => {
     const env: XdgEnv = { HOME: "/home/eimi", XDG_CACHE_HOME: "/cache" };
     const cacheRoot = resolveCacheRoot(env, HASH);
     // 07's git-control/ and 12's capability-store/ nest AFTER the hash segment, never before it.
-    expect(`${cacheRoot}/git-control`).toBe(
-      `/cache/${ENGINEERING_ORCHESTRATOR_DIR_NAME}/${HASH}/git-control`,
-    );
+    expect(`${cacheRoot}/git-control`).toBe(`/cache/${CRABGIC_DIR_NAME}/${HASH}/git-control`);
   });
 
   it("is a pure function of its explicit env parameter — same input, same output, no ambient process.env influence", () => {
@@ -65,9 +63,7 @@ describe("xdg-layout", () => {
     process.env.XDG_STATE_HOME = "/should-not-be-read";
     try {
       const env: XdgEnv = { HOME: "/home/eimi", XDG_STATE_HOME: "/explicit" };
-      expect(resolveStateRoot(env, HASH)).toBe(
-        `/explicit/${ENGINEERING_ORCHESTRATOR_DIR_NAME}/${HASH}`,
-      );
+      expect(resolveStateRoot(env, HASH)).toBe(`/explicit/${CRABGIC_DIR_NAME}/${HASH}`);
     } finally {
       if (originalStateHome === undefined) delete process.env.XDG_STATE_HOME;
       else process.env.XDG_STATE_HOME = originalStateHome;

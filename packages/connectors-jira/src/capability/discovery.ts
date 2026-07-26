@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@crabgic/contracts";
 import { z } from "zod";
 import { jiraGetJson, type JiraHttpContext } from "../resource-client/http-read-helper.js";
 import { RawJiraFieldMetadataListSchema } from "../resource-client/schemas.js";
@@ -10,7 +10,7 @@ import { JIRA_ACTIONS } from "../resource-client/actions.js";
  * Capability discovery — roadmap/18 §In scope: "edition/permissions/field
  * metadata → `CapabilitySnapshot` (P02 schema, 16-owned cache/
  * invalidation); unknown editions/versions default read-only." Work item
- * 3. Populates instances of `@eo/gateway`'s `CapabilitySnapshotCache`
+ * 3. Populates instances of `@crabgic/gateway`'s `CapabilitySnapshotCache`
  * (16 owns the cache/TTL/invalidation mechanics — this module only
  * supplies the `DiscoverCapabilitySnapshot` function it wraps).
  */
@@ -47,7 +47,7 @@ function normalizeEdition(deploymentType: string | undefined): "cloud" | "unknow
  * `deploymentType` (this phase only ever positively confirms `"cloud"`)
  * resolves `edition: "unknown"` and `isReadOnly: true` — roadmap/18 §In
  * scope: "unknown editions/versions default read-only." Return type
- * matches `@eo/gateway`'s `DiscoverCapabilitySnapshot` exactly (omits
+ * matches `@crabgic/gateway`'s `DiscoverCapabilitySnapshot` exactly (omits
  * `discoveredAt`/`expiresAt`, which the cache itself stamps).
  */
 export async function discoverJiraCapabilitySnapshot(

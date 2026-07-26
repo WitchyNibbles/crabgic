@@ -7,9 +7,9 @@ import {
   ExternalConnectionSchema,
   type CapabilitySnapshot,
   type ExternalConnection,
-} from "@eo/contracts";
-import { ProviderRegistry } from "@eo/gateway";
-import type { GenericProviderClient, MutationApplyClient } from "@eo/gateway";
+} from "@crabgic/contracts";
+import { ProviderRegistry } from "@crabgic/gateway";
+import type { GenericProviderClient, MutationApplyClient } from "@crabgic/gateway";
 import {
   buildRouteTable,
   capabilityFlag,
@@ -38,7 +38,7 @@ import { GRAFANA_PROVIDER_NAME } from "../provider-registration.js";
  * process booted. That is a correctness defect, not a tidiness one: the
  * envelope is the authorization a mutation is executed under.
  *
- * This registry is the fix, mirroring `@eo/connectors-jira`'s
+ * This registry is the fix, mirroring `@crabgic/connectors-jira`'s
  * `JiraConnectionRegistry` — async `register()` per connection, then a
  * SYNCHRONOUS `get()` (required: `MutationApplyClient.buildRequest` is
  * synchronous by contract) and a per-call `adapterFor(envelopeId)`.

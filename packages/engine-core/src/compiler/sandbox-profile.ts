@@ -1,4 +1,4 @@
-import type { AuthorizationEnvelope } from "@eo/contracts";
+import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { SandboxProfileSchema, type SandboxProfile } from "./compiled-worker-profile.js";
 import { validateNetworkDestination } from "./network-destination.js";
 import {
@@ -44,7 +44,7 @@ const MANDATORY_SENSITIVE_DENY_PATHS: readonly string[] = [
  * `allowWrite` grant. BOTH forms are emitted deliberately:
  *
  * - `<worktree>/.git` — the bare path. In this system's real layout the
- *   worktree is created by `git worktree add` (`@eo/git-engine`'s
+ *   worktree is created by `git worktree add` (`@crabgic/git-engine`'s
  *   `worktree-lifecycle.ts`), where `<worktree>/.git` is a FILE holding a
  *   `gitdir:` pointer, not a directory. Rewriting that one file repoints the
  *   worktree at an attacker-controlled gitdir — hooks and all.

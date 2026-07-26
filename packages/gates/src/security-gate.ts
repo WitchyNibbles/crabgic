@@ -1,4 +1,4 @@
-import type { CapabilityStore } from "@eo/detect";
+import type { CapabilityStore } from "@crabgic/detect";
 import { parseGitleaksReport, type GitleaksReport } from "./security/gitleaks-adapter.js";
 import { parseOsvScannerReport, type OsvScannerReport } from "./security/osv-scanner-adapter.js";
 import { parseSemgrepReport, type SemgrepReport } from "./security/semgrep-adapter.js";

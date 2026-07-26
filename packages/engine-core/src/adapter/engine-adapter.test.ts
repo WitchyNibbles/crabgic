@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, TaskPacketSchema, type TaskPacket } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, TaskPacketSchema, type TaskPacket } from "@crabgic/contracts";
 import type { AdjudicationDecision } from "./adjudication.js";
 import type { EngineAdapter } from "./engine-adapter.js";
 import { StubEngineAdapter } from "./stub-engine-adapter.js";

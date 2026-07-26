@@ -4,8 +4,8 @@ import {
   type CompiledWorkerProfile,
   type EngineEvent,
   type EngineResultEvent,
-} from "@eo/engine-core";
-import { TimestampSchema } from "@eo/contracts";
+} from "@crabgic/engine-core";
+import { TimestampSchema } from "@crabgic/contracts";
 import { buildAuthorizationEnvelope } from "../fixtures/authorization-envelope.js";
 import { buildTaskPacket } from "../fixtures/task-packet.js";
 import { alwaysAllowAdjudicate } from "./adjudication-layer.js";

@@ -1,5 +1,5 @@
-import type { ProvisionalPerformanceContract } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type { ProvisionalPerformanceContract } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { canonicalHash } from "./canonical-hash.js";
 import { findJournalAnchoredBudgetSnapshot } from "./journal-anchor.js";
 
@@ -37,7 +37,7 @@ export interface BudgetIntegrityCheckResult {
  * `docs/evidence/phase-15/README.md`'s MAJOR-fix section for the exact
  * repro).
  *
- * THE FIX (genuine, in-boundary): 04's own journal (`@eo/journal`) is
+ * THE FIX (genuine, in-boundary): 04's own journal (`@crabgic/journal`) is
  * append-only and hash-chained — tamper-evident BY CONSTRUCTION, already
  * enforced elsewhere in this repo. 11's real intake pipeline durably
  * commits the built provisional `PerformanceContract` through 04's

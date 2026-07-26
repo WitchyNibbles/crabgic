@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildRequirement } from "@eo/testkit";
+import { buildRequirement } from "@crabgic/testkit";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { createGateRegistry } from "./registry.js";
 import { findEvidenceForRequirement } from "./evidence.js";

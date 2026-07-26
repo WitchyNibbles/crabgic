@@ -13,7 +13,7 @@
  * are plain exported functions today, ready to be wired to a real
  * `tools/call` dispatcher once 09 implements one).
  */
-import type { McpToolDefinition, McpToolRegistry } from "@eo/contracts";
+import type { McpToolDefinition, McpToolRegistry } from "@crabgic/contracts";
 
 export const CAPABILITY_AUDIT_TOOL: McpToolDefinition = {
   name: "capability.audit",

@@ -1,5 +1,5 @@
-import { buildHttpClientForConnection, type GatewayHttpClient } from "@eo/gateway";
-import type { ExternalConnection } from "@eo/contracts";
+import { buildHttpClientForConnection, type GatewayHttpClient } from "@crabgic/gateway";
+import type { ExternalConnection } from "@crabgic/contracts";
 import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
 import { buildFieldMetadataIndex, type FieldMetadataIndex } from "../capability/field-metadata.js";
 import { createJiraEntityPropertyMarkerReconciler } from "../reconciliation/entity-property-marker.js";
@@ -12,7 +12,7 @@ import type { JiraResourceClient } from "../resource-client/types.js";
 
 /**
  * Per-connection wiring cache — the seam that resolves the tension
- * between `@eo/gateway`'s single-instance-per-provider `ProviderRegistry`
+ * between `@crabgic/gateway`'s single-instance-per-provider `ProviderRegistry`
  * (one `GenericProviderClient`/`MutationApplyClient` for the ENTIRE
  * `"jira-cloud"` provider key) and the fact that every Jira Cloud SITE is
  * its own `ExternalConnection`, with its own base URL/token
@@ -20,7 +20,7 @@ import type { JiraResourceClient } from "../resource-client/types.js";
  * client construction, wiring dependent modules) exactly once per
  * connection; `get()` is a synchronous Map lookup — required because
  * `MutationApplyClient.buildRequest` is itself synchronous
- * (`@eo/gateway`'s own contract), so connection resolution cannot be
+ * (`@crabgic/gateway`'s own contract), so connection resolution cannot be
  * async at that call site. `../provider/register.ts` is the one caller
  * that builds the routed `GenericProviderClient`/`MutationApplyClient`
  * over this registry and hands them to `ProviderRegistry.register`.
@@ -46,7 +46,7 @@ export interface JiraConnectionEntry {
 }
 
 export interface RegisterJiraConnectionOptions {
-  /** Test-only escape hatch — production omits this, defaulting to `@eo/gateway`'s `buildHttpClientForConnection` (real DNS/TLS/SSRF stack). */
+  /** Test-only escape hatch — production omits this, defaulting to `@crabgic/gateway`'s `buildHttpClientForConnection` (real DNS/TLS/SSRF stack). */
   readonly buildHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
   /** Refreshed periodically by the caller via `../capability/discovery.ts`'s `discoverJiraFieldMetadata`; defaults to empty (every custom-field write refused until discovery has run at least once — fail-closed, never silently permissive). */
   readonly fieldMetadataIndex?: FieldMetadataIndex;

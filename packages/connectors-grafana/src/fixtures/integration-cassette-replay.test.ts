@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
@@ -11,7 +11,7 @@ import {
   executeMutationPlan,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import {
   BUILD_INFO_CLOUD_CURRENT,
   BUILD_INFO_ENTERPRISE_CURRENT,

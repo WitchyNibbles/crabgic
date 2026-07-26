@@ -3,7 +3,7 @@
  * README decision 11). This is the ONLY shared machinery every
  * `*.live.test.ts` file composes:
  *
- *  - `EO_LIVE` gate — every live file fails RED (never skips) without it, so
+ *  - `CRABGIC_LIVE` gate — every live file fails RED (never skips) without it, so
  *    the `engine-live` CI job goes red rather than vacuously green.
  *  - Auth resolution (baseline §1 order): `CLAUDE_CODE_OAUTH_TOKEN` env →
  *    `~/.claude/.eo-oauth-token` (0600, read at runtime, never
@@ -40,12 +40,12 @@ import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { McpStdioServerConfig, Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION } from "@eo/contracts";
-import { assertNoFootguns } from "@eo/engine-core";
-import type { EngineEvent } from "@eo/engine-core";
-import { CONFORMANCE_FIXTURES, resolveConformanceFixture } from "@eo/testkit";
-import type { ConformanceFixture } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
+import { assertNoFootguns } from "@crabgic/engine-core";
+import type { EngineEvent } from "@crabgic/engine-core";
+import { CONFORMANCE_FIXTURES, resolveConformanceFixture } from "@crabgic/testkit";
+import type { ConformanceFixture } from "@crabgic/testkit";
 import type { ClaudeEngineAdapterConfig, WorkerAuthMaterial } from "../adapter-config.js";
 import { ClaudeEngineAdapter } from "../adapter.js";
 import { buildWorkerEnv, provisionWorkerAuth } from "../auth.js";
@@ -63,7 +63,7 @@ import { rateLimitEventToLimitSignal } from "../limit-signal.js";
 export class LiveEnvNotEnabledError extends Error {
   constructor() {
     super(
-      "EO_LIVE is not set to '1' — the @live conformance suite refuses to run and MUST fail red, " +
+      "CRABGIC_LIVE is not set to '1' — the @live conformance suite refuses to run and MUST fail red, " +
         "never skip silently (the engine-live CI job must go red, not vacuously green, without it).",
     );
     this.name = "LiveEnvNotEnabledError";
@@ -109,15 +109,15 @@ export class ExecutedCallGuardError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// EO_LIVE gate
+// CRABGIC_LIVE gate
 // ---------------------------------------------------------------------------
 
-/** Non-throwing predicate: `true` iff `EO_LIVE=1`. Used anywhere a throw is unsafe (e.g. a module-level `afterAll`, which vitest runs even when `beforeAll` threw). */
+/** Non-throwing predicate: `true` iff `CRABGIC_LIVE=1`. Used anywhere a throw is unsafe (e.g. a module-level `afterAll`, which vitest runs even when `beforeAll` threw). */
 export function isLiveEnabled(): boolean {
-  return process.env.EO_LIVE === "1";
+  return process.env.CRABGIC_LIVE === "1";
 }
 
-/** Throws `LiveEnvNotEnabledError` unless `EO_LIVE=1`. Call in every live file's `beforeAll`. */
+/** Throws `LiveEnvNotEnabledError` unless `CRABGIC_LIVE=1`. Call in every live file's `beforeAll`. */
 export function assertLiveEnabled(): void {
   if (!isLiveEnabled()) {
     throw new LiveEnvNotEnabledError();
@@ -803,7 +803,7 @@ export interface LiveRunRecord {
  * `engine-conformance` gate) and appends a journal `evidence_pointer`
  * recording the green run (mirroring W3's `EvidenceRecordSchema`-shoehorn
  * precedent, documented in `hooks.ts`). The record file is sanitization-
- * scanned before it is trusted. `runId` = `EO_LIVE_RUN_ID` env || a fresh UUID.
+ * scanned before it is trusted. `runId` = `CRABGIC_LIVE_RUN_ID` env || a fresh UUID.
  */
 export async function writeLiveRunRecord(params: {
   readonly engineVersion: string;
@@ -812,7 +812,7 @@ export async function writeLiveRunRecord(params: {
 }): Promise<LiveRunRecord> {
   const record: LiveRunRecord = {
     engineVersion: params.engineVersion,
-    runId: process.env.EO_LIVE_RUN_ID ?? randomUUID(),
+    runId: process.env.CRABGIC_LIVE_RUN_ID ?? randomUUID(),
     suiteDigest: computeSuiteDigest(),
   };
   const serialized = `${JSON.stringify(record, Object.keys(record).sort(), 2)}\n`;

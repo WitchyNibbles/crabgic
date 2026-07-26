@@ -5,7 +5,11 @@
  * `argv` is turned into one of these, and `../commands/dispatch.ts` is the
  * sole place one of these is turned into a `CommandResult`.
  */
-import type { TrustApproveCommand, TrustReviewCommand, TrustRevokeCommand } from "@eo/contracts";
+import type {
+  TrustApproveCommand,
+  TrustReviewCommand,
+  TrustRevokeCommand,
+} from "@crabgic/contracts";
 import type { SecretReference } from "./secret-reference.js";
 
 interface JsonFlag {
@@ -91,7 +95,7 @@ export interface ConnectionCapabilitiesCommand extends JsonFlag {
 /**
  * The three `trust *` shapes are the only members of this union whose
  * backend lives outside this package (phase 12 owns them, in
- * `@eo/detect`), so they are declared in `@eo/contracts` and re-exported
+ * `@crabgic/detect`), so they are declared in `@crabgic/contracts` and re-exported
  * here — see `packages/contracts/src/cli-surface/trust-commands.ts`. They
  * remain ordinary members of `ParsedCommand` below; nothing else changes.
  */

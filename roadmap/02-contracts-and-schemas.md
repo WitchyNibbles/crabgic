@@ -4,7 +4,7 @@
 |---|---|
 | **Depends on** | 01 |
 | **Unlocks** | 03, 04, 08, 12, 16, 17 |
-| **Sources** | original plan "Core contracts", run lifecycle, canonical errors, CommunicationPolicy limits, config precedence; adaptation §2 & Appendix B (`eo_gateway` MCP naming), §4.5 (WorkUnit `session_id`), §5.6 (rate-limit parking), §8 ("stays exactly as planned" list) |
+| **Sources** | original plan "Core contracts", run lifecycle, canonical errors, CommunicationPolicy limits, config precedence; adaptation §2 & Appendix B (`crabgic_gateway` MCP naming), §4.5 (WorkUnit `session_id`), §5.6 (rate-limit parking), §8 ("stays exactly as planned" list) |
 | **Primary package** | `packages/contracts` (+ `packages/testkit` fixtures) |
 
 ## Goal
@@ -21,7 +21,7 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 - **`LearningProposalState`** (new — 11-member closed union; the type of `LearningProposal.state`): `observation | reproducer | candidate | dev_eval | held_out_eval | shadow_run | independent_review | promoted | rejected | rolled_back | expired`. Transition-table tests, guards, and promotion enforcement are owned by 22, which hosts the pipeline this union names.
 - **CommunicationPolicy constants:** branch ≤64; commit subject ≤72 (`type(scope): outcome`); commit body ≤5 lines; PR title ≤72; PR body ≤12 lines / 4 sections (Outcome, Validation, Risk, Tracking); Jira summary ≤120; Jira comment ≤800 chars / 6 lines + milestone template; Grafana annotation ≤240; review comment ≤6 lines (one finding, evidence, action); prohibited-content categories (attribution, first-person, signatures, mentions, secrets, unsafe links).
 - **`renderer-core` module**, inside `packages/contracts` (not a standalone package): length/line counters + attribution-token scanner primitives.
-- **`GATEWAY_MCP_SERVER_NAME`** constant: `"eo_gateway"` — the single literal every engine-side MCP registration derives from (03's compiled allow-string, 06's `mcpServers`/`strictMcpConfig` allowlist, 10's `.mcp.json` entry key, 16's SDK server registration + `mcp__${GATEWAY_MCP_SERVER_NAME}__<tool>` wire-prefix); no phase hand-types the literal a second time.
+- **`GATEWAY_MCP_SERVER_NAME`** constant: `"crabgic_gateway"` — the single literal every engine-side MCP registration derives from (03's compiled allow-string, 06's `mcpServers`/`strictMcpConfig` allowlist, 10's `.mcp.json` entry key, 16's SDK server registration + `mcp__${GATEWAY_MCP_SERVER_NAME}__<tool>` wire-prefix); no phase hand-types the literal a second time.
 - **Config precedence resolver:** CLI → env → project → user → defaults with a declared security-key set where lower precedence only tightens (deny lists append-only, booleans one-way, numeric limits min-wins); property-tested.
 - **`HighImpactCapabilityFlag`** (11-member closed union): assignment, reporter change, closing transitions, sprint completion, attachments, bulk mutations, issue creation, alert disabling, contact points, mute timings, notification templates. Labels are provider-neutral; a connector may gloss a label in its own prose (e.g. "closing transitions (Jira Done/Closed statuses)") but must not rename the member.
 - **Threat model v1:** `docs/threat-model.md` — STRIDE over UDS, worker runtime, envelope compiler, installer, gateway, connectors, capability quarantine, renderer, learning store.
@@ -80,7 +80,7 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 
 **`renderer-core` module** — consumed by 17's `lint()` stages, and by 08's belt-and-suspenders attribution assertion.
 
-**`GATEWAY_MCP_SERVER_NAME`** — consumed by 03 (derives the `mcp__eo_gateway__*` allow-string), 06 (`mcpServers` key + `strictMcpConfig` allowlist), 10 (`.mcp.json` entry key), 16 (server registration + tool-name prefix).
+**`GATEWAY_MCP_SERVER_NAME`** — consumed by 03 (derives the `mcp__crabgic_gateway__*` allow-string), 06 (`mcpServers` key + `strictMcpConfig` allowlist), 10 (`.mcp.json` entry key), 16 (server registration + tool-name prefix).
 
 **`HighImpactCapabilityFlag`** — consumed by 18 (7 Jira members), 20 (4 Grafana members).
 
@@ -102,7 +102,7 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 4. Canonical connector-error union (10 members) + redacting constructors. Failing-first: a constructor call carrying a raw provider body must not type-check against the public type.
 5. `JournalEntryType` closed union (13 members) + discriminated-union exhaustiveness test. Failing-first: a stubbed 14th category added only to the test harness must fail `tsc -b` until the union is updated.
 6. CommunicationPolicy constants (incl. review-comment limit; no dashboard-version constant) + minimal `renderer-core` module inside `packages/contracts` (length/line counters, attribution-token scanner), consumed by phases 08 and 17. Failing-first: an over-length review-comment fixture.
-7. `GATEWAY_MCP_SERVER_NAME` constant + `HighImpactCapabilityFlag` enum (11 members). Failing-first: a golden-value test asserting the literal `"eo_gateway"`.
+7. `GATEWAY_MCP_SERVER_NAME` constant + `HighImpactCapabilityFlag` enum (11 members). Failing-first: a golden-value test asserting the literal `"crabgic_gateway"`.
 8. Config precedence resolver + fast-check monotonicity properties. Failing-first: a config stack that lowers a security-key boolean must be rejected before the resolver exists.
 9. Threat model doc (`docs/threat-model.md`) + review note.
 10. Testkit builders: fixture builders per contract + both new unions; deterministic ID/clock providers.
@@ -124,7 +124,7 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 - [ ] `JournalEntryType` exhaustiveness check: an uncovered category added anywhere in the codebase fails `tsc -b`, demonstrated by a temporarily-stubbed 14th category.
 - [ ] Property tests prove no random config-layer stack can loosen a declared security key (≥10k fast-check cases, zero counterexamples).
 - [ ] JSON Schema artifacts byte-stable across two consecutive builds (empty diff).
-- [ ] `GATEWAY_MCP_SERVER_NAME` is the sole definition site of the literal `"eo_gateway"` — a repo-wide grep/golden-value CI check fails if the literal appears a second time under `packages/*`.
+- [ ] `GATEWAY_MCP_SERVER_NAME` is the sole definition site of the literal `"crabgic_gateway"` — a repo-wide grep/golden-value CI check fails if the literal appears a second time under `packages/*`.
 - [ ] `HighImpactCapabilityFlag` (11 members) fixture-tested; label strings byte-match what 18/20 cite (`closing transitions`, `bulk mutations`, etc.).
 - [ ] CommunicationPolicy golden snapshot includes the review-comment limit and contains no dashboard-version-message entry.
 - [ ] Threat model review recorded: `docs/threat-model.md` STRIDE list covers UDS, worker runtime, envelope compiler, installer, gateway, connectors, capability quarantine, renderer, learning store; sign-off note committed.
@@ -137,4 +137,4 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 - `JournalEntryType`'s 13-member list is binding as adjudicated; phase 12 has flagged that capability-quarantine audit pass/fail verdicts (as opposed to `trust approve`'s token mint, which does map to `approval_token_mint`) have no clean dedicated member. That tension is real but out of this phase's authority to resolve unilaterally — a 14th member would need to go back through the same resolution process, not be added here.
 - STRIDE surface list now explicitly names capability quarantine and renderer, closing gaps flagged by 12 and 17 respectively (adaptation §10 risk 11 covers the plugin/executable-capability angle of the former).
 - `HighImpactCapabilityFlag` is a name introduced in this phase for the previously-unnamed 11-member enum (matching the cross-phase ledger's own proposed name) — 18/20 should cite it by this name rather than re-describing it as anonymous prose.
-- No Claude Code engine fact is asserted by this phase (pure schemas/state machines/constants); the one Claude-Code-adjacent literal, `GATEWAY_MCP_SERVER_NAME = "eo_gateway"`, is a product-chosen identifier, not an engine behavior, and needs no `docs/engine-baseline.md` citation or verify-at-build-time spike.
+- No Claude Code engine fact is asserted by this phase (pure schemas/state machines/constants); the one Claude-Code-adjacent literal, `GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"`, is a product-chosen identifier, not an engine behavior, and needs no `docs/engine-baseline.md` citation or verify-at-build-time spike.

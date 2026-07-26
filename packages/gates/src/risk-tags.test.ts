@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INTENT_CONTRACT_SECTION_KEYS } from "@eo/contracts";
+import { INTENT_CONTRACT_SECTION_KEYS } from "@crabgic/contracts";
 import { DEFAULT_GATE_RISK_TAGS, GATE_RISK_TAGS, isGateRiskTag } from "./risk-tags.js";
 
 describe("GATE_RISK_TAGS", () => {

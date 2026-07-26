@@ -19,7 +19,7 @@
  * `./token.js`'s now-exported, STATELESS `verifySignature` (a pure HMAC
  * check against the shared secret key — correct across any process that
  * holds the same key), and tracks single-use consumption via 04's
- * `IdempotencyRegistry` (`@eo/journal`) keyed by `(tokenId, subjectKind:
+ * `IdempotencyRegistry` (`@crabgic/journal`) keyed by `(tokenId, subjectKind:
  * digest)` — durable on disk (the journal), so it is correct across BOTH a
  * process boundary and a restart, unlike the in-memory map it replaces for
  * this cross-process call path. `ApprovalTokenMinter.verify()` itself is
@@ -28,7 +28,7 @@
  * module is an ADDITIONAL, durable verification path, not a replacement.
  *
  * HIGH H2 repair (adversarial-validation finding): `IdempotencyRegistry.
- * checkOrRecord` is EXPLICITLY documented (`@eo/journal`'s own
+ * checkOrRecord` is EXPLICITLY documented (`@crabgic/journal`'s own
  * `idempotency.ts`) as unsafe against two truly concurrent FIRST-time calls
  * for the same key — "both could observe 'no prior record' before either
  * persists... production callers with genuine concurrent first-writers
@@ -37,7 +37,7 @@
  * (cross-process, or merely two interleaved async calls in one process)
  * could both record "recorded" and both return success — a real single-use
  * violation. FIX: the check-and-record critical section is now wrapped in
- * a real, durable, per-tokenId file lock — `@eo/journal`'s own `Lease`
+ * a real, durable, per-tokenId file lock — `@crabgic/journal`'s own `Lease`
  * primitive (roadmap/04 work item 6), keyed by `tokenId` (its
  * `projectHash` constructor parameter is just an opaque lock-file-name
  * identity — nothing requires it to literally be a project hash) rather
@@ -53,7 +53,7 @@
  * long-lived resource needing heartbeat renewal.
  */
 import { dirname, join } from "node:path";
-import { IdempotencyRegistry, Lease, type JournalStore } from "@eo/journal";
+import { IdempotencyRegistry, Lease, type JournalStore } from "@crabgic/journal";
 import {
   ApprovalTokenAlreadyVerifiedError,
   ApprovalTokenExpiredError,

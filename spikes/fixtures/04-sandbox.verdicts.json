@@ -32,7 +32,7 @@
   },
   {
     "probe": "sandbox.masked-credential-envvar",
-    "expectation": "sandbox.credentials.envVars mode:'mask' substitutes a sentinel for EO_SECRET_X inside the sandbox; the real value never appears in the worker's resolved env/output",
+    "expectation": "sandbox.credentials.envVars mode:'mask' substitutes a sentinel for CRABGIC_SECRET_X inside the sandbox; the real value never appears in the worker's resolved env/output",
     "observed": "real secret value leaked into transcript=false; some VALUE= output observed=true",
     "verdict": "PASS"
   }

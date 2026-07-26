@@ -1,10 +1,10 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 
 /**
- * A fresh, real `@eo/journal` `JournalStore` over a temp directory — mirrors
+ * A fresh, real `@crabgic/journal` `JournalStore` over a temp directory — mirrors
  * `e2e/report/src/test-support/test-journal.ts`'s own documented pattern
  * (itself mirroring `packages/gates/src/test-support/test-journal.ts`).
  * Exposes `journalDir` directly (not just the bound `store`) so a scenario
@@ -13,7 +13,7 @@ import { createJournalStore, type JournalStore } from "@eo/journal";
  * restart" scenario in `../test/` uses: zero in-memory state carried over,
  * exactly what a real process restart looks like.
  *
- * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): a private temp
+ * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): a private temp
  * directory is why this harness's genuinely-emitted `EvidenceRecord`s were
  * invisible to `e2e/report`'s generator — they were written somewhere that
  * no longer existed by the time the report ran. When that env var is set
@@ -38,7 +38,7 @@ export interface TestJournal {
 }
 
 export async function createTestJournal(): Promise<TestJournal> {
-  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
     await mkdir(sharedJournalDir, { recursive: true });
     return {

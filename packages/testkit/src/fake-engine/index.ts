@@ -1,7 +1,7 @@
 /**
  * Fake engine public barrel — roadmap/03-envelope-compiler-engine-
  * adapter.md work items 5-6 (packages/testkit deliverable). Re-exported
- * from `@eo/testkit`'s own top-level barrel (`../index.ts`).
+ * from `@crabgic/testkit`'s own top-level barrel (`../index.ts`).
  */
 export * from "./tool-call.js";
 export * from "./bash-command-matching.js";

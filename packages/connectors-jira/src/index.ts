@@ -1,11 +1,11 @@
 /**
- * `@eo/connectors-jira` public barrel — roadmap/18-jira-cloud-adapter.md
+ * `@crabgic/connectors-jira` public barrel — roadmap/18-jira-cloud-adapter.md
  * §Interfaces produced. Downstream phases (19 Jira Data Center; 21
  * connector evidence; 23 release hardening) import from
- * `@eo/connectors-jira` directly. This phase registers no MCP tool of
+ * `@crabgic/connectors-jira` directly. This phase registers no MCP tool of
  * its own (roadmap/18 §Interfaces consumed) — `./provider/register.ts`'s
  * `registerJiraCloudProvider` is the one call site that plugs this
- * package into `@eo/gateway`'s already-registered `tracker.*` tools.
+ * package into `@crabgic/gateway`'s already-registered `tracker.*` tools.
  */
 
 // ---- Auth: OAuth client-credentials token manager + connection doctor (work item 1) ----
@@ -106,7 +106,7 @@ export {
   type JiraMutationApplyDeps,
 } from "./resource-client/jira-mutation-apply-client.js";
 
-// ---- Provider registration (the connectors-jira <-> @eo/gateway seam) ----
+// ---- Provider registration (the connectors-jira <-> @crabgic/gateway seam) ----
 export {
   JIRA_PROVIDER_NAME as JIRA_CLOUD_PROVIDER_KEY,
   registerJiraCloudProvider,
@@ -228,7 +228,7 @@ export { adfDocumentToWikiMarkup } from "./resource-client/datacenter/wiki-marku
 // ---- Reconciliation (DC entity-property marker) ----
 export { createJiraDatacenterEntityPropertyMarkerReconciler } from "./reconciliation/entity-property-marker-dc.js";
 
-// ---- Provider registration (the DC <-> @eo/gateway seam) ----
+// ---- Provider registration (the DC <-> @crabgic/gateway seam) ----
 export {
   JIRA_DATACENTER_PROVIDER_KEY,
   registerJiraDatacenterProvider,

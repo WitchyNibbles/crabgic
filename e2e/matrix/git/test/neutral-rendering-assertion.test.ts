@@ -12,7 +12,7 @@ import {
  * neutral-rendering assertion." This file IS that proof: a seeded, leaking
  * string is fed straight to the assertion this project trusts to certify
  * a real render/publish — proving the assertion itself catches the leak
- * BEFORE any real `@eo/git-engine`/`@eo/renderer` call is ever exercised
+ * BEFORE any real `@crabgic/git-engine`/`@crabgic/renderer` call is ever exercised
  * (see `branch-commit-golden-scenarios.test.ts` and
  * `publish-attribution-leak-scenario.test.ts` for the real-subsystem
  * counterparts of the identical vector).

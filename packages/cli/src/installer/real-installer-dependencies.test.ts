@@ -7,7 +7,7 @@ import {
 } from "./real-installer-dependencies.js";
 
 describe("resolvePluginSourceDir", () => {
-  it("resolves @eo/plugin's real installed root directory via Node module resolution", () => {
+  it("resolves @crabgic/plugin's real installed root directory via Node module resolution", () => {
     const dir = resolvePluginSourceDir();
     expect(dir).toMatch(/plugin$/);
   });

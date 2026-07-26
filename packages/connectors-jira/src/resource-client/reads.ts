@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { collectAllPages, type FetchPage } from "@eo/gateway";
+import { collectAllPages, type FetchPage } from "@crabgic/gateway";
 import { jiraGetJson, type JiraHttpContext } from "./http-read-helper.js";
 import {
   RawJiraBoardListSchema,

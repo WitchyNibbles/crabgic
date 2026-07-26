@@ -1,5 +1,5 @@
 {
-  "name": "@eo/connectors-jira",
+  "name": "@crabgic/connectors-jira",
   "version": "0.0.0",
   "private": true,
   "description": "Jira Cloud/Data Center adapter (phase 18: Cloud).",
@@ -25,14 +25,14 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@eo/contracts": "0.0.0",
-    "@eo/gateway": "0.0.0",
-    "@eo/renderer": "0.0.0",
+    "@crabgic/contracts": "0.0.0",
+    "@crabgic/gateway": "0.0.0",
+    "@crabgic/renderer": "0.0.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@eo/journal": "0.0.0",
-    "@eo/testkit": "0.0.0",
+    "@crabgic/journal": "0.0.0",
+    "@crabgic/testkit": "0.0.0",
     "fast-check": "4.9.0"
   }
 }

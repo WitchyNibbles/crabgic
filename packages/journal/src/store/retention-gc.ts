@@ -26,7 +26,7 @@
  */
 
 import { join } from "node:path";
-import { RunSnapshotSchema } from "@eo/contracts";
+import { RunSnapshotSchema } from "@crabgic/contracts";
 import { listSegmentIndexes, segmentPath } from "./segment-layout.js";
 import type { JournalStoreConfig } from "./store-config.js";
 import { tryDecodeLine } from "../codec/ndjson-codec.js";

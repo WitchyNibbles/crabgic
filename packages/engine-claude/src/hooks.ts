@@ -20,8 +20,8 @@
  */
 import { posix } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION } from "@eo/contracts";
+import type { JournalStore } from "@crabgic/journal";
+import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import type { HookCallback } from "@anthropic-ai/claude-agent-sdk";
 
 // ---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ function toError(err: unknown): Error {
  *
  * `EvidenceRecord` FIELD-FIT NOTE (documented deviation): 04's
  * `evidence_pointer` payload schema validates as `EvidenceRecordSchema`
- * verbatim (`@eo/contracts`, unowned by this worker) — a schema shaped
+ * verbatim (`@crabgic/contracts`, unowned by this worker) — a schema shaped
  * around 14's gate-firing evidence (`command`/`exitStatus`/
  * `toolchainFingerprint`/`objectId`/`artifactDigests`), not around a
  * session-transcript pointer. This hook's exact input signature (this

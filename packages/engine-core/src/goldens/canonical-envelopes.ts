@@ -2,7 +2,7 @@ import {
   AuthorizationEnvelopeSchema,
   CURRENT_SCHEMA_VERSION,
   type AuthorizationEnvelope,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * The three canonical `AuthorizationEnvelope`s (roadmap/03-envelope-
@@ -72,7 +72,7 @@ export const NETWORK_GRANTED_ENVELOPE: AuthorizationEnvelope = baseEnvelope({
   ownedPaths: ["packages/example/src"],
   commands: ["npm run test", "git status"],
   networkDestinations: ["api.example.com"],
-  credentialReferences: ["EO_EXAMPLE_API_TOKEN"],
+  credentialReferences: ["CRABGIC_EXAMPLE_API_TOKEN"],
 });
 
 export interface CanonicalEnvelopeCase {

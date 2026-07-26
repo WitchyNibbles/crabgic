@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@eo/contracts";
-import { JournalEntrySchema } from "@eo/journal";
+import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@crabgic/contracts";
+import { JournalEntrySchema } from "@crabgic/journal";
 import {
   INTEGRATION_JOURNAL_ENTRY_TYPES,
   type IntegrationJournalEntryType,
@@ -18,14 +18,14 @@ import {
 
 // Compile-time check: every `type` literal `./integration-journal.ts`'s
 // `IntegrationJournalEntryType` union can carry is assignable to
-// `JournalEntryType` (@eo/contracts) — a typo or a member 02 never defined
+// `JournalEntryType` (@crabgic/contracts) — a typo or a member 02 never defined
 // would fail `npx tsc -b packages/git-engine` right here.
 type AssertMembersAreValid = IntegrationJournalEntryType extends JournalEntryType ? true : never;
 const _typeCheck: AssertMembersAreValid = true;
 void _typeCheck;
 
 describe("this phase's own journal-entry-type surface (exit criterion)", () => {
-  it("both members it writes are real, closed members of @eo/contracts' 13-member JournalEntryType", () => {
+  it("both members it writes are real, closed members of @crabgic/contracts' 13-member JournalEntryType", () => {
     for (const type of INTEGRATION_JOURNAL_ENTRY_TYPES) {
       expect(JOURNAL_ENTRY_TYPES).toContain(type);
     }
@@ -40,7 +40,7 @@ describe("this phase's own journal-entry-type surface (exit criterion)", () => {
     expect(INTEGRATION_JOURNAL_ENTRY_TYPES).not.toContain("worktree_quarantine");
   });
 
-  it("a constructed cas_ref_update entry round-trips through @eo/journal's own JournalEntrySchema", () => {
+  it("a constructed cas_ref_update entry round-trips through @crabgic/journal's own JournalEntrySchema", () => {
     const candidate = {
       schemaVersion: 1,
       seq: 1,
@@ -56,7 +56,7 @@ describe("this phase's own journal-entry-type surface (exit criterion)", () => {
     expect(() => JournalEntrySchema.parse(candidate)).not.toThrow();
   });
 
-  it("a constructed evidence_pointer entry round-trips through @eo/journal's own JournalEntrySchema", () => {
+  it("a constructed evidence_pointer entry round-trips through @crabgic/journal's own JournalEntrySchema", () => {
     const candidate = {
       schemaVersion: 1,
       seq: 1,
@@ -67,7 +67,7 @@ describe("this phase's own journal-entry-type surface (exit criterion)", () => {
         changeSetId: "b0000000-0000-4000-8000-000000000002",
         command: "renderWithRegeneration:pr_title",
         exitStatus: 0,
-        toolchainFingerprint: "@eo/git-engine evidence-attachment",
+        toolchainFingerprint: "@crabgic/git-engine evidence-attachment",
         capturedAt: new Date().toISOString(),
         artifactDigests: ["deadbeef"],
         objectId: "a".repeat(40),

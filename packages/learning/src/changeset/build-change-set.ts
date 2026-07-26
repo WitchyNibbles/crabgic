@@ -4,7 +4,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   type ChangeSet,
   type LearningProposal,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 export interface ChangeSetReferences {
   readonly intentContractId: string;
@@ -32,7 +32,7 @@ export interface ChangeSetReferences {
  * (11's intake pipeline is the real constructor of those instances; this
  * phase does not reimplement intake) — see `../red-team/no-bypass.
  * redteam.test.ts` for the integration test proving the resulting
- * `ChangeSet` clears the SAME `@eo/gates` registry as any other change.
+ * `ChangeSet` clears the SAME `@crabgic/gates` registry as any other change.
  */
 export function buildChangeSetForPromotion(
   proposal: LearningProposal,

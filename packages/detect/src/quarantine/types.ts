@@ -10,7 +10,7 @@
  * elsewhere, never by this pipeline).
  */
 import { z } from "zod";
-import type { CapabilityDecision } from "@eo/contracts";
+import type { CapabilityDecision } from "@crabgic/contracts";
 import { DeclaredOperationSchema, type SandboxTestResult } from "./sandbox/types.js";
 
 export const CAPABILITY_KINDS = ["skill", "plugin", "hook", "mcp_server", "external_tool"] as const;

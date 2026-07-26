@@ -241,7 +241,7 @@ describe("@live requirement traceability — containerized Grafana, genuine conf
       pointers: run.bindings.map((binding) => binding.pointer),
     });
 
-    // WRITE WHERE THE CONSUMER READS. `$EO_REQUIREMENT_TRACEABILITY_RECORD`
+    // WRITE WHERE THE CONSUMER READS. `$CRABGIC_REQUIREMENT_TRACEABILITY_RECORD`
     // (Gap 16) points `readRequirementTraceabilityInput` at an artifact
     // produced outside the checkout being scored; honouring it here is what
     // makes producer and consumer one loop. Committing this file instead

@@ -2,7 +2,7 @@
  * On-disk layout for this package — roadmap/07-git-control-repo-
  * worktrees.md: "Control clone ... into `$XDG_CACHE_HOME/engineering-
  * orchestrator/<project-hash>/git-control/` (cache-root convention pinned
- * in 04)." Interface-ledger Gap 14: `@eo/journal`'s `resolveCacheRoot` is
+ * in 04)." Interface-ledger Gap 14: `@crabgic/journal`'s `resolveCacheRoot` is
  * the SOLE definition site of the shared cache root; this module only
  * nests this phase's own subpaths under it, never re-deriving the root.
  *
@@ -14,13 +14,13 @@
  */
 
 import { join } from "node:path";
-import { resolveCacheRoot, type XdgEnv } from "@eo/journal";
+import { resolveCacheRoot, type XdgEnv } from "@crabgic/journal";
 
 export const GIT_CONTROL_SUBDIR = "git-control";
 export const WORKTREES_SUBDIR = "worktrees";
 export const WORKTREE_QUARANTINE_SUBDIR = "worktree-quarantine";
 
-/** `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/` — the pinned control-clone path (Gap 14). */
+/** `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` — the pinned control-clone path (Gap 14). */
 export function resolveGitControlDir(env: XdgEnv, projectHash: string): string {
   return join(resolveCacheRoot(env, projectHash), GIT_CONTROL_SUBDIR);
 }

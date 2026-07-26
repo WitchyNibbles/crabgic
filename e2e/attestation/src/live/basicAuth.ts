@@ -7,7 +7,7 @@
  * harness used to hardcode `Basic ${base64("admin:admin")}` inline while the
  * `ExternalConnection` it built declared a `secretRef` that nothing ever
  * read — so the run advertised a credential-resolution path it did not take.
- * The credential is now resolved through `@eo/gateway`'s real
+ * The credential is now resolved through `@crabgic/gateway`'s real
  * `resolveSecretReference` against that declared `secretRef`, and this module
  * holds the only part of that path with no I/O in it.
  *

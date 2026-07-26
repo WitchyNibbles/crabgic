@@ -1,4 +1,4 @@
-import type { AdjudicationCallback, CompiledWorkerProfile } from "@eo/engine-core";
+import type { AdjudicationCallback, CompiledWorkerProfile } from "@crabgic/engine-core";
 import { evaluateAdjudicationLayer } from "./adjudication-layer.js";
 import {
   evaluatePermissionLayer,

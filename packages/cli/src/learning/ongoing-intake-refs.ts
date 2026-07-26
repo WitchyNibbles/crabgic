@@ -6,7 +6,7 @@
  * promoted lesson attaches to an ONGOING intake rather than requiring a
  * whole intake of its own. That resolves the question that blocked wiring
  * `learn approve` at all — `buildChangeSetForPromotion` needs four
- * cross-reference ids, `@eo/learning` deliberately does not reimplement
+ * cross-reference ids, `@crabgic/learning` deliberately does not reimplement
  * intake (11 owns constructing those instances), and supplying empty or
  * synthesized ids would have produced a `ChangeSet` pointing at nothing
  * while still passing its own schema. A lesson now rides work the operator
@@ -16,8 +16,8 @@
  * default: inventing references would silently detach a promotion from any
  * real authorization, which is precisely the bypass roadmap/22 forbids.
  */
-import type { ChangeSet, RunLifecycleState } from "@eo/contracts";
-import type { ChangeSetReferences } from "@eo/learning";
+import type { ChangeSet, RunLifecycleState } from "@crabgic/contracts";
+import type { ChangeSetReferences } from "@crabgic/learning";
 
 /**
  * The states in which an intake is genuinely in flight and a lesson may

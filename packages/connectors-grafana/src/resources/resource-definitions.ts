@@ -43,7 +43,7 @@ export function canonicalFieldsEqual(
  * One resource kind's request-building + canonical-serialization contract.
  * Pure — no I/O of its own; every method is deterministic given its
  * inputs, matching `MutationApplyClient.buildRequest`/`parseResponse`'s
- * own purity requirement (`@eo/gateway`).
+ * own purity requirement (`@crabgic/gateway`).
  */
 export interface GrafanaResourceDefinition extends GrafanaFamilyBehaviour {
   readonly kind: GrafanaResourceKind;

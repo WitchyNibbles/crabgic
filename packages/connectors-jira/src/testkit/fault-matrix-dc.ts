@@ -1,4 +1,4 @@
-import { FULL_FAULT_MATRIX, type FakeProviderScriptEntry } from "@eo/gateway";
+import { FULL_FAULT_MATRIX, type FakeProviderScriptEntry } from "@crabgic/gateway";
 
 /**
  * Jira Data Center fault matrix — roadmap/19-jira-datacenter-adapter.md §In
@@ -7,7 +7,7 @@ import { FULL_FAULT_MATRIX, type FakeProviderScriptEntry } from "@eo/gateway";
  * `Retry-After` contract DC doesn't make — conformance parameterization
  * treats rate-limit-header presence as a per-deployment-type fixture
  * property, not a shared assertion." Extends (never reimplements)
- * `@eo/gateway`'s `FULL_FAULT_MATRIX`, mirroring `../testkit/fault-
+ * `@crabgic/gateway`'s `FULL_FAULT_MATRIX`, mirroring `../testkit/fault-
  * matrix.ts`'s Cloud extension (a `forbidden` 403 entry), but OVERRIDES
  * `rateLimited` with a bare 429 carrying NO `retry-after` header — the one
  * deliberate, documented divergence from Cloud's fault matrix.

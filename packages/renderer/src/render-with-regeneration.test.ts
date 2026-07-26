@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { renderWithRegeneration } from "./render-with-regeneration.js";
 
 describe("renderWithRegeneration", () => {

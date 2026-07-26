@@ -5,9 +5,9 @@ import {
   createFakeProviderTransport,
   type GenericProviderClient,
   type MutationApplyClient,
-} from "@eo/gateway";
-import { RemoteMutationPlanSchema } from "@eo/contracts";
-import { buildExternalConnection } from "@eo/testkit";
+} from "@crabgic/gateway";
+import { RemoteMutationPlanSchema } from "@crabgic/contracts";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { JIRA_PROVIDER_NAME, registerJiraCloudProvider } from "./register.js";
 import { JiraConnectionNotRegisteredError } from "./jira-connection-registry.js";

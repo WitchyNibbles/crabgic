@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in the Engineering Orchestrator. This repository
+Thanks for your interest in the Crabgic. This repository
 follows a phase-based roadmap (see `roadmap/`) and a strict TDD workflow.
 Please read this document before opening a pull request.
 

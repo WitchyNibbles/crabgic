@@ -1,7 +1,7 @@
 import { readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createJournalStore, JournalEntrySchema } from "@eo/journal";
+import { createJournalStore, JournalEntrySchema } from "@crabgic/journal";
 import { ensureControlClone, fetchRefresh } from "./control-clone.js";
 import { freezeIntake } from "./intake-freeze.js";
 import { withUserCheckoutInvariance } from "./invariance.js";
@@ -136,7 +136,7 @@ describe("freezeIntake (WI5)", () => {
     expect(statusAfter.stdout).toContain("src/a.txt");
   });
 
-  it("journals a git_freeze entry that passes @eo/journal's own JournalEntrySchema", async () => {
+  it("journals a git_freeze entry that passes @crabgic/journal's own JournalEntrySchema", async () => {
     const { userCheckout, controlDir } = await setUpFrozenControlClone();
     const store = freshJournalStore();
 

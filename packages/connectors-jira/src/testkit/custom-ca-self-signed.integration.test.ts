@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:https";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { GatewayHttpClient, sendHttpRequest, type HttpTransportRequest } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+import { GatewayHttpClient, sendHttpRequest, type HttpTransportRequest } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { z } from "zod";
 import { resolveJiraDatacenterAuthHeaderProvider } from "../auth/jira-datacenter-auth.js";
 import { JiraConnectionConfigSchema } from "../provider/jira-connection-config.js";
@@ -21,7 +21,7 @@ import { generateSelfSignedCert, type DisposableCert } from "./self-signed-cert.
  * 16's gateway-level custom-CA path... no new TLS mechanism, only
  * DC-shaped fixtures against the existing path").
  *
- * Mirrors `@eo/gateway`'s own `reachability-probe.test.ts` pattern: the
+ * Mirrors `@crabgic/gateway`'s own `reachability-probe.test.ts` pattern: the
  * SSRF-guard preflight is satisfied with a fake non-loopback
  * `resolveHostAddresses` answer, and the ACTUAL dial is pinned back to the
  * real disposable local server's loopback address via `sendHttpRequest`'s

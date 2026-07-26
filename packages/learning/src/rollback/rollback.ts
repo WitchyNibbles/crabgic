@@ -1,4 +1,4 @@
-import type { ChangeSet, LearningProposal } from "@eo/contracts";
+import type { ChangeSet, LearningProposal } from "@crabgic/contracts";
 import type { ProposalRegistry } from "../proposal-store/registry.js";
 import {
   buildInverseChangeSetForRollback,

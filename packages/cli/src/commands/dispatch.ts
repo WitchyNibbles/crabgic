@@ -32,7 +32,11 @@ import {
   runLearnRejectCommand,
   runLearnRollbackCommand,
 } from "../learning/learn-command-backend.js";
-import { runTrustApproveCommand, runTrustReviewCommand, runTrustRevokeCommand } from "@eo/detect";
+import {
+  runTrustApproveCommand,
+  runTrustReviewCommand,
+  runTrustRevokeCommand,
+} from "@crabgic/detect";
 import {
   runConnectionAddCommand,
   runConnectionDoctorCommand,
@@ -115,11 +119,11 @@ export async function dispatchCommand(
           : notImplementedResult(command.command, command.json);
 
       // roadmap/12-stack-detection-quarantine.md wires these three real
-      // backends (implemented in `@eo/detect`) — but ONLY when `deps.trust`
+      // backends (implemented in `@crabgic/detect`) — but ONLY when `deps.trust`
       // is supplied, for the identical reason as `installer`/`learning`
-      // above. Phase 12 could not wire these itself: reaching `@eo/detect`
+      // above. Phase 12 could not wire these itself: reaching `@crabgic/detect`
       // from here closed a dependency cycle until the shared primitives
-      // moved to `@eo/contracts` (2026-07-25).
+      // moved to `@crabgic/contracts` (2026-07-25).
       case "trust-review":
         return deps.trust !== undefined
           ? runTrustReviewCommand(command, deps.trust)

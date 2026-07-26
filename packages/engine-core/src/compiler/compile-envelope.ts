@@ -1,4 +1,4 @@
-import type { AuthorizationEnvelope } from "@eo/contracts";
+import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { emitPermissionProfile } from "./permission-profile.js";
 import { emitSandboxProfile } from "./sandbox-profile.js";
 import { toWorkerSettingsJson, toWorkerSdkOptions } from "./worker-settings.js";

@@ -1,4 +1,4 @@
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import type { FieldMetadataIndex } from "../capability/field-metadata.js";
 import type { RemoteVerificationPointer } from "../evidence/done-transition-verification.js";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
@@ -47,10 +47,10 @@ export interface CreateJiraResourceClientDeps {
    * `planIssueTransition`'s `resolveVerificationPointer` parameter) instead
    * of relying SOLELY on a caller-hand-passed `hasVerificationEvidence`
    * boolean. Omitted entirely, behavior is byte-identical to before this
-   * fix. A typical real wiring is a closure over `@eo/gates`'s
+   * fix. A typical real wiring is a closure over `@crabgic/gates`'s
    * `findRemoteResourcePointersForRequirement` result for the requirement
    * this issue tracks — this package has no dependency of its own on
-   * `@eo/gates` (that would invert the roadmap's own 18→21 dependency
+   * `@crabgic/gates` (that would invert the roadmap's own 18→21 dependency
    * direction), so the caller supplies the already-resolved lookup.
    */
   readonly resolveVerificationPointer?: (issueKey: string) => RemoteVerificationPointer | undefined;

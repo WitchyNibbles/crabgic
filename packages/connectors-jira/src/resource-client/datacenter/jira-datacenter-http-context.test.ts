@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+import { ConnectorError } from "@crabgic/contracts";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { z } from "zod";
 import { jiraDatacenterGetJson } from "./jira-datacenter-http-context.js";
 import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";

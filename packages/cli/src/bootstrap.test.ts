@@ -18,10 +18,10 @@ import {
   ApprovalTokenSignatureError,
   ChangeSetSchema,
   type ChangeSet,
-} from "@eo/contracts";
-import { resolveStateRoot } from "@eo/journal";
-import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@eo/supervisor";
-import { buildChangeSet } from "@eo/testkit";
+} from "@crabgic/contracts";
+import { resolveStateRoot } from "@crabgic/journal";
+import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@crabgic/supervisor";
+import { buildChangeSet } from "@crabgic/testkit";
 import { buildProviderDispatchWiring, buildRealCliDependencies } from "./bootstrap.js";
 import { SupervisorUnavailableError } from "./errors.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";

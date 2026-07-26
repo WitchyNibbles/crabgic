@@ -1,26 +1,26 @@
 /**
  * `validateWorkerResult` — this package's OWN copy of the engine-agnostic
  * half of `packages/engine-claude/src/result-validation.ts`'s logic,
- * deliberately NOT imported from `@eo/engine-claude`: this phase's executor
+ * deliberately NOT imported from `@crabgic/engine-claude`: this phase's executor
  * must work against ANY `EngineAdapter` (the abstract contract owned by
- * `@eo/engine-core`, roadmap/13's actual "Interfaces consumed" dependency),
- * not specifically the Claude adapter — importing `@eo/engine-claude` here
+ * `@crabgic/engine-core`, roadmap/13's actual "Interfaces consumed" dependency),
+ * not specifically the Claude adapter — importing `@crabgic/engine-claude` here
  * would create an unwanted, undeclared 13→06(concrete) dependency edge on
  * top of the already-declared 13→06(abstract, via engine-core) one, and
  * would make this package untestable against the fake engine alone (the
- * fake engine implements `@eo/engine-core`'s `EngineAdapter`, never
- * `@eo/engine-claude`'s concrete class).
+ * fake engine implements `@crabgic/engine-core`'s `EngineAdapter`, never
+ * `@crabgic/engine-claude`'s concrete class).
  *
  * Same rules as 06's own validator (docs/engine-baseline.md §5), applied in
- * the same order, over the SAME `EngineResultEvent` shape (`@eo/engine-
- * core`) and the SAME `WorkerResultSchema` (`@eo/contracts`) — this is
+ * the same order, over the SAME `EngineResultEvent` shape (`@crabgic/engine-
+ * core`) and the SAME `WorkerResultSchema` (`@crabgic/contracts`) — this is
  * intentional parallel logic, not a fork of a *different* algorithm; a
  * future reconcile could extract a shared micro-package, but 06 is already
  * built and frozen, so duplicating this ~40-line pure function here is the
  * documented, minimal-risk choice for this phase's own build.
  */
-import { WorkerResultSchema, type WorkerResult } from "@eo/contracts";
-import type { EngineResultEvent } from "@eo/engine-core";
+import { WorkerResultSchema, type WorkerResult } from "@crabgic/contracts";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 
 export type SchedulerSchemaViolationReason = "absent" | "invalid" | "retriesExhausted";
 

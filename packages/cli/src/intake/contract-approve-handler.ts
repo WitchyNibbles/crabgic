@@ -4,7 +4,7 @@
  * token, never mints one." §Work item 4's failing-first framing: "a
  * scripted worker-context call to
  * `mcp__${GATEWAY_MCP_SERVER_NAME}__contract.approve`" (`GATEWAY_MCP_SERVER_NAME`,
- * `@eo/contracts` — this comment deliberately uses the template placeholder
+ * `@crabgic/contracts` — this comment deliberately uses the template placeholder
  * rather than the resolved literal, matching `../../supervisor/src/intake/
  * project-inspect.ts`'s identical convention) "with no token fails closed."
  * §Exit criteria: "Unmapped requirement blocks the `ready` transition."
@@ -42,14 +42,14 @@ import {
   transitionChangeSetToReady,
   type Registry,
   type TransitionChangeSetToReadyOptions,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import {
   runLifecycleTransition,
   IllegalTransitionError,
   type AuthorizationEnvelope,
   type ChangeSet,
-} from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { verifyApprovalTokenDurable } from "../approval/durable-approval-ledger.js";
 
 export interface ContractApproveToolInput {

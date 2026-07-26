@@ -3,7 +3,7 @@ import {
   createSandboxSelftestCheck,
   type DoctorFinding,
   type ProcessProbeFn,
-} from "engineering-orchestrator";
+} from "crabgic";
 
 /**
  * Hermeticity + sandbox self-test harness — roadmap/23-release-hardening.md
@@ -12,7 +12,7 @@ import {
  * parts are tagged `@live` for the live wave)."
  *
  * `sandbox.selftest` (`packages/cli/src/doctor/checks/sandbox-selftest.ts`,
- * re-exported from `engineering-orchestrator`) needs only `bwrap` on the
+ * re-exported from `crabgic`) needs only `bwrap` on the
  * host — no Claude Code engine, no auth, no network — so it is the
  * OFFLINE-runnable half of this pair and runs for real, right here, in the
  * default (non-`@live`) gate. `hermeticity.selftest`'s own real-probe arm

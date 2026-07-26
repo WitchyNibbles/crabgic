@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createCapabilityStore, type AuditReport, type CapabilityStore } from "@eo/detect";
+import { createCapabilityStore, type AuditReport, type CapabilityStore } from "@crabgic/detect";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { createGateRegistry } from "./registry.js";
 import {

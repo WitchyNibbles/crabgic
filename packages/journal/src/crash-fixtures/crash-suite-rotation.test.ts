@@ -15,7 +15,7 @@ import { verifyAppendRecovery } from "./verify-recovery.js";
  * VALIDATION ROUND (2026-07-18), MAJOR 1 finding: "The 1000-iteration crash
  * suite NEVER rotates segments, so the multi-segment path had zero
  * coverage (green was vacuous for rotated journals)." This file closes
- * that gap: `EO_CRASH_FIXTURE_SEGMENT_MAX_BYTES=1` forces a fresh segment
+ * that gap: `CRABGIC_CRASH_FIXTURE_SEGMENT_MAX_BYTES=1` forces a fresh segment
  * on every single append (mirroring `append-entry.test.ts`'s own "rotates
  * to a new segment once the size threshold is crossed" unit test), so
  * every real kill in this variant genuinely exercises the multi-segment
@@ -26,9 +26,11 @@ import { verifyAppendRecovery } from "./verify-recovery.js";
  * `crash-suite.test.ts`) to keep both under this repo's 400-line-file
  * convention.
  */
-const ROTATION_ITERATION_COUNT = Number(process.env["EO_CRASH_SUITE_ROTATION_ITERATIONS"] ?? "30");
+const ROTATION_ITERATION_COUNT = Number(
+  process.env["CRABGIC_CRASH_SUITE_ROTATION_ITERATIONS"] ?? "30",
+);
 const ROTATION_SEGMENT_MAX_BYTES = "1";
-const SLEEP_MS = Number(process.env["EO_CRASH_SUITE_SLEEP_MS"] ?? "8");
+const SLEEP_MS = Number(process.env["CRABGIC_CRASH_SUITE_SLEEP_MS"] ?? "8");
 
 const dirsToClean: string[] = [];
 const runtimesToClean: FixtureRuntime[] = [];
@@ -72,7 +74,7 @@ describe("crash suite — SEGMENT ROTATION variant (VALIDATION ROUND 2026-07-18,
     "recovery always converges with zero undetected corruption across randomized real kill iterations over a genuinely re-rotating append path",
     async () => {
       const stderrChunks: string[] = [];
-      const seed = Number(process.env["EO_CRASH_SUITE_ROTATION_SEED"] ?? "987654321");
+      const seed = Number(process.env["CRABGIC_CRASH_SUITE_ROTATION_SEED"] ?? "987654321");
       const plans = buildAppendOnlyRotationPlans(ROTATION_ITERATION_COUNT, seed);
       const runtime = await prepareCrashSuiteRuntime("append-chain-snapshot-operation.ts");
       runtimesToClean.push(runtime);
@@ -91,7 +93,7 @@ describe("crash suite — SEGMENT ROTATION variant (VALIDATION ROUND 2026-07-18,
               plan.mode,
               String(SLEEP_MS),
             ],
-            env: { EO_CRASH_FIXTURE_SEGMENT_MAX_BYTES: ROTATION_SEGMENT_MAX_BYTES },
+            env: { CRABGIC_CRASH_FIXTURE_SEGMENT_MAX_BYTES: ROTATION_SEGMENT_MAX_BYTES },
           };
         },
         faultPoints,

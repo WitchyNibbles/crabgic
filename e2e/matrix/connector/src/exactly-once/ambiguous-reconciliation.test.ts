@@ -1,6 +1,6 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "ambiguous reconciliation
- * without duplication." Drives the REAL `@eo/gateway`
+ * without duplication." Drives the REAL `@crabgic/gateway`
  * `reconcileAmbiguousPost`/`MarkerReconciler` declared interface (16 §In
  * scope, "Ambiguity") plus `executeMutationPlan` — never a reimplementation
  * of the reconcile-or-block decision.
@@ -10,8 +10,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@crabgic/contracts";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
@@ -20,7 +20,7 @@ import {
   type MarkerReconciler,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,

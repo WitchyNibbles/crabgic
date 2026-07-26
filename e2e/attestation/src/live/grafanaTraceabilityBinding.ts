@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, ExternalConnectionSchema } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, ExternalConnectionSchema } from "@crabgic/contracts";
 import {
   IdempotencyKeyLock,
   buildHttpClientForConnection,
@@ -7,7 +7,7 @@ import {
   resolveSecretReference,
   type MutationPipelineHandlers,
   type MutationPipelineOutcome,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import {
   GrafanaPlanPayloadStore,
   GrafanaRollbackSnapshotStore,
@@ -18,8 +18,8 @@ import {
   discoverGrafanaCapabilities,
   type GrafanaRawHttpResponse,
   type GrafanaResourceKind,
-} from "@eo/connectors-grafana";
-import { bindRemoteResourceEvidence, type RemoteResourceBinding } from "@eo/gates";
+} from "@crabgic/connectors-grafana";
+import { bindRemoteResourceEvidence, type RemoteResourceBinding } from "@crabgic/gates";
 import { createTestJournal } from "../testJournal.js";
 import { SHARED_JOURNAL_ENV_VAR, describeEvidenceJournal } from "../traceabilityEvidence.js";
 import { buildBasicAuthHeader } from "./basicAuth.js";
@@ -34,7 +34,7 @@ import {
  * `executeMutationPlan` exactly-once pipeline against a TLS-fronted,
  * containerized Grafana OSS instance, then stamps the confirmed
  * `MutationApplyResult.appliedRevision` into a `RemoteResource` + evidence
- * pointer via `@eo/gates`'s production writer.
+ * pointer via `@crabgic/gates`'s production writer.
  *
  * NOTHING HERE IS A FAKE. roadmap/23:56 — "23 deliberately does not use
  * `packages/testkit`'s fakes for its own final verdicts ... against live or
@@ -55,13 +55,13 @@ import {
  * `docker/grafana/<version>/docker-compose.yml`. Disposable, reachable only on
  * loopback, torn down with the container.
  *
- * It is RESOLVED through `@eo/gateway`'s real `resolveSecretReference` against
+ * It is RESOLVED through `@crabgic/gateway`'s real `resolveSecretReference` against
  * that declared `secretRef` (adversarial-validation MINOR-6: the previous
  * version hardcoded `admin:admin` inline while the connection advertised a
  * `secretRef` nothing read — a credential-resolution path the run claimed but
  * bypassed). No literal credential appears in this module.
  */
-export const CONTAINER_ADMIN_SECRET_ENV = "EO_ATTESTATION_GRAFANA_CONTAINER_BASIC";
+export const CONTAINER_ADMIN_SECRET_ENV = "CRABGIC_ATTESTATION_GRAFANA_CONTAINER_BASIC";
 
 export interface GrafanaBindingRunInput {
   /** `https://127.0.0.1:<port>` — the TLS front's base URL. */
@@ -180,7 +180,7 @@ export async function runContainerizedGrafanaBinding(
   const dashboardUid = deriveDeterministicUid(idempotencyKey);
   const dashboardInput = {
     title: `EO release traceability ${dashboardUid}`,
-    tags: ["engineering-orchestrator", "release-traceability"],
+    tags: ["crabgic", "release-traceability"],
     folderUid: "",
   };
   const planId = randomUUID();
@@ -202,7 +202,7 @@ export async function runContainerizedGrafanaBinding(
   // writes the EvidenceRecord that `pointers[].evidenceRecordId` names —
   // roadmap/21 work item 1's actual deliverable — so writing it into a
   // directory teardown deletes made the committed artifact's id permanently
-  // dangling. `createTestJournal` honours `EO_RELEASE_GATE_JOURNAL_DIR` (the
+  // dangling. `createTestJournal` honours `CRABGIC_RELEASE_GATE_JOURNAL_DIR` (the
   // same directory `e2e/report`'s generator reads) and makes `cleanup()` a
   // no-op in that mode, exactly as every sibling harness does.
   const testJournal = await createTestJournal();

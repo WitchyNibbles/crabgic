@@ -8,7 +8,7 @@ import {
 } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/test-support/test-journal.js";
 
-const RC_ENV = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+const RC_ENV = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
 
 describe("evidence emission", () => {
   let journal: TestJournal;
@@ -94,7 +94,7 @@ describe("evidence emission", () => {
   it("emitScenarioEvidence appends exactly one evidence_pointer journal entry, queryable back", async () => {
     // Freshly generated, NOT the shared fixture literal the sibling git
     // matrix also uses: under a shared journal
-    // (`EO_RELEASE_GATE_JOURNAL_DIR`) both harnesses write to one place, and
+    // (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`) both harnesses write to one place, and
     // a hardcoded id would make each harness see the other's record.
     const changeSetId = randomUUID();
     await emitScenarioEvidence(journal.store, {
@@ -106,7 +106,7 @@ describe("evidence emission", () => {
     });
 
     // changeSetId-scoped: under a shared journal
-    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
+    // (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
     // test-journal.ts`) every sibling scenario's evidence is visible here
     // too, so "exactly one entry in the journal" would stop meaning "this
     // call appended exactly one entry".

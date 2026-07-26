@@ -1,4 +1,7 @@
-import type { PerformanceBudgetSource, ProvisionalPerformanceBudgetEntry } from "@eo/contracts";
+import type {
+  PerformanceBudgetSource,
+  ProvisionalPerformanceBudgetEntry,
+} from "@crabgic/contracts";
 import { parseAcceptanceCriteriaAsBudgets } from "./acceptance-criteria-parser.js";
 import { ecosystemResearchBudgets } from "./ecosystem-research-table.js";
 

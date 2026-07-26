@@ -9,8 +9,8 @@
  * Measured on this host (Node 24.18.0), eager loading breached that:
  *
  *   bare Node runtime floor .......................  41.2 MiB
- *   + @eo/journal / @eo/supervisor / @eo/contracts .  65.5 MiB
- *   + run-dispatcher (pulls @eo/engine-claude,
+ *   + @crabgic/journal / @crabgic/supervisor / @crabgic/contracts .  65.5 MiB
+ *   + run-dispatcher (pulls @crabgic/engine-claude,
  *     which pulls @anthropic-ai/claude-agent-sdk) .. 108.2 MiB
  *
  * The daemon's own idle RSS was 99.8 / 108.2 / 100.2 MiB across three boots
@@ -31,7 +31,7 @@
  * competing driver over the same work units.
  */
 import { describe, expect, it, vi } from "vitest";
-import type { RunDispatcher } from "@eo/supervisor";
+import type { RunDispatcher } from "@crabgic/supervisor";
 import {
   createLazyRunDispatcher,
   loadRunDispatcherModule,

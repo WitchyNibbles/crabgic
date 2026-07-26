@@ -3,7 +3,7 @@ import {
   WorkUnitAttemptStatusSchema,
   type JournalEntryType,
   type WorkUnitAttemptStatus,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * Instance builders for the two new closed unions roadmap/02-contracts-and-

@@ -69,7 +69,7 @@ describe("GitArchiveExporter — genuine integration (real git archive + tar, th
       const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8")) as {
         readonly name: string;
       };
-      expect(pkg.name).toBe("engineering-orchestrator");
+      expect(pkg.name).toBe("crabgic");
       // dist/ is gitignored (never committed) — a real clean checkout of
       // committed source alone never contains build output.
       await expect(readFile(join(dir, "dist", "index.js"), "utf8")).rejects.toThrow();
@@ -103,7 +103,7 @@ describe("GitArchiveExporter — genuine integration (real git archive + tar, th
       const cliManifest = JSON.parse(
         await readFile(join(dir, "packages", "cli", "package.json"), "utf8"),
       ) as { readonly name: string };
-      expect(cliManifest.name).toBe("engineering-orchestrator");
+      expect(cliManifest.name).toBe("crabgic");
     } finally {
       await exporter.cleanup(dir);
     }

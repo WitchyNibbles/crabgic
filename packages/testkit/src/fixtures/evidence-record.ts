@@ -1,4 +1,8 @@
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `EvidenceRecord` fixture builder — roadmap/02 work item 10. */

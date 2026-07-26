@@ -104,8 +104,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { compileEnvelope, STANDARD_IMPLEMENTATION_ENVELOPE } from "@eo/engine-core";
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import { compileEnvelope, STANDARD_IMPLEMENTATION_ENVELOPE } from "@crabgic/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 import { substituteWorktreePlaceholders } from "../options-assembler.js";
 import {
   assertLiveEnabled,

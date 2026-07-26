@@ -14,12 +14,12 @@
  * directly here — no dependency on `packages/git-engine`, whose own module
  * only WRITES that entry type). `12`'s `StackEvidence` is NOT itself
  * journaled anywhere in this system (`StackEvidence` has no
- * `JournalEntryType` member of its own — see `@eo/contracts`'s
+ * `JournalEntryType` member of its own — see `@crabgic/contracts`'s
  * `journal-entry-type.ts`, a closed 13-member union with no such member);
  * this aggregator therefore accepts an OPTIONAL `stackEvidenceProvider`
  * dependency the caller supplies (e.g. `packages/cli`'s orchestration layer
  * invoking `packages/detect`'s `buildStackEvidence` directly — this
- * package, `@eo/supervisor`, never depends on `packages/detect`, see
+ * package, `@crabgic/supervisor`, never depends on `packages/detect`, see
  * `./capability-manifest-builder.ts`'s own doc comment for why) — an
  * absent/undefined provider, or one that itself resolves `undefined`
  * (pre-12, nothing detected yet), degrades gracefully rather than erroring.
@@ -27,8 +27,8 @@
  * `ChangeSetsRegistry` (Gap 1: this is the ONLY ChangeSet-state read
  * surface in the whole system — no dedicated wire tool).
  */
-import type { ChangeSet, StackEvidence } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type { ChangeSet, StackEvidence } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 
 export interface FreezeSummary {

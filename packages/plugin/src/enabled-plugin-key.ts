@@ -1,18 +1,18 @@
 /**
- * The exact key `engineering-orchestrator install` must write under
+ * The exact key `crabgic install` must write under
  * `.claude/settings.json`'s `enabledPlugins` map.
  *
  * LIVE-VERIFIED (2026-07-24) against a real `claude` 2.1.218 binary — NOT
  * asserted from memory/docs, per this repo's engine-fact-drift ground rule
  * (`roadmap/README.md`). Procedure: in a scratch project + scratch `HOME`,
  * `claude plugin marketplace add <this package's root>`, then
- * `claude plugin install engineering-orchestrator@engineering-orchestrator-
+ * `claude plugin install crabgic@crabgic-
  * marketplace --scope project`, then `claude plugin enable
- * engineering-orchestrator@engineering-orchestrator-marketplace --scope
+ * crabgic@crabgic-marketplace --scope
  * project`. The resulting project `.claude/settings.json` was:
  *
  * ```json
- * { "enabledPlugins": { "engineering-orchestrator@engineering-orchestrator-marketplace": true } }
+ * { "enabledPlugins": { "crabgic@crabgic-marketplace": true } }
  * ```
  *
  * — the key is `<plugin-name>@<marketplace-name>`, NOT the bare plugin

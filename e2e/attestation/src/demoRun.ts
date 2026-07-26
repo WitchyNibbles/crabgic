@@ -3,15 +3,15 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
-import { createGitPlumbing, nameBranch, publishLocal } from "@eo/git-engine";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
+import { createGitPlumbing, nameBranch, publishLocal } from "@crabgic/git-engine";
 import {
   lint,
   renderPrBody,
   renderPrTitle,
   renderReviewComment,
   type ArtifactKind,
-} from "@eo/renderer";
+} from "@crabgic/renderer";
 import type { DemoRunRecord } from "./demoBranchEvidenceHandoff.js";
 
 /**

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { MarkerReconciler } from "@eo/gateway";
+import type { MarkerReconciler } from "@crabgic/gateway";
 import type { GrafanaResourceKind } from "../resource-kinds.js";
 
 /**
@@ -29,7 +29,7 @@ export interface MarkerLookupDeps {
 }
 
 /**
- * Builds a `MarkerReconciler` (`@eo/gateway`'s marker-reconciliation
+ * Builds a `MarkerReconciler` (`@crabgic/gateway`'s marker-reconciliation
  * interface) for one Grafana resource kind. `findByMarker`'s `marker`
  * argument is exactly the kind-appropriate token
  * (`deriveDeterministicUid`/`deriveAnnotationMarkerTag`'s own output) — this

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { attributionNeutralStage, STAGE_NAME_ATTRIBUTION_NEUTRAL } from "./attribution-neutral.js";
 import type { LintStageInput } from "./lint-types.js";
 

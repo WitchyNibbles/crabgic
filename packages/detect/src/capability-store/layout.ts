@@ -1,19 +1,19 @@
 /**
  * On-disk layout for the content-addressed capability store — roadmap/12
  * §In scope, "Content-addressed capability store" bullet: "under
- * `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-
+ * `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-
  * store/` (same convention, pinned in 04)." Interface-ledger Gap 14:
- * `@eo/journal`'s `resolveCacheRoot` is the SOLE definition site of the
+ * `@crabgic/journal`'s `resolveCacheRoot` is the SOLE definition site of the
  * shared cache root — this module only nests this phase's own subpath
  * under it, mirroring `packages/git-engine/src/layout.ts`'s own
  * convention for `git-control/`.
  */
 import { join } from "node:path";
-import { resolveCacheRoot, type XdgEnv } from "@eo/journal";
+import { resolveCacheRoot, type XdgEnv } from "@crabgic/journal";
 
 export const CAPABILITY_STORE_SUBDIR = "capability-store";
 
-/** `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-store/` — the pinned capability-store path (Gap 14). */
+/** `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` — the pinned capability-store path (Gap 14). */
 export function resolveCapabilityStoreDir(env: XdgEnv, projectHash: string): string {
   return join(resolveCacheRoot(env, projectHash), CAPABILITY_STORE_SUBDIR);
 }

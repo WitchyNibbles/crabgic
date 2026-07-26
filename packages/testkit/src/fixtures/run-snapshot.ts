@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, RunSnapshotSchema, type RunSnapshot } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, RunSnapshotSchema, type RunSnapshot } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `RunSnapshot` fixture builder — roadmap/02 work item 10. */

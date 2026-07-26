@@ -1,5 +1,5 @@
-import { ConnectorError, type SecretReference } from "@eo/contracts";
-import { resolveSecretReference } from "@eo/gateway";
+import { ConnectorError, type SecretReference } from "@crabgic/contracts";
+import { resolveSecretReference } from "@crabgic/gateway";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import {
   assertBasicAuthPermitted,

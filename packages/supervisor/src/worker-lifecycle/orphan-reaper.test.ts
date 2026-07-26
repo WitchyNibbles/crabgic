@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, getLatestAttempt, type JournalStore } from "@eo/journal";
+import { createJournalStore, getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import { reapOrphansAtStartup } from "./orphan-reaper.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 

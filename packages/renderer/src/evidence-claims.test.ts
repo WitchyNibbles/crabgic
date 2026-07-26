@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { evidenceClaimsStage, STAGE_NAME_EVIDENCE_CLAIMS } from "./evidence-claims.js";
 import type { LintStageInput } from "./lint-types.js";
 

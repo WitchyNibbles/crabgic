@@ -12,7 +12,7 @@
  * run started by a different, already-exited process — and roadmap/05 owns
  * worker lifecycle regardless.
  *
- * The daemon cannot construct the driver itself (`@eo/engine-claude`
+ * The daemon cannot construct the driver itself (`@crabgic/engine-claude`
  * depends on THIS package, so composing the real adapter here would be a
  * cycle), so the dispatcher is injected — same seam discipline as
  * `driveRun`'s own `createAdapter`.
@@ -21,7 +21,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { createRunsRegistry } from "../registries/runs-registry.js";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";

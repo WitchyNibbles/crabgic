@@ -21,8 +21,8 @@ import type {
   AdjudicationCallback,
   AdjudicationContext,
   AdjudicationDecision,
-} from "@eo/engine-core";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/engine-core";
+import type { JournalStore } from "@crabgic/journal";
 
 export type AdjudicationPolicy = (
   toolName: string,

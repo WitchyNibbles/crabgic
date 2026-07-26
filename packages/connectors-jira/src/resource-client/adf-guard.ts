@@ -1,5 +1,5 @@
-import { ConnectorError } from "@eo/contracts";
-import { validateAdfSafeSubset, type AdfDocument, type AdfNode } from "@eo/renderer";
+import { ConnectorError } from "@crabgic/contracts";
+import { validateAdfSafeSubset, type AdfDocument, type AdfNode } from "@crabgic/renderer";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { containsSecretShapedContent } from "../security/secret-patterns.js";
 
@@ -25,7 +25,7 @@ import { containsSecretShapedContent } from "../security/secret-patterns.js";
  *
  *  - not even a minimal `{type:"doc", content:[...]}` shape.
  *  - a disallowed node/mark type or unsafe (non-`https:`) link href
- *    (`@eo/renderer`'s own `validateAdfSafeSubset` — never re-derived
+ *    (`@crabgic/renderer`'s own `validateAdfSafeSubset` — never re-derived
  *    here).
  *  - secret-shaped plain text extracted from the document (this
  *    connector's own addition — `validateAdfSafeSubset` only checks

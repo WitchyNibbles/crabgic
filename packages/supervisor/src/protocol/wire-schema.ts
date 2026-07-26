@@ -5,7 +5,7 @@
  * handshake rejects a mismatched protocol version before serving a
  * request." One line of ndjson per message; every message validates
  * against exactly one branch of `WireMessageSchema` below — mirrors this
- * repo's existing discriminated-union style (`@eo/journal`'s
+ * repo's existing discriminated-union style (`@crabgic/journal`'s
  * `JournalEntrySchema`): hand-written `.strict()` branches, discriminated
  * on `type`, not a `.map()`-generated union.
  *
@@ -17,7 +17,7 @@
  */
 
 import { z } from "zod";
-import { NonEmptyStringSchema } from "@eo/contracts";
+import { NonEmptyStringSchema } from "@crabgic/contracts";
 
 export const PROTOCOL_VERSION = 1;
 

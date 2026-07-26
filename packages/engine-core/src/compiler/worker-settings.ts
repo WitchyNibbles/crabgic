@@ -1,4 +1,4 @@
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import {
   WorkerSettingsJsonSchema,
   WorkerSdkOptionsSchema,

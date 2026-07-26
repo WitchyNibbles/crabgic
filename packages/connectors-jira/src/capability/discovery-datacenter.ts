@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@crabgic/contracts";
 import { z } from "zod";
 import type { JiraDatacenterHttpContext } from "../resource-client/datacenter/jira-datacenter-http-context.js";
 import { jiraDatacenterGetJson } from "../resource-client/datacenter/jira-datacenter-http-context.js";

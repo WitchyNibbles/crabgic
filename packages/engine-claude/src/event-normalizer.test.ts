@@ -272,8 +272,8 @@ describe("normalizeSdkMessage — init/assistant/toolUse/result/api_retry mappin
       toolUseId: "toolu_01CYZ5Gtij91ebmb37LF7Beo",
       toolName: "Bash",
       toolInput: {
-        command: "echo A=$EO_CHECK_A B=$EO_CHECK_B",
-        description: "Output environment variables EO_CHECK_A and EO_CHECK_B",
+        command: "echo A=$CRABGIC_CHECK_A B=$CRABGIC_CHECK_B",
+        description: "Output environment variables CRABGIC_CHECK_A and CRABGIC_CHECK_B",
       },
     });
   });

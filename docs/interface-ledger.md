@@ -1,6 +1,6 @@
-# Interface Ledger — Engineering Orchestrator Roadmap
+# Interface Ledger — Crabgic Roadmap
 
-This file is the **binding cross-phase interface contract** for the crabgic / Engineering Orchestrator
+This file is the **binding cross-phase interface contract** for the crabgic / Crabgic
 roadmap (`roadmap/00-*.md` through `roadmap/23-*.md`, indexed by `roadmap/README.md`). It records the single
 ruling decision for each of 15 cross-phase interface gaps that were identified against the roadmap and
 independently adjudicated by four parallel resolver passes, plus **Gap 16**, which was identified later,
@@ -46,7 +46,7 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 
 | # | Gap | Ruling (one line) |
 |---|---|---|
-| [1](#gap-1--gateway-mcp-tool-surface-is-fragmented) | Gateway MCP tool surface fragmented | One `eo_gateway` registry hosted by Phase 16; `change_set.*`/`learning.*` deleted; `run.status`/`run.cancel` forwarded over UDS |
+| [1](#gap-1--gateway-mcp-tool-surface-is-fragmented) | Gateway MCP tool surface fragmented | One `crabgic_gateway` registry hosted by Phase 16; `change_set.*`/`learning.*` deleted; `run.status`/`run.cancel` forwarded over UDS |
 | [2](#gap-2--cli-gateway-mcp-subcommand-never-declared) | CLI `gateway mcp` never declared | Declared in Phase 09, backend Phase 16's registry, no user-facing flags |
 | [3](#gap-3--packagesengine-core-and-renderer-core-are-unscaffolded) | `engine-core`/`renderer-core` unscaffolded | `engine-core` = 18th package (Phase 01); `renderer-core` = module inside `packages/contracts` (Phase 02), not a package |
 | [4](#gap-4--parkedrate_limit-is-missing-from-the-phase-02-run-lifecycle-state-machine) | `parked:rate_limit` missing from run lifecycle | New orthogonal `WorkUnitAttemptStatus` union (6 members); Run lifecycle untouched |
@@ -56,12 +56,12 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [8](#gap-8--resultsubmit-vs-result_submit) | `result.submit` vs `result_submit` | `result.submit` (dot form) wins |
 | [9](#gap-9--phase-12--phase-13-consumption-claim-contradicts-the-dependency-graph) | Phase 12→13 consumption claim contradicts the graph | Fixed: consumed by Phase 11, not 13 |
 | [10](#gap-10--capability-flag-label-drift) | Capability-flag label drift | Phase 02's labels win verbatim: `closing transitions`, `bulk mutations` |
-| [11](#gap-11--eo_gateway--mcpeo_gateway-literal-names-never-echoed-in-the-roadmap) | `eo_gateway` literal never pinned | Named constant `GATEWAY_MCP_SERVER_NAME` owned by Phase 02, imported everywhere |
+| [11](#gap-11--crabgic_gateway--mcpcrabgic_gateway-literal-names-never-echoed-in-the-roadmap) | `crabgic_gateway` literal never pinned | Named constant `GATEWAY_MCP_SERVER_NAME` owned by Phase 02, imported everywhere |
 | [12](#gap-12--permission-rule-syntax-drift-from-the-cited-baseline) | Permission-rule syntax drift | No space before colon; only the 4 doc-confirmed literals; wider cases routed to a Phase 00 probe |
 | [13](#gap-13--minor-phase-03s-sources-field-never-cites-docsengine-baselinemd) | Phase 03 doesn't cite `docs/engine-baseline.md` | Citation added |
 | [14](#gap-14--minor-two-independent-xdg-cache-usages-with-no-shared-pinned-path-constant) | Two unpinned "XDG cache" usages | Pinned once in Phase 04, sibling to `$XDG_STATE_HOME` |
 | [15](#gap-15--minor-engine-live-ci-job-name-and-live-test-tag-never-explicitly-linked) | `engine-live`/`@live` link never stated | Phase 01 states Phase 06 wires it; Phase 06 does |
-| [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `EO_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
+| [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `CRABGIC_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
 
 ---
 
@@ -74,7 +74,7 @@ single server. In the roadmap as originally drafted, only `tracker.*`/`observabi
 contradictory, and a `change_set.*` and a `learning.*` family were asserted by some readings with zero
 roadmap presence.
 
-**Ruling:** There is exactly **one** MCP server, `eo_gateway` (`GATEWAY_MCP_SERVER_NAME`, Gap 11), exposing a
+**Ruling:** There is exactly **one** MCP server, `crabgic_gateway` (`GATEWAY_MCP_SERVER_NAME`, Gap 11), exposing a
 single **extensible tool registry** hosted by Phase 16 (`packages/gateway`) and booted by Phase 09's
 `gateway mcp` CLI subcommand (Gap 2).
 
@@ -160,28 +160,28 @@ and forwarded `run.*`.
 
 ## Gap 2 — CLI `gateway mcp` subcommand never declared
 
-**Gap statement:** Adaptation §6.1 names the literal invocation `engineering-orchestrator gateway mcp` as the
+**Gap statement:** Adaptation §6.1 names the literal invocation `crabgic gateway mcp` as the
 exact `.mcp.json` stdio command Phase 10 writes, but no earlier draft of Phase 09 (owner of the CLI surface)
 declared any such subcommand.
 
 **Ruling:** `gateway mcp` is a command owned and declared by Phase 09 (`packages/cli`), taking **no
-user-facing flags**, running as a **long-running stdio process**. It boots the `eo_gateway` MCP server over
+user-facing flags**, running as a **long-running stdio process**. It boots the `crabgic_gateway` MCP server over
 Phase 16's extensible tool registry (Gap 1), addressed by the `GATEWAY_MCP_SERVER_NAME` constant (Gap 11).
 Phase 09 supplies only the argv shim, help text, and stdio boot — it implements none of the registered
 tools' logic. This is the exact string Phase 10 writes as the `command`/`args` of the `.mcp.json` entry keyed
-`GATEWAY_MCP_SERVER_NAME`: `{"eo_gateway": {"command": "engineering-orchestrator", "args": ["gateway",
+`GATEWAY_MCP_SERVER_NAME`: `{"crabgic_gateway": {"command": "crabgic", "args": ["gateway",
 "mcp"]}}` (byte-golden-tested in Phase 10). Full 8-family tool-surface completeness (zero `NOT_IMPLEMENTED`)
 is explicitly deferred to Phase 23's release gate, not required at Phase 09/16's own build time.
 
 **Phases affected:** 09, 16
 
 **Verified in:**
-- `09-cli-and-doctor.md` §In scope — *"gateway mcp: boots the `eo_gateway` MCP server (stdio) over
+- `09-cli-and-doctor.md` §In scope — *"gateway mcp: boots the `crabgic_gateway` MCP server (stdio) over
   `packages/gateway`'s (16) extensible tool registry…"*; §Work items 1–2; §Exit criteria, line 203 —
   *"`gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client… full
   8-family completeness remains a phase-23 release gate."*
-- `10-plugin-and-installer.md` §Work items 2 — golden-file test of the `{"eo_gateway": {"command":
-  "engineering-orchestrator", "args": ["gateway", "mcp"]}}` shape; §Exit criteria — byte-for-byte assertion
+- `10-plugin-and-installer.md` §Work items 2 — golden-file test of the `{"crabgic_gateway": {"command":
+  "crabgic", "args": ["gateway", "mcp"]}}` shape; §Exit criteria — byte-for-byte assertion
   against the same literal.
 - `23-release-hardening.md` §Interfaces consumed, row "09," line 69 — *"Full CLI surface incl. `gateway mcp`
   (Gap 2)"*; §Exit criteria, line 129 — "Gap 1/Gap 2's explicit phase-23 obligation."
@@ -507,17 +507,17 @@ and Phase 18 alone needed the edit.
 
 ---
 
-## Gap 11 — `eo_gateway` / `mcp__eo_gateway__*` literal names never echoed in the roadmap
+## Gap 11 — `crabgic_gateway` / `mcp__crabgic_gateway__*` literal names never echoed in the roadmap
 
 **Gap statement:** The adaptation doc asserts these as settled, verified identifiers (§2 row 11, Appendix B),
 but no roadmap phase's own text ever wrote the literal string — three different phases (06, 10, 16) need to
 agree on it byte-for-byte for `--strict-mcp-config` to resolve correctly.
 
-**Ruling:** The server name is pinned as a single named constant, `GATEWAY_MCP_SERVER_NAME = "eo_gateway"`,
+**Ruling:** The server name is pinned as a single named constant, `GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"`,
 exported from `packages/contracts` (Phase 02) — **not** independently hand-typed as a literal string in each
 consuming phase. Every consumer imports the constant: Phase 03's compiler derives the mandatory
 `mcp__${GATEWAY_MCP_SERVER_NAME}__*` permission-allow entry from it; Phase 06's `mcpServers` key and
-`strictMcpConfig` allowlist reference it (with a dedicated test asserting zero hand-typed `"eo_gateway"`
+`strictMcpConfig` allowlist reference it (with a dedicated test asserting zero hand-typed `"crabgic_gateway"`
 literals anywhere in `packages/engine-claude`); Phase 10's `.mcp.json` entry key is golden-tested against it;
 Phase 16 registers its SDK MCP server under it and derives the `mcp__${GATEWAY_MCP_SERVER_NAME}__<tool>`
 wire-prefix from it (pending — see below). Phase 02 enforces itself as the sole definition site with a
@@ -527,7 +527,7 @@ repo-wide grep/golden-value CI check.
 registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
 
 **Verified in:**
-- `02-contracts-and-schemas.md` §In scope — *"`GATEWAY_MCP_SERVER_NAME` constant: `"eo_gateway"` — the single
+- `02-contracts-and-schemas.md` §In scope — *"`GATEWAY_MCP_SERVER_NAME` constant: `"crabgic_gateway"` — the single
   literal every engine-side MCP registration derives from… no phase hand-types the literal a second time"*;
   §Exit criteria — "a repo-wide grep/golden-value CI check fails if the literal appears a second time under
   `packages/*`."
@@ -535,27 +535,27 @@ registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
   `mcp__${GATEWAY_MCP_SERVER_NAME}__*` allow entry is derived programmatically from `GATEWAY_MCP_SERVER_NAME`
   (constant, 02…), never hand-typed a fourth literal (Gap 11)."*
 - `06-claude-engine-adapter.md` §In scope "Gateway wiring (Gap 11, Gap 2)," line 17; §Exit criteria, line
-  101 — "zero hand-typed `"eo_gateway"` literals anywhere in `packages/engine-claude` — `gateway-name-
+  101 — "zero hand-typed `"crabgic_gateway"` literals anywhere in `packages/engine-claude` — `gateway-name-
   reference.test`."
-- `09-cli-and-doctor.md` §Interfaces consumed, line 129 — *"`GATEWAY_MCP_SERVER_NAME = "eo_gateway"` —
+- `09-cli-and-doctor.md` §Interfaces consumed, line 129 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` —
   `gateway mcp`'s server identity."*
 - `10-plugin-and-installer.md` §In scope — ".mcp.json entry keyed `GATEWAY_MCP_SERVER_NAME`"; §Work items 2 —
   golden-file test against the constant.
-- `11-intake-contract-approval.md` §Interfaces consumed, line 68 — *"`GATEWAY_MCP_SERVER_NAME = "eo_gateway"`,
+- `11-intake-contract-approval.md` §Interfaces consumed, line 68 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"`,
   constant owned by 02 — Gap 11"*; imports the constant to register `project.inspect`/`contract.approve` into
   the shared tool registry (Gap 1).
 - `12-stack-detection-quarantine.md` §Interfaces consumed, line 43 — *"`GATEWAY_MCP_SERVER_NAME` constant
-  (`"eo_gateway"`)"* used for its `capability.audit`/`capability.approve` tool-registry registration.
+  (`"crabgic_gateway"`)"* used for its `capability.audit`/`capability.approve` tool-registry registration.
 - `23-release-hardening.md` §Interfaces consumed, row "02," line 62 — lists `GATEWAY_MCP_SERVER_NAME` among
   the release-gated contracts.
 - `16-gateway-core.md` now references the constant explicitly — §In scope names `GATEWAY_MCP_SERVER_NAME`
-  directly ("this phase hosts the one `eo_gateway` MCP server (`GATEWAY_MCP_SERVER_NAME`, constant owned by
+  directly ("this phase hosts the one `crabgic_gateway` MCP server (`GATEWAY_MCP_SERVER_NAME`, constant owned by
   02)"); §Interfaces consumed states *"this phase's SDK server registration and every wire-level
   `mcp__${GATEWAY_MCP_SERVER_NAME}__<tool>` name derive from this; never a second hand-typed literal"* —
   matching every *other* phase's description of what Phase 16 does with it.
 
 **Where the 4 resolvers disagreed:** A real conflict. Two resolvers proposed hand-typing the literal
-`"eo_gateway"` independently into Phase 16/10/03's own prose (no shared constant, just matching strings by
+`"crabgic_gateway"` independently into Phase 16/10/03's own prose (no shared constant, just matching strings by
 convention). The other two proposed the shared named-constant approach actually shipped. The hand-typed
 approach is rejected — Phase 02 owns the constant and every consumer imports it; the exit criteria in Phase
 02/06 (the grep check; the zero-hand-typed-literal test) exist specifically to prevent the rejected approach
@@ -625,13 +625,13 @@ cache" with no shared literal path, risking the two landing in different directo
 
 **Ruling:** The shared cache-root constant is pinned exactly **once**, in Phase 04 (`packages/journal`), as
 the sibling of Phase 04's existing `$XDG_STATE_HOME` state-root bullet:
-`$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/`. Phase 07's control clone nests at
+`$XDG_CACHE_HOME/crabgic/<project-hash>/`. Phase 07's control clone nests at
 `.../git-control/`; Phase 12's capability store nests at `.../capability-store/`. Phase 07 and Phase 12 cite
 Phase 04's constant rather than independently inventing "XDG cache" phrasing or a differing path-segment
 order.
 
 **Phases affected:** 04, 05, 07, 08, 12, 14, 23 — 04 pins the cache-root constant, 07/12 nest under it,
-08/14/23 embed the `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/…` subpath convention
+08/14/23 embed the `$XDG_CACHE_HOME/crabgic/<project-hash>/…` subpath convention
 (08:21/59, 14:48, 23:67), and 05 embeds the same pinned convention via its `$XDG_STATE_HOME/…` state-root
 sibling (05:24) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/10/11)
 
@@ -640,14 +640,14 @@ sibling (05:24) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/1
   orchestrator/<project-hash>/` — cache root, pinned here as a sibling constant (Gap 14): 07's control clone
   nests at `.../git-control/`, 12's capability store nests at `.../capability-store/`. 04 pins the shared
   root; 07/12 own writing under it"*; §Interfaces produced, line 47 — same constant as an exported layout
-  constant; §Exit criteria — "`$XDG_STATE_HOME`/`$XDG_CACHE_HOME` engineering-orchestrator roots are defined
+  constant; §Exit criteria — "`$XDG_STATE_HOME`/`$XDG_CACHE_HOME` crabgic roots are defined
   exactly once in this package."
 - `07-git-control-repo-worktrees.md` §In scope, "Control clone," line 17 — "into
-  `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/` (cache-root convention pinned in
+  `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` (cache-root convention pinned in
   04)"; §Interfaces produced, line 39, and §Exit criteria, line 80 — the same path repeated as a
   path-convention test.
 - `12-stack-detection-quarantine.md` §In scope, line 21 — "Content-addressed capability store under
-  `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-store/` (same convention, pinned in
+  `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (same convention, pinned in
   04)."
 - `23-release-hardening.md` §Interfaces consumed, row "07," line 67 — cites the identical path.
 
@@ -702,7 +702,7 @@ A/B runner; `requirement-traceability.json`, produced by 23's containerized Graf
 rather than an oversight: they are produced outside the checkout being scored. Nothing in the roadmap or in this ledger says
 where such a record lives, how the CI-ingest override that carries it is named, or what a check must do when
 the record it finds is malformed. `roadmap/23-release-hardening.md` did not mention `docs/evidence/` at all —
-zero hits across the file, until the coordinated edit recorded below — so the directory, the `EO_*` variable
+zero hits across the file, until the coordinated edit recorded below — so the directory, the `CRABGIC_*` variable
 names and the read-failure behaviour were each being decided independently, per check, by whoever wrote the
 check. When this gap was identified the two
 existing consumers diverged in a small but real way (blank-string handling of the override — since
@@ -716,12 +716,12 @@ produces itself — follows one convention, in three parts:
    repository root the check was handed. `<record-name>` is `kebab-case` and names the thing recorded, not
    the check reading it (`arm64-run-record`, `perf-contract-rerun`). This is the *committed-artifact* seam
    and is deliberately distinct from Gap 14's runtime
-   `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/…` cache convention: Gap 14 governs machine-local
+   `$XDG_CACHE_HOME/crabgic/<project-hash>/…` cache convention: Gap 14 governs machine-local
    state a running orchestrator writes, Gap 16 governs release evidence that is read as part of scoring a
    frozen release candidate. Neither ruling constrains the other.
-2. **Environment override.** Each record declares exactly one override variable, named `EO_` +
-   `SCREAMING_SNAKE_CASE` of the record's own subject (`EO_ARM64_RUN_RECORD`,
-   `EO_PERF_CONTRACT_RERUN_RECORD`, `EO_REQUIREMENT_TRACEABILITY_RECORD`), holding an **absolute path to the record file** — not a directory, not
+2. **Environment override.** Each record declares exactly one override variable, named `CRABGIC_` +
+   `SCREAMING_SNAKE_CASE` of the record's own subject (`CRABGIC_ARM64_RUN_RECORD`,
+   `CRABGIC_PERF_CONTRACT_RERUN_RECORD`, `CRABGIC_REQUIREMENT_TRACEABILITY_RECORD`), holding an **absolute path to the record file** — not a directory, not
    the record's contents. The override wins when set to a non-blank value; unset or blank falls back to the
    in-repo path. The override is the primary path in CI, and the reason is structural rather than
    convenience: these records name the release-candidate object ID they were taken against, and *committing*
@@ -764,7 +764,7 @@ its containerized binding was taken against, `checkRequirementTraceability` requ
 candidate being scored, and committing a regenerated artifact advances `HEAD` past the object ID the new
 artifact names. The item was therefore unclearable by construction — it reported the committed artifact as
 describing "a different release candidate" at every cut. It now declares
-`EO_REQUIREMENT_TRACEABILITY_RECORD` (`e2e/attestation/src/requirementTraceability.ts`), resolved with the
+`CRABGIC_REQUIREMENT_TRACEABILITY_RECORD` (`e2e/attestation/src/requirementTraceability.ts`), resolved with the
 same `override === undefined || override.trim() === ""` fallback the other two use, and
 `.github/workflows/release-e2e.yml` writes the artifact to `$RUNNER_TEMP` and exports the variable — the
 producer now writes exactly where the consumer reads. Unlike the other two records this one is ALSO committed
@@ -772,7 +772,7 @@ in-tree, which remains honest under part (2)'s own words ("a record archived alo
 post-hoc audit"): the committed copy is the audit trail, the override is what a live cut scores.
 
 **Coordinated phase-file edit — performed.** The rule at the top of this file (`:20-24`) requires a path
-convention and an `EO_*` variable-naming rule to be landed across every phase file listed under "Phases
+convention and an `CRABGIC_*` variable-naming rule to be landed across every phase file listed under "Phases
 affected". All three now carry it, each in its own idiom and in the section the record actually belongs to:
 `roadmap/01-repo-bootstrap.md` §Interfaces produced (the CI-skeleton bullet, where the ARM64 leg's
 `arm64-run-record` artifact is produced), `roadmap/15-performance-contracts.md` §Interfaces produced (a
@@ -787,7 +787,7 @@ separate ground its "Origin" line states: owner ratification.
 
 **Verified in:**
 - `e2e/attestation/src/arm64Verification.ts:70-71` — `ARM64_RUN_RECORD_PATH =
-  "docs/evidence/phase-23/arm64-run-record.json"`, `ARM64_RUN_RECORD_ENV = "EO_ARM64_RUN_RECORD"`; `:77-92`
+  "docs/evidence/phase-23/arm64-run-record.json"`, `ARM64_RUN_RECORD_ENV = "CRABGIC_ARM64_RUN_RECORD"`; `:77-92`
   `Arm64RunRecordSchema`, `.strict()`; `:243-266` `readArm64RunRecord` — override-then-in-repo resolution,
   `safeParse`, `{ outcome: "malformed", path, problem }` rather than a throw. Two separate in-file
   rationales, cited separately because they are different paragraphs: `:43-69` explains why the override is
@@ -804,10 +804,10 @@ separate ground its "Origin" line states: owner ratification.
 - `.github/workflows/ci.yml:109-129` — the producer: writes `arm64-run-record.json` and uploads it as the
   `arm64-run-record` artifact. `.github/workflows/release-e2e.yml:125-189` — the consumer-side ingest step:
   `gh run download … -n arm64-run-record` into a directory outside the checkout, then
-  `echo "EO_ARM64_RUN_RECORD=$RECORD" >> "$GITHUB_ENV"`.
+  `echo "CRABGIC_ARM64_RUN_RECORD=$RECORD" >> "$GITHUB_ENV"`.
 - `e2e/attestation/src/requirementTraceability.ts` — `TRACEABILITY_INPUT_PATH =
   "docs/evidence/phase-23/requirement-traceability.json"`, `TRACEABILITY_RECORD_ENV =
-  "EO_REQUIREMENT_TRACEABILITY_RECORD"`; `readRequirementTraceabilityInput` resolves override-then-in-repo
+  "CRABGIC_REQUIREMENT_TRACEABILITY_RECORD"`; `readRequirementTraceabilityInput` resolves override-then-in-repo
   with the `trim()` fallback, and reads through `parseTraceabilityEvidenceFile`
   (`traceabilityEvidence.ts`), which `safeParse`s a `.strict()` schema and returns
   `{ ok: false, error }` rather than throwing — surfaced by the check as the stated reason
@@ -816,14 +816,14 @@ separate ground its "Origin" line states: owner ratification.
   unreadable JSON reported as a FAIL reason rather than thrown; a missing override target does not
   silently fall back to the committed copy).
 - `.github/workflows/release-e2e.yml` — the producer side: runs the containerized Grafana binding
-  (`e2e/attestation/vitest.live.config.ts`) with `EO_REQUIREMENT_TRACEABILITY_RECORD` pointed at
+  (`e2e/attestation/vitest.live.config.ts`) with `CRABGIC_REQUIREMENT_TRACEABILITY_RECORD` pointed at
   `$RUNNER_TEMP`, then exports it to `$GITHUB_ENV` for the harness step. Bound to the constant by
   `requirementTraceability.test.ts`'s "release-e2e.yml produces what this check consumes", which reads the
   real workflow file rather than a fixture. The step never fails the job: an unproduced binding is the
   honest input "no confirmed remote revision for this candidate", reported by the gate with reasons.
 - `e2e/attestation/src/performanceContracts.ts:657-659` — `PERFORMANCE_RERUN_RECORD_PATH =
   "docs/evidence/phase-23/perf-contract-rerun.json"`, `PERFORMANCE_RERUN_RECORD_ENV =
-  "EO_PERF_CONTRACT_RERUN_RECORD"`; `:667-688` `PerformanceRerunRecordSchema`, `.strict()`; `:713-752`
+  "CRABGIC_PERF_CONTRACT_RERUN_RECORD"`; `:667-688` `PerformanceRerunRecordSchema`, `.strict()`; `:713-752`
   `readPerformanceRerunEvidence` — same resolution order, `safeParse`, and a
   `PerformanceRerunEvidence` union in which "no record and no explanation why" is unrepresentable;
   `:809-814` `PERFORMANCE_CONTRACT_RERUN_UNEVIDENCED_REASON`, the blocking reason emitted while the record is
@@ -877,7 +877,7 @@ round", and `grep -rn "ratif" docs/ roadmap/` finds no such record anywhere in t
 owner decision exists and is cited on this line, **this entry is provisional**: it may be relied on by the
 code that implements it, and it must not be cited as settled authority against a phase file the way Gaps
 1-15 can be. It is a **new** ruling and contradicts no ruling above —
-no existing entry names `docs/evidence/`, any `EO_*` variable, or a record-read failure mode. Gap 14 is the
+no existing entry names `docs/evidence/`, any `CRABGIC_*` variable, or a record-read failure mode. Gap 14 is the
 only adjacent entry and governs a disjoint (runtime-cache) path space, as part (1) states explicitly.
 
 ---

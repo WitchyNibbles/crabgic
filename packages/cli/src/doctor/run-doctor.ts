@@ -11,8 +11,8 @@ import {
   resolveStateRoot,
   type JournalStore,
   type XdgEnv,
-} from "@eo/journal";
-import { resolveSupervisorSocketPath, SUPERVISOR_SOCKET_MODE } from "@eo/supervisor";
+} from "@crabgic/journal";
+import { resolveSupervisorSocketPath, SUPERVISOR_SOCKET_MODE } from "@crabgic/supervisor";
 import { createRealProcessProbe } from "./process-probe.js";
 import { runDoctorChecks, type DoctorCheck, type DoctorReport } from "./framework.js";
 import { createEngineVersionCheck } from "./checks/engine-version.js";

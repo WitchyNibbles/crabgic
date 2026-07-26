@@ -4,7 +4,7 @@
  * invariance; conflicts, renames, SHA-256 repos, submodules, LFS, filters,
  * hooks; branch/commit goldens incl. attribution-leak fixtures."
  */
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   runAttributionLeakBlockedScenario,
   runCleanBranchCommitGoldenScenario,

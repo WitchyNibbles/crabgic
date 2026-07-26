@@ -11,7 +11,7 @@
  * supplies only detection + the journaled record + the hook's call site,
  * never the policy answering it. The default hook is a no-op.
  */
-import { recordAttempt, type JournalStore } from "@eo/journal";
+import { recordAttempt, type JournalStore } from "@crabgic/journal";
 import type { WorkerRecord } from "../router/operations.js";
 import type { WorkersRegistry } from "../registries/workers-registry.js";
 

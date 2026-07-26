@@ -1,5 +1,5 @@
 /**
- * `@eo/detect` public barrel — roadmap/12-stack-detection-quarantine.md.
+ * `@crabgic/detect` public barrel — roadmap/12-stack-detection-quarantine.md.
  * Stack detection & capability quarantine: pure per-ecosystem detectors
  * producing `StackEvidence` (02), plus the quarantine pipeline every
  * executable capability passes through before becoming a digest-pinned

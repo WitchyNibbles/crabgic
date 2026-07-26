@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { createGateRegistry } from "./registry.js";
 import {

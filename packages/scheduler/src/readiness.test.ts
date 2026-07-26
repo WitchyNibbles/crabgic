@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildWorkUnit } from "@eo/testkit";
-import type { CollisionVerdict } from "@eo/git-engine";
+import { buildWorkUnit } from "@crabgic/testkit";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 import { buildOverlapAdjacency, computeReadyUnits } from "./readiness.js";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";

@@ -4,7 +4,7 @@ import {
   ConnectorError,
   CONNECTOR_ERROR_KINDS,
   CURRENT_SCHEMA_VERSION,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { folderDefinition } from "../resources/definitions/folder.js";
 import { contactPointDefinition } from "../resources/definitions/contact-point.js";
 import { notificationTemplateDefinition } from "../resources/definitions/notification-template.js";
@@ -18,7 +18,7 @@ import type { GrafanaParsedResource } from "../resources/resource-definitions.js
  * roadmap/20-grafana-adapters.md §Test plan, "Conformance": "every thrown
  * error is one of 02's 10 canonical members with no raw Grafana response
  * body attached (leak-hunt assertion)." This sweeps every error-producing
- * surface THIS package adds on top of `@eo/gateway`'s own (already-tested)
+ * surface THIS package adds on top of `@crabgic/gateway`'s own (already-tested)
  * canonical-error mapping.
  */
 

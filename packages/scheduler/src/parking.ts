@@ -11,7 +11,7 @@
  * Schema` (04's `journal-payloads.ts`, itself typed against 02's closed
  * `JournalEntryType`/`WorkUnitAttemptStatus` unions) carries only `status`
  * /`previousStatus`/`sessionId` — no epoch-timestamp field for a rate-limit
- * RESET time. Neither `@eo/contracts` nor `@eo/journal` may be edited by
+ * RESET time. Neither `@crabgic/contracts` nor `@crabgic/journal` may be edited by
  * this phase (per this phase's own build constraints), and `JournalEntry
  * Type` is closed at exactly 13 members (interface-ledger Gap 5) — adding
  * a 14th, dedicated member is out of this phase's authority. This module
@@ -34,7 +34,7 @@ import {
   recordAttempt,
   type JournalStore,
   type WorkUnitAttemptRecord,
-} from "@eo/journal";
+} from "@crabgic/journal";
 import { GlobalPauseActiveError } from "./errors.js";
 
 /** The `decision` value this module's park-timer marker entries always carry — never confused with a real adjudication verdict. */
@@ -103,7 +103,7 @@ async function recordParkTimer(
 /**
  * The latest park-timer marker recorded for `subjectId` (a `WorkUnitId` or
  * `GLOBAL_PAUSE_SUBJECT_ID`) — `undefined` if none exists. Scans in
- * ascending `seq` order and keeps the last match, mirroring `@eo/journal`'s
+ * ascending `seq` order and keeps the last match, mirroring `@crabgic/journal`'s
  * own `getLatestAttempt` convention.
  */
 export async function getLatestParkTimer(
@@ -137,7 +137,7 @@ export interface ParkWorkUnitOptions {
   readonly resetsAt: number;
   /** `true` for an account-wide signal (roadmap/13: "account-wide signals pause globally") — additionally records a GLOBAL park timer. */
   readonly accountWide?: boolean;
-  /** Threaded onto the recorded `parked:rate_limit` attempt — see `@eo/journal`'s `recordAttempt` doc comment (crash-recovery correctness fix). Optional; omitted by callers with no runId in scope. */
+  /** Threaded onto the recorded `parked:rate_limit` attempt — see `@crabgic/journal`'s `recordAttempt` doc comment (crash-recovery correctness fix). Optional; omitted by callers with no runId in scope. */
   readonly runId?: string;
 }
 

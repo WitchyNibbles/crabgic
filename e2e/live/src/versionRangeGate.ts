@@ -6,17 +6,17 @@ import {
   EngineVersionRejectedError,
   TESTED_ENGINE_VERSION,
   type EngineVersionRange,
-} from "@eo/engine-claude";
+} from "@crabgic/engine-claude";
 
 const execFile = promisify(execFileCb);
 
 /**
  * Pinned-range gate wiring — roadmap/23-release-hardening.md work item 7:
  * "assert the live `claude --version` is within `docs/engine-baseline.md`'s
- * accepted range using `@eo/engine-claude`'s version-gate (2.1.207-2.1.218
+ * accepted range using `@crabgic/engine-claude`'s version-gate (2.1.207-2.1.218
  * when that work item was written; 2.1.207-2.1.220 as of the 2026-07-25
  * narrow re-baseline)." This module never re-derives the range or the
- * comparison logic — both are `@eo/engine-claude`'s own (`./version-gate.
+ * comparison logic — both are `@crabgic/engine-claude`'s own (`./version-gate.
  * ts`, re-exported from that package's public barrel) — it only wires an
  * injectable "how do we get the live version string" probe onto that
  * existing gate, so this harness can assert against whatever `claude` is
@@ -46,7 +46,7 @@ export function parseClaudeVersionOutput(rawOutput: string): string | undefined 
  * real subprocess either way" convention `ProcessProbeFn` already
  * establishes elsewhere in this repo. Needs no auth/network/subscription —
  * a bare version query — so `realClaudeVersionProbe` below is safe to run
- * unconditionally (never gated behind `EO_LIVE`), the same way the sandbox
+ * unconditionally (never gated behind `CRABGIC_LIVE`), the same way the sandbox
  * self-test's `bwrap --version` presence check is safe.
  */
 export function createClaudeVersionProbe(
@@ -82,7 +82,7 @@ export type PinnedRangeVerdict =
 
 /**
  * Runs `probe`, then feeds a successfully-read version string through
- * `@eo/engine-claude`'s `assertEngineVersionAccepted` — NEVER throws;
+ * `@crabgic/engine-claude`'s `assertEngineVersionAccepted` — NEVER throws;
  * every outcome (probe failure, malformed version, out-of-range version,
  * in-range version) is a distinct, inspectable `PinnedRangeVerdict` member,
  * matching this harness's own release-gate reporting shape (a doctor-style
@@ -90,7 +90,7 @@ export type PinnedRangeVerdict =
  */
 export async function checkPinnedRange(
   probe: VersionProbeFn,
-  /** Injectable so a test can prove the defensive re-throw branch below (any non-`EngineVersionRejectedError` failure must propagate, never be swallowed) without needing a real, otherwise-unreachable engine-internal error. Defaults to the real `@eo/engine-claude` gate. */
+  /** Injectable so a test can prove the defensive re-throw branch below (any non-`EngineVersionRejectedError` failure must propagate, never be swallowed) without needing a real, otherwise-unreachable engine-internal error. Defaults to the real `@crabgic/engine-claude` gate. */
   assertVersionAccepted: (version: string) => void = assertEngineVersionAccepted,
 ): Promise<PinnedRangeVerdict> {
   const probed = await probe();
@@ -111,5 +111,5 @@ export async function checkPinnedRange(
   }
 }
 
-/** Re-exported for callers/tests that want to cite the tested/pinned point version alongside a `checkPinnedRange` verdict without importing `@eo/engine-claude` directly. */
+/** Re-exported for callers/tests that want to cite the tested/pinned point version alongside a `checkPinnedRange` verdict without importing `@crabgic/engine-claude` directly. */
 export { ACCEPTED_ENGINE_VERSION_RANGE, TESTED_ENGINE_VERSION };

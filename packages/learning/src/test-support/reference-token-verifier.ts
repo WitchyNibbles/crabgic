@@ -8,9 +8,9 @@
  * and single-use consumption.
  *
  * This is deliberately NOT the real mechanism, and this package never
- * imports `@eo/cli` (see `LearningReviewTokenVerifier`'s own doc comment
+ * imports `@crabgic/cli` (see `LearningReviewTokenVerifier`'s own doc comment
  * in `../proposal-store/registry.ts` for why: the dependency direction is
- * `@eo/cli` -> `@eo/learning`, never the reverse). It exists so this
+ * `@crabgic/cli` -> `@crabgic/learning`, never the reverse). It exists so this
  * package's OWN tests (`../proposal-store/registry.test.ts`,
  * `../red-team/self-promotion.redteam.test.ts`,
  * `../red-team/no-bypass.redteam.test.ts`, `../pipeline.e2e.test.ts`) can
@@ -20,7 +20,7 @@
  * adversarial validator found and this module's introduction closes).
  */
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import type { LearningProposal } from "@eo/contracts";
+import type { LearningProposal } from "@crabgic/contracts";
 import type { LearningReviewTokenVerifier } from "../proposal-store/registry.js";
 
 export const LEARNING_REVIEW_SUBJECT_KIND = "learning_review";

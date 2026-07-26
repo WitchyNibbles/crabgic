@@ -53,13 +53,13 @@ describe("checkFamilyWiringAtProductionEntrypoint — genuine integration (real 
 });
 
 describe("checkGatewayDependencyEdge", () => {
-  it("reports no dependency edge for a fixture manifest with no @eo/gateway entry", async () => {
+  it("reports no dependency edge for a fixture manifest with no @crabgic/gateway entry", async () => {
     const scratchDir = await mkdtemp(join(tmpdir(), "eo-dep-edge-fixture-"));
     try {
       const manifestPath = join(scratchDir, "package.json");
       await writeFile(
         manifestPath,
-        JSON.stringify({ dependencies: { "@eo/contracts": "0.0.0" } }),
+        JSON.stringify({ dependencies: { "@crabgic/contracts": "0.0.0" } }),
         "utf8",
       );
       expect(checkGatewayDependencyEdge(manifestPath)).toEqual({ hasGatewayDependency: false });
@@ -68,13 +68,13 @@ describe("checkGatewayDependencyEdge", () => {
     }
   });
 
-  it("reports a dependency edge when @eo/gateway is declared", async () => {
+  it("reports a dependency edge when @crabgic/gateway is declared", async () => {
     const scratchDir = await mkdtemp(join(tmpdir(), "eo-dep-edge-fixture-"));
     try {
       const manifestPath = join(scratchDir, "package.json");
       await writeFile(
         manifestPath,
-        JSON.stringify({ dependencies: { "@eo/gateway": "0.0.0" } }),
+        JSON.stringify({ dependencies: { "@crabgic/gateway": "0.0.0" } }),
         "utf8",
       );
       expect(checkGatewayDependencyEdge(manifestPath)).toEqual({ hasGatewayDependency: true });
@@ -83,7 +83,7 @@ describe("checkGatewayDependencyEdge", () => {
     }
   });
 
-  it("genuine integration: packages/cli/package.json now declares the @eo/gateway edge the native families need", () => {
+  it("genuine integration: packages/cli/package.json now declares the @crabgic/gateway edge the native families need", () => {
     expect(checkGatewayDependencyEdge()).toEqual({ hasGatewayDependency: true });
   });
 });

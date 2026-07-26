@@ -2,7 +2,7 @@ import {
   AuthorizationEnvelopeSchema,
   CURRENT_SCHEMA_VERSION,
   type AuthorizationEnvelope,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `AuthorizationEnvelope` fixture builder — roadmap/02 work item 10. */

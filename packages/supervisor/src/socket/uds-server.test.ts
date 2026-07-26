@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createConnection } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { buildSupervisorRouter } from "../router/build-router.js";
 import { SupervisorRouter } from "../router/router.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";

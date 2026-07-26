@@ -18,18 +18,18 @@
  * the same way the other three are gated on the whole bag.
  *
  * CORRECTED 2026-07-25 (WP5). The previous note here justified that gating
- * partly on the claim that "`@eo/connectors-jira`'s
+ * partly on the claim that "`@crabgic/connectors-jira`'s
  * `discoverJiraCapabilitySnapshot` needs a `JiraHttpContext` whose
  * `JiraTokenManager` that package does not export." That was FALSE:
- * `JiraTokenManager` has been exported from `@eo/connectors-jira`'s public
+ * `JiraTokenManager` has been exported from `@crabgic/connectors-jira`'s public
  * barrel (`src/index.ts`) all along, alongside `FetchJiraOAuthToken` and
  * `JiraTokenManagerOptions`. The real, still-open blockers are narrower
  * and are recorded accurately on `discoverCapabilities` below.
  */
-import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@eo/contracts";
-import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@eo/contracts";
+import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@crabgic/contracts";
+import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@crabgic/contracts";
 import { CliUsageError } from "../errors.js";
-import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@eo/gateway";
+import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@crabgic/gateway";
 import type {
   ConnectionAddCommand,
   ConnectionDoctorCommand,
@@ -38,7 +38,7 @@ import type {
 
 export interface ConnectionDependencies {
   readonly repository: ExternalConnectionRepository;
-  /** Injected so tests never issue real network I/O; production wires `@eo/gateway`'s `probeConnectionReachability`. */
+  /** Injected so tests never issue real network I/O; production wires `@crabgic/gateway`'s `probeConnectionReachability`. */
   readonly probe: (connection: ExternalConnection) => Promise<ReachabilityProbeResult>;
   /**
    * Discovers one connection's live `CapabilitySnapshot` — the injected

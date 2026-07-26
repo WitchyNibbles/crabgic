@@ -9,7 +9,7 @@
  * the entry payload so a capability-digest token can never verify against
  * an envelope-hash check or vice versa."
  *
- * The journal's own `approval_token_mint` payload schema (`@eo/journal`) is
+ * The journal's own `approval_token_mint` payload schema (`@crabgic/journal`) is
  * `{ tokenId, scope }` — this module folds `subjectKind`+`digest` into that
  * `scope` string (`"<subjectKind>:<digest>"`) since 04 doesn't carry a
  * richer shape for this member; this primitive is the sole place that
@@ -23,12 +23,12 @@
  * token can never verify against either of the other two subject kinds
  * (the existing `subjectKind` cross-check in `verify`/
  * `verifyApprovalTokenDurable` already enforces this, unmodified). See
- * `engineering-orchestrator`'s `learning/learn-command-backend.ts` for the
- * caller that mints/verifies against this subject kind — `@eo/learning`
+ * `crabgic`'s `learning/learn-command-backend.ts` for the
+ * caller that mints/verifies against this subject kind — `@crabgic/learning`
  * itself never holds the signing secret or verifies a signature (see that
  * package's own `VerifiedApprovalRecord` doc comment for why).
  *
- * WHY THIS LIVES IN `@eo/contracts` (2026-07-25): it was originally
+ * WHY THIS LIVES IN `@crabgic/contracts` (2026-07-25): it was originally
  * `packages/cli/src/approval/token.ts`, but `packages/detect` (phase 12) is
  * a sanctioned writer of `approval_token_mint` (docs/interface-ledger.md
  * attributes that member to 09/11/12/22) and so must mint against this
@@ -37,7 +37,7 @@
  * detect -> cli`) that made `tsc -b` fail from a clean checkout. Relocating
  * the primitive to the dependency-graph root fixes that at the source; the
  * CLI re-exports every name below verbatim, so the published
- * `engineering-orchestrator` surface is unchanged.
+ * `crabgic` surface is unchanged.
  */
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { JournalEntryType } from "../journal/journal-entry-type.js";
@@ -45,9 +45,9 @@ import type { JournalEntryType } from "../journal/journal-entry-type.js";
 export type ApprovalTokenSubjectKind = "envelope_hash" | "capability_digest" | "learning_review";
 
 /**
- * The narrow slice of `@eo/journal`'s `JournalStore` this primitive uses —
+ * The narrow slice of `@crabgic/journal`'s `JournalStore` this primitive uses —
  * one `appendEntry` call, one entry type. Declared structurally rather than
- * imported because `@eo/journal` depends on THIS package: a real
+ * imported because `@crabgic/journal` depends on THIS package: a real
  * `import type { JournalStore }` here would merely rotate the cycle the
  * relocation was made to break. A real `JournalStore` satisfies this
  * interface as written (TypeScript checks method parameters bivariantly),
@@ -100,7 +100,7 @@ export class ApprovalTokenSignatureError extends Error {
 /**
  * Exported (2026-07-24, roadmap/11-intake-contract-approval.md carry-forward
  * fix) so a cross-process, durable consumption ledger
- * (`engineering-orchestrator`'s `approval/durable-approval-ledger.ts`) can
+ * (`crabgic`'s `approval/durable-approval-ledger.ts`) can
  * verify a token's signature/expiry/subject-binding WITHOUT depending on
  * this class's own in-memory `#pendingById` map — the in-memory `verify()`
  * below only works when called against the SAME `ApprovalTokenMinter`

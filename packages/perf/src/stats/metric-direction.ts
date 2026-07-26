@@ -1,4 +1,4 @@
-import type { PerformanceMetric } from "@eo/contracts";
+import type { PerformanceMetric } from "@crabgic/contracts";
 
 /**
  * Which direction is "worse" for each `PerformanceMetric` — needed to turn

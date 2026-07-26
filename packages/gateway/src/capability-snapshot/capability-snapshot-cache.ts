@@ -13,8 +13,8 @@
  * re-discover rather than serve a stale, possibly-now-wrong snapshot.
  */
 
-import type { CapabilitySnapshot } from "@eo/contracts";
-import type { ConnectorError } from "@eo/contracts";
+import type { CapabilitySnapshot } from "@crabgic/contracts";
+import type { ConnectorError } from "@crabgic/contracts";
 
 export const DEFAULT_CAPABILITY_CACHE_TTL_SECONDS = 15 * 60;
 

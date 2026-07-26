@@ -2,7 +2,7 @@ import { createServer as createHttpServer, type Server as HttpServer } from "nod
 import { createServer as createNetServer } from "node:net";
 import { Agent } from "node:https";
 import { afterEach, describe, expect, it } from "vitest";
-import { checkResolvedAddress, sendHttpRequest } from "@eo/gateway";
+import { checkResolvedAddress, sendHttpRequest } from "@crabgic/gateway";
 import {
   SEAM_PINNED_DIAL_ADDRESS,
   SEAM_RESOLVED_ADDRESS,

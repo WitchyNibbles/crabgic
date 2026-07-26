@@ -1,19 +1,19 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "exact-origin credential
- * binding, ... redirects." Drives the REAL `@eo/gateway` transport stack
+ * binding, ... redirects." Drives the REAL `@crabgic/gateway` transport stack
  * (`GatewayHttpClient`, `buildAllowlistForConnection`,
  * `buildHttpClientForConnection`) — never a reimplementation — against
- * synthetic `ExternalConnection` fixtures (`@eo/testkit`).
+ * synthetic `ExternalConnection` fixtures (`@crabgic/testkit`).
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildExternalConnection } from "@eo/testkit";
+import { buildExternalConnection } from "@crabgic/testkit";
 import {
   GatewayHttpClient,
   SsrfRefusedError,
   buildAllowlistForConnection,
   buildHttpClientForConnection,
-} from "@eo/gateway";
-import type { HttpTransportResponse } from "@eo/gateway";
+} from "@crabgic/gateway";
+import type { HttpTransportResponse } from "@crabgic/gateway";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -28,7 +28,7 @@ let tj: ScenarioJournal;
  * The ids of every `EvidenceRecord` THIS FILE appended, accumulated across
  * the whole file (module scope, so it survives the per-test `beforeEach`
  * journal). The tagging test below reads only these back — under a shared
- * journal (`EO_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
+ * journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
  * sibling harness's entries, tagged for other release-gate items.
  */
 const emittedIds = new Set<string>();
@@ -172,7 +172,7 @@ describe("redirect revalidation", () => {
   it("all scenarios in this file emit EvidenceRecords tagged release-gate:connector-matrix", async () => {
     // Scoped to the ids this file itself appended (see `emittedIds`): a
     // bare journal-wide read is only "this file's evidence" while the
-    // journal is private, and under `EO_RELEASE_GATE_JOURNAL_DIR` it would
+    // journal is private, and under `CRABGIC_RELEASE_GATE_JOURNAL_DIR` it would
     // instead assert this tag over every OTHER harness's records too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {

@@ -3,7 +3,7 @@
  * shells out (`claude --version`, `bwrap --version`, `git --version`)
  * depends on, mirroring `packages/git-engine`'s own `GitSpawnFn` seam
  * (argv-array only, no shell, real implementation vs. a test double). Kept
- * local to this package rather than importing `@eo/git-engine` — this
+ * local to this package rather than importing `@crabgic/git-engine` — this
  * phase has no dependency edge on 07, and the seam itself is a handful of
  * lines, not worth a cross-package import for.
  *

@@ -15,8 +15,8 @@
  *     that started it.
  *
  * This package deliberately declares only the INTERFACE. The real
- * implementation needs `@eo/engine-claude` (for `ClaudeEngineAdapter`) and
- * `@eo/scheduler` (for `driveRun`), and `@eo/engine-claude` already depends
+ * implementation needs `@crabgic/engine-claude` (for `ClaudeEngineAdapter`) and
+ * `@crabgic/scheduler` (for `driveRun`), and `@crabgic/engine-claude` already depends
  * on this package — constructing it here would be a dependency cycle. The
  * daemon entry point in `packages/cli` composes the real one and injects it,
  * exactly as `driveRun` itself takes `createAdapter` as a seam rather than

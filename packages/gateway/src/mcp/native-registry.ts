@@ -7,7 +7,7 @@
  * later populate." Work item 5.
  */
 
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import type { ExternalConnectionRepository } from "../connection-store/external-connection-store.js";
 import { ProviderRegistry } from "../provider-dispatch/provider-registry.js";
 import { IdempotencyKeyLock } from "../mutation-pipeline/mutation-pipeline.js";

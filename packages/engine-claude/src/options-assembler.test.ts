@@ -3,13 +3,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import {
   CANONICAL_ENVELOPE_CASES,
   compileEnvelope,
   BlanketMcpDenyViolationError,
   type CompiledWorkerProfile,
-} from "@eo/engine-core";
+} from "@crabgic/engine-core";
 import { buildWorkerEnv } from "./auth.js";
 import {
   PlaceholderSubstitutionError,
@@ -273,7 +273,7 @@ describe("assembleWorkerOptions", () => {
     expect(options.mcpServers).toEqual({
       [GATEWAY_MCP_SERVER_NAME]: {
         type: "stdio",
-        command: "engineering-orchestrator",
+        command: "crabgic",
         args: ["gateway", "mcp"],
       },
     });

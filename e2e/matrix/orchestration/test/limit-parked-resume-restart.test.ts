@@ -1,21 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JournalStore } from "@eo/journal";
-import type { SessionRef } from "@eo/engine-core";
+import type { JournalStore } from "@crabgic/journal";
+import type { SessionRef } from "@crabgic/engine-core";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
   RATE_LIMIT_ALLOWED_WARNING_96,
-} from "@eo/testkit";
-import { dispatchAttempt, getParkStatus, resumeAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { dispatchAttempt, getParkStatus, resumeAttempt } from "@crabgic/scheduler";
 import {
   createRunsRegistry,
   recoverRun,
   createWorkersRegistry,
   transitionRun,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
@@ -31,13 +31,13 @@ import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJ
  * This goes ONE LEVEL BEYOND `packages/scheduler/src/executor.e2e.test.ts`'s
  * own already-existing park/resume-across-a-fresh-JournalStore test (which
  * proves the SCHEDULER half in isolation): this scenario ALSO drives
- * `@eo/supervisor`'s REAL `transitionRun`/`recoverRun` for the RUN's own
+ * `@crabgic/supervisor`'s REAL `transitionRun`/`recoverRun` for the RUN's own
  * lifecycle state across the identical simulated restart, so both the 05
  * (manager/run) and 13 (scheduler/work-unit) halves of the SAME restart are
  * proven together — the genuine 05+13 ORCHESTRATION arc, not a
  * scheduler-only repeat. (`recoverRun`'s WorkersRegistry reconstruction
  * itself is NOT exercised here — see `manager-crash-recovery.test.ts` for
- * that dedicated scenario, now proving `@eo/journal`'s `recordAttempt`
+ * that dedicated scenario, now proving `@crabgic/journal`'s `recordAttempt`
  * correctly threads `runId` onto `work_unit_transition` entries so
  * `recoverRun` sees a real `dispatchAttempt`-driven attempt's true terminal
  * status. This scenario instead reads the parked work unit's own state via
@@ -209,7 +209,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
     // is journal-derived, not in-memory. Asserted by `.name` (rather than
     // `instanceof GlobalPauseActiveError`) purely for symmetry with this
     // file's other assertions; `GlobalPauseActiveError` IS now re-exported
-    // from `@eo/scheduler`'s public barrel (`packages/scheduler/src/
+    // from `@crabgic/scheduler`'s public barrel (`packages/scheduler/src/
     // index.ts`), a formerly-missing export fixed alongside this file's own
     // crash-recovery correctness fix.
     await expect(

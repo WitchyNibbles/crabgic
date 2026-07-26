@@ -1,4 +1,4 @@
-import { INTENT_CONTRACT_SECTION_KEYS, type IntentContractSectionKey } from "@eo/contracts";
+import { INTENT_CONTRACT_SECTION_KEYS, type IntentContractSectionKey } from "@crabgic/contracts";
 
 /**
  * The risk-tag vocabulary the gate registry is keyed by — roadmap/14-quality-
@@ -6,7 +6,7 @@ import { INTENT_CONTRACT_SECTION_KEYS, type IntentContractSectionKey } from "@eo
  * `IntentContract`'s named sections ... plus this phase's own always-on
  * default tags `tdd`, `coverage`, `flake`, `engine-conformance`."
  *
- * `IntentContractSectionKey` (`@eo/contracts`,
+ * `IntentContractSectionKey` (`@crabgic/contracts`,
  * `packages/contracts/src/contracts/intent-contract.ts`) is the 9-member
  * closed list (`scope, non-goals, audience, compatibility, security,
  * performance, observability, rollout, acceptance`) — that file's own doc
@@ -14,7 +14,7 @@ import { INTENT_CONTRACT_SECTION_KEYS, type IntentContractSectionKey } from "@eo
  * risk-tag vocabulary off this exact list," so this module imports it rather
  * than re-declaring a second copy. (Deviation note: this phase's own brief
  * describes the vocabulary as "11 section names" in prose; the actual,
- * shipped `@eo/contracts` schema — the authoritative source this file is
+ * shipped `@crabgic/contracts` schema — the authoritative source this file is
  * required to key off — has exactly 9. This module follows the schema, not
  * the miscounted prose, and the discrepancy is called out in the phase-14
  * evidence doc.)
@@ -42,5 +42,5 @@ export function isGateRiskTag(value: string): value is GateRiskTag {
   return (GATE_RISK_TAGS as readonly string[]).includes(value);
 }
 
-/** Re-exported for convenience so callers keying gates off `IntentContract` sections don't need a second `@eo/contracts` import just for the type. */
+/** Re-exported for convenience so callers keying gates off `IntentContract` sections don't need a second `@crabgic/contracts` import just for the type. */
 export type { IntentContractSectionKey };

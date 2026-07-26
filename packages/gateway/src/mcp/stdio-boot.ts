@@ -15,7 +15,7 @@
  *
  * The SDK is now a declared dependency of this package, and `./server.ts`
  * already adapts a registry onto a real `McpServer`. Hosting the transport
- * here too keeps the SDK edge entirely inside `@eo/gateway` — the CLI
+ * here too keeps the SDK edge entirely inside `@crabgic/gateway` — the CLI
  * depends on this function, never on `@modelcontextprotocol/sdk` directly.
  */
 

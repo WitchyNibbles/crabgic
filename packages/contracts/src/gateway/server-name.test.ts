@@ -8,17 +8,17 @@ import { GATEWAY_MCP_SERVER_NAME } from "./server-name.js";
 /**
  * `GATEWAY_MCP_SERVER_NAME` tests (roadmap/02 work item 7; interface-
  * ledger Gap 11). Two things are proven here:
- *  1. The golden value: the literal is exactly `"eo_gateway"`.
+ *  1. The golden value: the literal is exactly `"crabgic_gateway"`.
  *  2. The sole-definition-site exit criterion: a read-only, deterministic
  *     scan of every `.ts` file under each workspace package's `src`
- *     directory proves the literal `"eo_gateway"` appears nowhere except
+ *     directory proves the literal `"crabgic_gateway"` appears nowhere except
  *     this constant's own definition file and this golden-value test file
  *     itself.
  */
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PACKAGES_DIR = join(REPO_ROOT, "packages");
-const LITERAL = "eo_gateway";
+const LITERAL = "crabgic_gateway";
 
 /**
  * The sole-definition-site allowlist: only `server-name.ts` (the
@@ -72,8 +72,8 @@ function findPackageSrcDirs(): readonly string[] {
 }
 
 describe("GATEWAY_MCP_SERVER_NAME", () => {
-  it('is the literal "eo_gateway" (golden value, interface-ledger Gap 11)', () => {
-    expect(GATEWAY_MCP_SERVER_NAME).toBe("eo_gateway");
+  it('is the literal "crabgic_gateway" (golden value, interface-ledger Gap 11)', () => {
+    expect(GATEWAY_MCP_SERVER_NAME).toBe("crabgic_gateway");
   });
 
   it("is the sole definition site of the literal under packages/*/src (exit criterion)", () => {

@@ -1,5 +1,5 @@
 /**
- * ndjson wire-message codec — mirrors `@eo/journal`'s
+ * ndjson wire-message codec — mirrors `@crabgic/journal`'s
  * `codec/ndjson-codec.ts` style: encode/decode against a single top-level
  * schema (`WireMessageSchema` here, `JournalEntrySchema` there), a
  * throwing `decodeLine` and a tolerant `tryDecodeLine`.

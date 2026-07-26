@@ -21,12 +21,22 @@
  * The drafted `IntentContract` narrative/requirement/work-unit content
  * itself (the manager-session `eo-explore`/`eo-reviewer` output) is
  * supplied via the injected `readIntakeRequest` — this module never drafts
- * it itself (see `@eo/supervisor`'s `contract-builder.ts` for the identical
+ * it itself (see `@crabgic/supervisor`'s `contract-builder.ts` for the identical
  * scope note on the deterministic-assembly/live-drafting boundary).
  */
-import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
-import { runIntake, type IntakeOutcome, type IntakeRequest, type Registry } from "@eo/supervisor";
+import type {
+  AuthorizationEnvelope,
+  ChangeSet,
+  IntentContract,
+  WorkUnit,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
+import {
+  runIntake,
+  type IntakeOutcome,
+  type IntakeRequest,
+  type Registry,
+} from "@crabgic/supervisor";
 import {
   runApprovalFlow,
   ApprovalDeclinedError,
@@ -63,7 +73,7 @@ export interface RunIntakeCommandResult {
  * explicit "yes" (via `runApprovalFlow`, 09's own sole mint-reachable
  * path). A `conflict` outcome never reaches the approval prompt at all —
  * the caller must resolve the requestKey collision first (see
- * `@eo/supervisor`'s `runIntake` doc comment).
+ * `@crabgic/supervisor`'s `runIntake` doc comment).
  */
 export async function runIntakeCommand(
   deps: RunIntakeCommandDeps,

@@ -47,8 +47,8 @@ jobs:
       - run: npx tsc -b
       - name: Run @live conformance suite
         env:
-          EO_LIVE: "1"
-          EO_LIVE_RUN_ID: ${{ github.run_id }}
+          CRABGIC_LIVE: "1"
+          CRABGIC_LIVE_RUN_ID: ${{ github.run_id }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: npm run test:live
       - name: Upload live-run journal record

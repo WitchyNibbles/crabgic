@@ -3,7 +3,7 @@
  * "`capability.approve` only **verifies** a previously human-minted
  * `trust approve` token; it is never model-satisfiable, mirroring
  * `contract.approve`'s treatment in 11." Reuses 09's own
- * `ApprovalTokenMinter` (`@eo/contracts`) verbatim — the same
+ * `ApprovalTokenMinter` (`@crabgic/contracts`) verbatim — the same
  * primitive minting/verifying 11's envelope-hash tokens, distinguished by
  * `subjectKind: "capability_digest"` so a token minted for one subject
  * kind can never verify against the other (09's own guarantee).
@@ -14,7 +14,7 @@
  * expired/already-consumed token NEVER flips the stored decision to
  * `approved`; only a successful `minter.verify(...)` call does.
  */
-import type { ApprovalTokenMinter } from "@eo/contracts";
+import type { ApprovalTokenMinter } from "@crabgic/contracts";
 import type { CapabilityStore } from "../capability-store/store.js";
 
 export interface CapabilityApproveInput {

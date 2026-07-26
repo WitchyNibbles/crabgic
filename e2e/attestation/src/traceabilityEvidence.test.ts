@@ -94,8 +94,8 @@ describe("buildTraceabilityEvidenceFile — the artifact states its own provenan
     // The env-var name is asserted against the LITERAL, and the constant is
     // pinned to that literal separately — `toContain(SHARED_JOURNAL_ENV_VAR)`
     // would put the constant on both sides and survive any mutation of it.
-    expect(line).toContain("EO_RELEASE_GATE_JOURNAL_DIR");
-    expect(SHARED_JOURNAL_ENV_VAR).toBe("EO_RELEASE_GATE_JOURNAL_DIR");
+    expect(line).toContain("CRABGIC_RELEASE_GATE_JOURNAL_DIR");
+    expect(SHARED_JOURNAL_ENV_VAR).toBe("CRABGIC_RELEASE_GATE_JOURNAL_DIR");
     expect(line).toContain("/var/tmp/eo-journal");
     expect(line).toMatch(/resolves/);
   });

@@ -3,14 +3,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   type Registry,
-} from "@eo/supervisor";
-import type { ChangeSet, AuthorizationEnvelope } from "@eo/contracts";
-import { buildAuthorizationEnvelope, buildChangeSet } from "@eo/testkit";
+} from "@crabgic/supervisor";
+import type { ChangeSet, AuthorizationEnvelope } from "@crabgic/contracts";
+import { buildAuthorizationEnvelope, buildChangeSet } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runContractApprove } from "./contract-approve-handler.js";
 

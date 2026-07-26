@@ -8,7 +8,7 @@ import type { GrafanaParsedResource } from "../resources/resource-definitions.js
  * call is ever issued, so a failed/misverified update always has something
  * to restore from.
  *
- * Deliberately in-memory only at this phase (mirrors `@eo/gateway`'s own
+ * Deliberately in-memory only at this phase (mirrors `@crabgic/gateway`'s own
  * `ProviderRegistry`/`CapabilitySnapshotCache` in-process scope) — a
  * durable, crash-surviving snapshot store is a 21/23 integration concern
  * this phase's own evidence notes flag as a carry-forward, not a gap in

@@ -1,5 +1,9 @@
-import { ConnectorError } from "@eo/contracts";
-import type { GenericProviderClient, MutationApplyClient, ProviderRegistry } from "@eo/gateway";
+import { ConnectorError } from "@crabgic/contracts";
+import type {
+  GenericProviderClient,
+  MutationApplyClient,
+  ProviderRegistry,
+} from "@crabgic/gateway";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { createJiraMutationApplyClient } from "../resource-client/jira-mutation-apply-client.js";
 import { createJiraProviderClient } from "../resource-client/jira-provider-client.js";
@@ -7,7 +11,7 @@ import { JiraConnectionRegistry } from "./jira-connection-registry.js";
 
 /**
  * `../provider/register.ts` — the one call site that registers this
- * connector into `@eo/gateway`'s provider-dispatch point (roadmap/18
+ * connector into `@crabgic/gateway`'s provider-dispatch point (roadmap/18
  * §Interfaces consumed: "this phase registers no MCP tool of its own" —
  * only a provider CLIENT, dispatched to by the gateway's already-
  * registered `tracker.*` tools). Every connection under
@@ -73,7 +77,7 @@ export interface RegisterJiraCloudProviderDeps {
 }
 
 /**
- * Registers `JIRA_PROVIDER_NAME` into both of `@eo/gateway`'s provider
+ * Registers `JIRA_PROVIDER_NAME` into both of `@crabgic/gateway`'s provider
  * registries (the read/plan dispatch point and the mutation-apply
  * dispatch point), routed through a fresh `JiraConnectionRegistry`.
  * Callers use the returned registry's `register(connection, ...)` to

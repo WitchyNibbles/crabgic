@@ -10,13 +10,13 @@
  * naive check WRONGLY passed it (RED — the harness genuinely failed to
  * catch the attack before the real guard was wired in). This file's
  * CURRENT, committed version replaces that naive check with the REAL
- * `@eo/renderer` `lint()` pipeline (GREEN) — see the naive-baseline
+ * `@crabgic/renderer` `lint()` pipeline (GREEN) — see the naive-baseline
  * `it.fails` block below, which keeps that RED evidence executable and
  * permanently regression-proof rather than deleting it.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
-import { lint, renderPrBody } from "@eo/renderer";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
+import { lint, renderPrBody } from "@crabgic/renderer";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -74,7 +74,7 @@ describe("RED (fail-first, kept permanently): a naive denylist check does NOT ca
   });
 });
 
-describe("GREEN: the REAL @eo/renderer lint() pipeline rejects the same seeded confusable-domain fixture", () => {
+describe("GREEN: the REAL @crabgic/renderer lint() pipeline rejects the same seeded confusable-domain fixture", () => {
   it("blocks a pr_body embedding the Cyrillic-'а' confusable 'paypal.com' homograph", async () => {
     const candidate = candidateWithUrl(CONFUSABLE_DOMAIN_URL);
     const outcome = lint(candidate, "pr_body", DEFAULT_COMMUNICATION_POLICY);

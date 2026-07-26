@@ -11,7 +11,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * `claude --version` pinned-range re-confirmation against the real host
  * engine, plus the hermeticity self-test's real `claude` spawn arm (03/06's
  * compiled-profile self-test, re-run here on a clean host). Needs
- * `EO_LIVE=1` and real auth — mirrors `packages/engine-claude/src/live`'s
+ * `CRABGIC_LIVE=1` and real auth — mirrors `packages/engine-claude/src/live`'s
  * `vitest.live.config.ts` in every load-bearing respect (sequential
  * execution, engine-scale timeouts, coverage disabled). Never run by the
  * default gate (`vitest.config.ts` excludes `**{/}*.live.test.ts`).

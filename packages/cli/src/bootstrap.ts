@@ -17,7 +17,7 @@ import {
   resolveStateRoot,
   type JournalStore,
   type XdgEnv,
-} from "@eo/journal";
+} from "@crabgic/journal";
 import {
   FileExternalConnectionStore,
   probeConnectionReachability,
@@ -25,8 +25,8 @@ import {
   type GatewayToolRegistry,
   type GenericProviderClient,
   type MutationApplyClient,
-} from "@eo/gateway";
-import { registerJiraCloudProvider, type JiraConnectionRegistry } from "@eo/connectors-jira";
+} from "@crabgic/gateway";
+import { registerJiraCloudProvider, type JiraConnectionRegistry } from "@crabgic/connectors-jira";
 import {
   createFileGrafanaPlanPayloadStore,
   createFileGrafanaRollbackSnapshotStore,
@@ -34,7 +34,7 @@ import {
   type GrafanaConnectionRegistry,
   type GrafanaPlanPayloadStoreLike,
   type GrafanaRollbackSnapshotStoreLike,
-} from "@eo/connectors-grafana";
+} from "@crabgic/connectors-grafana";
 import { buildProductionGatewayToolRegistry } from "./gateway-mcp/build-tool-registry.js";
 import {
   ApprovalTokenMinter,
@@ -46,13 +46,13 @@ import {
   type ChangeSet,
   type IntentContract,
   type WorkUnit,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import {
   createApprovalLedger,
   createCapabilityStore,
   resolveCapabilityStoreDir,
   type TrustCommandDependencies,
-} from "@eo/detect";
+} from "@crabgic/detect";
 import {
   AUTHORIZATION_ENVELOPES_FILE_NAME,
   CHANGE_SETS_FILE_NAME,
@@ -61,12 +61,12 @@ import {
   resolveSupervisorSocketPath,
   WORK_UNITS_FILE_NAME,
   type IntakeRequest,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import {
   loadOrCreateApprovalSigningKey,
   resolveApprovalSigningKeyPath,
 } from "./approval/signing-key.js";
-import { ProposalRegistry, resolveRegistryDir } from "@eo/learning";
+import { ProposalRegistry, resolveRegistryDir } from "@crabgic/learning";
 import { resolveOngoingIntakeRefs } from "./learning/ongoing-intake-refs.js";
 import type { LearningDependencies } from "./learning/learning-dependencies.js";
 import { createRealAuthStateResolver } from "./doctor/checks/auth-probe.js";
@@ -245,7 +245,7 @@ export function buildRealCliDependencies(
 /**
  * roadmap/22's `learn list|approve|reject|rollback` bag.
  *
- * `@eo/learning`'s own `ProposalRegistry` is already file-backed, rooted at
+ * `@crabgic/learning`'s own `ProposalRegistry` is already file-backed, rooted at
  * the project's pinned learning dir — which matters here for the same
  * reason it did for connections: every `learn` invocation is its own
  * short-lived process, so a proposal recorded by one must be visible to the
@@ -333,7 +333,7 @@ export function buildRealGatewayToolRegistry(
 
 /**
  * roadmap/11's `run` backend. The three registries are DURABLE and rooted
- * at the project's XDG state root, at the exact paths `@eo/supervisor`'s
+ * at the project's XDG state root, at the exact paths `@crabgic/supervisor`'s
  * `composeSupervisor` reads (`CHANGE_SETS_FILE_NAME` etc.).
  *
  * That sharing is the whole point. `run` executes in this short-lived CLI
@@ -394,7 +394,7 @@ async function readIntakeRequestFromStdin(): Promise<IntakeRequest> {
   const raw = Buffer.concat(chunks).toString("utf8").trim();
   if (raw.length === 0) {
     throw new CliUsageError(
-      "`run` reads an intake request as JSON on stdin — e.g. `engineering-orchestrator run < intake.json`",
+      "`run` reads an intake request as JSON on stdin — e.g. `crabgic run < intake.json`",
     );
   }
   try {
@@ -430,7 +430,7 @@ function buildRealConnectionDependencies(
 
 /**
  * roadmap/12's `trust review|approve|revoke` bag, rooted at the pinned
- * capability-store path (`$XDG_CACHE_HOME/engineering-orchestrator/
+ * capability-store path (`$XDG_CACHE_HOME/crabgic/
  * <project-hash>/capability-store/`, interface-ledger Gap 14).
  *
  * The HMAC signing key is freshly random PER PROCESS — never a hardcoded

@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   RemoteMutationPlanSchema,
   type RemoteMutationPlan,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import type { GrafanaResourceKind } from "../resource-kinds.js";
 import { hashCanonicalFields } from "../resources/resource-definitions.js";
 import { buildCanonicalTarget } from "./canonical-target.js";

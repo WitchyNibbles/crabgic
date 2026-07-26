@@ -17,10 +17,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * Every scenario here drives the REAL `packages/cli` install/upgrade/
  * uninstall backend (`parseCommand` + `dispatchCommand`, exactly the public
- * surface a real invocation of the `engineering-orchestrator` binary uses)
+ * surface a real invocation of the `crabgic` binary uses)
  * against REAL throwaway temp git repos (real `git` child processes via
- * `@eo/git-engine`'s `createGitPlumbing` — no shell, no mocked plumbing) and
- * a REAL `@eo/journal` `JournalStore` for this harness's own evidence
+ * `@crabgic/git-engine`'s `createGitPlumbing` — no shell, no mocked plumbing) and
+ * a REAL `@crabgic/journal` `JournalStore` for this harness's own evidence
  * emission. No network, no live Docker daemon, so this gate is fast and
  * safe to run anywhere, including CI.
  */

@@ -10,12 +10,12 @@
  */
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { mergeManagedTextBlock } from "./merge-text.js";
 import { mergeSettingsJson } from "./settings-merge.js";
 import { mergeMcpJson } from "./mcp-json-merge.js";
 
-const PLUGIN = "engineering-orchestrator";
+const PLUGIN = "crabgic";
 
 const jsonScalarArbitrary = fc.oneof(fc.boolean(), fc.integer(), fc.string(), fc.constant(null));
 

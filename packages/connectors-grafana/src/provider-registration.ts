@@ -1,12 +1,16 @@
 import { z } from "zod";
-import type { GenericProviderClient, MutationApplyClient, ProviderRegistry } from "@eo/gateway";
+import type {
+  GenericProviderClient,
+  MutationApplyClient,
+  ProviderRegistry,
+} from "@crabgic/gateway";
 import { GRAFANA_RESOURCE_KINDS } from "./resource-kinds.js";
 import type { GrafanaProviderAdapter } from "./adapter.js";
 import { processGrafanaQueryResult, type GrafanaQueryRow } from "./query/query-layer.js";
 
 /**
  * Registers a Grafana `GrafanaProviderAdapter` + its `MutationApplyClient`
- * into `@eo/gateway`'s provider-dispatch registries — roadmap/20 §Interfaces
+ * into `@crabgic/gateway`'s provider-dispatch registries — roadmap/20 §Interfaces
  * produced: "registers into 16's provider-dispatch point for the
  * `observability.*` tool family." Every param object crossing this boundary
  * is schema-validated FIRST (coding-style: "validate at system
@@ -44,7 +48,7 @@ const QUERY_PARAMS_SCHEMA = z
   })
   .strict();
 
-/** Bridges a `GrafanaProviderAdapter` into `@eo/gateway`'s `GenericProviderClient` shape — the read/plan half of provider dispatch (`observability.search/get/query/plan_create/plan_update`). `observability.apply` is wired separately via the connector's own `MutationApplyClient` (`./mutation/mutation-apply-client.js`), per the SAME split `tracker.*`/`observability.*` already use in `@eo/gateway`. */
+/** Bridges a `GrafanaProviderAdapter` into `@crabgic/gateway`'s `GenericProviderClient` shape — the read/plan half of provider dispatch (`observability.search/get/query/plan_create/plan_update`). `observability.apply` is wired separately via the connector's own `MutationApplyClient` (`./mutation/mutation-apply-client.js`), per the SAME split `tracker.*`/`observability.*` already use in `@crabgic/gateway`. */
 export function buildGrafanaGenericProviderClient(
   adapter: GrafanaProviderAdapter,
 ): GenericProviderClient {

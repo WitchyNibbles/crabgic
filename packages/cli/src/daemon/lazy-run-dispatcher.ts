@@ -7,7 +7,7 @@
  * fixed, CI-measured budget so running it costs nothing when there is no
  * work."
  *
- * `run-dispatcher.ts` statically imports `@eo/engine-claude`, which pulls
+ * `run-dispatcher.ts` statically imports `@crabgic/engine-claude`, which pulls
  * `@anthropic-ai/claude-agent-sdk`. Importing it at boot cost +40.9 MiB and
  * put the daemon's idle RSS at 99.8 / 108.2 / 100.2 MiB across three boots
  * — straddling its own budget — even though an idle daemon serving
@@ -20,10 +20,10 @@
  * was always asynchronous, and is immaterial against a run measured in
  * hours.
  *
- * `@eo/supervisor`'s `createRunDispatcher` hook is synchronous, so the
+ * `@crabgic/supervisor`'s `createRunDispatcher` hook is synchronous, so the
  * laziness has to live behind `dispatch` rather than in the factory.
  */
-import type { RunDispatcher, RunDispatchOutcome } from "@eo/supervisor";
+import type { RunDispatcher, RunDispatchOutcome } from "@crabgic/supervisor";
 import type { RealRunDispatcherOptions } from "./run-dispatcher.js";
 
 /** The slice of `./run-dispatcher.js` this wrapper needs — the seam tests substitute. */

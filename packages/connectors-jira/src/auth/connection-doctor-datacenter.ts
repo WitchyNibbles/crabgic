@@ -1,5 +1,5 @@
-import type { ExternalConnection } from "@eo/contracts";
-import { probeConnectionReachability, type ReachabilityProbeResult } from "@eo/gateway";
+import type { ExternalConnection } from "@crabgic/contracts";
+import { probeConnectionReachability, type ReachabilityProbeResult } from "@crabgic/gateway";
 import type { JiraConnectionConfig } from "../provider/jira-connection-config.js";
 import { resolveJiraDatacenterAuthHeaderProvider } from "./jira-datacenter-auth.js";
 
@@ -8,7 +8,7 @@ import { resolveJiraDatacenterAuthHeaderProvider } from "./jira-datacenter-auth.
  * §Interfaces produced: "Doctor-check functions — PAT-validity probe,
  * basic-auth-active finding (non-blocking), connection-reachability probe
  * exercising 16's custom-CA path." Mirrors `./connection-doctor.ts`'s
- * shape/pattern (built on the SAME `@eo/gateway` `probeConnectionReachability`
+ * shape/pattern (built on the SAME `@crabgic/gateway` `probeConnectionReachability`
  * primitive — never reimplemented) but checks a resolvable auth-header
  * provider instead of an OAuth scope list, since Data Center's PAT/basic
  * auth carries no scope concept to validate.
@@ -16,7 +16,7 @@ import { resolveJiraDatacenterAuthHeaderProvider } from "./jira-datacenter-auth.
 export interface JiraDatacenterConnectionDoctorInput {
   readonly connection: ExternalConnection;
   readonly config: JiraConnectionConfig;
-  /** Injectable — defaults to `@eo/gateway`'s `probeConnectionReachability` (test-only escape hatch, mirroring `./connection-doctor.ts`'s own). */
+  /** Injectable — defaults to `@crabgic/gateway`'s `probeConnectionReachability` (test-only escape hatch, mirroring `./connection-doctor.ts`'s own). */
   readonly probe?: (connection: ExternalConnection) => Promise<ReachabilityProbeResult>;
 }
 

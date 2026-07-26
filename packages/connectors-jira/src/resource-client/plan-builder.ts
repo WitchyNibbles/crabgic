@@ -4,7 +4,7 @@ import {
   RemoteMutationPlanSchema,
   type HighImpactCapabilityFlag,
   type RemoteMutationPlan,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { assertAllowedJiraOperation } from "../security/preflight-capability-guard.js";
 import type { JiraAction } from "./actions.js";
 import type { JiraPlanPayloadRegistry } from "./plan-payload-registry.js";

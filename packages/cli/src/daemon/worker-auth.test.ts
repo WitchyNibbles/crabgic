@@ -3,7 +3,7 @@
  * resolve worker auth at boot WITHOUT loading the engine.
  *
  * The split is what makes the idle budget reachable: `run-dispatcher.ts`
- * statically imports `@eo/engine-claude`, which pulls
+ * statically imports `@crabgic/engine-claude`, which pulls
  * `@anthropic-ai/claude-agent-sdk` — measured at +40.9 MiB. The daemon
  * called `resolveWorkerAuthMaterial` at startup, so merely *resolving a
  * token* dragged the whole engine into a process that may never dispatch a

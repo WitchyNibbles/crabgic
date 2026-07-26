@@ -1,4 +1,4 @@
-import type { IdempotencyRegistry } from "@eo/journal";
+import type { IdempotencyRegistry } from "@crabgic/journal";
 
 /**
  * A minimal, in-memory stand-in for "an external mutation a worker's
@@ -41,7 +41,7 @@ export function applySideEffectNaive(sink: SideEffectSink, operationId: string):
 export type ApplyOutcome = "applied" | "replayed";
 
 /**
- * THE CORRECT / EXACTLY-ONCE PATH — gates the side effect behind `@eo/
+ * THE CORRECT / EXACTLY-ONCE PATH — gates the side effect behind `@crabgic/
  * journal`'s real `IdempotencyRegistry.checkOrRecord` (04's own primitive;
  * never reimplemented here). A repair attempt for the SAME `operationId` +
  * `contentHash` (e.g. the same `WorkUnit` id + the same packet content

@@ -4,7 +4,7 @@
  * dev-engine attribution leak ('Generated with', 'Co-Authored-By: …
  * Claude…') must FAIL the neutral-rendering assertion." This module IS
  * "the assertion" that vector refers to: a pure function over a candidate
- * string (no I/O), built on `@eo/contracts`'s `scanForAttributionTokens` —
+ * string (no I/O), built on `@crabgic/contracts`'s `scanForAttributionTokens` —
  * the SAME shared primitive 17's lint stage and 08's own publish-time
  * belt-and-suspenders re-scan already build on (never forked here either).
  * Its own correctness is proven with a seeded leak string BEFORE any real
@@ -15,9 +15,9 @@
  * `scenarios/publish-attribution-leak-scenario.ts` as a second, harness-
  * owned check alongside each real subsystem's own guard.
  */
-import { scanForAttributionTokens, type AttributionFinding } from "@eo/contracts";
+import { scanForAttributionTokens, type AttributionFinding } from "@crabgic/contracts";
 
-/** Every attribution-token occurrence in `text` — a thin, directly-named re-export of `@eo/contracts`'s shared scanner, kept as a named function here so a call site reads as "this harness's own assertion," not a stray import. */
+/** Every attribution-token occurrence in `text` — a thin, directly-named re-export of `@crabgic/contracts`'s shared scanner, kept as a named function here so a call site reads as "this harness's own assertion," not a stray import. */
 export function findAttributionLeaks(text: string): readonly AttributionFinding[] {
   return scanForAttributionTokens(text);
 }

@@ -62,8 +62,8 @@ import {
   type AuthorizationEnvelope,
   type ChangeSet,
   type RunLifecycleState,
-} from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 import { transitionChangeSet } from "./change-set-transition.js";
 import {

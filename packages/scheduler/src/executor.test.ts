@@ -2,14 +2,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, getLatestAttempt, type JournalStore } from "@eo/journal";
+import { createJournalStore, getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { RATE_LIMIT_ALLOWED_WARNING_96 } from "@eo/testkit";
+} from "@crabgic/testkit";
+import { RATE_LIMIT_ALLOWED_WARNING_96 } from "@crabgic/testkit";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,
@@ -89,7 +89,7 @@ describe("dispatchAttempt", () => {
     expect(sessionEntries[0]?.runId).toBe(runId);
   });
 
-  it("CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @eo/supervisor's recoverRun see a real dispatch's terminal status after a restart", async () => {
+  it("CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @crabgic/supervisor's recoverRun see a real dispatch's terminal status after a restart", async () => {
     const script = buildFakeEngineScript({
       structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
     });

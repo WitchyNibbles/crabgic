@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   CapabilityManifestSchema,
   type CapabilityManifest,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `CapabilityManifest` fixture builder — roadmap/02 work item 10. */

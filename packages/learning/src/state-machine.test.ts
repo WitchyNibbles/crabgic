@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { LEARNING_PROPOSAL_STATES, type LearningProposalState } from "@eo/contracts";
+import { LEARNING_PROPOSAL_STATES, type LearningProposalState } from "@crabgic/contracts";
 import {
   IllegalTransitionError,
   isLearningProposalAbsorbing,

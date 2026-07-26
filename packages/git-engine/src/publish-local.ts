@@ -53,7 +53,7 @@
  * user's repo before the fetch — captured via `for-each-ref` BEFORE the
  * fetch runs, since after the fetch the new branch itself would otherwise
  * self-exclude via a naive `--not --all`), and re-scans each one's full
- * commit message with `@eo/contracts`'s `scanForAttributionTokens` — the
+ * commit message with `@crabgic/contracts`'s `scanForAttributionTokens` — the
  * SAME shared primitive 17's `attribution-neutral` lint stage and this
  * phase's own `renderer-corpus-shared.test.ts` already reuse (never
  * forked). FAILS CLOSED: on any hit, the just-created branch ref is
@@ -67,7 +67,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { scanForAttributionTokens } from "@eo/contracts";
+import { scanForAttributionTokens } from "@crabgic/contracts";
 import {
   OPTION_TERMINATOR,
   USER_CHECKOUT_READ_ENV,
@@ -168,7 +168,7 @@ export interface AttributionLeak {
   readonly token: string;
 }
 
-/** Scans each of `commitIds`' full commit message (subject + body) for an attribution token, reusing (never forking) `@eo/contracts`'s `scanForAttributionTokens` — the same primitive 17's lint stage and this phase's own shared-corpus suite already build on. Returns the FIRST hit, or `undefined` if every commit is clean. */
+/** Scans each of `commitIds`' full commit message (subject + body) for an attribution token, reusing (never forking) `@crabgic/contracts`'s `scanForAttributionTokens` — the same primitive 17's lint stage and this phase's own shared-corpus suite already build on. Returns the FIRST hit, or `undefined` if every commit is clean. */
 async function findAttributionLeak(
   plumbing: GitPlumbing,
   repoPath: string,

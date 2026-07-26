@@ -8,7 +8,11 @@
  * `./spawn-surface-scan.test.ts` and `./no-exec-jail.test.ts`).
  */
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, StackEvidenceSchema, type StackEvidence } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  StackEvidenceSchema,
+  type StackEvidence,
+} from "@crabgic/contracts";
 import { readTextBounded } from "./fs/safe-read.js";
 import { walkRepoTree, type WalkOptions } from "./fs/safe-walk.js";
 import { ALL_DETECTORS, buildDetectionContext } from "./detectors/index.js";

@@ -1,5 +1,5 @@
 /**
- * Typed errors for `@eo/gates` — roadmap/14-quality-security-gates.md's
+ * Typed errors for `@crabgic/gates` — roadmap/14-quality-security-gates.md's
  * "fail-closed everywhere" posture: every place this package refuses to
  * proceed does so with a named, catchable error type, never a bare
  * `Error`/string throw.

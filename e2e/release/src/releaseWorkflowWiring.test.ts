@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { beforeAll, describe, expect, it } from "vitest";
-import { ACCEPTED_ENGINE_VERSION_RANGE, TESTED_ENGINE_VERSION } from "@eo/engine-claude";
+import { ACCEPTED_ENGINE_VERSION_RANGE, TESTED_ENGINE_VERSION } from "@crabgic/engine-claude";
 import { REBUILD_CHECKOUTS_ENV_VAR } from "./rebuildPopulator.js";
 
 const execFileAsync = promisify(execFile);
@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
  * Producer/consumer binding for the rebuild flag.
  *
  * `resolveBuildOutputPopulator` only ever selects the REBUILDING populator
- * when `EO_RELEASE_REBUILD_CHECKOUTS=1` is present in the environment. A
+ * when `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1` is present in the environment. A
  * flag no workflow sets is unreachable code, and the reproducible-build
  * exit criterion's first clause ("two independent from-clean-checkout
  * BUILDS") could then never be satisfied in ANY CI configuration — the
@@ -104,7 +104,7 @@ describe("release-e2e.yml wires the rebuild flag it is the only consumer of", ()
  * `release_candidate_object_id` is an OPTIONAL `workflow_dispatch` input,
  * and a GitHub Actions `${{ inputs.<omitted-optional> }}` expression
  * renders as the EMPTY STRING rather than as an absent variable. Wiring it
- * straight into `EO_RELEASE_CANDIDATE_OBJECT_ID` therefore hands every
+ * straight into `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` therefore hands every
  * consumer a present-but-empty variable: `e2e/report/src/cli.ts`'s fallback
  * chain sees `""`, the generator scores all 15 checklist items against
  * object ID `""` and links zero evidence, and `ReleaseGateReportSchema`'s
@@ -116,7 +116,7 @@ describe("release-e2e.yml wires the rebuild flag it is the only consumer of", ()
  */
 describe("release-e2e.yml resolves the release candidate once, in a step", () => {
   it("never wires the raw workflow input into the object-ID env var", () => {
-    expect(workflow).not.toMatch(/EO_RELEASE_CANDIDATE_OBJECT_ID: \$\{\{ inputs\./);
+    expect(workflow).not.toMatch(/CRABGIC_RELEASE_CANDIDATE_OBJECT_ID: \$\{\{ inputs\./);
   });
 
   it("has a `release-candidate` step that writes `object_id` to $GITHUB_OUTPUT", () => {
@@ -147,7 +147,7 @@ describe("release-e2e.yml resolves the release candidate once, in a step", () =>
     // assignment disappears.
     const assignments = workflow
       .split("\n")
-      .filter((line) => /^\s*EO_RELEASE_CANDIDATE_OBJECT_ID: \S/.test(line));
+      .filter((line) => /^\s*CRABGIC_RELEASE_CANDIDATE_OBJECT_ID: \S/.test(line));
     expect(assignments.length).toBeGreaterThanOrEqual(2);
     for (const line of assignments) {
       expect(line).toContain("steps.release-candidate.outputs.object_id");

@@ -1,4 +1,4 @@
-import type { EvidenceRecord, Requirement, RemoteResource } from "@eo/contracts";
+import type { EvidenceRecord, Requirement, RemoteResource } from "@crabgic/contracts";
 import type { RemoteEvidencePointer, RemoteResourceRelation } from "./remote-evidence-pointer.js";
 
 /**
@@ -25,7 +25,7 @@ import type { RemoteEvidencePointer, RemoteResourceRelation } from "./remote-evi
  * a 1:1 index correspondence). `confirmedRevision`'s source of truth is now
  * explicitly `pointer.confirmedRevision` FIRST — the exact same value the
  * `remote_verification` gate (`remote-verification-gate.ts`) and the Jira
- * done-transition bridge (`@eo/connectors-jira`'s
+ * done-transition bridge (`@crabgic/connectors-jira`'s
  * `hasExactRevisionVerification`) already trust — falling back to the
  * `RemoteResource.revision` record only when the pointer itself carried no
  * `confirmedRevision`. If NEITHER source has a revision (including when the

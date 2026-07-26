@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { ProposalRegistry } from "../proposal-store/registry.js";
 import { NotPromotedError } from "../errors.js";
 import { promoteProposal } from "../promotion/promote.js";

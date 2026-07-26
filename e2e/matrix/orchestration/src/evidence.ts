@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * `EvidenceRecord` emission — roadmap/23-release-hardening.md work item 4's
@@ -33,7 +33,7 @@ export const ORCHESTRATION_MATRIX_GATE_TAG = "release-gate:crash-recovery-concur
 /**
  * The roadmap/23 requirement each emitted tag evidences.
  *
- * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * WHY A LITERAL. `buildTraceabilityView` (`@crabgic/gates`) joins evidence to a
  * requirement on `EvidenceRecord.requirementId` and nothing else. The ids
  * are UUIDv5 digests of the exit-criterion text, derived by
  * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
@@ -58,14 +58,14 @@ export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
  * supplies the ACTUAL `git rev-parse HEAD` of the release candidate
  * instead — either via `emitScenarioEvidence`'s explicit `objectId` option
  * or, for the scenario tests that never pass one, via
- * `$EO_RELEASE_CANDIDATE_OBJECT_ID` (see
+ * `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` (see
  * `resolveReleaseCandidateObjectId` below).
  */
 export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 
 /**
  * The object ID this harness stamps on emitted evidence when no explicit
- * `objectId` override is supplied: `$EO_RELEASE_CANDIDATE_OBJECT_ID` when
+ * `objectId` override is supplied: `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` when
  * set and non-empty (the same env-var convention `e2e/report/src/cli.ts`
  * already honors), else `FAKE_RELEASE_CANDIDATE_OBJECT_ID` — so an
  * ordinary `npm run test:e2e` run is byte-identical to before this seam
@@ -76,7 +76,7 @@ export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbee
  * var within one process see the truth.
  */
 export function resolveReleaseCandidateObjectId(): string {
-  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  const fromEnv = process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"];
   if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv;
   return FAKE_RELEASE_CANDIDATE_OBJECT_ID;
 }

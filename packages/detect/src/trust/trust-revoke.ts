@@ -12,7 +12,7 @@ import {
   formatJson,
   type CommandResult,
   type TrustRevokeCommand,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import type { TrustCommandDependencies } from "./dependencies.js";
 
 export function runTrustRevokeCommand(

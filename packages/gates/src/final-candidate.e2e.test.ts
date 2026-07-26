@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { dispatchAttempt } from "@eo/scheduler";
+import { dispatchAttempt } from "@crabgic/scheduler";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import {
   allowAllAdjudicate,
@@ -25,7 +25,7 @@ import type { GateVerdict } from "./types.js";
  * verification's OWN outcome is computed first (via
  * `fireFinalCandidateVerification`, this package's pure primitive), then
  * packaged as the `WorkerResult` a `TaskPacket` dispatch through
- * `@eo/scheduler`'s real `dispatchAttempt` reports — proving the wiring
+ * `@crabgic/scheduler`'s real `dispatchAttempt` reports — proving the wiring
  * point 13 owns (dispatch, `TaskPacket`, model routing) and the wiring
  * point 14 owns (the gate re-fire itself) compose correctly, without this
  * package importing scheduler-internal dispatch logic itself
@@ -88,7 +88,7 @@ describe("E2E: final-candidate re-verification dispatched as its own TaskPacket 
 
     // Package that computed outcome as the WorkerResult a dedicated
     // final-candidate WorkUnit's TaskPacket dispatch reports, through
-    // @eo/scheduler's REAL dispatchAttempt + FakeEngineAdapter — proving
+    // @crabgic/scheduler's REAL dispatchAttempt + FakeEngineAdapter — proving
     // this runs through 13's own executor, not a bespoke code path.
     const workUnitId = randomUUID();
     const script = buildFakeEngineScript({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildChangeSet, buildWorkUnit } from "@eo/testkit";
+import { buildChangeSet, buildWorkUnit } from "@crabgic/testkit";
 import { createChangeSetsRegistry } from "./change-sets-registry.js";
 import { createWorkUnitsRegistry } from "./work-units-registry.js";
 import { createArtifactIndexRegistry } from "./artifact-index-registry.js";

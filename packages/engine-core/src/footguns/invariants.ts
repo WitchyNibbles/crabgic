@@ -163,7 +163,7 @@ export class SandboxAutoAllowsBashError extends Error {
 /**
  * THE fix this invariant exists to hold: the sandbox must never auto-allow
  * `Bash`. Checked (not merely typed) because this runs on the real spawn path
- * — `@eo/engine-claude`'s `substituteWorktreePlaceholders` calls
+ * — `@crabgic/engine-claude`'s `substituteWorktreePlaceholders` calls
  * `assertNoFootguns` before every worker spawn — so a profile that reached
  * the adapter from anywhere other than `compileEnvelope` still cannot spawn
  * with the unsafe SDK default in force.

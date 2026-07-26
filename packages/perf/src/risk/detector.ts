@@ -1,4 +1,4 @@
-import type { StackEvidence } from "@eo/contracts";
+import type { StackEvidence } from "@crabgic/contracts";
 import { unionDiffPathRiskCategories } from "./diff-analyzer.js";
 import { stackEvidenceRiskCategories } from "./stack-evidence-risk.js";
 import type { PerformanceRiskCategory } from "./categories.js";

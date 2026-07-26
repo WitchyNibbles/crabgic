@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
 import { buildJiraOAuthTokenFetcher } from "./jira-oauth-http.js";
 
 const TOKEN_URL = "https://auth.atlassian.invalid/oauth/token";

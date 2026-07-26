@@ -2,15 +2,15 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   executeMutationPlan,
   GatewayHttpClient,
   IdempotencyKeyLock,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
-import { createFakeProviderTransport, type FakeProviderScriptEntry } from "@eo/gateway";
+} from "@crabgic/gateway";
+import { createFakeProviderTransport, type FakeProviderScriptEntry } from "@crabgic/gateway";
 import { buildRouteTable, capabilityFlag } from "../discovery/route-table.js";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { buildGrafanaMutationPlan } from "./mutation-plan-builder.js";
@@ -84,7 +84,7 @@ function buildHandlers(
   };
 }
 
-describe("createGrafanaMutationApplyClient — happy-path create/update through @eo/gateway's real pipeline", () => {
+describe("createGrafanaMutationApplyClient — happy-path create/update through @crabgic/gateway's real pipeline", () => {
   it("creates a folder: builds the POST, verifies via read-back GET, records applied revision", async () => {
     const payloadStore = new GrafanaPlanPayloadStore();
     const snapshotStore = new GrafanaRollbackSnapshotStore();

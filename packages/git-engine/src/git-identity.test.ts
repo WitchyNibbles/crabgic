@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  configureGitIdentity,
-  ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME,
-} from "./git-identity.js";
+import { configureGitIdentity, CRABGIC_GIT_IDENTITY_NAME } from "./git-identity.js";
 import { createGitPlumbing, createNodeGitSpawn } from "./plumbing.js";
 import {
   buildBasicFixtureRepo,
@@ -41,7 +38,7 @@ describe("configureGitIdentity (WI8)", () => {
 
     const name = await plumbing.run(["config", "--local", "--get", "user.name"], { cwd: dir });
     const email = await plumbing.run(["config", "--local", "--get", "user.email"], { cwd: dir });
-    expect(name.stdout.trim()).toBe(ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME);
+    expect(name.stdout.trim()).toBe(CRABGIC_GIT_IDENTITY_NAME);
     expect(email.stdout.trim()).toBe("svc-eo@example.invalid");
   });
 
@@ -59,7 +56,7 @@ describe("configureGitIdentity (WI8)", () => {
 
     const authorName = fixtureGit(dir, ["log", "-1", "--format=%an"]).trim();
     const authorEmail = fixtureGit(dir, ["log", "-1", "--format=%ae"]).trim();
-    expect(authorName).toBe(ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME);
+    expect(authorName).toBe(CRABGIC_GIT_IDENTITY_NAME);
     expect(authorEmail).toBe("svc-eo@example.invalid");
   });
 });

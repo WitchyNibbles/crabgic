@@ -15,7 +15,7 @@
  * not own the union itself). The remaining 7 members have no 02 schema of
  * their own — each carries this package's own minimal-sufficient,
  * documented structured payload (the same "minimal-sufficient, not a
- * closed union the source material never pins" pattern `@eo/contracts`
+ * closed union the source material never pins" pattern `@crabgic/contracts`
  * itself already uses for fields like `WorkUnit.role`).
  *
  * `adjudication_decision`'s payload is deliberately generic enough to also
@@ -34,7 +34,7 @@ import {
   RunLifecycleStateSchema,
   WorkUnitAttemptStatusSchema,
   type JournalEntryType,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /** `run_transition` — a (from, to) pair typed against the run-lifecycle enum (02, work item 1's explicit instruction). */
 export const RunTransitionPayloadSchema = z
@@ -148,7 +148,7 @@ export const LearningTransitionPayloadSchema = z
   .strict();
 
 /**
- * Exhaustiveness mechanism identical to `@eo/contracts`'s own
+ * Exhaustiveness mechanism identical to `@crabgic/contracts`'s own
  * `JOURNAL_ENTRY_TYPE_DESCRIPTIONS` trick (journal-entry-type.ts): a
  * `Record<JournalEntryType, ZodTypeAny>` object literal is valid only when
  * it declares exactly one property per union member — adding a payload

@@ -1,7 +1,7 @@
 /**
  * `createEnvelopeAdjudicationPolicy` — the REAL `AdjudicationPolicy`
  * (roadmap/06-claude-engine-adapter.md work item 3) plugged behind 05's
- * journal-teed `createAdjudicationBus` (`@eo/supervisor`), replacing that
+ * journal-teed `createAdjudicationBus` (`@crabgic/supervisor`), replacing that
  * phase's own `denyAllPolicy` stub. The bus itself, its bounded timeout, and
  * its fail-closed-on-bridge-failure/journal-first posture are UNCHANGED by
  * this phase (README decision 12) — this module supplies only the
@@ -36,8 +36,8 @@
  *
  * ---
  *
- * DIVERGENCE FROM THE @eo/testkit REFERENCE MODEL (documented, deliberate —
- * investigated, not a defect): `@eo/testkit`'s fake-engine permission
+ * DIVERGENCE FROM THE @crabgic/testkit REFERENCE MODEL (documented, deliberate —
+ * investigated, not a defect): `@crabgic/testkit`'s fake-engine permission
  * evaluator (`permission-evaluator.ts`/`path-matching.ts`, a devDependency
  * of this package, used only as this test suite's independent reference
  * oracle, never imported by this production module) operates on
@@ -64,7 +64,7 @@
  * IS included in the property test.
  *
  * A second, narrower documented divergence: this worker's own brief
- * paraphrases the process-wrapper list as "nohup/env"; `@eo/testkit`'s
+ * paraphrases the process-wrapper list as "nohup/env"; `@crabgic/testkit`'s
  * actual `bash-command-matching.ts` reference strips exactly `{nohup, nice,
  * timeout}` — no `env` stripping exists in that reference implementation
  * (its own doc comment cites only `nohup`/`timeout`/`nice` as the baseline
@@ -76,7 +76,7 @@
  * `docs/evidence/phase-06/wi3-adjudication-result.md` for reconciliation.
  *
  * A THIRD documented divergence (Finding 3, deliberate — a hardening this
- * policy applies that the reference oracle does not): `@eo/testkit`'s
+ * policy applies that the reference oracle does not): `@crabgic/testkit`'s
  * `matchesAnchoredGlobLiteral` widens a `~/`-anchored rule against a
  * bare-absolute target SYMMETRICALLY (allow and deny alike). This policy
  * widens DENY-ONLY: a `~/`-anchored ALLOW rule vs. an absolute target is NO
@@ -88,8 +88,8 @@
  * from its cross-model comparison and covers it with dedicated example
  * tests; see `absoluteTargetContainsHomeSuffix` below.
  */
-import type { AdjudicationPolicy } from "@eo/supervisor";
-import type { PermissionProfile } from "@eo/engine-core";
+import type { AdjudicationPolicy } from "@crabgic/supervisor";
+import type { PermissionProfile } from "@crabgic/engine-core";
 import { posix } from "node:path";
 
 /**
@@ -131,7 +131,7 @@ function splitCompoundCommand(command: string): readonly string[] {
     .filter((segment) => segment.length > 0);
 }
 
-/** Mirrors `@eo/testkit`'s `bash-command-matching.ts` reference set exactly — see file-level "second divergence" note above re: no `env` stripping. */
+/** Mirrors `@crabgic/testkit`'s `bash-command-matching.ts` reference set exactly — see file-level "second divergence" note above re: no `env` stripping. */
 const WRAPPER_TOKENS: ReadonlySet<string> = new Set(["nohup", "nice", "timeout"]);
 const MAX_WRAPPER_STRIP_ITERATIONS = 5;
 
@@ -177,11 +177,11 @@ function matchesBashPrefixRule(rule: string, strippedSegment: string): boolean {
  * `&&`/`||`/`;`/`|` (compound operators) and `nohup`/`nice`/`timeout`
  * (process wrappers). This worker's brief additionally requires embedded
  * NEWLINE smuggling to never bypass detection; rather than treating
- * newline as a fifth compound-split delimiter (which `@eo/testkit`'s
+ * newline as a fifth compound-split delimiter (which `@crabgic/testkit`'s
  * reference does not do either), a segment carrying one of these
  * unproven characters is treated as an unmatchable smuggling attempt
  * outright — fail-closed on anything the baseline never probed, exactly
- * mirroring `@eo/testkit`'s own documented posture (and therefore staying
+ * mirroring `@crabgic/testkit`'s own documented posture (and therefore staying
  * in verdict-agreement with it).
  */
 const UNPROVEN_SHELL_METACHARACTER_PATTERN = /[&$`<>]|\r|\n/;
@@ -332,7 +332,7 @@ function pathIsContainedIn(base: string, target: string): boolean {
 type RuleContext = "allow" | "deny";
 
 /**
- * Asymmetric widening (mirrors `@eo/testkit`'s own documented F5
+ * Asymmetric widening (mirrors `@crabgic/testkit`'s own documented F5
  * hardening): this policy has no independent access to the real `$HOME` at
  * construction time (only `permissions` is given, per this file's own
  * precondition) — a `~/`-anchored DENY rule must still catch a
@@ -432,7 +432,7 @@ function assertRuleParses(rule: string): void {
 
 // ---------------------------------------------------------------------------
 // Per-tool-call evaluation, branching by category exactly like the engine's
-// own tool-scoped rule application (and like `@eo/testkit`'s reference
+// own tool-scoped rule application (and like `@crabgic/testkit`'s reference
 // evaluator, for the categories where the two are comparable — see
 // file-level divergence note).
 // ---------------------------------------------------------------------------
@@ -488,9 +488,9 @@ function toErrorMessage(err: unknown): string {
 
 /**
  * Builds the real `AdjudicationPolicy` `createAdjudicationBus` (05,
- * `@eo/supervisor`) wraps. See this file's top-of-file doc comment for the
+ * `@crabgic/supervisor`) wraps. See this file's top-of-file doc comment for the
  * full semantics, the placeholder-substitution precondition, and the
- * documented `@eo/testkit` reference-model divergence.
+ * documented `@crabgic/testkit` reference-model divergence.
  */
 export function createEnvelopeAdjudicationPolicy(
   input: EnvelopeAdjudicationPolicyInput,

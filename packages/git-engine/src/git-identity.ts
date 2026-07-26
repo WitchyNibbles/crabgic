@@ -1,6 +1,6 @@
 /**
  * Git identity — roadmap/07-git-control-repo-worktrees.md work item 8:
- * "per-worktree `user.name \"Engineering Orchestrator\"` + configured
+ * "per-worktree `user.name \"Crabgic\"` + configured
  * service email, set at worktree-creation time — every commit a worker
  * makes already carries it before 08 ever inspects the tree." Called
  * internally by `./worktree-lifecycle.js`'s `createWorktree` (WI6) so no
@@ -30,7 +30,7 @@
 import type { GitCommandError, GitPlumbing, GitSpawnResult } from "./plumbing.js";
 
 /** The fixed neutral author/committer name every worktree this package creates carries — roadmap §In scope, "Git identity" bullet, literal. */
-export const ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME = "Engineering Orchestrator";
+export const CRABGIC_GIT_IDENTITY_NAME = "Crabgic";
 
 export interface GitIdentity {
   readonly name: string;
@@ -75,12 +75,12 @@ export async function configureGitIdentity(
   serviceEmail: string,
 ): Promise<GitIdentity> {
   await runWithLockRetry(() =>
-    plumbing.run(["config", "--local", "user.name", ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME], {
+    plumbing.run(["config", "--local", "user.name", CRABGIC_GIT_IDENTITY_NAME], {
       cwd: worktreePath,
     }),
   );
   await runWithLockRetry(() =>
     plumbing.run(["config", "--local", "user.email", serviceEmail], { cwd: worktreePath }),
   );
-  return { name: ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME, email: serviceEmail };
+  return { name: CRABGIC_GIT_IDENTITY_NAME, email: serviceEmail };
 }

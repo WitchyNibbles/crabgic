@@ -11,7 +11,7 @@
  * another package reimplements the root instead of importing it").
  *
  * Path form (Gap 14's resolved path-segment order, `04`'s own §Risks note):
- * `<project-hash>` sits immediately under `engineering-orchestrator/`, and
+ * `<project-hash>` sits immediately under `crabgic/`, and
  * every phase-specific subpath (`journal/`, `leases/`, `git-control/`,
  * `capability-store/`, `learning/`) nests beneath the hash segment — never
  * the reverse order (`git-control/<project-hash>/`).
@@ -33,7 +33,7 @@ export const JOURNAL_DIR_MODE = 0o700;
 export const JOURNAL_FILE_MODE = 0o600;
 
 /** The product's own namespace directory name, nested under both XDG roots. */
-export const ENGINEERING_ORCHESTRATOR_DIR_NAME = "engineering-orchestrator";
+export const CRABGIC_DIR_NAME = "crabgic";
 
 /** Subdirectory names nested under `<project-hash>/` in the state root. */
 export const JOURNAL_STATE_SUBDIR = "journal";
@@ -66,7 +66,7 @@ export function resolveXdgCacheHome(env: XdgEnv): string {
 }
 
 /**
- * `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/` — the pinned
+ * `$XDG_STATE_HOME/crabgic/<project-hash>/` — the pinned
  * state root (roadmap/04 §In scope, "Layout" bullet). `projectHash` is
  * accepted as an opaque, already-computed string; this package does not
  * define how a project hash is derived (no phase text assigns that
@@ -74,17 +74,17 @@ export function resolveXdgCacheHome(env: XdgEnv): string {
  * both simply consume it as a parameter).
  */
 export function resolveStateRoot(env: XdgEnv, projectHash: string): string {
-  return join(resolveXdgStateHome(env), ENGINEERING_ORCHESTRATOR_DIR_NAME, projectHash);
+  return join(resolveXdgStateHome(env), CRABGIC_DIR_NAME, projectHash);
 }
 
 /**
- * `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/` — the pinned
+ * `$XDG_CACHE_HOME/crabgic/<project-hash>/` — the pinned
  * cache root (Gap 14). 07's `git-control/` and 12's `capability-store/`
  * nest directly under this exact path; 04 pins the root only, 07/12 own
  * writing under it.
  */
 export function resolveCacheRoot(env: XdgEnv, projectHash: string): string {
-  return join(resolveXdgCacheHome(env), ENGINEERING_ORCHESTRATOR_DIR_NAME, projectHash);
+  return join(resolveXdgCacheHome(env), CRABGIC_DIR_NAME, projectHash);
 }
 
 /** `.../journal/` under the state root — segments + snapshots both nest here (see `resolveJournalSegmentsDir`/`resolveJournalSnapshotsDir`). */

@@ -13,7 +13,7 @@
  * `RunCancelResultSchema` (the raw UDS result, never re-shaped), so those
  * two are validated for real against the zod schemas below, not merely
  * snapshotted. `evidence`/`doctor`/`NOT_IMPLEMENTED` have no published
- * schema anywhere in `@eo/contracts`/`@eo/supervisor` — this phase owns
+ * schema anywhere in `@crabgic/contracts`/`@crabgic/supervisor` — this phase owns
  * those shapes itself, so `../commands/cli.snapshots.test.ts`'s snapshot
  * stability is the correct (and only available) conformance mechanism for
  * them, not a gap.
@@ -22,7 +22,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
@@ -35,7 +35,7 @@ import {
   RunStatusResultSchema,
   startSupervisorServer,
   type SupervisorServer,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { EXIT_NOT_IMPLEMENTED, EXIT_OK, EXIT_SUPERVISOR_UNAVAILABLE } from "../exit-codes.js";
 import { SupervisorUnavailableError } from "../errors.js";
 import { connectUdsClient } from "../uds-client/client.js";

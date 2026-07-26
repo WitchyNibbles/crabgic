@@ -11,7 +11,7 @@ export interface RollbackHttpResponse {
 }
 
 export interface RollbackDeps {
-  /** Issues one HTTP call for a resource-definition-built request spec. Kept abstract (never the raw `@eo/gateway` client type) so this module has no direct transport dependency of its own — the caller wires the real `GatewayHttpClient` (or a fake) in. */
+  /** Issues one HTTP call for a resource-definition-built request spec. Kept abstract (never the raw `@crabgic/gateway` client type) so this module has no direct transport dependency of its own — the caller wires the real `GatewayHttpClient` (or a fake) in. */
   readonly send: (spec: {
     readonly method: string;
     readonly path: string;

@@ -1,4 +1,4 @@
-import type { TaskPacket } from "@eo/contracts";
+import type { TaskPacket } from "@crabgic/contracts";
 
 /**
  * "Target drift" — roadmap/23-release-hardening.md's Orchestration-matrix

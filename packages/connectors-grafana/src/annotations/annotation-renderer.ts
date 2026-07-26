@@ -3,8 +3,8 @@ import {
   renderWithRegeneration,
   type CandidateGenerator,
   type RenderOutcome,
-} from "@eo/renderer";
-import type { CommunicationPolicy } from "@eo/contracts";
+} from "@crabgic/renderer";
+import type { CommunicationPolicy } from "@crabgic/contracts";
 
 /**
  * Grafana annotation rendering — roadmap/20-grafana-adapters.md §Interfaces

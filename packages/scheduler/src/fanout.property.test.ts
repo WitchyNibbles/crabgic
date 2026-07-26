@@ -1,8 +1,8 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { WorkUnit, WorkUnitAttemptStatus } from "@eo/contracts";
-import { buildWorkUnit } from "@eo/testkit";
-import type { CollisionVerdict } from "@eo/git-engine";
+import type { WorkUnit, WorkUnitAttemptStatus } from "@crabgic/contracts";
+import { buildWorkUnit } from "@crabgic/testkit";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 import { computeReadyUnits } from "./readiness.js";
 import { DEFAULT_CONCURRENCY_CAP, selectDispatchSet } from "./fanout.js";
 

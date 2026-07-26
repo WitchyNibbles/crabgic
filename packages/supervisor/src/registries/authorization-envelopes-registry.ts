@@ -10,7 +10,7 @@
  * one (the confused-deputy fix). Mirrors `./change-sets-registry.ts`'s
  * identical shape/rationale.
  */
-import { type AuthorizationEnvelope } from "@eo/contracts";
+import { type AuthorizationEnvelope } from "@crabgic/contracts";
 import { createInMemoryRegistry, type Registry } from "./registry.js";
 
 export function createAuthorizationEnvelopesRegistry(): Registry<AuthorizationEnvelope> {

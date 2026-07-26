@@ -1,11 +1,11 @@
-import type { CapabilityStore } from "@eo/detect";
+import type { CapabilityStore } from "@crabgic/detect";
 import { MissingCapabilityEntryError, ToolDigestMismatchError } from "../errors.js";
 
 /**
  * Digest-pinned scanner-binary resolution — roadmap/14 §In scope, "Security
  * checks" bullet: "Scanner binaries resolve as digest-pinned entries from
  * 12's content-addressed capability store — never fetched or executed ad
- * hoc." `store` is 12's `CapabilityStore` (`@eo/detect`); `observedDigest`
+ * hoc." `store` is 12's `CapabilityStore` (`@crabgic/detect`); `observedDigest`
  * is whatever digest the actual invocation-time binary presents (fixture-
  * modeled for this phase — see the phase-14 evidence doc). Fails CLOSED in
  * both directions: no pinned entry at all (`MissingCapabilityEntryError`),

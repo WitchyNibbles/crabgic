@@ -3,7 +3,7 @@
  * Minimal MCP stdio server for the `@live` conformance suite (W5).
  *
  * The real `ClaudeEngineAdapter` ALWAYS wires an `mcpServers` entry keyed by
- * `GATEWAY_MCP_SERVER_NAME` pointing at the external `engineering-orchestrator
+ * `GATEWAY_MCP_SERVER_NAME` pointing at the external `crabgic
  * gateway mcp` process (`gateway-server-config.ts`) — which does not exist on
  * a CI runner or this dev host (that binary is phase 09/16's, not built here).
  * `ClaudeEngineAdapterConfig.gatewayServerOverride` is the sanctioned test

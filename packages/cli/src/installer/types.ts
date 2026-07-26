@@ -10,7 +10,7 @@
 export interface InstallerDependencies {
   /** The target project's root directory (where `CLAUDE.md`, `.claude/`, `.mcp.json` live). */
   readonly targetDir: string;
-  /** The plugin package's own root directory (`@eo/plugin`'s `resolvePluginRoot()` in real usage) — the source of `skills/`, `agents/`, `hooks/` this installer copies/reads from. */
+  /** The plugin package's own root directory (`@crabgic/plugin`'s `resolvePluginRoot()` in real usage) — the source of `skills/`, `agents/`, `hooks/` this installer copies/reads from. */
   readonly pluginSourceDir: string;
   /** `git init` in a non-git `targetDir` runs ONLY after this resolves `true` (roadmap/10 §In scope, "Non-Git projects"). Never called for any other repo state. */
   readonly confirmGitInit: () => Promise<boolean>;

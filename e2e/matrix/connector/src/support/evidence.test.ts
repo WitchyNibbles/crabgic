@@ -9,7 +9,7 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createJournalStore } from "@eo/journal";
+import { createJournalStore } from "@crabgic/journal";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   REQUIREMENT_ID_BY_GATE_TAG,
@@ -30,7 +30,7 @@ describe("digestOf", () => {
 });
 
 describe("resolveReleaseCandidateObjectId", () => {
-  const ENV_KEY = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const ENV_KEY = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
   const original = process.env[ENV_KEY];
 
   afterEach(() => {
@@ -38,7 +38,7 @@ describe("resolveReleaseCandidateObjectId", () => {
     else process.env[ENV_KEY] = original;
   });
 
-  it("honors $EO_RELEASE_CANDIDATE_OBJECT_ID when set (fresh module instance, cache not yet populated)", async () => {
+  it("honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set (fresh module instance, cache not yet populated)", async () => {
     vi.resetModules();
     process.env[ENV_KEY] = "fixture-release-candidate-object-id";
     const fresh = await import("./evidence.js");
@@ -132,7 +132,7 @@ describe("emitScenarioEvidence", () => {
     // proved is unchanged — that this ONE call appended exactly one
     // durable, round-trippable entry carrying this exact record. A bare
     // journal-wide count only means that while the journal is private;
-    // under `EO_RELEASE_GATE_JOURNAL_DIR` (see `./evidence.ts`) every
+    // under `CRABGIC_RELEASE_GATE_JOURNAL_DIR` (see `./evidence.ts`) every
     // sibling harness's evidence is visible here too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({
@@ -185,8 +185,8 @@ describe("recordEmittedEvidenceIds", () => {
   });
 });
 
-describe("createScenarioJournal — shared-journal mode (EO_RELEASE_GATE_JOURNAL_DIR)", () => {
-  const SHARED_JOURNAL_DIR_ENV = "EO_RELEASE_GATE_JOURNAL_DIR";
+describe("createScenarioJournal — shared-journal mode (CRABGIC_RELEASE_GATE_JOURNAL_DIR)", () => {
+  const SHARED_JOURNAL_DIR_ENV = "CRABGIC_RELEASE_GATE_JOURNAL_DIR";
 
   afterEach(() => {
     vi.unstubAllEnvs();

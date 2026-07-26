@@ -2,15 +2,15 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
   createFakeProviderTransport,
   executeMutationPlan,
   midPostTimeoutFault,
-} from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+} from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
 import { createJiraEntityPropertyMarkerReconciler } from "../reconciliation/entity-property-marker.js";
@@ -26,7 +26,7 @@ import type { JiraHttpContext } from "./http-read-helper.js";
  * Work item 6 entry point / §Test plan Conformance bullet: "ambiguous
  * mid-POST timeout ... must fail with no handling before the fix, pass
  * after." This wires this connector's REAL `createJiraMutationApplyClient`
- * through `@eo/gateway`'s REAL `executeMutationPlan` and a REAL
+ * through `@crabgic/gateway`'s REAL `executeMutationPlan` and a REAL
  * (temp-dir-backed) journal — never a shortcut — to prove the full
  * pipeline end-to-end.
  */

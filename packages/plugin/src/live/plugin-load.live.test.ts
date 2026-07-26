@@ -17,7 +17,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { assertLiveEnabled } from "./live-gate.js";
 import { probePluginInventory } from "./plugin-inventory-probe.js";
 import { PLUGIN_CAPABILITY_NAME } from "../capability-entry.js";

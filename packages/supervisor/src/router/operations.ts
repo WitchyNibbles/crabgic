@@ -25,7 +25,7 @@ import {
   NonEmptyStringSchema,
   RunLifecycleStateSchema,
   WorkUnitSchema,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /** This phase's own minimal-sufficient run-registry read shape — see `../registries/runs-registry.ts`'s own doc comment for why it is not `RunSnapshot` itself. */
 export const RunRecordSchema = z

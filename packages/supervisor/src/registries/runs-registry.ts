@@ -2,7 +2,7 @@
  * Runs registry — roadmap/05-supervisor-daemon.md §Registries: "runs,
  * change sets, work units, workers... artifact index." Keyed by `runId`
  * (not the generic `Registry<T>`'s `id` field — no `Run` contract exists
- * among `@eo/contracts`'s 21 schemas, per `RunSnapshot`'s own doc comment:
+ * among `@crabgic/contracts`'s 21 schemas, per `RunSnapshot`'s own doc comment:
  * "`runId` is an opaque identifier the supervisor (05) assigns to a run");
  * `RunRecordSchema` (`../router/operations.ts`) is this phase's own
  * minimal-sufficient read shape, not `RunSnapshot` itself — a `RunRecord`

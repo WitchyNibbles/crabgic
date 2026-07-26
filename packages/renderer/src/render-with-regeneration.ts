@@ -3,7 +3,7 @@ import {
   RenderedArtifactSchema,
   type CommunicationPolicy,
   type RenderedArtifact,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { randomUUID } from "node:crypto";
 import type { ArtifactKind } from "./artifact-kind.js";
 import type { LintFinding } from "./lint-types.js";

@@ -12,7 +12,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import { buildCliDependencies, runCliJson } from "../cli-driver.js";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildCleanRepo } from "../fixtures.js";

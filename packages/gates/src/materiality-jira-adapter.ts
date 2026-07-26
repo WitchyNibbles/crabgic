@@ -1,4 +1,4 @@
-import type { JiraFieldMetadata } from "@eo/connectors-jira";
+import type { JiraFieldMetadata } from "@crabgic/connectors-jira";
 import {
   MATERIAL_TRACKED_FIELDS,
   type FieldDiff,

@@ -6,17 +6,17 @@
 // package's own already-built dist output directly, mirroring what 09's
 // real `gateway mcp` argv shim will do at its own entry point.
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createJournalStore } from "@eo/journal";
+import { createJournalStore } from "@crabgic/journal";
 import {
   buildNativeToolRegistry,
   buildGatewayMcpServer,
   connectGatewayMcpServer,
   InMemoryExternalConnectionStore,
   ProviderRegistry,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 
-const journalDir = process.env.EO_FIXTURE_JOURNAL_DIR;
-const registerExtraTool = process.env.EO_FIXTURE_REGISTER_EXTRA_TOOL === "1";
+const journalDir = process.env.CRABGIC_FIXTURE_JOURNAL_DIR;
+const registerExtraTool = process.env.CRABGIC_FIXTURE_REGISTER_EXTRA_TOOL === "1";
 
 const journal = createJournalStore({ journalDir });
 const connections = new InMemoryExternalConnectionStore();

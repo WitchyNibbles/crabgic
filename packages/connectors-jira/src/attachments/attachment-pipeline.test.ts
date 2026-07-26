@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import { MAX_ATTACHMENT_BYTES, validateAttachmentBeforeStaging } from "./attachment-pipeline.js";
 
 /**

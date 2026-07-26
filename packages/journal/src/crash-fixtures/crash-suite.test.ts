@@ -16,7 +16,7 @@ import { verifyAppendRecovery, verifySnapshotRecovery } from "./verify-recovery.
  *
  * The default `numIterations` (25) keeps the normal `vitest run` fast; the
  * documented, committed 1k-scale (or largest-that-fits) evidence capture is
- * a ONE-TIME run with `EO_CRASH_SUITE_ITERATIONS` set, output redirected to
+ * a ONE-TIME run with `CRABGIC_CRASH_SUITE_ITERATIONS` set, output redirected to
  * docs/evidence/phase-04/exit-criteria-crash-suite.txt — see this
  * package's phase-04 evidence README for the exact command and honest
  * iteration count actually achieved. VALIDATION ROUND (2026-07-18) fix,
@@ -26,8 +26,8 @@ import { verifyAppendRecovery, verifySnapshotRecovery } from "./verify-recovery.
  * `verifySnapshotRecovery` (`./verify-recovery.js`) are now whole-journal
  * aware regardless, so the same verifier serves both files.
  */
-const ITERATION_COUNT = Number(process.env["EO_CRASH_SUITE_ITERATIONS"] ?? "25");
-const SLEEP_MS = Number(process.env["EO_CRASH_SUITE_SLEEP_MS"] ?? "8");
+const ITERATION_COUNT = Number(process.env["CRABGIC_CRASH_SUITE_ITERATIONS"] ?? "25");
+const SLEEP_MS = Number(process.env["CRABGIC_CRASH_SUITE_SLEEP_MS"] ?? "8");
 
 const dirsToClean: string[] = [];
 const runtimesToClean: FixtureRuntime[] = [];
@@ -68,7 +68,7 @@ describe("crash suite — randomized real safe-path kill iterations (roadmap/04 
     "recovery always converges with zero undetected corruption across randomized real kill iterations over the append/snapshot path",
     async () => {
       const stderrChunks: string[] = [];
-      const seed = Number(process.env["EO_CRASH_SUITE_SEED"] ?? "1234567891");
+      const seed = Number(process.env["CRABGIC_CRASH_SUITE_SEED"] ?? "1234567891");
       const plans = buildPlans(ITERATION_COUNT, seed);
       const runtime = await prepareCrashSuiteRuntime("append-chain-snapshot-operation.ts");
       runtimesToClean.push(runtime);
@@ -125,7 +125,7 @@ describe("crash suite — harness corruption-detection self-check (proves the fa
     const spec: KillHarnessOperationSpec = {
       command: process.execPath,
       args: [runtime.entryPath, dir, "2", "append", String(SLEEP_MS)],
-      env: { EO_CRASH_FIXTURE_BROKEN: "1" },
+      env: { CRABGIC_CRASH_FIXTURE_BROKEN: "1" },
     };
 
     const report = await runKillHarness(spec, [...APPEND_STEP_POINT_NAMES.slice(0, 2)], {

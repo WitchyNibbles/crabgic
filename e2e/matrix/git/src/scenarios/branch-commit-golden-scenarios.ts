@@ -1,7 +1,7 @@
 /**
  * Branch/commit golden scenarios — roadmap/23-release-hardening.md work
  * item 5: "branch/commit goldens INCLUDING attribution-leak fixtures."
- * Drives the REAL `nameBranch`/`renderCommit` (`@eo/git-engine`, 08's own
+ * Drives the REAL `nameBranch`/`renderCommit` (`@crabgic/git-engine`, 08's own
  * `renderWithRegeneration()`-backed renderers) — a clean golden pair, and
  * the explicit fail-first vector: "a seeded commit body carrying a
  * dev-engine attribution leak ('Generated with', 'Co-Authored-By: …
@@ -12,8 +12,8 @@
  * own block, mirroring 08's own belt-and-suspenders precedent.
  */
 import { randomUUID } from "node:crypto";
-import type { JournalStore } from "@eo/journal";
-import { buildBranchNameCandidate, nameBranch, renderCommit } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import { buildBranchNameCandidate, nameBranch, renderCommit } from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import { findAttributionLeaks } from "../neutral-rendering-assertion.js";
 import { exitStatusFor, requirePassed, type ScenarioOutcome } from "../scenario-types.js";
@@ -55,7 +55,7 @@ export async function runCleanBranchCommitGoldenScenario(
 /**
  * THE FAIL-FIRST VECTOR: a slug source and a commit outcome each carrying a
  * real dev-engine attribution token ("Co-Authored-By", the exact shared
- * `@eo/contracts` fixture token — see `packages/contracts/src/renderer-
+ * `@crabgic/contracts` fixture token — see `packages/contracts/src/renderer-
  * core/attribution-scanner.ts`) must be BLOCKED by the real renderer, not
  * silently accepted.
  */

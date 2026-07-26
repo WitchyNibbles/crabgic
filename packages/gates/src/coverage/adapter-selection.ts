@@ -1,4 +1,4 @@
-import type { StackEvidence } from "@eo/contracts";
+import type { StackEvidence } from "@crabgic/contracts";
 
 export type CoverageAdapterKind = "lcov" | "istanbul" | "go-cover" | "pytest-cov";
 

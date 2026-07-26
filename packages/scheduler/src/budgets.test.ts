@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTaskPacket } from "@eo/testkit";
+import { buildTaskPacket } from "@crabgic/testkit";
 import {
   checkPacketBudgets,
   assertPacketWithinBudget,

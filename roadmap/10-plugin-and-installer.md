@@ -9,12 +9,12 @@
 
 ## Goal
 
-A Claude Code plugin (skills, subagents, advisory hooks, gateway MCP registration) and a drift-safe installer both exist and are independently verifiable: `engineering-orchestrator install` scaffolds a target project's `CLAUDE.md`, `.claude/settings.json`, `.claude/agents/`, and `.mcp.json` idempotently and reversibly; `upgrade`/`uninstall` round-trip cleanly against that recorded state; and the plugin loads in a real Claude Code session with its skills, subagents, and gateway MCP tools all visible. None of this is true before this phase lands — 09 ships only `NOT_IMPLEMENTED` stubs for `install`/`upgrade`/`uninstall` until this phase wires them.
+A Claude Code plugin (skills, subagents, advisory hooks, gateway MCP registration) and a drift-safe installer both exist and are independently verifiable: `crabgic install` scaffolds a target project's `CLAUDE.md`, `.claude/settings.json`, `.claude/agents/`, and `.mcp.json` idempotently and reversibly; `upgrade`/`uninstall` round-trip cleanly against that recorded state; and the plugin loads in a real Claude Code session with its skills, subagents, and gateway MCP tools all visible. None of this is true before this phase lands — 09 ships only `NOT_IMPLEMENTED` stubs for `install`/`upgrade`/`uninstall` until this phase wires them.
 
 ## In scope
 
 - **Plugin** (`.claude-plugin/plugin.json`): skills `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` (thin wrappers over the CLI/gateway MCP tools; `disable-model-invocation: true` on state-changing ones — `/eo:approve` MUST set it, since adaptation §5.5 requires approval never be a bare model-initiated tool call, and this skill only wraps 09's human-confirmed terminal approval flow, never mints a token itself); manager subagents `eo-explore`, `eo-reviewer` (narrow `tools:`, routed `model:`, read-heavy exploration/review, manager-side only — never write-capable workers); advisory manager hooks (PostToolUse formatting warnings, Stop-time reminders — non-blocking, distinct from the worker-context blocking hooks owned by 03/06); gateway MCP registration reference (see Interfaces consumed).
-- **Installer artifacts (§6.1):** `CLAUDE.md` managed block (`@AGENTS.md` import when the target repo already has one, §3.4/§6.2); `.claude/settings.json` add-only keys — `attribution: {"commit": "", "pr": ""}`, `sessionUrl: false` (§5.4), `enabledPlugins` — honoring monotonicity (never loosen a security key already present in the target repo); `.claude/agents/eo-*.md`; project-scope `.mcp.json` entry keyed **`GATEWAY_MCP_SERVER_NAME`** (constant, 02) whose command is exactly **`engineering-orchestrator gateway mcp`** (09); ownership + original/installed checksums + source version + backups recorded in an on-disk state store.
+- **Installer artifacts (§6.1):** `CLAUDE.md` managed block (`@AGENTS.md` import when the target repo already has one, §3.4/§6.2); `.claude/settings.json` add-only keys — `attribution: {"commit": "", "pr": ""}`, `sessionUrl: false` (§5.4), `enabledPlugins` — honoring monotonicity (never loosen a security key already present in the target repo); `.claude/agents/eo-*.md`; project-scope `.mcp.json` entry keyed **`GATEWAY_MCP_SERVER_NAME`** (constant, 02) whose command is exactly **`crabgic gateway mcp`** (09); ownership + original/installed checksums + source version + backups recorded in an on-disk state store.
 - **CLI backends wired into 09's skeletons:** `install [--dry-run] [--json]`, `upgrade [--dry-run]`, `uninstall [--keep-state]` — the first three of 09's `NOT_IMPLEMENTED` stubs to actually land.
 - **Doctor checks contributed** (registered into 09's `check = id, severity, evidence, repair step` framework): checksum/drift check, plugin-trust/pin check, CapabilityManifest-digest-freshness check; repair plans are non-destructive-only, matching 09's `--repair-plan` convention.
 - **Lifecycle:** full dry-run diff preview (`--json`); drift warnings; upgrade with backup + rollback; interrupted-upgrade recovery; uninstall removing only unchanged owned content.
@@ -37,7 +37,7 @@ A Claude Code plugin (skills, subagents, advisory hooks, gateway MCP registratio
 - **Skills**: `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` (`skills/`, frontmatter `description` + `disable-model-invocation` where applicable) — `/eo:approve` is 11's only non-model-satisfiable approval path besides 09's own CLI prompt.
 - **Subagents**: `.claude/agents/eo-explore.md`, `.claude/agents/eo-reviewer.md` — manager-session read-heavy exploration/review, available to 11's inspection/drafting flow.
 - **Advisory manager hooks** (non-blocking; manager-context only) — operate inside the same manager session 11 drives.
-- **Installer-written artifacts**: `CLAUDE.md` managed block; `.claude/settings.json` add-only keys (`attribution`, `sessionUrl`, `enabledPlugins`); `.claude/agents/eo-*.md` (copied); project-scope `.mcp.json` entry — **key `GATEWAY_MCP_SERVER_NAME`, command `engineering-orchestrator gateway mcp`**; ownership/checksum/backup state store — together, these are what makes the manager session (11) and the gateway MCP connection possible in a target project.
+- **Installer-written artifacts**: `CLAUDE.md` managed block; `.claude/settings.json` add-only keys (`attribution`, `sessionUrl`, `enabledPlugins`); `.claude/agents/eo-*.md` (copied); project-scope `.mcp.json` entry — **key `GATEWAY_MCP_SERVER_NAME`, command `crabgic gateway mcp`**; ownership/checksum/backup state store — together, these are what makes the manager session (11) and the gateway MCP connection possible in a target project.
 - **CLI command backends**: `install [--dry-run] [--json]`, `upgrade [--dry-run]`, `uninstall [--keep-state]` (implementations of 09's command shapes) — re-exercised by 23's installation E2E matrix.
 - **Doctor checks**: checksum-drift, plugin-trust/pin, CapabilityManifest-digest-freshness (registered into 09's doctor framework) — re-run as part of 23's release gate.
 - **`marketplace.json`** (SHA-pinned) + vendored `--plugin-dir`/`--plugin-url` digest-pinned install path — the artifact 23 publishes.
@@ -51,19 +51,19 @@ From **06** (Claude Code worker runtime):
 
 From **09** (CLI & doctor):
 - Command skeletons `install [--dry-run] [--json]`, `upgrade [--dry-run]`, `uninstall [--keep-state]` (parser + typed UDS client, `NOT_IMPLEMENTED` until wired) — this phase supplies the backend.
-- `gateway mcp` command — boots the `eo_gateway` MCP server (stdio) over 16's extensible tool registry; this phase's `.mcp.json` entry invokes it verbatim and implements none of it.
+- `gateway mcp` command — boots the `crabgic_gateway` MCP server (stdio) over 16's extensible tool registry; this phase's `.mcp.json` entry invokes it verbatim and implements none of it.
 - Doctor framework (`check = id, severity, evidence, repair step`) — this phase registers checks into it.
 - Secret-reference argument type and stdout/stderr/exit-code conventions — installer commands conform, they don't redefine them.
 - Approval-token lifecycle (terminal prompt, HMAC bound to envelope hash, journaled) — `/eo:approve` wraps it; this phase never mints tokens itself.
 
 From **02** (`packages/contracts` — ambiently available to every phase per the ledger; consuming it here needs no direct dependency edge, the same pattern Gap 11 applies to 06):
-- `GATEWAY_MCP_SERVER_NAME = "eo_gateway"` — the `.mcp.json` entry key, byte-identical to the exported constant.
+- `GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` — the `.mcp.json` entry key, byte-identical to the exported constant.
 - `CapabilityManifest` schema — this phase populates one entry (the plugin itself).
 
 ## Work items
 
 1. Plugin package scaffold: `.claude-plugin/plugin.json`, the five skills, `eo-explore`/`eo-reviewer` subagents, advisory hooks; local `--plugin-dir` smoke test. First failing test: plugin-manifest schema validation rejects a manifest missing a required skill or subagent entry.
-2. Installer artifact writers (add-only, marker-delimited): `CLAUDE.md` (+ `@AGENTS.md` bridge), `.claude/settings.json`, `.claude/agents/eo-*.md`, `.mcp.json` entry keyed `GATEWAY_MCP_SERVER_NAME`. First failing test: a golden-file comparison of the generated `.mcp.json` entry against the literal `{"eo_gateway": {"command": "engineering-orchestrator", "args": ["gateway", "mcp"]}}` shape, run against a stub writer that doesn't yet exist.
+2. Installer artifact writers (add-only, marker-delimited): `CLAUDE.md` (+ `@AGENTS.md` bridge), `.claude/settings.json`, `.claude/agents/eo-*.md`, `.mcp.json` entry keyed `GATEWAY_MCP_SERVER_NAME`. First failing test: a golden-file comparison of the generated `.mcp.json` entry against the literal `{"crabgic_gateway": {"command": "crabgic", "args": ["gateway", "mcp"]}}` shape, run against a stub writer that doesn't yet exist.
 3. Ownership/checksum state store + drift detector. First failing test: a single-byte external mutation of an owned file goes undetected by a stub detector.
 4. `install [--dry-run] [--json]` backend across the installation matrix (empty dir, invalid `.git`, unborn HEAD, dirty repo, monorepo) + non-Git `git init`-after-approval gate. First failing test: install into an unborn-HEAD repo against the current `NOT_IMPLEMENTED` stub.
 5. `upgrade [--dry-run]` backend: diff renderer, backup/rollback, interrupted-upgrade recovery. First failing test: a process kill mid-write leaves torn state under the stub (no recovery).
@@ -74,7 +74,7 @@ From **02** (`packages/contracts` — ambiently available to every phase per the
 
 ## Test plan
 
-**Unit:** add-only merge writer (marker round-trip, idempotent re-merge — running `install` twice diffs clean); checksum/drift hash stability across line-ending normalization; `.mcp.json` entry-key/command byte-comparison against `GATEWAY_MCP_SERVER_NAME` and the literal `engineering-orchestrator gateway mcp`; CapabilityManifest-entry digest computed from the packaged plugin's commit SHA.
+**Unit:** add-only merge writer (marker round-trip, idempotent re-merge — running `install` twice diffs clean); checksum/drift hash stability across line-ending normalization; `.mcp.json` entry-key/command byte-comparison against `GATEWAY_MCP_SERVER_NAME` and the literal `crabgic gateway mcp`; CapabilityManifest-entry digest computed from the packaged plugin's commit SHA.
 
 **Property:** install→upgrade→uninstall preserves every user-added key across randomly generated pre-existing `CLAUDE.md`/`settings.json` fixtures; no generated merge ever loosens a security key already present in the target repo (fuzzed over key presence/absence/value combinations).
 
@@ -88,7 +88,7 @@ From **02** (`packages/contracts` — ambiently available to every phase per the
 
 - [ ] Installation matrix passes end-to-end: empty dir, invalid `.git`, unborn HEAD, dirty repo, monorepo, config drift, interrupted upgrade, rollback, uninstall preserving user edits — suite `install.matrix.test`.
 - [ ] Add-only merge property test passes: user keys byte-preserved, security keys never loosened, over a fuzzed fixture corpus — suite `merge.monotonic.property`.
-- [ ] `.mcp.json` project-scope entry key equals `GATEWAY_MCP_SERVER_NAME` and its command equals `engineering-orchestrator gateway mcp`, byte-for-byte — golden test `mcp-entry.golden.test`.
+- [ ] `.mcp.json` project-scope entry key equals `GATEWAY_MCP_SERVER_NAME` and its command equals `crabgic gateway mcp`, byte-for-byte — golden test `mcp-entry.golden.test`.
 - [ ] Drift detector flags every seeded single-artifact mutation across `CLAUDE.md`, `settings.json`, `.mcp.json`, and `eo-*.md` — fixture suite `drift.fixtures`.
 - [ ] Doctor reports each seeded plugin/installer fault (drift, unpinned source, stale digest) with a non-destructive repair plan — suite `doctor.plugin-faults.test`.
 - [ ] `marketplace.json` is SHA-pinned and schema-valid; a vendored `--plugin-dir` install resolves to the identical digest as the marketplace listing — `marketplace.schema.test` + `vendored-install.digest.test`.

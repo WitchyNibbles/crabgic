@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import type { JiraPlanBuildContext } from "./plan-builder.js";
 import { JiraPlanPayloadRegistry } from "./plan-payload-registry.js";
 import { planIssueTransition } from "./issue-plans.js";

@@ -11,7 +11,7 @@ import { resolvePluginRoot } from "./plugin-root.js";
 import { computeContentDigest } from "./content-digest.js";
 
 const validEntry = {
-  name: "engineering-orchestrator",
+  name: "crabgic",
   source: "./..",
   description: "d",
   version: "0.0.0",

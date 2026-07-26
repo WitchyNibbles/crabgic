@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { NonEmptyStringSchema } from "@eo/contracts";
+import { NonEmptyStringSchema } from "@crabgic/contracts";
 
 /**
  * `ResourceCaptureArtifact` — roadmap/15 §In scope, "Resource capture":

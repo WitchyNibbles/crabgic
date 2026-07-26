@@ -287,17 +287,17 @@ try {
   {
     const REAL_SECRET = "REAL-SECRET-VALUE-9f21ac";
     const r = await runProbe("masked-env", {
-      sandbox: { enabled: true, failIfUnavailable: true, credentials: { envVars: [{ name: "EO_SECRET_X", mode: "mask" }] } },
+      sandbox: { enabled: true, failIfUnavailable: true, credentials: { envVars: [{ name: "CRABGIC_SECRET_X", mode: "mask" }] } },
       allowRules: ["Bash(echo:*)"],
-      env: { PATH: process.env.PATH, HOME: isolatedConfigDir, CLAUDE_CONFIG_DIR: isolatedConfigDir, EO_SECRET_X: REAL_SECRET },
-      prompt: "Via Bash run: echo VALUE=$EO_SECRET_X",
+      env: { PATH: process.env.PATH, HOME: isolatedConfigDir, CLAUDE_CONFIG_DIR: isolatedConfigDir, CRABGIC_SECRET_X: REAL_SECRET },
+      prompt: "Via Bash run: echo VALUE=$CRABGIC_SECRET_X",
       timeoutMs: 30000,
     });
     const realValueLeaked = r.allText.includes(REAL_SECRET);
     const sawSomeValue = bashOutputContaining(r.messages, (t) => /VALUE=\S+/.test(t)) !== null;
     entries.push(verdict({
       probe: "sandbox.masked-credential-envvar",
-      expectation: "sandbox.credentials.envVars mode:'mask' substitutes a sentinel for EO_SECRET_X inside the sandbox; the real value never appears in the worker's resolved env/output",
+      expectation: "sandbox.credentials.envVars mode:'mask' substitutes a sentinel for CRABGIC_SECRET_X inside the sandbox; the real value never appears in the worker's resolved env/output",
       observed: `real secret value leaked into transcript=${realValueLeaked}; some VALUE= output observed=${sawSomeValue}`,
       verdict: !realValueLeaked && sawSomeValue ? "PASS" : "FAIL",
     }));

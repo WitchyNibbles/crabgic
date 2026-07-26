@@ -1,4 +1,4 @@
-import type { RemoteMutationPlan } from "@eo/contracts";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
 import type { JiraStatusCategoryKey } from "../workflow/workflow-stage.js";
 
 /**
@@ -98,7 +98,7 @@ export interface JiraTransition {
  * Read/search methods perform network I/O and return validated domain
  * objects. `plan*` methods are PURE and LOCAL — no network I/O — they
  * build a `RemoteMutationPlan` the caller submits through 16's mutation
- * pipeline (`tracker.apply`); this mirrors `@eo/gateway`'s own fake-
+ * pipeline (`tracker.apply`); this mirrors `@crabgic/gateway`'s own fake-
  * tracker-provider doc comment: "planning is local-only; no network call
  * in the real implementation." Epics are not a separate namespace: Jira
  * models an epic as an issue whose `issueType` is `"Epic"`, so epic

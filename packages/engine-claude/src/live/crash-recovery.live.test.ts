@@ -44,10 +44,14 @@ import { readFileSync, readdirSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { READ_ONLY_ENVELOPE, compileEnvelope } from "@eo/engine-core";
-import type { AdjudicationCallback, CompiledWorkerProfile, EngineEvent } from "@eo/engine-core";
-import { buildTaskPacket } from "@eo/testkit";
-import type { TaskPacket } from "@eo/contracts";
+import { READ_ONLY_ENVELOPE, compileEnvelope } from "@crabgic/engine-core";
+import type {
+  AdjudicationCallback,
+  CompiledWorkerProfile,
+  EngineEvent,
+} from "@crabgic/engine-core";
+import { buildTaskPacket } from "@crabgic/testkit";
+import type { TaskPacket } from "@crabgic/contracts";
 import { transcriptPathForSession } from "../session.js";
 import {
   assertLiveEnabled,
@@ -292,11 +296,11 @@ describe("adapter.fork isolates a repair attempt from the original transcript", 
 });
 
 // Per-session markers. Deliberately shaped as obvious TEST FIXTURES (an
-// `EO_FIXTURE_MARKER_` prefix, no entropy, no credential-looking shape) so the
+// `CRABGIC_FIXTURE_MARKER_` prefix, no entropy, no credential-looking shape) so the
 // harness's sanitization scan and any human reader can tell at a glance that
 // nothing secret is being planted — while staying unique and greppable.
-const FIXTURE_MARKER_ALPHA = "EO_FIXTURE_MARKER_ALPHA";
-const FIXTURE_MARKER_ZETA = "EO_FIXTURE_MARKER_ZETA";
+const FIXTURE_MARKER_ALPHA = "CRABGIC_FIXTURE_MARKER_ALPHA";
+const FIXTURE_MARKER_ZETA = "CRABGIC_FIXTURE_MARKER_ZETA";
 // Two unrelated file names, NOT an `-a`/`-b` pair: neither prompt may hint that
 // the other session's file exists, or a curious worker could read its sibling
 // and fail the isolation assertion for a reason that is not an interleave.

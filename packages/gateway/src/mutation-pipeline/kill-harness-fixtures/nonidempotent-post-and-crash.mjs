@@ -18,8 +18,8 @@
 // since 18/20 haven't landed yet.
 import { appendFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { createJournalStore } from "@eo/journal";
-import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@eo/gateway";
+import { createJournalStore } from "@crabgic/journal";
+import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@crabgic/gateway";
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function delay(ms) {
@@ -30,11 +30,11 @@ async function signalFaultPoint(name) {
   await delay(200);
 }
 
-const journalDir = process.env.EO_FIXTURE_JOURNAL_DIR;
-const sideEffectFile = process.env.EO_FIXTURE_SIDE_EFFECT_FILE;
-const faultPoint = process.env.EO_FIXTURE_FAULT_POINT ?? "none";
-const noReconcile = process.env.EO_FIXTURE_NO_RECONCILE === "1";
-const plan = JSON.parse(process.env.EO_FIXTURE_PLAN_JSON);
+const journalDir = process.env.CRABGIC_FIXTURE_JOURNAL_DIR;
+const sideEffectFile = process.env.CRABGIC_FIXTURE_SIDE_EFFECT_FILE;
+const faultPoint = process.env.CRABGIC_FIXTURE_FAULT_POINT ?? "none";
+const noReconcile = process.env.CRABGIC_FIXTURE_NO_RECONCILE === "1";
+const plan = JSON.parse(process.env.CRABGIC_FIXTURE_PLAN_JSON);
 
 const journal = createJournalStore({ journalDir });
 
@@ -98,7 +98,7 @@ const handlers = {
   // modeled directly by this fixture since 18/20 haven't landed): search
   // for an object already carrying this operation's marker BEFORE ever
   // considering a fresh POST. Omitted entirely when
-  // EO_FIXTURE_NO_RECONCILE=1, to exercise this pipeline's OWN fail-closed
+  // CRABGIC_FIXTURE_NO_RECONCILE=1, to exercise this pipeline's OWN fail-closed
   // default (block, never guess) with no hook available at all.
   ...(noReconcile
     ? {}

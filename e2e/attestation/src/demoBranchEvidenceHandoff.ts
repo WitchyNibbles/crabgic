@@ -180,7 +180,7 @@ export function readDemoBranchEvidenceHandoffInput(
  * repository — the artifacts are outputs of the run, not committed files.
  *
  * Imported lazily so that merely importing this module (as the pure-check
- * unit tests do) never drags in `@eo/git-engine`/`@eo/renderer`.
+ * unit tests do) never drags in `@crabgic/git-engine`/`@crabgic/renderer`.
  */
 export async function runDemoBranchEvidenceHandoff(
   releaseCandidateObjectId: string,

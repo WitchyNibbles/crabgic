@@ -5,7 +5,7 @@
  * adapters fire only when Terraform/CloudFormation files are detected" —
  * this detector is the thing that fact depends on.
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 
 function isTerraform(path: string): boolean {

@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { buildProjectProfile } from "@eo/testkit";
+import { buildProjectProfile } from "@crabgic/testkit";
 import { NoBenchmarkCommandError } from "../errors.js";
 import {
   createGenericCommandAdapter,

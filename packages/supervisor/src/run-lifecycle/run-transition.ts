@@ -12,8 +12,8 @@
  * `RunsRegistry` — journal-first, registry second, matching every other
  * externally-visible-effect ordering this package follows.
  */
-import { runLifecycleTransition, type RunLifecycleState } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import { runLifecycleTransition, type RunLifecycleState } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { RunRecord } from "../router/operations.js";
 import type { RunsRegistry } from "../registries/runs-registry.js";
 

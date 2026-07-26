@@ -35,9 +35,9 @@ const packageDirs = readdirSync(join(REPO_ROOT, "packages"), { withFileTypes: tr
   .map((entry) => `packages/${entry.name}`);
 
 /**
- * Each package's own `package.json` "name" (e.g. `@eo/testkit`), read
+ * Each package's own `package.json` "name" (e.g. `@crabgic/testkit`), read
  * synchronously at config-load time, so per-project output keeps the same
- * `|@eo/testkit|`-style labels the original bare-glob `projects` form
+ * `|@crabgic/testkit|`-style labels the original bare-glob `projects` form
  * produced — `extends: true` project objects don't get that label for
  * free the way glob-matched directories did.
  */

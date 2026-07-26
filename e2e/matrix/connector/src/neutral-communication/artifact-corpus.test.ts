@@ -4,7 +4,7 @@
  * PR-title/PR-body/review-comment/jira-milestone-comment/grafana-
  * annotation) ... reuse 17's lint (validateAdfSafeSubset/lint) + goldens."
  *
- * This suite drives the REAL `@eo/renderer` `lint()` pipeline (never a
+ * This suite drives the REAL `@crabgic/renderer` `lint()` pipeline (never a
  * reimplementation) against one valid fixture per `ArtifactKind`, plus a
  * small property sweep, proving every legitimate rendered artifact clears
  * every stage. The negative fixtures (confusable domain, secret-shaped
@@ -22,8 +22,8 @@ import {
   renderPrTitle,
   renderReviewComment,
   type ArtifactKind,
-} from "@eo/renderer";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+} from "@crabgic/renderer";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -31,7 +31,7 @@ import {
 } from "../support/evidence.js";
 import type { ScenarioJournal } from "../support/evidence.js";
 
-/** One genuinely valid candidate per `ArtifactKind` — mirrors `@eo/renderer`'s own `golden.test.ts` fixture choices, reusing the SAME real template functions (never a bespoke re-derivation). */
+/** One genuinely valid candidate per `ArtifactKind` — mirrors `@crabgic/renderer`'s own `golden.test.ts` fixture choices, reusing the SAME real template functions (never a bespoke re-derivation). */
 function validCandidateFor(kind: ArtifactKind): string {
   switch (kind) {
     case "branch_name":
@@ -96,7 +96,7 @@ afterEach(async () => {
   await tj.cleanup();
 });
 
-describe("neutral-communication — real @eo/renderer lint() over every ArtifactKind (golden)", () => {
+describe("neutral-communication — real @crabgic/renderer lint() over every ArtifactKind (golden)", () => {
   it("every ArtifactKind's one valid golden fixture clears the full real lint() pipeline", async () => {
     const outcomes: Record<string, unknown> = {};
     for (const kind of ARTIFACT_KINDS) {
@@ -122,7 +122,7 @@ describe("neutral-communication — real @eo/renderer lint() over every Artifact
     // proved is unchanged — that one `emitScenarioEvidence` call appended
     // exactly ONE durable, correctly-tagged, readable-back entry. A bare
     // journal-wide count only means that while the journal is private;
-    // under `EO_RELEASE_GATE_JOURNAL_DIR` (see `../support/evidence.ts`)
+    // under `CRABGIC_RELEASE_GATE_JOURNAL_DIR` (see `../support/evidence.ts`)
     // every sibling harness's evidence is visible here too.
     const evidence: unknown[] = [];
     for await (const entry of tj.store.queryEntries({
@@ -143,12 +143,12 @@ describe("neutral-communication — real @eo/renderer lint() over every Artifact
 // concatenated by a template, and never overlapping any lint stage's
 // forbidden-content patterns (no URLs, no secret-shaped substrings, no
 // non-ASCII/control codepoints).
-// Excludes `@eo/renderer`'s own `attribution-neutral` first-person-pronoun
+// Excludes `@crabgic/renderer`'s own `attribution-neutral` first-person-pronoun
 // set (I/we/our/my/mine, case-insensitive whole-word) and its
 // `evidence-claims` completion-claim words (fixed/resolved/verified/
 // working/completed) — both real, intentional lint blocks this property
 // is not scoped to exercising (that is `attribution-neutral.test.ts` /
-// `evidence-claims.test.ts`'s own job, upstream in `@eo/renderer` itself).
+// `evidence-claims.test.ts`'s own job, upstream in `@crabgic/renderer` itself).
 const FIRST_PERSON_OR_CLAIM_WORDS = new Set([
   "i",
   "we",

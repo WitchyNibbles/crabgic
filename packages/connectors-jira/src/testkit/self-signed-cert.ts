@@ -1,6 +1,6 @@
 /**
  * Test-support only: generates a disposable self-signed TLS certificate
- * via the system `openssl` CLI — mirrors `@eo/gateway`'s own internal
+ * via the system `openssl` CLI — mirrors `@crabgic/gateway`'s own internal
  * `transport/test-support/self-signed-cert.ts` (not part of that
  * package's public barrel, so it cannot be imported here; this is a
  * package-local duplicate of the SAME small helper, not a divergent

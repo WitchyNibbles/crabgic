@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   RemoteOperationRecordSchema,
   type RemoteOperationRecord,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `RemoteOperationRecord` fixture builder — roadmap/02 work item 10. */

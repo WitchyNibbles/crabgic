@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveXdgCacheHome, type XdgEnv } from "@eo/journal";
+import { resolveXdgCacheHome, type XdgEnv } from "@crabgic/journal";
 import {
   resolveGitControlDir,
   resolveWorktreeQuarantineDir,
@@ -15,24 +15,19 @@ const projectHash = "abc123hash";
 describe("layout resolvers (WI5/WI6 own path choices, nested under Gap 14's pinned cache root)", () => {
   it("resolveGitControlDir nests git-control/ under the pinned cache root", () => {
     expect(resolveGitControlDir(env, projectHash)).toBe(
-      join(resolveXdgCacheHome(env), "engineering-orchestrator", projectHash, "git-control"),
+      join(resolveXdgCacheHome(env), "crabgic", projectHash, "git-control"),
     );
   });
 
   it("resolveWorktreesRootDir nests worktrees/ under the same cache root", () => {
     expect(resolveWorktreesRootDir(env, projectHash)).toBe(
-      join(resolveXdgCacheHome(env), "engineering-orchestrator", projectHash, WORKTREES_SUBDIR),
+      join(resolveXdgCacheHome(env), "crabgic", projectHash, WORKTREES_SUBDIR),
     );
   });
 
   it("resolveWorktreeQuarantineDir nests worktree-quarantine/ under the same cache root", () => {
     expect(resolveWorktreeQuarantineDir(env, projectHash)).toBe(
-      join(
-        resolveXdgCacheHome(env),
-        "engineering-orchestrator",
-        projectHash,
-        WORKTREE_QUARANTINE_SUBDIR,
-      ),
+      join(resolveXdgCacheHome(env), "crabgic", projectHash, WORKTREE_QUARANTINE_SUBDIR),
     );
   });
 

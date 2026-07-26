@@ -27,7 +27,7 @@ import {
   TaskPacketSchema,
   type AuthorizationEnvelope,
   type TaskPacket,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { assertPacketWithinBudget, type PacketFieldBudgets } from "./budgets.js";
 import { PacketEnvelopeViolationError } from "./errors.js";
 
@@ -56,7 +56,7 @@ export interface BuildTaskPacketOptions {
    * attempt or by the shadow-run mechanism (`./shadow-run.ts`), per this
    * phase's own explicit two-caller restriction. Never stored on the
    * returned `TaskPacket` (02's schema has no such field, deliberately —
-   * see `@eo/contracts`'s own `task-packet.ts` doc comment) — carried back
+   * see `@crabgic/contracts`'s own `task-packet.ts` doc comment) — carried back
    * out-of-band on `BuildTaskPacketResult.lessonPreamble` instead, for a
    * caller that wants to fold it into the worker prompt text alongside
    * (never inside) the packet.

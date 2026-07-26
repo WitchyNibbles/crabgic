@@ -6,7 +6,7 @@
  * don't care about permission/sandbox content, plus an always-allow
  * adjudication stub.
  */
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 
 export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
   return {

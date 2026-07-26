@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PERFORMANCE_OUTCOMES } from "@eo/contracts";
+import { PERFORMANCE_OUTCOMES } from "@crabgic/contracts";
 import {
   PERF_CONFORMANCE_SUITE,
   AMBIENT_SAMPLE_MS,

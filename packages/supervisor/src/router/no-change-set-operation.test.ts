@@ -41,7 +41,7 @@ function listTsFiles(dir: string): string[] {
   return files;
 }
 
-describe("Gap 1 conformance — no change_set.* operation anywhere in @eo/supervisor", () => {
+describe("Gap 1 conformance — no change_set.* operation anywhere in @crabgic/supervisor", () => {
   it("SUPERVISOR_OPERATIONS (the router's own registered vocabulary) contains no change_set.*-prefixed name", () => {
     for (const op of SUPERVISOR_OPERATIONS) {
       expect(op.startsWith("change_set.")).toBe(false);

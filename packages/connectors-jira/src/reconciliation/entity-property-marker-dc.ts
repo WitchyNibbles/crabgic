@@ -1,4 +1,4 @@
-import type { MarkerReconciler } from "@eo/gateway";
+import type { MarkerReconciler } from "@crabgic/gateway";
 import { listComments, searchIssues } from "../resource-client/datacenter/reads-dc.js";
 import type { JiraDatacenterHttpContext } from "../resource-client/datacenter/jira-datacenter-http-context.js";
 import type { JiraMarkerKind } from "./entity-property-marker.js";

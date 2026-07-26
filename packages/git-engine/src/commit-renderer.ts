@@ -16,9 +16,9 @@
  * never generates new prose itself.
  */
 
-import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@eo/contracts";
-import type { LintFinding } from "@eo/renderer";
-import { renderWithRegeneration } from "@eo/renderer";
+import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@crabgic/contracts";
+import type { LintFinding } from "@crabgic/renderer";
+import { renderWithRegeneration } from "@crabgic/renderer";
 import { BRANCH_TYPES, type BranchType } from "./branch-namer.js";
 
 /** The same closed `type` set branch names use (roadmap §Templates: the commit-subject/PR-title `type(scope): outcome` convention is shared). */

@@ -6,7 +6,7 @@
     "Bash(npm run build:*)",
     "Bash(git status:*)",
     "Bash(git diff:*)",
-    "mcp__eo_gateway__*"
+    "mcp__crabgic_gateway__*"
   ],
   "cwd": "/fixture/worktree",
   "disallowedTools": [
@@ -16,16 +16,16 @@
     "Bash(git push:*)",
     "Bash(curl:*)",
     "Bash(wget:*)",
-    "Read(~/.local/state/engineering-orchestrator/**)",
-    "Read(~/.cache/engineering-orchestrator/**)",
+    "Read(~/.local/state/crabgic/**)",
+    "Read(~/.cache/crabgic/**)",
     "Read(~/.ssh/**)",
     "Read(~/.aws/**)",
-    "Edit(~/.local/state/engineering-orchestrator/**)",
-    "Edit(~/.cache/engineering-orchestrator/**)",
+    "Edit(~/.local/state/crabgic/**)",
+    "Edit(~/.cache/crabgic/**)",
     "Edit(~/.ssh/**)",
     "Edit(~/.aws/**)",
-    "Write(~/.local/state/engineering-orchestrator/**)",
-    "Write(~/.cache/engineering-orchestrator/**)",
+    "Write(~/.local/state/crabgic/**)",
+    "Write(~/.cache/crabgic/**)",
     "Write(~/.ssh/**)",
     "Write(~/.aws/**)",
     "Edit(///fixture/worktree/.git/**)",
@@ -42,12 +42,12 @@
   "includePartialMessages": true,
   "maxTurns": 8,
   "mcpServers": {
-    "eo_gateway": {
+    "crabgic_gateway": {
       "args": [
         "gateway",
         "mcp"
       ],
-      "command": "engineering-orchestrator",
+      "command": "crabgic",
       "type": "stdio"
     }
   },
@@ -73,16 +73,16 @@
         "/fixture/worker-tmp"
       ],
       "denyRead": [
-        "~/.local/state/engineering-orchestrator/**",
-        "~/.cache/engineering-orchestrator/**",
+        "~/.local/state/crabgic/**",
+        "~/.cache/crabgic/**",
         "~/.ssh/**",
         "~/.aws/**"
       ],
       "denyWrite": [
         "/fixture/worktree/.git",
         "/fixture/worktree/.git/**",
-        "~/.local/state/engineering-orchestrator/**",
-        "~/.cache/engineering-orchestrator/**",
+        "~/.local/state/crabgic/**",
+        "~/.cache/crabgic/**",
         "~/.ssh/**",
         "~/.aws/**"
       ]
@@ -104,7 +104,7 @@
         "Bash(npm run build:*)",
         "Bash(git status:*)",
         "Bash(git diff:*)",
-        "mcp__eo_gateway__*"
+        "mcp__crabgic_gateway__*"
       ],
       "ask": [],
       "defaultMode": "dontAsk",
@@ -115,16 +115,16 @@
         "Bash(git push:*)",
         "Bash(curl:*)",
         "Bash(wget:*)",
-        "Read(~/.local/state/engineering-orchestrator/**)",
-        "Read(~/.cache/engineering-orchestrator/**)",
+        "Read(~/.local/state/crabgic/**)",
+        "Read(~/.cache/crabgic/**)",
         "Read(~/.ssh/**)",
         "Read(~/.aws/**)",
-        "Edit(~/.local/state/engineering-orchestrator/**)",
-        "Edit(~/.cache/engineering-orchestrator/**)",
+        "Edit(~/.local/state/crabgic/**)",
+        "Edit(~/.cache/crabgic/**)",
         "Edit(~/.ssh/**)",
         "Edit(~/.aws/**)",
-        "Write(~/.local/state/engineering-orchestrator/**)",
-        "Write(~/.cache/engineering-orchestrator/**)",
+        "Write(~/.local/state/crabgic/**)",
+        "Write(~/.cache/crabgic/**)",
         "Write(~/.ssh/**)",
         "Write(~/.aws/**)",
         "Edit(///fixture/worktree/.git/**)",
@@ -146,16 +146,16 @@
           "/fixture/worker-tmp"
         ],
         "denyRead": [
-          "~/.local/state/engineering-orchestrator/**",
-          "~/.cache/engineering-orchestrator/**",
+          "~/.local/state/crabgic/**",
+          "~/.cache/crabgic/**",
           "~/.ssh/**",
           "~/.aws/**"
         ],
         "denyWrite": [
           "/fixture/worktree/.git",
           "/fixture/worktree/.git/**",
-          "~/.local/state/engineering-orchestrator/**",
-          "~/.cache/engineering-orchestrator/**",
+          "~/.local/state/crabgic/**",
+          "~/.cache/crabgic/**",
           "~/.ssh/**",
           "~/.aws/**"
         ]

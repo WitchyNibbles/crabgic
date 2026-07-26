@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { dispatchAttempt } from "@eo/scheduler";
+import { dispatchAttempt } from "@crabgic/scheduler";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,
@@ -20,7 +20,7 @@ import { runTwinWorktreeBenchmark } from "./twin-worktree-runner.js";
  * "fake-engine E2E with a scripted, deterministic benchmark command proving
  * exact interleaving order before any real stack adapter exists." Proves
  * this package's `dispatchWorktree` injection point composes correctly with
- * `@eo/scheduler`'s REAL `dispatchAttempt` + `FakeEngineAdapter` (mirroring
+ * `@crabgic/scheduler`'s REAL `dispatchAttempt` + `FakeEngineAdapter` (mirroring
  * `packages/gates/src/final-candidate.e2e.test.ts`'s identical pattern) —
  * i.e. 13's own worktree-provisioning wiring is real, even though the
  * "worktree path" itself is a fixture-known constant here (see
@@ -75,7 +75,7 @@ async function scriptedDeterministicMeasure(params: {
 }
 
 describe("E2E: twin-worktree A/B runner dispatches through 13's executor with exact interleaving order", () => {
-  it("dispatches each repetition through the REAL @eo/scheduler dispatchAttempt, in strict base/candidate alternating order", async () => {
+  it("dispatches each repetition through the REAL @crabgic/scheduler dispatchAttempt, in strict base/candidate alternating order", async () => {
     const observedOrder: string[] = [];
     const dispatchWorktree = makeDispatchWorktree();
 

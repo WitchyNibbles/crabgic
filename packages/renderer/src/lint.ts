@@ -1,4 +1,4 @@
-import type { CommunicationPolicy } from "@eo/contracts";
+import type { CommunicationPolicy } from "@crabgic/contracts";
 import { adfSafeSubsetStage } from "./adf.js";
 import type { ArtifactKind } from "./artifact-kind.js";
 import { attributionNeutralStage } from "./attribution-neutral.js";

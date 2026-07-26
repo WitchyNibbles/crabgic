@@ -8,7 +8,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import type { PostToolUseHookInput, SessionEndHookInput } from "@anthropic-ai/claude-agent-sdk";
 import {
   createInMemoryAdjudicationAuditLog,

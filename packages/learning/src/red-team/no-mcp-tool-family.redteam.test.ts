@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
  *
  * This is a READ-ONLY scan of `packages/gateway/src` — this suite never
  * writes to, imports from (at the module-graph level; `readFileSync` on
- * source text is not an import), or otherwise depends on `@eo/gateway` as
+ * source text is not an import), or otherwise depends on `@crabgic/gateway` as
  * a package. It lives here (not in `packages/gateway`) because this
  * phase — not 16 — owns the permanent absence this check enforces
  * (interface-ledger Gap 1: "Phase 22 carries a grep-based CI check ...

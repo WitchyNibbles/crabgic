@@ -6,14 +6,14 @@ import {
   type CliDependencies,
   type CommandName,
   type ParsedCommand,
-} from "engineering-orchestrator";
+} from "crabgic";
 
 /**
  * The zero-`NOT_IMPLEMENTED` SWEEP (behavioral half) — roadmap/23-release-
  * hardening.md work item 7: "a static test that greps/loads
  * packages/cli + packages/gateway and enumerates EVERY `NOT_IMPLEMENTED`
  * return." This module LOADS the real, shipped `packages/cli` package
- * (`engineering-orchestrator`'s own public exports — `dispatchCommand`,
+ * (`crabgic`'s own public exports — `dispatchCommand`,
  * the real router) and drives every command variant through it, recording
  * which ones actually produce the typed `NOT_IMPLEMENTED` shape
  * (`exitCode === EXIT_NOT_IMPLEMENTED`) — a real, running proof rather than
@@ -39,7 +39,7 @@ import {
  *    despite dispatch.ts having real conditional branches for them and
  *    real backends existing (`../intake/run-intake-command.ts` /
  *    `../learning/learn-command-backend.ts`), are UNCONDITIONALLY
- *    `NOT_IMPLEMENTED` in the actual `engineering-orchestrator` binary
+ *    `NOT_IMPLEMENTED` in the actual `crabgic` binary
  *    today. `combineFindings` below folds both layers into the final,
  *    accurate "what's really NOT_IMPLEMENTED right now" list.
  */
@@ -205,7 +205,7 @@ const DEPENDENCY_GATED_COMMANDS: Readonly<Record<string, keyof ProductionDepende
 
 export interface CliNotImplementedFinding {
   readonly command: CommandName;
-  /** `true` iff this command is ACTUALLY `NOT_IMPLEMENTED` in the real, shipped `engineering-orchestrator` binary today (not merely at dispatch-level absent-deps probing). */
+  /** `true` iff this command is ACTUALLY `NOT_IMPLEMENTED` in the real, shipped `crabgic` binary today (not merely at dispatch-level absent-deps probing). */
   readonly realGapInProduction: boolean;
   readonly note: string;
 }

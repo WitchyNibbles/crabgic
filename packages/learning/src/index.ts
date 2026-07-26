@@ -1,5 +1,5 @@
 /**
- * `@eo/learning` public barrel — roadmap/22-learning-system.md. Every
+ * `@crabgic/learning` public barrel — roadmap/22-learning-system.md. Every
  * cross-cutting type/function this package exposes to `packages/cli`'s
  * `learn list|approve|reject|rollback` backend (the ONLY consumer —
  * roadmap/22 §In scope: "promotion/review is CLI-only") is exported from
@@ -7,7 +7,7 @@
  *
  * Excluded deliberately (test-support-only, not part of this package's
  * public API surface, mirroring every sibling package's identical
- * convention — `@eo/scheduler`, `@eo/gates`, `@eo/supervisor`):
+ * convention — `@crabgic/scheduler`, `@crabgic/gates`, `@crabgic/supervisor`):
  * `test-support/minimal-compiled-profile.ts`.
  */
 

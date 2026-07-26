@@ -1,5 +1,5 @@
-import { findEvidenceForRequirement } from "@eo/gates";
-import type { JournalStore } from "@eo/journal";
+import { findEvidenceForRequirement } from "@crabgic/gates";
+import type { JournalStore } from "@crabgic/journal";
 import { assertNoContamination } from "./contamination.js";
 import type { EvalCase } from "./case-schema.js";
 
@@ -23,7 +23,7 @@ export interface EvalSuiteResult {
  * from whether ANY `evidence_pointer` entry recorded against that same
  * `requirementId` has `exitStatus === 0` (14's own pass/fail convention —
  * `GateVerdict`/`EvidenceRecord` have no separate boolean "passed" field
- * once journaled, `exitStatus` IS the recorded verdict, `@eo/gates`'s own
+ * once journaled, `exitStatus` IS the recorded verdict, `@crabgic/gates`'s own
  * `evidence.ts`). Cases with no ground-truth evidence link fall back to a
  * pure structural comparison against the case's own `input.actualJudgment`
  * field (fixture-modeled — this phase's own minimal-sufficient choice for

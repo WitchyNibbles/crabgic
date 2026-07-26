@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { buildRemoteResource } from "@eo/testkit";
+import { buildRemoteResource } from "@crabgic/testkit";
 import { compareRemoteResourceRevisions, stampJiraRemoteResource } from "./revision-comparator.js";
 
 /**

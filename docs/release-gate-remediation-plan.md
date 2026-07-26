@@ -30,7 +30,7 @@ top of it:
 | Defect                                                                         | Reality                                                                                                                                                                                                                                     | Remedy                                                                                     |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `performanceContracts.ts` defines its own `satisfied\|regressed\|skipped` enum | Canonical vocabulary is `PERFORMANCE_OUTCOMES = ["pass", "block", "inconclusive_blocking"]` (`packages/contracts/src/contracts/performance-contract.ts`). `inconclusive_blocking` **is** the "skipped" concept and already blocks by design | Consume `EnforcedPerformanceContract` (`budgets[].measuredValue`, `budgetHash`, `outcome`) |
-| Perf / traceability / demo checks read hand-written files                      | The journal (04) is the system's own source of truth and already flows through `EO_RELEASE_GATE_JOURNAL_DIR`                                                                                                                                | Read the journal, as `e2e/report`'s generator does                                         |
+| Perf / traceability / demo checks read hand-written files                      | The journal (04) is the system's own source of truth and already flows through `CRABGIC_RELEASE_GATE_JOURNAL_DIR`                                                                                                                           | Read the journal, as `e2e/report`'s generator does                                         |
 | `quietHost: boolean` invented by the perf check                                | No quiet-host concept exists anywhere in `packages/perf`                                                                                                                                                                                    | Build a real probe over the existing `/proc` primitives                                    |
 | arm64 check matches `/arm64\|aarch64/i` against evidence **file names**        | Fragile heuristic                                                                                                                                                                                                                           | Structured CI run record: workflow run id, `uname -m`, conclusion, commit SHA              |
 
@@ -126,7 +126,7 @@ only, which would silently leave historical work untraced.
 ## Additional finding: no-engine-attribution
 
 `e2e/matrix/git/src/evidence.ts` takes `objectId` as a **required caller-supplied value with no
-`$EO_RELEASE_CANDIDATE_OBJECT_ID` fallback** — unlike `e2e/live`, `e2e/release`, and
+`$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` fallback** — unlike `e2e/live`, `e2e/release`, and
 `e2e/matrix/connector`, which all have one. Scenarios therefore stamp throwaway-repository
 object IDs that can never match the release candidate, and `no-engine-attribution`, whose only
 evidence source is this harness, stays `EVIDENCE-PENDING` forever.
@@ -199,14 +199,14 @@ _across process instances_, not drift within one.
 **Decomposing the module graph found the actual cost.** Importing the daemon's dependencies
 one at a time:
 
-| Stage                                              |   RSS | Delta     |
-| -------------------------------------------------- | ----: | --------- |
-| bare Node runtime floor                            |  41.2 | —         |
-| `+ @eo/journal`, `@eo/contracts`, `@eo/supervisor` |  65.5 | +24.3     |
-| `+ ../daemon/run-dispatcher.js`                    | 108.2 | **+42.7** |
+| Stage                                                             |   RSS | Delta     |
+| ----------------------------------------------------------------- | ----: | --------- |
+| bare Node runtime floor                                           |  41.2 | —         |
+| `+ @crabgic/journal`, `@crabgic/contracts`, `@crabgic/supervisor` |  65.5 | +24.3     |
+| `+ ../daemon/run-dispatcher.js`                                   | 108.2 | **+42.7** |
 
 That last import is the whole breach. `run-dispatcher.ts` statically imports
-`@eo/engine-claude`, which pulls `@anthropic-ai/claude-agent-sdk` — **+40.9 MiB on its own**.
+`@crabgic/engine-claude`, which pulls `@anthropic-ai/claude-agent-sdk` — **+40.9 MiB on its own**.
 The daemon paid it at every boot for two reasons: the dispatcher factory was constructed
 eagerly, and `resolveWorkerAuthMaterial` — called at startup — happened to live in that same
 module, so merely resolving a token dragged the engine in.
@@ -397,7 +397,7 @@ such field at all — six of eight emitters could not stamp. Measured against th
 - The artifact had **no Gap-16 override**, alone among the records read that way, so
   "artifact is in the tree" and "artifact matches the candidate" were unsatisfiable together
   and the item was unclearable by construction. It now has
-  `$EO_REQUIREMENT_TRACEABILITY_RECORD`, produced into `$RUNNER_TEMP` by `release-e2e.yml`.
+  `$CRABGIC_REQUIREMENT_TRACEABILITY_RECORD`, produced into `$RUNNER_TEMP` by `release-e2e.yml`.
 - The check demanded a Jira/Grafana binding of **every** criterion, including ones with no
   remote counterpart at all. Owner-ratified narrowing to the criteria whose subject is a
   remote system; the scope is stated in the report rather than applied silently.

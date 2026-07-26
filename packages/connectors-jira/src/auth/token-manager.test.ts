@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import { JiraTokenManager } from "./token-manager.js";
 
 /**

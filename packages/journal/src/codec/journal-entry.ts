@@ -1,7 +1,7 @@
 /**
  * The `JournalEntry` envelope — roadmap/04-journal-idempotency-leases.md
  * work item 1: "a zod `JournalEntrySchema` envelope (`schemaVersion` first
- * field using @eo/contracts conventions, `seq` monotonically increasing
+ * field using @crabgic/contracts conventions, `seq` monotonically increasing
  * int, `type` = JournalEntryType, `payload` ..., `prevHash`, `hash`,
  * timestamp)."
  *
@@ -23,7 +23,7 @@
  * so every branch keeps its own precise TypeScript literal `type` and
  * `payload` shape inside the `z.discriminatedUnion` — matching this
  * repo's existing style of explicit, hand-written union members (e.g.
- * `WORK_UNIT_ATTEMPT_STATUS_TRANSITIONS` in `@eo/contracts`) over a
+ * `WORK_UNIT_ATTEMPT_STATUS_TRANSITIONS` in `@crabgic/contracts`) over a
  * generated one whose per-branch literal typing a `.map()` would lose.
  */
 
@@ -33,7 +33,7 @@ import {
   IdSchema,
   SchemaVersionField,
   TimestampSchema,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import {
   AdjudicationDecisionPayloadSchema,
   ApprovalTokenMintPayloadSchema,
@@ -217,5 +217,5 @@ export const JournalEntryInputSchema = z.discriminatedUnion("type", [
 ]);
 export type JournalEntryInput = z.infer<typeof JournalEntryInputSchema>;
 
-/** `CURRENT_SCHEMA_VERSION` re-exported for convenience so callers building entries don't need a second `@eo/contracts` import. */
+/** `CURRENT_SCHEMA_VERSION` re-exported for convenience so callers building entries don't need a second `@crabgic/contracts` import. */
 export { CURRENT_SCHEMA_VERSION };

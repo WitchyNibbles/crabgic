@@ -10,8 +10,8 @@
  * in this package; it holds types only, no behavior.
  */
 import type { Options, SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { JournalStore } from "@eo/journal";
-import type { WorkerProvisioning } from "@eo/supervisor";
+import type { JournalStore } from "@crabgic/journal";
+import type { WorkerProvisioning } from "@crabgic/supervisor";
 
 /**
  * The SDK message stream a `query()` call yields. The real SDK returns its
@@ -96,7 +96,7 @@ export interface ClaudeEngineAdapterConfig {
   readonly sdkQuery?: SdkQueryFunction;
   /**
    * Override for the gateway MCP server process entry (tests point this at
-   * a stub). The default is the external `engineering-orchestrator gateway
+   * a stub). The default is the external `crabgic gateway
    * mcp` stdio process (ledger Gap 2), keyed by `GATEWAY_MCP_SERVER_NAME`
    * (ledger Gap 11) — never an in-process import of packages/gateway.
    */

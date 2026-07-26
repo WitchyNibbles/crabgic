@@ -9,8 +9,8 @@ enforces this mechanically against `packages/supervisor/schemas/wire-protocol.v1
 ## Transport
 
 - **Socket**: a Unix domain socket, path resolved under
-  `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/supervisor/run/control.sock` —
-  a sibling subpath under `@eo/journal`'s pinned state root (interface-ledger Gap 14
+  `$XDG_STATE_HOME/crabgic/<project-hash>/supervisor/run/control.sock` —
+  a sibling subpath under `@crabgic/journal`'s pinned state root (interface-ledger Gap 14
   convention), never a second root.
 - **Permissions**: the runtime dir (`.../supervisor/run/`) is `0700`; the socket file itself
   is `0600`. Both are hardened by explicit `chmod` after creation — a bare `mkdir`/`bind`
@@ -35,14 +35,14 @@ serving `request` lines (if `accepted: true`) or closes the connection (`accepte
 **a mismatched protocol version is rejected before any request is ever dispatched.**
 
 ```json
-{"type":"handshake","protocolVersion":1,"clientName":"engineering-orchestrator-cli"}
+{"type":"handshake","protocolVersion":1,"clientName":"crabgic-cli"}
 {"type":"handshake_ack","protocolVersion":1,"accepted":true}
 ```
 
 A version mismatch:
 
 ```json
-{"type":"handshake","protocolVersion":2,"clientName":"eo_gateway"}
+{"type":"handshake","protocolVersion":2,"clientName":"crabgic_gateway"}
 {"type":"handshake_ack","protocolVersion":1,"accepted":false,"reason":"protocol version mismatch: server=1, client=2"}
 ```
 

@@ -3,8 +3,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
-import { CANONICAL_ENVELOPE_CASES, compileEnvelope } from "@eo/engine-core";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import { CANONICAL_ENVELOPE_CASES, compileEnvelope } from "@crabgic/engine-core";
 import { buildWorkerEnv } from "./auth.js";
 import { assembleWorkerOptions } from "./options-assembler.js";
 

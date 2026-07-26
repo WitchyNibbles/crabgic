@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { lint } from "./lint.js";
 import { isArtifactKind } from "./artifact-kind.js";
 

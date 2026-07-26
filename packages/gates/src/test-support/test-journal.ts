@@ -1,13 +1,13 @@
 /**
  * Test-support-only helper (not part of this package's public barrel) —
- * a fresh, real `@eo/journal` `JournalStore` over a temp directory, mirroring
+ * a fresh, real `@crabgic/journal` `JournalStore` over a temp directory, mirroring
  * the pattern every sibling package's own test suite uses (e.g.
  * `packages/scheduler/src/executor.e2e.test.ts`'s `beforeEach`).
  */
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 
 export interface TestJournal {
   readonly store: JournalStore;

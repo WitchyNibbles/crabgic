@@ -2,11 +2,11 @@
  * stdout/stderr/exit-code conventions — roadmap/09-cli-and-doctor.md
  * §Conventions: "stdout = result (human or `--json`), stderr = diagnostics;
  * stable exit codes." Every command handler builds one `CommandResult`;
- * `engineering-orchestrator`'s `bin.ts` is the sole place that actually
+ * `crabgic`'s `bin.ts` is the sole place that actually
  * writes to the real `process.stdout`/`process.stderr` and calls
  * `process.exit`.
  *
- * WHY THIS LIVES IN `@eo/contracts` (2026-07-25): see `./exit-codes.ts`'s
+ * WHY THIS LIVES IN `@crabgic/contracts` (2026-07-25): see `./exit-codes.ts`'s
  * own note — command backends implemented outside `packages/cli` (phase
  * 12's `trust *`, in `packages/detect`) must build the same result envelope,
  * and reaching it through the CLI package closed a build-breaking dependency
@@ -21,7 +21,7 @@ export interface CommandResult {
   readonly stderr?: string;
 }
 
-/** Deterministic, stable JSON formatting (2-space indent, trailing newline) for every `--json` output across every command — snapshot-tested by `engineering-orchestrator`'s `commands/cli.snapshots.test.ts`. */
+/** Deterministic, stable JSON formatting (2-space indent, trailing newline) for every `--json` output across every command — snapshot-tested by `crabgic`'s `commands/cli.snapshots.test.ts`. */
 export function formatJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }

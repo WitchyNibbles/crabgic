@@ -25,7 +25,7 @@
  * `packages/cli`'s real orchestration (06's real adapter, once wired) will
  * use.
  */
-import type { EngineAdapter, EngineCapabilities } from "@eo/engine-core";
+import type { EngineAdapter, EngineCapabilities } from "@crabgic/engine-core";
 import type { IntakeRequest } from "../intake-pipeline.js";
 import { computeIntentContractId } from "../intake-pipeline.js";
 import { computeRequirementId } from "../contract-builder.js";
@@ -52,7 +52,7 @@ const REQ_RATE_LIMIT = computeRequirementId(INTENT_CONTRACT_ID, {
  * `buildCapabilityManifest`'s `engineAdapter` parameter, so the other 3
  * `EngineAdapter` methods are stubbed as unreachable rather than
  * implemented — this is production `src` code (not a test file), so it
- * deliberately does NOT reach for `@eo/testkit`'s test-only
+ * deliberately does NOT reach for `@crabgic/testkit`'s test-only
  * `FakeEngineAdapter`/`StubEngineAdapter`.
  */
 export const FIXTURE_ENGINE_ADAPTER: Pick<EngineAdapter, "capabilities"> = {

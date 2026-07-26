@@ -21,7 +21,7 @@ import {
   type ProvisionalPerformanceBudgetEntry,
   type ProvisionalPerformanceContract,
   type PerformanceBudgetSource,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { canonicalHash } from "./canonical-hash.js";
 
 export interface BuildProvisionalPerformanceContractOptions {

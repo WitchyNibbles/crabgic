@@ -1,4 +1,4 @@
-import type { ProvisionalPerformanceBudgetEntry } from "@eo/contracts";
+import type { ProvisionalPerformanceBudgetEntry } from "@crabgic/contracts";
 
 /**
  * "Ecosystem research" budget defaults — roadmap/15 §In scope, "Budget

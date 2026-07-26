@@ -27,7 +27,7 @@
 import { closeSync, constants, fstatSync, mkdirSync, openSync, readSync, writeSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
-import { ENGINEERING_ORCHESTRATOR_DIR_NAME, resolveXdgStateHome, type XdgEnv } from "@eo/journal";
+import { CRABGIC_DIR_NAME, resolveXdgStateHome, type XdgEnv } from "@crabgic/journal";
 
 /** The pinned file name, under the project's XDG **state** root — a signing key is durable state, not a regenerable cache artifact. */
 export const APPROVAL_SIGNING_KEY_FILE_NAME = "approval-signing.key";
@@ -45,11 +45,11 @@ export class ApprovalSigningKeyError extends Error {
   }
 }
 
-/** `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/approval-signing.key` — the same state root `resolveStateRoot` pins the ChangeSet/work-unit/envelope registries at, so one project's approval material never leaks into another's. */
+/** `$XDG_STATE_HOME/crabgic/<project-hash>/approval-signing.key` — the same state root `resolveStateRoot` pins the ChangeSet/work-unit/envelope registries at, so one project's approval material never leaks into another's. */
 export function resolveApprovalSigningKeyPath(env: XdgEnv, projectHash: string): string {
   return join(
     resolveXdgStateHome(env),
-    ENGINEERING_ORCHESTRATOR_DIR_NAME,
+    CRABGIC_DIR_NAME,
     projectHash,
     APPROVAL_SIGNING_KEY_FILE_NAME,
   );

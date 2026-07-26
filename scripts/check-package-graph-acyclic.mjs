@@ -4,7 +4,7 @@
 //
 // WHY THIS EXISTS (2026-07-25): `packages/detect` imported the approval-token
 // minter, the MCP tool registry, and the CommandResult/EXIT_* vocabulary from
-// the published `engineering-orchestrator` package, while
+// the published `crabgic` package, while
 // `cli -> learning -> gates -> detect` already held. That cycle made `tsc -b`
 // fail from a clean checkout (TS2307 at detect, or TS6202 once the missing
 // project reference was added) — but it stayed invisible locally, because
@@ -14,7 +14,7 @@
 // This guard catches the same class of mistake from the manifests alone, in
 // milliseconds, without needing a clean build. It deliberately reads
 // package.json rather than tsconfig references: a dependency declared in the
-// manifest is the thing that lets `import "engineering-orchestrator"` resolve
+// manifest is the thing that lets `import "crabgic"` resolve
 // at all, so the manifest is where the cycle is really introduced.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -98,7 +98,7 @@ if (cycle !== null) {
     "\nA cycle here means `tsc -b` cannot order the build: it fails from a clean\n" +
       "checkout even when incremental local builds appear to succeed against\n" +
       "stale dist/ output. Move the shared primitive down to a package both\n" +
-      "sides may depend on (usually @eo/contracts) rather than importing\n" +
+      "sides may depend on (usually @crabgic/contracts) rather than importing\n" +
       "upward.",
   );
   process.exit(1);

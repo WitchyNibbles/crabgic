@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { StackEvidenceSchema } from "@eo/contracts";
+import { StackEvidenceSchema } from "@crabgic/contracts";
 import { removeDirTree } from "./test-support/fixture-repo.js";
 import {
   buildContainerizedFixture,

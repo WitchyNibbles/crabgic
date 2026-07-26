@@ -1,5 +1,5 @@
-import { buildHttpClientForConnection, type GatewayHttpClient } from "@eo/gateway";
-import type { ExternalConnection } from "@eo/contracts";
+import { buildHttpClientForConnection, type GatewayHttpClient } from "@crabgic/gateway";
+import type { ExternalConnection } from "@crabgic/contracts";
 import { discoverJiraDatacenterCapabilitySnapshot } from "../capability/discovery-datacenter.js";
 import {
   resolveDcEditionFeatures,
@@ -51,7 +51,7 @@ export interface JiraDatacenterConnectionEntry {
 }
 
 export interface RegisterJiraDatacenterConnectionOptions {
-  /** Test-only escape hatch — production omits this, defaulting to `@eo/gateway`'s `buildHttpClientForConnection` (real DNS/TLS/SSRF/custom-CA stack). */
+  /** Test-only escape hatch — production omits this, defaulting to `@crabgic/gateway`'s `buildHttpClientForConnection` (real DNS/TLS/SSRF/custom-CA stack). */
   readonly buildHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
   /** Refreshed periodically by the caller via `../capability/discovery-datacenter.ts`'s `discoverJiraDatacenterCapabilitySnapshot`; defaults to empty (every custom-field write refused until discovery has run at least once — fail-closed). */
   readonly fieldMetadataIndex?: FieldMetadataIndex;

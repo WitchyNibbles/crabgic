@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import { GIT_MATRIX_SCENARIOS } from "../src/scenarios/index.js";
 import { createTestJournal, type TestJournal } from "../src/test-support/test-journal.js";
 
@@ -25,7 +25,7 @@ describe("git matrix: full run (live)", () => {
     // surfaces it, so this test scopes itself by RECORDING the id of every
     // `EvidenceRecord` its own scenario calls append, then reading only
     // those back off disk. A bare journal-wide count would, under a shared
-    // journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
+    // journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
     // test-journal.ts`), also sweep up every sibling test file's entries.
     // What is proved is unchanged: N scenarios produce exactly N durable,
     // correctly-tagged, readable-back evidence entries.

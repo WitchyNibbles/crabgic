@@ -1,15 +1,15 @@
 import { posix } from "node:path";
-import { WORKTREE_WRITE_PLACEHOLDER } from "@eo/engine-core";
+import { WORKTREE_WRITE_PLACEHOLDER } from "@crabgic/engine-core";
 
 /**
  * Anchored-glob path matching for `Edit`/`Write`/`Read` permission rules
  * and sandbox `denyRead` literals (roadmap/03-envelope-compiler-engine-
  * adapter.md §In scope "Fake engine" bullet: "Edit/Write path matching
  * over //-anchored globs"; work item 6: "path escape (`../` and
- * absolute)"). Three anchor forms mirror `@eo/engine-core`'s own compiled
+ * absolute)"). Three anchor forms mirror `@crabgic/engine-core`'s own compiled
  * literals: `//` (filesystem-root anchor, adaptation §4.1 — the compiled
  * profile spells owned-path allow rules `Edit(//<worktree>/${relpath}/**)`,
- * see CRITICAL 1's fix in `@eo/engine-core`'s `permission-profile.ts`),
+ * see CRITICAL 1's fix in `@crabgic/engine-core`'s `permission-profile.ts`),
  * `~/` (home-relative, `Read(~/.ssh/**)`), and bare `/`
  * (filesystem-absolute).
  *
@@ -24,7 +24,7 @@ import { WORKTREE_WRITE_PLACEHOLDER } from "@eo/engine-core";
  * emits by stripping that token specifically — not any arbitrary base —
  * and matching the remainder in the same namespace as a bare (no-anchor)
  * target path. This is a deliberate, documented fake-fidelity
- * simplification (mirrors `@eo/engine-core`'s own placeholder-token
+ * simplification (mirrors `@crabgic/engine-core`'s own placeholder-token
  * convention, `../../README.md`): it only ever resolves the ONE known
  * placeholder token, so it cannot be tricked into treating an arbitrary
  * `//`-anchored literal (e.g. a raw, unvalidated `//etc/cron.d/**`) as
@@ -96,7 +96,7 @@ function pathIsContainedIn(base: string, target: string): boolean {
  * matching anchors. This is intentionally ASYMMETRIC: it only ever WIDENS
  * what a `~/`-anchored rule matches (an absolute-spelled read that would
  * otherwise slip past the anchor partition), never narrows it. Since
- * `@eo/engine-core` never emits a `~/`-anchored ALLOW rule (owned paths
+ * `@crabgic/engine-core` never emits a `~/`-anchored ALLOW rule (owned paths
  * always compile to `//<worktree>`-anchored allow — see CRITICAL 1's
  * fix), this widening can only ever produce a false-DENY (over-blocking)
  * in this system, never a false-ALLOW.

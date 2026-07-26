@@ -4,13 +4,18 @@
  * tests) can inject fakes without touching a real supervisor/journal/host
  * unless a specific test wants to.
  */
-import type { JournalStore } from "@eo/journal";
-import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
-import type { Registry, IntakeRequest } from "@eo/supervisor";
+import type { JournalStore } from "@crabgic/journal";
+import type {
+  AuthorizationEnvelope,
+  ChangeSet,
+  IntentContract,
+  WorkUnit,
+} from "@crabgic/contracts";
+import type { Registry, IntakeRequest } from "@crabgic/supervisor";
 import type { UdsClient } from "../uds-client/client.js";
 import type { AuthState } from "../doctor/checks/auth-probe.js";
 import type { InstallerDependencies } from "../installer/types.js";
-import type { TrustCommandDependencies } from "@eo/detect";
+import type { TrustCommandDependencies } from "@crabgic/detect";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
 import type { LearningDependencies } from "../learning/learning-dependencies.js";
@@ -66,14 +71,14 @@ export interface CliDependencies {
   readonly learning?: LearningDependencies;
   /**
    * roadmap/12-stack-detection-quarantine.md's `trust review|approve|revoke`
-   * backend, implemented in `@eo/detect` — kept OPTIONAL for the identical
+   * backend, implemented in `@crabgic/detect` — kept OPTIONAL for the identical
    * reason `intake`/`installer`/`learning` are: every pre-existing
    * roadmap/09 test builds a `CliDependencies` without it and must keep
    * observing the exact same typed `NOT_IMPLEMENTED` shape for `trust-*`
    * unchanged; `../bootstrap.ts`'s real wiring supplies it.
    *
    * Wiring this was blocked until 2026-07-25: phase 12 recorded the gap as
-   * a deviation because `@eo/detect` could not be reached from here without
+   * a deviation because `@crabgic/detect` could not be reached from here without
    * closing a `cli -> learning -> gates -> detect -> cli` dependency cycle.
    */
   readonly trust?: TrustCommandDependencies;

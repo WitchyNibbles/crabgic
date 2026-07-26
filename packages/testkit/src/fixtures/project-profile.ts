@@ -1,4 +1,8 @@
-import { CURRENT_SCHEMA_VERSION, ProjectProfileSchema, type ProjectProfile } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  ProjectProfileSchema,
+  type ProjectProfile,
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `ProjectProfile` fixture builder — roadmap/02 work item 10. */

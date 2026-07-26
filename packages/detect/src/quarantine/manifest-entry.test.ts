@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CapabilityManifestEntrySchema } from "@eo/contracts";
+import { CapabilityManifestEntrySchema } from "@crabgic/contracts";
 import type { PinnedCandidate } from "./types.js";
 import { buildManifestEntry } from "./manifest-entry.js";
 

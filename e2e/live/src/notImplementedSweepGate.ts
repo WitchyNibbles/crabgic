@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { CommandName } from "engineering-orchestrator";
-import type { JournalStore } from "@eo/journal";
+import type { CommandName } from "crabgic";
+import type { JournalStore } from "@crabgic/journal";
 import {
   checkFamilyWiringAtProductionEntrypoint,
   checkGatewayDependencyEdge,

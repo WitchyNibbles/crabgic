@@ -1,7 +1,7 @@
 /**
- * `@eo/renderer` public barrel — roadmap/17-renderer-communication-lint.md
+ * `@crabgic/renderer` public barrel — roadmap/17-renderer-communication-lint.md
  * §Interfaces produced. Downstream phases (08, 18, 19, 20) import from
- * `@eo/renderer` directly.
+ * `@crabgic/renderer` directly.
  */
 
 // ArtifactKind — the closed union introduced by this phase.

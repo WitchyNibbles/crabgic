@@ -1,15 +1,15 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "error redaction." Drives
- * the REAL `@eo/gateway` canonical-error mapping
+ * the REAL `@crabgic/gateway` canonical-error mapping
  * (`mapHttpStatusToConnectorError`/`mapUnknownErrorToConnectorError`) and
- * `@eo/contracts`'s `ConnectorError` (never a reimplementation), mirroring
+ * `@crabgic/contracts`'s `ConnectorError` (never a reimplementation), mirroring
  * `packages/gateway/src/security/leak-hunt.test.ts`'s own "live substring
  * search" technique against a synthetic secret marker embedded in a raw
  * provider response.
  */
 import { describe, expect, it, afterEach, beforeEach } from "vitest";
-import { ConnectorError } from "@eo/contracts";
-import { mapHttpStatusToConnectorError, mapUnknownErrorToConnectorError } from "@eo/gateway";
+import { ConnectorError } from "@crabgic/contracts";
+import { mapHttpStatusToConnectorError, mapUnknownErrorToConnectorError } from "@crabgic/gateway";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -74,7 +74,7 @@ describe("mapHttpStatusToConnectorError never echoes a raw provider body contain
 });
 
 describe("mapUnknownErrorToConnectorError never echoes a secret carried in an already-constructed ConnectorError's rawProviderResponse", () => {
-  it("re-wrapping an already-redacting ConnectorError never re-surfaces the original rawProviderResponse secret (mirrors @eo/gateway's own leak-hunt suite)", () => {
+  it("re-wrapping an already-redacting ConnectorError never re-surfaces the original rawProviderResponse secret (mirrors @crabgic/gateway's own leak-hunt suite)", () => {
     // NOTE on this function's actual, narrower contract (verified against
     // `packages/gateway/src/security/leak-hunt.test.ts`'s own case): only
     // `rawProviderResponse`-DERIVED fields (`redactedDetail`) are redaction

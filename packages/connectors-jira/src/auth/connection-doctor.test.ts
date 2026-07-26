@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { probeConnectionReachability } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+import { probeConnectionReachability } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { runJiraConnectionDoctor } from "./connection-doctor.js";
 import { JiraTokenManager } from "./token-manager.js";
 
@@ -71,7 +71,7 @@ describe("runJiraConnectionDoctor", () => {
     expect(result.detail).toContain("refused");
   });
 
-  it("defaults its probe to @eo/gateway's probeConnectionReachability when none is supplied", async () => {
+  it("defaults its probe to @crabgic/gateway's probeConnectionReachability when none is supplied", async () => {
     // Smoke-checks the default wiring resolves and runs without throwing —
     // it will report unreachable (there is no real network in tests), but
     // must never throw synchronously and must reuse 16's own probe, not a

@@ -40,11 +40,11 @@ describe("ResourceCaptureArtifact: no environment/argv content", () => {
     const artifact = await runCommandWithResourceCapture({
       command: 'node -e "process.exit(0)"',
       cwd: tmpdir(),
-      env: { ...process.env, EO_PERF_TEST_SECRET: secret },
+      env: { ...process.env, CRABGIC_PERF_TEST_SECRET: secret },
     });
     const serialized = JSON.stringify(artifact);
     expect(serialized).not.toContain(secret);
-    expect(serialized).not.toContain("EO_PERF_TEST_SECRET");
+    expect(serialized).not.toContain("CRABGIC_PERF_TEST_SECRET");
   }, 15000);
 
   it("the current real process.env (whatever it happens to contain in CI) never appears in a captured artifact's serialized form", async () => {

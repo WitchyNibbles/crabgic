@@ -1,5 +1,5 @@
 /**
- * `@eo/testkit` public barrel — roadmap/02-contracts-and-schemas.md work
+ * `@crabgic/testkit` public barrel — roadmap/02-contracts-and-schemas.md work
  * item 10. Exports:
  *  - Deterministic providers (`./providers/`): id + clock.
  *  - One fixture builder per contract, plus the two new closed-union

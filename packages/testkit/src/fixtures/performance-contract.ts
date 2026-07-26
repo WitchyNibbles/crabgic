@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   PerformanceContractSchema,
   type ProvisionalPerformanceContract,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /**

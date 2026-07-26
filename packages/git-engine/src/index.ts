@@ -1,5 +1,5 @@
 /**
- * `@eo/git-engine` public barrel — roadmap/07-git-control-repo-worktrees.md
+ * `@crabgic/git-engine` public barrel — roadmap/07-git-control-repo-worktrees.md
  * §Interfaces produced (07's half) and roadmap/08-integration-publication.md
  * §Interfaces produced (08's half, added below the phase-07 exports without
  * modifying any of them — see docs/evidence/phase-08/README.md's module-
@@ -86,10 +86,7 @@ export {
 } from "./worktree-ref.js";
 export type { WorktreeRefParts } from "./worktree-ref.js";
 
-export {
-  ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME,
-  configureGitIdentity,
-} from "./git-identity.js";
+export { CRABGIC_GIT_IDENTITY_NAME, configureGitIdentity } from "./git-identity.js";
 export type { GitIdentity } from "./git-identity.js";
 
 export {

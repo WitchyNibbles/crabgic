@@ -25,7 +25,7 @@
  * without computing the routing decision itself; a minimal-shape choice
  * documented in `docs/evidence/phase-11/`.
  */
-import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@crabgic/contracts";
 
 export interface WorkUnitDraft {
   readonly id: string;

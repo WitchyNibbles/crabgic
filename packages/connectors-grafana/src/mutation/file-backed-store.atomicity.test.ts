@@ -7,7 +7,7 @@ import { createFileGrafanaPlanPayloadStore } from "./file-backed-store.js";
 
 /**
  * ADVERSARIAL-REVIEW FIX (2026-07-25). `./file-backed-store.ts`'s header
- * claims `@eo/supervisor`'s `createFileRegistry` discipline "copied
+ * claims `@crabgic/supervisor`'s `createFileRegistry` discipline "copied
  * verbatim … temp file + atomic `renameSync` so a crash mid-write can
  * never leave a truncated store". A validator's mutation replaced the
  * `renameSync` with a plain `writeFileSync(path, readFileSync(tmpPath))`

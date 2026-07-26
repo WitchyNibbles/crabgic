@@ -16,8 +16,8 @@ function writerSpec(script: string, targetPath: string): KillHarnessOperationSpe
     command: process.execPath,
     args: [join(FIXTURES_DIR, script)],
     env: {
-      EO_KILL_HARNESS_TARGET: targetPath,
-      EO_KILL_HARNESS_NEW: NEW_CONTENT,
+      CRABGIC_KILL_HARNESS_TARGET: targetPath,
+      CRABGIC_KILL_HARNESS_NEW: NEW_CONTENT,
     },
   };
 }
@@ -158,7 +158,7 @@ describe("runKillHarness", () => {
       },
     );
 
-    // No EO_KILL_HARNESS_TARGET env var set: the fixture writes its usage
+    // No CRABGIC_KILL_HARNESS_TARGET env var set: the fixture writes its usage
     // error to stderr and exits immediately, never reaching "before-write".
     expect(chunks.some((c) => c.stream === "stderr")).toBe(true);
     expect(report.results[0]?.killedAt).toBe("natural-exit");

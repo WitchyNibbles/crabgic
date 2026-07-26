@@ -3,10 +3,10 @@
  * scope, "Doctor checks contributed": "plugin-trust/pin check." Verifies
  * the plugin source's own `marketplace.json` (if present — a vendored
  * `--plugin-dir` source need not ship one) is SHA-pinned per
- * `@eo/plugin`'s `MarketplaceSchema` — the same schema `marketplace.schema
+ * `@crabgic/plugin`'s `MarketplaceSchema` — the same schema `marketplace.schema
  * .test` validates, reused here rather than re-derived.
  */
-import { readMarketplaceJson, MarketplaceSchema } from "@eo/plugin";
+import { readMarketplaceJson, MarketplaceSchema } from "@crabgic/plugin";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 
 export interface PluginTrustPinCheckOptions {

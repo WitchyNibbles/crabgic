@@ -8,10 +8,10 @@
  * framing: "booting against an empty registry lists zero tools without
  * crashing; registering a fake tool makes it visible over stdio to a stub
  * MCP client; a duplicate tool-name registration is rejected." This module
- * owns only the registry data structure — `engineering-orchestrator`'s
+ * owns only the registry data structure — `crabgic`'s
  * `gateway-mcp/stdio-server.ts` is the thing that boots it over stdio.
  *
- * WHY THIS LIVES IN `@eo/contracts` (2026-07-25): the quoted "no new
+ * WHY THIS LIVES IN `@crabgic/contracts` (2026-07-25): the quoted "no new
  * dependency edge for 11/12" is precisely what forced the relocation.
  * Phase 12 (`packages/detect`) registers its two `capability.*` tools into
  * this registry, and reaching the type from the CLI package closed a cycle
@@ -21,7 +21,7 @@
  * roadmap asked for. It sits beside `./server-name.ts` — the
  * `GATEWAY_MCP_SERVER_NAME` this registry is hosted under. The CLI
  * re-exports all four names verbatim, so the published
- * `engineering-orchestrator` surface is unchanged.
+ * `crabgic` surface is unchanged.
  */
 
 /** A minimal MCP tool descriptor — name, human description, and a JSON-schema-shaped input schema (never validated/executed here; this phase never implements a tool's own handler, per roadmap/09 §Out of scope). */

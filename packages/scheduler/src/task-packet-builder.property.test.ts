@@ -1,6 +1,6 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { buildAuthorizationEnvelope } from "@eo/testkit";
+import { buildAuthorizationEnvelope } from "@crabgic/testkit";
 import { buildTaskPacket } from "./task-packet-builder.js";
 import { PacketEnvelopeViolationError } from "./errors.js";
 

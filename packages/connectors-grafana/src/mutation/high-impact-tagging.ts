@@ -1,4 +1,4 @@
-import type { HighImpactCapabilityFlag } from "@eo/contracts";
+import type { HighImpactCapabilityFlag } from "@crabgic/contracts";
 import { HIGH_IMPACT_FLAG_BY_KIND, type GrafanaResourceKind } from "../resource-kinds.js";
 
 /**

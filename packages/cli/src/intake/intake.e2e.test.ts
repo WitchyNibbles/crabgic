@@ -2,7 +2,7 @@
  * `intake.e2e.spec` — roadmap/11-intake-contract-approval.md §Exit
  * criteria: "E2E (fake engine): request -> contract -> approval -> run;
  * halts correctly on each of the 7 seeded stop conditions independently."
- * Ties together every module this phase adds across `@eo/supervisor`
+ * Ties together every module this phase adds across `@crabgic/supervisor`
  * (intake pipeline, DAG/envelope/manifest builders, run-lifecycle/stop-
  * conditions) and `packages/cli` (approval mint via `runIntakeCommand`,
  * verify via `runContractApprove`) into one real, end-to-end path — no
@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   createAuthorizationEnvelopesRegistry,
   createIntentContractsRegistry,
@@ -28,7 +28,7 @@ import {
   STOP_CONDITION_KINDS,
   transitionRun,
   type IntakeRequest,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 import { runContractApprove } from "./contract-approve-handler.js";

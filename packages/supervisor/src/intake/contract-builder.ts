@@ -19,7 +19,7 @@ import {
   type IntentContractSectionKey,
   type IntentContractSections,
   type Requirement,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { deriveStableId } from "./stable-id.js";
 
 export interface RequirementDraft {

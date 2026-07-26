@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { GatewayToolRegistry } from "./tool-registry.js";
 import { connectGatewayMcpStdio } from "./stdio-boot.js";
 

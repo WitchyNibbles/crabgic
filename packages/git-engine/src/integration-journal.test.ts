@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
 import {
   buildCasRefUpdateEntryInput,
   buildEvidencePointerEntryInput,
@@ -48,7 +48,7 @@ describe("buildEvidencePointerEntryInput", () => {
       changeSetId: "b0000000-0000-4000-8000-000000000002",
       command: "renderWithRegeneration:pr_title",
       exitStatus: 0,
-      toolchainFingerprint: "@eo/git-engine evidence-attachment",
+      toolchainFingerprint: "@crabgic/git-engine evidence-attachment",
       capturedAt: new Date().toISOString(),
       artifactDigests: ["deadbeef"],
       objectId: "a".repeat(40),

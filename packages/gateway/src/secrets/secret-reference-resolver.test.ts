@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveSecretReference, SecretResolutionError } from "./secret-reference-resolver.js";
 
 describe("resolveSecretReference — env backend", () => {
-  const VAR_NAME = "EO_GATEWAY_TEST_SECRET_ENV";
+  const VAR_NAME = "CRABGIC_GATEWAY_TEST_SECRET_ENV";
 
   afterEach(() => {
     delete process.env[VAR_NAME];

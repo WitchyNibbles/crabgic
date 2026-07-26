@@ -1,6 +1,6 @@
 /**
  * Rename-collision scenario — roadmap/23-release-hardening.md work item 5:
- * "renames." Drives REAL `git diff --find-renames` (via `@eo/git-engine`'s
+ * "renames." Drives REAL `git diff --find-renames` (via `@crabgic/git-engine`'s
  * `detectRenamesFromWorktree`) against two real, on-disk diverging
  * branches — one renames a tracked file, the other edits that SAME file's
  * original path — then feeds both real `DetectedChanges` straight into the
@@ -12,8 +12,12 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
-import { analyzeOverlap, detectRenamesFromWorktree, type PlannedWriteSet } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import {
+  analyzeOverlap,
+  detectRenamesFromWorktree,
+  type PlannedWriteSet,
+} from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildBasicFixtureRepo, commitAll, plumbing } from "../fixtures.js";
 import { exitStatusFor, requirePassed, type ScenarioOutcome } from "../scenario-types.js";

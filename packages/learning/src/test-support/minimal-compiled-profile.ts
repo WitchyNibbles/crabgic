@@ -5,11 +5,11 @@
  * copy): a minimal, schema-valid `CompiledWorkerProfile` for tests that
  * spawn against the fake engine and don't care about permission/sandbox
  * content, plus an always-allow adjudication stub. Duplicated here rather
- * than imported because `@eo/scheduler`'s own copy is deliberately NOT
+ * than imported because `@crabgic/scheduler`'s own copy is deliberately NOT
  * re-exported from its public barrel (test-support-only convention, see
  * that file's own doc comment).
  */
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 
 export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
   return {

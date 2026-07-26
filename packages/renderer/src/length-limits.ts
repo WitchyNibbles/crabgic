@@ -1,4 +1,4 @@
-import { checkLimit, countChars, countLines, type CommunicationPolicy } from "@eo/contracts";
+import { checkLimit, countChars, countLines, type CommunicationPolicy } from "@crabgic/contracts";
 import type { ArtifactKind } from "./artifact-kind.js";
 import type { LintFinding, LintStageInput } from "./lint-types.js";
 

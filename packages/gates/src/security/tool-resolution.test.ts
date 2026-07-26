@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createCapabilityStore, type CapabilityStore } from "@eo/detect";
-import type { AuditReport } from "@eo/detect";
+import { createCapabilityStore, type CapabilityStore } from "@crabgic/detect";
+import type { AuditReport } from "@crabgic/detect";
 import { resolveDigestPinnedTool } from "./tool-resolution.js";
 import { MissingCapabilityEntryError, ToolDigestMismatchError } from "../errors.js";
 

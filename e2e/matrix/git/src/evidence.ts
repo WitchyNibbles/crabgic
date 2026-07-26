@@ -6,19 +6,23 @@
  * `packages/git-engine/src/integration-journal.ts`'s
  * `buildEvidencePointerEntryInput` one-liner) — reproduced locally rather
  * than importing either sibling, since this project's own dependency edge
- * is `@eo/contracts` + `@eo/journal` + `@eo/git-engine` + `@eo/renderer`
+ * is `@crabgic/contracts` + `@crabgic/journal` + `@crabgic/git-engine` + `@crabgic/renderer`
  * only.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
-import type { JournalEntryInput, JournalStore } from "@eo/journal";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
+import type { JournalEntryInput, JournalStore } from "@crabgic/journal";
 
 export const GIT_MATRIX_GATE_TAG = "release-gate:git-matrix";
 
 /**
  * The roadmap/23 requirement each emitted tag evidences.
  *
- * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * WHY A LITERAL. `buildTraceabilityView` (`@crabgic/gates`) joins evidence to a
  * requirement on `EvidenceRecord.requirementId` and nothing else, so an
  * unstamped record — however genuine, however correctly tagged — contributes
  * nothing to 23's traceability criterion. The ids are UUIDv5 digests of the
@@ -45,7 +49,7 @@ export function digestArtifact(content: string): string {
 }
 
 /**
- * `$EO_RELEASE_CANDIDATE_OBJECT_ID` when set and non-empty, else
+ * `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` when set and non-empty, else
  * `undefined` — the same env-var convention `e2e/live/src/evidence.ts`,
  * `e2e/release/src/evidence.ts` and `e2e/matrix/connector/src/support/
  * evidence.ts` already honor, and which this emitter was missing.
@@ -65,7 +69,7 @@ export function digestArtifact(content: string): string {
  * the var within one process sees the truth.
  */
 export function resolveReleaseCandidateObjectId(): string | undefined {
-  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  const fromEnv = process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"];
   return fromEnv !== undefined && fromEnv.length > 0 ? fromEnv : undefined;
 }
 
@@ -109,7 +113,7 @@ export function buildScenarioEvidence(input: ScenarioEvidenceInput): EvidenceRec
   });
 }
 
-/** Wraps `record` as an `evidence_pointer`-typed `JournalEntryInput` — the payload schema for this member IS `EvidenceRecordSchema` verbatim (`@eo/journal`'s own `journal-payloads.ts`). */
+/** Wraps `record` as an `evidence_pointer`-typed `JournalEntryInput` — the payload schema for this member IS `EvidenceRecordSchema` verbatim (`@crabgic/journal`'s own `journal-payloads.ts`). */
 export function buildEvidencePointerEntryInput(
   record: EvidenceRecord,
   changeSetId: string,

@@ -12,18 +12,18 @@
  * assertion that 07 writes "exactly two members, never a 3rd"). Extending
  * that union here would both violate 07's own closed exit criterion and
  * blur the module boundary the roadmap's Risks section asks this phase to
- * keep clean. Instead this module types directly against `@eo/journal`'s
+ * keep clean. Instead this module types directly against `@crabgic/journal`'s
  * OWN generic `JournalStore`/`JournalEntryInput` surface (already a
  * declared dependency of this package), structurally narrowed to just the
  * `appendEntry` method every caller here needs.
  */
 
-import type { EvidenceRecord } from "@eo/contracts";
-import type { JournalEntryInput, JournalStore } from "@eo/journal";
+import type { EvidenceRecord } from "@crabgic/contracts";
+import type { JournalEntryInput, JournalStore } from "@crabgic/journal";
 
-export type { JournalEntryInput } from "@eo/journal";
+export type { JournalEntryInput } from "@crabgic/journal";
 
-/** Structural subset of `@eo/journal`'s `JournalStore` — every function in this phase's own files that journals only ever needs `appendEntry`. */
+/** Structural subset of `@crabgic/journal`'s `JournalStore` — every function in this phase's own files that journals only ever needs `appendEntry`. */
 export type IntegrationJournalAppender = Pick<JournalStore, "appendEntry">;
 
 /** This phase's own two `JournalEntryType` members (roadmap §Interfaces consumed: "the `cas_ref_update` and `evidence_pointer` members"). */
@@ -49,7 +49,7 @@ export function buildCasRefUpdateEntryInput(
   };
 }
 
-/** Builds an `evidence_pointer`-typed `JournalEntryInput` wrapping an already-constructed `EvidenceRecord` (the payload schema for this member IS `EvidenceRecordSchema` verbatim — `@eo/journal`'s own `journal-payloads.ts`). */
+/** Builds an `evidence_pointer`-typed `JournalEntryInput` wrapping an already-constructed `EvidenceRecord` (the payload schema for this member IS `EvidenceRecordSchema` verbatim — `@crabgic/journal`'s own `journal-payloads.ts`). */
 export function buildEvidencePointerEntryInput(
   evidenceRecord: EvidenceRecord,
   changeSetId: string,

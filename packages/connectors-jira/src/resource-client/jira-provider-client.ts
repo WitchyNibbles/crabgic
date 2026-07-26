@@ -1,5 +1,5 @@
-import { ConnectorError } from "@eo/contracts";
-import type { GenericProviderClient } from "@eo/gateway";
+import { ConnectorError } from "@crabgic/contracts";
+import type { GenericProviderClient } from "@crabgic/gateway";
 import type { JiraResourceClient } from "./types.js";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 
@@ -7,7 +7,7 @@ import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
  * `GenericProviderClient` adapter — routes the gateway's generic
  * `tracker.search/get/plan_create/plan_update/plan_transition/
  * plan_comment` dispatch onto ONE connection's `JiraResourceClient`
- * (`@eo/gateway`'s `provider-dispatch-tool.ts` resolves this client by
+ * (`@crabgic/gateway`'s `provider-dispatch-tool.ts` resolves this client by
  * `ExternalConnection.provider` alone, so every params bag here carries
  * its own `resource` — and, where a resource has more than one shape of
  * update, its own `op` — sub-selector; there is no other channel this

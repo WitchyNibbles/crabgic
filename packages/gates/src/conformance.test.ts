@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { EvidenceRecordSchema, JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@eo/contracts";
+import {
+  EvidenceRecordSchema,
+  JOURNAL_ENTRY_TYPES,
+  type JournalEntryType,
+} from "@crabgic/contracts";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { createGateRegistry } from "./registry.js";
 import type { GateContext } from "./types.js";
@@ -8,7 +12,7 @@ import type { GateContext } from "./types.js";
 /**
  * roadmap/14 §Exit criteria: "Every emitted `EvidenceRecord` round-trips as
  * a `JournalEntryType.evidence_pointer` entry through 02's discriminated-
- * union exhaustiveness check." Mirrors `@eo/scheduler`'s own
+ * union exhaustiveness check." Mirrors `@crabgic/scheduler`'s own
  * `conformance.test.ts` exhaustiveness mechanism (a `Record<JournalEntryType,
  * boolean>` object literal — `npx tsc -b` fails on a missing/stray key).
  */

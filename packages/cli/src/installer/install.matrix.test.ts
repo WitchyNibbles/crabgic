@@ -131,7 +131,7 @@ describe("install.matrix.test", () => {
     expect(upgradeResult.status).toBe("upgraded");
     const content = await readFile(join(dir, "CLAUDE.md"), "utf8");
     expect(content).toContain("BEGIN ENGINEERING ORCHESTRATOR MANAGED BLOCK");
-    expect(content).toContain("Engineering Orchestrator");
+    expect(content).toContain("Crabgic");
     // The state store is reconciled: a subsequent upgrade is up-to-date again.
     const second = await runUpgrade(deps(dir), { dryRun: false });
     expect(second.status).toBe("up-to-date");

@@ -196,7 +196,7 @@ describe("RELEASE_PERFORMANCE_BUDGETS", () => {
 describe("self-containment (roadmap/15:38, roadmap/05:38)", () => {
   it("does not route the idle budget through packages/perf", async () => {
     const source = await readFile(join(HERE, "performanceContracts.ts"), "utf8");
-    // No dependency edge in either module syntax. Prose ABOUT `@eo/perf` is
+    // No dependency edge in either module syntax. Prose ABOUT `@crabgic/perf` is
     // expected and required (roadmap/15:32 excludes its `/proc` sampler from
     // this budget too, and that exclusion is documented in-file); a comment
     // naming the package is not routing a contract through it.
@@ -798,7 +798,7 @@ describe("readPerformanceRerunEvidence", () => {
   /**
    * CLEARED before each case, not merely restored after.
    *
-   * `release-e2e.yml` exports `$EO_PERF_CONTRACT_RERUN_RECORD` to
+   * `release-e2e.yml` exports `$CRABGIC_PERF_CONTRACT_RERUN_RECORD` to
    * `$GITHUB_ENV` once the re-run producer succeeds, so it is set for the
    * whole harness run — and the cases below that describe the IN-REPO path
    * then silently read that record instead. The `afterEach` restore alone
@@ -836,20 +836,20 @@ describe("readPerformanceRerunEvidence", () => {
    * `PERFORMANCE_RERUN_RECORD_PATH` / `PERFORMANCE_RERUN_RECORD_ENV` on BOTH
    * sides of the comparison, so the expectation moves with the code and
    * cancels itself out: rewriting the path to `tmp/whatever/rerun.json`, or
-   * the variable to `EO_NOT_THE_LEDGER_NAME`, left all 68 tests green.
+   * the variable to `CRABGIC_NOT_THE_LEDGER_NAME`, left all 68 tests green.
    *
    * Neither is an internal detail. They are the seam a producer of the 23:75
    * record has to write to and a CI leg has to export, and they are chosen to
    * match the sibling consumer this reader was modelled on
    * (`arm64Verification.ts:70-71` — `docs/evidence/phase-23/arm64-run-record.json`
-   * and `EO_ARM64_RUN_RECORD`): same directory, record named for what it
-   * records, override named `EO_` + that same subject. A silent rename here
+   * and `CRABGIC_ARM64_RUN_RECORD`): same directory, record named for what it
+   * records, override named `CRABGIC_` + that same subject. A silent rename here
    * breaks a handshake with a producer that does not exist yet and therefore
    * cannot fail loudly on the other side.
    */
   it("pins the record path and its override variable to their literal names", () => {
     expect(PERFORMANCE_RERUN_RECORD_PATH).toBe("docs/evidence/phase-23/perf-contract-rerun.json");
-    expect(PERFORMANCE_RERUN_RECORD_ENV).toBe("EO_PERF_CONTRACT_RERUN_RECORD");
+    expect(PERFORMANCE_RERUN_RECORD_ENV).toBe("CRABGIC_PERF_CONTRACT_RERUN_RECORD");
   });
 
   it("reports the exact path it looked at when no record exists", () => {
@@ -858,7 +858,7 @@ describe("readPerformanceRerunEvidence", () => {
     expect(evidence.unavailable).toContain(PERFORMANCE_RERUN_RECORD_PATH);
   });
 
-  it("reads a schema-valid record from $EO_PERF_CONTRACT_RERUN_RECORD", async () => {
+  it("reads a schema-valid record from $CRABGIC_PERF_CONTRACT_RERUN_RECORD", async () => {
     await withRecordFile(JSON.stringify(rerunRecord()), (path) => {
       process.env[PERFORMANCE_RERUN_RECORD_ENV] = path;
       const evidence = readPerformanceRerunEvidence(REPO_ROOT, RC_OBJECT_ID);

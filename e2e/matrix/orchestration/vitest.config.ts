@@ -16,10 +16,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * end") — it runs standalone via `npx vitest run e2e/matrix/orchestration`
  * (or `--config e2e/matrix/orchestration/vitest.config.ts`).
  *
- * Every scenario here drives the REAL `@eo/scheduler` executor
- * (`dispatchAttempt`/`resumeAttempt`) and the REAL `@eo/supervisor`
- * `recoverRun` against the FAKE engine (`@eo/testkit`'s `FakeEngineAdapter`)
- * over a real `@eo/journal` `JournalStore` on a real temp directory — no
+ * Every scenario here drives the REAL `@crabgic/scheduler` executor
+ * (`dispatchAttempt`/`resumeAttempt`) and the REAL `@crabgic/supervisor`
+ * `recoverRun` against the FAKE engine (`@crabgic/testkit`'s `FakeEngineAdapter`)
+ * over a real `@crabgic/journal` `JournalStore` on a real temp directory — no
  * network, no real Claude Code engine, no live Docker daemon, so this gate
  * is fast and safe to run anywhere, including CI.
  */

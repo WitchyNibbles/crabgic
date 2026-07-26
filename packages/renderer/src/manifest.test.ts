@@ -38,8 +38,8 @@ describe("packages/renderer/package.json — no HTTP-client/VCS-host SDK depende
     readonly devDependencies?: Record<string, string>;
   };
 
-  it("declares only @eo/contracts as a runtime dependency", () => {
-    expect(Object.keys(manifest.dependencies ?? {})).toEqual(["@eo/contracts"]);
+  it("declares only @crabgic/contracts as a runtime dependency", () => {
+    expect(Object.keys(manifest.dependencies ?? {})).toEqual(["@crabgic/contracts"]);
   });
 
   it("carries no HTTP-client or VCS-host SDK dependency by name, in dependencies or devDependencies", () => {

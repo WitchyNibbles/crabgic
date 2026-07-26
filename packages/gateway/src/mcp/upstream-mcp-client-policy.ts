@@ -20,7 +20,7 @@
  * (REST remaining primary and default, per the In-scope bullet above).
  */
 
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 
 export class UpstreamMcpClientPolicyStore {
   readonly #enabled = new Map<string, boolean>();
@@ -53,7 +53,7 @@ export function buildSimulatedWorkerMcpServers(): Readonly<Record<string, unknow
   return {
     [GATEWAY_MCP_SERVER_NAME]: {
       type: "stdio",
-      command: "engineering-orchestrator",
+      command: "crabgic",
       args: ["gateway", "mcp"],
     },
   };

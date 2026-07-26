@@ -4,8 +4,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { PERFORMANCE_OUTCOMES } from "@eo/contracts";
-import type { PerformanceMetric, PerformanceOutcome } from "@eo/contracts";
+import { PERFORMANCE_OUTCOMES } from "@crabgic/contracts";
+import type { PerformanceMetric, PerformanceOutcome } from "@crabgic/contracts";
 import { buildCheckResult, type AttestationCheckResult } from "./checkResult.js";
 import { probeQuietHost, type QuietHostAssessment } from "./quietHost.js";
 
@@ -226,7 +226,7 @@ export interface IdleProcSample {
  * Pure `/proc` parsing, split from the I/O so every branch is unit
  * testable without a live process.
  *
- * A LOCAL sampler rather than `@eo/perf`'s `trySampleProcess`: roadmap/15:32
+ * A LOCAL sampler rather than `@crabgic/perf`'s `trySampleProcess`: roadmap/15:32
  * scopes that sampler to "the benchmarked base/candidate processes only
  * (not the supervisor's own idle budget)", so importing it here would
  * re-create in the measurement layer exactly the coupling the decision
@@ -472,7 +472,7 @@ export async function measureSupervisorIdle(
   }
 
   // Deliberately terse paths. The daemon's control socket lives at
-  // `$XDG_STATE_HOME/engineering-orchestrator/<hash>/supervisor/run/control.sock`,
+  // `$XDG_STATE_HOME/crabgic/<hash>/supervisor/run/control.sock`,
   // and a Unix domain socket path is capped at 108 bytes (`sun_path`).
   // A conventional `mkdtemp(tmpdir(), "eo-perf-release-")` root plus a
   // 32-character project hash overruns that and the daemon dies with
@@ -487,7 +487,7 @@ export async function measureSupervisorIdle(
       XDG_STATE_HOME: join(xdgRoot, "s"),
       XDG_CACHE_HOME: join(xdgRoot, "c"),
       XDG_RUNTIME_DIR: join(xdgRoot, "r"),
-      EO_PROJECT_HASH: "perfrel00",
+      CRABGIC_PROJECT_HASH: "perfrel00",
     },
   });
 
@@ -656,7 +656,7 @@ export function decideReleaseContracts(
  */
 export const PERFORMANCE_RERUN_RECORD_PATH = "docs/evidence/phase-23/perf-contract-rerun.json";
 /** Override, for a CI leg that produces the record out-of-tree. */
-export const PERFORMANCE_RERUN_RECORD_ENV = "EO_PERF_CONTRACT_RERUN_RECORD";
+export const PERFORMANCE_RERUN_RECORD_ENV = "CRABGIC_PERF_CONTRACT_RERUN_RECORD";
 
 /**
  * The minimum a 23:75 record must state to be the thing 23:75 asked for:

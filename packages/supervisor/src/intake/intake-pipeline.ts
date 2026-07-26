@@ -7,7 +7,7 @@
  * unchanged repo never creates a second `ChangeSet`."
  *
  * IDEMPOTENCY MECHANISM (documented decision): reuses 04's own
- * `IdempotencyRegistry` (`@eo/journal`) exactly as designed for this kind
+ * `IdempotencyRegistry` (`@crabgic/journal`) exactly as designed for this kind
  * of generic "same operation, same content -> same recorded result" check
  * — keyed by `(operationId, contentHash)` where `operationId =
  * "intake:" + request.requestKey` (a caller-supplied stable identity for
@@ -38,8 +38,8 @@ import {
   type ProvisionalPerformanceContract,
   type Requirement,
   type WorkUnit,
-} from "@eo/contracts";
-import { IdempotencyRegistry, type JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import { IdempotencyRegistry, type JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 import { canonicalHash } from "./canonical-hash.js";
 import { buildIntentContract, type RequirementDraft } from "./contract-builder.js";

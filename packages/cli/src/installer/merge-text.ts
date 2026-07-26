@@ -8,7 +8,7 @@
  * is a byte-for-byte no-op.
  */
 export const MANAGED_BLOCK_BEGIN =
-  "<!-- BEGIN ENGINEERING ORCHESTRATOR MANAGED BLOCK (do not edit between these markers; re-run `engineering-orchestrator upgrade` instead) -->";
+  "<!-- BEGIN ENGINEERING ORCHESTRATOR MANAGED BLOCK (do not edit between these markers; re-run `crabgic upgrade` instead) -->";
 export const MANAGED_BLOCK_END = "<!-- END ENGINEERING ORCHESTRATOR MANAGED BLOCK -->";
 
 export interface TextMergeResult {

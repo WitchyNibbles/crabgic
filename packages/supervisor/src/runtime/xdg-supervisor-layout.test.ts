@@ -15,15 +15,13 @@ const HASH = "abc123hash";
 describe("xdg-supervisor-layout", () => {
   it("nests supervisor/ as a sibling under 04's pinned state root, never a second root", () => {
     const dir = resolveSupervisorDir(ENV, HASH);
-    expect(dir).toBe(
-      `/home/tester/.local/state/engineering-orchestrator/${HASH}/${SUPERVISOR_STATE_SUBDIR}`,
-    );
+    expect(dir).toBe(`/home/tester/.local/state/crabgic/${HASH}/${SUPERVISOR_STATE_SUBDIR}`);
   });
 
   it("nests the runtime dir under supervisor/run/", () => {
     const dir = resolveSupervisorRuntimeDir(ENV, HASH);
     expect(dir).toBe(
-      `/home/tester/.local/state/engineering-orchestrator/${HASH}/${SUPERVISOR_STATE_SUBDIR}/${SUPERVISOR_RUN_SUBDIR}`,
+      `/home/tester/.local/state/crabgic/${HASH}/${SUPERVISOR_STATE_SUBDIR}/${SUPERVISOR_RUN_SUBDIR}`,
     );
   });
 
@@ -42,6 +40,6 @@ describe("xdg-supervisor-layout", () => {
 
   it("falls back to $HOME/.local/state when XDG_STATE_HOME is unset, matching 04's own default", () => {
     const dir = resolveSupervisorDir({ HOME: "/home/tester" }, HASH);
-    expect(dir).toBe(`/home/tester/.local/state/engineering-orchestrator/${HASH}/supervisor`);
+    expect(dir).toBe(`/home/tester/.local/state/crabgic/${HASH}/supervisor`);
   });
 });

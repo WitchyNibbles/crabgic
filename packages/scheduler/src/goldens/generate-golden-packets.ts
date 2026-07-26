@@ -13,7 +13,7 @@
  * construction, without needing a seeded provider the way contract
  * fixtures do.
  */
-import { buildAuthorizationEnvelope } from "@eo/testkit";
+import { buildAuthorizationEnvelope } from "@crabgic/testkit";
 import { buildTaskPacket } from "../task-packet-builder.js";
 
 export interface GoldenArtifact {
@@ -59,7 +59,7 @@ function buildFullGoldenPacket() {
     objective: "Implement the deterministic golden fixture's fully-populated case.",
     nonGoals: ["Do not refactor unrelated modules."],
     baseObjectId: BASE_OBJECT_ID,
-    relevantInterfaces: ["@eo/contracts#WorkUnit", "@eo/engine-core#EngineAdapter"],
+    relevantInterfaces: ["@crabgic/contracts#WorkUnit", "@crabgic/engine-core#EngineAdapter"],
     ownedPaths: ["packages/example/src/", "packages/example/src/nested/"],
     allowedCommands: ["npm run build", "npm run test"],
     additionalConstraints: ["Never modify packages/example/src/legacy/**."],

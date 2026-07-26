@@ -1,5 +1,5 @@
-import type { Id } from "@eo/contracts";
-import { IdSchema } from "@eo/contracts";
+import type { Id } from "@crabgic/contracts";
+import { IdSchema } from "@crabgic/contracts";
 
 /**
  * Deterministic ID provider — roadmap/02-contracts-and-schemas.md work item

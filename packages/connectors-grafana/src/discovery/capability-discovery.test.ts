@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CapabilitySnapshotSchema } from "@eo/contracts";
+import { CapabilitySnapshotSchema } from "@crabgic/contracts";
 import { GRAFANA_RESOURCE_KINDS, type GrafanaResourceKind } from "../resource-kinds.js";
 import {
   BUILD_INFO_CLOUD_CURRENT,
@@ -157,7 +157,7 @@ describe("adversarial-review LOW fix: build-info is zod-validated at the boundar
   });
 });
 
-describe("buildGrafanaCapabilitySnapshotDiscoverer — @eo/gateway DiscoverCapabilitySnapshot adapter", () => {
+describe("buildGrafanaCapabilitySnapshotDiscoverer — @crabgic/gateway DiscoverCapabilitySnapshot adapter", () => {
   it("produces a shape that round-trips through CapabilitySnapshotSchema once discoveredAt/expiresAt are added", async () => {
     const discoverer = buildGrafanaCapabilitySnapshotDiscoverer(() =>
       depsFromFixture(BUILD_INFO_OSS_13_1),

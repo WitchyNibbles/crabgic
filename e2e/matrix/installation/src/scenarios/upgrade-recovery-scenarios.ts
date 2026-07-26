@@ -21,7 +21,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import { buildCliDependencies, runCliJson } from "../cli-driver.js";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildCleanRepo, type TempFixture } from "../fixtures.js";

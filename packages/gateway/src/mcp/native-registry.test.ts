@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { ConnectorError, type ExternalConnection } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
 import { InMemoryExternalConnectionStore } from "../connection-store/external-connection-store.js";
 import { ProviderRegistry } from "../provider-dispatch/provider-registry.js";
 import { buildNativeToolRegistry } from "./native-registry.js";
@@ -82,7 +82,7 @@ describe("buildNativeToolRegistry", () => {
       allowedResources: ["issue"],
       allowedActions: ["read"],
       discoveryTtlSeconds: 900,
-      secretRef: { backend: "env", variable: "EO_GATEWAY_NATIVE_REGISTRY_TEST_SECRET" },
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_NATIVE_REGISTRY_TEST_SECRET" },
     });
 
     providers.register("fake-tracker", {
@@ -355,7 +355,7 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
       allowedResources: ["issue"],
       allowedActions: ["write"],
       discoveryTtlSeconds: 900,
-      secretRef: { backend: "env", variable: "EO_GATEWAY_APPLY_TOOL_TEST_SECRET" },
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_APPLY_TOOL_TEST_SECRET" },
     });
 
     mutationApplyClients.register("apply-test-provider", {
@@ -410,7 +410,7 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
       allowedResources: ["issue"],
       allowedActions: ["write"],
       discoveryTtlSeconds: 900,
-      secretRef: { backend: "env", variable: "EO_GATEWAY_APPLY_TOOL_TEST_SECRET" },
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_APPLY_TOOL_TEST_SECRET" },
     });
 
     let networkCallCount = 0;
@@ -458,7 +458,7 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
       allowedResources: ["dashboard"],
       allowedActions: ["write"],
       discoveryTtlSeconds: 900,
-      secretRef: { backend: "env", variable: "EO_GATEWAY_APPLY_TOOL_TEST_SECRET" },
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_APPLY_TOOL_TEST_SECRET" },
     });
     mutationApplyClients.register("observability-apply-provider", {
       buildRequest: () => ({

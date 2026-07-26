@@ -10,7 +10,7 @@
  * `capability.approve` shipped as descriptor constants plus plain handler
  * functions with no production caller at all. This module is the seam every
  * one of those phases deferred, and it is deliberately the ONLY new
- * coupling: neither `@eo/gateway` nor `@eo/detect` learns about the other,
+ * coupling: neither `@crabgic/gateway` nor `@crabgic/detect` learns about the other,
  * because `packages/cli` already depends on both.
  *
  * The descriptor constants stay the single source of truth for each tool's
@@ -36,7 +36,7 @@
  * `e2e/live/src/knownDeferredAllowlist.ts`.
  */
 import { z } from "zod";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   buildNativeToolRegistry,
   GatewayToolRegistry,
@@ -46,7 +46,7 @@ import {
   type GenericProviderClient,
   type MutationApplyClient,
   type ExternalConnectionRepository,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import {
   CAPABILITY_APPROVE_TOOL,
   CAPABILITY_AUDIT_TOOL,
@@ -54,9 +54,14 @@ import {
   runCapabilityAudit,
   type CapabilityApproveDeps,
   type CapabilityAuditDeps,
-} from "@eo/detect";
-import type { ProjectInspectDeps, Registry } from "@eo/supervisor";
-import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
+} from "@crabgic/detect";
+import type { ProjectInspectDeps, Registry } from "@crabgic/supervisor";
+import type {
+  AuthorizationEnvelope,
+  ChangeSet,
+  IntentContract,
+  WorkUnit,
+} from "@crabgic/contracts";
 import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
 import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
 import { runContractApprove } from "../intake/contract-approve-handler.js";

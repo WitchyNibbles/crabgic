@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type RemoteResource } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type RemoteResource } from "@crabgic/contracts";
 
 /**
  * Revision comparator — roadmap/18 §Interfaces produced: "stamps each

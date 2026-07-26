@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type CapabilitySnapshot } from "@crabgic/contracts";
 import { GRAFANA_RESOURCE_KINDS, type GrafanaResourceKind } from "../resource-kinds.js";
 import {
   GrafanaBuildInfoResponseSchema,
@@ -68,7 +68,7 @@ export interface GrafanaDiscoveryResult {
  * Discovers a Grafana connection's capabilities — roadmap/20 §In scope,
  * "Version-aware routing": build-info call + route probing, unknown build
  * forced read-only. Shaped to plug directly into
- * `@eo/gateway`'s `DiscoverCapabilitySnapshot` (`(connectionId) =>
+ * `@crabgic/gateway`'s `DiscoverCapabilitySnapshot` (`(connectionId) =>
  * Promise<Omit<CapabilitySnapshot, "discoveredAt" | "expiresAt">>`) — the
  * caller (16's `CapabilitySnapshotCache`) adds `discoveredAt`/`expiresAt`
  * and the `id`/`externalConnectionId`/`schemaVersion` envelope fields.
@@ -115,7 +115,7 @@ export async function discoverGrafanaCapabilities(
 }
 
 /**
- * Adapts `discoverGrafanaCapabilities`'s result to `@eo/gateway`'s
+ * Adapts `discoverGrafanaCapabilities`'s result to `@crabgic/gateway`'s
  * `DiscoverCapabilitySnapshot` shape (`(connectionId) =>
  * Promise<Omit<CapabilitySnapshot, "discoveredAt" | "expiresAt">>`) — the
  * exact function `CapabilitySnapshotCache`'s constructor expects, so the

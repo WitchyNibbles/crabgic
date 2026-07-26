@@ -20,7 +20,7 @@
  *    never to prompt-injectable model-authored prose; parking policy itself
  *    is 13's (roadmap/06 §Out of scope).
  */
-import type { EngineLimitSignalEvent, RateLimitStatus, RateLimitType } from "@eo/engine-core";
+import type { EngineLimitSignalEvent, RateLimitStatus, RateLimitType } from "@crabgic/engine-core";
 import type { SDKRateLimitEvent } from "@anthropic-ai/claude-agent-sdk";
 
 /**

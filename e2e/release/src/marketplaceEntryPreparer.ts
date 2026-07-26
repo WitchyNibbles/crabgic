@@ -9,7 +9,7 @@ import {
   UnpinnedMarketplaceSchema,
   type Marketplace,
   type MarketplacePluginEntry,
-} from "@eo/plugin";
+} from "@crabgic/plugin";
 
 const execFile = promisify(execFileCb);
 
@@ -20,7 +20,7 @@ const execFile = promisify(execFileCb);
  * PREPARE-DON'T-PUBLISH (owner decision): this module returns a validated
  * `MarketplacePluginEntry` object; it NEVER writes to the real, committed
  * `packages/plugin/.claude-plugin/marketplace.json`. Reuses 10's own
- * mechanism/schema verbatim (`@eo/plugin`'s `computeContentDigest` +
+ * mechanism/schema verbatim (`@crabgic/plugin`'s `computeContentDigest` +
  * `MarketplacePluginEntrySchema`) — never a second, parallel
  * digest/schema implementation.
  */

@@ -1,4 +1,4 @@
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { containsSecretShapedContent } from "../security/secret-patterns.js";
 

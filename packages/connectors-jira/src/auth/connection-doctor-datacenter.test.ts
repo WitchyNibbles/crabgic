@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExternalConnection } from "@eo/testkit";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraConnectionConfigSchema } from "../provider/jira-connection-config.js";
 import { runJiraDatacenterConnectionDoctor } from "./connection-doctor-datacenter.js";
 

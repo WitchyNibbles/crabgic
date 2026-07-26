@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, runKillHarness, type JournalStore } from "@eo/journal";
+import { createJournalStore, runKillHarness, type JournalStore } from "@crabgic/journal";
 import { recoverRun } from "../registries/recovery.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
@@ -36,10 +36,10 @@ function fixtureSpec() {
     command: process.execPath,
     args: [FIXTURE],
     env: {
-      EO_KILL_HARNESS_JOURNAL_DIR: journalDir,
-      EO_KILL_HARNESS_RUN_ID: RUN_ID,
-      EO_KILL_HARNESS_CHANGE_SET_ID: CHANGE_SET_ID,
-      EO_KILL_HARNESS_FAULT_POINT: "before-second-transition",
+      CRABGIC_KILL_HARNESS_JOURNAL_DIR: journalDir,
+      CRABGIC_KILL_HARNESS_RUN_ID: RUN_ID,
+      CRABGIC_KILL_HARNESS_CHANGE_SET_ID: CHANGE_SET_ID,
+      CRABGIC_KILL_HARNESS_FAULT_POINT: "before-second-transition",
     },
   };
 }

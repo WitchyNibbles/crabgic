@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 import { evaluateAllLayers } from "./layered-conformance.js";
 import {
   alwaysAllowAdjudicate,

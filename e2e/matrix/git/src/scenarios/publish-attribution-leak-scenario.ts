@@ -4,7 +4,7 @@
  * attribution token is created DIRECTLY via `git commit` (bypassing 17's
  * renderer entirely — modeling "some other bug already let a leaking
  * message through"), then fed to the REAL `publishLocal`
- * (`@eo/git-engine`, 08's local-publication routine). `publishLocal`'s own
+ * (`@crabgic/git-engine`, 08's local-publication routine). `publishLocal`'s own
  * belt-and-suspenders re-scan (its file-level doc comment: "re-scans each
  * [newly introduced commit]'s full commit message... FAILS CLOSED: on any
  * hit, the just-created branch ref is deleted... and
@@ -16,12 +16,12 @@
  * the user repo's checkout is proven byte-identical throughout.
  */
 import { randomUUID } from "node:crypto";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   PublishedAttributionLeakError,
   computeWorkingTreeHash,
   publishLocal,
-} from "@eo/git-engine";
+} from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildBasicFixtureRepo, commitAll, plumbing, writeFixtureFile } from "../fixtures.js";
 import { exitStatusFor, requirePassed, type ScenarioOutcome } from "../scenario-types.js";
@@ -36,7 +36,7 @@ export async function runPublishAttributionLeakScenario(
     await writeFixtureFile(controlRepo.dir, "src/leaky-feature.txt", "leaky feature\n");
     // Deliberately bypasses 17's renderer entirely — a raw commit message
     // seeded with the exact shared attribution fixture token
-    // (`@eo/contracts`'s `ATTRIBUTION_TOKENS`), modeling a leak that
+    // (`@crabgic/contracts`'s `ATTRIBUTION_TOKENS`), modeling a leak that
     // reached this point despite the upstream renderer's own lint.
     await plumbing.run(
       [

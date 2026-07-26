@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { GateContext, GateVerdict } from "./types.js";
 import type { GateRiskTag } from "./risk-tags.js";
 
@@ -51,10 +55,10 @@ export async function emitEvidence(
  * Every `evidence_pointer` entry whose payload's `requirementId` matches
  * `requirementId` — the reverse half of "`Requirement` → `EvidenceRecord` →
  * exact object ID resolves in both directions" (roadmap/14 §Exit criteria).
- * `queryEntries`'s own filter (`@eo/journal`) supports `type`/`runId`/
+ * `queryEntries`'s own filter (`@crabgic/journal`) supports `type`/`runId`/
  * `changeSetId`/`workUnitId` but not an arbitrary payload field, so this
  * scans the (already type-narrowed) `evidence_pointer` stream client-side —
- * the same pattern `@eo/scheduler`'s `attempt-policy.ts` already uses for
+ * the same pattern `@crabgic/scheduler`'s `attempt-policy.ts` already uses for
  * its own payload-level `adjudication_decision` scans.
  */
 export async function findEvidenceForRequirement(

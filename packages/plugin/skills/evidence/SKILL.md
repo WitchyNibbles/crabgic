@@ -1,6 +1,6 @@
 ---
 name: evidence
-description: Query recorded evidence for a change set. Thin wrapper over `engineering-orchestrator evidence`.
+description: Query recorded evidence for a change set. Thin wrapper over `crabgic evidence`.
 disable-model-invocation: false
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 Lists the evidence records journaled for a change set.
 
-Thin wrapper over `engineering-orchestrator evidence <change-set-id> --json`. Degrades
+Thin wrapper over `crabgic evidence <change-set-id> --json`. Degrades
 gracefully to an empty-but-valid report when nothing has been recorded yet — this
 skill never fabricates evidence, and never queries anything beyond the journal (04)
 via the CLI's own `queryEvidence`.

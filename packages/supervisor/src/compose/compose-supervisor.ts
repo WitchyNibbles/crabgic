@@ -38,7 +38,7 @@ import {
   resolveStateRoot,
   type JournalStore,
   type XdgEnv,
-} from "@eo/journal";
+} from "@crabgic/journal";
 import {
   AuthorizationEnvelopeSchema,
   ChangeSetSchema,
@@ -46,7 +46,7 @@ import {
   type AuthorizationEnvelope,
   type ChangeSet,
   type WorkUnit,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFileRegistry } from "../registries/file-registry.js";
 import type { PeerAuthOptions } from "../peer-auth/peer-auth-middleware.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";
@@ -99,7 +99,7 @@ export interface ComposeSupervisorConfig {
    * caller cannot construct it in advance.
    *
    * Optional: this package cannot build one (the real driver needs
-   * `@eo/engine-claude`, which depends on this package), so the daemon
+   * `@crabgic/engine-claude`, which depends on this package), so the daemon
    * entry point in `packages/cli` supplies it. Without it the control
    * plane serves normally and `run.dispatch` refuses.
    */

@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type RemoteResource } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type RemoteResource } from "@crabgic/contracts";
 import type { GrafanaResourceKind } from "../resource-kinds.js";
 
 /**
  * Revision-stamping — additive to phase 20, consumed by roadmap/21-
  * connector-evidence-integration.md's evidence binding (work item 2) and
- * drift-CI replay (work item 5). Mirrors `@eo/connectors-jira`'s own
+ * drift-CI replay (work item 5). Mirrors `@crabgic/connectors-jira`'s own
  * `stampJiraRemoteResource` (18): stamps a tracked Grafana resource's
  * current revision (its `resourceVersion`/ETag/dashboard-version
  * concurrency token — roadmap/21 §Interfaces consumed, "the dashboard-

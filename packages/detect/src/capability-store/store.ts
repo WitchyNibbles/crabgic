@@ -11,7 +11,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CapabilityDecision, CapabilityManifestEntry } from "@eo/contracts";
+import type { CapabilityDecision, CapabilityManifestEntry } from "@crabgic/contracts";
 import { computeCapabilityStoreKey } from "./key.js";
 import type { AuditReport } from "../quarantine/types.js";
 

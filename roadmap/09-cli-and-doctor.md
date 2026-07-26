@@ -1,4 +1,4 @@
-# Phase 09 — `engineering-orchestrator` CLI & doctor
+# Phase 09 — `crabgic` CLI & doctor
 
 | | |
 |---|---|
@@ -26,7 +26,7 @@ typed client.
   `trust review|approve|revoke`, `learn list|approve|reject|rollback`, `upgrade [--dry-run]`,
   `uninstall [--keep-state]`, **`gateway mcp`**. Backends not yet built by a landed phase return typed
   `NOT_IMPLEMENTED` until wired (full wiring across the whole surface is a phase-23 release gate).
-- **`gateway mcp`:** boots the `eo_gateway` MCP server (stdio) over `packages/gateway`'s (16) extensible tool
+- **`gateway mcp`:** boots the `crabgic_gateway` MCP server (stdio) over `packages/gateway`'s (16) extensible tool
   registry, addressed by the `GATEWAY_MCP_SERVER_NAME` constant (02). At 09/16 build time this exposes 16's
   natively-owned tool families (`tracker.*`, `observability.*`). 11 and 12 — already dependents of this
   phase — each register their own already-built handlers (`project.inspect`/`contract.approve`;
@@ -80,7 +80,7 @@ typed client.
 
 ## Interfaces produced
 
-1. **CLI command surface** (`packages/cli`, binary `engineering-orchestrator`): `install [--dry-run]
+1. **CLI command surface** (`packages/cli`, binary `crabgic`): `install [--dry-run]
    [--json]`, `doctor [--repair-plan] [--json]`, `run`, `status [run-id] [--watch] [--json]`,
    `resume <run-id>`, `cancel <run-id|task-id>`, `evidence <change-set-id>`,
    `connection add jira|grafana / list / doctor <id> / capabilities <id>`, `trust review|approve|revoke`,
@@ -119,14 +119,14 @@ typed client.
   `status`/`evidence`/`resume` read through these.
 
 **Transitively via 05 → 04 (`packages/journal`), no additional dependency edge needed:**
-- `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/…` and `$XDG_CACHE_HOME/engineering-orchestrator/`
+- `$XDG_STATE_HOME/crabgic/<project-hash>/…` and `$XDG_CACHE_HOME/crabgic/`
   layout/permission conventions — doctor's XDG-permission checks target these paths directly.
 - Journal chain-verification routine — doctor's "torn journal" check calls 04's own verifier, not a
   reimplementation.
 
 **Ambient, via `packages/contracts` (02) — not a direct Depends-on edge, matching the convention already
 used by 05/06/07/10/11's own consumption of 02:**
-- `GATEWAY_MCP_SERVER_NAME = "eo_gateway"` — `gateway mcp`'s server identity.
+- `GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` — `gateway mcp`'s server identity.
 - `JournalEntryType` member `approval_token_mint` — the entry type the minting primitive writes, for both
   11's and 12's tokens.
 - `EvidenceRecord`, `ChangeSet` schemas — `evidence <change-set-id>`'s read surface.
@@ -189,7 +189,7 @@ red first.
 
 **Conformance:** snapshot tests for help text and every `--json` output schema, including `gateway mcp`'s
 tool-listing shape; `gateway mcp`'s stdio boot invocation is byte-compared against the exact string 10's
-`.mcp.json` entry uses (`engineering-orchestrator gateway mcp`).
+`.mcp.json` entry uses (`crabgic gateway mcp`).
 
 **Security:** secret value in argv rejected with guidance, never echoed in output, logs, or doctor evidence;
 approval-token replay (same token verified twice) fails closed; token minting is reachable only through the
@@ -201,7 +201,7 @@ only a validity verdict, never the resolved token value.
 - [ ] Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates
       against published schemas — suite `cli.commands.schema.test`.
 - [ ] `gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client — the
-      exact process 10's `.mcp.json` entry (`engineering-orchestrator gateway mcp`) invokes; full 8-family
+      exact process 10's `.mcp.json` entry (`crabgic gateway mcp`) invokes; full 8-family
       completeness remains a phase-23 release gate — suite `gateway-mcp.boot.test`.
 - [ ] Doctor detects each seeded fault (wrong engine version, missing bwrap, rogue settings, bad socket
       perms, torn journal) with a correct repair plan — suite `doctor.fault-matrix.test`.

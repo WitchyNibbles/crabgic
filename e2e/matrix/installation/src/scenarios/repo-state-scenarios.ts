@@ -6,7 +6,7 @@
  * against a real, throwaway temp repo) and asserts the documented,
  * per-`GitRepoState` outcome.
  */
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import { randomUUID } from "node:crypto";
 import { buildCliDependencies, runCliJson } from "../cli-driver.js";
 import { emitScenarioEvidence } from "../evidence.js";

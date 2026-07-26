@@ -2,9 +2,9 @@ import {
   GatewayHttpClient,
   createFakeProviderTransport,
   type FakeProviderScriptEntry,
-} from "@eo/gateway";
-import type { MutationApplyClient } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+} from "@crabgic/gateway";
+import type { MutationApplyClient } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
 import { buildFieldMetadataIndex } from "../capability/field-metadata.js";

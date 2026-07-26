@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ChangeSetSchema } from "@eo/contracts";
-import { buildLearningProposal } from "@eo/testkit";
+import { ChangeSetSchema } from "@crabgic/contracts";
+import { buildLearningProposal } from "@crabgic/testkit";
 import {
   buildChangeSetForPromotion,
   buildInverseChangeSetForRollback,

@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeEngineAdapterConfig, SdkQueryFunction } from "./adapter-config.js";
 import { ClaudeEngineAdapter } from "./adapter.js";

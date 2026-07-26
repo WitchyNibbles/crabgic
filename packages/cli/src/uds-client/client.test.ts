@@ -2,7 +2,7 @@
  * roadmap/09-cli-and-doctor.md §Test plan, Integration: "failing-first
  * command-level integration against a real supervisor (05) in tmp dirs."
  * This suite exercises the typed client itself directly against a real,
- * unmodified `@eo/supervisor` server (no mocked transport) — every command
+ * unmodified `@crabgic/supervisor` server (no mocked transport) — every command
  * handler in `../commands/*` reuses this exact client.
  */
 import { mkdtemp, rm } from "node:fs/promises";
@@ -10,7 +10,7 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
@@ -22,7 +22,7 @@ import {
   startSupervisorServer,
   type SupervisorDependencies,
   type SupervisorServer,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { SupervisorUnavailableError } from "../errors.js";
 import { connectUdsClient, UdsOperationError, type UdsClient } from "./client.js";
 

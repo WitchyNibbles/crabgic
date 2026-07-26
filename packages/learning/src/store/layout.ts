@@ -1,10 +1,10 @@
 import { join } from "node:path";
-import { resolveStateRoot, type XdgEnv } from "@eo/journal";
+import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
 
 /**
  * On-disk layout for this phase's proposal store — roadmap/22-learning-
  * system.md §In scope, "Storage policy": "Personal/transient lessons live
- * under `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/learning/`
+ * under `$XDG_STATE_HOME/crabgic/<project-hash>/learning/`
  * (04's pinned state root), outside the repo." This module nests `learning/`
  * under 04's `resolveStateRoot` (interface-ledger Gap 14's sibling
  * convention) rather than re-deriving the XDG root itself.

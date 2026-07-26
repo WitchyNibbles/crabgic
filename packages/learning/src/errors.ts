@@ -1,7 +1,7 @@
 /**
- * Typed errors — every refusal `@eo/learning` can produce is a distinct,
+ * Typed errors — every refusal `@crabgic/learning` can produce is a distinct,
  * named `Error` subclass, matching the repo-wide "typed errors, never
- * silent swallow" convention (`@eo/scheduler`'s `errors.ts`, `@eo/gates`'s
+ * silent swallow" convention (`@crabgic/scheduler`'s `errors.ts`, `@crabgic/gates`'s
  * `errors.ts`).
  */
 

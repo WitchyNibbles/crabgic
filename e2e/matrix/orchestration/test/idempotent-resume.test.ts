@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
-import type { SessionRef } from "@eo/engine-core";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
+import type { SessionRef } from "@crabgic/engine-core";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
   FakeEngineNoResumeScriptError,
-} from "@eo/testkit";
-import { countPriorDispatches, dispatchAttempt, resumeAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { countPriorDispatches, dispatchAttempt, resumeAttempt } from "@crabgic/scheduler";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
@@ -17,7 +17,7 @@ import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJ
 /**
  * Scenario 7/8 — roadmap/23-release-hardening.md work item 4: "idempotent
  * resume." Two independent idempotency properties, both driven against the
- * REAL `@eo/scheduler` executor across a SIMULATED supervisor restart
+ * REAL `@crabgic/scheduler` executor across a SIMULATED supervisor restart
  * (fresh `JournalStore` instance over the same on-disk journal, zero
  * in-memory state carried over):
  *

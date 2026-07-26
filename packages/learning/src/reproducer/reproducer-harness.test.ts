@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTaskPacket, buildWorkerResult } from "@eo/testkit";
+import { buildTaskPacket, buildWorkerResult } from "@crabgic/testkit";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,

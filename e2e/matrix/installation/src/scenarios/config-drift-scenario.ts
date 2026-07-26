@@ -2,7 +2,7 @@
  * Config-drift scenario — roadmap/10-plugin-and-installer.md's own
  * "checksum/drift check" doctor contribution, exercised through the REAL
  * `doctor` pipeline (`buildDefaultDoctorChecks` + `runDoctorChecks`, both
- * part of `engineering-orchestrator`'s public barrel via
+ * part of `crabgic`'s public barrel via
  * `packages/cli/src/doctor/run-doctor.ts`/`framework.ts`) rather than a
  * re-implementation of drift detection: install for real, externally
  * mutate an owned "merged" artifact (simulating an out-of-band edit —
@@ -13,8 +13,8 @@
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
-import { buildDefaultDoctorChecks, runDoctorChecks } from "engineering-orchestrator";
+import type { JournalStore } from "@crabgic/journal";
+import { buildDefaultDoctorChecks, runDoctorChecks } from "crabgic";
 import { buildCliDependencies, pluginSourceDir, runCliJson } from "../cli-driver.js";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildCleanRepo } from "../fixtures.js";

@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { IllegalTransitionError } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { IllegalTransitionError } from "@crabgic/contracts";
 import { InsufficientIndependentReviewError } from "../errors.js";
 import { ProposalRegistry } from "../proposal-store/registry.js";
 import { promoteProposal } from "../promotion/promote.js";
@@ -34,7 +34,7 @@ import {
  * THIS proposal. The fix moves verification into
  * `ProposalRegistry.recordReviewApproval` via an INJECTED verifier
  * function (`LearningReviewTokenVerifier` — this package still holds no
- * signing secret, preserving the `@eo/cli` -> `@eo/learning` dependency
+ * signing secret, preserving the `@crabgic/cli` -> `@crabgic/learning` dependency
  * direction) and REMOVES `transition`'s old `reviewApprovals` escape
  * hatch entirely — promotion now reads ONLY the already-verified,
  * accumulated approvals, never a caller-supplied array trusted by name.

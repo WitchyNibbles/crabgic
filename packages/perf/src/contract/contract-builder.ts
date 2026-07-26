@@ -7,8 +7,8 @@ import {
   type PerformanceOutcome,
   type ProvisionalPerformanceBudgetEntry,
   type ProvisionalPerformanceContract,
-} from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import {
   BudgetHashLinkMismatchError,
   BudgetJournalAnchorMissingError,

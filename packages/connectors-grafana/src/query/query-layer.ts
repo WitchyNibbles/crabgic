@@ -1,4 +1,4 @@
-import { ITEM_BUDGET_BYTES, enforceItemBudget, enforceResultBudget } from "@eo/gateway";
+import { ITEM_BUDGET_BYTES, enforceItemBudget, enforceResultBudget } from "@crabgic/gateway";
 import { redactSecretBearingObject } from "../security/redaction.js";
 
 /**
@@ -12,7 +12,7 @@ import { redactSecretBearingObject } from "../security/redaction.js";
  * issues the query HTTP call itself (that stays inside `../adapter.js`'s
  * `send`-based dispatch, unchanged); it processes an already-fetched raw
  * result set — scoping fields, redacting secret-shaped values, and
- * downsampling/truncating until the SAME budgets `@eo/gateway`'s transport
+ * downsampling/truncating until the SAME budgets `@crabgic/gateway`'s transport
  * enforces are satisfied BEFORE this package ever hands a result back to
  * its caller (so a caller never depends on the gateway's own enforcement
  * as backstop-of-first-resort).

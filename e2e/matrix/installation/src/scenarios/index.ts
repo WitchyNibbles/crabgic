@@ -4,7 +4,7 @@
  * HEAD, dirty repo, monorepo, config drift, interrupted upgrade, rollback,
  * uninstall preserving user edits."
  */
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import { runConfigDriftScenario } from "./config-drift-scenario.js";
 import {
   runDirtyRepoScenario,

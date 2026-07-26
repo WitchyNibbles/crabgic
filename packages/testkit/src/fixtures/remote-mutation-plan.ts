@@ -2,7 +2,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   RemoteMutationPlanSchema,
   type RemoteMutationPlan,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `RemoteMutationPlan` fixture builder — roadmap/02 work item 10. */

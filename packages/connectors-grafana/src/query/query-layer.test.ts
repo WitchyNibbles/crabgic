@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ITEM_BUDGET_BYTES, RESULT_BUDGET_BYTES } from "@eo/gateway";
+import { ITEM_BUDGET_BYTES, RESULT_BUDGET_BYTES } from "@crabgic/gateway";
 import {
   GrafanaQueryValidationError,
   downsampleToResultBudget,

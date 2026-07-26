@@ -26,7 +26,7 @@
  * wire. See `utf8ByteLength`/`utf8ByteSlice` below.
  */
 
-import type { TaskPacket } from "@eo/contracts";
+import type { TaskPacket } from "@crabgic/contracts";
 import { PacketBudgetExceededError, type PacketBudgetViolation } from "./errors.js";
 
 /** One entry per budget-checked `TaskPacket` field, in true UTF-8 BYTES (measured via `Buffer.byteLength(rendered, "utf8")` — never a bare JS string `.length`, which counts UTF-16 code units and silently under-counts any multi-byte character, e.g. non-ASCII text). */

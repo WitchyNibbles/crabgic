@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { detectContradictions } from "./contradiction.js";
 
 function runtimeFinding(path: string, ecosystem: string, detail: string): StackEvidenceFinding {

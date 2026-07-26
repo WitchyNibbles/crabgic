@@ -3,7 +3,7 @@
  * of any runtime engine import.
  *
  * WHY THE SPLIT: this function lived in `run-dispatcher.ts`, which
- * statically imports `@eo/engine-claude` and through it
+ * statically imports `@crabgic/engine-claude` and through it
  * `@anthropic-ai/claude-agent-sdk`. The daemon calls this at STARTUP, so
  * merely resolving a token loaded the entire engine into a process that may
  * never dispatch a run — measured at +40.9 MiB, against roadmap/05's
@@ -14,7 +14,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { WorkerAuthMaterial } from "@eo/engine-claude";
+import type { WorkerAuthMaterial } from "@crabgic/engine-claude";
 
 /**
  * Resolves engine credentials in the exact order docs/engine-baseline.md §1

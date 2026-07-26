@@ -22,7 +22,7 @@ import {
   WorkUnitAttemptStatusSchema,
   WorkUnitSchema,
   WorkerResultSchema,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import type { z } from "zod";
 import { buildAuthorizationEnvelope } from "./authorization-envelope.js";
 import { buildCapabilityManifest } from "./capability-manifest.js";

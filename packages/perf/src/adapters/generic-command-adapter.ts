@@ -1,4 +1,4 @@
-import type { ProjectProfile } from "@eo/contracts";
+import type { ProjectProfile } from "@crabgic/contracts";
 import { NoBenchmarkCommandError } from "../errors.js";
 import { runCommandWithResourceCapture } from "../measurement/command-runner.js";
 import type { ResourceCaptureArtifact } from "../measurement/schema.js";

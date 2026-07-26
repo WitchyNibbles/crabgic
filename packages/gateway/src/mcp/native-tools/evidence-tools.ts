@@ -14,8 +14,12 @@
 
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { AnyGatewayToolDefinition, GatewayToolDefinition } from "../tool-registry.js";
 
 export interface EvidenceToolsDeps {

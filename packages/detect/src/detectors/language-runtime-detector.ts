@@ -10,7 +10,7 @@
  * `parseJsonSafe`, or a narrow regex for non-JSON manifests) — a
  * malformed manifest yields no finding for that file, never a throw.
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { parseJsonSafe } from "../fs/safe-read.js";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 

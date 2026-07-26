@@ -21,7 +21,7 @@ const execFile = promisify(execFileCb);
  * runs offline. A default-on rebuild would turn every offline run into a
  * hard network ERROR instead of a check. `release-e2e.yml` — the one leg
  * with network, since it runs `npm ci` itself — is where
- * `EO_RELEASE_REBUILD_CHECKOUTS=1` belongs, and is where it is now set: on
+ * `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1` belongs, and is where it is now set: on
  * that workflow's `npm run test:e2e` step. This module still does not
  * depend on the workflow; `releaseWorkflowWiring.test.ts` binds the two by
  * reading the real workflow file and asserting it against
@@ -32,7 +32,7 @@ const execFile = promisify(execFileCb);
  * never silently assumed, in either direction.
  */
 
-export const REBUILD_CHECKOUTS_ENV_VAR = "EO_RELEASE_REBUILD_CHECKOUTS";
+export const REBUILD_CHECKOUTS_ENV_VAR = "CRABGIC_RELEASE_REBUILD_CHECKOUTS";
 
 /** Injectable seam over a real child process — mirrors this project's other real/fake process seams. */
 export type RunCommandFn = (command: string, args: readonly string[], cwd: string) => Promise<void>;
@@ -58,7 +58,7 @@ export interface RebuildPopulatorOptions {
  * Runs `npm ci` then `npm run build` in the checkout ROOT. Both commands
  * need the whole-repository export `CheckoutExporter.exportCheckout(commitIsh)`
  * now produces: the root manifest, the lockfile, `tsconfig.base.json`, and
- * every sibling `@eo/*` workspace `packages/cli`'s build depends on. A
+ * every sibling `@crabgic/*` workspace `packages/cli`'s build depends on. A
  * `<commit>:packages/cli` sub-path export — what this project exported
  * before — has none of those, and `npm ci` there cannot run at all.
  */
@@ -78,12 +78,12 @@ export function createRebuildFromCleanCheckoutPopulator(
 export interface ResolveBuildOutputPopulatorOptions {
   readonly repoRoot: string;
   readonly packageSubPath: string;
-  /** The environment to read `EO_RELEASE_REBUILD_CHECKOUTS` from — injected rather than read off `process.env` so the gate is testable both ways. */
+  /** The environment to read `CRABGIC_RELEASE_REBUILD_CHECKOUTS` from — injected rather than read off `process.env` so the gate is testable both ways. */
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly runCommand?: RunCommandFn;
 }
 
-/** Picks the rebuilding populator iff `EO_RELEASE_REBUILD_CHECKOUTS` is exactly `"1"`; otherwise the copy-current-dist one. See this module's file-level doc comment for why the default is the weaker of the two and how the gate keeps that honest. */
+/** Picks the rebuilding populator iff `CRABGIC_RELEASE_REBUILD_CHECKOUTS` is exactly `"1"`; otherwise the copy-current-dist one. See this module's file-level doc comment for why the default is the weaker of the two and how the gate keeps that honest. */
 export function resolveBuildOutputPopulator(
   options: ResolveBuildOutputPopulatorOptions,
 ): BuildOutputPopulator {

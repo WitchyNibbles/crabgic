@@ -2,7 +2,7 @@
 // work item 6: "crash-before/after-remote-commit, replay"). Plain .mjs,
 // mirroring `packages/gateway/src/mutation-pipeline/kill-harness-fixtures/
 // nonidempotent-post-and-crash.mjs`'s own established convention exactly
-// (imports this repo's already-built `@eo/journal`/`@eo/gateway` dist
+// (imports this repo's already-built `@crabgic/journal`/`@crabgic/gateway` dist
 // output directly) — this is a NEW fixture for this harness's own matrix,
 // reusing the REAL `executeMutationPlan` pipeline and the REAL, gateway-
 // declared `reconcileAmbiguousPost`/`MarkerReconciler` mechanism (never a
@@ -12,25 +12,25 @@
 // real, exported gateway reconciliation primitive instead.
 import { appendFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { createJournalStore, signalFaultPoint } from "@eo/journal";
+import { createJournalStore, signalFaultPoint } from "@crabgic/journal";
 import {
   executeMutationPlan,
   IdempotencyKeyLock,
   GatewayHttpClient,
   reconcileAmbiguousPost,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 
-const journalDir = process.env.EO_FIXTURE_JOURNAL_DIR;
-const sideEffectFile = process.env.EO_FIXTURE_SIDE_EFFECT_FILE;
-const faultPoint = process.env.EO_FIXTURE_FAULT_POINT ?? "none";
-const noReconcile = process.env.EO_FIXTURE_NO_RECONCILE === "1";
-const plan = JSON.parse(process.env.EO_FIXTURE_PLAN_JSON);
+const journalDir = process.env.CRABGIC_FIXTURE_JOURNAL_DIR;
+const sideEffectFile = process.env.CRABGIC_FIXTURE_SIDE_EFFECT_FILE;
+const faultPoint = process.env.CRABGIC_FIXTURE_FAULT_POINT ?? "none";
+const noReconcile = process.env.CRABGIC_FIXTURE_NO_RECONCILE === "1";
+const plan = JSON.parse(process.env.CRABGIC_FIXTURE_PLAN_JSON);
 
 const journal = createJournalStore({ journalDir });
 
 // The fake remote's own durable "created objects, keyed by marker" log —
 // exactly the shape a real Jira entity-property / Grafana annotation-tag
-// marker mechanism backs (`@eo/gateway`'s `MarkerReconciler` interface).
+// marker mechanism backs (`@crabgic/gateway`'s `MarkerReconciler` interface).
 const createdLogFile = `${sideEffectFile}.created.jsonl`;
 const marker = plan.idempotencyKey;
 
@@ -49,7 +49,7 @@ function findByMarkerFromLog() {
   return undefined;
 }
 
-/** `@eo/gateway`'s own `MarkerReconciler` interface, backed by the fake remote's durable log above. */
+/** `@crabgic/gateway`'s own `MarkerReconciler` interface, backed by the fake remote's durable log above. */
 const reconciler = { findByMarker: async (m) => findByMarkerFromLog(m) };
 
 async function performCreate() {

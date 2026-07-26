@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
-import { IllegalTransitionError } from "@eo/contracts";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
+import { IllegalTransitionError } from "@crabgic/contracts";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { dispatchAttempt } from "@eo/scheduler";
-import { createRunsRegistry, transitionRun } from "@eo/supervisor";
+} from "@crabgic/testkit";
+import { dispatchAttempt } from "@crabgic/scheduler";
+import { createRunsRegistry, transitionRun } from "@crabgic/supervisor";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";

@@ -9,7 +9,7 @@ import { forwardToSupervisor, UdsForwardError } from "./uds-forward-client.js";
 /**
  * A minimal fake UDS peer speaking the SAME wire shape 05's real
  * supervisor speaks (handshake, then one correlated request/response) —
- * deliberately reimplemented here rather than importing `@eo/supervisor`
+ * deliberately reimplemented here rather than importing `@crabgic/supervisor`
  * (which exports nothing publicly yet — see `uds-forward-client.ts`'s own
  * doc comment).
  */

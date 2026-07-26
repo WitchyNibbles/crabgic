@@ -99,7 +99,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, WorkUnitSchema, type WorkUnit } from "@crabgic/contracts";
 import {
   CONTROL_CONTEXT_ENV,
   OPTION_TERMINATOR,

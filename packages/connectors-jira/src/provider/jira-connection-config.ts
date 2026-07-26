@@ -1,4 +1,4 @@
-import { ConnectorError, SecretReferenceSchema } from "@eo/contracts";
+import { ConnectorError, SecretReferenceSchema } from "@crabgic/contracts";
 import { z } from "zod";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 

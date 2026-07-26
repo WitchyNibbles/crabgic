@@ -1,4 +1,4 @@
-import type { LearningProposal } from "@eo/contracts";
+import type { LearningProposal } from "@crabgic/contracts";
 import type { ProposalRegistry } from "../proposal-store/registry.js";
 import { LEARNING_PROPOSAL_ABSORBING_STATES } from "../state-machine.js";
 

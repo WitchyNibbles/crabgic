@@ -2,7 +2,7 @@ import { request as httpRequest } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 /** `node:net`'s base `Server` — both `http.Server` and `https.Server` extend it, so the bind helpers below work for the throwaway upstreams their unit tests build as well as for the real terminator. */
 import type { Server } from "node:net";
-import { sendHttpRequest, type HttpTransportRequest } from "@eo/gateway";
+import { sendHttpRequest, type HttpTransportRequest } from "@crabgic/gateway";
 import { generateSelfSignedCert, type DisposableCert } from "./selfSignedCert.js";
 
 /**

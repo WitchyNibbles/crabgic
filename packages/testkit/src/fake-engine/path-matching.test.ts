@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { matchesAnchoredGlobLiteral, matchesToolPathRule } from "./path-matching.js";
 
 /**
- * Anchor forms (`//`, `~/`, bare `/`) mirror `@eo/engine-core`'s own
+ * Anchor forms (`//`, `~/`, bare `/`) mirror `@crabgic/engine-core`'s own
  * compiled-profile literals (`Edit(//<path>/**)`, `Read(~/.ssh/**)`).
  * Path-escape coverage (`../`, absolute) — roadmap/03 work item 6's
  * fixture list.

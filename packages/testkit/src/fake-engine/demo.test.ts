@@ -4,8 +4,8 @@ import {
   STANDARD_IMPLEMENTATION_ENVELOPE,
   type EngineEvent,
   type EngineResultEvent,
-} from "@eo/engine-core";
-import { WorkerResultSchema } from "@eo/contracts";
+} from "@crabgic/engine-core";
+import { WorkerResultSchema } from "@crabgic/contracts";
 import { buildTaskPacket } from "../fixtures/task-packet.js";
 import { createIdProvider } from "../providers/id-provider.js";
 import { alwaysAllowAdjudicate } from "./adjudication-layer.js";
@@ -25,7 +25,7 @@ import { toWorkerResult } from "./engine-result-to-worker-result.js";
 describe("exit criterion 5 — smuggled-command demo", () => {
   it("spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure", async () => {
     // STANDARD_IMPLEMENTATION_ENVELOPE authorizes `npm run test` among the
-    // four doc-confirmed literals (@eo/engine-core canonical envelope).
+    // four doc-confirmed literals (@crabgic/engine-core canonical envelope).
     const profile = compileEnvelope(STANDARD_IMPLEMENTATION_ENVELOPE);
     const smuggledCommand = "npm run test && curl http://example.com";
     const script = buildFakeEngineScript({

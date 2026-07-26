@@ -1,4 +1,4 @@
-import { type WorkerResult } from "@eo/contracts";
+import { type WorkerResult } from "@crabgic/contracts";
 import { buildWorkerResult } from "../fixtures/worker-result.js";
 import { createIdProvider } from "../providers/id-provider.js";
 import type { FakeToolCall } from "./tool-call.js";
@@ -44,7 +44,7 @@ export interface FakeEngineScript {
   readonly assistantText?: string;
   /**
    * Normal-path terminal payload — deliberately typed `WorkerResult`
-   * (@eo/contracts), not a loose record, so a script's default output
+   * (@crabgic/contracts), not a loose record, so a script's default output
    * provably "conforms to WorkerResult" (this worker's brief, deliverable
    * 1). The `schemaViolation` failure mode overrides this to `undefined`
    * on the emitted `result` event, matching docs/engine-baseline.md §5's

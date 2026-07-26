@@ -1,17 +1,17 @@
 /**
  * Real, throwaway temp-repo fixture builders for the git-invariance +
  * neutral-rendering matrix — every builder does real filesystem/`git` work
- * via `@eo/git-engine`'s `createGitPlumbing` (argv-array only, no shell —
+ * via `@crabgic/git-engine`'s `createGitPlumbing` (argv-array only, no shell —
  * the exact plumbing wrapper 07/08 themselves use), never a mocked git.
  * Mirrors `packages/git-engine/src/test-support/fixture-repo.ts`'s own
  * documented conventions (that file is test-scaffolding-only, not part of
- * `@eo/git-engine`'s public barrel, so this project reproduces the same
+ * `@crabgic/git-engine`'s public barrel, so this project reproduces the same
  * small set of primitives rather than importing it).
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createGitPlumbing, type GitPlumbing } from "@eo/git-engine";
+import { createGitPlumbing, type GitPlumbing } from "@crabgic/git-engine";
 
 export const plumbing: GitPlumbing = createGitPlumbing();
 

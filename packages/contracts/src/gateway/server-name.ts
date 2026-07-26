@@ -1,7 +1,7 @@
 /**
  * `GATEWAY_MCP_SERVER_NAME` — the single literal every engine-side MCP
  * registration derives from (roadmap/02-contracts-and-schemas.md §In
- * scope, "`GATEWAY_MCP_SERVER_NAME` constant" bullet: `"eo_gateway"` — the
+ * scope, "`GATEWAY_MCP_SERVER_NAME` constant" bullet: `"crabgic_gateway"` — the
  * single literal every engine-side MCP registration derives from; no phase
  * hand-types the literal a second time. Interface-ledger Gap 11 ruling:
  * the server name is pinned as this single named constant, exported from
@@ -23,4 +23,4 @@
  * site test) — the wire prefix is always derived at the call site, never
  * hand-typed a second time anywhere under `packages/*` (src).
  */
-export const GATEWAY_MCP_SERVER_NAME = "eo_gateway" as const;
+export const GATEWAY_MCP_SERVER_NAME = "crabgic_gateway" as const;

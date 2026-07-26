@@ -4,14 +4,14 @@
  * of exactly these — never an ad hoc number invented at a call site. Loosely
  * follows BSD `sysexits.h` conventions where one already fits.
  *
- * WHY THIS LIVES IN `@eo/contracts` (2026-07-25): "every command backend"
+ * WHY THIS LIVES IN `@crabgic/contracts` (2026-07-25): "every command backend"
  * includes backends that live OUTSIDE `packages/cli` — phase 12's `trust
  * review`/`approve`/`revoke` are implemented in `packages/detect`, which
  * reached these constants through the CLI package and so closed a cycle
  * (`cli -> learning -> gates -> detect -> cli`) that made `tsc -b` fail
  * from a clean checkout. A shared exit-code vocabulary is a contract, not a
  * CLI implementation detail, so it belongs at the dependency-graph root.
- * `engineering-orchestrator` re-exports every name verbatim.
+ * `crabgic` re-exports every name verbatim.
  */
 export const EXIT_OK = 0;
 export const EXIT_GENERAL_ERROR = 1;

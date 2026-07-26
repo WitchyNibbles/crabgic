@@ -9,13 +9,13 @@ import { describe, expect, it } from "vitest";
  *
  * WHY (WP5, 2026-07-25): this repo has already been bitten once by exactly
  * the change WP5 makes. `../bin/supervisord.ts:34-42` records it: adding a
- * static import that reached `@eo/engine-claude` ->
+ * static import that reached `@crabgic/engine-claude` ->
  * `@anthropic-ai/claude-agent-sdk` cost +40.9 MiB and put the daemon's idle
  * RSS at 99.8 / 108.2 / 100.2 MiB across three boots, straddling
  * roadmap/05's <100 MiB budget — for a module an idle daemon serving
  * status/cancel/evidence/registry never touches. The fix was
- * `./lazy-run-dispatcher.ts`. WP5 adds `@eo/connectors-jira` and
- * `@eo/connectors-grafana` to `packages/cli`, which is the same class of
+ * `./lazy-run-dispatcher.ts`. WP5 adds `@crabgic/connectors-jira` and
+ * `@crabgic/connectors-grafana` to `packages/cli`, which is the same class of
  * change: both are reachable from `../bootstrap.ts`, and one careless
  * static import from anything the daemon boots would pull them in.
  *
@@ -47,9 +47,9 @@ const ENTRY = join(SRC_ROOT, "bin", "supervisord.ts");
  * runs; each has, or must have, a lazy seam instead.
  */
 const FORBIDDEN_IN_BOOT_GRAPH: readonly string[] = [
-  "@eo/engine-claude",
-  "@eo/connectors-jira",
-  "@eo/connectors-grafana",
+  "@crabgic/engine-claude",
+  "@crabgic/connectors-jira",
+  "@crabgic/connectors-grafana",
 ];
 
 /**
@@ -81,7 +81,7 @@ interface BootGraph {
   readonly packages: readonly string[];
 }
 
-/** Walks the daemon entry point's static import graph, following relative specifiers inside this package and recording every `@eo/*` package it reaches. */
+/** Walks the daemon entry point's static import graph, following relative specifiers inside this package and recording every `@crabgic/*` package it reaches. */
 function walkBootGraph(entry: string): BootGraph {
   const visited = new Set<string>();
   const packages = new Set<string>();
@@ -93,7 +93,7 @@ function walkBootGraph(entry: string): BootGraph {
     visited.add(file);
 
     for (const specifier of staticSpecifiersOf(file)) {
-      if (specifier.startsWith("@eo/")) {
+      if (specifier.startsWith("@crabgic/")) {
         packages.add(specifier);
         continue;
       }
@@ -147,13 +147,13 @@ describe("supervisor daemon boot graph", () => {
   /** Proof the guard has teeth: bootstrap.ts really does pull the connectors in, so the assertion above is not vacuous. */
   it("bootstrap.ts genuinely pulls both connector packages in (the assertions above are not vacuous)", () => {
     const fromBootstrap = walkBootGraph(join(SRC_ROOT, "bootstrap.ts")).packages;
-    expect(fromBootstrap).toContain("@eo/connectors-jira");
-    expect(fromBootstrap).toContain("@eo/connectors-grafana");
+    expect(fromBootstrap).toContain("@crabgic/connectors-jira");
+    expect(fromBootstrap).toContain("@crabgic/connectors-grafana");
   });
 
   /** …and that the walker would in fact SEE a forbidden package if one were reachable. */
   it("detects a forbidden package when one really is reachable (walker sanity)", () => {
     const fromRunDispatcher = walkBootGraph(join(SRC_ROOT, "daemon", "run-dispatcher.ts")).packages;
-    expect(fromRunDispatcher).toContain("@eo/engine-claude");
+    expect(fromRunDispatcher).toContain("@crabgic/engine-claude");
   });
 });

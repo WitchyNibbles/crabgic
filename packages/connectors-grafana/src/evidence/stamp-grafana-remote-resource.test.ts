@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RemoteResourceSchema } from "@eo/contracts";
+import { RemoteResourceSchema } from "@crabgic/contracts";
 import { stampGrafanaRemoteResource } from "./stamp-grafana-remote-resource.js";
 
 describe("stampGrafanaRemoteResource", () => {

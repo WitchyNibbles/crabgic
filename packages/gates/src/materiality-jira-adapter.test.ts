@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JiraFieldMetadata } from "@eo/connectors-jira";
+import type { JiraFieldMetadata } from "@crabgic/connectors-jira";
 import { classifyMateriality } from "./materiality-classifier.js";
 import { buildJiraFieldDiffs, normalizeJiraFieldId } from "./materiality-jira-adapter.js";
 

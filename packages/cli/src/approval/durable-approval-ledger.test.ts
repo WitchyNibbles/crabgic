@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   ApprovalTokenAlreadyVerifiedError,
   ApprovalTokenExpiredError,
@@ -124,7 +124,7 @@ describe("verifyApprovalTokenDurable", () => {
 
     // No `await` between the two calls — both start against a
     // fresh(-looking) journal state before either has recorded anything,
-    // reproducing exactly the race `@eo/journal`'s own `IdempotencyRegistry`
+    // reproducing exactly the race `@crabgic/journal`'s own `IdempotencyRegistry`
     // documents as unsafe for two truly concurrent first-time calls.
     const results = await Promise.allSettled([
       verifyApprovalTokenDurable(minted.token, expected, { secretKey, journal: store }),

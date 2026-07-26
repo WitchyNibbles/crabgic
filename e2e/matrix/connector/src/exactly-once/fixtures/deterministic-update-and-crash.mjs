@@ -13,8 +13,8 @@
 // defers entirely to marker-reconciliation, which correctly cannot confirm
 // an object that was genuinely never created).
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-import { createJournalStore } from "@eo/journal";
-import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@eo/gateway";
+import { createJournalStore } from "@crabgic/journal";
+import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@crabgic/gateway";
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function delay(ms) {
@@ -25,10 +25,10 @@ async function signalFaultPoint(name) {
   await delay(200);
 }
 
-const journalDir = process.env.EO_FIXTURE_JOURNAL_DIR;
-const sideEffectFile = process.env.EO_FIXTURE_SIDE_EFFECT_FILE;
-const faultPoint = process.env.EO_FIXTURE_FAULT_POINT ?? "none";
-const plan = JSON.parse(process.env.EO_FIXTURE_PLAN_JSON);
+const journalDir = process.env.CRABGIC_FIXTURE_JOURNAL_DIR;
+const sideEffectFile = process.env.CRABGIC_FIXTURE_SIDE_EFFECT_FILE;
+const faultPoint = process.env.CRABGIC_FIXTURE_FAULT_POINT ?? "none";
+const plan = JSON.parse(process.env.CRABGIC_FIXTURE_PLAN_JSON);
 
 const journal = createJournalStore({ journalDir });
 const remoteStateFile = `${sideEffectFile}.remote-state.json`;

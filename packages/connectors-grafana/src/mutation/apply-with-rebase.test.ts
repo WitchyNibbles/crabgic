@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   GatewayHttpClient,
   IdempotencyKeyLock,
@@ -10,7 +10,7 @@ import {
   type FakeProviderScriptEntry,
   type MutationPipelineDeps,
   type MutationPipelineHandlers,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import { buildRouteTable, capabilityFlag } from "../discovery/route-table.js";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { hashCanonicalFields } from "../resources/resource-definitions.js";

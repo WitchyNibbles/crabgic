@@ -3,7 +3,7 @@ import {
   CapabilitySnapshotSchema,
   CURRENT_SCHEMA_VERSION,
   type CapabilitySnapshot,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { createGrafanaProviderAdapter } from "./adapter.js";
 import {
   buildRouteTable,

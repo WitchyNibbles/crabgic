@@ -1,4 +1,4 @@
-import type { SandboxProfile } from "@eo/engine-core";
+import type { SandboxProfile } from "@crabgic/engine-core";
 import { matchesAnchoredGlobLiteral } from "./path-matching.js";
 import type { FakeToolCall } from "./tool-call.js";
 
@@ -9,7 +9,7 @@ import type { FakeToolCall } from "./tool-call.js";
  * deviation note): network egress via `network.allowedDomains`, and
  * `filesystem.denyRead` containment — NOT `filesystem.allowWrite`, which
  * the compiled profile only ever populates with worktree/tmp placeholder
- * tokens (`@eo/engine-core`'s own documented seam decision, un-testable
+ * tokens (`@crabgic/engine-core`'s own documented seam decision, un-testable
  * without phase 06/07's spawn-time path substitution).
  */
 const URL_PATTERN = /https?:\/\/([^/\s"']+)/i;

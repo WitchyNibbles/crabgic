@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, NonEmptyStringSchema, TimestampSchema } from "@eo/contracts";
+import { IdSchema, NonEmptyStringSchema, TimestampSchema } from "@crabgic/contracts";
 
 /**
  * `ReleaseGateReport` — roadmap/23-release-hardening.md, §In scope
@@ -11,10 +11,10 @@ import { IdSchema, NonEmptyStringSchema, TimestampSchema } from "@eo/contracts";
  *
  * Phase 23 is the terminal phase (roadmap's own "Unlocks: —") — nothing
  * downstream consumes this schema, so it is deliberately NOT one of
- * `@eo/contracts`'s 21 cross-cutting contracts (that package's own barrel
+ * `@crabgic/contracts`'s 21 cross-cutting contracts (that package's own barrel
  * doc comment: "every cross-cutting type in the system exists exactly
  * once" there). This schema instead lives entirely under this phase's own
- * `e2e/report/` — it embeds `@eo/contracts`'s `IdSchema`/`NonEmptyStringSchema`/
+ * `e2e/report/` — it embeds `@crabgic/contracts`'s `IdSchema`/`NonEmptyStringSchema`/
  * `TimestampSchema` shared primitives (the same building blocks every 02
  * contract uses) but defines its own local `schemaVersion` literal rather
  * than reusing `CURRENT_SCHEMA_VERSION` (that constant's own doc comment

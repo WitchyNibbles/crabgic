@@ -1,4 +1,4 @@
-import type { StackEvidence } from "@eo/contracts";
+import type { StackEvidence } from "@crabgic/contracts";
 import { ecosystemsPresent } from "../coverage/adapter-selection.js";
 
 /**

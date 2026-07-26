@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { createJournalStore, runKillHarness } from "@eo/journal";
+import { createJournalStore, runKillHarness } from "@crabgic/journal";
 import { createGitPlumbing, createNodeGitSpawn } from "./plumbing.js";
 import { createWorktree, isWorktreeDirty, sweepOrphanWorktrees } from "./worktree-lifecycle.js";
 import {
@@ -17,7 +17,7 @@ import {
  * test-first (reuse 04 `runKillHarness`): kill -9 mid-worktree-creation,
  * next startup must complete OR quarantine it — never silently drop it."
  * Also covers the Test plan's "kill -9 mid-quarantine" crash case. Reuses
- * `@eo/journal`'s `runKillHarness` DIRECTLY (not forked/re-implemented),
+ * `@crabgic/journal`'s `runKillHarness` DIRECTLY (not forked/re-implemented),
  * per this phase's brief. Fixture entry scripts live in
  * `./crash-fixtures/*.mjs` and import THIS package's own real, built
  * `dist` (see `./crash-fixtures/worktree-create-steps.mjs`'s doc comment).

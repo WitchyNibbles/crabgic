@@ -1,7 +1,7 @@
 /**
  * `dispatchCommand`'s conditional routing for `trust review|approve|revoke`
  * (roadmap/12-stack-detection-quarantine.md) — when `deps.trust` IS
- * supplied, these three commands hit the real `@eo/detect` backend rather
+ * supplied, these three commands hit the real `@crabgic/detect` backend rather
  * than `NOT_IMPLEMENTED`.
  *
  * This closes the deviation phase 12 recorded in its own
@@ -24,9 +24,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalTokenMinter } from "@eo/contracts";
-import { createApprovalLedger, createCapabilityStore } from "@eo/detect";
-import type { TrustCommandDependencies } from "@eo/detect";
+import { ApprovalTokenMinter } from "@crabgic/contracts";
+import { createApprovalLedger, createCapabilityStore } from "@crabgic/detect";
+import type { TrustCommandDependencies } from "@crabgic/detect";
 import { EXIT_NOT_IMPLEMENTED, EXIT_OK } from "../exit-codes.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
@@ -70,7 +70,7 @@ describe("dispatchCommand — trust review|approve|revoke, real backend when dep
 
     expect(result.exitCode).toBe(EXIT_OK);
     // The real backend's own empty-store wording — proof this is the
-    // `@eo/detect` handler and not the stub, which never says this.
+    // `@crabgic/detect` handler and not the stub, which never says this.
     expect(result.stdout).toContain("no capability audits");
   });
 

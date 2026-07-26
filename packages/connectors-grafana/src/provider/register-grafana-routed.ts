@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { ConnectorError } from "@eo/contracts";
-import type { GenericProviderClient, MutationApplyClient, ProviderRegistry } from "@eo/gateway";
+import { ConnectorError } from "@crabgic/contracts";
+import type {
+  GenericProviderClient,
+  MutationApplyClient,
+  ProviderRegistry,
+} from "@crabgic/gateway";
 import { GRAFANA_PROVIDER_NAME } from "../provider-registration.js";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { processGrafanaQueryResult, type GrafanaQueryRow } from "../query/query-layer.js";
@@ -19,7 +23,7 @@ import { GrafanaConnectionRegistry } from "./grafana-connection-registry.js";
  * `ProviderRegistry` holds exactly one client for the whole `"grafana"`
  * key while every call carries its own `connectionId` and `envelopeId`.
  * This module is that routed registration — one-for-one with
- * `@eo/connectors-jira`'s `registerJiraCloudProvider`, down to returning
+ * `@crabgic/connectors-jira`'s `registerJiraCloudProvider`, down to returning
  * the registry the caller wires each connection into and failing with a
  * typed `…NotRegisteredError` rather than a silent no-op.
  *
@@ -29,7 +33,7 @@ import { GrafanaConnectionRegistry } from "./grafana-connection-registry.js";
  * adapter — the schemas below are those schemas plus the routing fields
  * the generic dispatch surface carries (`connectionId` for every leaf,
  * `envelopeId` for the two planning leaves), because
- * `@eo/gateway`'s `provider-dispatch-tool.ts` offers no other channel.
+ * `@crabgic/gateway`'s `provider-dispatch-tool.ts` offers no other channel.
  */
 const ResourceKindSchema = z.enum(GRAFANA_RESOURCE_KINDS);
 const ConnectionIdSchema = z.string().min(1);
@@ -220,7 +224,7 @@ export interface RegisterRoutedGrafanaProviderDeps {
 }
 
 /**
- * Registers `GRAFANA_PROVIDER_NAME` into both of `@eo/gateway`'s
+ * Registers `GRAFANA_PROVIDER_NAME` into both of `@crabgic/gateway`'s
  * provider-dispatch registries, routed through a fresh
  * `GrafanaConnectionRegistry`. Callers use the returned registry's
  * `register(connection, options)` to wire each `ExternalConnection`

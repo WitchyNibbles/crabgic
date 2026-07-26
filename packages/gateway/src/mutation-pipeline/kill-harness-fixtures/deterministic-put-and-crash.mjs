@@ -1,7 +1,7 @@
 // Kill-harness fixture (roadmap/16-gateway-core.md §Test plan, Conformance:
 // "exactly-once crash matrix reusing 04's runKillHarness — kill before/
-// after the remote-commit point"). Plain .mjs, matching @eo/journal's own
-// and @eo/supervisor's `kill-harness-fixtures/*.mjs` convention — imports
+// after the remote-commit point"). Plain .mjs, matching @crabgic/journal's own
+// and @crabgic/supervisor's `kill-harness-fixtures/*.mjs` convention — imports
 // both packages' already-built dist output directly.
 //
 // Models a realistic PUT/PATCH-style DETERMINISTIC mutation (roadmap/16
@@ -15,8 +15,8 @@
 // retrying without an explicit reconciliation hook) does not regress this
 // fixture's own exactly-once behavior.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-import { createJournalStore } from "@eo/journal";
-import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@eo/gateway";
+import { createJournalStore } from "@crabgic/journal";
+import { executeMutationPlan, IdempotencyKeyLock, GatewayHttpClient } from "@crabgic/gateway";
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function delay(ms) {
@@ -27,10 +27,10 @@ async function signalFaultPoint(name) {
   await delay(200);
 }
 
-const journalDir = process.env.EO_FIXTURE_JOURNAL_DIR;
-const sideEffectFile = process.env.EO_FIXTURE_SIDE_EFFECT_FILE;
-const faultPoint = process.env.EO_FIXTURE_FAULT_POINT ?? "none";
-const plan = JSON.parse(process.env.EO_FIXTURE_PLAN_JSON);
+const journalDir = process.env.CRABGIC_FIXTURE_JOURNAL_DIR;
+const sideEffectFile = process.env.CRABGIC_FIXTURE_SIDE_EFFECT_FILE;
+const faultPoint = process.env.CRABGIC_FIXTURE_FAULT_POINT ?? "none";
+const plan = JSON.parse(process.env.CRABGIC_FIXTURE_PLAN_JSON);
 
 const journal = createJournalStore({ journalDir });
 const remoteStateFile = `${sideEffectFile}.remote-state.json`;

@@ -41,10 +41,10 @@
  * (baseline §4.2) as absence-from-init-`tools`.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CONFORMANCE_FIXTURES, buildTaskPacket, resolveConformanceFixture } from "@eo/testkit";
-import { STANDARD_IMPLEMENTATION_ENVELOPE, compileEnvelope } from "@eo/engine-core";
-import type { AdjudicationCallback, EngineEvent } from "@eo/engine-core";
-import type { TaskPacket } from "@eo/contracts";
+import { CONFORMANCE_FIXTURES, buildTaskPacket, resolveConformanceFixture } from "@crabgic/testkit";
+import { STANDARD_IMPLEMENTATION_ENVELOPE, compileEnvelope } from "@crabgic/engine-core";
+import type { AdjudicationCallback, EngineEvent } from "@crabgic/engine-core";
+import type { TaskPacket } from "@crabgic/contracts";
 import {
   ADAPTER_GATE_DETAIL,
   ENGINE_DENY_DETAIL,
@@ -101,7 +101,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Guard (F3 fix): a module-level `afterAll` runs even when `beforeAll`
-  // threw (vitest semantics) — e.g. no EO_LIVE, or a canary abort. Persisting
+  // threw (vitest semantics) — e.g. no CRABGIC_LIVE, or a canary abort. Persisting
   // in that case would write the still-empty `verdicts` map and truncate the
   // committed fixture. Only persist when live was actually enabled AND every
   // expected verdict was recorded (a genuinely green run); otherwise this is

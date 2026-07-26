@@ -12,12 +12,12 @@ const BASE_INPUT = {
   allowedResources: ["issue"],
   allowedActions: ["read"],
   discoveryTtlSeconds: 900,
-  secretRef: { backend: "env" as const, variable: "EO_GATEWAY_TEST_STORE_SECRET" },
+  secretRef: { backend: "env" as const, variable: "CRABGIC_GATEWAY_TEST_STORE_SECRET" },
 };
 
 describe("InMemoryExternalConnectionStore", () => {
   afterEach(() => {
-    delete process.env.EO_GATEWAY_TEST_STORE_SECRET;
+    delete process.env.CRABGIC_GATEWAY_TEST_STORE_SECRET;
   });
 
   it("creates a connection and assigns an id + schemaVersion", async () => {
@@ -68,7 +68,7 @@ describe("InMemoryExternalConnectionStore", () => {
 
 describe("resolveConnectionSecret", () => {
   it("resolves the connection's secretRef via the shared resolver", async () => {
-    process.env.EO_GATEWAY_TEST_STORE_SECRET = "resolved-value";
+    process.env.CRABGIC_GATEWAY_TEST_STORE_SECRET = "resolved-value";
     const store = new InMemoryExternalConnectionStore();
     const created = await store.create(BASE_INPUT);
     await expect(resolveConnectionSecret(created)).resolves.toBe("resolved-value");

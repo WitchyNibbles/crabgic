@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { lint, STAGE_PIPELINE } from "./lint.js";
 
 describe("STAGE_PIPELINE — runner order (work item 1 failing-first fixture)", () => {

@@ -6,18 +6,18 @@
  * (see docs/evidence/phase-06/wi3-adjudication-result.md) and covers every
  * rule grammar `createEnvelopeAdjudicationPolicy` supports, incl. a
  * fast-check property test asserting verdict agreement with
- * `@eo/testkit`'s independent permission-evaluator reference model.
+ * `@crabgic/testkit`'s independent permission-evaluator reference model.
  */
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { createAdjudicationBus, type AdjudicationPolicy } from "@eo/supervisor";
-import type { PermissionProfile } from "@eo/engine-core";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
-import { evaluatePermissionLayer } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createAdjudicationBus, type AdjudicationPolicy } from "@crabgic/supervisor";
+import type { PermissionProfile } from "@crabgic/engine-core";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import { evaluatePermissionLayer } from "@crabgic/testkit";
 import { createEnvelopeAdjudicationPolicy, UnparseableRuleError } from "./adjudication-policy.js";
 
 const NO_OP_CONTEXT = { signal: new AbortController().signal };
@@ -195,7 +195,7 @@ describe("createEnvelopeAdjudicationPolicy — '~/' and bare '/' anchored path r
   // `/**` glob suffix from the 4-character literal `~/**` leaves only `~`
   // (1 char), too short to still contain the 2-character `~/` anchor
   // prefix, so it degenerates into a worktree-relative-bucket literal
-  // instead of a home-anchored one. `@eo/testkit`'s own
+  // instead of a home-anchored one. `@crabgic/testkit`'s own
   // `classifyAnchoredString` has the IDENTICAL degeneration for this exact
   // input (verified directly: both implementations independently classify
   // the stripped `"~"` base as "//"-family, never as home-anchored) — this
@@ -319,7 +319,7 @@ describe("createEnvelopeAdjudicationPolicy — '//'-anchored substituted-worktre
     expect(decision.behavior).toBe("deny");
   });
 
-  it("DOCUMENTS the expected divergence: @eo/testkit's reference evaluator denies this exact substituted rule (it only ever resolves the literal <worktree> placeholder token, per its own doc comment)", () => {
+  it("DOCUMENTS the expected divergence: @crabgic/testkit's reference evaluator denies this exact substituted rule (it only ever resolves the literal <worktree> placeholder token, per its own doc comment)", () => {
     const verdict = evaluatePermissionLayer(
       { allow: [allowRule], deny: [] },
       { toolName: "Edit", toolInput: { file_path: `${worktree}/packages/foo/bar.ts` } },
@@ -419,7 +419,7 @@ describe("integration: createEnvelopeAdjudicationPolicy + supervisor's real crea
 });
 
 /**
- * PROPERTY TEST: verdict agreement with `@eo/testkit`'s independent
+ * PROPERTY TEST: verdict agreement with `@crabgic/testkit`'s independent
  * `evaluatePermissionLayer` reference model. Deliberately EXCLUDES the
  * `//`-anchored (spawn-time-substituted) owned-path rule family — see this
  * file's "the anchor caveat" describe block above and
@@ -427,7 +427,7 @@ describe("integration: createEnvelopeAdjudicationPolicy + supervisor's real crea
  * exclusion is expected and documented, not a gap. Every other rule family
  * this module supports is covered here.
  */
-describe("property test — verdict agreement with @eo/testkit's permission-evaluator reference model", () => {
+describe("property test — verdict agreement with @crabgic/testkit's permission-evaluator reference model", () => {
   const TOOL_NAMES = [
     "Agent",
     "Task",
@@ -573,7 +573,7 @@ describe("property test — verdict agreement with @eo/testkit's permission-eval
           inAllow,
           inDeny,
         ) => {
-          // DELIBERATE DIVERGENCE (Finding 3): `@eo/testkit`'s reference
+          // DELIBERATE DIVERGENCE (Finding 3): `@crabgic/testkit`'s reference
           // oracle widens a '~/'-anchored rule against a bare-absolute target
           // SYMMETRICALLY (allow and deny alike); this policy widens DENY-only,
           // so a '~/'-anchored ALLOW rule vs an absolute target does NOT match

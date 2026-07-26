@@ -3,7 +3,7 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@crabgic/contracts";
 import { GatewayHttpClient } from "../transport/http-client.js";
 import { sendHttpRequest, type HttpTransportRequest } from "../transport/http-transport.js";
 import {
@@ -68,12 +68,12 @@ describe("probeConnectionReachability", () => {
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), "eo-gateway-doctor-"));
-    process.env.EO_GATEWAY_DOCTOR_TEST_SECRET = "token-value";
+    process.env.CRABGIC_GATEWAY_DOCTOR_TEST_SECRET = "token-value";
   });
 
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true });
-    delete process.env.EO_GATEWAY_DOCTOR_TEST_SECRET;
+    delete process.env.CRABGIC_GATEWAY_DOCTOR_TEST_SECRET;
   });
 
   function buildConnection(overrides: Partial<ExternalConnection> = {}): ExternalConnection {
@@ -86,7 +86,7 @@ describe("probeConnectionReachability", () => {
       allowedResources: ["issue"],
       allowedActions: ["read"],
       discoveryTtlSeconds: 900,
-      secretRef: { backend: "env", variable: "EO_GATEWAY_DOCTOR_TEST_SECRET" },
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_DOCTOR_TEST_SECRET" },
       ...overrides,
     };
   }
@@ -140,7 +140,7 @@ describe("probeConnectionReachability", () => {
   });
 
   it("fails informatively when the secret cannot be resolved", async () => {
-    delete process.env.EO_GATEWAY_DOCTOR_TEST_SECRET;
+    delete process.env.CRABGIC_GATEWAY_DOCTOR_TEST_SECRET;
     const connection = buildConnection();
     const result = await probeConnectionReachability(connection);
     expect(result.reachable).toBe(false);

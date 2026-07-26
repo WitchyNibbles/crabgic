@@ -8,7 +8,7 @@
  * stale/drifted manifest digest if the plugin source has since changed
  * without an `upgrade` ever reconciling it.
  */
-import { computeContentDigest } from "@eo/plugin";
+import { computeContentDigest } from "@crabgic/plugin";
 import { readInstallState } from "../../installer/state-store.js";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 
@@ -52,7 +52,7 @@ export function createCapabilityManifestFreshnessCheck(
           `stale CapabilityManifest digest: recorded ${state.sourceDigest.slice(0, 12)}… but the plugin ` +
           `source at "${options.pluginSourceDir}" now digests to ${freshDigest.slice(0, 12)}…`,
         repairStep:
-          "run `engineering-orchestrator upgrade` to reconcile the installed state with the current plugin source",
+          "run `crabgic upgrade` to reconcile the installed state with the current plugin source",
       };
     },
   };

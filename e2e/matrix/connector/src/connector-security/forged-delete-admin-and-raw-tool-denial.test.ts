@@ -3,14 +3,14 @@
  * (fail pre-network); raw-tool denial." Three REAL, already-built
  * enforcement surfaces (never reimplemented):
  *
- *  1. `@eo/connectors-jira`'s `assertAllowedJiraOperation`/`isJiraAction` —
+ *  1. `@crabgic/connectors-jira`'s `assertAllowedJiraOperation`/`isJiraAction` —
  *     a closed allowlist (17 members, no delete/admin/impersonation/raw
  *     endpoint) enforced BEFORE any plan/request construction.
- *  2. `@eo/connectors-grafana`'s `createGrafanaProviderAdapter` — an
+ *  2. `@crabgic/connectors-grafana`'s `createGrafanaProviderAdapter` — an
  *     object whose own `Object.keys()` is exactly
  *     `{list, get, planCreate, planUpdate}`, with no forged delete/admin
  *     method ever constructible.
- *  3. `@eo/gateway`'s REAL native MCP tool registry, booted over stdio via
+ *  3. `@crabgic/gateway`'s REAL native MCP tool registry, booted over stdio via
  *     the EXACT SAME fixture `packages/gateway/src/mcp/server.test.ts`
  *     itself spawns (`packages/gateway/src/mcp/test-support/
  *     stdio-boot-fixture.mjs`, referenced here read-only, never copied or
@@ -25,14 +25,18 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { CapabilitySnapshotSchema, ConnectorError, CURRENT_SCHEMA_VERSION } from "@eo/contracts";
-import { assertAllowedJiraOperation, isJiraAction } from "@eo/connectors-jira";
+import {
+  CapabilitySnapshotSchema,
+  ConnectorError,
+  CURRENT_SCHEMA_VERSION,
+} from "@crabgic/contracts";
+import { assertAllowedJiraOperation, isJiraAction } from "@crabgic/connectors-jira";
 import {
   createGrafanaProviderAdapter,
   GRAFANA_RESOURCE_KINDS,
   GrafanaPlanPayloadStore,
   GrafanaRollbackSnapshotStore,
-} from "@eo/connectors-grafana";
+} from "@crabgic/connectors-grafana";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -47,7 +51,7 @@ let tj: ScenarioJournal;
  * The ids of every `EvidenceRecord` THIS FILE appended, accumulated across
  * the whole file (module scope, so it survives the per-test `beforeEach`
  * journal). The tagging test below reads only these back — under a shared
- * journal (`EO_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
+ * journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`) the journal also holds every
  * sibling harness's entries, tagged for other release-gate items.
  */
 const emittedIds = new Set<string>();
@@ -213,7 +217,7 @@ describe("gateway MCP tool surface — no raw HTTP-passthrough / generic-execute
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [GATEWAY_STDIO_FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir },
     });
     const client = new Client({ name: "connector-matrix-raw-tool-denial", version: "0.0.0" });
 
@@ -243,7 +247,7 @@ describe("gateway MCP tool surface — no raw HTTP-passthrough / generic-execute
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [GATEWAY_STDIO_FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir },
     });
     const client = new Client({ name: "connector-matrix-raw-tool-denial-2", version: "0.0.0" });
     try {
@@ -265,7 +269,7 @@ describe("evidence tagging", () => {
   it("every EvidenceRecord emitted in this file is tagged release-gate:connector-matrix", async () => {
     // Scoped to the ids this file itself appended (see `emittedIds`): a
     // bare journal-wide read is only "this file's evidence" while the
-    // journal is private, and under `EO_RELEASE_GATE_JOURNAL_DIR` it would
+    // journal is private, and under `CRABGIC_RELEASE_GATE_JOURNAL_DIR` it would
     // instead assert this tag over every OTHER harness's records too.
     const entries: unknown[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer" })) {

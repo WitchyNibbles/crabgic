@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { renderGrafanaAnnotationArtifact } from "./annotation-renderer.js";
 
 const FIXED_NOW = () => new Date("2026-01-01T00:00:00.000Z");

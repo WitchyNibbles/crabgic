@@ -1,5 +1,5 @@
 /**
- * Approval-token minting primitive — RELOCATED to `@eo/contracts`
+ * Approval-token minting primitive — RELOCATED to `@crabgic/contracts`
  * (2026-07-25) and re-exported here verbatim.
  *
  * The implementation now lives at `packages/contracts/src/approval/token.ts`;
@@ -11,7 +11,7 @@
  *
  * This module is kept as a named re-export so that (a) every existing
  * `./token.js` / `../approval/token.js` import inside this package keeps
- * resolving unchanged, and (b) the published `engineering-orchestrator`
+ * resolving unchanged, and (b) the published `crabgic`
  * surface is byte-for-byte the same — `../index.ts` still re-exports this
  * path. Nothing new is declared here.
  */
@@ -22,7 +22,7 @@ export {
   ApprovalTokenMismatchError,
   ApprovalTokenSignatureError,
   verifySignature,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 export type {
   ApprovalTokenMinterOptions,
   ApprovalTokenMintSink,
@@ -30,4 +30,4 @@ export type {
   ApprovalTokenVerifyExpectation,
   MintedApprovalToken,
   TokenPayload,
-} from "@eo/contracts";
+} from "@crabgic/contracts";

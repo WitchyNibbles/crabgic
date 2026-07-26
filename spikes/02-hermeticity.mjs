@@ -19,7 +19,7 @@
 // vacuous (absence was guaranteed by the refusal, not by hermeticity).
 // This version:
 //   1. frames the task as a plain, benign CI diagnostics step with neutral
-//      variable names (EO_CHECK_A/EO_CHECK_B) and no adversarial wording;
+//      variable names (CRABGIC_CHECK_A/CRABGIC_CHECK_B) and no adversarial wording;
 //   2. HARD-GUARDS the env and hook sub-probes on a Bash tool_use having
 //      actually executed (zero Bash calls => those sub-probes come back
 //      UNRESOLVED with the refusal recorded, never a vacuous PASS);
@@ -40,8 +40,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const entries = [];
 const REAL_CREDS = join(process.env.HOME, ".claude", ".credentials.json");
 
-const USER_MARKER = "cfg-user-7f3a";       // value of EO_CHECK_A in rogue user-tier settings env block
-const PROJECT_MARKER = "cfg-project-9c1b"; // value of EO_CHECK_B in rogue project-tier settings env block
+const USER_MARKER = "cfg-user-7f3a";       // value of CRABGIC_CHECK_A in rogue user-tier settings env block
+const PROJECT_MARKER = "cfg-project-9c1b"; // value of CRABGIC_CHECK_B in rogue project-tier settings env block
 const CLAUDE_MD_TOKEN = "PINEAPPLE-CI-77"; // benign instruction token planted in rogue CLAUDE.md
 
 if (!existsSync(REAL_CREDS)) {
@@ -70,7 +70,7 @@ try {
 
   // --- plant rogue "user"-tier settings.json (in the isolated CLAUDE_CONFIG_DIR) ---
   writeFileSync(join(isolatedConfigDir, "settings.json"), JSON.stringify({
-    env: { EO_CHECK_A: USER_MARKER },
+    env: { CRABGIC_CHECK_A: USER_MARKER },
     hooks: {
       PreToolUse: [{
         matcher: "Bash",
@@ -82,7 +82,7 @@ try {
   // --- plant rogue project-tier settings.json + hook ---
   mkdirSync(join(scratchProjectDir, ".claude"), { recursive: true });
   writeFileSync(join(scratchProjectDir, ".claude", "settings.json"), JSON.stringify({
-    env: { EO_CHECK_B: PROJECT_MARKER },
+    env: { CRABGIC_CHECK_B: PROJECT_MARKER },
     hooks: {
       PreToolUse: [{
         matcher: "Bash",
@@ -109,7 +109,7 @@ try {
   };
 
   for await (const msg of query({
-    prompt: "You are a CI diagnostics step. Via Bash run exactly: echo A=$EO_CHECK_A B=$EO_CHECK_B\nThen reply with exactly: DONE",
+    prompt: "You are a CI diagnostics step. Via Bash run exactly: echo A=$CRABGIC_CHECK_A B=$CRABGIC_CHECK_B\nThen reply with exactly: DONE",
     options: {
       settingSources: [],
       cwd: scratchProjectDir,

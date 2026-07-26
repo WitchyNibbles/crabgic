@@ -15,7 +15,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { ExternalConnectionSchema, type ExternalConnection } from "@eo/contracts";
+import { ExternalConnectionSchema, type ExternalConnection } from "@crabgic/contracts";
 import { resolveSecretReference } from "../secrets/secret-reference-resolver.js";
 
 export class ExternalConnectionNotFoundError extends Error {

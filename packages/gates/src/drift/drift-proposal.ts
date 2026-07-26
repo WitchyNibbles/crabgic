@@ -1,4 +1,4 @@
-import { redactCredentialShapedText, redactSecretBearingObject } from "@eo/connectors-grafana";
+import { redactCredentialShapedText, redactSecretBearingObject } from "@crabgic/connectors-grafana";
 
 /**
  * Drift CI — roadmap/21-connector-evidence-integration.md work item 5: "a
@@ -9,7 +9,7 @@ import { redactCredentialShapedText, redactSecretBearingObject } from "@eo/conne
  * module is the pure comparison/redaction logic; `./run-drift-ci.ts` wires
  * it into an injectable-I/O job runnable from CI.
  *
- * Redaction reuse: `redactSecretBearingObject` is `@eo/connectors-grafana`'s
+ * Redaction reuse: `redactSecretBearingObject` is `@crabgic/connectors-grafana`'s
  * own shared secret-redaction primitive (20's already-tested discipline,
  * itself modeled on 16's). Reused directly here rather than re-implemented,
  * per roadmap/21's explicit "redacted diff reusing 16's provider-body

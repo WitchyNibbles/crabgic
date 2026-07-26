@@ -15,10 +15,10 @@
  *         -> compileEnvelope (03)       — the compiled worker profile
  *         -> buildTaskPacket (13)       — bounded, envelope-scoped work
  *
- * It lives in `packages/cli` rather than `@eo/supervisor` for the same
- * reason the daemon entry point does: it needs `@eo/engine-claude`, which
- * already depends on `@eo/supervisor`, so composing it there would be a
- * dependency cycle. `@eo/supervisor` declares only the interface
+ * It lives in `packages/cli` rather than `@crabgic/supervisor` for the same
+ * reason the daemon entry point does: it needs `@crabgic/engine-claude`, which
+ * already depends on `@crabgic/supervisor`, so composing it there would be a
+ * dependency cycle. `@crabgic/supervisor` declares only the interface
  * (`router/run-dispatcher.ts`) and the daemon injects this implementation.
  *
  * OWNERSHIP, NOT COMPLETION: `dispatch()` resolves as soon as it has
@@ -31,16 +31,16 @@
  */
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@eo/contracts";
-import type { XdgEnv } from "@eo/journal";
-import type { JournalStore } from "@eo/journal";
+import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@crabgic/contracts";
+import type { XdgEnv } from "@crabgic/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   provisionWorkerDirs,
   type RunDispatcher,
   type RunDispatchOutcome,
   type SupervisorDependencies,
   type TerminableWorker,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import {
   createGitPlumbing,
   createNodeGitSpawn,
@@ -50,14 +50,14 @@ import {
   resolveGitControlDir,
   resolveWorktreesRootDir,
   type GitPlumbing,
-} from "@eo/git-engine";
-import { compileEnvelope } from "@eo/engine-core";
-import type { AdjudicationCallback, EngineAdapter } from "@eo/engine-core";
-import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@eo/engine-claude";
-import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@eo/scheduler";
+} from "@crabgic/git-engine";
+import { compileEnvelope } from "@crabgic/engine-core";
+import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
+import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
+import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@crabgic/scheduler";
 
-/** Git identity for worktree commits. `@eo/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
-const DEFAULT_SERVICE_EMAIL = "engineering-orchestrator@localhost";
+/** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
+const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
 
 /** The ref a run is based on when the caller names none. */
 const DEFAULT_TARGET_REF = "HEAD";
@@ -94,7 +94,7 @@ const REFUSE_ALL_ADJUDICATIONS: AdjudicationCallback = () =>
 export interface RealRunDispatcherOptions {
   /** The SAME dependency bundle the router serves — the driver must register into the identical `liveWorkers` map `worker.terminate` reads. */
   readonly deps: SupervisorDependencies & { readonly liveWorkers: Map<string, TerminableWorker> };
-  /** The repository checkout to freeze and cut worktrees from (`EO_PROJECT_DIR`). */
+  /** The repository checkout to freeze and cut worktrees from (`CRABGIC_PROJECT_DIR`). */
   readonly projectDir: string;
   readonly xdgEnv: XdgEnv;
   readonly projectHash: string;
@@ -305,7 +305,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 /**
  * `resolveWorkerAuthMaterial` deliberately no longer lives here — it moved
  * to `./worker-auth.js`. The daemon calls it at STARTUP, and this module
- * statically imports `@eo/engine-claude` (and through it
+ * statically imports `@crabgic/engine-claude` (and through it
  * `@anthropic-ai/claude-agent-sdk`, +40.9 MiB), so resolving a token from
  * here loaded the whole engine into a daemon that may never dispatch a run.
  * See `./lazy-run-dispatcher.ts` for the rest of that story.

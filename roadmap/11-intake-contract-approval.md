@@ -65,7 +65,7 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
    16's extensible registry): **`project.inspect`** (read-only repo/stack/connection/ChangeSet-state summary)
    and **`contract.approve`** (verify-only — checks a supervisor-minted token, never mints one). Wire names
    `mcp__${GATEWAY_MCP_SERVER_NAME}__project.inspect`, `mcp__${GATEWAY_MCP_SERVER_NAME}__contract.approve`
-   (`GATEWAY_MCP_SERVER_NAME = "eo_gateway"`, constant owned by 02 — Gap 11).
+   (`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"`, constant owned by 02 — Gap 11).
 2. `ChangeSet` (02) creation — 11 is the phase that instantiates ChangeSets, one per intake,
    `draft → awaiting_approval` on completion. Consumed by 05 (registries), 09 (`evidence`/`cancel
    <change-set-id>`), 15 (PerformanceContract evaluation), 21 (connector evidence integration).
@@ -140,7 +140,7 @@ convention already used by 05/06/07/09/10's own consumption of 02.
    state. Failing-first: re-inspecting an unchanged repo never creates a second `ChangeSet`.
 4. Approval-token lifecycle end-to-end against 09's minting mechanism; `contract.approve` registered as
    verify-only into the `gateway mcp` registry. Failing-first: a scripted worker-context call to
-   `mcp__eo_gateway__contract.approve` with no token fails closed.
+   `mcp__crabgic_gateway__contract.approve` with no token fails closed.
 5. Amendment diff + re-approval: material change → new envelope hash → prior token invalidated → fresh mint
    required. Failing-first: approve, amend, then replay the *old* token — must fail.
 6. Stop-condition detectors in the supervisor state machine, one fault-injection fixture per condition (7
@@ -165,7 +165,7 @@ fixtures, byte-stable across two builds (mirrors 02's schema byte-stability crit
 
 **Security:** model self-approval fixture — any model-originated `contract.approve` call without a
 supervisor-minted token fails closed; worker-context adversarial fixture — a worker whose compiled envelope
-legitimately allows `mcp__eo_gateway__*` (Appendix B's own worker profile) still cannot satisfy
+legitimately allows `mcp__crabgic_gateway__*` (Appendix B's own worker profile) still cannot satisfy
 `contract.approve` without the token payload, proving the tool itself enforces the gate rather than relying
 on the allow-list; envelope-tamper fixture — mutating one byte of a stored envelope after token mint
 invalidates the binding.
@@ -174,7 +174,7 @@ invalidates the binding.
 
 - [ ] E2E (fake engine): request → contract → approval → run; halts correctly on each of the 7 seeded stop
       conditions (named suite, e.g. `intake.e2e.spec`).
-- [ ] Model self-approval fixture fails closed; worker-context `mcp__eo_gateway__contract.approve` call
+- [ ] Model self-approval fixture fails closed; worker-context `mcp__crabgic_gateway__contract.approve` call
       without a token fails closed (named adversarial fixtures).
 - [ ] Envelope hash stable across repeat builds of an unchanged fixture; amendment produces a distinct hash
       and invalidates the prior token (property test + golden fixture).

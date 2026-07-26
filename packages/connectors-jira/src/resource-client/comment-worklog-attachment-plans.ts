@@ -1,4 +1,4 @@
-import { ConnectorError, type RemoteMutationPlan } from "@eo/contracts";
+import { ConnectorError, type RemoteMutationPlan } from "@crabgic/contracts";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { unconditionalCapabilityFlagFor } from "../high-impact-capabilities.js";
 import { containsSecretShapedContent } from "../security/secret-patterns.js";

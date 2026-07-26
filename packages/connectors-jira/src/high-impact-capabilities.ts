@@ -1,4 +1,4 @@
-import type { HighImpactCapabilityFlag } from "@eo/contracts";
+import type { HighImpactCapabilityFlag } from "@crabgic/contracts";
 import type { JiraAction } from "./resource-client/actions.js";
 
 /**

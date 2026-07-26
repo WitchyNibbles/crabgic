@@ -1,4 +1,4 @@
-import type { HighImpactCapabilityFlag } from "@eo/contracts";
+import type { HighImpactCapabilityFlag } from "@crabgic/contracts";
 
 /**
  * The 7 Grafana resource kinds this phase's `GrafanaProviderAdapter`

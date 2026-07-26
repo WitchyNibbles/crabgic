@@ -5,7 +5,7 @@ import {
   WORKER_TMP_WRITE_PLACEHOLDER,
   WORKTREE_WRITE_PLACEHOLDER,
   type CompiledWorkerProfile,
-} from "@eo/engine-core";
+} from "@crabgic/engine-core";
 import { buildGatewayMcpServers } from "./gateway-server-config.js";
 import { resolveWorkerModel } from "./model-routing.js";
 

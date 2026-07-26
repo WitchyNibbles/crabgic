@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import type { AuthorizationEnvelope } from "@eo/contracts";
+import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { buildEnvelopeFixture } from "../compiler/envelope-fixture.js";
 
 /**

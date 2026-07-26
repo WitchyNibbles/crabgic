@@ -1,4 +1,4 @@
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import type { FieldMetadataIndex } from "../../capability/field-metadata.js";
 import type { DcEditionEntry } from "../../capability/dc-edition-feature-matrix.js";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";

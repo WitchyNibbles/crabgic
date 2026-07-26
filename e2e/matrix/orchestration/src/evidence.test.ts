@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 describe("resolveReleaseCandidateObjectId", () => {
-  const ENV_KEY = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const ENV_KEY = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
   const original = process.env[ENV_KEY];
 
   afterEach(() => {
@@ -37,7 +37,7 @@ describe("resolveReleaseCandidateObjectId", () => {
     expect(resolveReleaseCandidateObjectId()).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
   });
 
-  it("honors $EO_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
+  it("honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
     process.env[ENV_KEY] = "1234567890abcdef1234567890abcdef12345678";
     expect(resolveReleaseCandidateObjectId()).toBe("1234567890abcdef1234567890abcdef12345678");
   });
@@ -55,7 +55,7 @@ describe("emitScenarioEvidence", () => {
 
     expect(record.gateTag).toBe(ORCHESTRATION_MATRIX_GATE_TAG);
     // The DEFAULT seam, not a hard-coded literal — unset
-    // `$EO_RELEASE_CANDIDATE_OBJECT_ID` this is exactly
+    // `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` this is exactly
     // `FAKE_RELEASE_CANDIDATE_OBJECT_ID`.
     expect(record.objectId).toBe(resolveReleaseCandidateObjectId());
     expect(record.changeSetId).toBe(changeSetId);
@@ -63,7 +63,7 @@ describe("emitScenarioEvidence", () => {
     expect(record.artifactDigests).toEqual([]);
 
     // changeSetId-scoped, never a whole-journal sweep: under a shared
-    // journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) every
+    // journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) every
     // sibling scenario's evidence is visible here too, and "the journal
     // holds exactly one entry" would stop meaning "this call appended
     // exactly one entry".
@@ -120,8 +120,8 @@ describe("emitScenarioEvidence", () => {
       // EXPLICIT fixture objectId, never the resolved default: this record
       // is a SEEDED demo of the emitter's nonzero-exitStatus branch, not a
       // genuine negative run of any release candidate. Under a shared
-      // release-gate journal (`EO_RELEASE_GATE_JOURNAL_DIR` +
-      // `EO_RELEASE_CANDIDATE_OBJECT_ID`) the default would stamp this
+      // release-gate journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR` +
+      // `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID`) the default would stamp this
       // synthetic failure with the REAL candidate's object ID, and
       // `e2e/report`'s generator — correctly, and by design — would then
       // FAIL `crash-recovery-concurrency` on a lie this unit test invented.

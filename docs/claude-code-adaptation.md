@@ -1,8 +1,8 @@
-# Engineering Orchestrator — Claude Code Adaptation Research
+# Crabgic — Claude Code Adaptation Research
 
 **Status:** Research complete — pre-implementation
 **Verified against:** Claude Code **2.1.207** (local CLI + official docs at code.claude.com/docs + changelog), 2026-07-12
-**Scope:** Adapting the "Engineering Orchestrator — Complete Replacement Plan" (written for OpenAI Codex CLI) to Claude Code.
+**Scope:** Adapting the "Crabgic — Complete Replacement Plan" (written for OpenAI Codex CLI) to Claude Code.
 
 ---
 
@@ -15,7 +15,7 @@
 | v1 scope | **Full plan** — all 10 phases including Jira Cloud + Data Center, Grafana Cloud/OSS/Enterprise, performance contracts, and the learning pipeline |
 | Worker auth | **Owner's Claude subscription (OAuth)** — see §5.7; metered API-key mode is not required for v1 |
 | Worker transport | **Agent SDK in-process** (§5.3) — also pins a reproducible bundled engine version per release |
-| Manager UX | **Claude Code plugin session is the flagship surface** (`/eo:` commands + gateway MCP); the `engineering-orchestrator` CLI covers approvals, scripting, CI, and recovery |
+| Manager UX | **Claude Code plugin session is the flagship surface** (`/eo:` commands + gateway MCP); the `crabgic` CLI covers approvals, scripting, CI, and recovery |
 | Model routing default | **Balanced** — `sonnet` implementation workers, `opus` architect/planner + integration/security review, `haiku` mechanical chores; per-role overrides in config |
 | Plan-limit policy | **Pause and resume** — on subscription rate/usage limits, work units park (journaled) and resume via session `resume` when the window resets; no silent tier degradation |
 
@@ -55,11 +55,11 @@ The single most important architectural recommendation: **introduce an `EngineAd
 | 8 | Codex hooks = "observability and warning mechanisms, not authorization boundaries" | **FLIPS.** PreToolUse hooks deterministically **block** tool calls (exit 2 or `permissionDecision: "deny"`), take precedence over allow rules, and can rewrite inputs (`updatedInput`). Managed settings can enforce hooks users cannot remove (`allowManagedHooksOnly`) | docs `/hooks`, `/permissions`. §3.1 |
 | 9 | Codex skills (`build-skills`) | **Agent Skills**: `skills/<name>/SKILL.md`, frontmatter `description` (required), `disable-model-invocation`; progressive disclosure (~50–100 tokens/skill preloaded, body loads on invoke) — same context-economy concern as the plan states | docs `/skills` |
 | 10 | Codex multi-agent docs | Subagents (GA) + **Agent Teams (experimental**, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, breaking changes as recent as v2.1.178) — **do not build on agent teams**; the supervisor remains the orchestrator | docs `/agent-teams`. §10 |
-| 11 | MCP registration for the policy gateway | Identical architecture. Register the gateway (stdio) via `--mcp-config gateway.json` + **`--strict-mcp-config`** (ignore all other MCP sources). Tool names `mcp__eo_gateway__<tool>`; permission patterns support `mcp__server__*` wildcards; `allowedMcpServers`/`deniedMcpServers`/`allowManagedMcpServersOnly` settings exist | docs `/mcp`, `/permissions` |
+| 11 | MCP registration for the policy gateway | Identical architecture. Register the gateway (stdio) via `--mcp-config gateway.json` + **`--strict-mcp-config`** (ignore all other MCP sources). Tool names `mcp__crabgic_gateway__<tool>`; permission patterns support `mcp__server__*` wildcards; `allowedMcpServers`/`deniedMcpServers`/`allowManagedMcpServersOnly` settings exist | docs `/mcp`, `/permissions` |
 | 12 | OpenAI Evals deprecation note | **Drop.** No Anthropic managed-evals dependency exists to avoid. Keep provider-neutral local eval format + optional Promptfoo adapter (unchanged decision, simpler rationale) | — |
 | 13 | Codex model | Model routing per role via agent `model` field / `--model` / SDK option. Aliases verified: `sonnet` (Claude Sonnet 5), `opus` (Claude Opus 4.8), `haiku` (Claude Haiku 4.5), `fable` (Claude Fable 5). Pin full IDs (`claude-opus-4-8`, `claude-sonnet-5`, `claude-haiku-4-5`, `claude-fable-5`) in the CapabilityManifest; use aliases in scaffolded config | docs `/model-config`; claude-api reference |
 | 14 | "Feature-compatible Codex CLI releases" | Pin a tested Claude Code version **range**; `doctor` gates on `claude --version`. Org-managed installs can enforce `requiredMinimumVersion`/`requiredMaximumVersion` in managed settings | docs `/settings` (managed keys) |
-| 15 | Git identity / attribution | `attribution: {"commit": "", "pr": ""}` (+ `sessionUrl: false`) in settings hides all Claude Code attribution (supersedes deprecated `includeCoAuthoredBy`); per-worktree `git config user.name "Engineering Orchestrator"` + service email. Renderer lint stays as final gate | docs `/settings` → Attribution settings. §5.4 |
+| 15 | Git identity / attribution | `attribution: {"commit": "", "pr": ""}` (+ `sessionUrl: false`) in settings hides all Claude Code attribution (supersedes deprecated `includeCoAuthoredBy`); per-worktree `git config user.name "Crabgic"` + service email. Renderer lint stays as final gate | docs `/settings` → Attribution settings. §5.4 |
 | 16 | Run lifecycle / durable execution | Unchanged (supervisor-owned journal). Additionally persist each worker's Claude `session_id`; crash recovery can `--resume <session-id>` (scoped to the same project dir/worktree) or `--fork-session` for repair attempts on divergent state | docs `/sessions`. §5.6 |
 | 17 | Worker telemetry prohibition | OTel export is **opt-in** (`CLAUDE_CODE_ENABLE_TELEMETRY`); leave unset. `CLAUDE_CODE_SKIP_PROMPT_HISTORY` / `--no-session-persistence` available, but transcripts are useful local evidence — keep them, they never leave the machine | docs `/monitoring-usage`, `/sessions` |
 | 18 | XDG state/cache dirs | Unchanged for orchestrator state. Per-worker Claude state isolated via **`CLAUDE_CONFIG_DIR`** (relocates `~/.claude`: credentials, projects/transcripts, config) | docs `/sessions` (storage location row) |
@@ -164,7 +164,7 @@ Verified schema (docs `/sandboxing`; GA; macOS Seatbelt, Linux + **WSL2** via bu
   },
   "credentials": {
     "files":   [{ "path": "~/.ssh", "mode": "deny" }, { "path": "~/.aws/credentials", "mode": "deny" }],
-    "envVars": [{ "name": "EO_SECRET_X", "mode": "mask", "injectHosts": ["api.example.com"] }]
+    "envVars": [{ "name": "CRABGIC_SECRET_X", "mode": "mask", "injectHosts": ["api.example.com"] }]
   },
   "excludedCommands": []
 }
@@ -211,7 +211,7 @@ One sharp edge: agents reported the SDK's default `settingSources` inconsistentl
 |---|---|---|
 | 0. Process | spawn cwd = dedicated worktree; sanitized `env`; per-worker `HOME`/`TMPDIR`/`CLAUDE_CONFIG_DIR` | TaskPacket |
 | 1. Config hermeticity | `--bare` (CLI) / `settingSources: []` (SDK) + supervisor-generated `--settings worker.json` | ProjectProfile + envelope |
-| 2. Permissions | `permissionMode: dontAsk`; `allow` list from envelope (owned paths as `Edit(//…/worktree/**)`, command prefixes as `Bash(cmd *)`); `deny: ["Agent", "WebFetch", "WebSearch", …]` with a single allow for `mcp__eo_gateway__*`; `disableBypassPermissionsMode: "disable"` | AuthorizationEnvelope |
+| 2. Permissions | `permissionMode: dontAsk`; `allow` list from envelope (owned paths as `Edit(//…/worktree/**)`, command prefixes as `Bash(cmd *)`); `deny: ["Agent", "WebFetch", "WebSearch", …]` with a single allow for `mcp__crabgic_gateway__*`; `disableBypassPermissionsMode: "disable"` | AuthorizationEnvelope |
 | 3. Adjudication + journal | SDK `canUseTool` (primary) or PreToolUse hook → supervisor over UDS; decision journaled pre-execution; `updatedInput` used to canonicalize paths | AuthorizationEnvelope + journal |
 | 4. OS sandbox | `sandbox.enabled + failIfUnavailable`; fs write = worktree+tmp only; `denyRead` control repo, journal, `~/.ssh`, `~/.aws`; network: no domains unless envelope grants; UDS allowed; secrets via `mask`+`injectHosts` | envelope + host profile |
 | 5. Gateway | provider-neutral MCP tools only; credentials never in worker env; plan→validate→journal→apply→read-back for every remote mutation | unchanged from plan |
@@ -227,7 +227,7 @@ claude --bare -p "$(cat task-packet-prompt.md)" \
   --settings "$WORKER_SETTINGS_JSON" \
   --mcp-config "$GATEWAY_MCP_JSON" --strict-mcp-config \
   --permission-mode dontAsk \
-  --allowedTools "Read" "Edit" "Write" "Grep" "Glob" "Bash(npm run test:*)" "mcp__eo_gateway__*" \
+  --allowedTools "Read" "Edit" "Write" "Grep" "Glob" "Bash(npm run test:*)" "mcp__crabgic_gateway__*" \
   --disallowedTools "Agent" "WebFetch" "WebSearch" \
   --append-system-prompt "$(cat role-and-policy-preamble.md)" \
   --model sonnet --effort high \
@@ -244,7 +244,7 @@ Notes: the CLI transport is documented as an escape hatch, not the v1 path. `--b
 ```ts
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 
-const gateway = createSdkMcpServer("eo_gateway", "1.0.0", [
+const gateway = createSdkMcpServer("crabgic_gateway", "1.0.0", [
   tool("tracker_plan", "…", TrackerPlanSchema, supervisorHandlers.trackerPlan),
   tool("result_submit", "…", WorkerResultSchema, supervisorHandlers.resultSubmit),
   // … provider-neutral tools only
@@ -260,7 +260,7 @@ for await (const msg of query({
     permissionMode: "dontAsk",
     allowedTools: envelope.allowedTools,     // compiled
     disallowedTools: ["Agent", "WebFetch", "WebSearch"],
-    mcpServers: { eo_gateway: gateway },
+    mcpServers: { crabgic_gateway: gateway },
     strictMcpConfig: true,
     canUseTool: async (name, input, ctx) => supervisor.adjudicate(runId, name, input), // journal-first
     hooks: { PostToolUse: [auditHook], SessionEnd: [evidenceHook] },
@@ -277,14 +277,14 @@ The SDK spawns/embeds the same Claude Code engine; process-level isolation (sand
 ### 5.4 Neutral identity
 
 - Generated worker/manager settings: `"attribution": { "commit": "", "pr": "" }` (docs: empty strings hide commit and PR attribution; also set `sessionUrl: false`; supersedes deprecated `includeCoAuthoredBy`).
-- Control repo + every worktree: `git config user.name "Engineering Orchestrator"`, `user.email <project-configured service email>`.
+- Control repo + every worktree: `git config user.name "Crabgic"`, `user.email <project-configured service email>`.
 - The blocking artifact lint from the plan remains the final gate for *all* surfaces (branch names, commit bodies, PR text, Jira/Grafana payloads) — attribution settings only cover Claude Code's own additions.
 
 ### 5.5 Manager surface
 
 The manager is an interactive `claude` session in the user's checkout, provisioned by the plugin — **confirmed as the flagship UX**; the standalone CLI covers approvals, scripting, CI, and recovery:
 
-- **Slash commands** (`skills/` with `disable-model-invocation: true` where appropriate): `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` → thin wrappers over the `engineering-orchestrator` CLI/MCP tools.
+- **Slash commands** (`skills/` with `disable-model-invocation: true` where appropriate): `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` → thin wrappers over the `crabgic` CLI/MCP tools.
 - **Gateway MCP tools** (core ops from the plan: `project.inspect`, `contract.*`, `capability.*`, `run.*`, `change_set.*`, `evidence.get`, `learning.*`, `tracker.*`, `observability.*`) — names unchanged.
 - **Approval flow**: contract/envelope approval happens in the **orchestrator CLI (terminal prompt) or via an explicitly-confirmed `/eo:approve`**, never as a bare model-initiated tool call — the model must not be able to satisfy its own approval gate. The MCP `contract.approve` tool verifies a supervisor-issued approval token minted by the human-facing CLI.
 - Read-heavy exploration: native subagents (optionally `isolation: worktree`), per the plan's original intent.
@@ -311,14 +311,14 @@ Workers run on the owner's Claude subscription rather than metered API keys:
 
 ## 6. Installer / scaffolding surface
 
-### 6.1 Artifacts written by `engineering-orchestrator install`
+### 6.1 Artifacts written by `crabgic install`
 
 | Artifact | Purpose | Notes |
 |---|---|---|
 | `CLAUDE.md` (add-only merge block) | project instructions for the manager session | see 6.2 |
 | `.claude/settings.json` (add-only keys) | attribution off, advisory manager hooks, `enabledPlugins` | never loosen existing user security keys (plan's monotonicity rule) |
 | `.claude/agents/eo-*.md` | manager-side exploration/review subagents with narrow `tools:` and routed `model:` | project-owned, like the plan's `.codex/agents/*.toml` note |
-| `.mcp.json` (project scope) | `eo_gateway` stdio entry (`engineering-orchestrator gateway mcp`) | first-use approval prompt is expected UX; document it |
+| `.mcp.json` (project scope) | `crabgic_gateway` stdio entry (`crabgic gateway mcp`) | first-use approval prompt is expected UX; document it |
 | Plugin (marketplace or vendored) | commands, skills, hooks, gateway MCP, `bin/` | pin by commit SHA; vendor via `--plugin-dir` for digest-pinned installs (CapabilityManifest) |
 | Worker profiles (XDG state, not repo) | generated per-run settings/permission/sandbox JSON | never checked in; hashed into the envelope |
 
@@ -433,7 +433,7 @@ The entire connector architecture (ExternalConnection, CapabilitySnapshot, Remot
       "Read", "Grep", "Glob",
       "Edit(//abs/path/worktree/**)", "Write(//abs/path/worktree/**)",
       "Bash(npm run test:*)", "Bash(npm run build:*)", "Bash(git status:*)", "Bash(git diff:*)",
-      "mcp__eo_gateway__*"
+      "mcp__crabgic_gateway__*"
     ],
     "deny": [
       "Agent", "WebFetch", "WebSearch",

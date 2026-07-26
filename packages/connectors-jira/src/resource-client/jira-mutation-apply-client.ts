@@ -1,11 +1,11 @@
-import { ConnectorError, type RemoteMutationPlan } from "@eo/contracts";
+import { ConnectorError, type RemoteMutationPlan } from "@crabgic/contracts";
 import type {
   HttpTransportResponse,
   MarkerReconciler,
   MutationApplyClient,
   MutationApplyResult,
   MutationHttpRequestSpec,
-} from "@eo/gateway";
+} from "@crabgic/gateway";
 import type { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { assertAllowedJiraOperation } from "../security/preflight-capability-guard.js";
@@ -21,7 +21,7 @@ import { getBoard, getIssue, getSprint } from "./reads.js";
  * through [16's mutation pipeline]; this phase never persists
  * `RemoteOperationRecord` itself." This is the ONE place this connector's
  * plans turn into actual outbound HTTP — `executeMutationPlan`
- * (`@eo/gateway`) is the sole caller of `buildRequest`/`parseResponse`/
+ * (`@crabgic/gateway`) is the sole caller of `buildRequest`/`parseResponse`/
  * `verify`/`reconcileAmbiguous` below; this module never issues network
  * I/O directly.
  *
@@ -225,7 +225,7 @@ function buildRequestForAction(
         method: "POST",
         headers: { "x-atlassian-token": "no-check", "content-type": "application/octet-stream" },
         // Real Jira expects a multipart body; this connector's transport
-        // layer carries `body` as a string (see @eo/gateway's
+        // layer carries `body` as a string (see @crabgic/gateway's
         // `MutationHttpRequestSpec`) — base64 is this module's own
         // encoding choice for that string channel. `staged.content` is
         // read exactly once, right here, and never stored anywhere else.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Phase 01, work item 6 — asserts docs/release-notes-prep.md exists and
-// records a timestamped `npm view engineering-orchestrator` availability
+// records a timestamped `npm view crabgic` availability
 // verdict. Run with:
 //   node scripts/check-release-notes.mjs
 import { readFileSync } from "node:fs";
@@ -25,7 +25,7 @@ if (contents.trim().length === 0) {
 
 // Require: mention of the exact package name, an ISO-8601-ish UTC timestamp,
 // and one of the two possible verdict words.
-const hasPackageName = /engineering-orchestrator/.test(contents);
+const hasPackageName = /crabgic/.test(contents);
 const hasTimestamp = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/.test(contents);
 const hasVerdict = /\b(available|taken)\b/i.test(contents);
 

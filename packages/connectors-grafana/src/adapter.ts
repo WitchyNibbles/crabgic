@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CapabilitySnapshot, RemoteMutationPlan } from "@eo/contracts";
+import type { CapabilitySnapshot, RemoteMutationPlan } from "@crabgic/contracts";
 import {
   decodeApiFamiliesToRouteTable,
   resolveRouteForKind,

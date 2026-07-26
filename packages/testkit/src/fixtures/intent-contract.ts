@@ -1,4 +1,8 @@
-import { CURRENT_SCHEMA_VERSION, IntentContractSchema, type IntentContract } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  IntentContractSchema,
+  type IntentContract,
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `IntentContract` fixture builder — roadmap/02 work item 10. */

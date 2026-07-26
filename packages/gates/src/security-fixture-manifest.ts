@@ -1,13 +1,13 @@
-import { ConnectorError } from "@eo/contracts";
-import { assertAllowedJiraOperation, containsSecretShapedContent } from "@eo/connectors-jira";
+import { ConnectorError } from "@crabgic/contracts";
+import { assertAllowedJiraOperation, containsSecretShapedContent } from "@crabgic/connectors-jira";
 import {
   createGrafanaProviderAdapter,
   GrafanaPlanPayloadStore,
   GrafanaRollbackSnapshotStore,
   redactSecretBearingObject,
   REDACTED_PLACEHOLDER,
-} from "@eo/connectors-grafana";
-import { mapHttpStatusToConnectorError } from "@eo/gateway";
+} from "@crabgic/connectors-grafana";
+import { mapHttpStatusToConnectorError } from "@crabgic/gateway";
 import type { GateHandler, GateVerdict } from "./types.js";
 import type { GateRegistry } from "./registry.js";
 

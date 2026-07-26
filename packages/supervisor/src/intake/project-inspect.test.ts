@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { RUN_LIFECYCLE_STATES, type RunLifecycleState } from "@eo/contracts";
-import { buildChangeSet, buildStackEvidence } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { RUN_LIFECYCLE_STATES, type RunLifecycleState } from "@crabgic/contracts";
+import { buildChangeSet, buildStackEvidence } from "@crabgic/testkit";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { runProjectInspect } from "./project-inspect.js";
 
@@ -48,7 +48,7 @@ describe("runProjectInspect", () => {
 
   it("a same-or-earlier-timestamped later entry never displaces the current latest freeze", async () => {
     const changeSets = createChangeSetsRegistry();
-    // A synthetic journal (not @eo/journal's real appendEntry, which always
+    // A synthetic journal (not @crabgic/journal's real appendEntry, which always
     // increases the timestamp) whose second yielded entry is NOT newer than
     // the first — exercises the "not replaced" branch directly.
     const fixedJournal = {

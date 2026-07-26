@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { executeMutationPlan } from "@eo/gateway";
+import { executeMutationPlan } from "@crabgic/gateway";
 import type {
   MutationPipelineDeps,
   MutationPipelineHandlers,
   MutationPipelineOutcome,
-} from "@eo/gateway";
-import type { RemoteMutationPlan } from "@eo/contracts";
+} from "@crabgic/gateway";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
 import {
   hashCanonicalFields,
   type GrafanaResourceDefinition,
@@ -25,11 +25,11 @@ export interface ApplyWithRebaseDeps {
 }
 
 /**
- * Executes `plan` through `@eo/gateway`'s `executeMutationPlan`, then — ONLY
+ * Executes `plan` through `@crabgic/gateway`'s `executeMutationPlan`, then — ONLY
  * when the result is a 409/412-mapped `failed`/`conflict` outcome — performs
  * this phase's own fetch-compare-rebase-or-block resolution (roadmap/20 §In
  * scope: "optimistic-concurrency writes (409/412 → fetch-compare-rebase or
- * an explicit block, never a blind overwrite)"). `@eo/gateway`'s own
+ * an explicit block, never a blind overwrite)"). `@crabgic/gateway`'s own
  * pipeline treats a conflict as terminal and never retries the SAME
  * idempotency key (a "failed" journal record is authoritative and is
  * never silently re-attempted — see that package's own mutation-pipeline

@@ -42,7 +42,7 @@ const addFormats = ajvFormatsModule.default as unknown as (ajvInstance: Ajv) => 
  *    default and its own contract's schema drift apart during development.
  */
 
-const CONTRACTS_SCHEMAS_SUBPATH_PREFIX = "@eo/contracts/schemas/";
+const CONTRACTS_SCHEMAS_SUBPATH_PREFIX = "@crabgic/contracts/schemas/";
 
 export interface JsonSchemaValidationResult {
   readonly kebabName: string;
@@ -64,7 +64,7 @@ export function createContractSchemaValidator(): Ajv {
 }
 
 /**
- * Loads `packages/contracts/schemas/<kebabName>.json` via `@eo/contracts`'s
+ * Loads `packages/contracts/schemas/<kebabName>.json` via `@crabgic/contracts`'s
  * own `./schemas/*.json` export-map subpath (resolved through
  * `import.meta.resolve`, then read from disk — never re-derived here, so
  * this harness always validates against the exact artifact

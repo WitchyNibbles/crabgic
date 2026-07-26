@@ -1,4 +1,4 @@
-import type { AdjudicationCallback } from "@eo/engine-core";
+import type { AdjudicationCallback } from "@crabgic/engine-core";
 import type { FakeToolCall } from "./tool-call.js";
 
 /**
@@ -6,7 +6,7 @@ import type { FakeToolCall } from "./tool-call.js";
  * envelope-compiler-engine-adapter.md §Test plan, Security bullet: "an
  * adjudication-hook-bypass test (fake engine attempts a tool call with no
  * `AdjudicationCallback` supplied, or one that throws) must fail closed,
- * never open"). `@eo/engine-core`'s own `AdjudicationCallback` doc comment
+ * never open"). `@crabgic/engine-core`'s own `AdjudicationCallback` doc comment
  * states this is each `EngineAdapter` implementation's own runtime
  * responsibility to enforce — this is that enforcement.
  */

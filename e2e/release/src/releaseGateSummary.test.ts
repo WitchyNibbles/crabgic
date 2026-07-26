@@ -53,7 +53,8 @@ function passingInputs(): ReleaseGateVerdictInputs {
     },
     publishDryRun: { metadata: PASSING_METADATA },
     marketplaceEntry: { version: "1.0.0", commit: RC },
-    changelogDraft: "## 1.0.0 (2026-07-25)\n\n- a real, reviewed change note (@eo/cli: major)\n",
+    changelogDraft:
+      "## 1.0.0 (2026-07-25)\n\n- a real, reviewed change note (@crabgic/cli: major)\n",
     tagScript: "git tag -a 'v1.0.0' -m 'Release v1.0.0' 'HEAD'\n",
     releaseArtifacts: {
       changelog: { reasons: [] },
@@ -247,7 +248,7 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // A per-run id, not a fixed literal: `objectId` below is this repo's
       // REAL `HEAD` — i.e. exactly the release-candidate object id every
       // OTHER harness also tags its evidence with during a release run — so
-      // under a shared journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see
+      // under a shared journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see
       // `./testJournal.ts`) objectId alone cannot isolate this test's own
       // records. The changeSetId is what does.
       const changeSetId = randomUUID();
@@ -299,7 +300,7 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // The rebuild clause is the ONE reason whose presence depends on how
       // this leg was invoked, so it is asserted BOTH ways rather than
       // hard-coded to the no-network default. Under
-      // `EO_RELEASE_REBUILD_CHECKOUTS=1` — the configuration release-e2e.yml
+      // `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1` — the configuration release-e2e.yml
       // is meant to run — two real `npm ci` + `npm run build` runs happen in
       // the two whole-repo exports, the clause is genuinely satisfied, and
       // the reason is correctly absent. Asserting its presence

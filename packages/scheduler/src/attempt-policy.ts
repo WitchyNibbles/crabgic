@@ -29,7 +29,7 @@
  * work unit's own conduct). Before this fix, every park-resume silently
  * consumed one of the 3 total repair slots, so a rate-limited unit could
  * receive as few as 1 REAL repair instead of 2. `previousStatus` is
- * already auto-populated by `@eo/journal`'s own `recordAttempt` from each
+ * already auto-populated by `@crabgic/journal`'s own `recordAttempt` from each
  * work unit's latest prior attempt at call time — no new journal write
  * shape is needed to detect this.
  *
@@ -50,7 +50,7 @@
  */
 
 import { z } from "zod";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import { RepairEvidenceRequiredError } from "./errors.js";
 
 /**

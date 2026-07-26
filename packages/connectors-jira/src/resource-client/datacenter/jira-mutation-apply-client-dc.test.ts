@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError, CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@eo/contracts";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
-import { toADF } from "@eo/renderer";
-import { buildExternalConnection } from "@eo/testkit";
+import {
+  ConnectorError,
+  CURRENT_SCHEMA_VERSION,
+  type RemoteMutationPlan,
+} from "@crabgic/contracts";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
+import { toADF } from "@crabgic/renderer";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { AttachmentStagingRegistry } from "../../attachments/attachment-staging.js";
 import { JiraPlanPayloadRegistry } from "../plan-payload-registry.js";
 import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";

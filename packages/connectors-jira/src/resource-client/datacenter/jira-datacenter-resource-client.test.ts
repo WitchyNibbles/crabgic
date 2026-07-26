@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@eo/contracts";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
-import { toADF } from "@eo/renderer";
-import { buildExternalConnection } from "@eo/testkit";
+import { ConnectorError } from "@crabgic/contracts";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
+import { toADF } from "@crabgic/renderer";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { buildFieldMetadataIndex } from "../../capability/field-metadata.js";
 import { JiraPlanPayloadRegistry } from "../plan-payload-registry.js";
 import { createJiraDatacenterResourceClient } from "./jira-datacenter-resource-client.js";

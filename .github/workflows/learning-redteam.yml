@@ -11,7 +11,7 @@ name: learning-redteam
 # no-`learning.*`-MCP-tool-family CI check (interface-ledger Gap 1) and the
 # no-bypass gate-firing proof.
 #
-# Entirely fixture-based (fake engine via @eo/testkit, real fs-permission
+# Entirely fixture-based (fake engine via @crabgic/testkit, real fs-permission
 # `chmod` boundaries, no live engine, no real secrets) — runs on every
 # push/PR like the main CI job, unlike `engine-live`'s manual-dispatch-only
 # pattern.

@@ -34,7 +34,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *   the "UNVERIFIED / no usable answer" wording for the "package
  *   published" clause instead of the "never published" wording.
  * - `npm ci` + `npm run build` also run, per exported checkout, but ONLY
- *   under `EO_RELEASE_REBUILD_CHECKOUTS=1`, which exists precisely so an
+ *   under `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1`, which exists precisely so an
  *   offline invocation never hits the registry for the rebuild leg. See
  *   `src/rebuildPopulator.ts`; it is set only by
  *   `.github/workflows/release-e2e.yml`.
@@ -53,7 +53,7 @@ export default defineConfig({
     // repository `git archive` export (a single-package export has no
     // lockfile and no sibling workspaces, so nothing can be built in it),
     // and `reproducibleBuildCheck.ts` populates the two checkouts
-    // SEQUENTIALLY. Under `EO_RELEASE_REBUILD_CHECKOUTS=1` that means two
+    // SEQUENTIALLY. Under `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1` that means two
     // real `npm ci` + two full `tsc -b` runs, which 60s cannot fit; the
     // composed-gate test raises its own per-test timeout further again for
     // exactly that leg (see `releaseGateSummary.test.ts`).

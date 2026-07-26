@@ -1,5 +1,5 @@
-import type { CapabilitySnapshot, ExternalConnection } from "@eo/contracts";
-import type { MutationApplyClient } from "@eo/gateway";
+import type { CapabilitySnapshot, ExternalConnection } from "@crabgic/contracts";
+import type { MutationApplyClient } from "@crabgic/gateway";
 import { createGrafanaProviderAdapter, type GrafanaProviderAdapter } from "../adapter.js";
 import { decodeApiFamiliesToRouteTable, type RouteTable } from "../discovery/route-table.js";
 import {
@@ -11,10 +11,10 @@ import type { GrafanaRollbackSnapshotStoreLike } from "../mutation/snapshot-stor
 
 /**
  * Per-connection wiring cache for Grafana — the exact counterpart to
- * `@eo/connectors-jira`'s `JiraConnectionRegistry`, and it exists for one
+ * `@crabgic/connectors-jira`'s `JiraConnectionRegistry`, and it exists for one
  * reason more than that one does.
  *
- * `@eo/gateway`'s `ProviderRegistry` holds ONE client per provider key
+ * `@crabgic/gateway`'s `ProviderRegistry` holds ONE client per provider key
  * (`"grafana"`), while `createGrafanaProviderAdapter` fixes
  * `externalConnectionId`, `tenant` AND `envelopeId` at construction
  * (`../adapter.ts`). The first two are per-connection, so a
@@ -27,14 +27,14 @@ import type { GrafanaRollbackSnapshotStoreLike } from "../mutation/snapshot-stor
  * merely an untidy default. `adapterFor(envelopeId)` is therefore a
  * per-call factory, and the envelope arrives from the caller exactly as
  * it already does for `tracker.plan_create`
- * (`@eo/connectors-jira`'s `jira-provider-client.ts` reads
+ * (`@crabgic/connectors-jira`'s `jira-provider-client.ts` reads
  * `params["envelopeId"]`).
  *
  * `register()` is async (it resolves the connection's current
  * `CapabilitySnapshot` once, to pin the mutation client's route table);
  * `get()` is a SYNCHRONOUS map lookup, which is required rather than
  * preferred — `MutationApplyClient.buildRequest` is synchronous by
- * `@eo/gateway`'s own contract, so connection resolution cannot be async
+ * `@crabgic/gateway`'s own contract, so connection resolution cannot be async
  * at that call site.
  */
 export class GrafanaConnectionNotRegisteredError extends Error {
@@ -53,7 +53,7 @@ export class GrafanaConnectionNotRegisteredError extends Error {
 export interface RegisterGrafanaConnectionOptions {
   /** 16's operation-journal tenant key for this connection. */
   readonly tenant: string;
-  /** Resolves this connection's current `CapabilitySnapshot` — production wires `@eo/gateway`'s `CapabilitySnapshotCache`, which owns TTL/invalidation. */
+  /** Resolves this connection's current `CapabilitySnapshot` — production wires `@crabgic/gateway`'s `CapabilitySnapshotCache`, which owns TTL/invalidation. */
   readonly getSnapshot: () => Promise<CapabilitySnapshot>;
   /** The connection-scoped sender the adapter's own reads go through. */
   readonly send: (spec: {

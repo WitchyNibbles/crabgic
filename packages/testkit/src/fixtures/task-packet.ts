@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, TaskPacketSchema, type TaskPacket } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, TaskPacketSchema, type TaskPacket } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `TaskPacket` fixture builder — roadmap/02 work item 10. */

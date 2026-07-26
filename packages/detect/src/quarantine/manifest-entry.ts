@@ -5,7 +5,7 @@
  * — `../trust/` is the only place a decision transitions to `"approved"`/
  * `"rejected"`.
  */
-import type { CapabilityManifestEntry } from "@eo/contracts";
+import type { CapabilityManifestEntry } from "@crabgic/contracts";
 import type { CapabilityKind, PinnedCandidate } from "./types.js";
 
 function buildEntry<K extends CapabilityKind>(

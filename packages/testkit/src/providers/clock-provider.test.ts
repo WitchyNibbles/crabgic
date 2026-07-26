@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TimestampSchema } from "@eo/contracts";
+import { TimestampSchema } from "@crabgic/contracts";
 import { createClockProvider, createClockProviderState, drawTimestamp } from "./clock-provider.js";
 
 /**

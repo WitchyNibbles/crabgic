@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestJournal, reopenJournal } from "./testJournal.js";
 
-const SHARED_JOURNAL_DIR_ENV = "EO_RELEASE_GATE_JOURNAL_DIR";
+const SHARED_JOURNAL_DIR_ENV = "CRABGIC_RELEASE_GATE_JOURNAL_DIR";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -43,7 +43,7 @@ describe("createTestJournal / reopenJournal", () => {
   });
 });
 
-describe("createTestJournal — shared-journal mode (EO_RELEASE_GATE_JOURNAL_DIR)", () => {
+describe("createTestJournal — shared-journal mode (CRABGIC_RELEASE_GATE_JOURNAL_DIR)", () => {
   it("writes into the shared directory, creating it if absent, and NEVER deletes it on cleanup", async () => {
     // The load-bearing guarantee: a release run points every harness at one
     // journal so `e2e/report`'s generator can read the evidence back. Were

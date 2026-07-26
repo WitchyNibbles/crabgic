@@ -2,7 +2,7 @@
  * `deployment_config` category — roadmap/12 §In scope, "Detection" bullet:
  * "deployment config ... → `StackEvidence`".
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 
 interface DeploymentRule {

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repository is Engineering Orchestrator: a harness that makes Claude operate as an
+This repository is Crabgic: a harness that makes Claude operate as an
 autonomous engineering orchestrator, per the design in `docs/claude-code-adaptation.md`.
 Implementation is underway, under active development against the phased roadmap in
 `roadmap/README.md`; the roadmap phase files govern all implementation work here (TDD,

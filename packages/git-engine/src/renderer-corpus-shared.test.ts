@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
-import { isArtifactKind, lint } from "@eo/renderer";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
+import { isArtifactKind, lint } from "@crabgic/renderer";
 
 /**
  * roadmap/08-integration-publication.md §Test plan (Conformance): "reuse

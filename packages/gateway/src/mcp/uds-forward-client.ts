@@ -5,13 +5,13 @@
  * `run.cancel` tools are forwards over UDS to these, never a second
  * implementation." Work item 5.
  *
- * `@eo/supervisor` exports NOTHING from its public barrel yet (its
+ * `@crabgic/supervisor` exports NOTHING from its public barrel yet (its
  * `src/index.ts` is `export {}` at the time this phase lands — 05's UDS
  * wire protocol/codec modules are internal-only, reachable solely as
  * runtime peers over the socket file, never as an importable module: 05's
  * own trust-boundary description names the gateway as one of exactly two
  * local peers admitted to the socket, alongside the CLI, both of which
- * connect as a socket peer, never via `import "@eo/supervisor"`). This
+ * connect as a socket peer, never via `import "@crabgic/supervisor"`). This
  * module therefore implements its OWN minimal, compatible ndjson
  * request/response client against the wire shape 05's own
  * `docs/ipc-protocol.md` describes (handshake, then correlated
@@ -23,7 +23,7 @@
 import { randomUUID } from "node:crypto";
 import { createConnection, type Socket } from "node:net";
 import { createInterface } from "node:readline";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 
 const PROTOCOL_VERSION = 1;
 

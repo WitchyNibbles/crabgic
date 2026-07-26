@@ -5,8 +5,8 @@ import {
   GatewayHttpClient,
   createFakeProviderTransport,
   type FakeProviderScript,
-} from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+} from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { buildFieldMetadataIndex } from "../capability/field-metadata.js";
 import { createJiraResourceClient } from "../resource-client/jira-resource-client.js";

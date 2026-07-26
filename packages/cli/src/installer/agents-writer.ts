@@ -7,7 +7,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { REQUIRED_SUBAGENT_NAMES } from "@eo/plugin";
+import { REQUIRED_SUBAGENT_NAMES } from "@crabgic/plugin";
 
 export interface SubagentFileToInstall {
   readonly relPath: string;

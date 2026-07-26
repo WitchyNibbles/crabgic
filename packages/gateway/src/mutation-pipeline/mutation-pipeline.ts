@@ -23,7 +23,7 @@
  *    kill-after-commit-before-record crash re-entered `compute()` and
  *    re-applied — duplicate avoided only by the test fixture's own
  *    idempotence, not by this pipeline"): this module no longer delegates
- *    to `@eo/journal`'s generic `IdempotencyRegistry.checkOrRecord` at
+ *    to `@crabgic/journal`'s generic `IdempotencyRegistry.checkOrRecord` at
  *    all. It manages the full `pending → recorded/conflict/failed` state
  *    machine itself, directly over `deps.journal.appendEntry`/
  *    `queryEntries`, using the SAME `operationId` (`plan.idempotencyKey`)
@@ -62,8 +62,8 @@ import {
   ConnectorError,
   type RemoteMutationPlan,
   type RemoteOperationRecord,
-} from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { GatewayHttpClient } from "../transport/http-client.js";
 import type { HttpTransportResponse } from "../transport/http-transport.js";
 import type { HttpVerb } from "../transport/retry-ladder.js";

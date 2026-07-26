@@ -8,7 +8,7 @@
  * or re-walks the filesystem itself (see `../fs/safe-walk.ts`,
  * `../spawn-surface-scan.test.ts`).
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import type { WalkedFile } from "../fs/safe-walk.js";
 
 export interface DetectionContext {

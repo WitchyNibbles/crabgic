@@ -2,7 +2,7 @@
  * `bwrap` + sandbox self-test — roadmap/09-cli-and-doctor.md §Doctor
  * checks: "`bwrap` + sandbox self-test (probe worker asserts confinement)."
  * A DIRECT engine/host probe (spawns `bwrap` itself) — never an import of
- * `@eo/engine-claude`. Two sub-assertions, both against the same injectable
+ * `@crabgic/engine-claude`. Two sub-assertions, both against the same injectable
  * `ProcessProbeFn`: (1) `bwrap` is present on PATH; (2) a confined process
  * cannot write to a path bound read-only — the confinement self-test
  * itself.

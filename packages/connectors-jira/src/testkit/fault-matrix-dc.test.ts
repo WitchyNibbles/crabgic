@@ -9,7 +9,7 @@ import { JIRA_DATACENTER_FAULT_MATRIX } from "./fault-matrix-dc.js";
  * presence as a per-deployment-type fixture property, not a shared
  * assertion." This matrix's own `rateLimited` entry (if present at all)
  * must therefore never carry a `retry-after` header the way
- * `@eo/gateway`'s `FULL_FAULT_MATRIX.rateLimited` does for Cloud.
+ * `@crabgic/gateway`'s `FULL_FAULT_MATRIX.rateLimited` does for Cloud.
  */
 describe("JIRA_DATACENTER_FAULT_MATRIX", () => {
   it("covers 401/403/409/429/malformed-page/mid-POST-timeout, same shared set 18 extends", () => {

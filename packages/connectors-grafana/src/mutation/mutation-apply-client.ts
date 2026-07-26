@@ -1,5 +1,5 @@
-import type { MutationApplyClient, MutationApplyResult } from "@eo/gateway";
-import type { RemoteMutationPlan } from "@eo/contracts";
+import type { MutationApplyClient, MutationApplyResult } from "@crabgic/gateway";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
 import { resolveRouteForKind, type RouteTable } from "../discovery/route-table.js";
 import {
   canonicalFieldsEqual,
@@ -51,7 +51,7 @@ async function resolveExternalId(
 }
 
 /**
- * Builds the Grafana `MutationApplyClient` (`@eo/gateway`'s
+ * Builds the Grafana `MutationApplyClient` (`@crabgic/gateway`'s
  * provider-dispatch contract for `observability.apply`) — one instance
  * handles all 7 resource kinds, dispatching on `plan.canonicalTarget`'s
  * `"<kind>:<id>"` prefix (`./canonical-target.js`).

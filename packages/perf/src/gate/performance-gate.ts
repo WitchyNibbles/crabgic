@@ -4,8 +4,8 @@ import type {
   PerformanceOutcome,
   ProvisionalPerformanceBudgetEntry,
   ProvisionalPerformanceContract,
-} from "@eo/contracts";
-import type { GateContext, GateHandler, GateVerdict } from "@eo/gates";
+} from "@crabgic/contracts";
+import type { GateContext, GateHandler, GateVerdict } from "@crabgic/gates";
 import { BudgetHashLinkMismatchError, MethodologyViolationError } from "../errors.js";
 import {
   buildEnforcedPerformanceContract,
@@ -89,7 +89,7 @@ function assertGateInputMeetsMethodologyFloor(entries: readonly PerformanceGateE
  * The performance gate handler — roadmap/15 §Interfaces produced,
  * "Performance gate handler": "registered into 14's risk-tag-keyed gate
  * registry under the IntentContract's `performance` tag, firing at
- * `final_verifying`." Registered via `@eo/gates`' PUBLIC `createGateRegistry
+ * `final_verifying`." Registered via `@crabgic/gates`' PUBLIC `createGateRegistry
  * ().register("performance", "eo-perf-twin-worktree-benchmark", handler)` —
  * this package never edits `packages/gates` (the "no new dependency edge"
  * pattern, interface-ledger Gap 1's own aggregation precedent).

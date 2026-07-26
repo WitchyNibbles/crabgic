@@ -1,4 +1,4 @@
-import type { PerformanceMetric, PerformanceOutcome } from "@eo/contracts";
+import type { PerformanceMetric, PerformanceOutcome } from "@crabgic/contracts";
 import {
   computeNoiseBoundPct,
   computeRegressionPct,

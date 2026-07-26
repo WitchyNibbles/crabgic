@@ -5,7 +5,7 @@ import {
   RATE_LIMIT_ALLOWED_WARNING_98,
   RATE_LIMIT_ALLOWED_WARNING_99,
   RECORDED_RATE_LIMIT_PAYLOADS,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import type { SDKRateLimitEvent } from "@anthropic-ai/claude-agent-sdk";
 import {
   detectLimitErrorString,
@@ -30,7 +30,7 @@ function buildRateLimitEvent(
   };
 }
 
-describe("rateLimitEventToLimitSignal — baseline §8 verbatim payloads (via @eo/testkit)", () => {
+describe("rateLimitEventToLimitSignal — baseline §8 verbatim payloads (via @crabgic/testkit)", () => {
   it("normalizes the 'allowed' five_hour payload", () => {
     const event = rateLimitEventToLimitSignal(
       buildRateLimitEvent(RATE_LIMIT_ALLOWED_FIVE_HOUR),
@@ -57,7 +57,7 @@ describe("rateLimitEventToLimitSignal — baseline §8 verbatim payloads (via @e
     expect(event.status).toBe("allowed_warning");
   });
 
-  it("normalizes every recorded payload from @eo/testkit's shared fixture list", () => {
+  it("normalizes every recorded payload from @crabgic/testkit's shared fixture list", () => {
     for (const payload of RECORDED_RATE_LIMIT_PAYLOADS) {
       const event = rateLimitEventToLimitSignal(buildRateLimitEvent(payload), "s");
       expect(event).toEqual({ type: "limitSignal", sessionId: "s", ...payload });

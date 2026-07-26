@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { dispatchAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { dispatchAttempt } from "@crabgic/scheduler";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { assertNoTargetDrift, TargetDriftError } from "../src/targetDrift.js";

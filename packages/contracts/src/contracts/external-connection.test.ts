@@ -14,7 +14,7 @@ const validConnection = {
   allowedResources: ["issue", "board", "sprint"],
   allowedActions: ["read", "create", "update"],
   discoveryTtlSeconds: 900,
-  secretRef: { backend: "env", variable: "EO_JIRA_TOKEN" },
+  secretRef: { backend: "env", variable: "CRABGIC_JIRA_TOKEN" },
 };
 
 describe("ExternalConnectionSchema — valid fixture", () => {
@@ -87,7 +87,7 @@ describe("ExternalConnectionSchema — invalid-shape rejection", () => {
     expect(
       ExternalConnectionSchema.safeParse({
         ...validConnection,
-        secretRef: { backend: "env", variable: "EO_JIRA_TOKEN", literalValue: "sk-leaked" },
+        secretRef: { backend: "env", variable: "CRABGIC_JIRA_TOKEN", literalValue: "sk-leaked" },
       }).success,
     ).toBe(false);
   });

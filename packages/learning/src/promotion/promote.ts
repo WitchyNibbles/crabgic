@@ -1,4 +1,4 @@
-import type { ChangeSet, LearningProposal } from "@eo/contracts";
+import type { ChangeSet, LearningProposal } from "@crabgic/contracts";
 import type { ProposalRegistry } from "../proposal-store/registry.js";
 import {
   buildChangeSetForPromotion,
@@ -23,8 +23,8 @@ export interface PromoteProposalResult {
  * item 5). This function itself performs NO dispatch — handing the
  * returned `ChangeSet` to 13/14/08's real pipeline is the caller's
  * responsibility (`packages/cli`'s `learn approve` backend, or a future
- * caller); this keeps `@eo/learning` decoupled from `@eo/scheduler`'s
- * dispatch surface, `@eo/gates`' firing surface, and `@eo/git-engine`'s
+ * caller); this keeps `@crabgic/learning` decoupled from `@crabgic/scheduler`'s
+ * dispatch surface, `@crabgic/gates`' firing surface, and `@crabgic/git-engine`'s
  * publish surface all at once, matching roadmap/22 §Out of scope.
  *
  * NO BYPASS (roadmap/22 §Exit criteria: "Project-scoped promotion produces
@@ -33,7 +33,7 @@ export interface PromoteProposalResult {
  * any other `ChangeSet` in the system (11's own intake pipeline builds the
  * exact same shape) — there is no "learning-flavored" variant, no
  * additional field, no skip-gates marker. `../red-team/no-bypass.
- * redteam.test.ts` proves this by firing the SAME `@eo/gates` registry
+ * redteam.test.ts` proves this by firing the SAME `@crabgic/gates` registry
  * against it.
  *
  * This function takes NO approvals parameter at all (removed in the

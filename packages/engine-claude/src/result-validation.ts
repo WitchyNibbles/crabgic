@@ -1,6 +1,6 @@
 /**
- * `validateWorkerResult` — enforces `WorkerResult` (`@eo/contracts`, zod-3)
- * against the normalized `EngineResultEvent` (`@eo/engine-core`)'s
+ * `validateWorkerResult` — enforces `WorkerResult` (`@crabgic/contracts`, zod-3)
+ * against the normalized `EngineResultEvent` (`@crabgic/engine-core`)'s
  * `structuredOutput` field (roadmap/06-claude-engine-adapter.md work item
  * 4). Every non-`valid` outcome is a typed `schemaViolation` — this
  * validator never silently passes an absent, malformed, or
@@ -40,8 +40,8 @@
  * only `path`+`code` guarantees no worker-authored (or attacker-influenced)
  * `structuredOutput` content ever leaks into a diagnostic string.
  */
-import { WorkerResultSchema, type WorkerResult } from "@eo/contracts";
-import type { EngineResultEvent } from "@eo/engine-core";
+import { WorkerResultSchema, type WorkerResult } from "@crabgic/contracts";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 
 export type SchemaViolationReason = "absent" | "invalid" | "retriesExhausted";
 

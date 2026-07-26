@@ -219,7 +219,7 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
    * WHY THIS MATTERS RATHER THAN `toContain`. Whole-file substring checks
    * against a workflow that DOCUMENTS its own wiring in comments are
    * vacuous: the comment at the top of `release-e2e.yml` names both
-   * `npm run test:e2e:release-evidence` and `EO_RELEASE_GATE_JOURNAL_DIR`,
+   * `npm run test:e2e:release-evidence` and `CRABGIC_RELEASE_GATE_JOURNAL_DIR`,
    * so a `toContain` for either stays green after the real step is
    * reverted to the broken configuration. A `#` comment line can never
    * satisfy an anchored `^ {n}key:`/`^ {n}run:` match, because `#` is its
@@ -255,7 +255,7 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
    * EVERY assertion about the ingest step goes through this, never through
    * the whole file. Demonstrated, not assumed: deleting the entire step and
    * leaving behind only a `#` comment that NAMES `gh run download … -n
-   * arm64-run-record` and `EO_ARM64_RUN_RECORD=$RECORD` left the two
+   * arm64-run-record` and `CRABGIC_ARM64_RUN_RECORD=$RECORD` left the two
    * whole-file `toContain` guards this replaced perfectly green, with the
    * consumer gone. They bound nothing but the presence of some characters
    * somewhere, and the next comment edit would have silenced them.
@@ -306,7 +306,7 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
 
   /**
    * PREREQUISITE FOR EVERY ITEM'S EVIDENCE, NOT JUST THIS ONE. Without a
-   * shared `EO_RELEASE_GATE_JOURNAL_DIR`, each harness writes to an
+   * shared `CRABGIC_RELEASE_GATE_JOURNAL_DIR`, each harness writes to an
    * `mkdtemp` directory it deletes on cleanup while the generator reads
    * `DEFAULT_JOURNAL_DIR` — so a CI-generated report links zero evidence
    * for anything, and this check's own emitted verdict is invisible.
@@ -329,7 +329,9 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
   it("gives the harnesses and the generator ONE journal to share, job-wide", () => {
     const exports = workflow
       .split("\n")
-      .filter((line) => /EO_RELEASE_GATE_JOURNAL_DIR=\S/.test(line) && line.includes("GITHUB_ENV"));
+      .filter(
+        (line) => /CRABGIC_RELEASE_GATE_JOURNAL_DIR=\S/.test(line) && line.includes("GITHUB_ENV"),
+      );
     expect(exports).toHaveLength(1);
 
     // Never a job-level `env:` key (invalid for a `runner`-scoped value) and
@@ -337,7 +339,7 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
     // Both would appear in YAML mapping form, `NAME: value`.
     const mappingForm = workflow
       .split("\n")
-      .filter((line) => /^\s*EO_RELEASE_GATE_JOURNAL_DIR: \S/.test(line));
+      .filter((line) => /^\s*CRABGIC_RELEASE_GATE_JOURNAL_DIR: \S/.test(line));
     expect(mappingForm).toEqual([]);
 
     // `$GITHUB_ENV` reaches only LATER steps, so the export must precede both
@@ -501,7 +503,7 @@ describe("checkArm64Verification — real-CI route", () => {
 /*
  * Scratch-state helpers, at module scope because BOTH the
  * `readArm64RunRecord` unit tests and the against-the-real-repository
- * tests need to control `$EO_ARM64_RUN_RECORD` — the latter so their
+ * tests need to control `$CRABGIC_ARM64_RUN_RECORD` — the latter so their
  * assertions can be exact instead of "one of the three possible outcomes".
  */
 const previousRecordEnv = process.env[ARM64_RUN_RECORD_ENV];
@@ -541,11 +543,11 @@ function scratchRepoRoot(contents?: string): string {
 
 describe("readArm64RunRecord", () => {
   /**
-   * `$EO_ARM64_RUN_RECORD` is how CI hands the DOWNLOADED artifact to this
+   * `$CRABGIC_ARM64_RUN_RECORD` is how CI hands the DOWNLOADED artifact to this
    * check without committing it — see `release-e2e.yml`'s ingest step. It
    * had no test at all, so the one path CI actually uses was unverified.
    */
-  it("reads the record `$EO_ARM64_RUN_RECORD` points at", () => {
+  it("reads the record `$CRABGIC_ARM64_RUN_RECORD` points at", () => {
     process.env[ARM64_RUN_RECORD_ENV] = writeScratchRecord(
       materializeCiRunRecord(CI_RUN_RECORD_BODY),
     );
@@ -589,7 +591,7 @@ describe("readArm64RunRecord", () => {
   });
 
   /**
-   * An empty `$EO_ARM64_RUN_RECORD` is what a workflow expression for an
+   * An empty `$CRABGIC_ARM64_RUN_RECORD` is what a workflow expression for an
    * unset value renders as, and it must mean "no override" rather than
    * "read the file at path ``". Asserted against a repo root this test
    * OWNS, so the expected outcome is exact rather than "whatever the real
@@ -607,7 +609,7 @@ describe("readArm64RunRecord", () => {
 
   /**
    * Gap 16's ruling is the `trim()` form, and this reader diverged from it:
-   * an all-whitespace `$EO_ARM64_RUN_RECORD` is an UNSET variable that
+   * an all-whitespace `$CRABGIC_ARM64_RUN_RECORD` is an UNSET variable that
    * passed through a shell (`RECORD="$(…)"` over empty output, a heredoc
    * that rendered a newline), never a filename. Treating it as a path made
    * the record silently `absent` instead of falling back — the in-repo
@@ -659,7 +661,7 @@ describe("resolveBuiltCommitSha", () => {
 describe("against the real repository", () => {
   /**
    * The run-record half is asserted EXACTLY, by controlling
-   * `$EO_ARM64_RUN_RECORD`. Asserting `one of absent|ok|malformed` against
+   * `$CRABGIC_ARM64_RUN_RECORD`. Asserting `one of absent|ok|malformed` against
    * the real checkout would be a tautology — `Arm64RunRecordRead`'s
    * discriminant has exactly those three members, so every possible return
    * value satisfies it and the assertion can never fail.

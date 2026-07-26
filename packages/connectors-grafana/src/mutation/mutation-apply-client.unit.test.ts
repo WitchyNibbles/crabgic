@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@crabgic/contracts";
 import { buildRouteTable, capabilityFlag } from "../discovery/route-table.js";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import {

@@ -1,5 +1,5 @@
 /**
- * `@eo/gates` public barrel — roadmap/14-quality-security-gates.md. Every
+ * `@crabgic/gates` public barrel — roadmap/14-quality-security-gates.md. Every
  * cross-cutting type/function this package exposes to downstream phases
  * (15's `performance` gate registration, 21's connector-security fixture
  * registration, 22's grading-ground-truth consumption, 23's release-gate
@@ -8,7 +8,7 @@
  * Excluded deliberately (test-support-only, not part of this package's
  * public API): `test-support/test-journal.ts`, `test-support/minimal-
  * compiled-profile.ts` — mirroring every sibling package's identical
- * convention (`@eo/scheduler`, `@eo/supervisor`).
+ * convention (`@crabgic/scheduler`, `@crabgic/supervisor`).
  */
 
 // ---- Risk-tag vocabulary (work item 1) ----

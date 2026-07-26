@@ -29,9 +29,13 @@
  *    attempt.
  */
 
-import type { AdjudicationCallback, CompiledWorkerProfile, EngineAdapter } from "@eo/engine-core";
-import type { TaskPacket, WorkerResult } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type {
+  AdjudicationCallback,
+  CompiledWorkerProfile,
+  EngineAdapter,
+} from "@crabgic/engine-core";
+import type { TaskPacket, WorkerResult } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { ArtifactStore } from "./artifact-store.js";
 import {
   validateWorkerResult,

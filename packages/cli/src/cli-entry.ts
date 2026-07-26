@@ -5,7 +5,7 @@
  * `./bin.ts` itself is a thin (untested-by-design) shim: read real argv,
  * call this, write to real stdout/stderr, set `process.exitCode`.
  */
-import { connectGatewayMcpStdio } from "@eo/gateway";
+import { connectGatewayMcpStdio } from "@crabgic/gateway";
 import { parseCommand } from "./argv/parse-command.js";
 import { buildRealGatewayToolRegistry } from "./bootstrap.js";
 import { dispatchCommand } from "./commands/dispatch.js";

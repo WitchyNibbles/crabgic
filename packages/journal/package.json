@@ -1,5 +1,5 @@
 {
-  "name": "@eo/journal",
+  "name": "@crabgic/journal",
   "version": "0.0.0",
   "private": true,
   "description": "Event journal, snapshots, idempotency, leases (empty stub — phase 04).",
@@ -28,7 +28,7 @@
     "fast-check": "4.9.0"
   },
   "dependencies": {
-    "@eo/contracts": "0.0.0",
+    "@crabgic/contracts": "0.0.0",
     "zod": "3.25.76"
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { mentionPolicyStage, STAGE_NAME_MENTION_POLICY } from "./mention-policy.js";
 import type { LintStageInput } from "./lint-types.js";
 

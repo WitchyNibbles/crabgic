@@ -3,11 +3,11 @@ import {
   WorkerResultSchema,
   type Id,
   type WorkerResult,
-} from "@eo/contracts";
-import type { EngineResultEvent } from "@eo/engine-core";
+} from "@crabgic/contracts";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 
 /**
- * Maps a terminal `EngineResultEvent` onto a `WorkerResult` (@eo/contracts)
+ * Maps a terminal `EngineResultEvent` onto a `WorkerResult` (@crabgic/contracts)
  * — used by the exit-criterion-5 demo (`demo.test.ts`) to show a denied
  * smuggled command surfacing as a structured `WorkerResult`-shaped
  * failure. This mapping is this worker's own minimal-sufficient decision

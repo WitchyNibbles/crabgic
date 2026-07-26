@@ -86,7 +86,7 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
 
     // Scoped to THIS test's own freshly-generated changeSetId, not just its
     // objectId: `objectId` here is a fixed literal, so under a shared
-    // journal (`EO_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) a
+    // journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `./testJournal.ts`) a
     // second run's records would accumulate under the same id and this
     // exact-set assertion would break.
     const tags: string[] = [];
@@ -108,14 +108,14 @@ describe("runAndEmitNotImplementedSweepEvidence", () => {
     await runAndEmitNotImplementedSweepEvidence({ journal: tj.store, changeSetId });
 
     // changeSetId-scoped: an unfiltered sweep would, under a shared journal
-    // (`EO_RELEASE_GATE_JOURNAL_DIR`), pick up every other harness's
+    // (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`), pick up every other harness's
     // objectIds and turn "the default was used" into a false negative.
     const objectIds: string[] = [];
     for await (const entry of tj.store.queryEntries({ type: "evidence_pointer", changeSetId })) {
       if (entry.type === "evidence_pointer") objectIds.push(entry.payload.objectId);
     }
     // `resolveReleaseCandidateObjectId()`, not the bare literal: unset
-    // `$EO_RELEASE_CANDIDATE_OBJECT_ID` this IS
+    // `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` this IS
     // "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"; under a real
     // release-gate run it is the release candidate's own object ID. Either
     // way what is under test is "the default seam was used".

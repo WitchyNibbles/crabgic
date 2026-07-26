@@ -5,7 +5,7 @@
  * `migrations/`, Rails-style `db/migrate/`) without needing to parse any
  * migration file's own content.
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { type DetectionContext, type Detector } from "./types.js";
 
 function migrationDirEcosystem(relativePath: string): string | undefined {

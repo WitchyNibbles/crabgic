@@ -10,7 +10,7 @@
  * than keyed on one hardcoded event name, so it degrades gracefully ahead
  * of whichever phase (13) finalizes the exact event name.
  */
-import { WORK_UNIT_ATTEMPT_STATUSES, type WorkUnitAttemptStatus } from "@eo/contracts";
+import { WORK_UNIT_ATTEMPT_STATUSES, type WorkUnitAttemptStatus } from "@crabgic/contracts";
 
 const STATUS_LABELS: Readonly<Record<WorkUnitAttemptStatus, string>> = {
   pending: "pending",

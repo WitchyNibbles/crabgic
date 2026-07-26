@@ -14,21 +14,22 @@ const execFileAsync = promisify(execFile);
 
 describe("parseChangesetFile — unit", () => {
   it("parses a well-formed single-package changeset", () => {
-    const content = '---\n"engineering-orchestrator": major\n---\n\nInitial v1.0.0 release.\n';
+    const content = '---\n"crabgic": major\n---\n\nInitial v1.0.0 release.\n';
     const entry = parseChangesetFile("fixture.md", content);
     expect(entry).toEqual({
       filename: "fixture.md",
-      packages: [{ packageName: "engineering-orchestrator", bump: "major" }],
+      packages: [{ packageName: "crabgic", bump: "major" }],
       summary: "Initial v1.0.0 release.",
     });
   });
 
   it("parses a multi-package changeset", () => {
-    const content = '---\n"@eo/contracts": patch\n"@eo/journal": minor\n---\n\nFix + feature.\n';
+    const content =
+      '---\n"@crabgic/contracts": patch\n"@crabgic/journal": minor\n---\n\nFix + feature.\n';
     const entry = parseChangesetFile("fixture.md", content);
     expect(entry?.packages).toEqual([
-      { packageName: "@eo/contracts", bump: "patch" },
-      { packageName: "@eo/journal", bump: "minor" },
+      { packageName: "@crabgic/contracts", bump: "patch" },
+      { packageName: "@crabgic/journal", bump: "minor" },
     ]);
   });
 
@@ -37,10 +38,9 @@ describe("parseChangesetFile — unit", () => {
   });
 
   it("skips a blank line inside the frontmatter and ignores a non-bump frontmatter line", () => {
-    const content =
-      '---\n\n"engineering-orchestrator": patch\nsome-other-key: ignored\n---\n\nBody.\n';
+    const content = '---\n\n"crabgic": patch\nsome-other-key: ignored\n---\n\nBody.\n';
     const entry = parseChangesetFile("fixture.md", content);
-    expect(entry?.packages).toEqual([{ packageName: "engineering-orchestrator", bump: "patch" }]);
+    expect(entry?.packages).toEqual([{ packageName: "crabgic", bump: "patch" }]);
   });
 });
 
@@ -57,14 +57,8 @@ describe("readChangesetEntries — unit (fixture directory)", () => {
 
   it("reads every .md changeset, skipping README.md", async () => {
     await writeFile(join(dir, "README.md"), "# Changesets\n");
-    await writeFile(
-      join(dir, "one-fish.md"),
-      '---\n"engineering-orchestrator": major\n---\n\nFirst change.\n',
-    );
-    await writeFile(
-      join(dir, "two-fish.md"),
-      '---\n"engineering-orchestrator": patch\n---\n\nSecond change.\n',
-    );
+    await writeFile(join(dir, "one-fish.md"), '---\n"crabgic": major\n---\n\nFirst change.\n');
+    await writeFile(join(dir, "two-fish.md"), '---\n"crabgic": patch\n---\n\nSecond change.\n');
     const entries = readChangesetEntries(dir);
     expect(entries).toHaveLength(2);
     expect(entries.map((e) => e.summary).sort()).toEqual(["First change.", "Second change."]);
@@ -77,10 +71,7 @@ describe("readChangesetEntries — unit (fixture directory)", () => {
 
   it("skips a stray .md file with no changesets frontmatter (not named README.md)", async () => {
     await writeFile(join(dir, "notes.md"), "# Just some notes, no frontmatter\n");
-    await writeFile(
-      join(dir, "real-one.md"),
-      '---\n"engineering-orchestrator": patch\n---\n\nReal change.\n',
-    );
+    await writeFile(join(dir, "real-one.md"), '---\n"crabgic": patch\n---\n\nReal change.\n');
     const entries = readChangesetEntries(dir);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.summary).toBe("Real change.");
@@ -109,13 +100,13 @@ describe("draftChangelog — unit", () => {
       entries: [
         {
           filename: "one.md",
-          packages: [{ packageName: "engineering-orchestrator", bump: "major" }],
+          packages: [{ packageName: "crabgic", bump: "major" }],
           summary: "Initial v1.0.0 release.",
         },
       ],
     });
     expect(draft).toContain("## 1.0.0 (2026-07-24)");
-    expect(draft).toContain("Initial v1.0.0 release. (engineering-orchestrator: major)");
+    expect(draft).toContain("Initial v1.0.0 release. (crabgic: major)");
   });
 
   it("skips a changeset entry with an empty summary rather than emitting a blank bullet", () => {

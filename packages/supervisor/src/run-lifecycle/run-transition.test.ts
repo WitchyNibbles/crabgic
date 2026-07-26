@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { IllegalTransitionError } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { IllegalTransitionError } from "@crabgic/contracts";
 import { transitionRun } from "./run-transition.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";
 

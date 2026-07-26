@@ -1,5 +1,5 @@
-import { compileEnvelope, type CompiledWorkerProfile } from "@eo/engine-core";
-import { GATEWAY_MCP_SERVER_NAME, type AuthorizationEnvelope } from "@eo/contracts";
+import { compileEnvelope, type CompiledWorkerProfile } from "@crabgic/engine-core";
+import { GATEWAY_MCP_SERVER_NAME, type AuthorizationEnvelope } from "@crabgic/contracts";
 import { buildAuthorizationEnvelope } from "../../fixtures/authorization-envelope.js";
 import {
   mergePermissionRuleSets,
@@ -19,7 +19,7 @@ import { validateConformanceFixture, type ConformanceFixture } from "./schema.js
  * `baselineCitation` for the derivation.
  *
  * `permissionOverride` replaces the compiled profile's own allow/deny
- * arrays outright (bypassing `@eo/engine-core`'s mandatory 4-literal/
+ * arrays outright (bypassing `@crabgic/engine-core`'s mandatory 4-literal/
  * mandatory-deny set) for the two smuggling fixtures and the deny-wins
  * fixtures — this isolates default-deny/deny-wins behavior using the same
  * minimal ruleset shape docs/engine-baseline.md §3's own live probes used
@@ -135,11 +135,11 @@ export const BLANKET_MCP_DENY_FOOTGUN_FIXTURE: ConformanceFixture = validateConf
   description:
     "A hand-broken profile with deny:['mcp__*'] shadowing the specific " +
     `mcp__${GATEWAY_MCP_SERVER_NAME}__* allow entry — the exact footgun adaptation Appendix B warns ` +
-    "about, and @eo/engine-core's own assertNoBlanketMcpDeny invariant guards the REAL compiler " +
+    "about, and @crabgic/engine-core's own assertNoBlanketMcpDeny invariant guards the REAL compiler " +
     "against ever emitting. This fixture proves the fake engine's evaluator still honors deny-wins " +
     "semantics if such a rule ever leaked in some other way.",
   baselineCitation:
-    "adaptation Appendix B mcp__* deny footgun warning; @eo/engine-core src/footguns/invariants.ts",
+    "adaptation Appendix B mcp__* deny footgun warning; @crabgic/engine-core src/footguns/invariants.ts",
   permissionOverride: { allow: [`mcp__${GATEWAY_MCP_SERVER_NAME}__*`], deny: ["mcp__*"] },
   toolCall: { toolName: `mcp__${GATEWAY_MCP_SERVER_NAME}__search`, toolInput: {} },
   expected: { permissions: "deny", adjudication: "allow", sandbox: "allow" },

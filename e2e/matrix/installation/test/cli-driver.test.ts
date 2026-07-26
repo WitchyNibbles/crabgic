@@ -17,7 +17,7 @@ describe("cli-driver", () => {
     await fixture.cleanup();
   });
 
-  it("pluginSourceDir resolves to a real, existing @eo/plugin root", () => {
+  it("pluginSourceDir resolves to a real, existing @crabgic/plugin root", () => {
     const dir = pluginSourceDir();
     expect(dir.length).toBeGreaterThan(0);
   });

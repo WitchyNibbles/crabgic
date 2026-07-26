@@ -19,8 +19,8 @@ import {
   HAND_AUTHORED_READ_SCENARIO,
   runScriptedReadScenario,
   runDatacenterScriptedReadScenario,
-} from "@eo/connectors-jira";
-import type { FakeProviderScript } from "@eo/gateway";
+} from "@crabgic/connectors-jira";
+import type { FakeProviderScript } from "@crabgic/gateway";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -30,14 +30,14 @@ import type { ScenarioJournal } from "../support/evidence.js";
 
 /**
  * DISCOVERED GAP (documented, not patched — packages/* is out of this
- * harness's confined edit scope): `@eo/connectors-jira`'s own exported
+ * harness's confined edit scope): `@crabgic/connectors-jira`'s own exported
  * `loadReadScenarioCassette`/`loadDatacenterReadScenarioCassette`
  * (`packages/connectors-jira/src/testkit/scripted-read-scenario{,-dc}.ts`)
  * resolve their cassette JSON path relative to `import.meta.url` — correct
  * when that package's OWN test suite runs (vitest transforms its `.ts`
  * source directly, so `import.meta.url` stays under `src/`), but broken
  * for a genuine cross-package consumer like this harness: importing
- * `@eo/connectors-jira` resolves to its BUILT `dist/` output (this repo's
+ * `@crabgic/connectors-jira` resolves to its BUILT `dist/` output (this repo's
  * own npm-workspace convention — see this project's own `vitest.config.ts`
  * doc comment), and `tsc -b` never copies non-`.ts` assets (the cassette
  * `.json` files) into `dist/`, so the loader throws `ENOENT` there. Worked

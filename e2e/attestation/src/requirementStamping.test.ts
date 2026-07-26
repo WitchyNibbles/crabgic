@@ -7,7 +7,7 @@ import { readReleaseRequirements, requirementIdForGateTag } from "./releaseRequi
 /**
  * PRODUCER/CONSUMER BINDING FOR `EvidenceRecord.requirementId`.
  *
- * `buildTraceabilityView` (`@eo/gates`) matches evidence to a requirement on
+ * `buildTraceabilityView` (`@crabgic/gates`) matches evidence to a requirement on
  * `requirementId` ALONE. A record that is genuine, correctly tagged and
  * journaled at the right object ID still contributes NOTHING to traceability
  * if that one field is absent — which is exactly the state this repository

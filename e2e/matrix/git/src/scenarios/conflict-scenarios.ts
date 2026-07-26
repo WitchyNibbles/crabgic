@@ -1,13 +1,13 @@
 /**
  * Conflict scenarios — roadmap/23-release-hardening.md work item 5:
  * "conflicts" (part of the git-invariance + neutral-rendering matrix
- * against 07/08). Drives the REAL `preflightMerge` (`@eo/git-engine`,
+ * against 07/08). Drives the REAL `preflightMerge` (`@crabgic/git-engine`,
  * wraps `git merge-tree --write-tree`) against real, on-disk fixture repos
  * with real diverging branches — no mocked git, no hand-built
  * `PreflightResult`.
  */
-import type { JournalStore } from "@eo/journal";
-import { preflightMerge } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import { preflightMerge } from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildBasicFixtureRepo, commitAll, plumbing, writeFixtureFile } from "../fixtures.js";
 import { exitStatusFor, requirePassed, type ScenarioOutcome } from "../scenario-types.js";

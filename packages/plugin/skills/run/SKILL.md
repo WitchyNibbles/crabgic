@@ -1,6 +1,6 @@
 ---
 name: run
-description: Start a new Engineering Orchestrator run against the current change intent. Thin wrapper over the `engineering-orchestrator run` CLI/gateway op.
+description: Start a new Crabgic run against the current change intent. Thin wrapper over the `crabgic run` CLI/gateway op.
 disable-model-invocation: false
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 Starts a new orchestrator run for the current project.
 
-This skill is a thin wrapper: it shells out to `engineering-orchestrator run --json`
+This skill is a thin wrapper: it shells out to `crabgic run --json`
 (or calls the equivalent gateway MCP op, once 11/13 land the drafting flow) and
 reports the resulting `runId` and initial state back to the session. It performs
 no orchestration logic itself — the CLI/supervisor (05/09) own that.

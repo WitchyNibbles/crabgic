@@ -65,7 +65,7 @@ describe("emitSandboxProfile — fixed sandbox posture", () => {
           ownedPaths: ["packages/a/src"],
           commands: ["npm run test", "git status"],
           networkDestinations: ["api.example.com"],
-          credentialReferences: ["EO_TOKEN_A"],
+          credentialReferences: ["CRABGIC_TOKEN_A"],
         }),
       ).autoAllowBashIfSandboxed,
     ).toBe(false);
@@ -149,11 +149,11 @@ describe("emitSandboxProfile — envelope-driven fields", () => {
 
   it("credentials.envVars masks each credentialReference", () => {
     const profile = emitSandboxProfile(
-      buildEnvelopeFixture({ credentialReferences: ["EO_TOKEN_A", "EO_TOKEN_B"] }),
+      buildEnvelopeFixture({ credentialReferences: ["CRABGIC_TOKEN_A", "CRABGIC_TOKEN_B"] }),
     );
     expect(profile.credentials.envVars).toEqual([
-      { name: "EO_TOKEN_A", mode: "mask" },
-      { name: "EO_TOKEN_B", mode: "mask" },
+      { name: "CRABGIC_TOKEN_A", mode: "mask" },
+      { name: "CRABGIC_TOKEN_B", mode: "mask" },
     ]);
   });
 

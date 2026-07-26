@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import type { CollisionVerdict } from "@eo/git-engine";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 import {
   DEFAULT_CONCURRENCY_CAP,
   journalFanoutRationaleIfFannedOut,

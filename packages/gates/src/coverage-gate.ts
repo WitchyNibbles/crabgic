@@ -10,7 +10,7 @@ export interface CoverageGateInput {
    * The stable project identifier the ratchet floor is scoped to (MINOR-3,
    * adversarial-validation round) — `./coverage/ratchet-store.ts` never
    * shares a floor across two different `projectId`s, even on the same
-   * journal. Use `ProjectProfile.id` (`@eo/contracts`) when a resolved
+   * journal. Use `ProjectProfile.id` (`@crabgic/contracts`) when a resolved
    * `ProjectProfile` is available; any other stable, caller-supplied
    * identifier is otherwise accepted (this gate has no dependency on
    * `ProjectProfile` itself — see the phase-14 evidence doc's deviations).

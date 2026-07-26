@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { IdSchema } from "@eo/contracts";
+import { IdSchema } from "@crabgic/contracts";
 import { deriveStableId } from "./stable-id.js";
 
 describe("deriveStableId", () => {

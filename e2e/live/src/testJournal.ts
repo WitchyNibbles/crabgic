@@ -1,17 +1,17 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 
 /**
- * A fresh, real `@eo/journal` `JournalStore` over a temp directory — mirrors
+ * A fresh, real `@crabgic/journal` `JournalStore` over a temp directory — mirrors
  * `e2e/report/src/test-support/test-journal.ts` / `e2e/matrix/orchestration/
  * src/testJournal.ts`'s own established pattern in this same phase. This
- * project's dependency edge is deliberately limited to `@eo/contracts` +
- * `@eo/journal` for its evidence-emission path (`./evidence.ts`), matching
+ * project's dependency edge is deliberately limited to `@crabgic/contracts` +
+ * `@crabgic/journal` for its evidence-emission path (`./evidence.ts`), matching
  * every sibling phase-23 harness's own documented constraint.
  *
- * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): the private temp
+ * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): the private temp
  * directory is exactly why every `EvidenceRecord` this harness genuinely
  * emitted used to be unreadable by `e2e/report`'s generator — it was
  * written to a directory that ceased to exist before the report ran, so
@@ -41,7 +41,7 @@ export interface TestJournal {
 }
 
 export async function createTestJournal(): Promise<TestJournal> {
-  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
     await mkdir(sharedJournalDir, { recursive: true });
     return {

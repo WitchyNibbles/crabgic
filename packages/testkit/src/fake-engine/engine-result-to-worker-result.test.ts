@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { IdSchema, WorkerResultSchema } from "@eo/contracts";
-import type { EngineResultEvent } from "@eo/engine-core";
+import { IdSchema, WorkerResultSchema } from "@crabgic/contracts";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 import { toWorkerResult } from "./engine-result-to-worker-result.js";
 
 const ID = IdSchema.parse("11111111-1111-4111-8111-111111111111");

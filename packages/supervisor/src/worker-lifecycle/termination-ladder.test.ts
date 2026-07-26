@@ -1,13 +1,13 @@
 /**
  * roadmap/05-supervisor-daemon.md work item 4 failing-first target: "a
  * killed fake worker stays unreaped against a stub lifecycle manager
- * before the ladder/reaper exists." Exercised against `@eo/testkit`'s real
+ * before the ladder/reaper exists." Exercised against `@crabgic/testkit`'s real
  * `FakeEngineAdapter` (no mocked transport for the adapter contract
  * itself) with its `hang` failure-mode injection.
  */
 import { describe, expect, it } from "vitest";
-import { buildFakeEngineScript, buildTaskPacket, FakeEngineAdapter } from "@eo/testkit";
-import type { EngineAdapter, EngineEvent, WorkerHandle } from "@eo/engine-core";
+import { buildFakeEngineScript, buildTaskPacket, FakeEngineAdapter } from "@crabgic/testkit";
+import type { EngineAdapter, EngineEvent, WorkerHandle } from "@crabgic/engine-core";
 import { terminateWorker } from "./termination-ladder.js";
 import {
   allowAllAdjudicate,
@@ -28,7 +28,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * A deliberately MISBEHAVING `EngineAdapter` double, used ONLY by the
  * "forced escalation" test below: `cancel()` resolves but has NO effect on
  * the worker's own `events` stream (which hangs forever, unconditionally).
- * `@eo/testkit`'s real `FakeEngineAdapter.cancel()` always cooperates (its
+ * `@crabgic/testkit`'s real `FakeEngineAdapter.cancel()` always cooperates (its
  * own "hang" failure mode reliably unblocks the instant `cancel()` is
  * called) — proving genuine step-3 (SIGKILL-equivalent, forced iterator
  * abandonment) behavior therefore requires an adapter that does NOT

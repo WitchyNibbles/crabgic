@@ -1,6 +1,6 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { buildTaskPacket } from "@eo/testkit";
+import { buildTaskPacket } from "@crabgic/testkit";
 import { checkPacketBudgets, DEFAULT_PACKET_FIELD_BUDGETS } from "./budgets.js";
 
 /**
@@ -10,7 +10,7 @@ import { checkPacketBudgets, DEFAULT_PACKET_FIELD_BUDGETS } from "./budgets.js";
  * actionable diff — no silent truncation (unit suite)" — this property
  * suite is the fast-check half backing that same guarantee.
  *
- * Character pool deliberately excludes whitespace: `@eo/contracts`'
+ * Character pool deliberately excludes whitespace: `@crabgic/contracts`'
  * `NonEmptyStringSchema` is `z.string().trim().min(1)` — zod's `.trim()`
  * TRANSFORMS the parsed value, so a generated string with leading/trailing
  * whitespace would silently shrink between "what this test generated" and

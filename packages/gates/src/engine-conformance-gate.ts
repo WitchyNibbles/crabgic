@@ -1,4 +1,4 @@
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import type { GateHandler } from "./types.js";
 
 /**
@@ -20,7 +20,7 @@ import type { GateHandler } from "./types.js";
  * `exitStatus: 0`, `toolchainFingerprint` ending in
  * `"engine <version>"`, and an `artifactDigests` entry shaped
  * `"live-run-record.json#suiteDigest=<digest>"`. This package does NOT
- * import `@eo/engine-claude` (no new dependency edge — 06 emits ambiently,
+ * import `@crabgic/engine-claude` (no new dependency edge — 06 emits ambiently,
  * consumed via the journal, exactly like 13's own `Requirement`-ID
  * consumption pattern) and does not run a live engine itself; the command-
  * string match is a documented magic-string coupling to 06's own literal —

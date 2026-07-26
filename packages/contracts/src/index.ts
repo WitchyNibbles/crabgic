@@ -1,11 +1,11 @@
 /**
- * `@eo/contracts` public barrel — roadmap/02-contracts-and-schemas.md,
+ * `@crabgic/contracts` public barrel — roadmap/02-contracts-and-schemas.md,
  * "Interfaces produced": "Package `packages/contracts` — zod schemas +
  * inferred TS types + `zod-to-json-schema`-built `schemas/*.json`."
  *
  * Every cross-cutting type in the system is exported from exactly this one
  * module (the phase's own Goal statement: "Every cross-cutting type in the
- * system exists exactly once"). Downstream phases import from `@eo/contracts`
+ * system exists exactly once"). Downstream phases import from `@crabgic/contracts`
  * directly — never reach into a submodule path — so this file is the sole
  * public surface.
  *

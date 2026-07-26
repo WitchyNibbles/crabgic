@@ -83,7 +83,7 @@ describe("secret masking + auth-material confinement", () => {
     try {
       const result = await runDirectQuery(resolveWorkerAuthMaterial(), {
         prompt:
-          "You are a CI diagnostics step. Via the Bash tool run exactly: echo VALUE=$EO_SECRET_X",
+          "You are a CI diagnostics step. Via the Bash tool run exactly: echo VALUE=$CRABGIC_SECRET_X",
         cwd: scratch.worktreePath,
         configDir: scratch.configDir,
         homeDir: scratch.homeDir,
@@ -92,9 +92,9 @@ describe("secret masking + auth-material confinement", () => {
         sandbox: {
           enabled: true,
           failIfUnavailable: true,
-          credentials: { envVars: [{ name: "EO_SECRET_X", mode: "mask" }] },
+          credentials: { envVars: [{ name: "CRABGIC_SECRET_X", mode: "mask" }] },
         },
-        extraEnv: { EO_SECRET_X: REAL_SECRET },
+        extraEnv: { CRABGIC_SECRET_X: REAL_SECRET },
         maxTurns: 3,
       });
       guardRawRateLimit(result.messages);
@@ -102,7 +102,7 @@ describe("secret masking + auth-material confinement", () => {
       // Executed-call guard: the echo of the masked var must have actually run.
       assertBashAttempted(
         result.messages,
-        (command) => command.includes("echo") && command.includes("EO_SECRET_X"),
+        (command) => command.includes("echo") && command.includes("CRABGIC_SECRET_X"),
         "secret-mask: echo of the masked env var",
       );
 

@@ -1,6 +1,6 @@
-# Engineering Orchestrator
+# Crabgic
 
-Engineering Orchestrator is a Claude Code-native harness that makes Claude operate as an
+Crabgic is a Claude Code-native harness that makes Claude operate as an
 autonomous engineering orchestrator. A supervisor dispatches implementation work to
 sandboxed Claude Code workers — running on the owner's Claude subscription via the Agent
 SDK's in-process transport, each in its own Git worktree — and confines every worker
@@ -16,7 +16,7 @@ intervention anywhere else.
 Per `docs/claude-code-adaptation.md` §0 (owner-confirmed product decisions), the harness
 targets distribution as a published Apache-2.0 npm package plus a Claude Code plugin
 marketplace entry — the Claude Code plugin session as the flagship interactive surface,
-with a companion `engineering-orchestrator` CLI for approvals, scripting, CI, and
+with a companion `crabgic` CLI for approvals, scripting, CI, and
 recovery — and v1 scope is the full original plan: Jira Cloud and Data Center, Grafana
 Cloud/OSS/Enterprise, performance contracts, and the learning pipeline. Model routing is
 balanced by default (`sonnet` implementation workers, `opus` for architecture/planning and

@@ -1,7 +1,7 @@
-import type { ScanFinding, ScanSeverity } from "@eo/detect";
+import type { ScanFinding, ScanSeverity } from "@crabgic/detect";
 
 /**
- * Normalized security-finding shape — reused verbatim from `@eo/detect`'s
+ * Normalized security-finding shape — reused verbatim from `@crabgic/detect`'s
  * own `ScanFinding`/`ScanSeverity` (`packages/detect/src/quarantine/
  * types.ts`, exported via its public barrel) rather than a second,
  * independently-declared union — roadmap/14 §In scope, "Root-cause policy

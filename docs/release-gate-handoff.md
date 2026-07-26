@@ -47,7 +47,7 @@ evidence linkage, and the one that first turned `arm64-verification` green.
 
 ### `requirement-traceability` — three blockers, not one
 
-**1. The emitter-stamping gap (the big one).** `buildTraceabilityView` (`@eo/gates`) joins
+**1. The emitter-stamping gap (the big one).** `buildTraceabilityView` (`@crabgic/gates`) joins
 evidence to a requirement on `EvidenceRecord.requirementId` **alone**. Of the eight
 harnesses feeding the shared release journal, only `e2e/attestation` stamped it.
 `e2e/matrix/orchestration` and `e2e/matrix/connector` accepted an optional `requirementId`
@@ -67,7 +67,7 @@ captured against, and the check requires that to equal the candidate being score
 committing a regenerated artifact _advances `HEAD` past the ID the new artifact names_. The
 two conditions could never hold at once. Gap 16 solves exactly this for the ARM64 and perf
 records; this was the one Gap-16-shaped input **with no override**. It now has
-`$EO_REQUIREMENT_TRACEABILITY_RECORD`, and `release-e2e.yml` runs the containerized binding
+`$CRABGIC_REQUIREMENT_TRACEABILITY_RECORD`, and `release-e2e.yml` runs the containerized binding
 into `$RUNNER_TEMP` and exports it — producer now writes where consumer reads.
 
 **3. The remote-binding rule was over-broad.** The check demanded _every_ one of the 16
@@ -139,7 +139,7 @@ need nothing from an operator on an ordinary dispatch. The perf re-run does samp
 host load first and refuses on a busy runner — an honest refusal, reported as "the 23:75
 obligation is unevidenced" rather than papered over. If a shared runner is ever too busy,
 produce the record on a quiet host (`npm run probe:perf-contract-rerun`) and supply it via
-`$EO_PERF_CONTRACT_RERUN_RECORD`, which is exactly what that override is for.
+`$CRABGIC_PERF_CONTRACT_RERUN_RECORD`, which is exactly what that override is for.
 
 **The roadmap completion ledger — an open gap this session did not close.** Every one of the
 **202** exit-criteria checkboxes across all 24 phase files is unticked, though phases 00–07
@@ -157,8 +157,8 @@ phase — starting with 23, whose 15 scored items already have CI-linked `Eviden
 ```bash
 # Regenerate the gate report end to end (the authoritative check).
 S=$(mktemp -d)
-export EO_RELEASE_GATE_JOURNAL_DIR="$S/journal"
-export EO_RELEASE_CANDIDATE_OBJECT_ID="$(git rev-parse HEAD)"
+export CRABGIC_RELEASE_GATE_JOURNAL_DIR="$S/journal"
+export CRABGIC_RELEASE_CANDIDATE_OBJECT_ID="$(git rev-parse HEAD)"
 npm run test:e2e:release-evidence          # all 8 e2e projects, sequentially
 node e2e/report/dist/cli.js                # writes e2e/release-gate-report.json
 
@@ -204,7 +204,7 @@ corpus order changes.
 
 **Perf measurement.**
 
-- `trySampleProcess` from `@eo/perf` is **async**; not awaiting it yields a Promise whose
+- `trySampleProcess` from `@crabgic/perf` is **async**; not awaiting it yields a Promise whose
   `.stat` is `undefined`.
 - `probeQuietHost()` returns a **sampler**, not an assessment — call `finish()` to close the
   interval. It judges the whole span, which is the right question for "on a quiet host".
@@ -219,7 +219,7 @@ corpus order changes.
 
 - `e2e/provisioning`'s vitest config includes **`test/**` only**, not `src/**`. A test placed
   in `src/` silently never runs.
-- `npm run test:e2e:release-evidence` exports `EO_RELEASE_CANDIDATE_OBJECT_ID` for the whole
+- `npm run test:e2e:release-evidence` exports `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` for the whole
   chain, so any test asserting a scenario-local `objectId` must save/delete/restore it.
 - **Assert workflow invariants, not headcounts.** `releaseWorkflowWiring.test.ts` pinned
   "exactly 2" consumers of the resolved object ID and went red when two _correct_ consumers

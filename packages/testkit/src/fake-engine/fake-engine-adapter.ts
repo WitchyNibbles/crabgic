@@ -7,8 +7,8 @@ import type {
   EnginePermissionDenial,
   SessionRef,
   WorkerHandle,
-} from "@eo/engine-core";
-import type { TaskPacket, Timestamp } from "@eo/contracts";
+} from "@crabgic/engine-core";
+import type { TaskPacket, Timestamp } from "@crabgic/contracts";
 import { evaluateAllLayers } from "./layered-conformance.js";
 import { RATE_LIMIT_ALLOWED_WARNING_96 } from "./rate-limit-fixtures.js";
 import type { FakeEngineScript } from "./scripted-trace.js";

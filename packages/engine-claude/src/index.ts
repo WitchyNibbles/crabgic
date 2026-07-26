@@ -1,10 +1,10 @@
 /**
- * `@eo/engine-claude` public barrel — roadmap/06-claude-engine-adapter.md.
+ * `@crabgic/engine-claude` public barrel — roadmap/06-claude-engine-adapter.md.
  *
  * The first real implementation of 03's `EngineAdapter` over
  * `@anthropic-ai/claude-agent-sdk` (exact-pinned per 01's engine-pin-lint
  * policy; engine facts cite `docs/engine-baseline.md`, never memory).
- * Downstream phases (10/11/13/23) import from `@eo/engine-claude` directly,
+ * Downstream phases (10/11/13/23) import from `@crabgic/engine-claude` directly,
  * never a submodule path.
  *
  * The re-exports below ARE this package's real `EngineAdapter` implementation

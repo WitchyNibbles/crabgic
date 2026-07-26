@@ -4,7 +4,7 @@
  * the one gateway MCP server named by `GATEWAY_MCP_SERVER_NAME` (constant
  * owned by 02). Work item 5. (This comment deliberately never spells that
  * constant's literal value itself, only the constant's name — so
- * `@eo/contracts`' repo-wide sole-definition-site scanner
+ * `@crabgic/contracts`' repo-wide sole-definition-site scanner
  * (`server-name.test.ts`) stays green with no allowlist entry needed for
  * this file; see `gateway-name-reference.test.ts` for this package's own
  * local instantiation of that same zero-hand-typed-literal proof.)
@@ -17,7 +17,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import type { GatewayToolRegistry } from "./tool-registry.js";
 
 /** Builds an `McpServer` with every tool in `registry` registered onto it. Booting against an empty registry lists a well-formed, empty tool set (roadmap/16, work item 5's own failing-first note). */

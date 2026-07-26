@@ -1,4 +1,4 @@
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import type { GateRiskTag } from "./risk-tags.js";
 
 /**
@@ -15,7 +15,7 @@ export interface GateContext {
   readonly changeSetId: string;
   readonly objectId: string;
   readonly requirementId?: string;
-  /** Absent at `final_verifying` — that firing verifies the integrated candidate as a whole, with no single owning `WorkUnit` (mirrors `EvidenceRecord.workUnitId`'s own optionality, `@eo/contracts`). */
+  /** Absent at `final_verifying` — that firing verifies the integrated candidate as a whole, with no single owning `WorkUnit` (mirrors `EvidenceRecord.workUnitId`'s own optionality, `@crabgic/contracts`). */
   readonly workUnitId?: string;
   readonly journal: JournalStore;
   /** Overridable clock for deterministic tests; defaults to the real wall clock. */

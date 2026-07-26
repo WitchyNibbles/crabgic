@@ -7,7 +7,7 @@
  * each other and are reported together (`conflictingPaths` lists every
  * finding's `path`, min 2 per `StackEvidenceContradictionSchema`).
  */
-import type { StackEvidenceContradiction, StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceContradiction, StackEvidenceFinding } from "@crabgic/contracts";
 
 function extractDeclaredValue(detail: string): string | undefined {
   const colonIndex = detail.indexOf(":");

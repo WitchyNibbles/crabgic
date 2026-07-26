@@ -1,6 +1,6 @@
 /**
- * Typed errors for `@eo/perf` — roadmap/15-performance-contracts.md's
- * fail-closed posture (mirrors `@eo/gates`/`@eo/scheduler`'s own "typed
+ * Typed errors for `@crabgic/perf` — roadmap/15-performance-contracts.md's
+ * fail-closed posture (mirrors `@crabgic/gates`/`@crabgic/scheduler`'s own "typed
  * errors, never silent swallow" convention): every place this package
  * refuses to proceed does so with a named, catchable error type.
  */

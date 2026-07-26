@@ -13,7 +13,7 @@ const projectHash = "abc123";
 describe("learning layout — nests under 04's pinned state root", () => {
   it("resolveLearningDir nests directly under the state root", () => {
     expect(resolveLearningDir(env, projectHash)).toBe(
-      "/home/tester/.local/state/engineering-orchestrator/abc123/learning",
+      "/home/tester/.local/state/crabgic/abc123/learning",
     );
   });
 

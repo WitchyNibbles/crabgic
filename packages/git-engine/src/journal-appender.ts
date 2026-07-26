@@ -2,12 +2,12 @@
  * Shared minimal journal-appender surface — the common shape both
  * `./intake-freeze.js` (WI5, `git_freeze` entries) and
  * `./worktree-lifecycle.js` (WI6, `worktree_quarantine` entries) accept.
- * Matches `@eo/journal`'s `JournalStore.appendEntry`/free-function
+ * Matches `@crabgic/journal`'s `JournalStore.appendEntry`/free-function
  * `appendEntry` surface (04) without depending on their concrete exported
- * types — every field shape here mirrors `@eo/journal`'s own
+ * types — every field shape here mirrors `@crabgic/journal`'s own
  * `GitFreezePayloadSchema`/`WorktreeQuarantinePayloadSchema`
  * (`packages/journal/src/codec/journal-payloads.ts`, not itself part of
- * `@eo/journal`'s public barrel).
+ * `@crabgic/journal`'s public barrel).
  */
 
 export interface GitFreezeEntryInput {

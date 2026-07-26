@@ -2,7 +2,7 @@ import {
   JOURNAL_ENTRY_TYPES,
   WORK_UNIT_ATTEMPT_STATUSES,
   type JournalEntryType,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { describe, expect, it } from "vitest";
 import { computeEntryHash, GENESIS_PREV_HASH } from "./hash-chain.js";
 import {

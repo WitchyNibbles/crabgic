@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { IllegalTransitionError } from "@eo/contracts";
-import { buildChangeSet } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { IllegalTransitionError } from "@crabgic/contracts";
+import { buildChangeSet } from "@crabgic/testkit";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { ChangeSetNotFoundError, transitionChangeSet } from "./change-set-transition.js";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@eo/contracts";
-import { JournalEntrySchema } from "@eo/journal";
+import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@crabgic/contracts";
+import { JournalEntrySchema } from "@crabgic/journal";
 import type { GitEngineJournalEntryInput } from "./journal-appender.js";
 
 /**
@@ -14,7 +14,7 @@ import type { GitEngineJournalEntryInput } from "./journal-appender.js";
 
 // Compile-time check: every `type` literal `./journal-appender.ts`'s
 // `GitEngineJournalEntryInput` union can carry is assignable to
-// `JournalEntryType` (@eo/contracts) — a typo or a member 02 never defined
+// `JournalEntryType` (@crabgic/contracts) — a typo or a member 02 never defined
 // would fail `npx tsc -b packages/git-engine` right here.
 type AssertMembersAreValid = GitEngineJournalEntryInput["type"] extends JournalEntryType
   ? true
@@ -25,7 +25,7 @@ void _typeCheck;
 const THIS_PACKAGE_JOURNAL_ENTRY_TYPES = ["git_freeze", "worktree_quarantine"] as const;
 
 describe("this package's journal-entry-type surface (exit criterion)", () => {
-  it("both members it writes are real, closed members of @eo/contracts' 13-member JournalEntryType", () => {
+  it("both members it writes are real, closed members of @crabgic/contracts' 13-member JournalEntryType", () => {
     for (const type of THIS_PACKAGE_JOURNAL_ENTRY_TYPES) {
       expect(JOURNAL_ENTRY_TYPES).toContain(type);
     }
@@ -35,7 +35,7 @@ describe("this package's journal-entry-type surface (exit criterion)", () => {
     expect(THIS_PACKAGE_JOURNAL_ENTRY_TYPES).toHaveLength(2);
   });
 
-  it("a constructed git_freeze entry round-trips through @eo/journal's own JournalEntrySchema", () => {
+  it("a constructed git_freeze entry round-trips through @crabgic/journal's own JournalEntrySchema", () => {
     const candidate = {
       schemaVersion: 1,
       seq: 1,
@@ -51,7 +51,7 @@ describe("this package's journal-entry-type surface (exit criterion)", () => {
     expect(() => JournalEntrySchema.parse(candidate)).not.toThrow();
   });
 
-  it("a constructed worktree_quarantine entry round-trips through @eo/journal's own JournalEntrySchema", () => {
+  it("a constructed worktree_quarantine entry round-trips through @crabgic/journal's own JournalEntrySchema", () => {
     const candidate = {
       schemaVersion: 1,
       seq: 1,

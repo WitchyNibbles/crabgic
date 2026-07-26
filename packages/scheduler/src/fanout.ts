@@ -13,12 +13,12 @@
  * requires is therefore carried as TEXT inside that one field (this
  * phase's own minimal-sufficient choice, matching this repo's established
  * "no field shape is pinned anywhere in cited source material" pattern —
- * see e.g. `@eo/contracts`'s own `WorkUnit.role` doc comment).
+ * see e.g. `@crabgic/contracts`'s own `WorkUnit.role` doc comment).
  */
 
-import type { WorkUnit } from "@eo/contracts";
-import type { CollisionVerdict } from "@eo/git-engine";
-import type { JournalStore } from "@eo/journal";
+import type { WorkUnit } from "@crabgic/contracts";
+import type { CollisionVerdict } from "@crabgic/git-engine";
+import type { JournalStore } from "@crabgic/journal";
 import { buildOverlapAdjacency } from "./readiness.js";
 
 /** Delegation-depth-1 / concurrency-cap-4 (adaptation §3.2; roadmap/13 §In scope) — this phase's own dispatch-time ceiling, never exceeded regardless of how many units are ready. */

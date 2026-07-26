@@ -18,10 +18,10 @@
 // Node version.
 import { closeSync, openSync, writeSync } from "node:fs";
 
-const target = process.env["EO_KILL_HARNESS_TARGET"];
-const newContent = process.env["EO_KILL_HARNESS_NEW"] ?? "";
+const target = process.env["CRABGIC_KILL_HARNESS_TARGET"];
+const newContent = process.env["CRABGIC_KILL_HARNESS_NEW"] ?? "";
 if (!target) {
-  process.stderr.write("unsafe-writer: missing EO_KILL_HARNESS_TARGET\n");
+  process.stderr.write("unsafe-writer: missing CRABGIC_KILL_HARNESS_TARGET\n");
   process.exit(2);
 }
 

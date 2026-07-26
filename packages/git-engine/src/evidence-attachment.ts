@@ -21,7 +21,7 @@
  * the evidence-attachment routine for an already-published `ChangeSet` must
  * not duplicate `EvidenceRecord`s (04's idempotency-key mechanism,
  * transitively available via 07)." Each of the 3 kinds is individually
- * keyed through `@eo/journal`'s `IdempotencyRegistry.checkOrRecord` — the
+ * keyed through `@crabgic/journal`'s `IdempotencyRegistry.checkOrRecord` — the
  * `evidence_pointer` journal append happens ONLY inside the `compute()`
  * closure, which `IdempotencyRegistry` only ever invokes on a genuine
  * first-time write; a replayed call returns the SAME previously-recorded
@@ -71,15 +71,15 @@ import {
   EvidenceRecordSchema,
   type CommunicationPolicy,
   type EvidenceRecord,
-} from "@eo/contracts";
-import type { ArtifactKind, LintFinding } from "@eo/renderer";
+} from "@crabgic/contracts";
+import type { ArtifactKind, LintFinding } from "@crabgic/renderer";
 import {
   renderPrBody,
   renderPrTitle,
   renderReviewComment,
   renderWithRegeneration,
-} from "@eo/renderer";
-import type { IdempotencyRegistry } from "@eo/journal";
+} from "@crabgic/renderer";
+import type { IdempotencyRegistry } from "@crabgic/journal";
 import {
   buildEvidencePointerEntryInput,
   type IntegrationJournalAppender,
@@ -126,7 +126,7 @@ export interface AttachEvidenceResult {
   readonly outcomes: readonly EvidenceAttachmentOutcome[];
 }
 
-const TOOLCHAIN_FINGERPRINT = "@eo/git-engine evidence-attachment";
+const TOOLCHAIN_FINGERPRINT = "@crabgic/git-engine evidence-attachment";
 
 const EVIDENCE_ARTIFACT_KINDS = ["pr_title", "pr_body", "review_comment"] as const;
 type EvidenceArtifactKind = (typeof EVIDENCE_ARTIFACT_KINDS)[number];

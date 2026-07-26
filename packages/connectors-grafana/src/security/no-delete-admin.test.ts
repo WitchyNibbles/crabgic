@@ -4,7 +4,7 @@ import { GRAFANA_RESOURCE_DEFINITIONS } from "../resources/definitions/index.js"
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { GrafanaPlanPayloadStore } from "../mutation/plan-payload-store.js";
 import { GrafanaRollbackSnapshotStore } from "../mutation/snapshot-store.js";
-import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@eo/contracts";
+import { CapabilitySnapshotSchema, CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import type { GrafanaRawHttpResponse } from "../mutation/mutation-apply-client.js";
 
 /**

@@ -1,26 +1,26 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { dispatchAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { dispatchAttempt } from "@crabgic/scheduler";
 import {
   createRunsRegistry,
   createWorkersRegistry,
   recoverRun,
   transitionRun,
-} from "@eo/supervisor";
+} from "@crabgic/supervisor";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
 
 /**
  * Scenario 6/8 — roadmap/23-release-hardening.md work item 4: "manager
- * (supervisor) crash -> recover(runId)." Drives `@eo/supervisor`'s REAL
+ * (supervisor) crash -> recover(runId)." Drives `@crabgic/supervisor`'s REAL
  * `recoverRun` against a simulated FULL supervisor restart (fresh
  * `JournalStore` instance over the same on-disk journal + brand-new,
  * empty in-memory `RunsRegistry`/`WorkersRegistry` — zero in-memory state
@@ -143,14 +143,14 @@ describe("Orchestration matrix: manager (supervisor) crash -> recover(runId)", (
 
   it(
     "FIXED (05/13/04 integration): recoverRun correctly reports a work unit that ACTUALLY " +
-      "SUCCEEDED via the real @eo/scheduler executor as 'succeeded' (no orphan synthesized), " +
-      "now that @eo/journal's recordAttempt threads runId onto work_unit_transition entries",
+      "SUCCEEDED via the real @crabgic/scheduler executor as 'succeeded' (no orphan synthesized), " +
+      "now that @crabgic/journal's recordAttempt threads runId onto work_unit_transition entries",
     async () => {
       // FORMERLY A DOCUMENTED GAP (verified directly against the built
-      // packages): `@eo/journal`'s `recordAttempt` used to append its
+      // packages): `@crabgic/journal`'s `recordAttempt` used to append its
       // `work_unit_transition` entry with NO `runId` field at all. This was
-      // NOT specific to `@eo/scheduler`'s `dispatchAttempt`/`resumeAttempt`
-      // (which call it directly) — `@eo/supervisor`'s OWN production
+      // NOT specific to `@crabgic/scheduler`'s `dispatchAttempt`/`resumeAttempt`
+      // (which call it directly) — `@crabgic/supervisor`'s OWN production
       // worker-lifecycle manager (`packages/supervisor/src/worker-lifecycle/
       // worker-lifecycle-manager.ts`) called the exact same bare
       // `recordAttempt` for its own `work_unit_transition` writes, and
@@ -175,12 +175,12 @@ describe("Orchestration matrix: manager (supervisor) crash -> recover(runId)", (
       // harness exists to catch (subsystems that each pass their own unit
       // tests in isolation, but disagree once driven together for real).
       //
-      // THE FIX: `@eo/journal`'s `recordAttempt` (`packages/journal/src/
+      // THE FIX: `@crabgic/journal`'s `recordAttempt` (`packages/journal/src/
       // attempts.ts`) now takes an OPTIONAL 5th `runId` parameter, threaded
       // onto the entry's top-level envelope field exactly as
-      // `session_assignment` already carries it. `@eo/scheduler`'s
+      // `session_assignment` already carries it. `@crabgic/scheduler`'s
       // executor (`packages/scheduler/src/executor.ts`) and
-      // `@eo/supervisor`'s worker-lifecycle manager (`packages/supervisor/
+      // `@crabgic/supervisor`'s worker-lifecycle manager (`packages/supervisor/
       // src/worker-lifecycle/worker-lifecycle-manager.ts`) both now thread
       // their own already-in-scope `runId` through to every call site. This
       // scenario is the release-criteria proof that the fix closes the gap

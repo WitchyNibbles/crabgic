@@ -1,11 +1,11 @@
 /**
- * `@eo/supervisor` public barrel — roadmap/05-supervisor-daemon.md. Every
+ * `@crabgic/supervisor` public barrel — roadmap/05-supervisor-daemon.md. Every
  * cross-cutting type/function this package exposes to phase 06 (real
  * `EngineAdapter`), 09 (CLI, typed client against `docs/ipc-protocol.md`),
  * 11 (`project.inspect`'s registry reads), 13 (dispatch loop driving
  * run-lifecycle transitions), and 16 (gateway `run.status`/`run.cancel`
  * forwarding) is exported from exactly this one module — downstream
- * packages import from `@eo/supervisor` directly, never a submodule path.
+ * packages import from `@crabgic/supervisor` directly, never a submodule path.
  *
  * Excluded deliberately (test-support-only, not part of this package's
  * public API surface): `worker-lifecycle/test-support/*`,
@@ -43,7 +43,7 @@ export * from "./router/operations.js";
 export * from "./router/router.js";
 export * from "./router/build-router.js";
 // The `run.dispatch` seam — implemented in packages/cli's daemon entry
-// point, since the real driver needs @eo/engine-claude (which depends on
+// point, since the real driver needs @crabgic/engine-claude (which depends on
 // this package). See ./router/run-dispatcher.ts.
 export * from "./router/run-dispatcher.js";
 

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
+import { EvidenceRecordSchema, type EvidenceRecord } from "@crabgic/contracts";
 import { type AttestationCheckResult } from "./checkResult.js";
 import {
   ARM64_VERIFICATION_GATE_TAG,
@@ -62,7 +62,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
 function releaseCandidateObjectId(): string {
   const resolved = resolveReleaseCandidateObjectId();
   if (resolved !== FAKE_RELEASE_CANDIDATE_OBJECT_ID) return resolved;
-  // No `$EO_RELEASE_CANDIDATE_OBJECT_ID` set (an ordinary local run): use
+  // No `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` set (an ordinary local run): use
   // this working tree's real HEAD so emitted evidence names a genuine
   // object ID rather than the stand-in literal.
   return execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT, encoding: "utf-8" }).trim();

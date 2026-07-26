@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import type { JournalStore } from "@eo/journal";
-import type { MarketplacePluginEntry } from "@eo/plugin";
+import type { JournalStore } from "@crabgic/journal";
+import type { MarketplacePluginEntry } from "@crabgic/plugin";
 import { GitArchiveExporter } from "./checkoutExporter.js";
 import { RealPackRunner } from "./packRunner.js";
 import {
@@ -53,7 +53,7 @@ import {
  * 1. "two independent from-clean-checkout builds … produce byte-identical
  *    tarball hashes" — DIRECTLY verified by `reproducibleBuildCheck.ts`.
  *    The "from-clean-checkout BUILD" half is only real under
- *    `EO_RELEASE_REBUILD_CHECKOUTS=1`; without it the gate emits a
+ *    `CRABGIC_RELEASE_REBUILD_CHECKOUTS=1`; without it the gate emits a
  *    release-blocking reason saying so, rather than assuming it.
  * 2. "npm provenance attestation present" — PROXY-scored only. Nothing here
  *    produces or inspects a real attestation: `publishDryRunCheck.ts`
@@ -73,7 +73,7 @@ import {
  *    against real git, plus a cross-check of the PREPARED tag script.
  * 6. "`CHANGELOG.md` entry present" — DIRECTLY verified by
  *    `changelogEntryCheck.ts`, plus a cross-check of the PREPARED draft.
- * 7. "`npm view engineering-orchestrator` re-check passes" — RECORD-scored:
+ * 7. "`npm view crabgic` re-check passes" — RECORD-scored:
  *    `npmNameRecheck.ts` asserts a freshly timestamped verdict exists in
  *    `docs/release-notes-prep.md`, not that `npm view` ran just now.
  *
@@ -102,7 +102,7 @@ export interface ReleaseGateSummaryOptions {
   readonly pluginRoot: string;
   /** The release version to prepare, e.g. `"1.0.0"`. */
   readonly version: string;
-  /** Defaults to `process.env` — the seam `EO_RELEASE_REBUILD_CHECKOUTS` is read through. */
+  /** Defaults to `process.env` — the seam `CRABGIC_RELEASE_REBUILD_CHECKOUTS` is read through. */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
@@ -124,7 +124,7 @@ export interface ReleaseGateSummaryResult {
 }
 
 /** The npm package name this release publishes — `packages/cli/package.json`'s own `"name"`, and the name `docs/release-notes-prep.md` records the availability verdict for. `releaseGateSummary.test.ts` asserts it still matches that manifest (freshness). */
-export const PUBLISHED_PACKAGE_NAME = "engineering-orchestrator";
+export const PUBLISHED_PACKAGE_NAME = "crabgic";
 
 /** Thrown when `commitIsh` names no commit — every other check is relative to that object id, so proceeding would compare nothing against nothing. */
 export class UnresolvableCommitIshError extends Error {

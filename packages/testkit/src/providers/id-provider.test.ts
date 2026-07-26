@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IdSchema } from "@eo/contracts";
+import { IdSchema } from "@crabgic/contracts";
 import { createIdProvider, createIdProviderState, drawId } from "./id-provider.js";
 
 /**

@@ -1,10 +1,10 @@
 // Kill-harness fixture entry — "kill -9 mid-quarantine". Real
-// `quarantineWorktree` call, journaling through a REAL `@eo/journal`
+// `quarantineWorktree` call, journaling through a REAL `@crabgic/journal`
 // journal store rooted at `journalDir`, `onStep` wired to
 // `signalFaultPoint`.
-import { signalFaultPoint } from "@eo/journal";
-import { createJournalStore } from "@eo/journal";
-import { createGitPlumbing, createNodeGitSpawn, quarantineWorktree } from "@eo/git-engine";
+import { signalFaultPoint } from "@crabgic/journal";
+import { createJournalStore } from "@crabgic/journal";
+import { createGitPlumbing, createNodeGitSpawn, quarantineWorktree } from "@crabgic/git-engine";
 
 const [, , repoDir, worktreePath, quarantineDir, journalDir, reason] = process.argv;
 const plumbing = createGitPlumbing({ spawnFn: createNodeGitSpawn() });

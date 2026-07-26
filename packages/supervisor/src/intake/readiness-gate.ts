@@ -5,8 +5,8 @@
  * verification (`packages/cli`'s handler) — the ONLY path that ever moves a
  * `ChangeSet` from `awaiting_approval` to `ready`.
  */
-import type { ChangeSet } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type { ChangeSet } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 import { findUnmappedRequirements } from "./dag-builder.js";
 import { transitionChangeSet } from "./change-set-transition.js";

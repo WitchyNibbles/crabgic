@@ -8,7 +8,7 @@
  *
  * OVERRIDE SOURCE (documented deviation): neither `WorkUnit` (02) nor
  * `AuthorizationEnvelope` (02) carries a dedicated model-override field —
- * no cited source material pins one (`@eo/contracts`'s own `WorkUnit.role`
+ * no cited source material pins one (`@crabgic/contracts`'s own `WorkUnit.role`
  * doc comment: "No closed role vocabulary is pinned anywhere this phase
  * owns," and `AuthorizationEnvelope`'s schema has no model-related field at
  * all). This router is therefore agnostic to WHERE an override value came

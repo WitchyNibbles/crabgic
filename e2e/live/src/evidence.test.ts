@@ -11,7 +11,7 @@ import {
 import { createTestJournal, type TestJournal } from "./testJournal.js";
 
 describe("resolveReleaseCandidateObjectId", () => {
-  const ENV_KEY = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const ENV_KEY = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
   const original = process.env[ENV_KEY];
 
   afterEach(() => {
@@ -29,7 +29,7 @@ describe("resolveReleaseCandidateObjectId", () => {
     expect(resolveReleaseCandidateObjectId()).toBe(FAKE_RELEASE_CANDIDATE_OBJECT_ID);
   });
 
-  it("honors $EO_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
+  it("honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty", () => {
     process.env[ENV_KEY] = "1234567890abcdef1234567890abcdef12345678";
     expect(resolveReleaseCandidateObjectId()).toBe("1234567890abcdef1234567890abcdef12345678");
   });
@@ -60,7 +60,7 @@ describe("emitLiveConformanceEvidence", () => {
     expect(records[0]?.gateTag).toBe(NOT_IMPLEMENTED_SWEEP_GATE_TAG);
     expect(records[1]?.gateTag).toBe(GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG);
     expect(records[0]?.id).not.toBe(records[1]?.id);
-    // The DEFAULT, not a hard-coded literal: unset `$EO_RELEASE_CANDIDATE_
+    // The DEFAULT, not a hard-coded literal: unset `$CRABGIC_RELEASE_CANDIDATE_
     // OBJECT_ID` (the ordinary `npm run test:e2e` gate) this is exactly
     // `FAKE_RELEASE_CANDIDATE_OBJECT_ID`; under a real release-gate run it
     // is the release candidate's own object ID. Asserting the resolver's
@@ -70,7 +70,7 @@ describe("emitLiveConformanceEvidence", () => {
     expect(records[0]?.command).toBe("not-implemented-sweep");
 
     // Scoped to THIS test's own freshly-generated changeSetId, never the
-    // whole journal: under a shared journal (`EO_RELEASE_GATE_JOURNAL_DIR`,
+    // whole journal: under a shared journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`,
     // see `./testJournal.ts`) every other harness's evidence is visible
     // here too, and an unfiltered "the journal contains exactly these two
     // records" assertion would either break or start passing vacuously.
@@ -107,8 +107,8 @@ describe("emitLiveConformanceEvidence", () => {
       // EXPLICIT fixture objectId, never the resolved default: this record
       // is a SEEDED demo of the emitter's nonzero-exitStatus branch, not a
       // genuine negative run of any release candidate. Under a shared
-      // release-gate journal (`EO_RELEASE_GATE_JOURNAL_DIR` +
-      // `EO_RELEASE_CANDIDATE_OBJECT_ID`) the default would stamp this
+      // release-gate journal (`CRABGIC_RELEASE_GATE_JOURNAL_DIR` +
+      // `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID`) the default would stamp this
       // synthetic failure with the REAL candidate's object ID, and
       // `e2e/report`'s generator — correctly, and by design — would then
       // FAIL `gateway-cli-surface-complete` and `quality-security-perf-

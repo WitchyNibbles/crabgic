@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 /**
  * roadmap/20-grafana-adapters.md §Test plan, "Security": "fixtures assert
  * no literal credential ever appears in a log, error, or golden artifact
- * (secret-reference-only storage)." This phase reuses `@eo/gateway`'s
+ * (secret-reference-only storage)." This phase reuses `@crabgic/gateway`'s
  * `SecretReference`/`resolveSecretReference` (env/file/exec backends) —
  * this package itself never reads `process.env`, never constructs a
  * credential literal, and never accepts a raw token as a plain string
@@ -72,7 +72,7 @@ describe("no credential-shaped literal appears anywhere in packages/connectors-g
   });
 });
 
-describe("this package never reads process.env directly (secret resolution is exclusively @eo/gateway's job)", () => {
+describe("this package never reads process.env directly (secret resolution is exclusively @crabgic/gateway's job)", () => {
   it("no source file references process.env", () => {
     const offenders: string[] = [];
     for (const filePath of collectSourceFiles(SRC_DIR)) {

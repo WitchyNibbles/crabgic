@@ -12,7 +12,7 @@
  * rather than executed/interpreted in any way.
  */
 import { z } from "zod";
-import { NonEmptyStringSchema } from "@eo/contracts";
+import { NonEmptyStringSchema } from "@crabgic/contracts";
 
 export const DocResearchPacketInputSchema = z
   .object({

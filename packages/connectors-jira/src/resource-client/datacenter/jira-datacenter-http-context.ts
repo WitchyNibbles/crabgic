@@ -1,5 +1,5 @@
-import { ConnectorError, type ExternalConnection } from "@eo/contracts";
-import type { GatewayHttpClient } from "@eo/gateway";
+import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
+import type { GatewayHttpClient } from "@crabgic/gateway";
 import type { z } from "zod";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";
 import { mapJiraDatacenterStatusToConnectorErrorKind } from "../../errors/jira-error-mapping.js";

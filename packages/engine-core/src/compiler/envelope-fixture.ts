@@ -2,15 +2,15 @@ import {
   AuthorizationEnvelopeSchema,
   CURRENT_SCHEMA_VERSION,
   type AuthorizationEnvelope,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * Test-support fixture builder, scoped to this package only — mirrors
  * `packages/testkit/src/fixtures/authorization-envelope.ts`'s shape by
- * hand rather than importing `@eo/testkit`: this package (`@eo/engine-core`)
- * must not depend on `@eo/testkit`, since `@eo/testkit`'s own fake engine
+ * hand rather than importing `@crabgic/testkit`: this package (`@crabgic/engine-core`)
+ * must not depend on `@crabgic/testkit`, since `@crabgic/testkit`'s own fake engine
  * (roadmap/03 work item 5, a different worker's deliverable) implements
- * `EngineAdapter` FROM this package — a `@eo/testkit -> @eo/engine-core`
+ * `EngineAdapter` FROM this package — a `@crabgic/testkit -> @crabgic/engine-core`
  * edge already exists in that direction, so the reverse would be
  * circular.
  *

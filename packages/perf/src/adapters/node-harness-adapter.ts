@@ -26,7 +26,7 @@ import type { BenchmarkAdapter, BenchmarkAdapterRunParams } from "./types.js";
  * benchmark an HTTP server's own hot path), that bind happens inside the
  * spawned child process, which — once wired through a real sandboxed
  * worker execution — runs under the reference sandbox profile's
- * `allowLocalBinding: false` default (`@eo/engine-core`'s
+ * `allowLocalBinding: false` default (`@crabgic/engine-core`'s
  * `CompiledWorkerProfile.sandbox.network.allowLocalBinding`) and would
  * need an explicit, approval-visible `AuthorizationEnvelope` grant (11) to
  * succeed. This adapter does NOT request or silently assume that grant —

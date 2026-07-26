@@ -1,4 +1,4 @@
-import type { PermissionProfile } from "@eo/engine-core";
+import type { PermissionProfile } from "@crabgic/engine-core";
 import {
   containsUnprovenShellMetacharacter,
   decomposeBashCommand,

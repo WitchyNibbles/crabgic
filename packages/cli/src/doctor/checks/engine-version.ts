@@ -5,7 +5,7 @@
  * "Doctor's version-gate check is a doc citation, not a code dependency...
  * this check must be updated by cross-reference, not by import." This is a
  * DIRECT engine probe (`claude --version`, spawned here) — never an import
- * of `@eo/engine-claude` (per this phase's own governing instructions).
+ * of `@crabgic/engine-claude` (per this phase's own governing instructions).
  */
 import { CliUsageError } from "../../errors.js";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
@@ -17,7 +17,7 @@ import type { ProcessProbeFn } from "../process-probe.js";
  * this constant only by cross-reference to a re-verified
  * `docs/engine-baseline.md`. Currently `2.1.207–2.1.220` (re-baselined
  * 2026-07-24 to 2.1.218, then 2026-07-25 to 2.1.220). NOTE: this constant is
- * a deliberate cross-reference copy, not an import of `@eo/engine-claude`'s
+ * a deliberate cross-reference copy, not an import of `@crabgic/engine-claude`'s
  * `ACCEPTED_ENGINE_VERSION_RANGE` (roadmap/09 §Risks) — it had drifted stale
  * at `2.1.210` through the 2026-07-24 re-baseline, which is exactly the
  * failure mode that arrangement invites; re-check it on every re-baseline.

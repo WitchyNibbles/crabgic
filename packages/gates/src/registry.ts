@@ -1,4 +1,4 @@
-import type { EvidenceRecord } from "@eo/contracts";
+import type { EvidenceRecord } from "@crabgic/contracts";
 import { emitEvidence } from "./evidence.js";
 import { NoGatesRegisteredError } from "./errors.js";
 import { GATE_RISK_TAGS, type GateRiskTag } from "./risk-tags.js";

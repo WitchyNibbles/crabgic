@@ -1,4 +1,4 @@
-import type { FakeProviderScriptEntry } from "@eo/gateway";
+import type { FakeProviderScriptEntry } from "@crabgic/gateway";
 import type { GrafanaResourceKind } from "../resource-kinds.js";
 import { deriveAnnotationMarkerTag } from "../reconciliation/marker-reconciler.js";
 import type { GrafanaRouteFamily } from "../discovery/build-info-fixtures.js";
@@ -208,7 +208,7 @@ export interface BuildKindCreateCassetteOptions {
   readonly family?: GrafanaRouteFamily;
 }
 
-/** Builds the flat (create, verify) response sequence for one kind, in the exact order `@eo/gateway`'s pipeline issues them (mutating call first, read-back verify second). */
+/** Builds the flat (create, verify) response sequence for one kind, in the exact order `@crabgic/gateway`'s pipeline issues them (mutating call first, read-back verify second). */
 export function buildKindCreateCassette(
   kind: GrafanaResourceKind,
   options: BuildKindCreateCassetteOptions = {},

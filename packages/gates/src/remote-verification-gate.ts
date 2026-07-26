@@ -1,4 +1,4 @@
-import type { ConnectorErrorKind } from "@eo/contracts";
+import type { ConnectorErrorKind } from "@crabgic/contracts";
 import { findRemoteResourcePointersForRequirement } from "./remote-evidence-pointer.js";
 import type { GateHandler, GateVerdict } from "./types.js";
 

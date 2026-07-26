@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import {
   runDirtyRepoScenario,
   runEmptyDirScenario,
@@ -56,7 +56,7 @@ describe("installation matrix: repo-state scenarios (live)", () => {
     // Scoped by recording the ids these two scenario calls append, rather
     // than counting the whole journal: these scenarios mint their own
     // `changeSetId` internally, and under a shared journal
-    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
+    // (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `../src/test-support/
     // test-journal.ts`) `all-scenarios.test.ts` runs the SAME two scenarios
     // into the SAME journal, under the same deterministic stand-in object
     // ids. What is proved is unchanged: two scenarios, two durable,

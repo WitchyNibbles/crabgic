@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
-import { buildExternalConnection } from "@eo/testkit";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
 import * as readsDc from "./reads-dc.js";
 import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";
 

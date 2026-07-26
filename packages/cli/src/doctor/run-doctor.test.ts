@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@eo/supervisor";
+import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@crabgic/supervisor";
 import { buildDefaultDoctorChecks, runDoctor } from "./run-doctor.js";
 
 const fakeJournal = {
@@ -45,7 +45,7 @@ describe("buildDefaultDoctorChecks — real supervisor control socket permission
   beforeEach(async () => {
     // Kept deliberately short: AF_UNIX socket paths are capped at ~108 bytes
     // on Linux (`sun_path`), and this path nests
-    // `.local/state/engineering-orchestrator/<hash>/supervisor/run/control.sock`
+    // `.local/state/crabgic/<hash>/supervisor/run/control.sock`
     // under it — a longer tmp prefix or project-hash here reproducibly hits
     // `EINVAL` on `listen()`.
     home = await mkdtemp(join(tmpdir(), "eo-sk-"));

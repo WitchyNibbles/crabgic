@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
-import type { JournalEntry, JournalEntryFilter } from "@eo/journal";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
+import type { JournalEntry, JournalEntryFilter } from "@crabgic/journal";
 import {
   DEFAULT_JOURNAL_DIR,
   DEFAULT_OUT_FILE,
@@ -143,10 +143,10 @@ describe("runReleaseGateReportCli", () => {
     expect(report.scoringMode).toBe("interim");
   });
 
-  it("honors EO_RELEASE_GATE_MODE=final when scoringMode isn't passed explicitly", async () => {
+  it("honors CRABGIC_RELEASE_GATE_MODE=final when scoringMode isn't passed explicitly", async () => {
     const outFile = join(outDir, "env-mode-report.json");
-    const prev = process.env["EO_RELEASE_GATE_MODE"];
-    process.env["EO_RELEASE_GATE_MODE"] = "final";
+    const prev = process.env["CRABGIC_RELEASE_GATE_MODE"];
+    process.env["CRABGIC_RELEASE_GATE_MODE"] = "final";
     try {
       const { report } = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
@@ -155,15 +155,15 @@ describe("runReleaseGateReportCli", () => {
       });
       expect(report.scoringMode).toBe("final");
     } finally {
-      if (prev === undefined) delete process.env["EO_RELEASE_GATE_MODE"];
-      else process.env["EO_RELEASE_GATE_MODE"] = prev;
+      if (prev === undefined) delete process.env["CRABGIC_RELEASE_GATE_MODE"];
+      else process.env["CRABGIC_RELEASE_GATE_MODE"] = prev;
     }
   });
 
-  it("ignores a garbage EO_RELEASE_GATE_MODE value and falls back to 'interim'", async () => {
+  it("ignores a garbage CRABGIC_RELEASE_GATE_MODE value and falls back to 'interim'", async () => {
     const outFile = join(outDir, "garbage-mode-report.json");
-    const prev = process.env["EO_RELEASE_GATE_MODE"];
-    process.env["EO_RELEASE_GATE_MODE"] = "not-a-real-mode";
+    const prev = process.env["CRABGIC_RELEASE_GATE_MODE"];
+    process.env["CRABGIC_RELEASE_GATE_MODE"] = "not-a-real-mode";
     try {
       const { report } = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
@@ -172,8 +172,8 @@ describe("runReleaseGateReportCli", () => {
       });
       expect(report.scoringMode).toBe("interim");
     } finally {
-      if (prev === undefined) delete process.env["EO_RELEASE_GATE_MODE"];
-      else process.env["EO_RELEASE_GATE_MODE"] = prev;
+      if (prev === undefined) delete process.env["CRABGIC_RELEASE_GATE_MODE"];
+      else process.env["CRABGIC_RELEASE_GATE_MODE"] = prev;
     }
   });
 
@@ -187,9 +187,9 @@ describe("runReleaseGateReportCli", () => {
     expect(report.releaseCandidateObjectId).toMatch(/^[0-9a-f]{40}$/);
   });
 
-  it("honors a non-empty EO_RELEASE_CANDIDATE_OBJECT_ID", async () => {
+  it("honors a non-empty CRABGIC_RELEASE_CANDIDATE_OBJECT_ID", async () => {
     const outFile = join(outDir, "env-object-id-report.json");
-    await withEnv("EO_RELEASE_CANDIDATE_OBJECT_ID", "e".repeat(40), async () => {
+    await withEnv("CRABGIC_RELEASE_CANDIDATE_OBJECT_ID", "e".repeat(40), async () => {
       const { report } = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         outFile,
@@ -207,9 +207,9 @@ describe("runReleaseGateReportCli", () => {
    * exactly as `e2e/attestation/src/evidence.ts`'s
    * `resolveReleaseCandidateObjectId` already treats it.
    */
-  it('treats an EMPTY EO_RELEASE_CANDIDATE_OBJECT_ID as unset, not as the object ID ""', async () => {
+  it('treats an EMPTY CRABGIC_RELEASE_CANDIDATE_OBJECT_ID as unset, not as the object ID ""', async () => {
     const outFile = join(outDir, "empty-object-id-report.json");
-    await withEnv("EO_RELEASE_CANDIDATE_OBJECT_ID", "", async () => {
+    await withEnv("CRABGIC_RELEASE_CANDIDATE_OBJECT_ID", "", async () => {
       const { report } = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         outFile,
@@ -221,7 +221,7 @@ describe("runReleaseGateReportCli", () => {
 
   it("still prefers an explicit option over any env value", async () => {
     const outFile = join(outDir, "explicit-object-id-report.json");
-    await withEnv("EO_RELEASE_CANDIDATE_OBJECT_ID", "f".repeat(40), async () => {
+    await withEnv("CRABGIC_RELEASE_CANDIDATE_OBJECT_ID", "f".repeat(40), async () => {
       const { report } = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         releaseCandidateObjectId: "explicit-obj",
@@ -237,9 +237,9 @@ describe("runReleaseGateReportCli", () => {
    * a bare `??` of its own — the reported `journalDir` IS the value handed
    * to `createJournalStore`.
    */
-  it("reports the journal directory it resolved from EO_RELEASE_GATE_JOURNAL_DIR", async () => {
+  it("reports the journal directory it resolved from CRABGIC_RELEASE_GATE_JOURNAL_DIR", async () => {
     const journalDir = join(outDir, "shared-journal");
-    await withEnv("EO_RELEASE_GATE_JOURNAL_DIR", journalDir, async () => {
+    await withEnv("CRABGIC_RELEASE_GATE_JOURNAL_DIR", journalDir, async () => {
       const result = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         releaseCandidateObjectId: "obj",
@@ -249,8 +249,8 @@ describe("runReleaseGateReportCli", () => {
     });
   });
 
-  it('falls back to the default journal directory when EO_RELEASE_GATE_JOURNAL_DIR is EMPTY, never to ""', async () => {
-    await withEnv("EO_RELEASE_GATE_JOURNAL_DIR", "", async () => {
+  it('falls back to the default journal directory when CRABGIC_RELEASE_GATE_JOURNAL_DIR is EMPTY, never to ""', async () => {
+    await withEnv("CRABGIC_RELEASE_GATE_JOURNAL_DIR", "", async () => {
       const result = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         releaseCandidateObjectId: "obj",
@@ -261,9 +261,9 @@ describe("runReleaseGateReportCli", () => {
     });
   });
 
-  it("honors a non-empty EO_RELEASE_GATE_OUT_FILE", async () => {
+  it("honors a non-empty CRABGIC_RELEASE_GATE_OUT_FILE", async () => {
     const outFile = join(outDir, "env-out-file-report.json");
-    await withEnv("EO_RELEASE_GATE_OUT_FILE", outFile, async () => {
+    await withEnv("CRABGIC_RELEASE_GATE_OUT_FILE", outFile, async () => {
       const result = await runReleaseGateReportCli({
         journal: inMemoryJournal([]),
         releaseCandidateObjectId: "obj",
@@ -281,9 +281,9 @@ describe("runReleaseGateReportCli", () => {
  * `releaseCandidateObjectId` was fixed for this in isolation while
  * `journalDir` and `outFile` kept the plain `?? process.env[...] ?? DEFAULT`
  * shape, so an empty value would silently become the path `""`. Not
- * reachable today — `EO_RELEASE_GATE_JOURNAL_DIR` comes from
- * `${{ runner.temp }}/...` and `EO_RELEASE_GATE_OUT_FILE` is set nowhere —
- * but `EO_RELEASE_GATE_JOURNAL_DIR` is now the load-bearing wiring for
+ * reachable today — `CRABGIC_RELEASE_GATE_JOURNAL_DIR` comes from
+ * `${{ runner.temp }}/...` and `CRABGIC_RELEASE_GATE_OUT_FILE` is set nowhere —
+ * but `CRABGIC_RELEASE_GATE_JOURNAL_DIR` is now the load-bearing wiring for
  * EVERY checklist item's evidence, so a future `${{ inputs.x }}` on it
  * would point the whole run at the wrong journal and produce a
  * zero-evidence report that looks perfectly healthy.
@@ -296,7 +296,7 @@ describe("runReleaseGateReportCli", () => {
 describe("resolveReleaseGateCliSettings — empty env values mean unset", () => {
   const cases = [
     {
-      env: "EO_RELEASE_GATE_JOURNAL_DIR",
+      env: "CRABGIC_RELEASE_GATE_JOURNAL_DIR",
       read: (s: ReturnType<typeof resolveReleaseGateCliSettings>) => s.journalDir,
       value: "/tmp/eo-some-journal",
       fallback: DEFAULT_JOURNAL_DIR,
@@ -304,7 +304,7 @@ describe("resolveReleaseGateCliSettings — empty env values mean unset", () => 
       explicit: "/tmp/eo-explicit-journal",
     },
     {
-      env: "EO_RELEASE_GATE_OUT_FILE",
+      env: "CRABGIC_RELEASE_GATE_OUT_FILE",
       read: (s: ReturnType<typeof resolveReleaseGateCliSettings>) => s.outFile,
       value: "/tmp/eo-some-report.json",
       fallback: DEFAULT_OUT_FILE,
@@ -355,8 +355,8 @@ describe("resolveReleaseGateCliSettings — empty env values mean unset", () => 
     });
   }
 
-  it("EO_RELEASE_GATE_MODE: EMPTY -> 'interim'", async () => {
-    await withEnv("EO_RELEASE_GATE_MODE", "", async () => {
+  it("CRABGIC_RELEASE_GATE_MODE: EMPTY -> 'interim'", async () => {
+    await withEnv("CRABGIC_RELEASE_GATE_MODE", "", async () => {
       expect(resolveReleaseGateCliSettings({ releaseCandidateObjectId: "obj" }).scoringMode).toBe(
         "interim",
       );

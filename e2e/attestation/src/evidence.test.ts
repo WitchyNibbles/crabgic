@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { EvidenceRecordSchema } from "@eo/contracts";
-import type { JournalEntryInput } from "@eo/journal";
+import { EvidenceRecordSchema } from "@crabgic/contracts";
+import type { JournalEntryInput } from "@crabgic/journal";
 import { buildCheckResult } from "./checkResult.js";
 import {
   ATTESTATION_GATE_TAGS,
@@ -97,7 +97,7 @@ describe("emitAttestationEvidence", () => {
 });
 
 describe("resolveReleaseCandidateObjectId", () => {
-  const ENV = "EO_RELEASE_CANDIDATE_OBJECT_ID";
+  const ENV = "CRABGIC_RELEASE_CANDIDATE_OBJECT_ID";
   let original: string | undefined;
 
   beforeEach(() => {

@@ -15,9 +15,9 @@
  */
 import { dirname } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { READ_ONLY_ENVELOPE, compileEnvelope } from "@eo/engine-core";
-import type { AdjudicationCallback } from "@eo/engine-core";
-import { buildTaskPacket } from "@eo/testkit";
+import { READ_ONLY_ENVELOPE, compileEnvelope } from "@crabgic/engine-core";
+import type { AdjudicationCallback } from "@crabgic/engine-core";
+import { buildTaskPacket } from "@crabgic/testkit";
 import {
   assertLiveEnabled,
   collectEngineEvents,

@@ -74,7 +74,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { RemoteOperationRecord } from "@eo/contracts";
+import type { RemoteOperationRecord } from "@crabgic/contracts";
 import { CURRENT_SCHEMA_VERSION, type JournalEntry } from "./codec/journal-entry.js";
 import type { JournalStore } from "./store/journal-store.js";
 

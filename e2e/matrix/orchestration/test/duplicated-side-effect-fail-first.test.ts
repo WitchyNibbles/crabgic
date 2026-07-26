@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JournalStore } from "@eo/journal";
-import { IdempotencyRegistry } from "@eo/journal";
-import type { AdjudicationCallback } from "@eo/engine-core";
+import type { JournalStore } from "@crabgic/journal";
+import { IdempotencyRegistry } from "@crabgic/journal";
+import type { AdjudicationCallback } from "@crabgic/engine-core";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import { dispatchAttempt } from "@eo/scheduler";
+} from "@crabgic/testkit";
+import { dispatchAttempt } from "@crabgic/scheduler";
 import { buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import {
@@ -30,7 +30,7 @@ import { createTestJournal, type TestJournal } from "../src/testJournal.js";
  * `applySideEffectNaive` (the count is 2, not 1 — a genuine duplicated
  * mutation); `duplicated-side-effect-green.txt` records the identical
  * assertion structure PASSING once pointed at `applySideEffectExactlyOnce`
- * (`@eo/journal`'s real `IdempotencyRegistry`, never reimplemented here).
+ * (`@crabgic/journal`'s real `IdempotencyRegistry`, never reimplemented here).
  *
  * SCENARIO: a WorkUnit's attempt performs one external mutation (modeled as
  * a scripted `Bash` tool call whose command names the mutation) before
@@ -113,7 +113,7 @@ describe("Orchestration matrix: duplicated side effect from a forced worker cras
     });
   });
 
-  it("FIX — the SAME crash + repair arc, gated by @eo/journal's real IdempotencyRegistry, applies the mutation EXACTLY ONCE", async () => {
+  it("FIX — the SAME crash + repair arc, gated by @crabgic/journal's real IdempotencyRegistry, applies the mutation EXACTLY ONCE", async () => {
     const workUnitId = randomUUID();
     const sink = createSideEffectSink();
     const registry = new IdempotencyRegistry(store);

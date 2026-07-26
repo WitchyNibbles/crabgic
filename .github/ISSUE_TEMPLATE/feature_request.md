@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Propose new functionality for the Engineering Orchestrator
+about: Propose new functionality for the Crabgic
 title: "[feat]: "
 labels: enhancement
 assignees: ""

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * Evidence-pointer population — roadmap/21-connector-evidence-integration.md
@@ -10,9 +14,9 @@ import type { JournalStore } from "@eo/journal";
  *
  * DEVIATION (documented, disclosed — see docs/evidence/phase-21/README.md):
  * roadmap/21's own prose describes this pointer's payload as
- * `{requirementId, remoteResourceId, relation}`. `@eo/contracts`'s
+ * `{requirementId, remoteResourceId, relation}`. `@crabgic/contracts`'s
  * `RemoteResourceSchema` doc comment forward-references exactly that shape.
- * But `@eo/journal` (phase 04, already-built, out of this phase's package
+ * But `@crabgic/journal` (phase 04, already-built, out of this phase's package
  * boundary) locks the `evidence_pointer` `JournalEntryType`'s payload to
  * `EvidenceRecordSchema` verbatim ("payload validates as `EvidenceRecord`
  * ... per work item 1's explicit instruction" — `journal-payloads.ts`), a

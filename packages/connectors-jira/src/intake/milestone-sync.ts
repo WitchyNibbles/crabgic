@@ -1,12 +1,12 @@
-import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@eo/contracts";
-import type { MarkerReconciler } from "@eo/gateway";
+import { DEFAULT_COMMUNICATION_POLICY, type CommunicationPolicy } from "@crabgic/contracts";
+import type { MarkerReconciler } from "@crabgic/gateway";
 import {
   renderJiraMilestoneComment,
   renderWithRegeneration,
   toADF,
   validateAdfSafeSubset,
   type LintFinding,
-} from "@eo/renderer";
+} from "@crabgic/renderer";
 import type { JiraResourceClient } from "../resource-client/types.js";
 
 /**
@@ -44,7 +44,7 @@ export interface MilestoneSyncDeps {
   readonly commentMarkerReconciler: MarkerReconciler;
 }
 
-/** This phase's own discretionary projection of a `JournalEntryType: "milestone_sync"` entry's payload (roadmap/18 §Interfaces produced) — the caller appends it via its own `JournalStore`; this connector holds no `@eo/journal` dependency of its own. */
+/** This phase's own discretionary projection of a `JournalEntryType: "milestone_sync"` entry's payload (roadmap/18 §Interfaces produced) — the caller appends it via its own `JournalStore`; this connector holds no `@crabgic/journal` dependency of its own. */
 export interface MilestoneSyncJournalEntryPayload {
   readonly issueKey: string;
   readonly milestoneKind: MilestoneEventKind;

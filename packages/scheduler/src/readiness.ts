@@ -2,9 +2,9 @@
  * Readiness engine — roadmap/13-scheduler-packets-context.md §In scope,
  * "DAG executor": "readiness = dependencies + lease + overlap analysis
  * (07) + non-Git resource serialization; default one worker." This module
- * is the PURE decision function; leasing itself is `@eo/journal`'s `Lease`
+ * is the PURE decision function; leasing itself is `@crabgic/journal`'s `Lease`
  * (consumed, never reimplemented here — see `../executor.ts`), and overlap
- * analysis is `@eo/git-engine`'s `analyzeOverlap` (also consumed, never
+ * analysis is `@crabgic/git-engine`'s `analyzeOverlap` (also consumed, never
  * reimplemented).
  *
  * A `WorkUnit` is READY iff:
@@ -16,8 +16,8 @@
  *    serialized" (roadmap/13 §In scope).
  */
 
-import type { WorkUnit, WorkUnitAttemptStatus } from "@eo/contracts";
-import type { CollisionVerdict } from "@eo/git-engine";
+import type { WorkUnit, WorkUnitAttemptStatus } from "@crabgic/contracts";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 
 export type WorkUnitStatusById = ReadonlyMap<string, WorkUnitAttemptStatus>;
 

@@ -1,9 +1,9 @@
 /**
- * `@eo/engine-core` public barrel (roadmap/03-envelope-compiler-engine-
+ * `@crabgic/engine-core` public barrel (roadmap/03-envelope-compiler-engine-
  * adapter.md work item 5 / deliverable 5). Every cross-cutting type/
  * function this package exposes to phase 06 (the real SDK-backed
  * `EngineAdapter`) and this phase's own tests is exported from exactly
- * this one module — downstream packages import from `@eo/engine-core`
+ * this one module — downstream packages import from `@crabgic/engine-core`
  * directly, never a submodule path.
  *
  * Excluded deliberately: `compiler/envelope-fixture.ts`,

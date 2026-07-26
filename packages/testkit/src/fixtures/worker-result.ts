@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, WorkerResultSchema, type WorkerResult } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, WorkerResultSchema, type WorkerResult } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `WorkerResult` fixture builder — roadmap/02 work item 10. */

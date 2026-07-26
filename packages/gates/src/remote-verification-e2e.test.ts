@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JiraFieldMetadata } from "@eo/connectors-jira";
+import type { JiraFieldMetadata } from "@crabgic/connectors-jira";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 import { createGateRegistry, type GateRegistry } from "./registry.js";
 import { allGatesPassed } from "./final-candidate.js";
@@ -24,7 +24,7 @@ import type { GateContext } from "./types.js";
  *
  * This fires the `remote_verification` gate THROUGH 14's real
  * `GateRegistry` (never calling the handler directly), against a real
- * `@eo/journal` `JournalStore`, for a multi-requirement fixture `ChangeSet`
+ * `@crabgic/journal` `JournalStore`, for a multi-requirement fixture `ChangeSet`
  * — giving every phase-21 unit (`recordEvidencePointer`,
  * `createRemoteVerificationGate`, `classifyMateriality`,
  * `buildMaterialAmendmentSignal`, `throwIfMaterialAmendment`) a REAL,

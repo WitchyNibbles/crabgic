@@ -1,12 +1,12 @@
 /**
  * Repo-format scenarios — roadmap/23-release-hardening.md work item 5:
  * "SHA-256 repos, submodules, LFS." Drives the REAL `validateRepository`
- * (`@eo/git-engine`, spawns real `git`) against real, on-disk fixture
+ * (`@crabgic/git-engine`, spawns real `git`) against real, on-disk fixture
  * repos in each shape — never a hand-built `RepositoryValidationReport`.
  */
 import { randomUUID } from "node:crypto";
-import type { JournalStore } from "@eo/journal";
-import { validateRepository } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import { validateRepository } from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import {
   commitAll,

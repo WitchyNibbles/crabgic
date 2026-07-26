@@ -1,5 +1,9 @@
-import { ConnectorError } from "@eo/contracts";
-import type { GenericProviderClient, MutationApplyClient, ProviderRegistry } from "@eo/gateway";
+import { ConnectorError } from "@crabgic/contracts";
+import type {
+  GenericProviderClient,
+  MutationApplyClient,
+  ProviderRegistry,
+} from "@crabgic/gateway";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { createJiraDatacenterMutationApplyClient } from "../resource-client/datacenter/jira-mutation-apply-client-dc.js";
 import { createJiraProviderClient } from "../resource-client/jira-provider-client.js";
@@ -16,7 +20,7 @@ import { JiraDatacenterConnectionRegistry } from "./jira-datacenter-connection-r
  * (`JIRA_DATACENTER_PROVIDER_NAME`) — not the same key Cloud uses —
  * because:
  *
- *  1. `@eo/gateway`'s `ProviderRegistry` is a one-instance-per-key
+ *  1. `@crabgic/gateway`'s `ProviderRegistry` is a one-instance-per-key
  *     registry (`register()` throws `DuplicateProviderError` on a
  *     second registration under the same key) — a single shared key
  *     would require BOTH phases to coordinate registering into the exact
@@ -111,7 +115,7 @@ export interface RegisterJiraDatacenterProviderDeps {
 }
 
 /**
- * Registers `JIRA_DATACENTER_PROVIDER_KEY` into both of `@eo/gateway`'s
+ * Registers `JIRA_DATACENTER_PROVIDER_KEY` into both of `@crabgic/gateway`'s
  * provider registries, routed through a fresh `JiraDatacenterConnectionRegistry`
  * — the exact same registration shape `./register.ts`'s
  * `registerJiraCloudProvider` uses for Cloud, under the separate DC key

@@ -1,4 +1,4 @@
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import { isJiraAction } from "../resource-client/actions.js";
 
 /**

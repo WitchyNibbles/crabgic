@@ -84,7 +84,11 @@
  * distinct from a real structured one. Parking policy is 13's
  * (roadmap/06 §Out of scope) — this module only detects and surfaces.
  */
-import type { EngineEvent, EngineLimitSignalEvent, EnginePermissionDenial } from "@eo/engine-core";
+import type {
+  EngineEvent,
+  EngineLimitSignalEvent,
+  EnginePermissionDenial,
+} from "@crabgic/engine-core";
 import type {
   SDKAPIRetryMessage,
   SDKAssistantMessage,

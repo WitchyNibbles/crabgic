@@ -5,7 +5,7 @@
  * reimplementation." This check calls `JournalStore.verifyJournal()`
  * directly — it never re-implements chain hashing/verification itself.
  */
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 
 const CHECK_ID = "journal.chain";

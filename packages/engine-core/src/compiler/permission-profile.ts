@@ -1,5 +1,5 @@
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
-import type { AuthorizationEnvelope } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { PermissionProfileSchema, type PermissionProfile } from "./compiled-worker-profile.js";
 import { validateOwnedPath } from "./owned-path.js";
 import { WORKTREE_WRITE_PLACEHOLDER } from "./worktree-placeholders.js";

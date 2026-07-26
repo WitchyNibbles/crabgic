@@ -6,7 +6,7 @@
     "Bash(npm run build:*)",
     "Bash(git status:*)",
     "Bash(git diff:*)",
-    "mcp__eo_gateway__*"
+    "mcp__crabgic_gateway__*"
   ],
   "disallowedTools": [
     "Agent",
@@ -15,16 +15,16 @@
     "Bash(git push:*)",
     "Bash(curl:*)",
     "Bash(wget:*)",
-    "Read(~/.local/state/engineering-orchestrator/**)",
-    "Read(~/.cache/engineering-orchestrator/**)",
+    "Read(~/.local/state/crabgic/**)",
+    "Read(~/.cache/crabgic/**)",
     "Read(~/.ssh/**)",
     "Read(~/.aws/**)",
-    "Edit(~/.local/state/engineering-orchestrator/**)",
-    "Edit(~/.cache/engineering-orchestrator/**)",
+    "Edit(~/.local/state/crabgic/**)",
+    "Edit(~/.cache/crabgic/**)",
     "Edit(~/.ssh/**)",
     "Edit(~/.aws/**)",
-    "Write(~/.local/state/engineering-orchestrator/**)",
-    "Write(~/.cache/engineering-orchestrator/**)",
+    "Write(~/.local/state/crabgic/**)",
+    "Write(~/.cache/crabgic/**)",
     "Write(~/.ssh/**)",
     "Write(~/.aws/**)",
     "Edit(//<worktree>/.git/**)",
@@ -34,6 +34,6 @@
   "settingSources": [],
   "strictMcpConfig": true,
   "mcpServers": {
-    "eo_gateway": {}
+    "crabgic_gateway": {}
   }
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import type { JournalEntry, JournalEntryInput } from "@eo/journal";
+import type { JournalEntry, JournalEntryInput } from "@crabgic/journal";
 import { applyCasUpdate } from "./cas-ref-update.js";
 import { InvalidObjectIdError } from "./git-arg-guard.js";
 import type { IntegrationJournalAppender } from "./integration-journal.js";

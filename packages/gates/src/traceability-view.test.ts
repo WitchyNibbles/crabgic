@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildEvidenceRecord, buildRemoteResource, buildRequirement } from "@eo/testkit";
+import { buildEvidenceRecord, buildRemoteResource, buildRequirement } from "@crabgic/testkit";
 import { buildTraceabilityView } from "./traceability-view.js";
 import type { RemoteEvidencePointer } from "./remote-evidence-pointer.js";
 

@@ -3,10 +3,10 @@
  * must be BLOCKED." Two independent, REAL defense-in-depth layers, both
  * reused (never reimplemented):
  *
- *  1. `@eo/renderer`'s `lint()` secret-scan stage — the general
+ *  1. `@crabgic/renderer`'s `lint()` secret-scan stage — the general
  *     communication-artifact guard, exercised across several
  *     `ArtifactKind`s.
- *  2. `@eo/connectors-jira`'s Jira apply-boundary guard
+ *  2. `@crabgic/connectors-jira`'s Jira apply-boundary guard
  *     (`createJiraMutationApplyClient(...).buildRequest`, via
  *     `assertSafeAdfDocument`/`containsSecretShapedContent`) — a SECOND,
  *     independent check specifically at the point a Jira mutation would
@@ -18,7 +18,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ConnectorError, DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { ConnectorError, DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import {
   ARTIFACT_KINDS,
   lint,
@@ -27,9 +27,9 @@ import {
   renderReviewComment,
   toADF,
   type ArtifactKind,
-} from "@eo/renderer";
-import { buildExternalConnection } from "@eo/testkit";
-import { GatewayHttpClient, createFakeProviderTransport } from "@eo/gateway";
+} from "@crabgic/renderer";
+import { buildExternalConnection } from "@crabgic/testkit";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
 import {
   JiraTokenManager,
   JiraPlanPayloadRegistry,
@@ -37,7 +37,7 @@ import {
   buildJiraMutationPlan,
   createJiraMutationApplyClient,
   type JiraHttpContext,
-} from "@eo/connectors-jira";
+} from "@crabgic/connectors-jira";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -56,7 +56,7 @@ afterEach(async () => {
   await tj.cleanup();
 });
 
-describe("layer 1 — real @eo/renderer lint() secret-scan stage blocks synthetic secret sentinels", () => {
+describe("layer 1 — real @crabgic/renderer lint() secret-scan stage blocks synthetic secret sentinels", () => {
   const KINDS_TO_CHECK: readonly ArtifactKind[] = [
     "pr_body",
     "review_comment",
@@ -118,7 +118,7 @@ describe("layer 1 — real @eo/renderer lint() secret-scan stage blocks syntheti
   });
 });
 
-describe("layer 2 — real @eo/connectors-jira apply-boundary guard blocks the same sentinel PRE-NETWORK", () => {
+describe("layer 2 — real @crabgic/connectors-jira apply-boundary guard blocks the same sentinel PRE-NETWORK", () => {
   function buildHarness() {
     const connection = buildExternalConnection({
       provider: "jira-cloud",
@@ -222,8 +222,8 @@ describe("layer 2 — real @eo/connectors-jira apply-boundary guard blocks the s
     } catch (err) {
       kind = err instanceof ConnectorError ? err.kind : undefined;
     }
-    // `@eo/connectors-jira`'s own `JIRA_SECRET_PATTERNS` set is narrower
-    // than `@eo/renderer`'s (AWS-key/PEM-header/aws_secret_access_key= only
+    // `@crabgic/connectors-jira`'s own `JIRA_SECRET_PATTERNS` set is narrower
+    // than `@crabgic/renderer`'s (AWS-key/PEM-header/aws_secret_access_key= only
     // — see `packages/connectors-jira/src/security/secret-patterns.ts`'s
     // own doc comment), so this apply-boundary layer is checked here with
     // the AWS-style sentinel it DOES recognize (the Anthropic-style
@@ -234,7 +234,7 @@ describe("layer 2 — real @eo/connectors-jira apply-boundary guard blocks the s
     const record = await emitScenarioEvidence({
       journal: tj.store,
       command:
-        "connector-matrix: secret-leakage — real @eo/connectors-jira apply-boundary guard blocks synthetic sentinel pre-network",
+        "connector-matrix: secret-leakage — real @crabgic/connectors-jira apply-boundary guard blocks synthetic sentinel pre-network",
       exitStatus: 0,
       outcomeContent: JSON.stringify({ blockedKind: kind }),
     });

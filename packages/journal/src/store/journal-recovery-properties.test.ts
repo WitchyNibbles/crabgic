@@ -12,7 +12,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RUN_LIFECYCLE_TRANSITIONS, type RunLifecycleState } from "@eo/contracts";
+import { RUN_LIFECYCLE_TRANSITIONS, type RunLifecycleState } from "@crabgic/contracts";
 import fc from "fast-check";
 import { afterEach, describe, expect, it } from "vitest";
 import { FIRST_SEQ } from "../codec/journal-entry.js";

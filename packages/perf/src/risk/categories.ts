@@ -1,13 +1,13 @@
-import { PERFORMANCE_RISK_CATEGORIES, type PerformanceRiskCategory } from "@eo/contracts";
+import { PERFORMANCE_RISK_CATEGORIES, type PerformanceRiskCategory } from "@crabgic/contracts";
 
 /**
- * Re-exported for convenience (mirrors `@eo/gates/risk-tags.ts`'s own
+ * Re-exported for convenience (mirrors `@crabgic/gates/risk-tags.ts`'s own
  * re-export-for-convenience pattern for `IntentContractSectionKey`) so
- * callers of this module don't need a second `@eo/contracts` import just
+ * callers of this module don't need a second `@crabgic/contracts` import just
  * for the type/list — roadmap/15 §In scope, "Risk detection": "Categories:
  * CPU, allocation, copying, I/O, networking, database, serialization,
  * concurrency, caching, dataset-size, user-visible hot paths" (the 11
- * categories `@eo/contracts`' `PERFORMANCE_RISK_CATEGORIES` already names).
+ * categories `@crabgic/contracts`' `PERFORMANCE_RISK_CATEGORIES` already names).
  */
 export { PERFORMANCE_RISK_CATEGORIES };
 export type { PerformanceRiskCategory };

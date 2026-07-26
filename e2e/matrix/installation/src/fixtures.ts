@@ -1,6 +1,6 @@
 /**
  * Real, throwaway temp-repo fixture builders for the installation matrix —
- * every builder below does real filesystem/`git` work (via `@eo/git-
+ * every builder below does real filesystem/`git` work (via `@crabgic/git-
  * engine`'s `createGitPlumbing`, argv-array only, no shell — the same
  * plumbing wrapper 07/08 use, never a re-implemented spawn call), never a
  * mocked git. Each returns `{ dir, cleanup }`; callers MUST call `cleanup`
@@ -9,7 +9,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createGitPlumbing, type GitPlumbing } from "@eo/git-engine";
+import { createGitPlumbing, type GitPlumbing } from "@crabgic/git-engine";
 
 export interface TempFixture {
   readonly dir: string;

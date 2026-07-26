@@ -14,9 +14,9 @@
  * makes concurrent CLI invocations racing this spawn path safe).
  *
  * `spawnSupervisorDaemon` is the real spawner: detached
- * `engineering-orchestrator-supervisord` (resolved inside `@eo/supervisor`'s
+ * `crabgic-supervisord` (resolved inside `@crabgic/supervisor`'s
  * own package — never a PATH lookup), project hash handed over via
- * `EO_PROJECT_HASH` per the bin's contract, stdio ignored, unref'd so the
+ * `CRABGIC_PROJECT_HASH` per the bin's contract, stdio ignored, unref'd so the
  * CLI process can exit while the daemon lives on.
  */
 import { spawn } from "node:child_process";
@@ -83,9 +83,9 @@ export interface SpawnSupervisorDaemonOptions {
  * The real daemon spawner — a thin, real-process shim (like `../bin.ts`,
  * untested-by-design; the retry/spawn POLICY above carries the tested
  * branches). `../bin/supervisord.ts` is this same package's second bin entry
- * (it lives here, not in `@eo/supervisor`, because the daemon constructs the
- * real `ClaudeEngineAdapter` and `@eo/engine-claude` already depends on
- * `@eo/supervisor` — hosting it there would be a dependency cycle), so the
+ * (it lives here, not in `@crabgic/supervisor`, because the daemon constructs the
+ * real `ClaudeEngineAdapter` and `@crabgic/engine-claude` already depends on
+ * `@crabgic/supervisor` — hosting it there would be a dependency cycle), so the
  * daemon is resolved as a plain sibling of this file's own built location
  * rather than through any package resolution. It is then run under the
  * current `node` (`process.execPath`), detached with stdio ignored, and
@@ -99,12 +99,12 @@ export function spawnSupervisorDaemon(options: SpawnSupervisorDaemonOptions): vo
     stdio: "ignore",
     env: {
       ...process.env,
-      EO_PROJECT_HASH: options.projectHash,
+      CRABGIC_PROJECT_HASH: options.projectHash,
       // The daemon drives runs (`run.dispatch`), which means freezing the
       // repository and creating per-attempt worktrees — both need the
       // actual checkout path. A project HASH cannot locate a repository, so
       // the spawning CLI, which is already running inside it, passes it.
-      EO_PROJECT_DIR: options.projectDir ?? process.cwd(),
+      CRABGIC_PROJECT_DIR: options.projectDir ?? process.cwd(),
     },
   });
   child.unref();

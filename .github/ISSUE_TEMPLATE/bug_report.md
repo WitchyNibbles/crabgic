@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a defect in the Engineering Orchestrator
+about: Report a defect in the Crabgic
 title: "[bug]: "
 labels: bug
 assignees: ""
@@ -22,7 +22,7 @@ assignees: ""
 
 ## Environment
 
-- Engineering Orchestrator version:
+- Crabgic version:
 - Node.js version:
 - OS / architecture:
 - Claude Code / `claude` CLI version (if relevant):

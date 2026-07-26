@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { lint } from "../lint.js";
 import { renderJiraMilestoneComment } from "./jira-milestone-comment.js";
 import { renderGrafanaAnnotation } from "./grafana-annotation.js";

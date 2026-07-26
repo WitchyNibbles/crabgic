@@ -8,7 +8,12 @@
  * command mints, does that (roadmap/12: "`capability.approve` only
  * verifies... it is never model-satisfiable").
  */
-import { EXIT_OK, formatJson, type CommandResult, type TrustApproveCommand } from "@eo/contracts";
+import {
+  EXIT_OK,
+  formatJson,
+  type CommandResult,
+  type TrustApproveCommand,
+} from "@crabgic/contracts";
 import type { TrustCommandDependencies } from "./dependencies.js";
 
 export async function runTrustApproveCommand(

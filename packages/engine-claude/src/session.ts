@@ -7,18 +7,18 @@
  * 2), never lets the engine choose it. `projectDirectory` is always the
  * SAME value as `worktreePath` (07's layout: one worktree per worker, no
  * separate "project directory" concept above the worktree in this phase's
- * scope) — see `@eo/engine-core`'s `SessionRef` doc comment: "scoped to a
+ * scope) — see `@crabgic/engine-core`'s `SessionRef` doc comment: "scoped to a
  * project directory and its worktrees."
  */
 import { randomUUID } from "node:crypto";
 import { posix } from "node:path";
-import { IdSchema } from "@eo/contracts";
-import type { SessionRef } from "@eo/engine-core";
+import { IdSchema } from "@crabgic/contracts";
+import type { SessionRef } from "@crabgic/engine-core";
 import { mungeProjectDirectory } from "./hooks.js";
 
 /**
  * Thrown by `createSessionRef` when a caller-supplied `sessionId` is not a
- * valid UUID (per `@eo/contracts`' own `IdSchema` — reused here rather than
+ * valid UUID (per `@crabgic/contracts`' own `IdSchema` — reused here rather than
  * a bespoke regex, per this repo's "reuse, never redefine" convention).
  * Supervisor's `WorkerRecordSchema` types `sessionId` as a UUID
  * (`packages/supervisor`'s own registry schema); this validation keeps
@@ -52,7 +52,7 @@ export interface CreateSessionRefInput {
  * (this phase's scope: one worktree per worker, no separate project-
  * directory concept above it). Generates a fresh UUID via
  * `crypto.randomUUID()` when `sessionId` is omitted; either way, the
- * resulting id is validated against `@eo/contracts`' `IdSchema` before this
+ * resulting id is validated against `@crabgic/contracts`' `IdSchema` before this
  * function returns — a malformed caller-supplied id is a fail-fast, never a
  * silently-accepted one.
  *

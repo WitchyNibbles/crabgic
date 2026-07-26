@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION, ChangeSetSchema, type ChangeSet } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, ChangeSetSchema, type ChangeSet } from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `ChangeSet` fixture builder — roadmap/02 work item 10. */

@@ -1,4 +1,4 @@
-import type { EvidenceRecord } from "@eo/contracts";
+import type { EvidenceRecord } from "@crabgic/contracts";
 import { hasCriterionTagRule, type ReleaseRequirement } from "./releaseRequirements.js";
 
 /**
@@ -28,7 +28,7 @@ import { hasCriterionTagRule, type ReleaseRequirement } from "./releaseRequireme
  *    This is the cheap, actionable bucket: the emitters already accept an
  *    optional `requirementId`; no caller supplies one.
  *
- * `buildTraceabilityView` (`@eo/gates`) matches evidence to a requirement on
+ * `buildTraceabilityView` (`@crabgic/gates`) matches evidence to a requirement on
  * `EvidenceRecord.requirementId` ALONE, which is why an unstamped record —
  * however real, however correctly tagged — contributes nothing to
  * traceability.

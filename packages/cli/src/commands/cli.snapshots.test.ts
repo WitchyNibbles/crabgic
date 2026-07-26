@@ -3,7 +3,7 @@
  * help text and every `--json` output schema, including `gateway mcp`'s
  * tool-listing shape; `gateway mcp`'s stdio boot invocation is
  * byte-compared against the exact string 10's `.mcp.json` entry uses
- * (`engineering-orchestrator gateway mcp`)." Exit criterion `cli.snapshots.test`.
+ * (`crabgic gateway mcp`)." Exit criterion `cli.snapshots.test`.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -64,11 +64,11 @@ describe("gateway mcp — exact stdio boot invocation (byte-compared against 10'
     expect(parseCommand(["gateway", "mcp"])).toEqual({ command: "gateway-mcp" });
   });
 
-  it('BINARY_NAME is exactly "engineering-orchestrator"', () => {
-    expect(BINARY_NAME).toBe("engineering-orchestrator");
+  it('BINARY_NAME is exactly "crabgic"', () => {
+    expect(BINARY_NAME).toBe("crabgic");
   });
 
-  it('the exact invocation string "engineering-orchestrator gateway mcp" round-trips through this package\'s own argv split', () => {
+  it('the exact invocation string "crabgic gateway mcp" round-trips through this package\'s own argv split', () => {
     const invocation = `${BINARY_NAME} gateway mcp`;
     const [, ...argv] = invocation.split(" ");
     expect(parseCommand(argv)).toEqual({ command: "gateway-mcp" });
@@ -83,9 +83,9 @@ describe("gateway mcp — exact stdio boot invocation (byte-compared against 10'
   /**
    * The supervisor daemon's entry point moved here from `packages/supervisor`
    * (2026-07-25) because the real `ClaudeEngineAdapter` it must construct
-   * lives in `@eo/engine-claude`, which already depends on `@eo/supervisor` —
+   * lives in `@crabgic/engine-claude`, which already depends on `@crabgic/supervisor` —
    * composing them there would have been a cycle. It is a SECOND, separately
-   * named binary: `engineering-orchestrator` itself is untouched, so 10's
+   * named binary: `crabgic` itself is untouched, so 10's
    * `.mcp.json` command field still resolves exactly as asserted above.
    * Pinned here so a third bin entry cannot appear unnoticed.
    */

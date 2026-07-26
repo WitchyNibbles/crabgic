@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { createChangeSetsRegistry } from "@eo/supervisor";
-import { buildChangeSet } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createChangeSetsRegistry } from "@crabgic/supervisor";
+import { buildChangeSet } from "@crabgic/testkit";
 import { runProjectInspectTool } from "./project-inspect-handler.js";
 
 let journalDir: string;

@@ -8,7 +8,7 @@
  * `../router/operations.ts`) — writes are 11's, not exercised here beyond
  * the plain `Registry<ChangeSet>.put()` a future 11 integration calls.
  */
-import { type ChangeSet } from "@eo/contracts";
+import { type ChangeSet } from "@crabgic/contracts";
 import { createInMemoryRegistry, type Registry } from "./registry.js";
 
 export function createChangeSetsRegistry(): Registry<ChangeSet> {

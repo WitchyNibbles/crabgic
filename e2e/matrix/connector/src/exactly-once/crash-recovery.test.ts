@@ -1,12 +1,12 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "crash-before/after-remote-
- * commit." Drives the REAL `@eo/journal` `runKillHarness` (04's kill
+ * commit." Drives the REAL `@crabgic/journal` `runKillHarness` (04's kill
  * harness, reused directly — 07/05/13/23 all reuse it per its own doc
  * comment) against two fixtures in `./fixtures/`, each of which itself
  * drives the REAL `executeMutationPlan` (+ `reconcileAmbiguousPost` for the
  * non-idempotent one) — never a reimplementation of the pipeline itself.
  *
- * Two fixture shapes, mirroring `@eo/gateway`'s own kill-harness-fixtures
+ * Two fixture shapes, mirroring `@crabgic/gateway`'s own kill-harness-fixtures
  * precedent exactly (see each fixture's own doc comment for why):
  *  - `deterministic-update-and-crash.mjs` (PUT-style, check-before-apply):
  *    exercises BOTH "before-network-call" and "after-network-call" —
@@ -26,7 +26,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runKillHarness } from "@eo/journal";
+import { runKillHarness } from "@crabgic/journal";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
   createScenarioJournal,
@@ -64,10 +64,10 @@ function fixtureSpec(
     command: process.execPath,
     args: [fixture],
     env: {
-      EO_FIXTURE_JOURNAL_DIR: journalDir,
-      EO_FIXTURE_SIDE_EFFECT_FILE: sideEffectFile,
-      EO_FIXTURE_FAULT_POINT: faultPoint,
-      EO_FIXTURE_PLAN_JSON: planJson,
+      CRABGIC_FIXTURE_JOURNAL_DIR: journalDir,
+      CRABGIC_FIXTURE_SIDE_EFFECT_FILE: sideEffectFile,
+      CRABGIC_FIXTURE_FAULT_POINT: faultPoint,
+      CRABGIC_FIXTURE_PLAN_JSON: planJson,
       ...extraEnv,
     },
   };
@@ -185,7 +185,7 @@ describe("crash-after-remote-commit — non-idempotent create, kill after the ne
   });
 
   it("with reconciliation disabled, blocks (never guesses) and STILL never double-creates", async () => {
-    const noReconcile = { EO_FIXTURE_NO_RECONCILE: "1" };
+    const noReconcile = { CRABGIC_FIXTURE_NO_RECONCILE: "1" };
     const report = await runKillHarness(
       fixtureSpec(
         NONIDEMPOTENT_FIXTURE,

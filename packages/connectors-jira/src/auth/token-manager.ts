@@ -1,4 +1,4 @@
-import { ConnectorError } from "@eo/contracts";
+import { ConnectorError } from "@crabgic/contracts";
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 
 /**
@@ -11,7 +11,7 @@ import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
  *
  * Deliberately HTTP-transport-agnostic: `fetchToken` is caller-supplied
  * (production wiring, `./jira-oauth-http.ts`, builds it over
- * `@eo/gateway`'s `GatewayHttpClient` so the token-exchange POST itself
+ * `@crabgic/gateway`'s `GatewayHttpClient` so the token-exchange POST itself
  * gets the SSRF-guarded transport stack; tests inject a scripted stub).
  * The manager owns only the cache/refresh/clock-skew state machine.
  *

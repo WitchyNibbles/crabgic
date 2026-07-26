@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { createGateRegistry, type GateContext, type GateVerdict } from "@eo/gates";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createGateRegistry, type GateContext, type GateVerdict } from "@crabgic/gates";
 import { ProposalRegistry } from "../proposal-store/registry.js";
 import { promoteProposal } from "../promotion/promote.js";
 import {
@@ -18,9 +18,9 @@ import {
  * SAME gates (14) as any other change before publish (08) — integration
  * test on fake engine proves no bypass path exists."
  *
- * This test constructs the IDENTICAL `@eo/gates` `GateRegistry` a human
+ * This test constructs the IDENTICAL `@crabgic/gates` `GateRegistry` a human
  * change would fire against (the exact same import, the exact same
- * `createGateRegistry()`/`fireAll` call shape `@eo/gates`' own
+ * `createGateRegistry()`/`fireAll` call shape `@crabgic/gates`' own
  * `final-candidate.ts` uses), keys `GateContext.changeSetId` off the
  * `ChangeSet` a promoted learning proposal produced, and fires it —
  * proving there is no "skip gates for learning-originated changes" branch
@@ -61,7 +61,7 @@ function verdict(passed: boolean): GateVerdict {
   };
 }
 
-describe("@learning-redteam no-bypass — a promoted lesson's ChangeSet clears the SAME @eo/gates registry as any human change", () => {
+describe("@learning-redteam no-bypass — a promoted lesson's ChangeSet clears the SAME @crabgic/gates registry as any human change", () => {
   it("fires the identical GateRegistry.fireAll against the promoted proposal's ChangeSet, journaling real EvidenceRecords under its changeSetId — no special-cased path", async () => {
     const proposal = await registry.create({ content: "lesson" });
     await registry.transition(proposal.id, "reproducer");
@@ -94,7 +94,7 @@ describe("@learning-redteam no-bypass — a promoted lesson's ChangeSet clears t
     });
 
     // The SAME registry construction + fire call ANY human-authored
-    // ChangeSet uses (@eo/gates' own public API, never wrapped or
+    // ChangeSet uses (@crabgic/gates' own public API, never wrapped or
     // re-implemented by this package).
     const gateRegistry = createGateRegistry();
     gateRegistry.register("tdd", "fake-tdd-gate", async () => verdict(true));

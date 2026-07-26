@@ -1,4 +1,4 @@
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * Recursively searches `value` for a plain object literal with
@@ -38,7 +38,7 @@ export interface JournalAnchoredBudgetSnapshot {
  * Reads back the EARLIEST journal-committed snapshot of the provisional
  * `PerformanceContract` identified by `provisionalPerformanceContractId`,
  * from 04's own tamper-evident, append-only, hash-chained journal
- * (`@eo/journal`) — the genuine, in-boundary fix for the MAJOR gap an
+ * (`@crabgic/journal`) — the genuine, in-boundary fix for the MAJOR gap an
  * adversarial-validation round found in this module's earlier
  * self-checksum-only design (see `./hash-link.ts`'s own doc comment for
  * the full threat-model writeup).
@@ -53,7 +53,7 @@ export interface JournalAnchoredBudgetSnapshot {
  * That journal entry is written ONCE, at approval-flow time, into an
  * append-only, hash-chained store — a value committed there cannot be
  * silently rewritten without breaking the chain (already enforced
- * elsewhere in this repo, `@eo/journal`'s own `verifyJournal`/hash-chain
+ * elsewhere in this repo, `@crabgic/journal`'s own `verifyJournal`/hash-chain
  * codec). This function reads that entry back and treats it as the
  * TAMPER-EVIDENT ground truth, structurally searching every
  * `remote_operation_record`'s decoded payload for a nested object literal
@@ -63,8 +63,8 @@ export interface JournalAnchoredBudgetSnapshot {
  * ledger-governed interface this phase is entitled to hard-code), only
  * that 04's own `RemoteOperationRecordSchema` shape and journal ordering
  * (append order = chronological order, confirmed by
- * `@eo/journal`'s own `queryEntries` implementation) are stable, which
- * `@eo/journal` (04) already documents as its own public contract.
+ * `@crabgic/journal`'s own `queryEntries` implementation) are stable, which
+ * `@crabgic/journal` (04) already documents as its own public contract.
  *
  * "First writer wins" (journal order): if more than one
  * `remote_operation_record` entry happens to embed an object with this

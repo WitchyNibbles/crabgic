@@ -1,5 +1,5 @@
 /**
- * `@eo/journal` public barrel — roadmap/04-journal-idempotency-leases.md
+ * `@crabgic/journal` public barrel — roadmap/04-journal-idempotency-leases.md
  * §Interfaces produced: the full exported surface consumed directly by 05,
  * 07, 16 (and transitively by 06, 09, 13, 21, 22, 23). Re-exports, grouped
  * by concern:
@@ -99,7 +99,7 @@ export { GENESIS_PREV_HASH } from "./codec/hash-chain.js";
 export {
   JOURNAL_DIR_MODE,
   JOURNAL_FILE_MODE,
-  ENGINEERING_ORCHESTRATOR_DIR_NAME,
+  CRABGIC_DIR_NAME,
   JOURNAL_STATE_SUBDIR,
   LEASES_STATE_SUBDIR,
   JOURNAL_SEGMENTS_SUBDIR,

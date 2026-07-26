@@ -1,4 +1,4 @@
-import type { TaskPacket, Timestamp } from "@eo/contracts";
+import type { TaskPacket, Timestamp } from "@crabgic/contracts";
 import type { AdjudicationCallback } from "./adjudication.js";
 import type { CompiledWorkerProfile } from "../compiler/compiled-worker-profile.js";
 import type { EngineCapabilities } from "./engine-capabilities.js";
@@ -18,7 +18,7 @@ import type { WorkerHandle } from "./worker-handle.js";
  * lives in `packages/testkit` (a different worker's deliverable, roadmap/03
  * work item 5, out of scope here).
  *
- * `TaskPacket`/`Timestamp` are consumed from `@eo/contracts` (phase 02
+ * `TaskPacket`/`Timestamp` are consumed from `@crabgic/contracts` (phase 02
  * owns both schemas) — never redefined here.
  */
 export interface EngineAdapter {
@@ -46,7 +46,7 @@ export interface EngineAdapter {
 
   /**
    * Requests cancellation of an in-flight worker by `deadline` (an
-   * `@eo/contracts` `Timestamp` — ISO-8601 UTC instant) — the grace period
+   * `@crabgic/contracts` `Timestamp` — ISO-8601 UTC instant) — the grace period
    * an implementation has before it must force-terminate the underlying
    * process. Resolves once cancellation has been requested/completed;
    * never throws for an already-terminated handle.

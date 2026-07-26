@@ -16,7 +16,7 @@ import {
  * WHERE IT WRITES, and why it is not simply the in-repo path: the record
  * names the release-candidate object ID it was taken against, and committing
  * it advances `HEAD` past that very object ID — the catch-22
- * `docs/interface-ledger.md`'s Gap 16 exists to resolve. `$EO_PERF_CONTRACT_
+ * `docs/interface-ledger.md`'s Gap 16 exists to resolve. `$CRABGIC_PERF_CONTRACT_
  * RERUN_RECORD` therefore wins when set (CI points it at `$RUNNER_TEMP`),
  * and the in-repo path is the fallback for a record archived alongside the
  * release for post-hoc audit.
@@ -32,7 +32,7 @@ async function main(): Promise<number> {
   const repoRoot = resolve(join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."));
 
   const objectId =
-    process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"] ??
+    process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"] ??
     execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf-8" }).trim();
 
   const override = process.env[PERFORMANCE_RERUN_RECORD_ENV];

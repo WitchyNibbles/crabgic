@@ -5,7 +5,7 @@
  * file name).
  */
 import { describe, expect, it } from "vitest";
-import type { EngineResultEvent } from "@eo/engine-core";
+import type { EngineResultEvent } from "@crabgic/engine-core";
 import { validateWorkerResult } from "./result-validation.js";
 
 const VALID_WORKER_RESULT = {

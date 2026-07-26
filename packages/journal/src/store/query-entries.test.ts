@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@eo/contracts";
+import { JOURNAL_ENTRY_TYPES, type JournalEntryType } from "@crabgic/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import type { JournalEntryInput } from "../codec/journal-entry.js";
 import { appendEntry } from "./append-entry.js";

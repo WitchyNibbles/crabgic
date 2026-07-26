@@ -23,7 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * `*.live.test.ts` under `src/live/` is excluded here — those spend a real
  * Claude Code turn against the pinned engine and are picked up only by
- * `vitest.live.config.ts` (`EO_LIVE=1`), matching
+ * `vitest.live.config.ts` (`CRABGIC_LIVE=1`), matching
  * `packages/engine-claude/src/live/*.live.test.ts`'s own convention.
  */
 export default defineConfig({

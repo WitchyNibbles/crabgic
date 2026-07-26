@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   FakeEngineAdapter,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import { recoverRun, RunRecoveryDataError } from "./recovery.js";
 import { createRunsRegistry } from "./runs-registry.js";
 import { createWorkersRegistry } from "./workers-registry.js";
@@ -36,7 +36,7 @@ afterEach(async () => {
   await rm(journalDir, { recursive: true, force: true });
 });
 
-describe("recoverRun — wired against @eo/journal's real recover(runId)", () => {
+describe("recoverRun — wired against @crabgic/journal's real recover(runId)", () => {
   it("rebuilds RunsRegistry state from replayed run_transition entries", async () => {
     await store.appendEntry({
       type: "run_transition",
@@ -196,12 +196,12 @@ describe("recoverRun — wired against @eo/journal's real recover(runId)", () =>
       const adapter = new FakeEngineAdapter(script);
       const workers = createWorkersRegistry();
 
-      // The REAL production path: @eo/supervisor's own worker-lifecycle
+      // The REAL production path: @crabgic/supervisor's own worker-lifecycle
       // manager, exactly as the live supervisor daemon drives it — NOT a
       // hand-crafted `store.appendEntry` fixture (which is what every
       // other test in this file uses, and which is why they never caught
       // this defect: hand-set entries always set `runId` directly,
-      // bypassing @eo/journal's `recordAttempt` entirely).
+      // bypassing @crabgic/journal's `recordAttempt` entirely).
       const managed = await spawnManagedWorker({
         adapter,
         journal: store,

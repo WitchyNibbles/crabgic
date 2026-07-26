@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";

@@ -1,5 +1,5 @@
 /**
- * `ClaudeEngineAdapter` — the real `EngineAdapter` (`@eo/engine-core`)
+ * `ClaudeEngineAdapter` — the real `EngineAdapter` (`@crabgic/engine-core`)
  * implementation over `@anthropic-ai/claude-agent-sdk` (roadmap/06-claude-
  * engine-adapter.md work items 1/5/6; README design decisions 1, 2, 12).
  * Composes every sibling module in this package (`options-assembler.ts`,
@@ -51,14 +51,14 @@ import type {
   EngineEvent,
   SessionRef,
   WorkerHandle,
-} from "@eo/engine-core";
-import { assertNoFootguns, compileEnvelope, READ_ONLY_ENVELOPE } from "@eo/engine-core";
+} from "@crabgic/engine-core";
+import { assertNoFootguns, compileEnvelope, READ_ONLY_ENVELOPE } from "@crabgic/engine-core";
 import {
   CURRENT_SCHEMA_VERSION,
   TaskPacketSchema,
   type TaskPacket,
   type Timestamp,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { CanUseTool, Options, PermissionResult } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeEngineAdapterConfig, SdkQueryFunction } from "./adapter-config.js";
@@ -92,7 +92,7 @@ export class EngineVersionResolutionError extends Error {
 }
 
 /**
- * Thrown by `spawn` when `packet` fails `@eo/contracts`' `TaskPacketSchema`
+ * Thrown by `spawn` when `packet` fails `@crabgic/contracts`' `TaskPacketSchema`
  * (boundary-validation rule: every external input is validated at the
  * boundary it crosses, never trusted merely because it is typed).
  */
@@ -271,7 +271,7 @@ const FALLBACK_TASK_PACKET: TaskPacket = TaskPacketSchema.parse({
 
 /**
  * `compileEnvelope(READ_ONLY_ENVELOPE)` — already footgun-clean and
- * exported by `@eo/engine-core`'s own golden fixtures; reused here rather
+ * exported by `@crabgic/engine-core`'s own golden fixtures; reused here rather
  * than hand-authoring a second minimal-profile literal.
  */
 const FALLBACK_PROFILE: CompiledWorkerProfile = compileEnvelope(READ_ONLY_ENVELOPE);

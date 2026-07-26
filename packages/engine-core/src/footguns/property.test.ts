@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as fc from "fast-check";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { compileEnvelope } from "../compiler/compile-envelope.js";
 import { WORKTREE_WRITE_PLACEHOLDER } from "../compiler/worktree-placeholders.js";
 import {
@@ -57,7 +57,7 @@ describe("compileEnvelope — property: no allow outside the envelope (≥10k ca
   // prefix) — the same convention the compiled `//<worktree>/…` allow
   // rules resolve against once the shared placeholder is stripped (see
   // `./confinement-check.js`'s doc comment), and the same convention the
-  // envelope-conformance fixtures (`@eo/testkit`) already use for `file_path`.
+  // envelope-conformance fixtures (`@crabgic/testkit`) already use for `file_path`.
   it("a target path outside every declared owned path is never allowed for Edit", () => {
     fc.assert(
       fc.property(envelopeArbitrary(), (envelope) => {

@@ -107,7 +107,7 @@ describe("the gateway MCP server — stdio boot to a stub MCP client", () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir },
     });
     const client = new Client({ name: "stub-mcp-client", version: "0.0.0" });
 
@@ -124,7 +124,7 @@ describe("the gateway MCP server — stdio boot to a stub MCP client", () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir, EO_FIXTURE_REGISTER_EXTRA_TOOL: "1" },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir, CRABGIC_FIXTURE_REGISTER_EXTRA_TOOL: "1" },
     });
     const client = new Client({ name: "stub-mcp-client", version: "0.0.0" });
 
@@ -143,7 +143,7 @@ describe("the gateway MCP server — stdio boot to a stub MCP client", () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir },
     });
     const client = new Client({ name: "stub-mcp-client", version: "0.0.0" });
 
@@ -170,7 +170,7 @@ describe("the gateway MCP server — stdio boot to a stub MCP client", () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [FIXTURE],
-      env: { EO_FIXTURE_JOURNAL_DIR: journalDir },
+      env: { CRABGIC_FIXTURE_JOURNAL_DIR: journalDir },
     });
     const client = new Client({ name: "stub-mcp-client", version: "0.0.0" });
 

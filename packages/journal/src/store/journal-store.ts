@@ -47,7 +47,7 @@ import {
 } from "./store-config.js";
 import { verifyJournal, type JournalVerificationReport } from "./verify-journal.js";
 import type { JournalEntry, JournalEntryInput } from "../codec/journal-entry.js";
-import type { RunSnapshot } from "@eo/contracts";
+import type { RunSnapshot } from "@crabgic/contracts";
 
 export interface JournalStore {
   appendEntry(input: JournalEntryInput): Promise<JournalEntry>;

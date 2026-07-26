@@ -1,21 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
-import type { WorkUnitAttemptStatus } from "@eo/contracts";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
+import type { WorkUnitAttemptStatus } from "@crabgic/contracts";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
-} from "@eo/testkit";
-import type { CollisionVerdict } from "@eo/git-engine";
+} from "@crabgic/testkit";
+import type { CollisionVerdict } from "@crabgic/git-engine";
 import {
   DEFAULT_CONCURRENCY_CAP,
   computeReadyUnits,
   dispatchAttempt,
   selectDispatchSet,
-} from "@eo/scheduler";
+} from "@crabgic/scheduler";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
@@ -26,7 +26,7 @@ import { createTestJournal, type TestJournal } from "../src/testJournal.js";
  * COLLIDE (07's overlap analysis — a shared path) are never selected into
  * the same dispatch round together, and dependency edges (`dependsOn`)
  * force a downstream unit to stay non-ready until its dependency succeeds —
- * both driving the REAL `@eo/scheduler` readiness/fanout logic, not a stub.
+ * both driving the REAL `@crabgic/scheduler` readiness/fanout logic, not a stub.
  */
 describe("Orchestration matrix: dependent serialization (overlap + dependsOn both force order)", () => {
   let journal: TestJournal;

@@ -11,11 +11,11 @@ import { WORKTREE_WRITE_PLACEHOLDER } from "../compiler/worktree-placeholders.js
  *
  * This is deliberately NOT the compiler's own rule-emission code (that
  * would just be the same tautology one call deeper), and deliberately NOT
- * `@eo/testkit`'s fake-engine path matcher — this package must not depend
- * on `@eo/testkit` (see `../compiler/envelope-fixture.ts`'s own
- * seam-decision doc comment: a `@eo/testkit -> @eo/engine-core` edge
+ * `@crabgic/testkit`'s fake-engine path matcher — this package must not depend
+ * on `@crabgic/testkit` (see `../compiler/envelope-fixture.ts`'s own
+ * seam-decision doc comment: a `@crabgic/testkit -> @crabgic/engine-core` edge
  * already exists, so the reverse would be circular). It mirrors the SAME
- * `//`/`~/`/bare anchor semantics `@eo/testkit`'s `path-matching.ts`
+ * `//`/`~/`/bare anchor semantics `@crabgic/testkit`'s `path-matching.ts`
  * implements (including the shared `WORKTREE_WRITE_PLACEHOLDER`
  * resolution), kept honest by the fact that both this module and the
  * conformance-fixture set are exercised against the same compiled output.

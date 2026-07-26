@@ -1,4 +1,4 @@
-import type { StackEvidence, StackEvidenceCategory } from "@eo/contracts";
+import type { StackEvidence, StackEvidenceCategory } from "@crabgic/contracts";
 import type { PerformanceRiskCategory } from "./categories.js";
 
 /**

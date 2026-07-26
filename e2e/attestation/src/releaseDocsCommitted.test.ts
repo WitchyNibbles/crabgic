@@ -36,7 +36,8 @@ describe("extractCitedPaths", () => {
   it("ignores backticked tokens that are not repo-rooted paths", () => {
     // Versions, scoped package names, enum members and env-var paths are all
     // backticked in these docs but are not files this check can resolve.
-    const content = "`0.3.218` `@eo/journal` `parked:rate_limit` `$XDG_STATE_HOME/eo` `README.md`";
+    const content =
+      "`0.3.218` `@crabgic/journal` `parked:rate_limit` `$XDG_STATE_HOME/eo` `README.md`";
     expect(extractCitedPaths(content)).toEqual([]);
   });
 

@@ -1,6 +1,6 @@
 /**
  * roadmap/23-release-hardening.md work item 6: "custom CAs." Drives the
- * REAL `@eo/gateway` `resolveCustomCaPem`/`buildHttpClientForConnection`
+ * REAL `@crabgic/gateway` `resolveCustomCaPem`/`buildHttpClientForConnection`
  * composition (never a reimplementation) against a synthetic, non-secret
  * PEM-shaped fixture.
  */
@@ -8,9 +8,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildExternalConnection } from "@eo/testkit";
-import { buildHttpClientForConnection, resolveCustomCaPem } from "@eo/gateway";
-import type { HttpTransportResponse } from "@eo/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
+import { buildHttpClientForConnection, resolveCustomCaPem } from "@crabgic/gateway";
+import type { HttpTransportResponse } from "@crabgic/gateway";
 import { emitScenarioEvidence, createScenarioJournal } from "../support/evidence.js";
 import type { ScenarioJournal } from "../support/evidence.js";
 

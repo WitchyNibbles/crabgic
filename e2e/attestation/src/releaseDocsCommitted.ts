@@ -48,7 +48,7 @@ const PLACEHOLDER_MARKER = /\b(TODO|TBD|FIXME|XXX)\b/;
  * Repo-root prefixes a backticked token must start with to be judged as a
  * citation. This narrowing is what keeps the check precise: a doc mentions
  * plenty of backticked things that are not repo paths (`0.3.218`,
- * `@eo/journal`, `parked:rate_limit`, or an `src/index.ts` written relative
+ * `@crabgic/journal`, `parked:rate_limit`, or an `src/index.ts` written relative
  * to some other package). Only a token that claims a location relative to
  * the repository root can be checked for existence, so only those are.
  */

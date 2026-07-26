@@ -1,4 +1,4 @@
-# @eo/engine-claude
+# @crabgic/engine-claude
 
 Claude Code worker runtime over the Agent SDK — the first real implementation of 03's
 `EngineAdapter` (`roadmap/06-claude-engine-adapter.md`). Every engine fact below cites
@@ -30,9 +30,9 @@ the live canary asserts that exact version before any live probe runs.
    `CLAUDE_CONFIG_DIR`, plus auth), per baseline §4.3 — SDK `Options.env` replaces the
    subprocess environment entirely; nothing is inherited.
 5. **Gateway wiring (Gaps 2 + 11).** `mcpServers` is keyed by `GATEWAY_MCP_SERVER_NAME`
-   (imported from `@eo/contracts`, zero hand-typed `"eo_gateway"` literals —
+   (imported from `@crabgic/contracts`, zero hand-typed `"crabgic_gateway"` literals —
    `gateway-name-reference.test`), configured as the **external**
-   `engineering-orchestrator gateway mcp` stdio process. Never an in-process import of
+   `crabgic gateway mcp` stdio process. Never an in-process import of
    `packages/gateway` (the adaptation §5.3 code sample is illustrative there, per
    roadmap/06 §Risks).
 6. **Placeholder substitution.** Engine-core's `<worktree>`/`<worker-tmp>` placeholders in
@@ -42,7 +42,7 @@ the live canary asserts that exact version before any live probe runs.
    probe) — the `@live` suite carries the probe this package owes (03 carry-forward).
 7. **Structured output (baseline §5).** `Options.outputFormat: { type: "json_schema" }`
    with the packet's `resultSchema`; results validate against `WorkerResultSchema`
-   (@eo/contracts). The observed violation shape — `subtype: "success"` with
+   (@crabgic/contracts). The observed violation shape — `subtype: "success"` with
    `structured_output` **absent** — is a first-class typed schema-violation failure, not
    a silent pass; `error_max_structured_output_retries` is handled as the SDK-typed
    (unobserved) variant.
@@ -56,11 +56,11 @@ the live canary asserts that exact version before any live probe runs.
    source).
 10. **zod.** This package declares `zod@4.4.3` **solely** to satisfy the SDK's `zod@^4`
     peer contract (nested install; the repo-wide schema layer stays zod 3.25.76 via
-    `@eo/contracts`). Do not author zod schemas here and never pass zod objects across
-    the SDK boundary — boundary validation uses `@eo/contracts` schemas.
+    `@crabgic/contracts`). Do not author zod schemas here and never pass zod objects across
+    the SDK boundary — boundary validation uses `@crabgic/contracts` schemas.
 11. **`@live` convention (Gap 15).** Live tests live in `src/live/*.live.test.ts`, are
     excluded from the default gate and its coverage denominator, and run only via
-    `npm run test:live` (`vitest.live.config.ts`) — sequential, `EO_LIVE=1` required,
+    `npm run test:live` (`vitest.live.config.ts`) — sequential, `CRABGIC_LIVE=1` required,
     rate-limit-guarded (abort the batch on `utilization` ≥ 0.85 or any non-`allowed`
     status at canary time), haiku-priced short prompts. Each green run journals
     `{engineVersion, runId, suiteDigest}` for 14's `engine-conformance` gate.

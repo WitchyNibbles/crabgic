@@ -16,9 +16,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * runs standalone via `npx vitest run e2e/matrix/git` (or `--config
  * e2e/matrix/git/vitest.config.ts`).
  *
- * Every scenario here drives REAL `@eo/git-engine` (07's plumbing/
+ * Every scenario here drives REAL `@crabgic/git-engine` (07's plumbing/
  * invariance-harness/repo-validation/overlap-analyzer, 08's preflight/
- * branch-namer/commit-renderer/publish-local) and REAL `@eo/renderer`
+ * branch-namer/commit-renderer/publish-local) and REAL `@crabgic/renderer`
  * (`lint`/`renderWithRegeneration`) against REAL throwaway temp git repos —
  * no mocked git, no fake renderer. No network, no live engine, so this gate
  * is fast and safe to run anywhere, including CI.

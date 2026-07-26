@@ -12,7 +12,7 @@
  * response shape and marker-reconciliation mechanism.
  */
 
-import type { RemoteMutationPlan } from "@eo/contracts";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
 import type {
   MutationApplyResult,
   MutationHttpRequestSpec,

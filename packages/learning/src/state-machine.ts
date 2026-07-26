@@ -4,7 +4,7 @@ import {
   IllegalTransitionError,
   type LearningProposalState,
   type TransitionTable,
-} from "@eo/contracts";
+} from "@crabgic/contracts";
 
 /**
  * `LearningProposalState` transition table — roadmap/22-learning-system.md
@@ -12,11 +12,11 @@ import {
  * shadow_run → independent_review → promoted|rejected`, with
  * `rolled_back`/`expired` as post-promotion terminals. This module owns the
  * transition-table tests/guards/enforcement for the `LearningProposalState`
- * union `@eo/contracts` (02) defines — exactly the split the roadmap
+ * union `@crabgic/contracts` (02) defines — exactly the split the roadmap
  * documents for `WorkUnitAttemptStatus` (13 owns that union's transition
  * behavior despite 02 hosting the enum).
  *
- * Reuses `@eo/contracts`'s own `createTransitionFn`/`IllegalTransitionError`
+ * Reuses `@crabgic/contracts`'s own `createTransitionFn`/`IllegalTransitionError`
  * (the identical shared primitive `RunLifecycleState`/`WorkUnitAttemptStatus`
  * already build on) rather than inventing a second transition-table engine.
  *

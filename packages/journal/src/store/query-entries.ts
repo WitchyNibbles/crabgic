@@ -16,7 +16,7 @@
 
 import { tryDecodeLine } from "../codec/ndjson-codec.js";
 import type { JournalEntry } from "../codec/journal-entry.js";
-import type { JournalEntryType } from "@eo/contracts";
+import type { JournalEntryType } from "@crabgic/contracts";
 import { listSegmentIndexes, segmentPath } from "./segment-layout.js";
 import type { JournalStoreConfig } from "./store-config.js";
 

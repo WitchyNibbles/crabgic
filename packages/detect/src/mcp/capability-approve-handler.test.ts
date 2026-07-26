@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalTokenMinter } from "@eo/contracts";
+import { ApprovalTokenMinter } from "@crabgic/contracts";
 import { freshTmpDir, removeDirTree } from "../test-support/fixture-repo.js";
 import { createCapabilityStore } from "../capability-store/store.js";
 import { runQuarantinePipeline } from "../quarantine/pipeline.js";

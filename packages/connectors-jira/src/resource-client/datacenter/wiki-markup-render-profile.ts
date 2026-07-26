@@ -1,15 +1,15 @@
-import type { AdfDocument, AdfNode } from "@eo/renderer";
+import type { AdfDocument, AdfNode } from "@crabgic/renderer";
 
 /**
  * `wikiMarkupRenderProfile` — roadmap/19-jira-datacenter-adapter.md
  * §Interfaces produced: "`RenderedArtifact` → Jira wiki-markup serializer,
  * plus its golden corpus." Data Center has no ADF; 17's own `toWikiMarkup`
- * (`@eo/renderer`) already converts the ORIGINAL markdown string directly
+ * (`@crabgic/renderer`) already converts the ORIGINAL markdown string directly
  * — but 18's shared plan builders (`../issue-plans.ts`,
  * `../comment-worklog-attachment-plans.ts`, REUSED VERBATIM by this
  * phase's DC resource client so the intake/milestone-sync engine stays
  * "reused unmodified against either client") only ever hand this
- * connector an already-built `AdfDocument` (via `@eo/renderer`'s `toADF`)
+ * connector an already-built `AdfDocument` (via `@crabgic/renderer`'s `toADF`)
  * — the original markdown is gone by the time a DC apply call needs wiki
  * markup. `adfDocumentToWikiMarkup` is this phase's own serializer,
  * walking that SAME `AdfDocument` tree directly rather than re-deriving
@@ -20,7 +20,7 @@ import type { AdfDocument, AdfNode } from "@eo/renderer";
  * respectively).
  *
  * Node/mark coverage is intentionally scoped to EXACTLY
- * `ADF_ALLOWED_NODE_TYPES`/`ADF_ALLOWED_MARK_TYPES` (`@eo/renderer`'s own
+ * `ADF_ALLOWED_NODE_TYPES`/`ADF_ALLOWED_MARK_TYPES` (`@crabgic/renderer`'s own
  * safe-subset whitelist) — this serializer is only ever invoked on an
  * `AdfDocument` that has ALREADY passed `../adf-guard.ts`'s
  * `assertSafeAdfDocument` (18's plan builders call that guard before this
@@ -40,7 +40,7 @@ import type { AdfDocument, AdfNode } from "@eo/renderer";
  * wiki syntax — e.g. {code}/{noformat}/macro injection"; where the
  * `{html}` macro is enabled on the target instance, this is stored XSS).
  * Escaping leaf TEXT content is therefore this render profile's own
- * responsibility, never `@eo/renderer`'s (17 is Jira-deployment-agnostic
+ * responsibility, never `@crabgic/renderer`'s (17 is Jira-deployment-agnostic
  * by design and has no reason to know Jira wiki syntax at all).
  *
  * `escapeWikiMetacharacters` (below) backslash-escapes every occurrence
@@ -250,7 +250,7 @@ function renderBlockNode(node: AdfNode): string {
  * Converts a (already safe-subset-validated) `AdfDocument` to Jira wiki
  * markup — `h1.`-`h3.` headings, `*bold*`, `_italic_`, `{{code}}`,
  * `[text|url]` links, `*`/`#` list bullets, `{code}...{code}` fenced
- * blocks, and `bq. ` blockquotes — matching `@eo/renderer`'s
+ * blocks, and `bq. ` blockquotes — matching `@crabgic/renderer`'s
  * `toWikiMarkup` syntax choices exactly.
  */
 export function adfDocumentToWikiMarkup(doc: AdfDocument): string {

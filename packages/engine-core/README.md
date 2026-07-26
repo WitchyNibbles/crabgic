@@ -1,4 +1,4 @@
-# `@eo/engine-core`
+# `@crabgic/engine-core`
 
 Phase 03 deliverable — roadmap/03-envelope-compiler-engine-adapter.md, work items 1–4. This
 package owns two things:
@@ -27,9 +27,9 @@ per `roadmap/README.md`'s engine-fact-drift ground rule.
 
 ### Journal-entry lifecycle mapping
 
-This phase does not write to the journal — phase 04 (`@eo/journal`) owns the journal
+This phase does not write to the journal — phase 04 (`@crabgic/journal`) owns the journal
 mechanics, and phases 05/06 own actually calling it. This package only names which
-`JournalEntryType` member (interface-ledger Gap 5, owned by `@eo/contracts`) is due at each
+`JournalEntryType` member (interface-ledger Gap 5, owned by `@crabgic/contracts`) is due at each
 `EngineAdapter` lifecycle point, so a future caller knows what to write and when:
 
 | Lifecycle point | `JournalEntryType` member | When |
@@ -44,27 +44,27 @@ No other `JournalEntryType` member is this package's concern.
 `compileEnvelope`'s mandatory sandbox `denyRead`/permission `Read(...)` denies for the
 control repo and journal (adaptation §4.2, §5.1: "denyRead control repo, journal, `~/.ssh`,
 `~/.aws`") need *some* concrete path. Phase 03 depends only on phase 00 + phase 02
-(`roadmap/README.md`'s dependency graph) and must **not** import `@eo/journal` (phase 04) —
+(`roadmap/README.md`'s dependency graph) and must **not** import `@crabgic/journal` (phase 04) —
 interface-ledger Gap 14 assigns phase 04 ownership of the canonical
 `$XDG_STATE_HOME`/`$XDG_CACHE_HOME` runtime-root constants, nested further under a
-per-project hash (e.g. `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/`).
+per-project hash (e.g. `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/`).
 
 This package's own literals (`src/compiler/xdg-default-paths.ts`) are therefore **XDG-DEFAULT
 fallbacks**, deliberately simpler than Gap 14's eventual pinned convention — `~`-anchored, no
 `$XDG_STATE_HOME`/`$XDG_CACHE_HOME` environment-variable resolution, no per-project-hash
 nesting:
 
-- `~/.local/state/engineering-orchestrator/**` — state root, assumed to hold journal +
+- `~/.local/state/crabgic/**` — state root, assumed to hold journal +
   control data (mirrors Gap 14's state-root half).
-- `~/.cache/engineering-orchestrator/**` — cache root, assumed to hold the control clone
+- `~/.cache/crabgic/**` — cache root, assumed to hold the control clone
   (mirrors Gap 14's cache-root half).
 
-**Obligation on 05/06:** once both `@eo/engine-core` and `@eo/journal` are linked by a
+**Obligation on 05/06:** once both `@crabgic/engine-core` and `@crabgic/journal` are linked by a
 downstream phase, 05/06 must add a consistency test proving these defaults never silently
-diverge from `@eo/journal`'s real runtime-resolved roots (e.g. a non-default
+diverge from `@crabgic/journal`'s real runtime-resolved roots (e.g. a non-default
 `$XDG_STATE_HOME` must not open a gap between what this compiler denies and where the
 journal actually lives). This package cannot add that test itself without creating the
-forbidden `@eo/engine-core -> @eo/journal` dependency edge.
+forbidden `@crabgic/engine-core -> @crabgic/journal` dependency edge.
 
 ### Placeholder-token convention: `sandbox.filesystem.allowWrite`
 
@@ -158,8 +158,8 @@ was **tautological** (it re-derived the exact string the compiler itself emitted
 asserted equality against it — provably unable to detect any confinement escape). It is now
 a genuinely SEMANTIC property: `src/footguns/confinement-check.ts` implements a minimal,
 INDEPENDENT anchored-glob matcher (deliberately not the compiler's own emission code, and
-deliberately not `@eo/testkit`'s fake-engine matcher — this package must not depend on
-`@eo/testkit`, see `compiler/envelope-fixture.ts`'s own seam-decision doc comment) that
+deliberately not `@crabgic/testkit`'s fake-engine matcher — this package must not depend on
+`@crabgic/testkit`, see `compiler/envelope-fixture.ts`'s own seam-decision doc comment) that
 evaluates the compiled profile against concrete target paths OUTSIDE every declared owned
 path (`../etc/passwd`, `/etc/passwd`, `~/.ssh/id_rsa`, `.git/config`, an unrelated sentinel
 path) and asserts every one is denied, plus a positive counterpart proving declared-owned
@@ -168,7 +168,7 @@ targets are allowed. `footguns/envelope-arbitrary.ts` now generates `ownedPaths`
 suite, which must never throw unexpectedly) and malformed (used by two new dedicated
 "compileEnvelope always rejects this" properties, ≥10k/≥2k cases respectively).
 
-`@eo/testkit`'s fake engine (`packages/testkit/src/fake-engine/path-matching.ts`) was
+`@crabgic/testkit`'s fake engine (`packages/testkit/src/fake-engine/path-matching.ts`) was
 adjusted to match: its `//` anchor now resolves the SAME `WORKTREE_WRITE_PLACEHOLDER` token
 this package emits (stripping it specifically, not any arbitrary base) rather than treating
 `//` itself as a synonym for "worktree-relative" — the prior doc comment's "`//` =
@@ -259,7 +259,7 @@ re-verified byte-stable across two consecutive generations before being committe
 ## `GATEWAY_MCP_SERVER_NAME` (interface-ledger Gap 11)
 
 Every reference to the gateway's MCP server name in this package derives the literal from
-`GATEWAY_MCP_SERVER_NAME` (imported from `@eo/contracts`) — never hand-typed. This is
+`GATEWAY_MCP_SERVER_NAME` (imported from `@crabgic/contracts`) — never hand-typed. This is
 enforced repo-wide by `packages/contracts/src/gateway/server-name.test.ts`'s sole-definition-
 site scanner, which this package's `src/` tree (including comments and test fixtures) must
 stay clean against.

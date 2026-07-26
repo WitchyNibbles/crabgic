@@ -1,4 +1,4 @@
-import type { EngineLimitSignalEvent } from "@eo/engine-core";
+import type { EngineLimitSignalEvent } from "@crabgic/engine-core";
 
 /**
  * Verbatim recorded `rate_limit_info` payloads — docs/engine-baseline.md

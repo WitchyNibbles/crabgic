@@ -1,22 +1,22 @@
 import type { McpServerConfig, McpStdioServerConfig } from "@anthropic-ai/claude-agent-sdk";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 
 /**
  * `gateway-server-config` — roadmap/06-claude-engine-adapter.md §In scope,
  * "Gateway wiring (Gap 11, Gap 2)": the worker connects to the gateway MCP
- * server as an external stdio process, `engineering-orchestrator gateway
+ * server as an external stdio process, `crabgic gateway
  * mcp` — the identical shape 10's `.mcp.json` entry uses (interface-ledger
  * Gap 2's exact argv) — never an in-process import of `packages/gateway`
  * (README design decision 5; roadmap/06 §Risks).
  *
- * Keyed by `GATEWAY_MCP_SERVER_NAME` (imported from `@eo/contracts`) —
+ * Keyed by `GATEWAY_MCP_SERVER_NAME` (imported from `@crabgic/contracts`) —
  * this package's own exit criterion (`gateway-name-reference.test.ts`)
  * proves zero hand-typed literals of that constant's value exist anywhere
  * else under `packages/engine-claude/src`.
  */
 const DEFAULT_GATEWAY_SERVER_CONFIG: McpStdioServerConfig = {
   type: "stdio",
-  command: "engineering-orchestrator",
+  command: "crabgic",
   args: ["gateway", "mcp"],
 };
 

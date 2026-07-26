@@ -1,7 +1,7 @@
 /**
  * XDG dir/file permission check — roadmap/09-cli-and-doctor.md §Doctor
- * checks: "XDG dirs 0700/0600." Targets the exact paths 04 (`@eo/journal`)
- * and 05 (`@eo/supervisor`) pin — never a re-derivation of the XDG layout
+ * checks: "XDG dirs 0700/0600." Targets the exact paths 04 (`@crabgic/journal`)
+ * and 05 (`@crabgic/supervisor`) pin — never a re-derivation of the XDG layout
  * (interface-ledger Gap 14).
  */
 import { stat } from "node:fs/promises";

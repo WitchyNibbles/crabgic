@@ -1,4 +1,4 @@
-import { ConnectorError, type RemoteMutationPlan } from "@eo/contracts";
+import { ConnectorError, type RemoteMutationPlan } from "@crabgic/contracts";
 import {
   assertCustomFieldWritesAreDiscovered,
   type FieldMetadataIndex,
@@ -110,7 +110,7 @@ export function planIssueUpdate(
  * byte-identical to before this fix (every existing caller/test is
  * unaffected). When supplied, it is called with `issueKey` and expected to
  * return the `RemoteVerificationPointer` 21's own evidence-pointer lookup
- * (`@eo/gates`'s `findRemoteResourcePointersForRequirement`) already
+ * (`@crabgic/gates`'s `findRemoteResourcePointersForRequirement`) already
  * resolved for the requirement/resource this transition targets — by
  * convention, its own `remoteResourceId` field is expected to equal
  * `issueKey` for this specific call (the caller has already selected the

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * "`npm view engineering-orchestrator` re-check passes" — the last clause
+ * "`npm view crabgic` re-check passes" — the last clause
  * of roadmap/23-release-hardening.md's reproducible-build exit criterion
  * (`:136`). roadmap/01 (`:47`) defines the mechanism precisely: phase 01
  * RECORDS a timestamped name-availability verdict in
@@ -79,7 +79,7 @@ export interface NpmNameRecheckResult {
 
 export interface CheckNpmNameRecheckOptions {
   readonly repoRoot: string;
-  /** The exact package name being published, e.g. `"engineering-orchestrator"`. */
+  /** The exact package name being published, e.g. `"crabgic"`. */
   readonly packageName: string;
   /** Injectable for deterministic tests; defaults to the real current time. */
   readonly now?: () => Date;

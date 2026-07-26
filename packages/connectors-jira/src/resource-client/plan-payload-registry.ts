@@ -23,7 +23,7 @@ export class JiraPlanPayloadRegistry {
     this.#entries.set(planId, payload);
   }
 
-  /** Consumes (removes) and returns the stored payload for `planId`. `buildRequest` is called at most once per plan in the mutation pipeline's own lifecycle (a `pending`-recovery retry never re-invokes `buildRequest` — see `@eo/gateway`'s `mutation-pipeline.ts`), so consuming here never starves a legitimate second read. */
+  /** Consumes (removes) and returns the stored payload for `planId`. `buildRequest` is called at most once per plan in the mutation pipeline's own lifecycle (a `pending`-recovery retry never re-invokes `buildRequest` — see `@crabgic/gateway`'s `mutation-pipeline.ts`), so consuming here never starves a legitimate second read. */
   take(planId: string): unknown {
     const payload = this.#entries.get(planId);
     this.#entries.delete(planId);

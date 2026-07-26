@@ -1,16 +1,16 @@
 // Kill-harness fixture (roadmap/05-supervisor-daemon.md §Test plan,
 // Integration: "kill -9 mid-operation → restart → registries recovered
 // via 04's recover(runId) with no duplicated side effect (reuse 04's
-// runKillHarness)"). Plain .mjs, matching @eo/journal's own
+// runKillHarness)"). Plain .mjs, matching @crabgic/journal's own
 // kill-harness-fixtures/*.mjs convention (a raw spawnable Node script, no
 // TypeScript compilation needed at kill-harness spawn time) — imports
-// @eo/journal's already-built dist output directly.
-import { createJournalStore } from "@eo/journal";
+// @crabgic/journal's already-built dist output directly.
+import { createJournalStore } from "@crabgic/journal";
 
-const journalDir = process.env.EO_KILL_HARNESS_JOURNAL_DIR;
-const runId = process.env.EO_KILL_HARNESS_RUN_ID;
-const changeSetId = process.env.EO_KILL_HARNESS_CHANGE_SET_ID;
-const faultPoint = process.env.EO_KILL_HARNESS_FAULT_POINT;
+const journalDir = process.env.CRABGIC_KILL_HARNESS_JOURNAL_DIR;
+const runId = process.env.CRABGIC_KILL_HARNESS_RUN_ID;
+const changeSetId = process.env.CRABGIC_KILL_HARNESS_CHANGE_SET_ID;
+const faultPoint = process.env.CRABGIC_KILL_HARNESS_FAULT_POINT;
 
 const FAULT_POINT_MARKER_PREFIX = "__EO_KILL_HARNESS_FAULT__:";
 function signalFaultPoint(name) {

@@ -4,8 +4,8 @@ import {
   CURRENT_SCHEMA_VERSION,
   EvidenceRecordSchema,
   type ProvisionalPerformanceContract,
-} from "@eo/contracts";
-import { createGateRegistry } from "@eo/gates";
+} from "@crabgic/contracts";
+import { createGateRegistry } from "@crabgic/gates";
 import { canonicalHash } from "../contract/canonical-hash.js";
 import { journalApprovedProvisionalContract } from "../test-support/journal-anchor-fixture.js";
 import { createTestJournal, type TestJournal } from "../test-support/test-journal.js";

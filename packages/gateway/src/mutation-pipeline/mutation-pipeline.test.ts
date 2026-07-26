@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createJournalStore, runKillHarness, type JournalStore } from "@eo/journal";
-import { ConnectorError, CURRENT_SCHEMA_VERSION, type RemoteMutationPlan } from "@eo/contracts";
+import { createJournalStore, runKillHarness, type JournalStore } from "@crabgic/journal";
+import {
+  ConnectorError,
+  CURRENT_SCHEMA_VERSION,
+  type RemoteMutationPlan,
+} from "@crabgic/contracts";
 import { GatewayHttpClient } from "../transport/http-client.js";
 import { sendHttpRequest, type HttpTransportResponse } from "../transport/http-transport.js";
 import {
@@ -531,7 +535,7 @@ describe("executeMutationPlan — a network call that itself throws AmbiguousWri
   });
 });
 
-describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/journal's runKillHarness)", () => {
+describe("executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness)", () => {
   let sideEffectFile: string;
 
   beforeEach(async () => {
@@ -548,10 +552,10 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/jour
       command: process.execPath,
       args: [fixture],
       env: {
-        EO_FIXTURE_JOURNAL_DIR: journalDir,
-        EO_FIXTURE_SIDE_EFFECT_FILE: sideEffectFile,
-        EO_FIXTURE_FAULT_POINT: faultPoint,
-        EO_FIXTURE_PLAN_JSON: JSON.stringify(buildPlan()),
+        CRABGIC_FIXTURE_JOURNAL_DIR: journalDir,
+        CRABGIC_FIXTURE_SIDE_EFFECT_FILE: sideEffectFile,
+        CRABGIC_FIXTURE_FAULT_POINT: faultPoint,
+        CRABGIC_FIXTURE_PLAN_JSON: JSON.stringify(buildPlan()),
         ...extraEnv,
       },
     };
@@ -647,7 +651,7 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@eo/jour
     });
 
     it("kill after the create network call, with reconciliation disabled, blocks (never guesses) and never double-creates", async () => {
-      const noReconcile = { EO_FIXTURE_NO_RECONCILE: "1" };
+      const noReconcile = { CRABGIC_FIXTURE_NO_RECONCILE: "1" };
       const report = await runKillHarness(
         fixtureSpec(POST_FIXTURE, "after-network-call", noReconcile),
         ["after-network-call"],

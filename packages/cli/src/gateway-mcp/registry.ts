@@ -1,5 +1,5 @@
 /**
- * Extensible MCP tool registry — RELOCATED to `@eo/contracts` (2026-07-25)
+ * Extensible MCP tool registry — RELOCATED to `@crabgic/contracts` (2026-07-25)
  * and re-exported here verbatim.
  *
  * The implementation now lives at
@@ -12,7 +12,7 @@
  *
  * Kept as a named re-export so every existing `./registry.js` /
  * `../gateway-mcp/registry.js` import in this package and the published
- * `engineering-orchestrator` surface are both unchanged.
+ * `crabgic` surface are both unchanged.
  */
-export { createToolRegistry, DuplicateToolError } from "@eo/contracts";
-export type { McpToolDefinition, McpToolRegistry } from "@eo/contracts";
+export { createToolRegistry, DuplicateToolError } from "@crabgic/contracts";
+export type { McpToolDefinition, McpToolRegistry } from "@crabgic/contracts";

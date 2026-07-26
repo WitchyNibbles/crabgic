@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { buildTaskPacket, buildWorkerResult, FakeEngineAdapter } from "@eo/testkit";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { buildTaskPacket, buildWorkerResult, FakeEngineAdapter } from "@crabgic/testkit";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,
@@ -27,7 +27,7 @@ import { rollbackProposal } from "./rollback/rollback.js";
  * failure → lesson → shadow improvement → human promotion (two distinct
  * approval tokens, journaled) → behavior change → rollback restores
  * baseline (committed E2E fixture + journal excerpt)." Fixture-modeled on
- * the fake engine (`@eo/testkit`) throughout — no live Claude Code engine
+ * the fake engine (`@crabgic/testkit`) throughout — no live Claude Code engine
  * involved, matching every other phase's own `@live`-gated split.
  */
 const PRIMARY_WORK_UNIT_ID = "11111111-1111-4111-8111-111111111111";

@@ -1,8 +1,8 @@
 /**
- * `@eo/gateway` public barrel — roadmap/16-gateway-core.md. Every
+ * `@crabgic/gateway` public barrel — roadmap/16-gateway-core.md. Every
  * cross-cutting surface this phase produces (§Interfaces produced) is
  * exported from exactly this module; downstream phases (18, 20; 11/12 for
- * MCP tool-registry registration) import from `@eo/gateway` directly.
+ * MCP tool-registry registration) import from `@crabgic/gateway` directly.
  */
 
 // ---- Secrets (work item 1) ----

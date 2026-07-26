@@ -12,7 +12,7 @@
  */
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
-import { computeContentDigest } from "@eo/plugin";
+import { computeContentDigest } from "@crabgic/plugin";
 import { buildDesiredArtifacts, readTextIfExists } from "./install.js";
 import { computeChecksum } from "./checksum.js";
 import { renderUnifiedDiff } from "./diff-renderer.js";

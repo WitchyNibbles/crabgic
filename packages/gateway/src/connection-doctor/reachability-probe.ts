@@ -14,7 +14,7 @@
  * bespoke shortcut.
  */
 
-import type { ExternalConnection } from "@eo/contracts";
+import type { ExternalConnection } from "@crabgic/contracts";
 import { GatewayHttpClient, SsrfRefusedError } from "../transport/http-client.js";
 import { resolveConnectionSecret } from "../connection-store/external-connection-store.js";
 

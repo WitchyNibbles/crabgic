@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, getLatestAttempt, type JournalStore } from "@eo/journal";
+import { createJournalStore, getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import {
   buildAuthorizationEnvelope,
   buildFakeEngineScript,
@@ -11,10 +11,10 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
   RATE_LIMIT_ALLOWED_WARNING_96,
-} from "@eo/testkit";
-import { compileEnvelope } from "@eo/engine-core";
-import type { CollisionVerdict } from "@eo/git-engine";
-import type { SessionRef } from "@eo/engine-core";
+} from "@crabgic/testkit";
+import { compileEnvelope } from "@crabgic/engine-core";
+import type { CollisionVerdict } from "@crabgic/git-engine";
+import type { SessionRef } from "@crabgic/engine-core";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,

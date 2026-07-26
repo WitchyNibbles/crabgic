@@ -22,19 +22,19 @@
  * two bags was blocked "once this package is allowed to touch
  * `packages/cli` again". That framing is obsolete — the primitives this
  * bag needs (`ApprovalTokenMinter`, and the `CommandResult`/`EXIT_*`
- * vocabulary the three backends return) were relocated to `@eo/contracts`,
- * so `@eo/detect` no longer depends on the CLI package in either
+ * vocabulary the three backends return) were relocated to `@crabgic/contracts`,
+ * so `@crabgic/detect` no longer depends on the CLI package in either
  * direction. This bag stays distinct from `CliDependencies` on the merits
  * — it names capability-store collaborators that mean nothing to the other
  * commands — not because of a dependency restriction.
  */
-import type { ApprovalTokenMinter } from "@eo/contracts";
+import type { ApprovalTokenMinter } from "@crabgic/contracts";
 import type { ApprovalLedger } from "../capability-store/approval-ledger.js";
 import type { CapabilityStore } from "../capability-store/store.js";
 
 export interface TrustCommandDependencies {
   readonly store: CapabilityStore;
-  /** A fully-configured minter — if durable journaling of `approval_token_mint` is desired, construct it with `ApprovalTokenMinterOptions.journal` already wired (mirroring `@eo/contracts`'s `approval/token.ts` convention); this bag does not re-journal on its own. */
+  /** A fully-configured minter — if durable journaling of `approval_token_mint` is desired, construct it with `ApprovalTokenMinterOptions.journal` already wired (mirroring `@crabgic/contracts`'s `approval/token.ts` convention); this bag does not re-journal on its own. */
   readonly minter: ApprovalTokenMinter;
   readonly approvalLedger: ApprovalLedger;
 }

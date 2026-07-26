@@ -23,8 +23,8 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ChangeSetSchema, type ChangeSet } from "@eo/contracts";
-import { buildChangeSet } from "@eo/testkit";
+import { ChangeSetSchema, type ChangeSet } from "@crabgic/contracts";
+import { buildChangeSet } from "@crabgic/testkit";
 import { createFileRegistry } from "./file-registry.js";
 
 let dir: string;

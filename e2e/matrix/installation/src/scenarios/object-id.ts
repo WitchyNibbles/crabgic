@@ -6,7 +6,7 @@
  * non-empty string, satisfying `EvidenceRecord.objectId`'s schema, but
  * documented here as NOT a real Git object id).
  */
-import { createGitPlumbing, type GitPlumbing } from "@eo/git-engine";
+import { createGitPlumbing, type GitPlumbing } from "@crabgic/git-engine";
 import { digestArtifact } from "../evidence.js";
 
 const plumbing: GitPlumbing = createGitPlumbing();

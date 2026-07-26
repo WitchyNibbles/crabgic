@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveXdgCacheHome, type XdgEnv } from "@eo/journal";
+import { resolveXdgCacheHome, type XdgEnv } from "@crabgic/journal";
 import { ensureControlClone, fetchRefresh } from "./control-clone.js";
 import { GIT_CONTROL_SUBDIR, resolveGitControlDir } from "./layout.js";
 import { createGitPlumbing, createNodeGitSpawn } from "./plumbing.js";
@@ -28,13 +28,11 @@ afterEach(() => {
 });
 
 describe("resolveGitControlDir — path convention (Gap 14, WI5 exit criterion)", () => {
-  it("resolves at $XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/", () => {
+  it("resolves at $XDG_CACHE_HOME/crabgic/<project-hash>/git-control/", () => {
     const env: XdgEnv = { HOME: "/home/fixture-user", XDG_CACHE_HOME: "/custom/cache" };
     const projectHash = "abc123hash";
     const resolved = resolveGitControlDir(env, projectHash);
-    expect(resolved).toBe(
-      join(resolveXdgCacheHome(env), "engineering-orchestrator", projectHash, "git-control"),
-    );
+    expect(resolved).toBe(join(resolveXdgCacheHome(env), "crabgic", projectHash, "git-control"));
     expect(GIT_CONTROL_SUBDIR).toBe("git-control");
   });
 });

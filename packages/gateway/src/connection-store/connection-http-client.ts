@@ -8,7 +8,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import type { ExternalConnection } from "@eo/contracts";
+import type { ExternalConnection } from "@crabgic/contracts";
 import { GatewayHttpClient, type GatewayHttpClientOptions } from "../transport/http-client.js";
 
 /** Reads the connection's custom CA PEM off disk, if one is configured. */

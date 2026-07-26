@@ -12,7 +12,7 @@ import { defineConfig } from "vitest/config";
  * Design constraints, per `docs/engine-baseline.md`:
  * - Live tests require real auth (baseline §1) and consume the owner's
  *   subscription — the suite's own harness refuses to start unless
- *   `EO_LIVE=1` is set, and rate-limit-guards itself via the
+ *   `CRABGIC_LIVE=1` is set, and rate-limit-guards itself via the
  *   `rate_limit_event` stream (baseline §8).
  * - `fileParallelism: false` + sequential execution: concurrent engine
  *   spawns would multiply subscription load and interleave session probes.

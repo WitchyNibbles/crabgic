@@ -3,16 +3,16 @@
  * (roadmap/23-release-hardening.md work item 6): "Each scenario emits an
  * EvidenceRecord (02) tagged release-gate:connector-matrix." Mirrors
  * `e2e/report/src/test-support/test-journal.ts`'s own documented pattern
- * (a fresh, real `@eo/journal` `JournalStore` over a temp directory) rather
+ * (a fresh, real `@crabgic/journal` `JournalStore` over a temp directory) rather
  * than importing it — that module is explicitly `e2e/report`-internal, and
  * this project's own dependency edge is kept self-contained per its own
  * constraints.
  *
  * Every EvidenceRecord this harness journals is genuine, schema-valid
- * `@eo/contracts` data (never a placeholder) — `capturedAt`/`artifactDigests`
+ * `@crabgic/contracts` data (never a placeholder) — `capturedAt`/`artifactDigests`
  * are derived from the real scenario outcome, and `objectId` defaults to
  * this checkout's actual `git rev-parse HEAD`, mirroring
- * `e2e/report/src/cli.ts`'s own `EO_RELEASE_CANDIDATE_OBJECT_ID` fallback
+ * `e2e/report/src/cli.ts`'s own `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` fallback
  * convention (see `resolveReleaseCandidateObjectId` below) — so a later
  * `release-gate-report` run over a real journal can link this harness's
  * own runs to the exact commit they were captured against.
@@ -22,8 +22,8 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
 
 /** roadmap/23 work item 6's own instruction, verbatim — every scenario's `gateTag`. */
 export const CONNECTOR_MATRIX_GATE_TAG = "release-gate:connector-matrix";
@@ -31,7 +31,7 @@ export const CONNECTOR_MATRIX_GATE_TAG = "release-gate:connector-matrix";
 /**
  * The roadmap/23 requirement each emitted tag evidences.
  *
- * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * WHY A LITERAL. `buildTraceabilityView` (`@crabgic/gates`) joins evidence to a
  * requirement on `EvidenceRecord.requirementId` and nothing else. The ids
  * are UUIDv5 digests of the exit-criterion text, derived by
  * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
@@ -61,10 +61,10 @@ export interface ScenarioJournal {
 }
 
 /**
- * A fresh, real `@eo/journal` `JournalStore` over a temp directory — one
+ * A fresh, real `@crabgic/journal` `JournalStore` over a temp directory — one
  * per test file/scenario, never shared across concurrent vitest workers.
  *
- * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): the private temp
+ * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): the private temp
  * directory is exactly why every `EvidenceRecord` this harness genuinely
  * emitted used to be unreadable by `e2e/report`'s generator — it was
  * written to a directory that ceased to exist before the report ran, so
@@ -96,7 +96,7 @@ export interface ScenarioJournal {
  * and the `changeSetId`-scoped queries the scenario files use.
  */
 export async function createScenarioJournal(): Promise<ScenarioJournal> {
-  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
     await mkdir(sharedJournalDir, { recursive: true });
     return {
@@ -125,7 +125,7 @@ export async function createScenarioJournal(): Promise<ScenarioJournal> {
  * internally (and never surface it) scopes a later read back to its OWN
  * records: it reads the journal, then keeps only the entries whose
  * `payload.id` this recorder saw. Under a shared journal
- * (`EO_RELEASE_GATE_JOURNAL_DIR`) a bare journal-wide read also sweeps up
+ * (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`) a bare journal-wide read also sweeps up
  * every sibling harness's entries — including ones tagged for a different
  * release-gate item entirely — so "every entry in the journal is tagged
  * `release-gate:connector-matrix`" would stop being a statement about this
@@ -154,7 +154,7 @@ let cachedObjectId: string | undefined;
 
 /**
  * The exact release-candidate Git object ID this harness's evidence is
- * captured against — `$EO_RELEASE_CANDIDATE_OBJECT_ID` when set (matching
+ * captured against — `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` when set (matching
  * `e2e/report`'s own CLI convention), else this checkout's own
  * `git rev-parse HEAD`. Cached per-process: every scenario in one test run
  * shares the same object ID, exactly like a single real release-candidate
@@ -162,7 +162,7 @@ let cachedObjectId: string | undefined;
  */
 export function resolveReleaseCandidateObjectId(): string {
   if (cachedObjectId !== undefined) return cachedObjectId;
-  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  const fromEnv = process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"];
   if (fromEnv !== undefined && fromEnv.length > 0) {
     cachedObjectId = fromEnv;
     return cachedObjectId;

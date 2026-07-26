@@ -1,21 +1,21 @@
 /**
  * Test-support-only helper (not part of any public surface — `e2e/` is not
  * an npm workspace member and this project has no barrel) — a fresh, real
- * `@eo/journal` `JournalStore` over a temp directory. Mirrors
+ * `@crabgic/journal` `JournalStore` over a temp directory. Mirrors
  * `packages/gates/src/test-support/test-journal.ts`'s own documented
  * pattern ("mirroring the pattern every sibling package's own test suite
  * uses") rather than importing it — that file is explicitly gates-package-
- * internal (not part of `@eo/gates`'s public barrel), and this project's
- * dependency edge is deliberately limited to `@eo/contracts` + `@eo/journal`
+ * internal (not part of `@crabgic/gates`'s public barrel), and this project's
+ * dependency edge is deliberately limited to `@crabgic/contracts` + `@crabgic/journal`
  * only (this work item's own constraint).
  */
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 
 /**
- * SHARED-JOURNAL MODE (`EO_RELEASE_GATE_JOURNAL_DIR`): every harness's own
+ * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): every harness's own
  * private temp journal is why `../cli.ts` — which already resolves its READ
  * journal from this same env var — found zero `EvidenceRecord`s matching
  * the release candidate and scored every checklist item EVIDENCE-PENDING
@@ -39,7 +39,7 @@ export interface TestJournal {
 }
 
 export async function createTestJournal(): Promise<TestJournal> {
-  const sharedJournalDir = process.env["EO_RELEASE_GATE_JOURNAL_DIR"];
+  const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
     await mkdir(sharedJournalDir, { recursive: true });
     return {

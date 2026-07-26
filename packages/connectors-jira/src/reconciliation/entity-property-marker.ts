@@ -1,4 +1,4 @@
-import type { MarkerReconciler } from "@eo/gateway";
+import type { MarkerReconciler } from "@crabgic/gateway";
 import { listComments, searchIssues } from "../resource-client/reads.js";
 import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
 
@@ -6,7 +6,7 @@ import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
  * Jira entity-property `MarkerReconciler` — roadmap/18 §In scope:
  * "Reconciliation: implements 16's marker-reconciliation interface using
  * Jira entity properties as the exactly-once marker for every POST
- * (issue/comment creation)." `@eo/gateway` declares the interface only
+ * (issue/comment creation)." `@crabgic/gateway` declares the interface only
  * (`reconciliation.ts`); this module is the Jira-specific implementation
  * roadmap/18 names.
  *
@@ -18,7 +18,7 @@ import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
  * zero matches, MORE THAN ONE match (a genuinely ambiguous state this
  * connector refuses to arbitrarily pick from), or any transport/parse
  * failure all resolve to `undefined` — "genuinely unknown," never a
- * guessed duplicate (mirrors `@eo/gateway`'s own `reconcileAmbiguousPost`
+ * guessed duplicate (mirrors `@crabgic/gateway`'s own `reconcileAmbiguousPost`
  * doc comment).
  */
 export type JiraMarkerKind = "issue" | "comment";

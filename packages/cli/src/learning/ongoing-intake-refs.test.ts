@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ChangeSet } from "@eo/contracts";
-import { buildChangeSet } from "@eo/testkit";
+import type { ChangeSet } from "@crabgic/contracts";
+import { buildChangeSet } from "@crabgic/testkit";
 import {
   AmbiguousOngoingIntakeError,
   NoOngoingIntakeError,

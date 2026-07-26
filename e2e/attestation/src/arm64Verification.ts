@@ -41,7 +41,7 @@ export const ARM64_ARCH = "arm64";
 export const ARM64_CLOSE_OUT_HEADING = "### ARM64 close-out";
 
 /**
- * Where a CI-produced run record is looked for; `$EO_ARM64_RUN_RECORD` overrides it.
+ * Where a CI-produced run record is looked for; `$CRABGIC_ARM64_RUN_RECORD` overrides it.
  *
  * THE OVERRIDE IS THE PRIMARY PATH IN CI, AND THE SHA CATCH-22 IS WHY.
  * `checkArm64Verification` requires `record.commitSha === releaseCandidateObjectId`.
@@ -53,7 +53,7 @@ export const ARM64_CLOSE_OUT_HEADING = "### ARM64 close-out";
  *
  * `release-e2e.yml`'s ingest step therefore downloads `ci.yml`'s
  * `arm64-run-record` artifact into `$RUNNER_TEMP` (outside the checkout, never
- * committed, nothing staged) and exports `$EO_ARM64_RUN_RECORD`. `HEAD` stays
+ * committed, nothing staged) and exports `$CRABGIC_ARM64_RUN_RECORD`. `HEAD` stays
  * exactly on the release candidate, and the ingest selects the `ci.yml` run by
  * `head_sha = <release candidate>` rather than "most recent", so the equality
  * this check enforces is a real binding rather than a coincidence.
@@ -68,7 +68,7 @@ export const ARM64_CLOSE_OUT_HEADING = "### ARM64 close-out";
  * against whatever object ID the auditor names.
  */
 export const ARM64_RUN_RECORD_PATH = "docs/evidence/phase-23/arm64-run-record.json";
-export const ARM64_RUN_RECORD_ENV = "EO_ARM64_RUN_RECORD";
+export const ARM64_RUN_RECORD_ENV = "CRABGIC_ARM64_RUN_RECORD";
 
 /** Matches what `uname -m` genuinely reports on 64-bit ARM. */
 const AARCH64 = /^(aarch64|arm64)$/i;

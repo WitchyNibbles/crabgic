@@ -1,8 +1,8 @@
-import type { EvidenceRecord, RemoteResource } from "@eo/contracts";
-import { stampGrafanaRemoteResource, type GrafanaResourceKind } from "@eo/connectors-grafana";
-import { stampJiraRemoteResource } from "@eo/connectors-jira";
-import type { MutationApplyResult } from "@eo/gateway";
-import type { JournalStore } from "@eo/journal";
+import type { EvidenceRecord, RemoteResource } from "@crabgic/contracts";
+import { stampGrafanaRemoteResource, type GrafanaResourceKind } from "@crabgic/connectors-grafana";
+import { stampJiraRemoteResource } from "@crabgic/connectors-jira";
+import type { MutationApplyResult } from "@crabgic/gateway";
+import type { JournalStore } from "@crabgic/journal";
 import {
   recordEvidencePointer,
   type RemoteEvidencePointer,
@@ -26,15 +26,15 @@ import {
  * only a revision lookup/fallback) — had nothing to bind.
  *
  * WHY IT LIVES IN `packages/gates`. roadmap/21 §Primary packages names
- * `packages/gates` first, and the dependency graph forces it: `@eo/gates`
- * already depends on `@eo/connectors-jira` and `@eo/connectors-grafana`, so
+ * `packages/gates` first, and the dependency graph forces it: `@crabgic/gates`
+ * already depends on `@crabgic/connectors-jira` and `@crabgic/connectors-grafana`, so
  * the reverse edge (a writer inside a connector package importing
  * `recordEvidencePointer`) would make `scripts/check-package-graph-acyclic.mjs`
  * fail. This module is the one place both connectors' stamps and 21's
  * pointer writer can legally meet.
  *
  * THE REVISION IS NEVER CALLER-INVENTED. It is taken from
- * `MutationApplyResult.appliedRevision` — `@eo/gateway`'s own "confirmed
+ * `MutationApplyResult.appliedRevision` — `@crabgic/gateway`'s own "confirmed
  * remote revision this record's read-back step observed". A caller that has
  * not actually run a mutation through `executeMutationPlan` has no such
  * value to pass, which is the point: this writer cannot be used to stamp an
@@ -98,7 +98,7 @@ export interface BindRemoteResourceEvidenceInput {
   readonly objectId: string;
   readonly externalConnectionId: string;
   readonly target: RemoteBindingTarget;
-  /** The pipeline's own confirmed read-back result (`@eo/gateway`). */
+  /** The pipeline's own confirmed read-back result (`@crabgic/gateway`). */
   readonly applied: MutationApplyResult;
   readonly canonicalUrl?: string;
   /** ISO instant the revision was observed; defaults to `now()`. */

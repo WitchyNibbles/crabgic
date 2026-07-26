@@ -195,8 +195,8 @@ describe("checkReproducibleBuild — genuine integration (real git archive, real
     });
 
     expect(result.comparison.match).toBe(true);
-    expect(result.packA.name).toBe("engineering-orchestrator");
-    expect(result.packB.name).toBe("engineering-orchestrator");
+    expect(result.packA.name).toBe("crabgic");
+    expect(result.packB.name).toBe("crabgic");
     // The honest qualifier this result now carries: nothing was rebuilt.
     expect(result.rebuiltFromCleanCheckout).toBe(false);
   }, 60_000);

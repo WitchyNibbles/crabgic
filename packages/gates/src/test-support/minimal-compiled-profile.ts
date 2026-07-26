@@ -4,12 +4,12 @@
  * byte-for-byte in shape (which itself mirrors `packages/supervisor/src/
  * worker-lifecycle/test-support/minimal-compiled-profile.ts`): a minimal,
  * schema-valid `CompiledWorkerProfile` for tests dispatching against the
- * fake engine via `@eo/scheduler`'s `dispatchAttempt`, plus an always-allow
+ * fake engine via `@crabgic/scheduler`'s `dispatchAttempt`, plus an always-allow
  * adjudication stub. Duplicated here (rather than imported) because neither
  * sibling package exports this test-support file via its own public
  * barrel.
  */
-import type { CompiledWorkerProfile } from "@eo/engine-core";
+import type { CompiledWorkerProfile } from "@crabgic/engine-core";
 
 export function buildMinimalCompiledProfile(): CompiledWorkerProfile {
   return {

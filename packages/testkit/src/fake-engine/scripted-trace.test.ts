@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WorkerResultSchema } from "@eo/contracts";
+import { WorkerResultSchema } from "@crabgic/contracts";
 import { buildFakeEngineScript } from "./scripted-trace.js";
 
 describe("buildFakeEngineScript", () => {

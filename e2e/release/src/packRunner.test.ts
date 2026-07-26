@@ -90,7 +90,7 @@ describe("RealPackRunner — genuine integration (real npm pack, this repo's own
     try {
       const runner = new RealPackRunner();
       const result = await runner.pack(packageDir, scratchDir);
-      expect(result.name).toBe("engineering-orchestrator");
+      expect(result.name).toBe("crabgic");
       const bytes = await readFile(result.tarballPath);
       expect(bytes.length).toBeGreaterThan(0);
       expect(result.npmReportedShasum).toHaveLength(40);

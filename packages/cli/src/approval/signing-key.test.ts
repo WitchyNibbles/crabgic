@@ -31,9 +31,7 @@ afterEach(() => {
 describe("resolveApprovalSigningKeyPath", () => {
   it("pins the key beside the rest of the project's XDG state (never the cache root)", () => {
     const path = resolveApprovalSigningKeyPath({ HOME: root, XDG_STATE_HOME: root }, "abc123");
-    expect(path).toBe(
-      join(root, "engineering-orchestrator", "abc123", APPROVAL_SIGNING_KEY_FILE_NAME),
-    );
+    expect(path).toBe(join(root, "crabgic", "abc123", APPROVAL_SIGNING_KEY_FILE_NAME));
   });
 });
 

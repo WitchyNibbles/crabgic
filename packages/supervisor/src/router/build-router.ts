@@ -6,8 +6,8 @@
  * (09) and the gateway's (16) forwarded `run.status`/`run.cancel` calls
  * through this SAME router instance.
  */
-import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { transitionRun } from "../run-lifecycle/run-transition.js";
 import { reapOrphansAtStartup } from "../worker-lifecycle/orphan-reaper.js";
 import type { RunsRegistry } from "../registries/runs-registry.js";
@@ -68,7 +68,7 @@ export interface SupervisorDependencies {
   /**
    * Drives approved DAGs (roadmap/13's `driveRun`). OPTIONAL because this
    * package cannot construct one — the real implementation needs
-   * `@eo/engine-claude`, which already depends on this package — so the
+   * `@crabgic/engine-claude`, which already depends on this package — so the
    * daemon entry point in `packages/cli` injects it. A daemon booted
    * without one still serves every other operation; `run.dispatch` simply
    * refuses. See `./run-dispatcher.ts`.

@@ -3,8 +3,8 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
-import { ENABLED_PLUGIN_KEY } from "@eo/plugin";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import { ENABLED_PLUGIN_KEY } from "@crabgic/plugin";
 import { runInstall } from "./install.js";
 import { readInstallState } from "./state-store.js";
 import type { InstallerDependencies } from "./types.js";
@@ -51,7 +51,7 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const mcpJson = JSON.parse(await readFile(join(dir, ".mcp.json"), "utf8"));
     expect(mcpJson.mcpServers[GATEWAY_MCP_SERVER_NAME]).toEqual({
-      command: "engineering-orchestrator",
+      command: "crabgic",
       args: ["gateway", "mcp"],
     });
   });
@@ -77,9 +77,7 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const settings = JSON.parse(await readFile(join(dir, ".claude", "settings.json"), "utf8"));
     expect(settings.enabledPlugins).toEqual({ [ENABLED_PLUGIN_KEY]: true });
-    expect(ENABLED_PLUGIN_KEY).toBe(
-      "engineering-orchestrator@engineering-orchestrator-marketplace",
-    );
+    expect(ENABLED_PLUGIN_KEY).toBe("crabgic@crabgic-marketplace");
   });
 });
 

@@ -5,7 +5,7 @@
  *
  * HISTORY, because it explains this module's shape. When first written,
  * every one of the eight families was UNREACHABLE: `packages/cli` had no
- * `@eo/gateway` dependency edge at all, `cli-entry.ts`'s `gateway mcp` boot
+ * `@crabgic/gateway` dependency edge at all, `cli-entry.ts`'s `gateway mcp` boot
  * created an empty registry, and the hand-rolled stdio server answered
  * `tools/call` with METHOD_NOT_FOUND unconditionally. The audit could
  * therefore only ENUMERATE the gap, which it did by grepping
@@ -26,8 +26,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PassThrough } from "node:stream";
-import { connectGatewayMcpStdio } from "@eo/gateway";
-import { buildRealGatewayToolRegistry } from "engineering-orchestrator";
+import { connectGatewayMcpStdio } from "@crabgic/gateway";
+import { buildRealGatewayToolRegistry } from "crabgic";
 
 export type GatewayFamily =
   | "tracker"
@@ -143,7 +143,7 @@ export function checkFamilyWiringAtProductionEntrypoint(): readonly FamilyWiring
   );
 }
 
-/** Reads `packages/cli/package.json`'s own dependency graph and reports whether it declares `@eo/gateway` — the edge without which no native family could be imported at all. */
+/** Reads `packages/cli/package.json`'s own dependency graph and reports whether it declares `@crabgic/gateway` — the edge without which no native family could be imported at all. */
 export function checkGatewayDependencyEdge(
   cliPackageJsonPath: string = DEFAULT_CLI_PACKAGE_JSON_PATH,
 ): { readonly hasGatewayDependency: boolean } {
@@ -152,8 +152,8 @@ export function checkGatewayDependencyEdge(
     readonly devDependencies?: Readonly<Record<string, string>>;
   };
   const hasGatewayDependency =
-    "@eo/gateway" in (manifest.dependencies ?? {}) ||
-    "@eo/gateway" in (manifest.devDependencies ?? {});
+    "@crabgic/gateway" in (manifest.dependencies ?? {}) ||
+    "@crabgic/gateway" in (manifest.devDependencies ?? {});
   return { hasGatewayDependency };
 }
 

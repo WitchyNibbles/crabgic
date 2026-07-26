@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { createGitPlumbing } from "@eo/git-engine";
+import { createGitPlumbing } from "@crabgic/git-engine";
 import { describe, expect, it } from "vitest";
 import {
   buildCleanRepo,

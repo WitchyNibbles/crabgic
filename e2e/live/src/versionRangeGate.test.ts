@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCEPTED_ENGINE_VERSION_RANGE, EngineVersionRejectedError } from "@eo/engine-claude";
+import { ACCEPTED_ENGINE_VERSION_RANGE, EngineVersionRejectedError } from "@crabgic/engine-claude";
 import {
   checkPinnedRange,
   createClaudeVersionProbe,

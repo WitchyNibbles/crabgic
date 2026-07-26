@@ -2,24 +2,24 @@
  * Supervisor runtime-dir/socket/registries layout — roadmap/05-supervisor-
  * daemon.md §In scope, "Runtime/state location": "the UDS socket, its
  * `0700` runtime dir, and the registries nest under 04's pinned
- * `$XDG_STATE_HOME/engineering-orchestrator/<project-hash>/` root as a
+ * `$XDG_STATE_HOME/crabgic/<project-hash>/` root as a
  * SIBLING subpath alongside 04's own `journal/` and `leases/` — never a
  * second, parallel root, matching the convention 07's `git-control/` and
  * 12's `capability-store/` already follow under 04's `$XDG_CACHE_HOME`
  * sibling."
  *
  * This module NEVER re-derives `resolveStateRoot`/`resolveXdgStateHome`
- * itself — both are imported directly from `@eo/journal` (04's sole
+ * itself — both are imported directly from `@crabgic/journal` (04's sole
  * definition site, interface-ledger Gap 14). It only adds the one new
  * subdirectory name this phase owns: `supervisor/`, nested exactly like
  * `journal/`/`leases/` are.
  */
 
 import { join } from "node:path";
-import { resolveStateRoot, type XdgEnv } from "@eo/journal";
+import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
 
-export type { XdgEnv } from "@eo/journal";
-export { readXdgEnvFromProcess, resolveStateRoot } from "@eo/journal";
+export type { XdgEnv } from "@crabgic/journal";
+export { readXdgEnvFromProcess, resolveStateRoot } from "@crabgic/journal";
 
 /** Sibling subdirectory name under the pinned state root — alongside `journal/`, `leases/`. */
 export const SUPERVISOR_STATE_SUBDIR = "supervisor";

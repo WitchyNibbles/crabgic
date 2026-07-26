@@ -2,15 +2,15 @@
  * Project-scope `.mcp.json` add-only merge — roadmap/10-plugin-and-
  * installer.md §In scope: "project-scope `.mcp.json` entry keyed
  * `GATEWAY_MCP_SERVER_NAME` (constant, 02) whose command is exactly
- * `engineering-orchestrator gateway mcp` (09)." Golden-test target
+ * `crabgic gateway mcp` (09)." Golden-test target
  * (`mcp-entry.golden.test`): the literal `.mcp.json` shape below MUST equal
- * `{"GATEWAY_MCP_SERVER_NAME": {"command": "engineering-orchestrator", "args":
+ * `{"GATEWAY_MCP_SERVER_NAME": {"command": "crabgic", "args":
  * ["gateway", "mcp"]}}` byte-for-byte — this file references the imported
  * `GATEWAY_MCP_SERVER_NAME` constant, never a hand-typed literal (this
  * package's own repo-wide sole-definition-site scanner,
- * `@eo/contracts`'s `server-name.test.ts`, forbids it).
+ * `@crabgic/contracts`'s `server-name.test.ts`, forbids it).
  */
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 
 export interface McpServerEntry {
   readonly command: string;
@@ -22,9 +22,9 @@ export interface McpJsonMergeResult {
   readonly changed: boolean;
 }
 
-/** The exact entry this installer writes — `engineering-orchestrator gateway mcp`, per roadmap/10 §Interfaces produced, byte-for-byte. */
+/** The exact entry this installer writes — `crabgic gateway mcp`, per roadmap/10 §Interfaces produced, byte-for-byte. */
 export function buildGatewayMcpServerEntry(): McpServerEntry {
-  return { command: "engineering-orchestrator", args: ["gateway", "mcp"] };
+  return { command: "crabgic", args: ["gateway", "mcp"] };
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

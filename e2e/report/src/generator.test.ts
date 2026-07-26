@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
 import type { ReleaseGateChecklistItemSpec } from "./checklist.js";
 import {
   computeOverallVerdict,
@@ -137,13 +137,13 @@ async function journalEvidence(record: EvidenceRecord): Promise<void> {
   });
 }
 
-describe("generateReleaseGateReport — end-to-end over a real @eo/journal JournalStore", () => {
+describe("generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore", () => {
   /**
    * A FRESH release-candidate object id per test, not one shared constant.
    * The generator's only scoping mechanism is exact-`objectId` matching, so
    * a shared literal makes every test in this file visible to every other
    * one the moment the underlying journal stops being per-test — which is
-   * exactly what `EO_RELEASE_GATE_JOURNAL_DIR` does (see
+   * exactly what `CRABGIC_RELEASE_GATE_JOURNAL_DIR` does (see
    * `./test-support/test-journal.ts`). The "zero evidence at all" tests in
    * particular would silently start scoring against a sibling test's
    * records. A per-test id keeps every assertion below meaning what it

@@ -1,17 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * `EvidenceRecord` emission for the `@live` full-system conformance harness
  * (roadmap/23-release-hardening.md work item 7). Mirrors `e2e/matrix/
  * orchestration/src/evidence.ts`'s established pattern in this same phase
- * (plain typed-literal construction, no `@eo/gates` dependency — that
+ * (plain typed-literal construction, no `@crabgic/gates` dependency — that
  * package's `emitEvidence` is typed against the closed `GateRiskTag` union,
  * which does not include this phase's own `release-gate:*` vocabulary;
  * `e2e/report/src/checklist.ts`'s own doc comment makes the same call:
  * "copied as plain string literals ... to keep this project's dependency
- * edge to exactly `@eo/contracts` + `@eo/journal`").
+ * edge to exactly `@crabgic/contracts` + `@crabgic/journal`").
  *
  * The task brief for this work item names two tags directly:
  * `release-gate:live-conformance` (this harness's own umbrella — pinned-
@@ -39,7 +39,7 @@ export const GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG = "release-gate:gateway-cli-s
 /**
  * The roadmap/23 requirement each emitted tag evidences.
  *
- * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * WHY A LITERAL. `buildTraceabilityView` (`@crabgic/gates`) joins evidence to a
  * requirement on `EvidenceRecord.requirementId` and nothing else, so an
  * unstamped record — however genuine, however correctly tagged —
  * contributes nothing to 23's traceability criterion. The ids are UUIDv5
@@ -76,7 +76,7 @@ export function requirementIdForGateTag(gateTag: string): string | undefined {
  * (the `release-e2e` CI job) supplies the actual `git rev-parse HEAD` of
  * the release candidate instead — either via `emitLiveConformanceEvidence`'s
  * explicit `objectId` option or, for the callers that never pass one, via
- * `$EO_RELEASE_CANDIDATE_OBJECT_ID` (see
+ * `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` (see
  * `resolveReleaseCandidateObjectId` below). Mirrors
  * `e2e/matrix/orchestration/src/evidence.ts`'s identical `FAKE_RELEASE_
  * CANDIDATE_OBJECT_ID` convention.
@@ -85,12 +85,12 @@ export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbee
 
 /**
  * The object ID this harness stamps on emitted evidence when no explicit
- * `objectId` override is supplied: `$EO_RELEASE_CANDIDATE_OBJECT_ID` when
+ * `objectId` override is supplied: `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID` when
  * set and non-empty (the same env-var convention `e2e/report/src/cli.ts`
  * and `e2e/matrix/connector/src/support/evidence.ts` already honor), else
  * `FAKE_RELEASE_CANDIDATE_OBJECT_ID` — so an ordinary `npm run test:e2e`
  * run is byte-identical to before this seam existed, while a real
- * release-gate run (`EO_RELEASE_GATE_JOURNAL_DIR` + this var, as
+ * release-gate run (`CRABGIC_RELEASE_GATE_JOURNAL_DIR` + this var, as
  * `.github/workflows/release-e2e.yml` drives it) accumulates evidence the
  * report generator can actually link to its `releaseCandidateObjectId`.
  *
@@ -99,7 +99,7 @@ export const FAKE_RELEASE_CANDIDATE_OBJECT_ID = "deadbeefdeadbeefdeadbeefdeadbee
  * var within one process.
  */
 export function resolveReleaseCandidateObjectId(): string {
-  const fromEnv = process.env["EO_RELEASE_CANDIDATE_OBJECT_ID"];
+  const fromEnv = process.env["CRABGIC_RELEASE_CANDIDATE_OBJECT_ID"];
   if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv;
   return FAKE_RELEASE_CANDIDATE_OBJECT_ID;
 }

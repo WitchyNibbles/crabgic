@@ -7,14 +7,19 @@ import {
   ProviderRegistry,
   type GenericProviderClient,
   type MutationApplyClient,
-} from "@eo/gateway";
-import { createJournalStore } from "@eo/journal";
-import { createInMemoryRegistry } from "@eo/supervisor";
-import { ApprovalTokenMinter } from "@eo/contracts";
-import type { AuthorizationEnvelope, ChangeSet, IntentContract, WorkUnit } from "@eo/contracts";
-import { createCapabilityStore } from "@eo/detect";
-import { registerJiraCloudProvider } from "@eo/connectors-jira";
-import { registerRoutedGrafanaProvider } from "@eo/connectors-grafana";
+} from "@crabgic/gateway";
+import { createJournalStore } from "@crabgic/journal";
+import { createInMemoryRegistry } from "@crabgic/supervisor";
+import { ApprovalTokenMinter } from "@crabgic/contracts";
+import type {
+  AuthorizationEnvelope,
+  ChangeSet,
+  IntentContract,
+  WorkUnit,
+} from "@crabgic/contracts";
+import { createCapabilityStore } from "@crabgic/detect";
+import { registerJiraCloudProvider } from "@crabgic/connectors-jira";
+import { registerRoutedGrafanaProvider } from "@crabgic/connectors-grafana";
 import { buildRealCliDependencies, buildRealGatewayToolRegistry } from "../bootstrap.js";
 import {
   buildProductionGatewayToolRegistry,

@@ -1,4 +1,8 @@
-import { CURRENT_SCHEMA_VERSION, StackEvidenceSchema, type StackEvidence } from "@eo/contracts";
+import {
+  CURRENT_SCHEMA_VERSION,
+  StackEvidenceSchema,
+  type StackEvidence,
+} from "@crabgic/contracts";
 import { createFixtureContext } from "./context.js";
 
 /** Deterministic `StackEvidence` fixture builder — roadmap/02 work item 10. */

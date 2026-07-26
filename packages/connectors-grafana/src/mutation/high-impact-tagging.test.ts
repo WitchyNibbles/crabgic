@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HighImpactCapabilityFlagSchema } from "@eo/contracts";
+import { HighImpactCapabilityFlagSchema } from "@crabgic/contracts";
 import { GRAFANA_RESOURCE_KINDS, type GrafanaResourceKind } from "../resource-kinds.js";
 import { requiredHighImpactFlagsFor } from "./high-impact-tagging.js";
 

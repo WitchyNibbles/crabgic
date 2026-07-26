@@ -31,8 +31,8 @@
  *     literal tag strings are ALSO accepted, in addition to this item's own
  *     dedicated tag - real gate firings already emit under them today,
  *     independent of any phase-23 harness. These are copied as plain string
- *     literals (not imported from `@eo/gates`) to keep this project's
- *     dependency edge to exactly `@eo/contracts` + `@eo/journal`, per this
+ *     literals (not imported from `@crabgic/gates`) to keep this project's
+ *     dependency edge to exactly `@crabgic/contracts` + `@crabgic/journal`, per this
  *     work item's own constraint.
  */
 
@@ -246,7 +246,7 @@ export const RELEASE_GATE_CHECKLIST: readonly ReleaseGateChecklistItemSpec[] = [
       "Reproducible build: two independent from-clean-checkout builds of the release tag " +
       "produce byte-identical tarball hashes; npm provenance attestation present; package " +
       "published; SHA-pinned marketplace entry cut at the release commit; v1.0.0 tag " +
-      "created; CHANGELOG.md entry present; npm view engineering-orchestrator re-check passes.",
+      "created; CHANGELOG.md entry present; npm view crabgic re-check passes.",
     required: true,
     requiredGateTags: ["release-gate:reproducible-build"],
   },

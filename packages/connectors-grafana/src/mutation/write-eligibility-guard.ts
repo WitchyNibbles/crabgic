@@ -1,4 +1,4 @@
-import { ConnectorError, type CapabilitySnapshot } from "@eo/contracts";
+import { ConnectorError, type CapabilitySnapshot } from "@crabgic/contracts";
 
 /**
  * roadmap/20-grafana-adapters.md exit criterion: "An unknown/untested
@@ -12,7 +12,7 @@ import { ConnectorError, type CapabilitySnapshot } from "@eo/contracts";
  *
  * **Known, accepted narrow window (adversarial-review LOW finding,
  * documented rather than "fixed cheap"):** this guard runs only at PLAN
- * time (`planCreate`/`planUpdate`) — `@eo/gateway`'s own
+ * time (`planCreate`/`planUpdate`) — `@crabgic/gateway`'s own
  * `MutationApplyClient.buildRequest(plan)` contract is deliberately
  * synchronous and I/O-free ("Pure — no I/O of its own," that package's own
  * doc comment), so `./mutation-apply-client.ts`'s `buildRequest` has no
@@ -21,7 +21,7 @@ import { ConnectorError, type CapabilitySnapshot } from "@eo/contracts";
  * writable→read-only in the (typically short) window between `planCreate`/
  * `planUpdate` and the later `observability.apply` call is therefore not
  * re-guarded at apply time by this package alone. Mitigating this fully
- * would require either a cross-cutting change to `@eo/gateway`'s own
+ * would require either a cross-cutting change to `@crabgic/gateway`'s own
  * `MutationApplyClient` contract (making `buildRequest` async, or adding an
  * explicit pre-apply snapshot-freshness hook to `executeMutationPlan`
  * itself) — both are 16's own interface to evolve, not this phase's to

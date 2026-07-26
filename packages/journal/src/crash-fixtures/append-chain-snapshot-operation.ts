@@ -26,7 +26,7 @@ import {
  * exercised, using genuine `SIGKILL` on a genuine child process, never a
  * simulated corruption.
  *
- * `EO_CRASH_FIXTURE_BROKEN=1` switches the "append" mode's armed operation
+ * `CRABGIC_CRASH_FIXTURE_BROKEN=1` switches the "append" mode's armed operation
  * to a deliberately UNSAFE write (open with truncate, no fsync, rewrites
  * the WHOLE segment file — including previously-valid prior entries — in
  * two unsynced halves) instead of the real `appendEntry`. This exists
@@ -92,7 +92,7 @@ export async function brokenArmedAppend(
 
 export async function armedAppend(config: JournalStoreConfig, sleepMs: number): Promise<void> {
   signalFaultPoint("before-append");
-  if (process.env["EO_CRASH_FIXTURE_BROKEN"] === "1") {
+  if (process.env["CRABGIC_CRASH_FIXTURE_BROKEN"] === "1") {
     await brokenArmedAppend(config, sleepMs);
     return;
   }
@@ -129,7 +129,7 @@ export async function armedSnapshot(
 }
 
 /**
- * VALIDATION ROUND (2026-07-18) fix, MAJOR 1: `EO_CRASH_FIXTURE_SEGMENT_MAX_BYTES`
+ * VALIDATION ROUND (2026-07-18) fix, MAJOR 1: `CRABGIC_CRASH_FIXTURE_SEGMENT_MAX_BYTES`
  * (optional env var, unset by default — preserving the original
  * never-rotates behavior for the existing crash-suite variant) lets
  * `crash-suite.test.ts`'s new "segment rotation variant" describe block
@@ -142,7 +142,7 @@ export async function armedSnapshot(
  * journals").
  */
 function resolveSegmentMaxBytesFromEnv(): number | undefined {
-  const raw = process.env["EO_CRASH_FIXTURE_SEGMENT_MAX_BYTES"];
+  const raw = process.env["CRABGIC_CRASH_FIXTURE_SEGMENT_MAX_BYTES"];
   return raw === undefined ? undefined : Number(raw);
 }
 

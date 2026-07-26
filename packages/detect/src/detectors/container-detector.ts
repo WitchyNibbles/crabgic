@@ -2,7 +2,7 @@
  * `container` category — roadmap/12 §In scope, "Detection" bullet:
  * "containers ... → `StackEvidence`".
  */
-import type { StackEvidenceFinding } from "@eo/contracts";
+import type { StackEvidenceFinding } from "@crabgic/contracts";
 import { findFiles, type DetectionContext, type Detector } from "./types.js";
 
 function isDockerfile(path: string): boolean {

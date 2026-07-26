@@ -8,10 +8,10 @@ import { dirname } from "node:path";
 import type { Readable, Writable } from "node:stream";
 import type { InstallerDependencies } from "./types.js";
 
-/** Resolves `@eo/plugin`'s own installed root directory via real Node module resolution — works identically whether `@eo/plugin` is a workspace symlink (dev) or a real published dependency (a real install). */
+/** Resolves `@crabgic/plugin`'s own installed root directory via real Node module resolution — works identically whether `@crabgic/plugin` is a workspace symlink (dev) or a real published dependency (a real install). */
 export function resolvePluginSourceDir(fromUrl: string = import.meta.url): string {
   const require = createRequire(fromUrl);
-  const packageJsonPath = require.resolve("@eo/plugin/package.json");
+  const packageJsonPath = require.resolve("@crabgic/plugin/package.json");
   return dirname(packageJsonPath);
 }
 
@@ -37,7 +37,7 @@ export function createRealConfirmGitInit(io: {
 }): () => Promise<boolean> {
   return async () => {
     io.output.write(
-      'This directory is not a git repository. Run "git init" so the Engineering Orchestrator ' +
+      'This directory is not a git repository. Run "git init" so the Crabgic ' +
         'can track its own control repo/worktrees?\nType "yes" to proceed, anything else to abort: ',
     );
     return readYesConfirmation(io.input);

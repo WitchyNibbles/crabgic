@@ -2,7 +2,7 @@
  * Checkout-invariance scenario — roadmap/23-release-hardening.md work item
  * 5: "checkout invariance (tree-hash before/after via 07's exported
  * invariance harness `withTreeInvariance`/`computeWorkingTreeHash`)."
- * Wraps a REAL `@eo/git-engine` control-clone cycle
+ * Wraps a REAL `@crabgic/git-engine` control-clone cycle
  * (`ensureControlClone` + `fetchRefresh`, the exact 07 primitives 08/23
  * reuse directly, never reimplemented) around a real "user" repo, proving
  * the source repo's own working tree is byte-identical before and after —
@@ -10,8 +10,8 @@
  */
 import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
-import type { JournalStore } from "@eo/journal";
-import { ensureControlClone, fetchRefresh, withTreeInvariance } from "@eo/git-engine";
+import type { JournalStore } from "@crabgic/journal";
+import { ensureControlClone, fetchRefresh, withTreeInvariance } from "@crabgic/git-engine";
 import { emitScenarioEvidence } from "../evidence.js";
 import { buildBasicFixtureRepo, freshTmpDir, plumbing } from "../fixtures.js";
 import { exitStatusFor, requirePassed, type ScenarioOutcome } from "../scenario-types.js";

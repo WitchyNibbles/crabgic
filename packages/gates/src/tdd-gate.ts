@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { CURRENT_SCHEMA_VERSION, EvidenceRecordSchema, type EvidenceRecord } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import {
+  CURRENT_SCHEMA_VERSION,
+  EvidenceRecordSchema,
+  type EvidenceRecord,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { RedBaselineNotFailingError } from "./errors.js";
 import type { GateHandler } from "./types.js";
 
@@ -10,7 +14,7 @@ import type { GateHandler } from "./types.js";
  * dispatch, green at candidate; a missing red-baseline `EvidenceRecord` for
  * the same `Requirement` fails the gate."
  *
- * `@eo/scheduler`'s executor ties its own `work_unit_transition`
+ * `@crabgic/scheduler`'s executor ties its own `work_unit_transition`
  * `dispatched`/`succeeded` entries to this same protocol as the SEAM (its
  * own file-level doc comment: "the `dispatched` entry IS the pre-dispatch
  * red-evidence capture point ... 14 owns gate evaluation on top of these
@@ -105,7 +109,7 @@ export interface TddGateInput {
    * STRICTLY BEFORE to count for THIS candidate's own verification (NIT-2,
    * adversarial-validation round) — e.g. the seq of the `work_unit_
    * transition: dispatched` entry that began this specific attempt (13's
-   * own pre-dispatch red-evidence capture point; `@eo/scheduler`'s
+   * own pre-dispatch red-evidence capture point; `@crabgic/scheduler`'s
    * `executor.ts` journals this immediately before consuming any events).
    *
    * Without this, a genuine `captureRedBaseline` call is structurally

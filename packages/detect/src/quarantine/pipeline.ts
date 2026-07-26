@@ -19,7 +19,7 @@ import { runSandboxStage } from "./stages/sandbox-stage.js";
 import { buildManifestEntry } from "./manifest-entry.js";
 import type { Scanner } from "./scanners/types.js";
 import type { AuditReport, ScanFinding, StageResult } from "./types.js";
-import type { CapabilityManifestEntry } from "@eo/contracts";
+import type { CapabilityManifestEntry } from "@crabgic/contracts";
 
 export interface QuarantinePipelineOptions {
   readonly scanners?: readonly Scanner[];

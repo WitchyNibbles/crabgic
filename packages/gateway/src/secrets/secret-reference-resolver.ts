@@ -9,7 +9,7 @@
  * only place in this package permitted to produce that value. Callers
  * (the mutation pipeline, the HTTP client) must never persist, log, or
  * echo the resolved value back into any response, error, or journal
- * entry — see `ConnectorError`'s own redaction discipline (`@eo/contracts`)
+ * entry — see `ConnectorError`'s own redaction discipline (`@crabgic/contracts`)
  * for the sibling guarantee on the read side.
  *
  * `file` backend requires the file to be exactly mode `0600` (owner
@@ -20,7 +20,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { SecretReference } from "@eo/contracts";
+import type { SecretReference } from "@crabgic/contracts";
 
 const execFileAsync = promisify(execFile);
 
@@ -103,7 +103,7 @@ async function resolveExec(ref: Extract<SecretReference, { backend: "exec" }>): 
 /**
  * Resolves a `SecretReference` to its live value. Extensible by
  * construction (a switch over the discriminant) — a 4th backend is a
- * coordinated schema change in `@eo/contracts` plus one new branch here,
+ * coordinated schema change in `@crabgic/contracts` plus one new branch here,
  * per this schema's own doc comment.
  */
 export async function resolveSecretReference(ref: SecretReference): Promise<string> {

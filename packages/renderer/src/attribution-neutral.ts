@@ -1,4 +1,4 @@
-import { scanForAttributionTokens } from "@eo/contracts";
+import { scanForAttributionTokens } from "@crabgic/contracts";
 import type { LintFinding, LintStageInput } from "./lint-types.js";
 
 /**

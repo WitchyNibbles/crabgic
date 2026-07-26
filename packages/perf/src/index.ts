@@ -1,14 +1,14 @@
 /**
- * `@eo/perf` public barrel — roadmap/15-performance-contracts.md. Every
+ * `@crabgic/perf` public barrel — roadmap/15-performance-contracts.md. Every
  * cross-cutting type/function this package exposes (its registered
  * performance gate handler, the risk detector, the twin-worktree runner,
  * the stats/decision engine, the measurement wrappers, and the two
  * adapters) is exported from exactly this one module, matching every
- * sibling package's own barrel convention (`@eo/gates`, `@eo/scheduler`).
+ * sibling package's own barrel convention (`@crabgic/gates`, `@crabgic/scheduler`).
  *
  * Excluded deliberately (test-support-only, not part of this package's
  * public API): `test-support/test-journal.ts`, `test-support/minimal-
- * compiled-profile.ts` — mirroring `@eo/gates`' own identical exclusion.
+ * compiled-profile.ts` — mirroring `@crabgic/gates`' own identical exclusion.
  */
 
 // ---- Typed errors (fail-closed everywhere) ----

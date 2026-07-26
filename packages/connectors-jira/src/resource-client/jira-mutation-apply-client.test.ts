@@ -3,9 +3,13 @@ import {
   GatewayHttpClient,
   createFakeProviderTransport,
   type FakeProviderScriptEntry,
-} from "@eo/gateway";
-import { ConnectorError, RemoteMutationPlanSchema, type RemoteMutationPlan } from "@eo/contracts";
-import { buildExternalConnection } from "@eo/testkit";
+} from "@crabgic/gateway";
+import {
+  ConnectorError,
+  RemoteMutationPlanSchema,
+  type RemoteMutationPlan,
+} from "@crabgic/contracts";
+import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
 import {

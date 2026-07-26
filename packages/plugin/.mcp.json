@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "eo_gateway": {
-      "command": "engineering-orchestrator",
+    "crabgic_gateway": {
+      "command": "crabgic",
       "args": ["gateway", "mcp"]
     }
   }

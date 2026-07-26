@@ -18,7 +18,7 @@ Evidence-based stack profiling that never executes repository content, plus the 
 - **Skill selection:** stack → relevant Agent Skills only; `disable-model-invocation` for rarely-used ones.
 - **Quarantine pipeline:** (1) fetch without credentials → (2) pin immutable digest → (3) verify signature/provenance where available → (4) SBOM + scan deps/licenses/secrets/scripts/hooks/prompts/permissions → (5) test without credentials or egress, inside an `@anthropic-ai/sandbox-runtime` jail (adaptation §4.2 — the standalone package for wrapping non-Claude processes in the engine's own sandbox jail) → (6) manifest entry for approval. Re-audit on digest/permission-footprint change. SLSA/CycloneDX stored as evidence, not proof of benignity.
 - **Third-party Claude plugins:** same pipeline before enabling (plugin hooks/`bin` execute code — adaptation §10 risk #11).
-- **Content-addressed capability store** under `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-store/` (same convention, pinned in 04).
+- **Content-addressed capability store** under `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (same convention, pinned in 04).
 
 ## Out of scope
 
@@ -33,21 +33,21 @@ Evidence-based stack profiling that never executes repository content, plus the 
 
 - **Detector framework** (`packages/detect`) — pure, per-ecosystem static analysis producing `StackEvidence` (02 schema) instances. Consumed by 11's `project.inspect` ("12 detection when available; graceful degradation before 12" — a soft relationship, no dependency edge back onto this phase) and, per the cross-phase ledger, by 14/15's stack-aware selection — both 14 and 15 now name `StackEvidence` verbatim in their own text (see Risks).
 - **Doc-research task-packet generator** — consumed by phase 11's manager-session contract/DAG drafting flow (see 11 work item 2) when available; graceful degradation before 12, mirroring 11's existing stack-detection relationship.
-- **Content-addressed capability store** — on disk at `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-store/` (convention pinned in 04). Holds digest-pinned capability entries plus their audit-report artifacts (fetch provenance, SBOM reference, scan findings, sandboxed-test result, decision, timestamp). Consumed by 14 for its own security-scanner toolchain ("tools digest-pinned via 12" — 14's own text) and by 11 (manifest entries surfaced in approval rendering).
+- **Content-addressed capability store** — on disk at `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (convention pinned in 04). Holds digest-pinned capability entries plus their audit-report artifacts (fetch provenance, SBOM reference, scan findings, sandboxed-test result, decision, timestamp). Consumed by 14 for its own security-scanner toolchain ("tools digest-pinned via 12" — 14's own text) and by 11 (manifest entries surfaced in approval rendering).
 - **`CapabilityManifest` entries** (02 schema; this phase populates, does not own) — digest-pinned skill/plugin/hook/MCP-server/external-tool records appended after a quarantine pass. Consumed by 11 (contract assembly + approval-prompt rendering) and by 23 (release gate's SHA-pinned marketplace listing check). P10's own plugin bundle passes through this same pipeline before marketplace publication (per 10's own risk note) even though no 10↔12 dependency edge exists — that pass happens at 23's release-gate stage, not as a 10 build-time dependency.
-- **MCP tools `capability.audit`, `capability.approve`** — implementation stays in `packages/detect` (unchanged: no relocation into `packages/gateway`). Both register into the single `eo_gateway` tool registry (`GATEWAY_MCP_SERVER_NAME`, 02) that phase 09's `gateway mcp` command exposes — no new dependency edge, since this phase already depends on 09. `capability.approve` only **verifies** a previously human-minted `trust approve` token; it is never model-satisfiable, mirroring `contract.approve`'s treatment in 11 (adaptation §5.5).
+- **MCP tools `capability.audit`, `capability.approve`** — implementation stays in `packages/detect` (unchanged: no relocation into `packages/gateway`). Both register into the single `crabgic_gateway` tool registry (`GATEWAY_MCP_SERVER_NAME`, 02) that phase 09's `gateway mcp` command exposes — no new dependency edge, since this phase already depends on 09. `capability.approve` only **verifies** a previously human-minted `trust approve` token; it is never model-satisfiable, mirroring `contract.approve`'s treatment in 11 (adaptation §5.5).
 - **CLI `trust review|approve|revoke`** — backend for the command 09 declares (`NOT_IMPLEMENTED` stub until this phase lands). `trust approve` mints a one-time approval token bound to the capability's content digest (parallel in spirit to 09's envelope-hash-bound token, 09 work item 6, but a distinct token keyed to a different subject) and journals it as an `approval_token_mint` entry (`JournalEntryType`, 02 — reused member; see Risks).
 
 ## Interfaces consumed
 
-- **From 02** (`packages/contracts`): `StackEvidence` schema (detector-framework output target); `CapabilityManifest` schema (entry target); `GATEWAY_MCP_SERVER_NAME` constant (`"eo_gateway"`) for tool-registry registration; `JournalEntryType`'s `approval_token_mint` member (reused here for capability-digest-bound tokens); testkit fixture builders for detector/quarantine fixtures.
+- **From 02** (`packages/contracts`): `StackEvidence` schema (detector-framework output target); `CapabilityManifest` schema (entry target); `GATEWAY_MCP_SERVER_NAME` constant (`"crabgic_gateway"`) for tool-registry registration; `JournalEntryType`'s `approval_token_mint` member (reused here for capability-digest-bound tokens); testkit fixture builders for detector/quarantine fixtures.
 - **From 09** (`packages/cli`): the `trust review|approve|revoke` command parser/skeleton + typed UDS client (09 work item 1) this phase's backend replaces; the `gateway mcp` extensible tool registry that `capability.audit`/`capability.approve` register into.
 
 ## Work items
 
 1. Detector framework (pure per-ecosystem detectors) + evidence/confidence model + contradiction reporting, populating `StackEvidence`.
 2. Doc-research task-packet generator (consumed by phase 11's manager-session contract/DAG drafting flow — see 11 work item 2 — when available; graceful degradation before 12, mirroring 11's existing stack-detection relationship).
-3. Content-addressed capability store at `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/capability-store/` (pinned in 04) + digest/permission-footprint re-audit triggers.
+3. Content-addressed capability store at `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (pinned in 04) + digest/permission-footprint re-audit triggers.
 4. Pipeline stages with pluggable pinned scanners (gitleaks, osv-scanner, Syft) + audit-report artifact; stage 5 sandboxed test via `@anthropic-ai/sandbox-runtime`, writing entries into the store from item 3.
 5. `capability.audit`/`capability.approve` MCP tools (registered into 09's `gateway mcp` registry) + CLI `trust review|approve|revoke` backend; `trust approve` mints, `capability.approve` only verifies.
 
@@ -67,7 +67,7 @@ All vectors below are written red before their corresponding pipeline stage exis
 - [ ] No-execution proof: detectors run under a no-exec jail test that fails if any child process spawns.
 - [ ] Quarantine catches seeded threats: malicious postinstall, secret in skill body, over-broad plugin hook, unsigned digest change.
 - [ ] Approved capability is digest-pinned in the manifest under `capability-store/`; a changed digest or permission footprint forces re-audit.
-- [ ] `capability.audit`/`capability.approve` resolve over the shared `eo_gateway` registry against a stub MCP client; `capability.approve` rejects a call lacking a pre-minted `trust approve` token.
+- [ ] `capability.audit`/`capability.approve` resolve over the shared `crabgic_gateway` registry against a stub MCP client; `capability.approve` rejects a call lacking a pre-minted `trust approve` token.
 - [ ] CLI `trust review|approve|revoke` replaces 09's `NOT_IMPLEMENTED` stub end-to-end against a real supervisor in a tmp dir.
 - [ ] Doc-research task-packet generator degrades gracefully when invoked before phase 11's drafting flow exists (typed fallback, no crash).
 

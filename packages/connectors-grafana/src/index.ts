@@ -1,8 +1,8 @@
 /**
- * `@eo/connectors-grafana` public barrel — roadmap/20-grafana-adapters.md
+ * `@crabgic/connectors-grafana` public barrel — roadmap/20-grafana-adapters.md
  * §Interfaces produced. Every cross-cutting surface this phase produces is
  * exported from exactly this module; downstream phases (21, 23) import
- * from `@eo/connectors-grafana` directly.
+ * from `@crabgic/connectors-grafana` directly.
  */
 
 // ---- Resource kinds + high-impact-flag table ----

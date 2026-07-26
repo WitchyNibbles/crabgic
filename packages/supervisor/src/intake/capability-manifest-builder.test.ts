@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CapabilityManifestSchema } from "@eo/contracts";
+import { CapabilityManifestSchema } from "@crabgic/contracts";
 import { buildCapabilityManifest } from "./capability-manifest-builder.js";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -30,7 +30,7 @@ describe("buildCapabilityManifest", () => {
       },
       pluginEntry: {
         kind: "plugin",
-        name: "engineering-orchestrator",
+        name: "crabgic",
         digest: "sha256:aaaa",
         decision: "pending",
       },

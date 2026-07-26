@@ -11,8 +11,12 @@
  * this pipeline.
  */
 
-import { ConnectorError, RemoteMutationPlanSchema, type ExternalConnection } from "@eo/contracts";
-import type { JournalStore } from "@eo/journal";
+import {
+  ConnectorError,
+  RemoteMutationPlanSchema,
+  type ExternalConnection,
+} from "@crabgic/contracts";
+import type { JournalStore } from "@crabgic/journal";
 import { buildHttpClientForConnection } from "../../connection-store/connection-http-client.js";
 import type { ExternalConnectionRepository } from "../../connection-store/external-connection-store.js";
 import type { GatewayHttpClient } from "../../transport/http-client.js";

@@ -7,9 +7,9 @@ import {
   ExternalConnectionSchema,
   type CapabilitySnapshot,
   type ExternalConnection,
-} from "@eo/contracts";
-import { ProviderRegistry } from "@eo/gateway";
-import type { GenericProviderClient, MutationApplyClient } from "@eo/gateway";
+} from "@crabgic/contracts";
+import { ProviderRegistry } from "@crabgic/gateway";
+import type { GenericProviderClient, MutationApplyClient } from "@crabgic/gateway";
 import {
   buildRouteTable,
   capabilityFlag,
@@ -454,7 +454,7 @@ describe("registerRoutedGrafanaProvider — optional-parameter and optional-meth
 
   /**
    * `MutationApplyClient.verify` and `.reconcileAmbiguous` are OPTIONAL in
-   * `@eo/gateway`'s own contract, while the mutation pipeline calls
+   * `@crabgic/gateway`'s own contract, while the mutation pipeline calls
    * `verify` unconditionally. The routed wrapper therefore has to supply
    * the same defaults the pipeline would otherwise be denied — "nothing to
    * read back, so do not block" and "no reconciliation available" — rather

@@ -36,7 +36,7 @@ afterEach(() => {
   }
   stdoutSpy?.mockRestore();
   stdoutSpy = undefined;
-  delete process.env["EO_CRASH_FIXTURE_BROKEN"];
+  delete process.env["CRABGIC_CRASH_FIXTURE_BROKEN"];
 });
 
 function freshDir(): string {
@@ -103,10 +103,10 @@ describe("armedAppend — real (non-broken) path", () => {
   });
 });
 
-describe("armedAppend — EO_CRASH_FIXTURE_BROKEN=1 path", () => {
+describe("armedAppend — CRABGIC_CRASH_FIXTURE_BROKEN=1 path", () => {
   it("delegates to the deliberately unsafe brokenArmedAppend when the env flag is set", async () => {
     silenceStdout();
-    process.env["EO_CRASH_FIXTURE_BROKEN"] = "1";
+    process.env["CRABGIC_CRASH_FIXTURE_BROKEN"] = "1";
     const dir = freshDir();
     const config = resolveStoreConfig({ journalDir: dir, fs: createNodeFsPort() });
     await appendPriorEntries(config, 1);

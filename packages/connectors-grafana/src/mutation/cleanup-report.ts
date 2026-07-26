@@ -1,5 +1,5 @@
-import type { RemoteMutationPlan } from "@eo/contracts";
-import type { MutationPipelineOutcome } from "@eo/gateway";
+import type { RemoteMutationPlan } from "@crabgic/contracts";
+import type { MutationPipelineOutcome } from "@crabgic/gateway";
 import { parseCanonicalTarget } from "./canonical-target.js";
 
 /**

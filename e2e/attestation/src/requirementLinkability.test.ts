@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
+import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@crabgic/contracts";
 import {
   analyzeRequirementLinkability,
   summarizeRequirementLinkability,

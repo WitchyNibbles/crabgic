@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createJournalStore } from "@eo/journal";
+import { createJournalStore } from "@crabgic/journal";
 import { generateReleaseGateReport, type EvidenceJournalReader } from "./generator.js";
 import {
   ReleaseGateReportSchema,
@@ -31,7 +31,7 @@ export const DEFAULT_OUT_FILE = join(THIS_DIR, "..", "..", "release-gate-report.
  * cli.ts`'s own `DEFAULT_DEBOUNCE_STATE_PATH` rationale): until work items
  * 2-10 wire a real production journal location into this generator, a
  * bare local invocation must never invent an untracked directory inside
- * the repo working tree. CI overrides this via `EO_RELEASE_GATE_JOURNAL_DIR`
+ * the repo working tree. CI overrides this via `CRABGIC_RELEASE_GATE_JOURNAL_DIR`
  * once a real journal path is available.
  */
 export const DEFAULT_JOURNAL_DIR = join(tmpdir(), "eo-release-gate-report", "journal");
@@ -79,18 +79,20 @@ export interface ReleaseGateCliSettings {
 export function resolveReleaseGateCliSettings(
   options: RunReleaseGateReportCliOptions = {},
 ): ReleaseGateCliSettings {
-  const envMode = envOrUndefined("EO_RELEASE_GATE_MODE");
+  const envMode = envOrUndefined("CRABGIC_RELEASE_GATE_MODE");
   return {
     journalDir:
-      options.journalDir ?? envOrUndefined("EO_RELEASE_GATE_JOURNAL_DIR") ?? DEFAULT_JOURNAL_DIR,
+      options.journalDir ??
+      envOrUndefined("CRABGIC_RELEASE_GATE_JOURNAL_DIR") ??
+      DEFAULT_JOURNAL_DIR,
     releaseCandidateObjectId:
       options.releaseCandidateObjectId ??
-      envOrUndefined("EO_RELEASE_CANDIDATE_OBJECT_ID") ??
+      envOrUndefined("CRABGIC_RELEASE_CANDIDATE_OBJECT_ID") ??
       resolveDefaultReleaseCandidateObjectId(),
     scoringMode:
       options.scoringMode ??
       (envMode !== undefined && isScoringMode(envMode) ? envMode : "interim"),
-    outFile: options.outFile ?? envOrUndefined("EO_RELEASE_GATE_OUT_FILE") ?? DEFAULT_OUT_FILE,
+    outFile: options.outFile ?? envOrUndefined("CRABGIC_RELEASE_GATE_OUT_FILE") ?? DEFAULT_OUT_FILE,
   };
 }
 
@@ -108,7 +110,7 @@ export interface RunReleaseGateReportCliOptions {
   readonly releaseCandidateObjectId?: string;
   readonly scoringMode?: ReleaseGateScoringMode;
   readonly outFile?: string;
-  /** Test-only override — skips constructing a real `@eo/journal` store. */
+  /** Test-only override — skips constructing a real `@crabgic/journal` store. */
   readonly journal?: EvidenceJournalReader;
   readonly now?: () => string;
   /** Overridable so tests can exercise the CLI against a small synthetic checklist; defaults to the real 15-item `RELEASE_GATE_CHECKLIST`. */
@@ -129,9 +131,9 @@ export interface RunReleaseGateReportCliResult {
 }
 
 /**
- * Reads env-var overrides (`EO_RELEASE_GATE_JOURNAL_DIR`,
- * `EO_RELEASE_CANDIDATE_OBJECT_ID`, `EO_RELEASE_GATE_MODE`,
- * `EO_RELEASE_GATE_OUT_FILE`) layered under explicit `options` — all of them
+ * Reads env-var overrides (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`,
+ * `CRABGIC_RELEASE_CANDIDATE_OBJECT_ID`, `CRABGIC_RELEASE_GATE_MODE`,
+ * `CRABGIC_RELEASE_GATE_OUT_FILE`) layered under explicit `options` — all of them
  * through `resolveReleaseGateCliSettings`, where an EMPTY env value means
  * unset — generates the report, and archives it to `outFile`. Returns the
  * generated report plus the paths it actually resolved, so the CI-job glue

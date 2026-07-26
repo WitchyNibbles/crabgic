@@ -18,8 +18,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  * work item owns root script additions — this project itself never edits
  * root config per its own constraints).
  *
- * Every test here drives REAL `@eo/gateway`/`@eo/renderer`/
- * `@eo/connectors-jira`/`@eo/connectors-grafana` logic (imported from their
+ * Every test here drives REAL `@crabgic/gateway`/`@crabgic/renderer`/
+ * `@crabgic/connectors-jira`/`@crabgic/connectors-grafana` logic (imported from their
  * built `dist/` output, like any other cross-package import in this repo —
  * `npm run build` must have run first, exactly as CI's own `test` job does
  * before `npm test`) against fakes/cassettes/synthetic fixtures — never a

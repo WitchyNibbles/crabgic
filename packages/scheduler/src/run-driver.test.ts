@@ -20,7 +20,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@eo/journal";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
@@ -28,9 +28,9 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
   RATE_LIMIT_ALLOWED_WARNING_96,
-} from "@eo/testkit";
-import type { WorkUnit } from "@eo/contracts";
-import type { EngineAdapter } from "@eo/engine-core";
+} from "@crabgic/testkit";
+import type { WorkUnit } from "@crabgic/contracts";
+import type { EngineAdapter } from "@crabgic/engine-core";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,

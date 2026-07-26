@@ -1,20 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getLatestAttempt, type JournalStore } from "@eo/journal";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
-} from "@eo/testkit";
+} from "@crabgic/testkit";
 import {
   DEFAULT_CONCURRENCY_CAP,
   computeReadyUnits,
   dispatchAttempt,
   journalFanoutRationaleIfFannedOut,
   selectDispatchSet,
-} from "@eo/scheduler";
+} from "@crabgic/scheduler";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
@@ -24,7 +24,7 @@ import { createTestJournal, type TestJournal } from "../src/testJournal.js";
  * parallel change sets." Three WorkUnits with ZERO pairwise overlap
  * collisions dispatch concurrently, up to the concurrency cap, and a
  * `fanout_rationale` entry is journaled for the fanned-out round — driving
- * the REAL `@eo/scheduler` readiness/fanout/executor logic against the fake
+ * the REAL `@crabgic/scheduler` readiness/fanout/executor logic against the fake
  * engine, never a stub.
  */
 describe("Orchestration matrix: independent parallel change sets", () => {
@@ -43,7 +43,7 @@ describe("Orchestration matrix: independent parallel change sets", () => {
   it("dispatches three mutually-independent WorkUnits concurrently and journals exactly one fan-out rationale", async () => {
     // NOTE: `buildWorkUnit()`'s default `id` is drawn from a FRESH,
     // independently-seeded deterministic id provider PER CALL (see
-    // `@eo/testkit`'s `createFixtureContext`) — two separate calls with no
+    // `@crabgic/testkit`'s `createFixtureContext`) — two separate calls with no
     // override produce the IDENTICAL default `id`. Every fixture below that
     // coexists with siblings in the SAME test is therefore given an
     // explicit, distinct `id` override; this is this harness's own
@@ -63,7 +63,7 @@ describe("Orchestration matrix: independent parallel change sets", () => {
 
     // A per-test runId so the fan-out assertion below is scoped to THIS
     // round's own entry: under a shared journal
-    // (`EO_RELEASE_GATE_JOURNAL_DIR`, see `../src/testJournal.ts`) sibling
+    // (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`, see `../src/testJournal.ts`) sibling
     // scenarios' `fanout_rationale` entries land in the same journal, and
     // an unscoped "exactly one" count would break.
     const runId = randomUUID();

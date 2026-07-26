@@ -21,7 +21,7 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 
-const PUBLISHED_MANIFEST = { name: "engineering-orchestrator", version: "1.0.0" };
+const PUBLISHED_MANIFEST = { name: "crabgic", version: "1.0.0" };
 const PRIVATE_MANIFEST = { ...PUBLISHED_MANIFEST, private: true };
 
 function output(overrides: Partial<NpmViewOutput>): NpmViewOutput {
@@ -40,7 +40,7 @@ async function check(
 ): Promise<Awaited<ReturnType<typeof checkPublication>>> {
   return checkPublication({
     packageJsonPath,
-    packageName: "engineering-orchestrator",
+    packageName: "crabgic",
     version: "1.0.0",
     runner: new FakeNpmViewRunner(registry),
   });
@@ -134,7 +134,7 @@ describe("RealNpmViewRunner — genuine `npm view` child process", () => {
   it("does not report this repo's own package as published, on or off the network", async () => {
     const result = await checkPublication({
       packageJsonPath: await seedManifest(PUBLISHED_MANIFEST),
-      packageName: "engineering-orchestrator",
+      packageName: "crabgic",
       version: "1.0.0",
       runner: new RealNpmViewRunner(),
     });

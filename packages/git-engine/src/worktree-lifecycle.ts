@@ -9,7 +9,7 @@
  * `onStep` (default no-op) is the same test-only injection seam
  * `./control-clone.js` uses — real crash tests
  * (`./worktree-lifecycle.crash.test.ts`) inject `signalFaultPoint`
- * (`@eo/journal`) to interrupt a multi-step operation deterministically at
+ * (`@crabgic/journal`) to interrupt a multi-step operation deterministically at
  * a real internal checkpoint, without this module importing any
  * kill-harness machinery itself.
  */

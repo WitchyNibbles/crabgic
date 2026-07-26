@@ -1,6 +1,6 @@
 /**
  * Provisional project-hash derivation. NO roadmap phase has yet assigned
- * ownership of "how a project hash is derived" — `@eo/journal`'s own
+ * ownership of "how a project hash is derived" — `@crabgic/journal`'s own
  * layout module says so explicitly ("this package does not define how a
  * project hash is derived... both simply consume it as a parameter").
  * Until some later phase claims that ownership, this package derives one

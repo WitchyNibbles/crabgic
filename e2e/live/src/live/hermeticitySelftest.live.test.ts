@@ -15,7 +15,7 @@ import {
   createHermeticitySelftestCheck,
   createRealHermeticitySelftestProbe,
   createRealProcessProbe,
-} from "engineering-orchestrator";
+} from "crabgic";
 import { assertLiveEnabled } from "./liveGate.js";
 
 beforeAll(() => {

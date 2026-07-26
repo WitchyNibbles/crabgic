@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GATEWAY_MCP_SERVER_NAME } from "@eo/contracts";
+import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { toWorkerSettingsJson, toWorkerSdkOptions } from "./worker-settings.js";
 import { emitPermissionProfile } from "./permission-profile.js";
 import { emitSandboxProfile } from "./sandbox-profile.js";

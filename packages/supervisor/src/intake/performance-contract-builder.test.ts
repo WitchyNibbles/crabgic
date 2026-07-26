@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProvisionalPerformanceContractSchema } from "@eo/contracts";
+import { ProvisionalPerformanceContractSchema } from "@crabgic/contracts";
 import {
   buildProvisionalPerformanceContract,
   hashProvisionalBudgets,

@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareMarketplaceEntry, renderPreparedMarketplace } from "./marketplaceEntryPreparer.js";
-import { MarketplaceSchema } from "@eo/plugin";
+import { MarketplaceSchema } from "@crabgic/plugin";
 
 const execFileAsync = promisify(execFile);
 
@@ -132,7 +132,7 @@ describe("prepareMarketplaceEntry — genuine integration (real git rev-parse HE
 
     const entry = await prepareMarketplaceEntry({ pluginRoot, repoRoot, version: "1.0.0" });
 
-    expect(entry.name).toBe("engineering-orchestrator");
+    expect(entry.name).toBe("crabgic");
     expect(entry.version).toBe("1.0.0");
     expect(entry.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(entry.license).toBe("Apache-2.0");

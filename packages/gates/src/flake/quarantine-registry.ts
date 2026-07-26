@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JournalStore } from "@eo/journal";
+import type { JournalStore } from "@crabgic/journal";
 
 /**
  * Flake-quarantine registry — roadmap/14 §In scope, "Flake policy" bullet:

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { DEFAULT_COMMUNICATION_POLICY } from "@eo/contracts";
-import { lint, toADF, toWikiMarkup, type AdfDocument } from "@eo/renderer";
+import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
+import { lint, toADF, toWikiMarkup, type AdfDocument } from "@crabgic/renderer";
 import { adfDocumentToWikiMarkup } from "./wiki-markup-render-profile.js";
 
 /** Builds a minimal single-paragraph `AdfDocument` wrapping one plain text node — used to test the serializer's escaping in isolation, independent of `toADF`'s own markdown parsing (which would consume/alter some of the adversarial characters below before they ever reach the serializer). */
@@ -29,14 +29,14 @@ function hasUnescapedWikiMetacharacter(wiki: string): boolean {
  * Design: `../issue-plans.ts`/`../comment-worklog-attachment-plans.ts`
  * (18's plan builders, REUSED VERBATIM by this phase's DC resource client
  * — see `./jira-datacenter-resource-client.ts`) always produce an
- * `AdfDocument` via `@eo/renderer`'s `toADF`, regardless of deployment
+ * `AdfDocument` via `@crabgic/renderer`'s `toADF`, regardless of deployment
  * type — this keeps the intake/milestone-sync engine (18 work item 4)
  * "reused unmodified against either client," per roadmap/19's own
  * Interfaces-consumed bullet. `adfDocumentToWikiMarkup` is this phase's
  * OWN serializer, walking that SAME `AdfDocument` tree directly (never
  * re-deriving from the original markdown, which is unavailable at the DC
  * apply boundary) to Jira wiki-markup syntax — cross-tested here against
- * `@eo/renderer`'s own markdown-based `toWikiMarkup` (roadmap/17's
+ * `@crabgic/renderer`'s own markdown-based `toWikiMarkup` (roadmap/17's
  * "Jira Data Center wiki-markup fallback profile") to prove both
  * serializers agree on output for every corpus item, since they both
  * ultimately derive from the same source markdown.
@@ -60,7 +60,7 @@ const GOLDEN_CORPUS: readonly string[] = [
   ].join("\n"),
 ];
 
-describe("adfDocumentToWikiMarkup — golden corpus parity with @eo/renderer's toWikiMarkup", () => {
+describe("adfDocumentToWikiMarkup — golden corpus parity with @crabgic/renderer's toWikiMarkup", () => {
   it.each(GOLDEN_CORPUS)(
     "produces byte-identical output to toWikiMarkup for corpus item %#",
     (markdown) => {
@@ -152,7 +152,7 @@ describe("adversarial: wiki-markup metacharacter escaping (macro/link/table inje
   it("the same macro-injection payload still PASSES 17's blocking-artifact-lint as ordinary candidate text — proving lint alone does not (and is not meant to) catch Jira-wiki-specific macro syntax; this connector's own serializer is the closing control", () => {
     // Deliberately contains NO raw HTML tag and NO javascript:/data:/vbscript:/file:
     // scheme (17's own url-policy stage already blocks those independently,
-    // per `@eo/renderer`'s `url-policy.ts` — that is a DIFFERENT, already-
+    // per `@crabgic/renderer`'s `url-policy.ts` — that is a DIFFERENT, already-
     // closed vector, not what this test demonstrates). This candidate
     // isolates the gap that is genuinely Jira-wiki-specific: 17's lint has
     // (and should have) no opinion on `{macro}` bracket syntax at all,

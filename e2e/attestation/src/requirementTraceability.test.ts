@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { EvidenceRecord, RemoteResource } from "@eo/contracts";
-import type { RemoteEvidencePointer } from "@eo/gates";
+import type { EvidenceRecord, RemoteResource } from "@crabgic/contracts";
+import type { RemoteEvidencePointer } from "@crabgic/gates";
 import {
   TRACEABILITY_INPUT_PATH,
   TRACEABILITY_RECORD_ENV,
@@ -350,14 +350,14 @@ describe("readRequirementTraceabilityInput — the artifact is validated, never 
    * THESE TESTS ARE ABOUT THE IN-REPO PATH, so the override must be off.
    *
    * `.github/workflows/release-e2e.yml` exports
-   * `$EO_REQUIREMENT_TRACEABILITY_RECORD` at JOB level, so it is set for the
+   * `$CRABGIC_REQUIREMENT_TRACEABILITY_RECORD` at JOB level, so it is set for the
    * whole harness run in CI — and with it set, `readRequirementTraceabilityInput`
    * correctly ignores the `repoRoot` these tests hand it and reads the real
    * artifact instead. Every assertion below then describes the wrong file.
    * That is not hypothetical: it turned this file red in CI while it stayed
    * green on every developer machine, which is precisely the failure mode
    * `e2e/release/src/testJournal.ts`'s own note warns about for
-   * `$EO_RELEASE_CANDIDATE_OBJECT_ID`. A test that depends on a variable
+   * `$CRABGIC_RELEASE_CANDIDATE_OBJECT_ID`. A test that depends on a variable
    * being unset has to unset it.
    */
   const savedOverride = process.env[TRACEABILITY_RECORD_ENV];
@@ -522,12 +522,12 @@ describe("checkRequirementTraceability — the remote-binding rule is scoped, no
  * object ID the artifact names, so the two conditions could never hold at
  * once and `requirement-traceability` was structurally unclearable — exactly
  * the problem `docs/interface-ledger.md`'s Gap 16 already solved for the
- * ARM64 run record (`$EO_ARM64_RUN_RECORD`) and the 15 re-run record
- * (`$EO_PERF_CONTRACT_RERUN_RECORD`). This artifact was the one Gap-16-shaped
+ * ARM64 run record (`$CRABGIC_ARM64_RUN_RECORD`) and the 15 re-run record
+ * (`$CRABGIC_PERF_CONTRACT_RERUN_RECORD`). This artifact was the one Gap-16-shaped
  * input with no override, and so the one that could not be supplied
  * out-of-tree.
  */
-describe("readRequirementTraceabilityInput — $EO_REQUIREMENT_TRACEABILITY_RECORD", () => {
+describe("readRequirementTraceabilityInput — $CRABGIC_REQUIREMENT_TRACEABILITY_RECORD", () => {
   const created: string[] = [];
   const saved = process.env[TRACEABILITY_RECORD_ENV];
 

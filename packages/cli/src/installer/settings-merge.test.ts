@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mergeSettingsJson } from "./settings-merge.js";
 
-const PLUGIN = "engineering-orchestrator";
+const PLUGIN = "crabgic";
 
 describe("mergeSettingsJson — add-only defaults", () => {
   it("adds attribution, sessionUrl, and enabledPlugins to a brand-new (empty) settings object", () => {
@@ -66,7 +66,7 @@ describe("mergeSettingsJson — monotonicity: never touches a key already presen
     expect(result.settings.enabledPlugins).toBe("foo");
     // Every add-only key was already present (even if enabledPlugins is the
     // "wrong" type) — nothing at all changes, PoC from the finding: this
-    // used to silently become `{"engineering-orchestrator": true}`.
+    // used to silently become `{"crabgic": true}`.
     expect(result.changed).toBe(false);
   });
 
