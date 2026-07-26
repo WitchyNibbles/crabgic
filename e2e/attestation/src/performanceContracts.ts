@@ -668,7 +668,21 @@ export const PerformanceRerunRecordSchema = z
   .object({
     /** The frozen release-candidate object ID the re-run was executed against. */
     releaseCandidateObjectId: z.string().min(1),
-    /** What produced it — 15's twin-worktree A/B runner, never a fixture harness. */
+    /**
+     * What produced it — provenance, not a label.
+     *
+     * An earlier revision of this line read "15's twin-worktree A/B runner,
+     * never a fixture harness". That was written before the producer
+     * existed and overshot the roadmap: `roadmap/15:112` settles the entry
+     * point in as many words — "`perf-conformance` runs as a standalone,
+     * named CI job invocable without the full release harness — the exact
+     * entry point 23 re-runs" — and `roadmap/23:26` asks for "seeded-fault
+     * matrices from 14/15/22 executed on the frozen release-candidate
+     * object ID". `perf-conformance` drives 15's real
+     * `runTwinWorktreeBenchmark` and its real `decide()` engine; the
+     * fixtures are the seeded faults the criterion asks for, not a
+     * substitute for the runner. See `./perfContractRerun.ts`.
+     */
     runner: z.string().min(1),
     /** 23:75: "on a quiet host". */
     quietHost: z.boolean(),

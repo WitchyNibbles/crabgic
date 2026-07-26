@@ -142,15 +142,24 @@ describe("SUPPORT_WINDOW_TARGETS", () => {
   it("covers every target the release commits to, with no duplicates", () => {
     const targets = SUPPORT_WINDOW_TARGETS.map((spec) => spec.target);
     expect(new Set(targets).size).toBe(targets.length);
+    // `grafana-11.6` was retired 2026-07-26: this probe found it out of
+    // vendor support since 2026-06-25, and roadmap/23:134 prescribes
+    // refreshing the fixture rather than waiving the finding. Kept in step
+    // with `REQUIRED_SUPPORT_WINDOW_TARGETS` in
+    // `e2e/attestation/src/versionSupportWindows.ts`, which consumes what
+    // this probe records.
     expect(targets).toEqual([
       "jira-cloud",
       "jira-dc-10.3",
       "jira-dc-11.3",
       "grafana-cloud",
-      "grafana-11.6",
       "grafana-12.4",
       "grafana-13.1",
     ]);
+  });
+
+  it("no longer probes the retired 11.6 target", () => {
+    expect(SUPPORT_WINDOW_TARGETS.map((spec) => spec.target)).not.toContain("grafana-11.6");
   });
 });
 

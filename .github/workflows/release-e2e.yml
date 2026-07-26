@@ -249,6 +249,85 @@ jobs:
           fi
           cat "$RECORD"
           echo "EO_ARM64_RUN_RECORD=$RECORD" >> "$GITHUB_ENV"
+      - name: Re-run 15's performance matrix on this candidate (roadmap/23:75)
+        # THE PRODUCER SIDE OF THE 23:75 OBLIGATION.
+        #
+        # `e2e/attestation/src/performanceContracts.ts` has always read
+        # `perf-contract-rerun.json` and blocked while it is absent, and
+        # NOTHING in this repository ever wrote one. `perf-conformance.yml`
+        # runs 15's matrix on every push but archives no record and the
+        # release gate never sees it, so `performance-contracts` failed for
+        # want of an artifact no code path could produce — the ARM64
+        # consumer-without-producer shape, inverted.
+        #
+        # The entry point is not invented here: `roadmap/15:112` names
+        # `perf-conformance` as "the exact entry point 23 re-runs", and
+        # `roadmap/23:26` asks for those matrices "executed on the frozen
+        # release-candidate object ID". This step runs exactly that, on this
+        # checkout, and records what 15's `decide()` engine returned.
+        #
+        # `$RUNNER_TEMP` for the same Gap 16 reason as the ARM64 record: the
+        # record names the object ID it was taken against, and committing it
+        # would advance HEAD past that ID.
+        #
+        # NEVER FAILS THE JOB (`|| true` is deliberate, and the CLI's own
+        # exit status is the production verdict, not the release verdict). A
+        # refusal — red matrix, or a runner too busy to measure on — is an
+        # input the gate already reports as "no 15 re-run evidence"; killing
+        # the job here would take every other item's evidence down with it.
+        env:
+          EO_RELEASE_CANDIDATE_OBJECT_ID: ${{ steps.release-candidate.outputs.object_id }}
+          EO_PERF_CONTRACT_RERUN_RECORD: ${{ runner.temp }}/perf-contract-rerun.json
+        run: |
+          set -uo pipefail
+          if npm run probe:perf-contract-rerun; then
+            echo "EO_PERF_CONTRACT_RERUN_RECORD=$EO_PERF_CONTRACT_RERUN_RECORD" >> "$GITHUB_ENV"
+          else
+            echo "::warning::15's re-run produced no record -- performance-contracts will report the 23:75 obligation as unevidenced"
+          fi
+      - name: Bind the requirement-traceability artifact against a containerized Grafana
+        # THE PRODUCER SIDE OF THE TRACEABILITY LOOP, and the reason
+        # `requirement-traceability` could not previously clear.
+        #
+        # The artifact records the release-candidate object ID it was
+        # captured against, and the check requires that to equal the
+        # candidate being scored. Committing a regenerated artifact ADVANCES
+        # HEAD past the object ID it names, so the two conditions could never
+        # hold at once — the same catch-22 the ARM64 record has, and which
+        # `docs/interface-ledger.md`'s Gap 16 solves with an `EO_*` override
+        # holding an absolute path OUTSIDE the checkout. This artifact was
+        # the one Gap-16-shaped input with no such override; it has one now
+        # (`$EO_REQUIREMENT_TRACEABILITY_RECORD`), and this step is what
+        # fills it.
+        #
+        # `$RUNNER_TEMP`, never `$GITHUB_WORKSPACE`: several harnesses assert
+        # against the checked-out tree, and an untracked artifact inside it
+        # would be a foreign object in the release candidate they attest to.
+        #
+        # This runs the REAL containerized binding — `docker compose up` of a
+        # Grafana image, fronted by an in-process TLS terminator, driving a
+        # real dashboard mutation through the real `executeMutationPlan`
+        # pipeline and reading the applied revision back. GitHub's
+        # ubuntu-latest runners ship a working Docker daemon, which is why
+        # this can run here and not on an arbitrary developer host.
+        #
+        # NEVER FAILS THE JOB, deliberately, on the same principle as the
+        # ARM64 ingest above: a binding that could not be produced is the
+        # honest input "no confirmed remote revision for this candidate", and
+        # the gate reports exactly that, with reasons. Masking it as an
+        # infrastructure error would hide a real release finding.
+        env:
+          EO_RELEASE_CANDIDATE_OBJECT_ID: ${{ steps.release-candidate.outputs.object_id }}
+          EO_REQUIREMENT_TRACEABILITY_RECORD: ${{ runner.temp }}/requirement-traceability.json
+        run: |
+          set -uo pipefail
+          if npx vitest run --config e2e/attestation/vitest.live.config.ts; then
+            echo "EO_REQUIREMENT_TRACEABILITY_RECORD=$EO_REQUIREMENT_TRACEABILITY_RECORD" >> "$GITHUB_ENV"
+            echo "bound requirement-traceability at $EO_RELEASE_CANDIDATE_OBJECT_ID"
+            cat "$EO_REQUIREMENT_TRACEABILITY_RECORD"
+          else
+            echo "::warning::containerized traceability binding did not complete -- requirement-traceability will report no confirmed remote revision"
+          fi
       - name: Run every self-contained e2e harness's offline suite (excludes @live/EO_LIVE-gated tests)
         # THE ONE LEG WITH NETWORK. `e2e/release`'s reproducible-build check
         # verifies "two independent from-clean-checkout BUILDS produce

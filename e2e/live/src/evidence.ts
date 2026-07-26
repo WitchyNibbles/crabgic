@@ -37,6 +37,39 @@ export const NOT_IMPLEMENTED_SWEEP_GATE_TAG = "release-gate:not-implemented-swee
 export const GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG = "release-gate:gateway-cli-surface-complete";
 
 /**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else, so an
+ * unstamped record — however genuine, however correctly tagged —
+ * contributes nothing to 23's traceability criterion. The ids are UUIDv5
+ * digests of the exit-criterion text, derived by
+ * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
+ * that module (each `e2e/*` harness is a self-contained TypeScript project),
+ * so the values are declared here and BOUND to their source by
+ * `e2e/attestation/src/requirementStamping.test.ts`, which reads this file
+ * and fails if the two ever disagree.
+ *
+ * WHY THIS HARNESS NEEDS A MAP RATHER THAN ONE CONSTANT: unlike the matrix
+ * harnesses, it emits under three tags that answer to TWO different
+ * criteria. `live-conformance` and `not-implemented-sweep` are both accepted
+ * by `e2e/report/src/checklist.ts`'s `quality-security-perf-learning-gates`
+ * item as quality-gate evidence, while `gateway-cli-surface-complete` is the
+ * dedicated tag of the zero-`NOT_IMPLEMENTED` criterion. Stamping one id
+ * across all three would credit the wrong requirement.
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:live-conformance": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
+  "release-gate:not-implemented-sweep": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
+  "release-gate:gateway-cli-surface-complete": "9acc0813-1b9a-57ab-b756-99cf57e42800",
+} as const);
+
+/** The requirement a given emitted tag evidences, or `undefined` for a tag this harness does not map. */
+export function requirementIdForGateTag(gateTag: string): string | undefined {
+  return (REQUIREMENT_ID_BY_GATE_TAG as Readonly<Record<string, string>>)[gateTag];
+}
+
+/**
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * — this harness's own unit/integration tests run against this repo's
  * current working tree, not a frozen release cut, so a real invocation
@@ -98,10 +131,15 @@ export async function emitLiveConformanceEvidence(
   const capturedAt = (options.capturedAt ?? (() => new Date().toISOString()))();
   const records: EvidenceRecord[] = [];
   for (const gateTag of options.gateTags) {
+    const requirementId = requirementIdForGateTag(gateTag);
     const record: EvidenceRecord = {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       id: randomUUID(),
       changeSetId: options.changeSetId,
+      // Per-tag, because this harness's three tags answer to two different
+      // criteria. An unmapped tag stays unstamped rather than borrowing a
+      // neighbouring requirement's id — a wrong link is worse than none.
+      ...(requirementId !== undefined ? { requirementId } : {}),
       command: options.command,
       exitStatus: options.exitStatus,
       toolchainFingerprint: options.toolchainFingerprint ?? "e2e/live/@live-conformance-harness@1",

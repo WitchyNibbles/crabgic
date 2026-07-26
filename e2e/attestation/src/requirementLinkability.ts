@@ -65,8 +65,17 @@ export interface RequirementLinkabilityReport {
   readonly unstampedGateTags: readonly string[];
 }
 
+/**
+ * Exactly the members this arithmetic reads. A full `ReleaseRequirement`
+ * satisfies it structurally; narrowing here keeps the linkability maths
+ * independent of fields that belong to other rules — `requiresRemoteBinding`,
+ * for one, is scoping for `requirementTraceability.ts`'s remote-binding half
+ * and has nothing to say about whether a requirement can be linked at all.
+ */
+export type LinkableRequirement = Pick<ReleaseRequirement, "id" | "text" | "gateTags">;
+
 export interface AnalyzeRequirementLinkabilityInput {
-  readonly requirements: readonly ReleaseRequirement[];
+  readonly requirements: readonly LinkableRequirement[];
   readonly evidenceRecords: readonly EvidenceRecord[];
   /** Injectable so the four-way status split is testable independently of the real roadmap text; defaults to the real rule table. */
   readonly hasTagRule?: (text: string) => boolean;

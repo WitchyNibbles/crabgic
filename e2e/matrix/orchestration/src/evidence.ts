@@ -31,6 +31,26 @@ import type { JournalStore } from "@eo/journal";
 export const ORCHESTRATION_MATRIX_GATE_TAG = "release-gate:crash-recovery-concurrency";
 
 /**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else. The ids
+ * are UUIDv5 digests of the exit-criterion text, derived by
+ * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
+ * that module (each `e2e/*` harness is a self-contained TypeScript project),
+ * so the value is declared here and BOUND to its source by
+ * `e2e/attestation/src/requirementStamping.test.ts`, which reads this file
+ * and fails if the two ever disagree.
+ *
+ * `release-gate:crash-recovery-concurrency` evidences "Crash-recovery and
+ * concurrent change-set E2E scenarios pass live, including limit-parked
+ * resume across a supervisor restart (05/13)".
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:crash-recovery-concurrency": "5b85bdb7-5269-5d2d-8d2f-36cf9958d5c8",
+} as const);
+
+/**
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * (23's own EvidenceRecord field) — this harness runs against the FAKE
  * engine/a disposable temp journal, never a real release cut, so there is
@@ -95,7 +115,13 @@ export async function emitScenarioEvidence(
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: randomUUID(),
     changeSetId: options.changeSetId,
-    ...(options.requirementId !== undefined ? { requirementId: options.requirementId } : {}),
+    // Defaulted, not merely accepted. This option existed from the start and
+    // NO caller ever passed it, so every record this harness journaled was
+    // invisible to `buildTraceabilityView` — which joins on this field alone.
+    // The default is the requirement its fixed `gateTag` evidences; an
+    // explicit caller value still wins.
+    requirementId:
+      options.requirementId ?? REQUIREMENT_ID_BY_GATE_TAG[ORCHESTRATION_MATRIX_GATE_TAG],
     ...(options.workUnitId !== undefined ? { workUnitId: options.workUnitId } : {}),
     command: options.command,
     exitStatus: options.exitStatus,

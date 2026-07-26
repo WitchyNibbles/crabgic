@@ -25,6 +25,34 @@ export const REPRODUCIBLE_BUILD_GATE_TAG = "release-gate:reproducible-build";
 export const ENGINE_PIN_RECORDED_GATE_TAG = "release-gate:engine-pin-recorded";
 
 /**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else, so an
+ * unstamped record — however genuine, however correctly tagged —
+ * contributes nothing to 23's traceability criterion. The ids are UUIDv5
+ * digests of the exit-criterion text, derived by
+ * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
+ * that module (each `e2e/*` harness is a self-contained TypeScript project),
+ * so the values are declared here and BOUND to their source by
+ * `e2e/attestation/src/requirementStamping.test.ts`, which reads this file
+ * and fails if the two ever disagree.
+ *
+ * A map rather than one constant because this harness's two tags are two
+ * SEPARATE roadmap/23 exit criteria (`:136` reproducible build, `:137`
+ * engine-pin recorded), as this module's own header already notes.
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:reproducible-build": "c6e977b7-5435-5b1f-812a-f2735f4a4c65",
+  "release-gate:engine-pin-recorded": "195cba15-c154-5130-aaa4-0b17fbc1e7b5",
+} as const);
+
+/** The requirement a given emitted tag evidences, or `undefined` for a tag this harness does not map. */
+export function requirementIdForGateTag(gateTag: string): string | undefined {
+  return (REQUIREMENT_ID_BY_GATE_TAG as Readonly<Record<string, string>>)[gateTag];
+}
+
+/**
  * A fixed, documented stand-in for "the exact release-candidate object ID"
  * — this harness's own tests run against this repo's current working
  * tree/HEAD, not a frozen release cut. A real `release-e2e` CI invocation
@@ -74,10 +102,15 @@ export async function emitReproducibleBuildEvidence(
   const capturedAt = (options.capturedAt ?? (() => new Date().toISOString()))();
   const records: EvidenceRecord[] = [];
   for (const gateTag of options.gateTags) {
+    const requirementId = requirementIdForGateTag(gateTag);
     const record: EvidenceRecord = {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       id: randomUUID(),
       changeSetId: options.changeSetId,
+      // Per-tag: this harness's two tags are two separate exit criteria. An
+      // unmapped tag stays unstamped rather than borrowing a neighbouring
+      // requirement's id — a wrong link is worse than none.
+      ...(requirementId !== undefined ? { requirementId } : {}),
       command: options.command,
       exitStatus: options.exitStatus,
       toolchainFingerprint: options.toolchainFingerprint ?? "e2e/release/@reproducible-build@1",

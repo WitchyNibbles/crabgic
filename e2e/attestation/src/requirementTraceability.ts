@@ -58,6 +58,28 @@ import {
  */
 export const TRACEABILITY_INPUT_PATH = "docs/evidence/phase-23/requirement-traceability.json";
 
+/**
+ * Override holding an ABSOLUTE path to a traceability artifact produced
+ * outside the checkout being scored — `docs/interface-ledger.md`'s Gap 16
+ * convention, the same one `$EO_ARM64_RUN_RECORD` and
+ * `$EO_PERF_CONTRACT_RERUN_RECORD` already follow.
+ *
+ * WHY IT IS NEEDED, AND WHY ITS ABSENCE WAS A STRUCTURAL DEFECT. This
+ * artifact records the release-candidate object ID it was captured against,
+ * and `checkRequirementTraceability` requires that to equal the candidate
+ * being scored — correctly, since an artifact captured against another
+ * commit describes another release. But regenerating it and COMMITTING it
+ * advances `HEAD` past the object ID the new artifact names, so the two
+ * conditions could not hold simultaneously and the item was unclearable by
+ * construction. Gap 16 exists for exactly this class of input; this was the
+ * one such input that had no override, which is why the ARM64 record could
+ * be supplied out-of-tree and this one could not.
+ *
+ * A blank or unset value falls back to the in-repo path, so an ordinary
+ * developer run is unchanged.
+ */
+export const TRACEABILITY_RECORD_ENV = "EO_REQUIREMENT_TRACEABILITY_RECORD";
+
 export interface CheckRequirementTraceabilityInput {
   readonly releaseCandidateObjectId: string;
   /**
@@ -93,6 +115,29 @@ const UNLINKABLE_EXPLANATIONS: Readonly<Record<RequirementLinkabilityStatus, str
       "a harness DOES journal evidence under its gate tag but stamps no `requirementId` on it — " +
       "buildTraceabilityView matches on that field alone, so the record contributes nothing",
   };
+
+/**
+ * Which unlinkable statuses BLOCK the release, as opposed to being reported
+ * and moved past.
+ *
+ * `unlinkable_umbrella` is deliberately absent, resolving a contradiction
+ * this module carried: `./requirementLinkability.ts` documents that status
+ * as "structurally unlinkable BY DESIGN. Not a defect", and this check then
+ * raised it as a blocking reason anyway — so `requirement-traceability`
+ * could not have passed even with every other requirement perfectly traced.
+ * The umbrella criterion is roadmap/23's bullet ABOUT the report ("the
+ * archived report shows PASS for every item below"); it is the report's own
+ * subject, carries `tags: []` by construction, and there is no evidence any
+ * harness could journal for it. It is still REPORTED — as a detail naming it
+ * and saying why — so the corpus arithmetic stays visible and nothing is
+ * quietly dropped. Every other unlinkable status remains blocking: each is a
+ * real wiring gap with a real fix.
+ */
+const BLOCKING_UNLINKABLE_STATUSES: ReadonlySet<RequirementLinkabilityStatus> = new Set([
+  "unlinkable_no_tag_rule",
+  "unlinkable_no_emitting_harness",
+  "unlinkable_unstamped_emitter",
+]);
 
 export function checkRequirementTraceability(
   input: CheckRequirementTraceabilityInput,
@@ -158,10 +203,21 @@ export function checkRequirementTraceability(
   }
   for (const entry of linkability.entries) {
     const explanation = UNLINKABLE_EXPLANATIONS[entry.status];
-    if (explanation !== undefined) {
-      reasons.push(`${entry.requirementId}: ${entry.status} — ${explanation}.`);
-    }
+    if (explanation === undefined) continue;
+    const sentence = `${entry.requirementId}: ${entry.status} — ${explanation}.`;
+    if (BLOCKING_UNLINKABLE_STATUSES.has(entry.status)) reasons.push(sentence);
+    else details.push(sentence);
   }
+
+  /**
+   * A requirement with NO gate tags cannot carry evidence at any object ID —
+   * there is no tag under which a harness could journal it. Raising the
+   * object-ID reason against it would restate the umbrella finding above as
+   * a second, differently-worded blocker.
+   */
+  const structurallyEvidenceless = new Set(
+    input.requirements.filter((r) => r.gateTags.length === 0).map((r) => r.id),
+  );
 
   const view = buildTraceabilityView({
     requirements: input.requirements.map(
@@ -172,12 +228,34 @@ export function checkRequirementTraceability(
     pointers: input.pointers,
   });
 
+  // THE SCOPE OF THE REMOTE-BINDING HALF, stated before it is applied so the
+  // report never narrows a criterion silently. See `REMOTE_SUBJECT_CRITERIA`
+  // in `./releaseRequirements.ts` for the owner-ratified reasoning.
+  const remoteBindingRequired = new Set(
+    input.requirements.filter((r) => r.requiresRemoteBinding).map((r) => r.id),
+  );
+  details.push(
+    `remote binding required of ${remoteBindingRequired.size} of ${input.requirements.length} ` +
+      `requirement(s) — the criteria whose subject is a remote Jira/Grafana resource. The ` +
+      `release-candidate object ID is required of ALL of them.`,
+  );
+
   for (const entry of view.entries) {
-    if (!entry.objectIds.includes(input.releaseCandidateObjectId)) {
+    if (
+      !entry.objectIds.includes(input.releaseCandidateObjectId) &&
+      !structurallyEvidenceless.has(entry.requirementId)
+    ) {
       reasons.push(
         `${entry.requirementId}: no evidence at the release-candidate object ID ` +
           `${input.releaseCandidateObjectId} (linked object IDs: ${entry.objectIds.join(", ") || "none"}).`,
       );
+    }
+    if (!remoteBindingRequired.has(entry.requirementId)) {
+      details.push(
+        `${entry.requirementId}: ${entry.workUnitIds.length} work unit(s), ` +
+          `${entry.objectIds.length} object ID(s), no remote binding required (no remote subject).`,
+      );
+      continue;
     }
     if (entry.remoteResources.length === 0) {
       reasons.push(`${entry.requirementId}: bound to no remote (Jira/Grafana) resource.`);
@@ -231,7 +309,11 @@ export function readRequirementTraceabilityInput(
   releaseCandidateObjectId: string,
   evidenceRecords: readonly EvidenceRecord[],
 ): CheckRequirementTraceabilityInput {
-  const path = join(repoRoot, TRACEABILITY_INPUT_PATH);
+  const override = process.env[TRACEABILITY_RECORD_ENV];
+  const path =
+    override === undefined || override.trim() === ""
+      ? join(repoRoot, TRACEABILITY_INPUT_PATH)
+      : override;
   const artifact = existsSync(path)
     ? parseTraceabilityEvidenceFile(readFileSync(path, "utf-8"))
     : undefined;

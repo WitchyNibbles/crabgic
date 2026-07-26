@@ -53,13 +53,19 @@ export interface SupportWindowTargetSpec {
 /**
  * The release's pinned targets, matching `docker/` and
  * `docs/compatibility-matrix.md`.
+ *
+ * `grafana-11.6` was retired 2026-07-26 (owner-ratified): this probe itself
+ * found it out of vendor support since 2026-06-25, and roadmap/23:134's
+ * "fixtures refreshed if vendor support windows moved" is the prescribed
+ * response. Kept in step with `REQUIRED_SUPPORT_WINDOW_TARGETS` in
+ * `e2e/attestation/src/versionSupportWindows.ts` — the consumer of what this
+ * probe records.
  */
 export const SUPPORT_WINDOW_TARGETS: readonly SupportWindowTargetSpec[] = [
   { target: "jira-cloud", pinnedVersion: "v3" },
   { target: "jira-dc-10.3", pinnedVersion: "10.3", image: "atlassian/jira-software", tag: "10.3" },
   { target: "jira-dc-11.3", pinnedVersion: "11.3", image: "atlassian/jira-software", tag: "11.3" },
   { target: "grafana-cloud", pinnedVersion: "cloud" },
-  { target: "grafana-11.6", pinnedVersion: "11.6.0", image: "grafana/grafana-oss", tag: "11.6.0" },
   { target: "grafana-12.4", pinnedVersion: "12.4.0", image: "grafana/grafana-oss", tag: "12.4.0" },
   { target: "grafana-13.1", pinnedVersion: "13.1.0", image: "grafana/grafana-oss", tag: "13.1.0" },
 ];

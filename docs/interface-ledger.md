@@ -695,10 +695,11 @@ by doing both, not by picking one over the other.
 
 **Gap statement:** Phase 23's release gate consumes evidence that is **produced outside the checkout it is
 scoring** — a CI job on hardware the release cut does not have, or a benchmark harness whose run is not the
-release run. Two such records are now **consumed** (`arm64-run-record.json`, produced by `ci.yml`'s ARM64
+release run. Three such records are now **consumed** (`arm64-run-record.json`, produced by `ci.yml`'s ARM64
 matrix leg and downloaded by `release-e2e.yml`; `perf-contract-rerun.json`, produced by 15's twin-worktree
-A/B runner) — neither file sits in the tree today, which is the point of the ruling rather than an oversight:
-they are produced outside the checkout being scored. Nothing in the roadmap or in this ledger says
+A/B runner; `requirement-traceability.json`, produced by 23's containerized Grafana binding through 21's
+`bindRemoteResourceEvidence` writer) — the first two do not sit in the tree, which is the point of the ruling
+rather than an oversight: they are produced outside the checkout being scored. Nothing in the roadmap or in this ledger says
 where such a record lives, how the CI-ingest override that carries it is named, or what a check must do when
 the record it finds is malformed. `roadmap/23-release-hardening.md` did not mention `docs/evidence/` at all —
 zero hits across the file, until the coordinated edit recorded below — so the directory, the `EO_*` variable
@@ -720,7 +721,7 @@ produces itself — follows one convention, in three parts:
    frozen release candidate. Neither ruling constrains the other.
 2. **Environment override.** Each record declares exactly one override variable, named `EO_` +
    `SCREAMING_SNAKE_CASE` of the record's own subject (`EO_ARM64_RUN_RECORD`,
-   `EO_PERF_CONTRACT_RERUN_RECORD`), holding an **absolute path to the record file** — not a directory, not
+   `EO_PERF_CONTRACT_RERUN_RECORD`, `EO_REQUIREMENT_TRACEABILITY_RECORD`), holding an **absolute path to the record file** — not a directory, not
    the record's contents. The override wins when set to a non-blank value; unset or blank falls back to the
    in-repo path. The override is the primary path in CI, and the reason is structural rather than
    convenience: these records name the release-candidate object ID they were taken against, and *committing*
@@ -745,23 +746,42 @@ consumer cannot distinguish from an item that was never scored, whereas a FAIL w
 an instruction to whoever owns the producer. The blocking reason must also name the artifact it is reporting
 the absence of, so the reason is a locator a reader can act on rather than an unfalsifiable statement.
 
-**Phases affected:** 01, 15, 23 — **01** owns the CI skeleton whose ARM64 matrix leg produces
+**Phases affected:** 01, 15, 21, 23 — **01** owns the CI skeleton whose ARM64 matrix leg produces
 `arm64-run-record.json` (`01-repo-bootstrap.md:22`, `:44`, `:75` — the ARM64 leg and its deferral, closed by
 23); **15** owns the `PerformanceContract` decision engine and twin-worktree A/B runner whose re-run produces
 `perf-contract-rerun.json` (`23-release-hardening.md:75` — "Re-run on a quiet host for the
-release-candidate's real verdicts"); **23** owns `docs/evidence/phase-23/`, both consumers, and the
-`release-e2e` job that performs the ingest (`23-release-hardening.md:52`, `:61`, `:133`). A new consumed
-record, a renamed variable, or a change to the read-failure behaviour is a coordinated edit across the
-producer phase and 23.
+release-candidate's real verdicts"); **21** owns `bindRemoteResourceEvidence`, the writer that produces the
+`RemoteResource`/`RemoteEvidencePointer` pair inside `requirement-traceability.json`
+(`21-connector-evidence-integration.md` work item 1); **23** owns `docs/evidence/phase-23/`, all three
+consumers, and the `release-e2e` job that performs the ingest (`23-release-hardening.md:52`, `:61`, `:133`).
+A new consumed record, a renamed variable, or a change to the read-failure behaviour is a coordinated edit
+across the producer phase and 23.
+
+**Amendment (2026-07-26) — the third consumed record.** `requirement-traceability.json` was being consumed
+under this ruling's part (1) and part (3) but had **no part-(2) override**, and it is the record for which
+the catch-22 part (2) exists to resolve bites hardest: the artifact names the release-candidate object ID
+its containerized binding was taken against, `checkRequirementTraceability` requires that to equal the
+candidate being scored, and committing a regenerated artifact advances `HEAD` past the object ID the new
+artifact names. The item was therefore unclearable by construction — it reported the committed artifact as
+describing "a different release candidate" at every cut. It now declares
+`EO_REQUIREMENT_TRACEABILITY_RECORD` (`e2e/attestation/src/requirementTraceability.ts`), resolved with the
+same `override === undefined || override.trim() === ""` fallback the other two use, and
+`.github/workflows/release-e2e.yml` writes the artifact to `$RUNNER_TEMP` and exports the variable — the
+producer now writes exactly where the consumer reads. Unlike the other two records this one is ALSO committed
+in-tree, which remains honest under part (2)'s own words ("a record archived alongside the release for
+post-hoc audit"): the committed copy is the audit trail, the override is what a live cut scores.
 
 **Coordinated phase-file edit — performed.** The rule at the top of this file (`:20-24`) requires a path
 convention and an `EO_*` variable-naming rule to be landed across every phase file listed under "Phases
 affected". All three now carry it, each in its own idiom and in the section the record actually belongs to:
 `roadmap/01-repo-bootstrap.md` §Interfaces produced (the CI-skeleton bullet, where the ARM64 leg's
 `arm64-run-record` artifact is produced), `roadmap/15-performance-contracts.md` §Interfaces produced (a
-"Release re-run record" bullet alongside the archived raw samples), and `roadmap/23-release-hardening.md`
+"Release re-run record" bullet alongside the archived raw samples),
+`roadmap/21-connector-evidence-integration.md` §Interfaces produced (a "Release traceability record" bullet
+alongside the bound `EvidenceRecord` instances — added by the 2026-07-26 amendment below), and
+`roadmap/23-release-hardening.md`
 §Interfaces produced (a `docs/evidence/phase-23/<record-name>.json` bullet alongside
-`e2e/release-gate-report.json`). This entry is therefore carried by the phase files as well as by the
+`e2e/release-gate-report.json`, naming all three overrides). This entry is therefore carried by the phase files as well as by the
 implementing source — the stronger of the two forms this ledger recognises. It remains provisional on the
 separate ground its "Origin" line states: owner ratification.
 
@@ -785,6 +805,22 @@ separate ground its "Origin" line states: owner ratification.
   `arm64-run-record` artifact. `.github/workflows/release-e2e.yml:125-189` — the consumer-side ingest step:
   `gh run download … -n arm64-run-record` into a directory outside the checkout, then
   `echo "EO_ARM64_RUN_RECORD=$RECORD" >> "$GITHUB_ENV"`.
+- `e2e/attestation/src/requirementTraceability.ts` — `TRACEABILITY_INPUT_PATH =
+  "docs/evidence/phase-23/requirement-traceability.json"`, `TRACEABILITY_RECORD_ENV =
+  "EO_REQUIREMENT_TRACEABILITY_RECORD"`; `readRequirementTraceabilityInput` resolves override-then-in-repo
+  with the `trim()` fallback, and reads through `parseTraceabilityEvidenceFile`
+  (`traceabilityEvidence.ts`), which `safeParse`s a `.strict()` schema and returns
+  `{ ok: false, error }` rather than throwing — surfaced by the check as the stated reason
+  "`…requirement-traceability.json` exists but is unusable: …". `requirementTraceability.test.ts`
+  pins all four branches (absolute-path override honoured; blank override falls back in-repo;
+  unreadable JSON reported as a FAIL reason rather than thrown; a missing override target does not
+  silently fall back to the committed copy).
+- `.github/workflows/release-e2e.yml` — the producer side: runs the containerized Grafana binding
+  (`e2e/attestation/vitest.live.config.ts`) with `EO_REQUIREMENT_TRACEABILITY_RECORD` pointed at
+  `$RUNNER_TEMP`, then exports it to `$GITHUB_ENV` for the harness step. Bound to the constant by
+  `requirementTraceability.test.ts`'s "release-e2e.yml produces what this check consumes", which reads the
+  real workflow file rather than a fixture. The step never fails the job: an unproduced binding is the
+  honest input "no confirmed remote revision for this candidate", reported by the gate with reasons.
 - `e2e/attestation/src/performanceContracts.ts:657-659` — `PERFORMANCE_RERUN_RECORD_PATH =
   "docs/evidence/phase-23/perf-contract-rerun.json"`, `PERFORMANCE_RERUN_RECORD_ENV =
   "EO_PERF_CONTRACT_RERUN_RECORD"`; `:667-688` `PerformanceRerunRecordSchema`, `.strict()`; `:713-752`

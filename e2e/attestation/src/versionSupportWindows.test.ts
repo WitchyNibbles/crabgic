@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -197,5 +198,70 @@ describe("readVersionSupportWindowsInput — against the real repository", () =>
     expect(input.releaseCutDate).toBe(CUT);
     expect(input.requiredTargets).toEqual(REQUIRED_SUPPORT_WINDOW_TARGETS);
     expect(Array.isArray(input.records)).toBe(true);
+  });
+});
+
+/**
+ * The retirement of Grafana 11.6, pinned so it cannot silently come back.
+ *
+ * 11.6 left vendor support on 2026-06-25 — a month before this cut — and was
+ * withdrawn from the supported matrix rather than waived (roadmap/23:134,
+ * "fixtures refreshed if vendor support windows moved"). These assertions run
+ * against the REAL committed artifacts, so a target re-added to one list but
+ * not the other, or a matrix row reinstated, goes red here rather than at a
+ * release cut.
+ */
+describe("Grafana 11.6 is retired, consistently, across every artifact that names targets", () => {
+  const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+
+  it("is not a required support-window target", () => {
+    expect(REQUIRED_SUPPORT_WINDOW_TARGETS).not.toContain("grafana-11.6");
+  });
+
+  it("keeps the two targets that ARE still in vendor support", () => {
+    expect(REQUIRED_SUPPORT_WINDOW_TARGETS).toContain("grafana-12.4");
+    expect(REQUIRED_SUPPORT_WINDOW_TARGETS).toContain("grafana-13.1");
+  });
+
+  it("is absent from the attested vendor-support policy and the probe's own output", () => {
+    for (const relative of [
+      "docs/vendor-support-policy.json",
+      "docs/evidence/phase-23/vendor-support-windows.json",
+    ]) {
+      const entries = JSON.parse(readFileSync(join(REPO, relative), "utf-8")) as {
+        target: string;
+      }[];
+      expect(entries.map((entry) => entry.target)).not.toContain("grafana-11.6");
+    }
+  });
+
+  it("no longer appears as a supported row in the compatibility matrix", () => {
+    const matrix = readFileSync(join(REPO, "docs", "compatibility-matrix.md"), "utf-8");
+    expect(matrix).not.toMatch(/^\| Grafana (OSS|Enterprise) \*\*11\.6\*\*/m);
+    // ...but the withdrawal is stated, never silent.
+    expect(matrix).toContain("RETIRED from the supported matrix");
+  });
+
+  it("is not what the containerized traceability binding boots", () => {
+    const binding = readFileSync(
+      join(REPO, "e2e", "attestation", "src", "requirementTraceabilityBinding.live.test.ts"),
+      "utf-8",
+    );
+    expect(binding).not.toContain("docker/grafana/11.6/");
+    expect(binding).toContain("docker/grafana/12.4/docker-compose.yml");
+  });
+
+  it("pins the binding's image to the exact tag its compose file pins, so the two cannot drift", () => {
+    const binding = readFileSync(
+      join(REPO, "e2e", "attestation", "src", "requirementTraceabilityBinding.live.test.ts"),
+      "utf-8",
+    );
+    const compose = readFileSync(
+      join(REPO, "docker", "grafana", "12.4", "docker-compose.yml"),
+      "utf-8",
+    );
+    const composeImage = /image:\s*(\S+)/.exec(compose)?.[1];
+    expect(composeImage).toBeDefined();
+    expect(binding).toContain(`CONTAINER_IMAGE = "${composeImage ?? ""}"`);
   });
 });

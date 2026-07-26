@@ -9,6 +9,7 @@ import {
   parseExitCriteria,
   readReleaseRequirements,
   requirementIdForGateTag,
+  requiresRemoteBinding,
 } from "./releaseRequirements.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -112,5 +113,45 @@ describe("readReleaseRequirements — against the real roadmap", () => {
     // than evidenced by a gate tag of its own.
     expect(unmapped).toHaveLength(1);
     expect(unmapped[0]?.text).toContain("release-gate-report.json");
+  });
+});
+
+/**
+ * The owner-ratified scope of roadmap/23:125's remote-revision half. These
+ * assertions run against the REAL roadmap corpus, not a fixture, so a
+ * reworded criterion silently falling out of scope goes red here.
+ */
+describe("requiresRemoteBinding — scoped to criteria with a remote subject", () => {
+  const requirements = readReleaseRequirements(
+    join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."),
+  );
+
+  it("finds the real corpus", () => {
+    expect(requirements.length).toBeGreaterThan(0);
+  });
+
+  it("requires a remote binding of the two criteria that name a remote system", () => {
+    const scoped = requirements.filter((requirement) => requirement.requiresRemoteBinding);
+    expect(scoped).toHaveLength(2);
+    expect(scoped.map((requirement) => requirement.text).join("\n")).toMatch(
+      /Every requirement linked to evidence/,
+    );
+    expect(scoped.map((requirement) => requirement.text).join("\n")).toMatch(
+      /exactly-once and read-back/,
+    );
+  });
+
+  it("exempts the criteria that have no remote counterpart at all", () => {
+    const exempt = requirements.filter((requirement) => !requirement.requiresRemoteBinding);
+    const text = exempt.map((requirement) => requirement.text).join("\n");
+    // Each of these is a purely local property of the release artifact.
+    expect(text).toMatch(/Reproducible build/);
+    expect(text).toMatch(/ARM64 build\+test verified/);
+    expect(text).toMatch(/Performance contracts satisfied/);
+  });
+
+  it("is derived per criterion, never a blanket true or false", () => {
+    expect(requiresRemoteBinding("Reproducible build: two independent builds")).toBe(false);
+    expect(requiresRemoteBinding("Every requirement linked to evidence from the exact")).toBe(true);
   });
 });

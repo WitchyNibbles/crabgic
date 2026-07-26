@@ -36,6 +36,49 @@ export interface ReleaseRequirement {
   readonly text: string;
   /** `release-gate:*` tags whose evidence satisfies this requirement, when one is known. */
   readonly gateTags: readonly string[];
+  /**
+   * Whether this criterion must ALSO bind to a confirmed remote
+   * (Jira/Grafana) revision — see `REMOTE_SUBJECT_CRITERIA`. The object-ID
+   * half of roadmap/23:125 applies to every requirement regardless; only the
+   * remote-revision half is scoped.
+   */
+  readonly requiresRemoteBinding: boolean;
+}
+
+/**
+ * The criteria whose SUBJECT is a remote Jira/Grafana resource, and which
+ * therefore have a remote revision to confirm.
+ *
+ * OWNER-RATIFIED SCOPE (2026-07-26). roadmap/23:125 reads "Every requirement
+ * linked to evidence from the exact final Git object ID and remote
+ * (Jira/Grafana) revisions". Read as "every requirement must bind to a
+ * Jira/Grafana resource" it is unsatisfiable by construction: "two
+ * independent from-clean-checkout builds produce byte-identical tarball
+ * hashes", "ARM64 build+test verified", and "the four operator docs are
+ * committed" have no remote counterpart, and manufacturing a dashboard
+ * revision to stand in for one is exactly the aspirational evidence this
+ * phase forbids. The clause is therefore scoped to the criteria that
+ * actually assert something about a remote system.
+ *
+ * Kept as an explicit, matched list rather than a heuristic over the text,
+ * for the same reason `CRITERION_TAG_RULES` is: a criterion silently
+ * dropping out of scope because someone reworded it is the failure mode this
+ * whole module exists to prevent. `requirementTraceability.ts` reports the
+ * scope on its face, so the narrowing is never invisible to a reader of the
+ * gate report.
+ */
+const REMOTE_SUBJECT_CRITERIA: readonly RegExp[] = [
+  // "Every requirement linked to evidence ... and remote (Jira/Grafana)
+  // revisions" — names remote revisions outright.
+  /Every requirement linked to evidence/i,
+  // "Jira/Grafana exactly-once and read-back verification pass live" — a
+  // read-back IS the confirmation of a remote revision.
+  /exactly-once and read-back/i,
+];
+
+/** Whether this criterion asserts something about a remote (Jira/Grafana) resource. */
+export function requiresRemoteBinding(text: string): boolean {
+  return REMOTE_SUBJECT_CRITERIA.some((pattern) => pattern.test(text));
 }
 
 /**
@@ -104,6 +147,20 @@ const CRITERION_TAG_RULES: readonly { readonly match: RegExp; readonly tags: rea
         "coverage",
         "security",
         "engine-conformance",
+        // RECONCILED WITH `e2e/report/src/checklist.ts` (2026-07-26). That
+        // module's `quality-security-perf-learning-gates` item already
+        // accepts `release-gate:live-conformance` and
+        // `release-gate:not-implemented-sweep` as additional quality-gate
+        // evidence, and `e2e/live` is the only harness that journals either.
+        // This corpus listed neither, so the two sides disagreed about what
+        // evidences the same criterion: the checklist item scored PASS from
+        // `e2e/live`'s records while the requirement behind it was reported
+        // `unlinkable_no_emitting_harness` — the gate passing an item whose
+        // requirement it simultaneously called untraceable. The five tags
+        // above are kept: they remain the criterion's primary evidence, and
+        // dropping them would silently narrow what satisfies it.
+        "release-gate:live-conformance",
+        "release-gate:not-implemented-sweep",
       ],
     },
     {
@@ -184,6 +241,7 @@ export function buildReleaseRequirements(
     id: deriveRequirementId(text),
     text,
     gateTags: gateTagsForCriterion(text),
+    requiresRemoteBinding: requiresRemoteBinding(text),
   }));
 }
 

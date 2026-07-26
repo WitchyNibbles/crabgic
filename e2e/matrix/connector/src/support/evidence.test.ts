@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore } from "@eo/journal";
 import {
   CONNECTOR_MATRIX_GATE_TAG,
+  REQUIREMENT_ID_BY_GATE_TAG,
   createScenarioJournal,
   digestOf,
   emitScenarioEvidence,
@@ -91,7 +92,7 @@ describe("emitScenarioEvidence", () => {
     expect(record.changeSetId).toBe("11111111-1111-4111-8111-111111111111");
   });
 
-  it("carries an explicit requirementId through when supplied, and omits the field entirely when not", async () => {
+  it("carries an explicit requirementId through when supplied, and otherwise defaults to the requirement its gate tag evidences", async () => {
     const withReq = await emitScenarioEvidence({
       journal: tj.store,
       command: "unit-test: with requirementId",
@@ -101,13 +102,21 @@ describe("emitScenarioEvidence", () => {
     });
     expect(withReq.requirementId).toBe("22222222-2222-4222-8222-222222222222");
 
+    // REGRESSION (2026-07-26): this previously asserted the field was
+    // OMITTED when no caller supplied one — and no caller ever did, so all
+    // 56 records this harness journals went out unstamped. `build
+    // TraceabilityView` joins evidence to a requirement on `requirementId`
+    // alone, so the whole harness contributed nothing to roadmap/23's
+    // traceability criterion while every scenario passed. The default is
+    // now the requirement this harness's fixed gate tag evidences; the old
+    // assertion encoded the defect, not the contract.
     const withoutReq = await emitScenarioEvidence({
       journal: tj.store,
       command: "unit-test: without requirementId",
       exitStatus: 0,
       outcomeContent: "{}",
     });
-    expect(withoutReq.requirementId).toBeUndefined();
+    expect(withoutReq.requirementId).toBe(REQUIREMENT_ID_BY_GATE_TAG[CONNECTOR_MATRIX_GATE_TAG]);
   });
 
   it("always tags the record release-gate:connector-matrix and journals a real, round-trippable evidence_pointer entry", async () => {

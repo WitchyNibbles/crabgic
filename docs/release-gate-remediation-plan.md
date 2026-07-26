@@ -372,3 +372,69 @@ against a disposable self-signed CA supplied as `customCaRef`.
 An earlier draft of the design claimed this work required "defeating the SSRF guard"; that was
 wrong, and the adversarial review caught it before any code was written. The artifact states its own
 provenance on its face so no reader can mistake it for a live-SaaS binding.
+
+---
+
+# Amendment — 2026-07-26: what the first CI-scored run showed, and the round that followed
+
+The analysis above closed at **10 PASS / 5 FAIL**, scored locally. The `release-e2e` job then
+ran for the first time with the shared journal wired end to end (run `30193901916`, generated
+`2026-07-26T08:06Z` against exactly `d992b7f`, linking **160 EvidenceRecords**). It scored
+**11 PASS / 4 FAIL**, and `arm64-verification` **passed** — closing the item this document
+predicted would clear on the first `ubuntu-24.04-arm` leg after the work was pushed. The
+figures above are therefore superseded, not wrong: they were accurate when taken, and the
+missing input was a CI run rather than more code.
+
+Auditing the four remaining failures against that run found the causes below. Each was
+verified by execution, not inspection.
+
+**`requirement-traceability` had three independent blockers, of which this document named
+one.** The emitter-stamping gap was larger than "stamped at exactly one emission site"
+conveyed: two harnesses accepted a `requirementId` **no caller ever passed**, and four had no
+such field at all — six of eight emitters could not stamp. Measured against the real corpus,
+**7 of 16 requirements linked; 15 of 16 after wiring**. Beyond that:
+
+- The artifact had **no Gap-16 override**, alone among the records read that way, so
+  "artifact is in the tree" and "artifact matches the candidate" were unsatisfiable together
+  and the item was unclearable by construction. It now has
+  `$EO_REQUIREMENT_TRACEABILITY_RECORD`, produced into `$RUNNER_TEMP` by `release-e2e.yml`.
+- The check demanded a Jira/Grafana binding of **every** criterion, including ones with no
+  remote counterpart at all. Owner-ratified narrowing to the criteria whose subject is a
+  remote system; the scope is stated in the report rather than applied silently.
+- `unlinkable_umbrella` — documented in `requirementLinkability.ts` as "structurally
+  unlinkable BY DESIGN. Not a defect" — was raised as a **blocking reason** anyway, so the
+  item could not have passed even with all 15 real requirements traced.
+
+**`performance-contracts` was owed a producer, not a run.** This document recorded it as
+clearing "when a real twin-worktree re-run writes `perf-contract-rerun.json`" and did not
+note that **no code path in the repository could write one**. `perf-conformance.yml` runs
+15's matrix every push and archives nothing. The producer now exists
+(`e2e/attestation/src/perfContractRerun.ts`, `npm run probe:perf-contract-rerun`), invoking
+the entry point `roadmap/15:112` names as "the exact entry point 23 re-runs", and measuring
+host quiescence **across** the run rather than before it. Verified end to end: the item now
+scores **PASS on merit** at `d992b7f`, with both idle budgets clean (66.16 MiB / 100 MiB;
+0.000% / 1%).
+
+> One design error worth recording, caught only by running the producer against the real
+> consumer rather than against its own tests: the first version recorded one contract per
+> seeded fixture, carrying each fixture's asserted outcome. `checkPerformanceContracts` reads
+> `contracts[].outcome` as _the release candidate's_ verdicts, where `block` means a
+> regression in what ships — while the fixtures' `block` is the **correct** decision on a
+> planted fault. A fully green conformance run read at the gate as two blocked contracts. The
+> record now carries one contract, `pass`, or no record at all.
+
+**`jira-grafana-version-support-windows` was a true finding, and is now actioned.** Grafana
+11.6 left vendor support 2026-06-25. Retired from the supported matrix, the provisioning
+probe, `docs/vendor-support-policy.json` and the containerized binding (moved to 12.4) —
+which is what roadmap/23:134 prescribes for a moved support window. Item now **PASSes on
+merit**. `packages/connectors-grafana`'s 11.6 capability fixture is untouched: adapter
+compatibility is roadmap/20's scope and roadmap/23's explicit §Out of scope.
+
+**`reproducible-build` is unchanged and remains the owner's.** Four clauses — `CHANGELOG.md`,
+the `v1.0.0` tag, the marketplace SHA pin, publication — are release actions, with
+`packages/cli`'s `"private": true` as the deliberate latch.
+
+**Still open, and not closed by this round:** every one of the **202** exit-criteria
+checkboxes across the 24 roadmap phase files is unticked. Ticking them without per-criterion
+evidence would be the aspirational bookkeeping `roadmap/README.md`'s own ground rule forbids,
+so the ledger gap is recorded here rather than papered over.

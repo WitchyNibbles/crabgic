@@ -131,14 +131,24 @@ describe("release-e2e.yml resolves the release candidate once, in a step", () =>
     expect(resolver).toContain("git rev-parse HEAD");
   });
 
-  it("feeds BOTH consumers from that step's output, and from nothing else", () => {
+  it("feeds EVERY consumer from that step's output, and from nothing else", () => {
     // Counts real YAML ASSIGNMENTS (`NAME: …` at some indent), never prose:
     // a `#` comment line cannot match, because `#` is its first non-space
-    // character. The two consumers are the harness step and the generator.
+    // character.
+    //
+    // ASSERTS THE INVARIANT, NOT A HEADCOUNT. This previously pinned exactly
+    // two consumers (the harness step and the generator) and went red when
+    // the 23:75 perf re-run and the containerized traceability binding were
+    // added — both of which correctly take the resolved object ID. A literal
+    // count makes a correct addition look like a regression while saying
+    // nothing extra: the property that matters is that no consumer resolves
+    // the candidate independently, which is exactly what the loop below
+    // checks. The lower bound keeps it from passing vacuously if every
+    // assignment disappears.
     const assignments = workflow
       .split("\n")
       .filter((line) => /^\s*EO_RELEASE_CANDIDATE_OBJECT_ID: \S/.test(line));
-    expect(assignments).toHaveLength(2);
+    expect(assignments.length).toBeGreaterThanOrEqual(2);
     for (const line of assignments) {
       expect(line).toContain("steps.release-candidate.outputs.object_id");
     }

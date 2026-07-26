@@ -68,13 +68,30 @@ export interface GrafanaBindingRunInput {
   readonly baseUrl: string;
   /** On-disk PEM path for `ExternalConnection.customCaRef`. */
   readonly certPath: string;
-  readonly requirementId: string;
+  /**
+   * Every release requirement whose subject is a remote Jira/Grafana
+   * resource (`releaseRequirements.ts`'s `requiresRemoteBinding`), each bound
+   * to THIS run's confirmed revision.
+   *
+   * Was a single `requirementId`. One containerized mutation with a
+   * read-back-confirmed `appliedRevision` is a single real observation that
+   * evidences more than one exit criterion — it is both "remote (Jira/
+   * Grafana) revisions" for the traceability criterion and the live
+   * "exactly-once and read-back verification" for the connector one — so the
+   * run binds each of them rather than leaving the others reported as having
+   * no remote binding at all. Each gets its own `EvidenceRecord` through
+   * 21's own `bindRemoteResourceEvidence` writer, naming that requirement;
+   * no record is reused across requirements and nothing is asserted that the
+   * run did not observe.
+   */
+  readonly requirementIds: readonly string[];
   readonly releaseCandidateObjectId: string;
 }
 
 export interface GrafanaBindingRunResult {
   readonly outcome: MutationPipelineOutcome;
-  readonly binding: RemoteResourceBinding | undefined;
+  /** One binding per entry in `requirementIds`, all citing the same real dashboard revision. Empty when the mutation produced no confirmed revision. */
+  readonly bindings: readonly RemoteResourceBinding[];
   readonly reportedVersion: string;
   readonly edition: string;
   readonly dashboardUid: string;
@@ -224,22 +241,28 @@ export async function runContainerizedGrafanaBinding(
     lock: new IdempotencyKeyLock(),
   });
 
-  const binding =
-    outcome.appliedRevision !== undefined
-      ? await bindRemoteResourceEvidence(journal, {
-          requirementId: input.requirementId,
+  // One binding per requirement, sequential by design: each call journals
+  // its own EvidenceRecord, and they must land as separate, ordered entries.
+  const bindings: RemoteResourceBinding[] = [];
+  if (outcome.appliedRevision !== undefined) {
+    for (const requirementId of input.requirementIds) {
+      bindings.push(
+        await bindRemoteResourceEvidence(journal, {
+          requirementId,
           changeSetId: randomUUID(),
           objectId: input.releaseCandidateObjectId,
           externalConnectionId: connection.id,
           target: { provider: "grafana", kind: "dashboard", externalId: dashboardUid },
           applied: { appliedRevision: outcome.appliedRevision },
           canonicalUrl: `${input.baseUrl}/d/${dashboardUid}`,
-        })
-      : undefined;
+        }),
+      );
+    }
+  }
 
   return {
     outcome,
-    binding,
+    bindings,
     reportedVersion: discovery.version,
     edition: discovery.edition,
     dashboardUid,

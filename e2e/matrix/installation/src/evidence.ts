@@ -17,6 +17,30 @@ import type { JournalEntryInput, JournalStore } from "@eo/journal";
 
 export const INSTALLATION_MATRIX_GATE_TAG = "release-gate:installation-matrix";
 
+/**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else, so an
+ * unstamped record — however genuine, however correctly tagged — contributes
+ * nothing to 23's traceability criterion. The ids are UUIDv5 digests of the
+ * exit-criterion text, derived by `e2e/attestation/src/releaseRequirements.
+ * ts`; this project cannot import that module (each `e2e/*` harness is a
+ * self-contained TypeScript project), so the value is declared here and
+ * BOUND to its source by `e2e/attestation/src/requirementStamping.test.ts`,
+ * which reads this file and fails if the two ever disagree.
+ *
+ * `release-gate:installation-matrix` evidences "No user checkout, remote Git
+ * repository, or unauthorized provider resource modified anywhere in the
+ * matrix" — the criterion this harness's own assertion log proves, and the
+ * one release requirement whose evidence this harness alone can supply
+ * unambiguously (`git-matrix` and `connector-matrix` each carry a nearer
+ * criterion of their own).
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:installation-matrix": "a6ec5e44-7901-5f4c-8d48-e5901d8384b4",
+} as const);
+
 const TOOLCHAIN_FINGERPRINT = `node ${process.version}`;
 
 /** Deterministic content digest for a scenario's own detail string — never a raw-output inline, matching `EvidenceRecord.artifactDigests`'s own "content digests ... never inlining raw output" contract. */
@@ -86,6 +110,7 @@ export function buildScenarioEvidence(input: ScenarioEvidenceInput): EvidenceRec
         : [digestArtifact(input.detail), digestArtifact(`scenario-object-id:${input.objectId}`)],
     objectId: releaseCandidateObjectId ?? input.objectId,
     gateTag: INSTALLATION_MATRIX_GATE_TAG,
+    requirementId: REQUIREMENT_ID_BY_GATE_TAG[INSTALLATION_MATRIX_GATE_TAG],
   });
 }
 

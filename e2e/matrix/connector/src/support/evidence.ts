@@ -28,6 +28,29 @@ import { CURRENT_SCHEMA_VERSION, type EvidenceRecord } from "@eo/contracts";
 /** roadmap/23 work item 6's own instruction, verbatim — every scenario's `gateTag`. */
 export const CONNECTOR_MATRIX_GATE_TAG = "release-gate:connector-matrix";
 
+/**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else. The ids
+ * are UUIDv5 digests of the exit-criterion text, derived by
+ * `e2e/attestation/src/releaseRequirements.ts`; this project cannot import
+ * that module (each `e2e/*` harness is a self-contained TypeScript project),
+ * so the value is declared here and BOUND to its source by
+ * `e2e/attestation/src/requirementStamping.test.ts`, which reads this file
+ * and fails if the two ever disagree.
+ *
+ * `release-gate:connector-matrix` evidences "Jira/Grafana exactly-once and
+ * read-back verification pass live (16/18/19/20)" — the nearest criterion
+ * this harness's exactly-once scenarios actually prove. It is also listed
+ * under the no-unauthorized-mutation criterion, which links instead through
+ * `release-gate:installation-matrix`, so each shared tag carries exactly one
+ * requirement and no criterion is left without evidence.
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:connector-matrix": "8dcda1da-b82c-591a-b778-9f65363e546a",
+} as const);
+
 /** This harness's own toolchain fingerprint — a fixed, versioned literal (never a hardcoded secret/credential, per this repo's own coding-style rule against hardcoded values — this is a public, non-sensitive identifier). */
 export const CONNECTOR_MATRIX_TOOLCHAIN_FINGERPRINT = "e2e-matrix-connector@1";
 
@@ -181,7 +204,12 @@ export async function emitScenarioEvidence(
     artifactDigests: [digestOf(input.outcomeContent)],
     objectId: resolveReleaseCandidateObjectId(),
     gateTag: CONNECTOR_MATRIX_GATE_TAG,
-    ...(input.requirementId !== undefined ? { requirementId: input.requirementId } : {}),
+    // Defaulted, not merely accepted. This option existed from the start and
+    // NO caller ever passed it, so all 56 records this harness journals were
+    // invisible to `buildTraceabilityView` — which joins on this field alone.
+    // The default is the requirement its fixed `gateTag` evidences; an
+    // explicit caller value still wins.
+    requirementId: input.requirementId ?? REQUIREMENT_ID_BY_GATE_TAG[CONNECTOR_MATRIX_GATE_TAG],
   };
   await input.journal.appendEntry({
     type: "evidence_pointer",

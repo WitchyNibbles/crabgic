@@ -38,13 +38,33 @@ import { buildCheckResult, type AttestationCheckResult } from "./checkResult.js"
 export const VENDOR_SUPPORT_WINDOWS_RECORD_PATH =
   "docs/evidence/phase-23/vendor-support-windows.json";
 
-/** The targets `docs/compatibility-matrix.md` commits this release to supporting. */
+/**
+ * The targets `docs/compatibility-matrix.md` commits this release to supporting.
+ *
+ * GRAFANA 11.6 WAS RETIRED HERE (2026-07-26), owner-ratified. The probe found
+ * it genuinely out of vendor support since 2026-06-25 — a month before this
+ * cut — while the matrix and `docker/grafana/11.6/` still committed to it,
+ * and this check reported it as "shipping an out-of-support version". That
+ * was a true finding, and the remedy roadmap/23:134 prescribes for it is
+ * fixture refresh ("fixtures refreshed if vendor support windows moved"),
+ * not a weakened check: the criterion anticipates exactly this event. 12.4
+ * (supported to 2027-05-24) and 13.1 (to 2027-03-20) both remain in support
+ * and continue to be committed to, so the release keeps two self-managed
+ * Grafana targets rather than dropping to one.
+ *
+ * NOT touched by that retirement: `packages/connectors-grafana`'s 11.6
+ * capability-discovery fixture. Which builds the ADAPTER can talk to is
+ * roadmap/20's scope (its §In scope names 11.6/12.4/13.1 as compatibility
+ * fixtures) and roadmap/23 lists adapter fixtures under its own §Out of
+ * scope. Retiring a provisioning target and keeping the adapter's knowledge
+ * of an older build are different claims, and only the first is this
+ * release's to make.
+ */
 export const REQUIRED_SUPPORT_WINDOW_TARGETS = [
   "jira-cloud",
   "jira-dc-10.3",
   "jira-dc-11.3",
   "grafana-cloud",
-  "grafana-11.6",
   "grafana-12.4",
   "grafana-13.1",
 ] as const;

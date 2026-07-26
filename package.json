@@ -29,6 +29,7 @@
     "version-packages": "changeset version",
     "release": "changeset publish",
     "probe:support-windows": "tsx e2e/provisioning/src/supportWindowsCli.ts",
+    "probe:perf-contract-rerun": "tsx e2e/attestation/src/perfContractRerunCli.ts",
     "check:workspace-count": "node scripts/check-workspace-count.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:release-notes": "node scripts/check-release-notes.mjs",

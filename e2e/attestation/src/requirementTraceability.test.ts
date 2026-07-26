@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ import type { EvidenceRecord, RemoteResource } from "@eo/contracts";
 import type { RemoteEvidencePointer } from "@eo/gates";
 import {
   TRACEABILITY_INPUT_PATH,
+  TRACEABILITY_RECORD_ENV,
   checkRequirementTraceability,
   readRequirementTraceabilityInput,
 } from "./requirementTraceability.js";
@@ -75,8 +76,9 @@ const RC = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 function requirement(
   id: string,
   gateTags: readonly string[] = ["release-gate:x"],
+  requiresRemoteBinding = true,
 ): ReleaseRequirement {
-  return { id, text: `criterion ${id}`, gateTags };
+  return { id, text: `criterion ${id}`, gateTags, requiresRemoteBinding };
 }
 
 function evidence(requirementId: string, objectId: string): EvidenceRecord {
@@ -124,7 +126,8 @@ describe("checkRequirementTraceability — PASS", () => {
   it("passes when every requirement links release-candidate evidence and a confirmed remote revision", () => {
     const result = checkRequirementTraceability(passingInput());
     expect(result.verdict).toBe("PASS");
-    expect(result.details).toHaveLength(2);
+    // linkability arithmetic + the remote-binding scope line + one per-entry line.
+    expect(result.details).toHaveLength(3);
   });
 
   it("always states the derived linkability arithmetic, pass or fail", () => {
@@ -137,7 +140,16 @@ describe("checkRequirementTraceability — PASS", () => {
     expect(failing.details.join("\n")).toContain("requirement linkability (derived)");
   });
 
-  it("names a structurally unlinkable (umbrella) requirement in its own reason", () => {
+  /**
+   * The umbrella criterion is REPORTED but does not block.
+   *
+   * `requirementLinkability.ts` documents `unlinkable_umbrella` as
+   * "structurally unlinkable BY DESIGN. Not a defect", and this check used
+   * to raise it as a blocking reason regardless — so the item could not have
+   * passed even with all 15 real requirements perfectly traced. It is now a
+   * stated detail: named, explained, and not counted against the release.
+   */
+  it("names a structurally unlinkable (umbrella) requirement without blocking on it", () => {
     const result = checkRequirementTraceability({
       ...passingInput(),
       requirements: [
@@ -148,12 +160,28 @@ describe("checkRequirementTraceability — PASS", () => {
           id: "REQ-U",
           text: "archived `e2e/release-gate-report.json` shows PASS for every item below",
           gateTags: [],
+          requiresRemoteBinding: false,
         },
       ],
     });
+    expect(result.verdict).toBe("PASS");
+    expect(result.details.join(" ")).toContain("REQ-U");
+    expect(result.details.join(" ")).toContain("unlinkable_umbrella");
+    expect(result.reasons.join(" ")).not.toContain("REQ-U");
+  });
+
+  it("still blocks on the unlinkable statuses that ARE real wiring gaps", () => {
+    const result = checkRequirementTraceability({
+      ...passingInput(),
+      requirements: [
+        requirement("REQ-1"),
+        // Tagged, but nothing in the journal carries that tag: a harness
+        // that scores this criterion does not exist.
+        requirement("REQ-GAP", ["release-gate:nobody-emits-this"], false),
+      ],
+    });
     expect(result.verdict).toBe("FAIL");
-    expect(result.reasons.join(" ")).toContain("REQ-U");
-    expect(result.reasons.join(" ")).toContain("unlinkable_umbrella");
+    expect(result.reasons.join(" ")).toContain("unlinkable_no_emitting_harness");
   });
 
   it("lists every journaled gate tag that carries no requirementId, as the actionable wiring gap", () => {
@@ -377,5 +405,205 @@ describe("readRequirementTraceabilityInput — the artifact is validated, never 
       remoteBindingProvenance: artifact.provenance,
     });
     expect(result.details.join("\n")).toContain("remote binding provenance: containerized");
+  });
+});
+
+/**
+ * THE NARROWED REMOTE-BINDING RULE (owner-ratified, 2026-07-26).
+ *
+ * roadmap/23:125 reads "Every requirement linked to evidence from the exact
+ * final Git object ID and remote (Jira/Grafana) revisions". The first
+ * revision of this check read that as "every requirement must bind to a
+ * Jira/Grafana resource", and applied it to all 16 release criteria — so
+ * "two independent from-clean-checkout builds produce byte-identical
+ * tarball hashes" was reported as failing for want of a Grafana dashboard
+ * revision. There is no such dashboard, and inventing one to clear the gate
+ * is precisely the aspirational evidence this phase forbids.
+ *
+ * The rule is therefore scoped to the requirements whose SUBJECT is a remote
+ * system. The object-ID half of the criterion still applies to every
+ * requirement without exception — only the remote-revision half is
+ * conditional, and every requirement's status is still reported either way.
+ */
+describe("checkRequirementTraceability — the remote-binding rule is scoped, not universal", () => {
+  it("passes a requirement with no remote subject and no remote binding at all", () => {
+    const result = checkRequirementTraceability({
+      releaseCandidateObjectId: RC,
+      requirements: [requirement("REQ-LOCAL", ["release-gate:x"], false)],
+      evidenceRecords: [evidence("REQ-LOCAL", RC)],
+      remoteResources: [],
+      pointers: [],
+    });
+    expect(result.reasons).toEqual([]);
+    expect(result.verdict).toBe("PASS");
+  });
+
+  it("still FAILs a requirement whose subject IS a remote system when nothing binds it", () => {
+    const result = checkRequirementTraceability({
+      releaseCandidateObjectId: RC,
+      requirements: [requirement("REQ-REMOTE", ["release-gate:x"], true)],
+      evidenceRecords: [evidence("REQ-REMOTE", RC)],
+      remoteResources: [],
+      pointers: [],
+    });
+    expect(result.verdict).toBe("FAIL");
+    expect(result.reasons.join("\n")).toContain("bound to no remote");
+  });
+
+  it("still FAILs a remote-subject requirement whose binding carries no confirmed revision", () => {
+    const result = checkRequirementTraceability({
+      releaseCandidateObjectId: RC,
+      requirements: [requirement("REQ-1", ["release-gate:x"], true)],
+      evidenceRecords: [evidence("REQ-1", RC)],
+      // No resource to fall back to either — the pointer is the only source,
+      // and it carries no revision.
+      remoteResources: [],
+      pointers: [pointerWithoutRevision()],
+    });
+    expect(result.verdict).toBe("FAIL");
+    expect(result.reasons.join("\n")).toContain("no confirmed revision");
+  });
+
+  it("never waives the object-ID half — that applies to every requirement", () => {
+    const result = checkRequirementTraceability({
+      releaseCandidateObjectId: RC,
+      requirements: [requirement("REQ-LOCAL", ["release-gate:x"], false)],
+      evidenceRecords: [evidence("REQ-LOCAL", "some-other-commit")],
+      remoteResources: [],
+      pointers: [],
+    });
+    expect(result.verdict).toBe("FAIL");
+    expect(result.reasons.join("\n")).toContain("no evidence at the release-candidate object ID");
+  });
+
+  it("states the scope on its face, so the narrowing is never silent", () => {
+    const result = checkRequirementTraceability({
+      releaseCandidateObjectId: RC,
+      requirements: [
+        requirement("REQ-LOCAL", ["release-gate:x"], false),
+        requirement("REQ-REMOTE", ["release-gate:y"], true),
+      ],
+      evidenceRecords: [evidence("REQ-LOCAL", RC), evidence("REQ-REMOTE", RC)],
+      remoteResources: [remoteResource("JIRA-1", "rev-9")],
+      pointers: [pointer({ requirementId: "REQ-REMOTE" })],
+    });
+    expect(result.details.join("\n")).toContain("remote binding required of 1 of 2 requirement(s)");
+  });
+});
+
+/**
+ * THE GAP-16 OVERRIDE — the catch-22 this closes.
+ *
+ * The traceability artifact names the release-candidate object ID it was
+ * captured against, and the check requires that to equal the candidate being
+ * scored. Committing a freshly-regenerated artifact ADVANCES HEAD past the
+ * object ID the artifact names, so the two conditions could never hold at
+ * once and `requirement-traceability` was structurally unclearable — exactly
+ * the problem `docs/interface-ledger.md`'s Gap 16 already solved for the
+ * ARM64 run record (`$EO_ARM64_RUN_RECORD`) and the 15 re-run record
+ * (`$EO_PERF_CONTRACT_RERUN_RECORD`). This artifact was the one Gap-16-shaped
+ * input with no override, and so the one that could not be supplied
+ * out-of-tree.
+ */
+describe("readRequirementTraceabilityInput — $EO_REQUIREMENT_TRACEABILITY_RECORD", () => {
+  const created: string[] = [];
+  const saved = process.env[TRACEABILITY_RECORD_ENV];
+
+  afterEach(() => {
+    if (saved === undefined) delete process.env[TRACEABILITY_RECORD_ENV];
+    else process.env[TRACEABILITY_RECORD_ENV] = saved;
+    for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  function writeArtifactTo(fileName: string): string {
+    const dir = mkdtempSync(join(tmpdir(), "eo-traceability-override-"));
+    created.push(dir);
+    const path = join(dir, fileName);
+    writeFileSync(path, `${JSON.stringify(realArtifact(), null, 2)}\n`, "utf-8");
+    return path;
+  }
+
+  it("reads the artifact from an absolute path outside the checkout", () => {
+    process.env[TRACEABILITY_RECORD_ENV] = writeArtifactTo("requirement-traceability.json");
+    const input = readRequirementTraceabilityInput(REPO_ROOT, RC, []);
+    expect(input.artifactProblem).toBeUndefined();
+    expect(input.remoteBindingProvenance?.releaseCandidateObjectId).toBe(RC);
+    expect(input.pointers).toHaveLength(1);
+  });
+
+  it("falls back to the in-repo path when the override is blank", () => {
+    process.env[TRACEABILITY_RECORD_ENV] = "   ";
+    const input = readRequirementTraceabilityInput(REPO_ROOT, RC, []);
+    // The committed artifact names a different candidate than this fixture's
+    // RC — proving the in-repo path was read, not the override.
+    expect(input.remoteBindingProvenance?.releaseCandidateObjectId).not.toBe(RC);
+  });
+
+  it("reports an unreadable override as a stated problem rather than throwing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "eo-traceability-override-"));
+    created.push(dir);
+    const path = join(dir, "requirement-traceability.json");
+    writeFileSync(path, "{ not json", "utf-8");
+    process.env[TRACEABILITY_RECORD_ENV] = path;
+
+    const input = readRequirementTraceabilityInput(REPO_ROOT, RC, []);
+    expect(input.artifactProblem).toBeDefined();
+    expect(input.pointers).toEqual([]);
+
+    // ...and the check turns that into a release-blocking reason, never silence.
+    const result = checkRequirementTraceability({
+      ...input,
+      requirements: [requirement("REQ-1")],
+      evidenceRecords: [evidence("REQ-1", RC)],
+    });
+    expect(result.verdict).toBe("FAIL");
+    expect(result.reasons.join("\n")).toContain("unusable");
+  });
+
+  it("reports a missing override target rather than silently reading the repo copy", () => {
+    process.env[TRACEABILITY_RECORD_ENV] = join(tmpdir(), "eo-no-such-traceability-record.json");
+    const input = readRequirementTraceabilityInput(REPO_ROOT, RC, []);
+    expect(input.pointers).toEqual([]);
+    expect(input.remoteBindingProvenance).toBeUndefined();
+  });
+});
+
+/**
+ * Producer/consumer binding for the Gap-16 override.
+ *
+ * An override no workflow sets is unreachable machinery, and
+ * `requirement-traceability` would go on reporting a stale artifact forever
+ * while every test stayed green. This reads the REAL workflow file — not a
+ * fixture — and asserts the env-var NAME against the exported constant
+ * rather than a second copy of the string, exactly as
+ * `e2e/release/src/releaseWorkflowWiring.test.ts` does for its own flag.
+ */
+describe("release-e2e.yml produces what this check consumes", () => {
+  const workflow = readFileSync(
+    join(REPO_ROOT, ".github", "workflows", "release-e2e.yml"),
+    "utf-8",
+  );
+
+  it("sets the override the check reads", () => {
+    expect(workflow).toContain(TRACEABILITY_RECORD_ENV);
+  });
+
+  it("points it outside the checked-out tree, so the artifact is never a foreign object in the candidate", () => {
+    const assignment = new RegExp(
+      `${TRACEABILITY_RECORD_ENV}:\\s*\\$\\{\\{\\s*runner\\.temp\\s*\\}\\}`,
+    );
+    expect(workflow).toMatch(assignment);
+  });
+
+  it("runs the containerized binding that writes it", () => {
+    expect(workflow).toContain("e2e/attestation/vitest.live.config.ts");
+  });
+
+  it("exports it to later steps, so the attestation harness sees the same path", () => {
+    expect(workflow).toMatch(
+      new RegExp(
+        `echo "${TRACEABILITY_RECORD_ENV}=\\$${TRACEABILITY_RECORD_ENV}" >> "\\$GITHUB_ENV"`,
+      ),
+    );
   });
 });

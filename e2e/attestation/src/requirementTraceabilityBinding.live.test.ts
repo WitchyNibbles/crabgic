@@ -10,7 +10,7 @@ import {
   resolveReleaseCandidateObjectId,
 } from "./evidence.js";
 import { readReleaseRequirements, requirementIdForGateTag } from "./releaseRequirements.js";
-import { TRACEABILITY_INPUT_PATH } from "./requirementTraceability.js";
+import { TRACEABILITY_INPUT_PATH, TRACEABILITY_RECORD_ENV } from "./requirementTraceability.js";
 import {
   CONTAINERIZED_PROVENANCE_SOURCE,
   buildTraceabilityEvidenceFile,
@@ -42,7 +42,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
  * verdicts and allows "live or containerized" — and this repo's Grafana
  * cassettes are HAND-AUTHORED, not recorded (`fixtures/cassettes.ts:12-14`),
  * so a cassette-derived `RemoteResource` here would be a false green. This
- * boots the repo's own `docker/grafana/11.6/docker-compose.yml` recipe,
+ * boots the repo's own `docker/grafana/12.4/docker-compose.yml` recipe,
  * fronts it with TLS, and drives a real create through the real
  * `executeMutationPlan`.
  *
@@ -58,8 +58,15 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
  * `npm run attestation:test:live` (`vitest.live.config.ts`).
  */
 
-const COMPOSE_FILE = "docker/grafana/11.6/docker-compose.yml";
-const CONTAINER_IMAGE = "grafana/grafana-oss:11.6.5";
+// MOVED OFF 11.6 (2026-07-26). That recipe was retired from the supported
+// matrix when the support-window probe found the version out of vendor
+// support since 2026-06-25; binding the release's traceability evidence to a
+// container the same release no longer claims to support would have made the
+// two statements contradict each other. 12.4 is supported to 2027-05-24 and
+// its recipe is smoke-tested. Pinned to the exact tag the compose file pins,
+// so this constant and `docker/grafana/12.4/docker-compose.yml` cannot drift.
+const COMPOSE_FILE = "docker/grafana/12.4/docker-compose.yml";
+const CONTAINER_IMAGE = "grafana/grafana-oss:12.4.3";
 const CONTAINER_HTTP_PORT = 3000;
 const COMPOSE_PROJECT = `eo-attestation-traceability-${process.pid}`;
 
@@ -125,17 +132,30 @@ describe("@live requirement traceability — containerized Grafana, genuine conf
     process.env[CONTAINER_ADMIN_SECRET_ENV] ??= COMPOSE_ADMIN_CREDENTIAL;
 
     const objectId = releaseCandidateObjectId();
-    const requirementId = requirementIdForGateTag(
-      readReleaseRequirements(REPO_ROOT),
-      REQUIREMENT_TRACEABILITY_GATE_TAG,
+
+    // EVERY requirement the gate demands a remote binding of, not just the
+    // traceability criterion. `checkRequirementTraceability` scopes that
+    // demand to the criteria whose subject is a remote system (see
+    // `releaseRequirements.ts`'s `REMOTE_SUBJECT_CRITERIA`); binding only
+    // one of them left the others reported as "bound to no remote
+    // (Jira/Grafana) resource" with no producer that could ever fix it.
+    // Deriving the list here rather than hardcoding it means a change to
+    // that scope is picked up by this producer automatically.
+    const requirements = readReleaseRequirements(REPO_ROOT);
+    const requirementIds = requirements
+      .filter((requirement) => requirement.requiresRemoteBinding)
+      .map((requirement) => requirement.id);
+    expect(requirementIds.length).toBeGreaterThan(0);
+    // The traceability criterion itself must be among them — it is the one
+    // that names remote revisions outright.
+    expect(requirementIds).toContain(
+      requirementIdForGateTag(requirements, REQUIREMENT_TRACEABILITY_GATE_TAG),
     );
-    expect(requirementId).toBeDefined();
-    if (requirementId === undefined) return;
 
     const run = await runContainerizedGrafanaBinding({
       baseUrl: front.baseUrl,
       certPath: front.certPath,
-      requirementId,
+      requirementIds,
       releaseCandidateObjectId: objectId,
     });
 
@@ -147,10 +167,15 @@ describe("@live requirement traceability — containerized Grafana, genuine conf
     // The pipeline's own verdict, asserted rather than assumed: only a
     // `recorded`/`replayed` outcome carries a read-back-confirmed revision.
     expect(run.outcome.status).toBe("recorded");
-    expect(run.binding).toBeDefined();
-    if (run.binding === undefined) return;
-    expect(run.binding.resource.revision.length).toBeGreaterThan(0);
-    expect(run.binding.pointer.confirmedRevision).toBe(run.outcome.appliedRevision);
+    expect(run.bindings).toHaveLength(requirementIds.length);
+    for (const binding of run.bindings) {
+      expect(binding.resource.revision.length).toBeGreaterThan(0);
+      expect(binding.pointer.confirmedRevision).toBe(run.outcome.appliedRevision);
+    }
+    // Every scoped requirement is actually covered — not the same one twice.
+    expect(run.bindings.map((binding) => binding.pointer.requirementId).sort()).toEqual(
+      [...requirementIds].sort(),
+    );
 
     const artifact = buildTraceabilityEvidenceFile({
       provenance: {
@@ -171,14 +196,25 @@ describe("@live requirement traceability — containerized Grafana, genuine conf
           tlsTermination: SEAM_TLS_TERMINATION_DESCRIPTION,
         },
       },
-      remoteResources: [run.binding.resource],
-      pointers: [run.binding.pointer],
+      remoteResources: run.bindings.map((binding) => binding.resource),
+      pointers: run.bindings.map((binding) => binding.pointer),
     });
 
-    const outputPath = join(REPO_ROOT, TRACEABILITY_INPUT_PATH);
+    // WRITE WHERE THE CONSUMER READS. `$EO_REQUIREMENT_TRACEABILITY_RECORD`
+    // (Gap 16) points `readRequirementTraceabilityInput` at an artifact
+    // produced outside the checkout being scored; honouring it here is what
+    // makes producer and consumer one loop. Committing this file instead
+    // would advance HEAD past the object ID the artifact names, which is the
+    // catch-22 the override exists to break. Unset — an ordinary developer
+    // run — still writes the in-repo copy, unchanged.
+    const override = process.env[TRACEABILITY_RECORD_ENV];
+    const outputPath =
+      override === undefined || override.trim() === ""
+        ? join(REPO_ROOT, TRACEABILITY_INPUT_PATH)
+        : override;
     mkdirSync(dirname(outputPath), { recursive: true });
     writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf-8");
-    console.log(`[traceability-binding] wrote ${TRACEABILITY_INPUT_PATH}`);
+    console.log(`[traceability-binding] wrote ${outputPath}`);
     console.log(`[traceability-binding] ${run.evidenceJournal}`);
 
     await run.cleanup();

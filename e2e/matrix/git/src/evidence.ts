@@ -15,6 +15,28 @@ import type { JournalEntryInput, JournalStore } from "@eo/journal";
 
 export const GIT_MATRIX_GATE_TAG = "release-gate:git-matrix";
 
+/**
+ * The roadmap/23 requirement each emitted tag evidences.
+ *
+ * WHY A LITERAL. `buildTraceabilityView` (`@eo/gates`) joins evidence to a
+ * requirement on `EvidenceRecord.requirementId` and nothing else, so an
+ * unstamped record — however genuine, however correctly tagged — contributes
+ * nothing to 23's traceability criterion. The ids are UUIDv5 digests of the
+ * exit-criterion text, derived by `e2e/attestation/src/releaseRequirements.
+ * ts`; this project cannot import that module (each `e2e/*` harness is a
+ * self-contained TypeScript project), so the value is declared here and
+ * BOUND to its source by `e2e/attestation/src/requirementStamping.test.ts`,
+ * which reads this file and fails if the two ever disagree. Duplicating the
+ * derivation into every harness is the drift that test exists to prevent.
+ *
+ * `release-gate:git-matrix` evidences "No development-engine attribution in
+ * any project-controlled shared artifact (08/10/17)" — the criterion this
+ * harness's attribution-leak fixtures actually prove.
+ */
+export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
+  "release-gate:git-matrix": "7a8b876c-23a1-55fa-943f-9001f4f36b32",
+} as const);
+
 const TOOLCHAIN_FINGERPRINT = `node ${process.version}`;
 
 /** Deterministic content digest — never a raw-output inline (`EvidenceRecord.artifactDigests`'s own contract). */
@@ -83,6 +105,7 @@ export function buildScenarioEvidence(input: ScenarioEvidenceInput): EvidenceRec
         : [digestArtifact(input.detail), digestArtifact(`scenario-object-id:${input.objectId}`)],
     objectId: releaseCandidateObjectId ?? input.objectId,
     gateTag: GIT_MATRIX_GATE_TAG,
+    requirementId: REQUIREMENT_ID_BY_GATE_TAG[GIT_MATRIX_GATE_TAG],
   });
 }
 

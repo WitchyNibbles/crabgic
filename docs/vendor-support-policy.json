@@ -22,13 +22,6 @@
     "source": "https://grafana.com/docs/grafana-cloud/ — Grafana Cloud is a continuously-updated hosted service; Grafana Labs publishes no per-version end-of-support date for it. Confirmed 2026-07-25."
   },
   {
-    "target": "grafana-11.6",
-    "lifecycle": "versioned",
-    "supportEndsOn": "2026-06-25",
-    "source": "https://grafana.com/docs/grafana/latest/upgrade-guide/when-to-upgrade/ — 11.6.x (last minor of 11), released 25 March 2025, support end date 25 June 2026, support level listed as 'Not Supported'. Each minor release is supported for 9 months after its release date. Confirmed 2026-07-25.",
-    "fixtureRefresh": "OUT OF SUPPORT AS OF 2026-06-25 — one month before this release cut. docs/compatibility-matrix.md still commits to Grafana 11.6 and docker/grafana/11.6/ still pins it. This is a genuine release blocker surfaced by the support-window probe, not a routine fixture-refresh note: the pinned target must either be dropped from the supported matrix or replaced (12.4 / 13.1) before v1.0.0 ships. Recorded here so the gate reports it explicitly rather than silently."
-  },
-  {
     "target": "grafana-12.4",
     "lifecycle": "versioned",
     "supportEndsOn": "2027-05-24",
