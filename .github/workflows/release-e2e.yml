@@ -133,9 +133,28 @@ jobs:
       # version-range and sandbox conformance.
       - name: Provision the sandbox toolchain the confinement self-test needs
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y bubblewrap socat
           bwrap --version
+          # Ubuntu 23.10+ (this runner is 24.04) ships an AppArmor policy that
+          # forbids UNPRIVILEGED user namespaces, which is precisely what bwrap
+          # needs. Installing bubblewrap is therefore NOT enough: `bwrap
+          # --unshare-all` fails during SETUP, before the inner write is ever
+          # attempted. `packages/cli/src/doctor/checks/sandbox-selftest.ts`
+          # detects that case on purpose — an adversarial-review fix from
+          # 2026-07-24 — and refuses to report it as "write correctly denied",
+          # so it surfaces as an honest `passed: false` rather than a false
+          # PASS. Relax the knob where it exists.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          # Prove confinement can actually be established, here, rather than
+          # assuming the sysctl was sufficient. Without this the workflow would
+          # go green on provisioning and fail 90 seconds later inside the
+          # harness, reporting the symptom instead of the cause.
+          bwrap --unshare-all --ro-bind / / /bin/true
+          echo "bwrap can create an unprivileged namespace on this runner"
       # Pinned to TESTED_ENGINE_VERSION (`packages/engine-claude/src/version-gate.ts`),
       # NOT to the top of the accepted range. 2.1.218 is the version the full
       # phase-00 spike suite actually reproduced every PASS at, and it is the
