@@ -17,27 +17,29 @@ deleted. The durable analysis lives in `docs/release-gate-remediation-plan.md`.
 The authority is a **CI-generated** `release-gate-report.json`, not a local run.
 `e2e/release-gate-report.json` is gitignored — regenerate it, never trust a stale copy.
 
-**Last CI-scored state** — `release-e2e` run `30193901916`, generated `2026-07-26T08:06Z`
-against exactly `d992b7f`, linking **160 EvidenceRecords**:
+**Last CI-scored state** — `release-e2e` run `30210413115`, generated against exactly
+`e1824f7`, with real evidence linkage:
 
 | Verdict | Count |
 | ------- | ----- |
-| PASS    | 11    |
-| FAIL    | 4     |
+| PASS    | 14    |
+| FAIL    | 1     |
 
-That run is the first in this repository's history to score the gate from CI with real
-evidence linkage, and `arm64-verification` **passed** in it — the 2026-07-25 handoff
-predicted it would turn green on the first `ubuntu-24.04-arm` leg after the work was
-pushed, and that is what happened.
+The single remaining failure is `reproducible-build`, whose four unmet clauses are the
+owner's release actions (see "What is left"). Every other checklist item passes on merit.
 
-### The four failures at that run, and what has since been done about each
+The starting point of this work was 11 PASS / 4 FAIL (run `30193901916`, at `d992b7f`) —
+itself the first run in this repository's history to score the gate from CI with real
+evidence linkage, and the one that first turned `arm64-verification` green.
 
-| Item                                   | Root cause found                                                                                                                                                    | State now                                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `requirement-traceability`             | Three independent blockers — an emitter-stamping gap, a structural catch-22, and an over-broad remote-binding rule. See below.                                      | **All three fixed.** Awaiting a CI run to score.                                          |
-| `performance-contracts`                | Both idle budgets passed on merit; the item failed only on 23:75's _second_ obligation, and **nothing in the repository could produce** `perf-contract-rerun.json`. | **Producer built and verified end to end** — the item now scores `PASS` locally on merit. |
-| `jira-grafana-version-support-windows` | One real finding: Grafana 11.6 left vendor support 2026-06-25, a month before the cut, while the matrix and docker recipe still committed to it.                    | **Retired, owner-ratified** — the item now scores `PASS` locally on merit.                |
-| `reproducible-build`                   | Four clauses unmet: no `CHANGELOG.md`, no `v1.0.0` tag, marketplace `commit` is 40 zeros, package unpublished.                                                      | **Unchanged, by design** — these are the owner's release actions (see "What is left").    |
+### The four failures that run reported, and how each was resolved
+
+| Item                                   | Root cause found                                                                                                                                                    | State now                                                                              |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `requirement-traceability`             | Three independent blockers — an emitter-stamping gap, a structural catch-22, and an over-broad remote-binding rule. See below.                                      | **PASSES.** All three fixed and CI-scored.                                             |
+| `performance-contracts`                | Both idle budgets passed on merit; the item failed only on 23:75's _second_ obligation, and **nothing in the repository could produce** `perf-contract-rerun.json`. | **PASSES.** Producer built; both idle budgets and the 23:75 re-run evidenced.          |
+| `jira-grafana-version-support-windows` | One real finding: Grafana 11.6 left vendor support 2026-06-25, a month before the cut, while the matrix and docker recipe still committed to it.                    | **PASSES.** 11.6 retired, owner-ratified.                                              |
+| `reproducible-build`                   | Four clauses unmet: no `CHANGELOG.md`, no `v1.0.0` tag, marketplace `commit` is 40 zeros, package unpublished.                                                      | **Unchanged, by design** — these are the owner's release actions (see "What is left"). |
 
 ---
 
@@ -130,7 +132,14 @@ automated — roadmap/23's PREPARE-DON'T-PUBLISH decision, and `packages/cli` is
 3. Marketplace entry re-pinned at the release commit (`commit` is currently 40 zeros).
 4. Flip `private`, publish with provenance, then the `npm view` re-check.
 
-**A CI `release-e2e` run** to score everything above. Nothing further is owed to it in code.
+**Nothing else.** Run `30210413115` scored 14 PASS / 1 FAIL at `e1824f7`; no code is owed.
+
+**Note for the release cut:** the two Gap-16 producers run inside `release-e2e.yml` and
+need nothing from an operator on an ordinary dispatch. The perf re-run does sample ambient
+host load first and refuses on a busy runner — an honest refusal, reported as "the 23:75
+obligation is unevidenced" rather than papered over. If a shared runner is ever too busy,
+produce the record on a quiet host (`npm run probe:perf-contract-rerun`) and supply it via
+`$EO_PERF_CONTRACT_RERUN_RECORD`, which is exactly what that override is for.
 
 **The roadmap completion ledger — an open gap this session did not close.** Every one of the
 **202** exit-criteria checkboxes across all 24 phase files is unticked, though phases 00–07
