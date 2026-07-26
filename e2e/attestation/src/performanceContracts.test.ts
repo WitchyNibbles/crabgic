@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   CLOCK_TICKS_PER_SECOND,
   PERFORMANCE_CONTRACT_RERUN_UNEVIDENCED_REASON,
@@ -794,6 +794,21 @@ describe("decideReleaseContracts", () => {
  */
 describe("readPerformanceRerunEvidence", () => {
   const ORIGINAL = process.env[PERFORMANCE_RERUN_RECORD_ENV];
+
+  /**
+   * CLEARED before each case, not merely restored after.
+   *
+   * `release-e2e.yml` exports `$EO_PERF_CONTRACT_RERUN_RECORD` to
+   * `$GITHUB_ENV` once the re-run producer succeeds, so it is set for the
+   * whole harness run — and the cases below that describe the IN-REPO path
+   * then silently read that record instead. The `afterEach` restore alone
+   * left the ambient value in force for every case that did not set its own.
+   * Latent until the producer actually succeeded in CI, which is exactly the
+   * kind of bug that surfaces on the release cut and nowhere earlier.
+   */
+  beforeEach(() => {
+    delete process.env[PERFORMANCE_RERUN_RECORD_ENV];
+  });
 
   afterEach(() => {
     if (ORIGINAL === undefined) delete process.env[PERFORMANCE_RERUN_RECORD_ENV];

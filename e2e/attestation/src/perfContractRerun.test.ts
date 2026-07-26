@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { PERFORMANCE_OUTCOMES } from "@eo/contracts";
 import {
   PERF_CONFORMANCE_SUITE,
+  AMBIENT_SAMPLE_MS,
   PERF_CONFORMANCE_FIXTURES,
   PERF_RERUN_CONTRACT_ID,
   PERF_RERUN_RUNNER,
@@ -160,7 +161,7 @@ describe("producePerfContractRerun — it refuses rather than softening", () => 
   it("refuses on a noisy host — 23:75 asks for a quiet one", async () => {
     const result = await producePerfContractRerun({ ...BASE, quietHost: NOISY, runner: runner(0) });
     expect(result.record).toBeUndefined();
-    expect(result.refusal).toContain("was not quiet");
+    expect(result.refusal).toContain("was not quiet before the re-run");
     expect(result.refusal).toContain("above the 0.5 quiet-host limit");
   });
 
@@ -238,5 +239,46 @@ describe("release-e2e.yml invokes the producer this module exposes", () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts["probe:perf-contract-rerun"]).toContain("perfContractRerunCli.ts");
+  });
+});
+
+/**
+ * The ambient-load window is sampled BEFORE the matrix, not across it.
+ *
+ * Spanning the run counts the benchmark's own CPU use as evidence the host is
+ * busy, so the check tightens as the machine gets smaller — a GitHub runner
+ * measured 63.3% idle against an 80% floor and refused, having mostly
+ * measured the very matrix it was there to run. 23:75 asks whether the host
+ * is free of OTHER load.
+ */
+describe("quiescence is ambient, measured before any work starts", () => {
+  it("refuses without ever invoking the matrix when the host is already busy", async () => {
+    let invoked = false;
+    const spy: PerfConformanceRunner = {
+      run: () => {
+        invoked = true;
+        return Promise.resolve({ exitCode: 0, output: "" });
+      },
+    };
+    const result = await producePerfContractRerun({ ...BASE, quietHost: NOISY, runner: spy });
+    expect(result.refusal).toBeDefined();
+    expect(invoked, "a busy host should be detected before the matrix is started").toBe(false);
+  });
+
+  it("runs the matrix once the ambient sample is quiet", async () => {
+    let invoked = 0;
+    const spy: PerfConformanceRunner = {
+      run: () => {
+        invoked += 1;
+        return Promise.resolve({ exitCode: 0, output: "" });
+      },
+    };
+    const result = await producePerfContractRerun({ ...BASE, quietHost: QUIET, runner: spy });
+    expect(invoked).toBe(1);
+    expect(result.record).toBeDefined();
+  });
+
+  it("samples ambient load for a real, non-zero window by default", () => {
+    expect(AMBIENT_SAMPLE_MS).toBeGreaterThan(0);
   });
 });

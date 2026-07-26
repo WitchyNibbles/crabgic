@@ -52,6 +52,9 @@ const execFileAsync = promisify(execFile);
  * that no downstream check could detect.
  */
 
+/** How long to sample ambient host load before starting the matrix. */
+export const AMBIENT_SAMPLE_MS = 2_000;
+
 /** The standalone entry point `roadmap/15:112` names as the one 23 re-runs. */
 export const PERF_CONFORMANCE_SUITE = "packages/perf/src/conformance/perf-conformance.test.ts";
 
@@ -148,6 +151,8 @@ export interface ProducePerfRerunOptions {
   readonly capturedAt: string;
   readonly runner?: PerfConformanceRunner;
   readonly quietHost?: QuietHostAssessment;
+  /** Shortens the ambient-load sampling window; tests inject a small value so they do not sleep for real. */
+  readonly ambientSampleMs?: number;
 }
 
 /**
@@ -171,18 +176,41 @@ export type PerfRerunProduction =
 export async function producePerfContractRerun(
   options: ProducePerfRerunOptions,
 ): Promise<PerfRerunProduction> {
-  // QUIESCENCE IS MEASURED ACROSS THE RUN, not sampled before it.
-  // `probeQuietHost` opens an interval and `finish()` judges the whole span,
-  // which is the question 23:75 actually asks — a host that was idle the
-  // instant before the matrix started and saturated throughout it was not a
-  // quiet host to have measured on. The injected `quietHost` seam skips the
-  // probe entirely so both verdicts stay testable on any host.
-  const sampler = options.quietHost === undefined ? await probeQuietHost() : undefined;
+  // QUIESCENCE IS AMBIENT, AND MEASURED BEFORE THE MATRIX RUNS.
+  //
+  // A previous revision opened the interval and closed it AFTER the run, on
+  // the reasoning that "on a quiet host" should cover the measurement window
+  // itself. That is right for 05's idle-daemon probe, where the workload is
+  // by definition doing nothing — and wrong here, because this workload is a
+  // CPU-bound benchmark suite. Spanning the run counts OUR OWN work as
+  // evidence the host is busy, so the check tightens as the machine gets
+  // smaller: a GitHub runner measured 63.3% idle against an 80% floor and
+  // refused, having mostly measured the matrix it was there to run.
+  //
+  // What 23:75 asks is whether the host is free of OTHER load, so the sample
+  // is taken over a short window before any work starts.
+  const quietHost =
+    options.quietHost ??
+    (await (async () => {
+      const sampler = await probeQuietHost();
+      await new Promise((resolve) =>
+        setTimeout(resolve, options.ambientSampleMs ?? AMBIENT_SAMPLE_MS),
+      );
+      return sampler.finish();
+    })());
+
+  if (!quietHost.quiet) {
+    return {
+      refusal:
+        `host was not quiet before the re-run (load/core ${quietHost.loadPerCore.toFixed(2)}, ` +
+        `idle ${(quietHost.idleFraction * 100).toFixed(1)}%): ${quietHost.reasons.join(" ")} ` +
+        "roadmap/23:75 requires the re-run be taken on a quiet host, and a record taken on a " +
+        "busy one is not the evidence it asks for.",
+    };
+  }
 
   const runner = options.runner ?? realPerfConformanceRunner;
   const { exitCode, output } = await runner.run(options.repoRoot);
-
-  const quietHost = options.quietHost ?? (await sampler!.finish());
 
   // The matrix verdict is reported first when both are bad: "15's engine
   // decided wrongly at this commit" is the more actionable finding, and a
@@ -193,16 +221,6 @@ export async function producePerfContractRerun(
         `${PERF_CONFORMANCE_SUITE} exited ${String(exitCode)} — 15's decision engine did not ` +
         "produce every declared outcome at this release candidate, so no re-run record is " +
         `written. Last output:\n${output.trim().slice(-2000)}`,
-    };
-  }
-
-  if (!quietHost.quiet) {
-    return {
-      refusal:
-        `host was not quiet across the re-run (load/core ${quietHost.loadPerCore.toFixed(2)}, ` +
-        `idle ${(quietHost.idleFraction * 100).toFixed(1)}%): ${quietHost.reasons.join(" ")} ` +
-        "roadmap/23:75 requires the re-run be taken on a quiet host, and a record taken on a " +
-        "busy one is not the evidence it asks for.",
     };
   }
 

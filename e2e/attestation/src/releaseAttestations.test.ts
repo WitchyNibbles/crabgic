@@ -142,19 +142,6 @@ describe("release attestations — the seven previously-unreported checklist ite
     await emitAndAssert(SECURITY_REVIEW_GATE_TAG, "attestation:security-review", result);
   });
 
-  it("emits requirement-traceability evidence", async () => {
-    // Fed from the SHARED release journal, so every sibling harness's
-    // evidence counts toward traceability, not just this project's.
-    const result = checkRequirementTraceability(
-      readRequirementTraceabilityInput(REPO_ROOT, objectId, await readJournalEvidence()),
-    );
-    await emitAndAssert(
-      REQUIREMENT_TRACEABILITY_GATE_TAG,
-      "attestation:requirement-traceability",
-      result,
-    );
-  });
-
   it("emits performance-contracts evidence", async () => {
     const result = checkPerformanceContracts(await runPerformanceContracts(REPO_ROOT, objectId));
     await emitAndAssert(
@@ -198,8 +185,50 @@ describe("release attestations — the seven previously-unreported checklist ite
     );
   });
 
+  /**
+   * DELIBERATELY LAST, and the ordering is load-bearing — unusual for a test,
+   * so it is stated rather than left implicit.
+   *
+   * This check MEASURES the shared journal: its linkability arithmetic asks
+   * which requirements have a record carrying their id. Every other `it` in
+   * this file appends one such record. Run second (as it was), it read a
+   * journal containing only `security-review`, and reported the five items
+   * emitted after it as `unlinkable_no_emitting_harness` — a verdict about
+   * test ordering rather than about the release. That was invisible locally,
+   * where the check is usually fed an already-complete journal from a prior
+   * run, and only appeared in a clean CI run.
+   *
+   * Its OWN record is journaled after this read, which is fine: the
+   * containerized binding (`release-e2e.yml`'s earlier step) already
+   * journals records stamped with this criterion's requirementId through
+   * 21's `bindRemoteResourceEvidence`, so the criterion links through those.
+   */
+  it("emits requirement-traceability evidence", async () => {
+    // Fed from the SHARED release journal, so every sibling harness's
+    // evidence counts toward traceability, not just this project's.
+    const result = checkRequirementTraceability(
+      readRequirementTraceabilityInput(REPO_ROOT, objectId, await readJournalEvidence()),
+    );
+    await emitAndAssert(
+      REQUIREMENT_TRACEABILITY_GATE_TAG,
+      "attestation:requirement-traceability",
+      result,
+    );
+  });
+
   it("emitted exactly one record per checklist item, with no duplicate tags", () => {
     expect(emitted).toHaveLength(7);
     expect(new Set(emitted.map((entry) => entry.tag)).size).toBe(7);
+  });
+
+  /**
+   * Pins the ordering the traceability check depends on. Moving that `it`
+   * back up this file would silently return it to measuring a half-written
+   * journal and reporting its siblings as having no emitting harness — a
+   * verdict about test order rather than about the release, and one that
+   * reproduces only in a clean run.
+   */
+  it("journaled requirement-traceability LAST, after every other item it measures", () => {
+    expect(emitted[emitted.length - 1]?.tag).toBe(REQUIREMENT_TRACEABILITY_GATE_TAG);
   });
 });
