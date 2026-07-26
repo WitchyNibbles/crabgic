@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { beforeAll, describe, expect, it } from "vitest";
+import { ACCEPTED_ENGINE_VERSION_RANGE, TESTED_ENGINE_VERSION } from "@eo/engine-claude";
 import { REBUILD_CHECKOUTS_ENV_VAR } from "./rebuildPopulator.js";
 
 const execFileAsync = promisify(execFile);
@@ -207,5 +208,54 @@ describe("no workflow references a step-only context from a job-level `env:`", (
       "      - run: true",
     ].join("\n");
     expect(jobLevelEnvBodies(seeded).some((e) => /\$\{\{\s*runner\./.test(e))).toBe(true);
+  });
+});
+
+/**
+ * Host provisioning, bound to the constants it exists to satisfy.
+ *
+ * `e2e/live` carries two host-conformance tests that are deliberately NOT
+ * `@live`-gated — they need no auth and no network, only a real binary:
+ * `versionRangeGate.test.ts` requires a real `claude --version` inside the
+ * accepted range, and `sandboxSelftestHarness.test.ts` requires real `bwrap`
+ * confinement to pass. A stock GitHub runner has neither, and the first CI run
+ * of this chain failed on exactly those two of 63 tests.
+ *
+ * The CLI pin is asserted against `TESTED_ENGINE_VERSION` rather than against a
+ * literal, because a workflow pinning some OTHER in-range version would still
+ * go green while quietly testing an engine the spike suite never validated —
+ * and would reintroduce the PATH-vs-SDK transport split `docs/engine-baseline.md`
+ * flags as load-bearing.
+ */
+describe("release-e2e.yml provisions the host capabilities the offline leg asserts", () => {
+  it("installs bubblewrap and socat before the harness step runs", () => {
+    const provision = stepBlocks(workflow).filter((b) => b.includes("bubblewrap"));
+    expect(provision).toHaveLength(1);
+    expect(provision[0]).toMatch(/socat/);
+
+    const order = (needle: string): number =>
+      stepBlocks(workflow).findIndex((b) => b.includes(needle));
+    expect(order("bubblewrap")).toBeLessThan(order("npm run test:e2e:release-evidence"));
+  });
+
+  it("pins the Claude CLI to TESTED_ENGINE_VERSION, not merely to something in range", () => {
+    const install = stepBlocks(workflow).filter((b) => b.includes("@anthropic-ai/claude-code@"));
+    expect(install).toHaveLength(1);
+    const pinned = /@anthropic-ai\/claude-code@(\d+\.\d+\.\d+)/.exec(install[0] ?? "")?.[1];
+    expect(pinned).toBe(TESTED_ENGINE_VERSION);
+  });
+
+  it("keeps that pin inside the accepted engine range, so the gate can reach a verdict", () => {
+    const triple = (v: string): number[] => v.split(".").map(Number);
+    const cmp = (a: string, b: string): number => {
+      const [x, y] = [triple(a), triple(b)];
+      for (let i = 0; i < 3; i += 1) {
+        const d = (x[i] ?? 0) - (y[i] ?? 0);
+        if (d !== 0) return d;
+      }
+      return 0;
+    };
+    expect(cmp(TESTED_ENGINE_VERSION, ACCEPTED_ENGINE_VERSION_RANGE.min)).toBeGreaterThanOrEqual(0);
+    expect(cmp(TESTED_ENGINE_VERSION, ACCEPTED_ENGINE_VERSION_RANGE.max)).toBeLessThanOrEqual(0);
   });
 });

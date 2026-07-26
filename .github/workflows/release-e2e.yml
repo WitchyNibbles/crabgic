@@ -115,6 +115,39 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      # HOST CAPABILITIES THE OFFLINE LEG GENUINELY ASSERTS.
+      #
+      # Two tests in `e2e/live` are host-conformance checks that are NOT
+      # `@live`/EO_LIVE-gated, because they need no auth and no network — only
+      # a real binary on the host:
+      #   - `versionRangeGate.test.ts` shells out to the real `claude --version`
+      #     and requires the verdict to be `in-range`/`out-of-range`, never
+      #     `probe-failed`.
+      #   - `sandboxSelftestHarness.test.ts` runs the real `bwrap` confinement
+      #     self-test and requires `passed === true`.
+      # `docs/engine-baseline.md` §6 records both as present on the baseline
+      # host. A stock GitHub runner has neither, so the first-ever CI run of
+      # this chain failed on exactly those two of 63 tests. Provisioning them
+      # here is what makes the runner equivalent to the documented baseline —
+      # the alternative, gating the tests off, would silently stop evidencing
+      # version-range and sandbox conformance.
+      - name: Provision the sandbox toolchain the confinement self-test needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          bwrap --version
+      # Pinned to TESTED_ENGINE_VERSION (`packages/engine-claude/src/version-gate.ts`),
+      # NOT to the top of the accepted range. 2.1.218 is the version the full
+      # phase-00 spike suite actually reproduced every PASS at, and it is the
+      # CLI half of the 1:1 pair with the SDK's own pinned 0.3.218 — so both
+      # transports report the same engine here, closing the "transport caveat"
+      # `docs/engine-baseline.md` flags as load-bearing when PATH and SDK
+      # disagree. `releaseWorkflowWiring.test.ts` binds this literal to that
+      # constant so the two cannot drift apart silently.
+      - name: Provision the pinned Claude Code CLI the version-range gate probes
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.218
+          claude --version
       - name: Build (incl. e2e/report, wired into the root tsc -b project references)
         run: npm run build
       - name: Typecheck every self-contained e2e harness (each has its own tsconfig.json)
