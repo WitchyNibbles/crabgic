@@ -314,22 +314,40 @@ describe("release-e2e.yml ingests what ci.yml produces", () => {
    * PLACEMENT IS THE POINT. Setting it on the GENERATOR step alone is the
    * exact broken configuration: the harness step would still write into an
    * `mkdtemp` directory it deletes, and the generator would read an empty
-   * one. Job-level `env:` keys sit at indent 6 (job at 2, `env:` at 4);
-   * a step's `env:` keys sit at indent 10. So: it must appear at job
-   * level, it must appear in NO step, and it must appear exactly once.
+   * one. So it must be established ONCE, job-wide, before either consumer.
+   *
+   * IT IS NOT A JOB-LEVEL `env:` BLOCK, and an earlier version of this test
+   * required one. That version encoded a shape that makes the workflow
+   * INVALID: the value is `$RUNNER_TEMP`-relative, and the `runner` context
+   * is unavailable in `jobs.<id>.env` — GitHub then rejects the whole file,
+   * producing a run named after the raw path with zero jobs. (See the guard
+   * in `e2e/release/src/releaseWorkflowWiring.test.ts`, which now refuses
+   * that construct across every workflow.) The equivalent that IS valid is a
+   * step writing to `$GITHUB_ENV`, which propagates to every LATER step —
+   * hence the ordering assertion, which the job-level form did not need.
    */
-  it("gives the harnesses and the generator ONE journal to share, at JOB level", () => {
-    expect(workflow).toMatch(/^ {6}EO_RELEASE_GATE_JOURNAL_DIR: \S/m);
+  it("gives the harnesses and the generator ONE journal to share, job-wide", () => {
+    const exports = workflow
+      .split("\n")
+      .filter((line) => /EO_RELEASE_GATE_JOURNAL_DIR=\S/.test(line) && line.includes("GITHUB_ENV"));
+    expect(exports).toHaveLength(1);
 
-    const inSteps = stepBlocks(workflow).filter((block) =>
-      /^\s*EO_RELEASE_GATE_JOURNAL_DIR:/m.test(block),
-    );
-    expect(inSteps).toEqual([]);
-
-    const assignments = workflow
+    // Never a job-level `env:` key (invalid for a `runner`-scoped value) and
+    // never a per-step `env:` key (the broken split-journal configuration).
+    // Both would appear in YAML mapping form, `NAME: value`.
+    const mappingForm = workflow
       .split("\n")
       .filter((line) => /^\s*EO_RELEASE_GATE_JOURNAL_DIR: \S/.test(line));
-    expect(assignments).toHaveLength(1);
+    expect(mappingForm).toEqual([]);
+
+    // `$GITHUB_ENV` reaches only LATER steps, so the export must precede both
+    // the harness run and the generator run to be worth anything.
+    const blocks = stepBlocks(workflow);
+    const at = (needle: string): number => blocks.findIndex((b) => b.includes(needle));
+    const exportStep = at("GITHUB_ENV");
+    expect(exportStep).toBeGreaterThanOrEqual(0);
+    expect(exportStep).toBeLessThan(at("npm run test:e2e:release-evidence"));
+    expect(exportStep).toBeLessThan(at("e2e/report/dist/cli.js"));
   });
 
   /**
