@@ -58,7 +58,6 @@ function buildAdapterDeps(overrides: {
   snapshotStore?: GrafanaRollbackSnapshotStore;
 }) {
   return {
-    baseUrl: "https://fake-grafana.invalid",
     externalConnectionId: "00000000-0000-4000-8000-000000000102",
     tenant: "tenant-1",
     envelopeId: "00000000-0000-4000-8000-000000000103",

@@ -9,6 +9,8 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../connectors-grafana" },
+    { "path": "../connectors-jira" },
     { "path": "../contracts" },
     { "path": "../detect" },
     { "path": "../engine-claude" },

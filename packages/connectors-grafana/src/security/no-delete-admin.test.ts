@@ -52,7 +52,6 @@ describe("GrafanaProviderAdapter — no forged delete/admin operation is callabl
   it("none of the forged operation names exist as a function on the adapter", async () => {
     const { send, calls } = spySend();
     const adapter = createGrafanaProviderAdapter({
-      baseUrl: "https://fake-grafana.invalid",
       externalConnectionId: "00000000-0000-4000-8000-000000000301",
       tenant: "tenant-1",
       envelopeId: "00000000-0000-4000-8000-000000000302",
@@ -87,7 +86,6 @@ describe("GrafanaProviderAdapter — no forged delete/admin operation is callabl
   it("Object.keys(adapter) is exactly {list, get, planCreate, planUpdate} — an exhaustive allowlist, not a denylist", () => {
     const { send } = spySend();
     const adapter = createGrafanaProviderAdapter({
-      baseUrl: "https://fake-grafana.invalid",
       externalConnectionId: "00000000-0000-4000-8000-000000000301",
       tenant: "tenant-1",
       envelopeId: "00000000-0000-4000-8000-000000000302",

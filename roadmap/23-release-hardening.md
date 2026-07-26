@@ -49,7 +49,7 @@ Phase 23 is the terminal phase (**Unlocks: —**); no roadmap phase consumes any
 - SHA-pinned `marketplace.json` entry (schema owned by 10) cut at the v1.0.0 release commit — consumed by the Claude Code plugin marketplace / end users.
 - `docs/compatibility-matrix.md`, `docs/operator-guide.md`, `docs/security-posture.md`, `docs/upgrade-guide.md` — consumed by operators/end users.
 - `CHANGELOG.md` v1.0.0 entry (changesets tool owned by 01) and git tag `v1.0.0`.
-- `e2e/release-gate-report.json` (introduced here; phase-23-internal) — the checklist-item → `EvidenceRecord` audit trail, archived by the `release-e2e` CI job (introduced here).
+- `e2e/release-gate-report.json` (introduced here; phase-23-internal) — the checklist-item → `EvidenceRecord` audit trail, archived by the `release-e2e` CI job (introduced here). Its inputs that are produced *outside* the checkout being scored (01's `arm64-run-record`, 15's `perf-contract-rerun`) are read from `docs/evidence/phase-23/<record-name>.json` (introduced here; phase-23-internal), or — the path the `release-e2e` ingest actually takes, since committing such a record would advance `HEAD` past the release-candidate object ID it names — from the record's one `EO_<SUBJECT>` override holding an absolute path to it (`$EO_ARM64_RUN_RECORD`, `$EO_PERF_CONTRACT_RERUN_RECORD`); each consuming check reports an absent, unparseable or schema-violating record as that one checklist item's FAIL rather than letting the error escape, per `docs/interface-ledger.md`'s Gap 16, which names 01, 15 and 23 as the phases it binds.
 
 ## Interfaces consumed
 

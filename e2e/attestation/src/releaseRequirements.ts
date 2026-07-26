@@ -162,6 +162,21 @@ export function gateTagsForCriterion(text: string): readonly string[] {
   return CRITERION_TAG_RULES.find((rule) => rule.match.test(text))?.tags ?? [];
 }
 
+/**
+ * Whether `text` matched a `CRITERION_TAG_RULES` entry at all.
+ *
+ * `gateTagsForCriterion` returns `[]` for TWO structurally different cases,
+ * and collapsing them hides a real defect behind a benign one: the umbrella
+ * criterion matches a rule whose `tags` are deliberately empty (it is a
+ * statement about the report, not a scored item), whereas a criterion that
+ * matches NO rule is an untagged roadmap bullet — silently untraceable, and
+ * a wiring bug. `./requirementLinkability.ts` uses this to keep the two
+ * apart in its derived arithmetic.
+ */
+export function hasCriterionTagRule(text: string): boolean {
+  return CRITERION_TAG_RULES.some((rule) => rule.match.test(text));
+}
+
 export function buildReleaseRequirements(
   criteria: readonly string[],
 ): readonly ReleaseRequirement[] {

@@ -112,7 +112,6 @@ describe("Grafana — no forged delete/admin operation is ever constructible on 
   it("none of the forged operation names exist as callable functions, and Object.keys is exactly the 4-member real surface", async () => {
     const send = async () => ({ status: 200, headers: {}, bodyText: "{}" });
     const adapter = createGrafanaProviderAdapter({
-      baseUrl: "https://forged-fixture.invalid",
       externalConnectionId: "00000000-0000-4000-8000-000000000701",
       tenant: "tenant-1",
       envelopeId: "00000000-0000-4000-8000-000000000702",

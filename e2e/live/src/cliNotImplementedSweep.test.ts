@@ -104,6 +104,16 @@ describe("checkProductionDependencyWiring — genuine integration (real buildRea
     expect(wiring.connectionWired).toBe(true);
     expect(wiring.learningWired).toBe(true);
   });
+
+  /**
+   * The one bag member that is deliberately NOT supplied (WP5,
+   * 2026-07-25). Pinned so that wiring a real capability discoverer is a
+   * visible, deliberate edit here plus an allowlist deletion — not a
+   * silent change that leaves the gate asserting a gap that has closed.
+   */
+  it("reports capability discovery as NOT wired — the one remaining connection-bag gap", () => {
+    expect(checkProductionDependencyWiring().capabilityDiscoveryWired).toBe(false);
+  });
 });
 
 describe("combineFindings", () => {
@@ -121,6 +131,7 @@ describe("combineFindings", () => {
       learningWired: true,
       trustWired: true,
       connectionWired: true,
+      capabilityDiscoveryWired: false,
     };
     const [resume] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "resume"),
@@ -136,6 +147,7 @@ describe("combineFindings", () => {
       learningWired: false,
       trustWired: false,
       connectionWired: false,
+      capabilityDiscoveryWired: false,
     };
     const [gatewayMcp] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "gateway-mcp"),
@@ -151,12 +163,30 @@ describe("combineFindings", () => {
       learningWired: false,
       trustWired: false,
       connectionWired: false,
+      capabilityDiscoveryWired: false,
     };
     const [install] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "install"),
       wiring,
     );
     expect(install?.realGapInProduction).toBe(false);
+  });
+
+  it("marks connection-capabilities a real gap: its bag is wired but its discoverer is not", () => {
+    const wiring: ProductionDependencyWiring = {
+      installerWired: true,
+      intakeWired: true,
+      learningWired: true,
+      trustWired: true,
+      connectionWired: true,
+      capabilityDiscoveryWired: false,
+    };
+    const [capabilities] = combineFindings(
+      [{ command: "connection-capabilities", exitCode: EXIT_NOT_IMPLEMENTED, detail: "" }],
+      wiring,
+    );
+    expect(capabilities?.realGapInProduction).toBe(true);
+    expect(capabilities?.note).toContain("capabilityDiscoveryWired");
   });
 
   it("marks a dependency-gated command as a real gap when its dependency is NOT wired (run/intake today)", () => {
@@ -166,6 +196,7 @@ describe("combineFindings", () => {
       learningWired: false,
       trustWired: false,
       connectionWired: false,
+      capabilityDiscoveryWired: false,
     };
     const [run] = combineFindings(
       allDispatchLevelFindings.filter((f) => f.command === "run"),

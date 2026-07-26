@@ -1,7 +1,8 @@
 # Release-gate work — session handoff
 
-**Written:** 2026-07-25, against release candidate `5e2c6b5`; committed the same day.
-**Status:** the work described below is **committed** on `main`, not pushed.
+**Written:** 2026-07-25 against `5e2c6b5`. **Substantially revised 2026-07-26** after a
+remediation round that audited, redesigned and rebuilt five blockers.
+**Status:** committed on `main`, not pushed.
 
 This is session state, not a project document. Once its open items are actioned it can be
 deleted. The durable analysis lives in `docs/release-gate-remediation-plan.md`.
@@ -14,21 +15,23 @@ deleted. The durable analysis lives in `docs/release-gate-remediation-plan.md`.
 
 | Verdict          | Count |
 | ---------------- | ----- |
-| PASS             | 11    |
-| FAIL             | 4     |
+| PASS             | 10    |
+| FAIL             | 5     |
 | EVIDENCE-PENDING | 0     |
 
-Started this session at 7 PASS / 8 EVIDENCE-PENDING. Every checklist item now either passes or
-fails for a stated, actionable reason — nothing is silently unreported.
+Started at 7 PASS / 8 EVIDENCE-PENDING. **The count went DOWN from 11 PASS on purpose**: two
+items were passing while asserting more than they verified, and making them honest is the
+point of the gate. Every item now either passes or fails for a stated, actionable reason.
 
-### The four remaining failures
+### The five remaining failures
 
-| Item                                   | Why it fails                                                                                                                                                                | Action                                                                                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `jira-grafana-version-support-windows` | **Real finding.** Grafana 11.6 left vendor support 2026-06-25, a month before this cut, while `docs/compatibility-matrix.md` and `docker/grafana/11.6/` still commit to it. | **Deferred by the owner** — to become a future task. Do not "fix" it by weakening the check.                                          |
-| `arm64-verification`                   | No ARM64 CI run has been archived yet.                                                                                                                                      | Mechanism is complete end to end; turns green on the first successful `ubuntu-24.04-arm` leg once CI runs. Nothing to build.          |
-| `requirement-traceability`             | Every requirement reports `bound to no remote (Jira/Grafana) resource`.                                                                                                     | Environment-blocked: needs a live Jira Cloud tenant, and no credentials exist on this host. Corpus and evidence-linking are done.     |
-| `performance-contracts`                | `supervisor-idle-cpu` decides `inconclusive_blocking`. **Methodology defect, not a budget breach** — see the correction below.                                              | Open. Needs a decision on how an absolute idle budget over a sparse counter is decided; do not "fix" it by dropping the CPU contract. |
+| Item                                   | Why it fails                                                                                                                                                                                                             | Action                                                                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `jira-grafana-version-support-windows` | **Real finding.** Grafana 11.6 left vendor support 2026-06-25, a month before this cut, while `docs/compatibility-matrix.md` and `docker/grafana/11.6/` still commit to it.                                              | **Deferred by the owner** — to become a future task. Do not "fix" it by weakening the check.                                   |
+| `arm64-verification`                   | No ARM64 CI run has been archived yet. The ingest path now exists (it did not before — see the correction below).                                                                                                        | Nothing further to build. Turns green on the first `ubuntu-24.04-arm` leg after this work is **pushed**; CI has never run it.  |
+| `requirement-traceability`             | Most requirements are `unlinkable_no_emitting_harness` — no harness journals evidence under any of their gate tags. One is `unlinkable_umbrella` by design (roadmap/23's bullet ABOUT the report, mapped to `tags: []`). | The writers, the stamping and a genuine containerized binding now exist. Remaining work is per-requirement evidence emission.  |
+| `performance-contracts`                | Both idle budgets **PASS on merit** (RSS 66.27 MiB / 100 MiB; CPU 0.000% / 1%). The item fails on the OTHER obligation roadmap/23 books against it: 15's PerformanceContract re-run (23:75) is unevidenced.              | Owner-ratified. Clears when a real twin-worktree re-run writes `docs/evidence/phase-23/perf-contract-rerun.json` (see Gap 16). |
+| `reproducible-build`                   | Five of criterion 23:136's seven clauses were never checked. Now they are: no `CHANGELOG.md`, no `v1.0.0` tag, marketplace `commit` is 40 zeros, nothing published.                                                      | **Deliberate.** These are the owner's release actions, out of scope this round. The item is now honest rather than green.      |
 
 ---
 
@@ -95,6 +98,15 @@ Two structural points about this seam, worth having before anyone changes it:
 Deliberately **not** fixed here: dropping the CPU contract, widening the noise threshold, or
 switching `pathSensitivity` off `critical` would each manufacture a green gate, and the remedy is
 a design decision about what statistic an absolute idle budget should be decided on.
+
+> **RESOLVED 2026-07-26 — this section is history, kept for the reasoning.** The remedy was none
+> of the three rejected options: the whole `packages/perf` route was the defect, because
+> `roadmap/15:38` and `roadmap/05:38` both say the supervisor idle budget is "not a
+> PerformanceContract, never routed through `packages/perf`". CPU is now decided on whole-window
+> utilization and RSS on the max sampled current-RSS, compared absolutely, with no bootstrap noise
+> gate. Both contracts now score `pass` on merit — measured 66.27 MiB / 100 MiB and 0.000% / 1%.
+> The report-vs-decide mismatch is fixed too: each detail line names the statistic it was decided
+> on. `performance-contracts` still FAILs, but on the separate 23:75 obligation, not on this.
 
 ---
 
@@ -238,3 +250,83 @@ projects is written `.js`-extended for `verbatimModuleSyntax`. Hence the `tsx` d
   live) from **attested** ones (when does support end? — human-recorded with a cited source),
   because Atlassian and Grafana publish EOL dates as prose, and scraping prose then calling it
   verified evidence is exactly what this phase forbids.
+
+---
+
+## Corrections (2026-07-26) — claims in the 2026-07-25 text that were false
+
+An audit of all five blockers, followed by an adversarially-reviewed redesign, found that several
+statements in the original version of this file were wrong. They are corrected above; recorded here
+because each was believed and acted on.
+
+**"ARM64: mechanism is complete end to end … Nothing to build."** False. The producer existed and
+the consumer did not. There were zero `download-artifact` steps, zero `gh run download` calls and
+zero `workflow_run` triggers repo-wide; `arm64Verification.ts` read a path that no workflow, script
+or test ever wrote. The ingest step is now in `release-e2e.yml`.
+
+**"Traceability: environment-blocked … Corpus and evidence-linking are done."** Wrong in both
+halves. It was never purely environment-blocked: `stampJiraRemoteResource`,
+`stampGrafanaRemoteResource` and `recordEvidencePointer` had **zero production callers** anywhere —
+roadmap/21 work item 1 was never built, so a live tenant would have produced zero pointers. And
+evidence-linking was not done: `requirementId` was stamped at exactly one emission site. Both are
+now built, and a real containerized Grafana binding produced a genuine pointer.
+
+**"The gate is at 11 PASS / 4 FAIL."** Two of those passes were over-claims. `reproducible-build`
+scored four inputs while three of its own computed preparers were ignored, so five of its seven
+clauses went unverified. `performance-contracts` measured one of the two obligations roadmap/23
+books against it.
+
+**`docs/release-gate-remediation-plan.md:175-177`** carried the same wrong ARM64 claim and is
+corrected there.
+
+### The finding that mattered most, and was in no blocker list
+
+`.gitignore`'s `coverage/` was **unanchored**, so git matched a directory of that name at any
+depth — silently untracking the 15 real source files in `packages/gates/src/coverage/`. Proven
+both directions with `git archive` + `tsc -b`: HEAD failed with 12 × `TS2307`, the fix builds
+clean. Consequences: **CI was red on every leg**, so the ARM64 record step (guarded `if: success()`
+after `npm run build`) could never have fired, and `arm64-verification` was unreachable regardless
+of the ingest gap. The repo built locally and only locally.
+
+`reproducible-build` did not catch it because its default populator copies the already-built
+`dist/` into both clean exports instead of rebuilding per checkout — it proved packer determinism,
+not build determinism. A rebuilding populator is now wired behind `EO_RELEASE_REBUILD_CHECKOUTS=1`.
+
+### The second-most important, also unlisted
+
+`release-e2e.yml` set no `EO_RELEASE_GATE_JOURNAL_DIR` and ran `npm run test:e2e` rather than
+`test:e2e:release-evidence`. Every harness therefore took the `mkdtemp` fallback in its own
+`testJournal.ts` and wrote to a journal deleted on cleanup, while the generator read
+`DEFAULT_JOURNAL_DIR`. **A CI-generated report would have linked zero evidence for every one of the
+15 items.** Every PASS on record came from local runs. Now wired at job level.
+
+---
+
+## What this round changed
+
+- **Idle budget no longer routes through `packages/perf`**, which `roadmap/15:38` and
+  `roadmap/05:38` both forbid by name. CPU is now decided on whole-window utilization
+  (`totalTicks / (HZ × elapsedWallSeconds)`) and RSS on the max sampled current-RSS, both compared
+  absolutely. The old `inconclusive_blocking` was a bootstrap **relative** noise bound saturating
+  at 100% against a 94%-zero series — never a budget breach.
+- **`reproducible-build` enforces its own description**, and the all-zero placeholder SHA is
+  rejected by the marketplace schema (a test previously asserted the real file was "SHA-pinned"
+  and passed on 40 zeros).
+- **ProviderRegistry is populated** — Jira and Grafana registered from the composition root, with
+  durable file-backed plan-payload and rollback-snapshot stores replacing in-memory `Map`s, and a
+  per-connection Grafana registry (`envelopeId` is per-authorization, so one long-lived adapter was
+  architecturally wrong). No `ExternalConnection` contracts change: `roadmap/19:16` forbids it and
+  `JiraConnectionConfig` already carried the mechanism.
+- **Gap 16** in `docs/interface-ledger.md` now pins the phase-23 evidence-record convention (path,
+  `EO_*` override, `.strict()` schema read through `safeParse`, malformed ⇒ FAIL not throw), with
+  the coordinated additions in roadmap/01, /15 and /23.
+
+Verified at the close of the round: `tsc -b` 0, `check:all` 0, `check:e2e-types` 0, eslint 0,
+prettier clean, **556 test files / 4638 tests passing** (95.4% statements, 87.9% branches), and a
+clean-checkout build of the full tree (1913 files exported, `tsc -b` 0).
+
+**Note on the traceability artifact.** `docs/evidence/phase-23/requirement-traceability.json` pins
+`objectId` to the commit it was generated against, so it goes stale the moment HEAD moves — the
+same catch-22 the ARM64 record has. Regenerate it with
+`npx vitest run --config e2e/attestation/vitest.live.config.ts` (needs Docker) at the object ID
+actually being scored, or supply it out-of-tree per Gap 16.

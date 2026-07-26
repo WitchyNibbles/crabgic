@@ -19,21 +19,28 @@
  * Schema on the wire), never a second copy of the prose.
  *
  * Provider-dispatch population — registering 18/19's Jira and 20's Grafana
- * clients into `ProviderRegistry` — is deliberately NOT done here. It is
- * per-connection work that needs resolved credentials and belongs to
- * connection lifecycle; Grafana additionally needs the durable
- * plan-payload/rollback stores phase 20 left in memory. `tracker.*`/
- * `observability.*` therefore register and dispatch correctly but resolve
- * to a typed `UnknownProviderError` until that lands, which is honest
- * behaviour for "no connector configured" rather than a silent hole. It is
- * tracked as its own allowlist entry.
+ * clients into `ProviderRegistry` — used to be deliberately absent here,
+ * on the reasoning that it "needs resolved credentials." WP5 (2026-07-25)
+ * establishes that reasoning was too strong for the REGISTRATION half:
+ * `registerJiraCloudProvider` and `registerRoutedGrafanaProvider` take
+ * only the two registries — no credentials, no I/O — and hand back a
+ * per-connection registry the connection lifecycle fills in later. The two
+ * registries are now supplied by the caller (`../bootstrap.ts`), populated,
+ * rather than constructed EMPTY inline as they were until then. That
+ * changes `tracker.*`/`observability.*`'s failure mode for a configured
+ * connection from a misleading `UnknownProviderError` ("this build has no
+ * Jira connector") to a typed `Jira/GrafanaConnectionNotRegisteredError`
+ * ("that connection has not been wired yet"), which is strictly more
+ * honest. What genuinely remains blocked on live credentials is the
+ * per-connection `register()` call itself — see
+ * `e2e/live/src/knownDeferredAllowlist.ts`.
  */
 import { z } from "zod";
 import type { JournalStore } from "@eo/journal";
 import {
   buildNativeToolRegistry,
   GatewayToolRegistry,
-  ProviderRegistry,
+  type ProviderRegistry,
   type AnyGatewayToolDefinition,
   type GatewayToolDefinition,
   type GenericProviderClient,
@@ -58,6 +65,17 @@ import { runContractApprove } from "../intake/contract-approve-handler.js";
 export interface ProductionGatewayToolRegistryDeps {
   readonly journal: JournalStore;
   readonly connections: ExternalConnectionRepository;
+  /**
+   * 16's read/plan provider-dispatch point, ALREADY POPULATED by the
+   * caller. Supplied rather than constructed here so that the same
+   * instances the connection lifecycle registers connections into are the
+   * ones `tracker.*`/`observability.*` dispatch through — two registries
+   * built in two places would leave this one permanently empty, which is
+   * exactly the defect this parameter fixes.
+   */
+  readonly providers: ProviderRegistry<GenericProviderClient>;
+  /** 16's mutation-apply dispatch point (`tracker.apply`/`observability.apply`), same sharing requirement. */
+  readonly mutationApplyClients: ProviderRegistry<MutationApplyClient>;
   readonly supervisorSocketPath: string;
   /** The project's durable approval signing key — the same one `run` minted its token under (see `../approval/signing-key.ts`). */
   readonly approvalSigningKey: Buffer;
@@ -194,8 +212,8 @@ export function buildProductionGatewayToolRegistry(
 ): GatewayToolRegistry {
   const registry = buildNativeToolRegistry({
     connections: deps.connections,
-    providers: new ProviderRegistry<GenericProviderClient>(),
-    mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    providers: deps.providers,
+    mutationApplyClients: deps.mutationApplyClients,
     journal: deps.journal,
     supervisorSocketPath: deps.supervisorSocketPath,
   });

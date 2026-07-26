@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { FileExternalConnectionStore } from "@eo/gateway";
+import { CURRENT_SCHEMA_VERSION } from "@eo/contracts";
 import { EXIT_GENERAL_ERROR, EXIT_NOT_IMPLEMENTED, EXIT_OK } from "../exit-codes.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
 import { dispatchCommand } from "./dispatch.js";
@@ -169,16 +170,63 @@ describe("dispatchCommand — connection add|list|doctor, real backend when deps
   });
 
   /**
-   * Pinned deliberately: live `CapabilitySnapshot` discovery has no
-   * production HTTP plumbing in either connector (phase 19/20 gap — see
-   * `../connection/connection-commands.ts`). If someone wires it, this test
-   * failing is the intended signal to delete it, not to re-stub the command.
+   * Pinned deliberately: the `connection-capabilities` BACKEND now exists
+   * (`../connection/connection-capabilities.ts`), but the bag production
+   * builds supplies no `discoverCapabilities`, because neither connector
+   * can discover without something that would have to be invented — see
+   * `ConnectionDependencies.discoverCapabilities` for the exact two
+   * blockers. So the shipped binary still answers NOT_IMPLEMENTED here,
+   * and `e2e/live`'s sweep still sees it. When a real discoverer is
+   * supplied, this test failing is the signal to delete it and drop the
+   * allowlist entry — never to re-stub the command.
    */
-  it("connection capabilities remains NOT_IMPLEMENTED even WITH the bag — discovery is unbuilt", async () => {
+  it("connection capabilities is NOT_IMPLEMENTED with the bag but NO discoverer", async () => {
     const result = await dispatchCommand(
       { command: "connection-capabilities", connectionId: "c-1", json: false },
       { ...baseDeps(), connection: await newConnectionDeps() },
     );
     expect(result.exitCode).toBe(EXIT_NOT_IMPLEMENTED);
+  });
+
+  /** The branch is no longer UNCONDITIONAL: an injected discoverer reaches the real backend. */
+  it("connection capabilities reaches the real backend once a discoverer IS supplied", async () => {
+    const connection = await newConnectionDeps();
+    const created = await connection.repository.create({
+      provider: "grafana",
+      baseUrl: "https://grafana.example.com",
+      secretRef: { backend: "env", variable: "GRAFANA_TOKEN" },
+      allowedRedirectOrigins: [],
+      allowedResources: ["dashboard"],
+      allowedActions: ["list"],
+      discoveryTtlSeconds: 900,
+    });
+
+    const result = await dispatchCommand(
+      { command: "connection-capabilities", connectionId: created.id, json: true },
+      {
+        ...baseDeps(),
+        connection: {
+          ...connection,
+          discoverCapabilities: async () => ({
+            schemaVersion: CURRENT_SCHEMA_VERSION,
+            id: "00000000-0000-4000-8000-0000000000cc",
+            externalConnectionId: created.id,
+            product: "grafana",
+            edition: "oss",
+            version: "13.1.0",
+            apiFamilies: ["dashboard:legacy"],
+            resources: ["dashboard"],
+            actions: ["list"],
+            permissions: ["read"],
+            isReadOnly: true,
+            discoveredAt: "2026-07-25T00:00:00.000Z",
+            expiresAt: "2026-07-25T00:15:00.000Z",
+          }),
+        },
+      },
+    );
+
+    expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED);
+    expect(JSON.parse(result.stdout!)).toMatchObject({ discovered: true, version: "13.1.0" });
   });
 });

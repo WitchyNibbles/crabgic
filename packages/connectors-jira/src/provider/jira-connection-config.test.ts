@@ -62,6 +62,85 @@ describe("JiraConnectionConfigSchema", () => {
   it("rejects an unknown authMode", () => {
     expect(() => buildConfig({ authMode: "kerberos" as never })).toThrow();
   });
+
+  /**
+   * WP5 (2026-07-25): Cloud's `authMode: "oauth"` needs the service-account
+   * client-credentials PAIR (`../auth/jira-oauth-http.ts`'s
+   * `JiraOAuthClientCredentials.clientId`/`.clientSecret`) to be
+   * CONFIGURABLE, and P02's `ExternalConnection` carries exactly one
+   * `secretRef`. The sanctioned home for the second one is THIS schema —
+   * roadmap/19-jira-datacenter-adapter.md:16 forbids changing
+   * `ExternalConnection` itself, and this schema already carries three
+   * optional `SecretReferenceSchema` fields for exactly this reason.
+   */
+  it("carries an optional OAuth client-credentials secret-reference pair", () => {
+    const config = JiraConnectionConfigSchema.parse({
+      externalConnectionId: "11111111-1111-4111-8111-111111111111",
+      deploymentType: "cloud",
+      authMode: "oauth",
+      oauthClientIdSecretRef: { backend: "env", variable: "JIRA_OAUTH_CLIENT_ID" },
+      oauthClientSecretRef: { backend: "file", path: "/run/secrets/jira-oauth-client-secret" },
+    });
+    expect(config.oauthClientIdSecretRef).toEqual({
+      backend: "env",
+      variable: "JIRA_OAUTH_CLIENT_ID",
+    });
+    expect(config.oauthClientSecretRef).toEqual({
+      backend: "file",
+      path: "/run/secrets/jira-oauth-client-secret",
+    });
+  });
+
+  it("leaves both OAuth secret refs undefined when omitted — they are optional, exactly like patSecretRef", () => {
+    const config = JiraConnectionConfigSchema.parse({
+      externalConnectionId: "11111111-1111-4111-8111-111111111111",
+      deploymentType: "cloud",
+      authMode: "oauth",
+    });
+    expect(config.oauthClientIdSecretRef).toBeUndefined();
+    expect(config.oauthClientSecretRef).toBeUndefined();
+  });
+
+  /** Both halves of the pair, independently: a schema that validated only one of them would leak an unvalidated credential locator through the other. */
+  it.each(["oauthClientIdSecretRef", "oauthClientSecretRef"] as const)(
+    "rejects a malformed %s rather than coercing it",
+    (field) => {
+      expect(() =>
+        JiraConnectionConfigSchema.parse({
+          externalConnectionId: "11111111-1111-4111-8111-111111111111",
+          deploymentType: "cloud",
+          authMode: "oauth",
+          [field]: { backend: "vault", uri: "vault://jira/secret" },
+        }),
+      ).toThrow();
+    },
+  );
+
+  it.each(["oauthClientIdSecretRef", "oauthClientSecretRef"] as const)(
+    "rejects a bare string for %s — a secret reference is a structured backend record, never a literal",
+    (field) => {
+      expect(() =>
+        JiraConnectionConfigSchema.parse({
+          externalConnectionId: "11111111-1111-4111-8111-111111111111",
+          deploymentType: "cloud",
+          authMode: "oauth",
+          [field]: "not-a-reference",
+        }),
+      ).toThrow();
+    },
+  );
+
+  /** The `.strict()` guarantee still holds — a typo'd OAuth field is a parse failure, not a silently-dropped credential. */
+  it("still rejects an unrecognized field after the OAuth pair was added", () => {
+    expect(() =>
+      JiraConnectionConfigSchema.parse({
+        externalConnectionId: "11111111-1111-4111-8111-111111111111",
+        deploymentType: "cloud",
+        authMode: "oauth",
+        oauthClientSecretRefs: { backend: "env", variable: "TYPO" },
+      }),
+    ).toThrow();
+  });
 });
 
 describe("assertBasicAuthPermitted — pre-network authentication guard", () => {

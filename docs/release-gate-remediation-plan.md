@@ -176,6 +176,12 @@ are the gate doing its job:
 step and the check are both in place and it turns green on the first green `ubuntu-24.04-arm`
 leg.
 
+> **CORRECTED 2026-07-26 — the paragraph above was false.** The emitting step and the check were
+> in place; the step that INGESTS the artifact was never written, so the check read a path nothing
+> produced. And CI could not have emitted anything anyway: it was red on every leg because of the
+> `.gitignore` defect fixed in `e431710`. Both are addressed; see §"Round 2" at the end of this
+> document.
+
 ## Resolution: the idle-RSS breach was an eager engine import
 
 The open question was framed as a binary — **regression** (fix the code) or **stale** (an
@@ -317,3 +323,52 @@ dropping the CPU contract, raising the noise threshold, or demoting `pathSensiti
 plausibly the mean (or a high percentile) against the budget with no noise gate at all, since
 `assertMethodologySound`'s sample-count floor is the methodology guard that actually applies to a
 single-sided absolute measurement.
+
+## Round 2 (2026-07-26): the five blockers, audited and rebuilt
+
+Five parallel audits, an adversarially-reviewed design, and three waves of build-and-validate
+(each work package developed, then independently re-verified by a validator that ran its own
+mutation battery and refused to approve until it could not break the result).
+
+**Two claims in this plan's own Outcome section were wrong**, and are corrected here:
+
+- `:175-177` said of ARM64 that "the emitting step and the check are both in place". The emitting
+  step was; **the ingesting step never existed**. Zero `download-artifact`, zero `gh run download`,
+  zero `workflow_run` triggers repo-wide, and `arm64Verification.ts` read a path nothing wrote.
+- The 11 PASS / 4 FAIL tally counted two items that were passing while asserting more than they
+  verified.
+
+**The finding that preceded all five**, and appeared in no blocker list: `.gitignore`'s `coverage/`
+was unanchored, silently untracking the 15 source files in `packages/gates/src/coverage/`. A clean
+`git archive` of HEAD failed `tsc -b` with 12 × `TS2307` while the same tree built locally. CI had
+been red on every leg, which alone made `arm64-verification` unreachable — the record step is
+guarded `if: success()` after `npm run build`. Fixed in `e431710`.
+
+The reason `reproducible-build` never caught it is itself the §"Cross-cutting integration debt"
+pattern one level up: its default populator copies the built `dist/` into both clean exports rather
+than rebuilding per checkout, so it proved packer determinism and called it build determinism.
+
+### Per-item disposition
+
+| Item                                   | Before                                             | After                                                                                                |
+| -------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `performance-contracts`                | `inconclusive_blocking` on a bootstrap noise bound | Both idle budgets PASS on merit; item FAILs on the separate 23:75 obligation                         |
+| `reproducible-build`                   | PASS, 5 of 7 clauses unchecked                     | FAIL, all 7 checked, reasons quotable                                                                |
+| `arm64-verification`                   | FAIL, ingest path absent                           | FAIL, ingest path built; needs a push and a green CI leg                                             |
+| `requirement-traceability`             | FAIL, "environment-blocked"                        | FAIL with a real diagnostic taxonomy; writers + stamping + a genuine containerized binding now exist |
+| `jira-grafana-version-support-windows` | FAIL, owner-deferred                               | Unchanged, still owner-deferred                                                                      |
+
+Net **10 PASS / 5 FAIL**, down from 11 PASS. The drop is the gate becoming honest.
+
+### On the traceability evidence source
+
+`roadmap/23:56` forbids fakes and cassettes as phase 23's own final verdict basis while allowing
+"live or containerized". The binding is therefore a **real Grafana OSS container**, reached through
+the repo's established two-seam test pattern — `resolveHostAddresses` answering a TEST-NET-3
+address that `ssrf-guard` does not block, with the dial pinned to loopback and TLS terminated
+against a disposable self-signed CA supplied as `customCaRef`.
+
+**No production guard was modified**: `ssrf-guard.ts` and `external-connection.ts` are byte-identical.
+An earlier draft of the design claimed this work required "defeating the SSRF guard"; that was
+wrong, and the adversarial review caught it before any code was written. The artifact states its own
+provenance on its face so no reader can mistake it for a live-SaaS binding.

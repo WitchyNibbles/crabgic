@@ -14,6 +14,10 @@
  * new deferral requires a deliberate edit here (visible in review); a
  * brand-new, undocumented gap fails closed.
  *
+ * SHRUNK 2026-07-25, from 24 entries to 1; the two surviving entries were
+ * both NARROWED later the same day by WP5, which closed the halves of each
+ * that turned out not to need credentials at all — see each entry.
+ *
  * SHRUNK 2026-07-25, from 24 entries to 1. The composition-root work of
  * phase 23 wired 18 of them for real, and the sweep — run live, not
  * reasoned about — reported each as a STALE allowlist entry, which is this
@@ -52,10 +56,22 @@ export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [
     location: ["packages/cli/src/commands/dispatch.ts"],
     ownerPhase: "18/19/20 (connector capability discovery) + 23 (CLI wiring)",
     description:
-      '"connection-capabilities" has no backend wired. Its three siblings (connection-add|list|' +
-      "doctor) were wired against the durable FileExternalConnectionStore; this one reports a " +
-      "connection's discovered CapabilitySnapshot, which needs a live provider client — the same " +
-      "per-connection credential work gateway.provider.dispatch below is blocked on.",
+      'NARROWED 2026-07-25 (WP5). "connection-capabilities" now HAS a backend ' +
+      "(packages/cli/src/connection/connection-capabilities.ts) and dispatch.ts's branch is no " +
+      "longer unconditional: it is gated on ConnectionDependencies.discoverCapabilities, the " +
+      "injected counterpart to the `probe` that backs connection-doctor. What remains deferred is " +
+      "supplying that discoverer in production, and it is deferred on two CONCRETE blockers, not " +
+      "on the previous over-broad claim that no plumbing exists. (1) Jira: " +
+      "discoverJiraCapabilitySnapshot is real and its JiraHttpContext is fully constructible — " +
+      "JiraTokenManager IS exported, contrary to the stale note this entry used to rest on — but " +
+      "nothing PERSISTS a JiraConnectionConfig, so the OAuth client-credentials pair " +
+      "(oauthClientIdSecretRef/oauthClientSecretRef, added to JiraConnectionConfigSchema in WP5) " +
+      "cannot be resolved for a stored connection, and ExternalConnection carries exactly one " +
+      "secretRef by a roadmap/19 ruling that must not be widened. (2) Grafana: " +
+      "GrafanaBuildInfoResponse is documented in its own file as fixture data, NOT an assertion " +
+      "about Grafana's wire format, pending live verification — implementing fetchBuildInfo " +
+      "against it would be guessing at an unverified engine fact. The containerized-Grafana run " +
+      "is where (2) gets settled.",
   },
 ];
 
@@ -81,13 +97,25 @@ export const KNOWN_DEFERRED_GATEWAY_PROVIDERS: readonly KnownDeferredEntry[] = [
     ],
     ownerPhase: "18/19/20 (connector connection lifecycle) + 23",
     description:
-      "buildProductionGatewayToolRegistry constructs EMPTY ProviderRegistry instances, so every " +
-      "tracker.*/observability.* call resolves to a typed UnknownProviderError. The tool families " +
-      "themselves are genuinely registered and invocable — this is the provider-dispatch axis, " +
-      "which is distinct. Populating it is per-connection work needing resolved credentials (Jira " +
-      "needs a JiraTokenManager per site; Grafana additionally needs the durable plan-payload and " +
-      "rollback stores phase 20 left in memory), so it belongs to connection lifecycle rather than " +
-      "to MCP boot.",
+      "NARROWED 2026-07-25 (WP5) — the PROVIDER half is closed, the CONNECTION half is not. " +
+      "buildProductionGatewayToolRegistry no longer constructs EMPTY ProviderRegistry instances: " +
+      "bootstrap.ts's buildProviderDispatchWiring calls registerJiraCloudProvider and " +
+      "registerRoutedGrafanaProvider (both credential-free — two registries in, a per-connection " +
+      "registry out, no secret resolved and no I/O) and threads the populated registries through " +
+      "ProductionGatewayToolRegistryDeps. (Both halves of that registrar claim are exercised " +
+      "end to end by packages/cli/src/gateway-mcp/build-tool-registry.test.ts, over a real " +
+      "jira-cloud AND a real grafana connection — the Jira half was previously asserted here " +
+      "and verified nowhere.) Grafana's durable plan-payload and rollback stores now exist too " +
+      "(connectors-grafana/src/mutation/file-backed-store.ts) and are CONSTRUCTED at boot under " +
+      "the project's XDG state root, 0600; they are not yet CONSUMED, because the register() " +
+      "call that would take them is the deferred half described next. So a tracker.*/" +
+      "observability.* call on a configured connection no longer answers the misleading " +
+      'UnknownProviderError ("this build has no Jira connector"); it answers the typed ' +
+      "Jira/GrafanaConnectionNotRegisteredError. What genuinely remains is the per-CONNECTION " +
+      "register() call: JiraConnectionRegistry.register needs a JiraTokenManager built from the " +
+      "OAuth client-credentials pair, and GrafanaConnectionRegistry.register needs a resolved " +
+      "service-account token plus a verified capability snapshot. Both need live credentials and " +
+      "belong to connection lifecycle, not to MCP boot.",
   },
 ];
 

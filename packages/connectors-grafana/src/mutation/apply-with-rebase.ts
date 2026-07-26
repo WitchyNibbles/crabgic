@@ -11,7 +11,7 @@ import {
   type GrafanaResourceDefinition,
 } from "../resources/resource-definitions.js";
 import { resolveOptimisticConcurrencyConflict } from "./precondition.js";
-import type { GrafanaPlanPayloadStore } from "./plan-payload-store.js";
+import type { GrafanaPlanPayloadStoreLike } from "./plan-payload-store.js";
 import type { GrafanaRawHttpResponse } from "./mutation-apply-client.js";
 
 export interface ApplyWithRebaseDeps {
@@ -21,7 +21,7 @@ export interface ApplyWithRebaseDeps {
   /** The content hash of the remote resource AS IT STOOD when THIS plan's own `expectedRemoteRevision` was captured (i.e. at `planUpdate` time) — the baseline `./precondition.js` compares a post-conflict re-fetch against. */
   readonly baselineContentHash: string;
   readonly get: (path: string) => Promise<GrafanaRawHttpResponse>;
-  readonly payloadStore: GrafanaPlanPayloadStore;
+  readonly payloadStore: GrafanaPlanPayloadStoreLike;
 }
 
 /**

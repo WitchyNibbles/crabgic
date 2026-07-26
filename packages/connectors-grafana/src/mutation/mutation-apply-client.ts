@@ -14,8 +14,8 @@ import {
   deriveAnnotationMarkerTag,
 } from "../reconciliation/marker-reconciler.js";
 import { parseCanonicalTarget } from "./canonical-target.js";
-import type { GrafanaPlanPayloadStore } from "./plan-payload-store.js";
-import type { GrafanaRollbackSnapshotStore } from "./snapshot-store.js";
+import type { GrafanaPlanPayloadStoreLike } from "./plan-payload-store.js";
+import type { GrafanaRollbackSnapshotStoreLike } from "./snapshot-store.js";
 
 export interface GrafanaRawHttpResponse {
   readonly status: number;
@@ -26,8 +26,8 @@ export interface GrafanaRawHttpResponse {
 export interface GrafanaMutationApplyClientDeps {
   readonly baseUrl: string;
   readonly routeTable: RouteTable;
-  readonly payloadStore: GrafanaPlanPayloadStore;
-  readonly snapshotStore: GrafanaRollbackSnapshotStore;
+  readonly payloadStore: GrafanaPlanPayloadStoreLike;
+  readonly snapshotStore: GrafanaRollbackSnapshotStoreLike;
   /** A non-mutating GET-only sender, for `verify`/`reconcileAmbiguous`'s own read-back and marker-search calls — the caller wires this from the SAME connection-scoped `GatewayHttpClient` `buildRequest` uses, so every call (mutating or not) shares one SSRF-guarded transport. */
   readonly get: (path: string) => Promise<GrafanaRawHttpResponse>;
   /** `annotation` creates only: searches by tag for the plan's derived marker (`../reconciliation/marker-reconciler.js`) — annotations accept no caller-supplied id, so uid-based lookup doesn't apply to this one kind. */

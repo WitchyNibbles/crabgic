@@ -11,7 +11,10 @@
   "scripts": {
     "provisioning:typecheck": "tsc -p provisioning/tsconfig.json --noEmit",
     "provisioning:test": "vitest run --config provisioning/vitest.config.ts",
-    "provisioning:test:live": "vitest run --config provisioning/vitest.live.config.ts"
+    "provisioning:test:live": "vitest run --config provisioning/vitest.live.config.ts",
+    "attestation:typecheck": "tsc -p attestation/tsconfig.json --noEmit",
+    "attestation:test": "vitest run --config attestation/vitest.config.ts",
+    "attestation:test:live": "vitest run --config attestation/vitest.live.config.ts"
   },
   "dependencies": {
     "zod": "3.25.76"

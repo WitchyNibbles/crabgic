@@ -3,15 +3,19 @@
 This file is the **binding cross-phase interface contract** for the crabgic / Engineering Orchestrator
 roadmap (`roadmap/00-*.md` through `roadmap/23-*.md`, indexed by `roadmap/README.md`). It records the single
 ruling decision for each of 15 cross-phase interface gaps that were identified against the roadmap and
-independently adjudicated by four parallel resolver passes.
+independently adjudicated by four parallel resolver passes, plus **Gap 16**, which was identified later,
+during implementation, and carries its own provenance line rather than a four-resolver record.
 
 **The four resolver passes did not agree with each other** — on several gaps (notably Gap 1, Gap 2, Gap 11,
 and the path-order half of Gap 14) their decisions materially conflict, even though all 15 gaps were stamped
-`RESOLVED` by all four. **This ledger is not a vote count.** For every gap below, the "Ruling" is the decision
-the 22 already-rewritten phase files actually implement today, verified by reading those files directly — not
-the majority position among the four resolvers, and not editorial preference. Each gap's "Where the 4
-resolvers disagreed" line names the rejected alternative(s) on the record, so nobody reintroduces a
-rejected branch later believing it was never considered.
+`RESOLVED` by all four. **This ledger is not a vote count.** For every one of **Gaps 1-15** below, the "Ruling"
+is the decision the 22 already-rewritten phase files actually implement today, verified by reading those files
+directly — not the majority position among the four resolvers, and not editorial preference. Each carries a
+"Where the 4 resolvers disagreed" line naming the rejected alternative(s) on the record, so nobody
+reintroduces a rejected branch later believing it was never considered. Gap 16 has no such line and makes no
+such claim: it was never seen by the four resolvers, and its ruling is carried today both by the implementing
+source files and — since the coordinated addition to `roadmap/01`, `15` and `23` — by those phase files' own
+text; see its own "Origin" and "Coordinated phase-file edit" lines in that entry.
 
 **Any change to a named interface below — a tool name, a schema member, a shared constant, a path
 convention, an enum label, a delivery boundary — requires a coordinated edit across every phase file listed
@@ -57,6 +61,7 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [13](#gap-13--minor-phase-03s-sources-field-never-cites-docsengine-baselinemd) | Phase 03 doesn't cite `docs/engine-baseline.md` | Citation added |
 | [14](#gap-14--minor-two-independent-xdg-cache-usages-with-no-shared-pinned-path-constant) | Two unpinned "XDG cache" usages | Pinned once in Phase 04, sibling to `$XDG_STATE_HOME` |
 | [15](#gap-15--minor-engine-live-ci-job-name-and-live-test-tag-never-explicitly-linked) | `engine-live`/`@live` link never stated | Phase 01 states Phase 06 wires it; Phase 06 does |
+| [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `EO_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
 
 ---
 
@@ -686,6 +691,161 @@ by doing both, not by picking one over the other.
 
 ---
 
+## Gap 16 — Phase-23 CI-produced evidence records have no pinned path, env or failure convention
+
+**Gap statement:** Phase 23's release gate consumes evidence that is **produced outside the checkout it is
+scoring** — a CI job on hardware the release cut does not have, or a benchmark harness whose run is not the
+release run. Two such records are now **consumed** (`arm64-run-record.json`, produced by `ci.yml`'s ARM64
+matrix leg and downloaded by `release-e2e.yml`; `perf-contract-rerun.json`, produced by 15's twin-worktree
+A/B runner) — neither file sits in the tree today, which is the point of the ruling rather than an oversight:
+they are produced outside the checkout being scored. Nothing in the roadmap or in this ledger says
+where such a record lives, how the CI-ingest override that carries it is named, or what a check must do when
+the record it finds is malformed. `roadmap/23-release-hardening.md` did not mention `docs/evidence/` at all —
+zero hits across the file, until the coordinated edit recorded below — so the directory, the `EO_*` variable
+names and the read-failure behaviour were each being decided independently, per check, by whoever wrote the
+check. When this gap was identified the two
+existing consumers diverged in a small but real way (blank-string handling of the override — since
+reconciled, see "Verified in" below), and sibling in-tree record readers diverged in a large one (see "Known
+non-conformance" below).
+
+**Ruling:** A phase-23 evidence record that a release-gate check *consumes* — as opposed to one the check
+produces itself — follows one convention, in three parts:
+
+1. **Path.** The record is looked for at `docs/evidence/phase-23/<record-name>.json`, relative to the
+   repository root the check was handed. `<record-name>` is `kebab-case` and names the thing recorded, not
+   the check reading it (`arm64-run-record`, `perf-contract-rerun`). This is the *committed-artifact* seam
+   and is deliberately distinct from Gap 14's runtime
+   `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/…` cache convention: Gap 14 governs machine-local
+   state a running orchestrator writes, Gap 16 governs release evidence that is read as part of scoring a
+   frozen release candidate. Neither ruling constrains the other.
+2. **Environment override.** Each record declares exactly one override variable, named `EO_` +
+   `SCREAMING_SNAKE_CASE` of the record's own subject (`EO_ARM64_RUN_RECORD`,
+   `EO_PERF_CONTRACT_RERUN_RECORD`), holding an **absolute path to the record file** — not a directory, not
+   the record's contents. The override wins when set to a non-blank value; unset or blank falls back to the
+   in-repo path. The override is the primary path in CI, and the reason is structural rather than
+   convenience: these records name the release-candidate object ID they were taken against, and *committing*
+   a downloaded record advances `HEAD` past that very object ID, so "record is in the tree" and "record
+   matches the candidate" are unsatisfiable together. CI therefore downloads the artifact **outside the
+   checkout** (`$RUNNER_TEMP`) and exports the variable; the in-repo path remains for the case it is honestly
+   good for — a record archived alongside the release for post-hoc audit.
+3. **Schema, and what a bad record does.** Each record has a `zod` schema declared next to its path constant
+   and named `<Subject>RecordSchema`; the schema is `.strict()`, so producer drift is surfaced rather than
+   silently half-read. The reader validates with **`safeParse`, never `parse`**, and **never throws**: an
+   absent, unparseable or schema-violating record is reported as a **FAIL of that one checklist item, with
+   the offending path and the schema issues quoted in the reason**. A `ZodError` escaping a reader would
+   abort the whole attestation run and take every *other* item's evidence down with it — turning one item's
+   drift into a report that evidences nothing.
+
+**Rationale:** All three parts exist to keep a single failure honest and local. (1) pins where a reader and a
+producer must agree, so the "check reads a path nothing writes" defect this round found in the ARM64 loop is
+detectable by inspection rather than only by a failing gate. (2) resolves the object-ID catch-22 above, which
+has no solution inside the checkout. (3) is the ground rule "exit criteria are evidence, not claims"
+(`roadmap/README.md`) applied to the reader: a crash produces an *absence* of verdict, which a report
+consumer cannot distinguish from an item that was never scored, whereas a FAIL with a quoted schema issue is
+an instruction to whoever owns the producer. The blocking reason must also name the artifact it is reporting
+the absence of, so the reason is a locator a reader can act on rather than an unfalsifiable statement.
+
+**Phases affected:** 01, 15, 23 — **01** owns the CI skeleton whose ARM64 matrix leg produces
+`arm64-run-record.json` (`01-repo-bootstrap.md:22`, `:44`, `:75` — the ARM64 leg and its deferral, closed by
+23); **15** owns the `PerformanceContract` decision engine and twin-worktree A/B runner whose re-run produces
+`perf-contract-rerun.json` (`23-release-hardening.md:75` — "Re-run on a quiet host for the
+release-candidate's real verdicts"); **23** owns `docs/evidence/phase-23/`, both consumers, and the
+`release-e2e` job that performs the ingest (`23-release-hardening.md:52`, `:61`, `:133`). A new consumed
+record, a renamed variable, or a change to the read-failure behaviour is a coordinated edit across the
+producer phase and 23.
+
+**Coordinated phase-file edit — performed.** The rule at the top of this file (`:20-24`) requires a path
+convention and an `EO_*` variable-naming rule to be landed across every phase file listed under "Phases
+affected". All three now carry it, each in its own idiom and in the section the record actually belongs to:
+`roadmap/01-repo-bootstrap.md` §Interfaces produced (the CI-skeleton bullet, where the ARM64 leg's
+`arm64-run-record` artifact is produced), `roadmap/15-performance-contracts.md` §Interfaces produced (a
+"Release re-run record" bullet alongside the archived raw samples), and `roadmap/23-release-hardening.md`
+§Interfaces produced (a `docs/evidence/phase-23/<record-name>.json` bullet alongside
+`e2e/release-gate-report.json`). This entry is therefore carried by the phase files as well as by the
+implementing source — the stronger of the two forms this ledger recognises. It remains provisional on the
+separate ground its "Origin" line states: owner ratification.
+
+**Verified in:**
+- `e2e/attestation/src/arm64Verification.ts:70-71` — `ARM64_RUN_RECORD_PATH =
+  "docs/evidence/phase-23/arm64-run-record.json"`, `ARM64_RUN_RECORD_ENV = "EO_ARM64_RUN_RECORD"`; `:77-92`
+  `Arm64RunRecordSchema`, `.strict()`; `:243-266` `readArm64RunRecord` — override-then-in-repo resolution,
+  `safeParse`, `{ outcome: "malformed", path, problem }` rather than a throw. Two separate in-file
+  rationales, cited separately because they are different paragraphs: `:43-69` explains why the override is
+  the primary path in CI and the SHA catch-22 behind it, and `:228-233` explains the read-failure behaviour
+  ("NEVER throws: a record it cannot read is reported as `malformed` so this one item FAILs with a reason,
+  instead of a `ZodError` escaping into the release-evidence run"). **The one divergence this entry
+  recorded is now closed:** the reader's blank-override test was `override.length > 0`, so an override set
+  to whitespace was used as a path where `readPerformanceRerunEvidence` trims first and falls back. It is
+  now `override === undefined || override.trim() === ""` (`:246`), the `trim()` form this ruling requires —
+  an all-whitespace variable is an unset variable that passed through a shell, never a filename — paired
+  with a test that feeds `"  \t\n "` and asserts the in-repo path is what gets resolved
+  (`arm64Verification.test.ts`, "falls back to the in-repo path when the override is only whitespace";
+  confirmed by mutating the `trim()` away and observing it go RED).
+- `.github/workflows/ci.yml:109-129` — the producer: writes `arm64-run-record.json` and uploads it as the
+  `arm64-run-record` artifact. `.github/workflows/release-e2e.yml:125-189` — the consumer-side ingest step:
+  `gh run download … -n arm64-run-record` into a directory outside the checkout, then
+  `echo "EO_ARM64_RUN_RECORD=$RECORD" >> "$GITHUB_ENV"`.
+- `e2e/attestation/src/performanceContracts.ts:657-659` — `PERFORMANCE_RERUN_RECORD_PATH =
+  "docs/evidence/phase-23/perf-contract-rerun.json"`, `PERFORMANCE_RERUN_RECORD_ENV =
+  "EO_PERF_CONTRACT_RERUN_RECORD"`; `:667-688` `PerformanceRerunRecordSchema`, `.strict()`; `:713-752`
+  `readPerformanceRerunEvidence` — same resolution order, `safeParse`, and a
+  `PerformanceRerunEvidence` union in which "no record and no explanation why" is unrepresentable;
+  `:809-814` `PERFORMANCE_CONTRACT_RERUN_UNEVIDENCED_REASON`, the blocking reason emitted while the record is
+  absent.
+- `e2e/attestation/src/performanceContracts.test.ts` — the branch pairs this ruling requires, each named
+  rather than summarised, because an earlier version of this line claimed more than the suite pinned:
+  unreadable JSON; a value-level schema violation (empty `contracts`); **part (3)'s `.strict()` on both
+  schemas — an unknown top-level key and an unknown contract-entry key, one test each**; one case per
+  required member with that member omitted (`releaseCandidateObjectId`, `runner`, `quietHost`, `capturedAt`,
+  `contracts`) and one per string member left blank; a blank `contractId` and an `outcome` outside 02's
+  `PERFORMANCE_OUTCOMES`; the blank override falling back to the in-repo path
+  (asserted on the path actually resolved, not on a substring present in every message); and the
+  record-present read path. Each was confirmed by mutating the source — deleting either `.strict()`, making
+  any member `.optional()`, dropping any `.min(1)` — and observing the paired test go RED. Before these
+  tests existed every one of those mutants survived the full suite, which is why this bullet now enumerates
+  rather than summarises.
+
+**Known non-conformance (recorded, not ruled on):** three *in-tree-only* phase-23 record **readers** declare
+paths under the same directory without the parts of this convention that only apply to ingested records; two
+of the three still diverge. Stated precisely, because not all three files exist: `find docs/evidence -name
+'*.json'` returns `phase-06/path-anchor-determination.json`,
+`phase-06/sandbox-containment-determination.json`, `phase-23/requirement-traceability.json` and
+`phase-23/vendor-support-windows.json` — nothing else, so `phase-23/demo-run.json` is absent. All three
+readers treat absence as a non-error and fall back (`readDemoRunRecord` returns `undefined`,
+`demoBranchEvidenceHandoff.ts:158-161`; `readRequirementTraceabilityInput` leaves the binding sets empty,
+`requirementTraceability.ts:235-237` and `:262-263`), so the divergence below is about what each does
+with a record that IS present: `docs/evidence/phase-23/demo-run.json` (`demoBranchEvidenceHandoff.ts:30`,
+`:161`) and `docs/evidence/phase-23/vendor-support-windows.json` (`versionSupportWindows.ts:38-39`, `:193`)
+are schema-validated but through `.parse()`, so a malformed record throws rather than FAILing that item. The
+third, `docs/evidence/phase-23/requirement-traceability.json` (`requirementTraceability.ts:59`, `:234-237`),
+**no longer diverges**: it was read with an unchecked cast and no schema at all, and is now read through
+`parseTraceabilityEvidenceFile` (`traceabilityEvidence.ts`) — `safeParse`, and a parse failure surfaced as
+that one item's stated FAIL reason rather than a throw, i.e. part (3)'s shape. Its strictness is bounded, and
+the bound is deliberate: `.strict()` holds at the top level and throughout `provenance` (including the nested
+`container` and `transportSeams` blocks — four `.strict()` sites, one unknown-key test each), while the two
+array-element schemas `RemoteResourceRecordSchema` and `PointerRecordSchema` are `.passthrough()` because the
+committed record already carries per-element producer keys (`schemaVersion`, `canonicalUrl`) that `.strict()`
+would reject, making the real artifact unreadable. The rationale is stated in-file next to both, and pinned by
+a test that fails if either is tightened. So part (3)'s drift-surfacing guarantee holds for this reader down
+to `provenance`, not inside `remoteResources[]`/`pointers[]`.
+Part (1) of the ruling is the path all three readers already name — it does not assert that a conforming
+file sits at any of them. Part (2) does not apply to in-tree-only records, which declare no override. Part
+(3) is stated here as the target shape for the two remaining `.parse()` readers; bringing them into line is
+a separate, scoped change and is **not** authorised by this entry.
+
+**Origin:** This gap did **not** come from the original four-resolver round; it was identified during phase-23
+release-gate remediation (2026-07-25), when the ARM64 consumer was found reading a path nothing wrote and the
+second phase-23 record was added for `roadmap/23:75`'s separate performance obligation. **Owner ratification
+is PENDING** — an earlier draft of this line claimed the ruling "was ratified by the owner in the same
+round", and `grep -rn "ratif" docs/ roadmap/` finds no such record anywhere in this repository. Until an
+owner decision exists and is cited on this line, **this entry is provisional**: it may be relied on by the
+code that implements it, and it must not be cited as settled authority against a phase file the way Gaps
+1-15 can be. It is a **new** ruling and contradicts no ruling above —
+no existing entry names `docs/evidence/`, any `EO_*` variable, or a record-read failure mode. Gap 14 is the
+only adjacent entry and governs a disjoint (runtime-cache) path space, as part (1) states explicitly.
+
+---
+
 ## Provenance
 
 The 15 gaps and the four independent resolution passes originate from a prior workflow run whose raw output
@@ -693,3 +853,10 @@ The 15 gaps and the four independent resolution passes originate from a prior wo
 four-way record into one binding ruling per gap and replaces it as the durable reference — every ruling above
 was cross-checked against the current text of all 24 rewritten phase files, not taken on the raw record's
 word.
+
+**Gap 16 is outside that provenance** and says so in its own "Origin" line: it was identified during
+phase-23 release-gate remediation on 2026-07-25, was never seen by the four resolvers, and is **awaiting
+owner ratification**. Its "Verified in" anchors therefore cite the implementing source files rather than
+roadmap phase text; the coordinated one-line additions to 01, 15 and 23 that the ruling required have since
+been landed and are recorded in the entry's own "Coordinated phase-file edit" line. Later gaps found during
+implementation should follow the same shape rather than being retrofitted into the four-resolver narrative.

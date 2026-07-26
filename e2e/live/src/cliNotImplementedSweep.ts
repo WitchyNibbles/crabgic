@@ -152,6 +152,15 @@ export interface ProductionDependencyWiring {
   readonly trustWired: boolean;
   /** roadmap/16's `connection *` bag — wired 2026-07-25, same as `trustWired`. */
   readonly connectionWired: boolean;
+  /**
+   * `ConnectionDependencies.discoverCapabilities` specifically (WP5,
+   * 2026-07-25). Tracked SEPARATELY from `connectionWired` because
+   * `connection-capabilities` is gated one level deeper than its three
+   * siblings: the bag is wired, but the discovery function inside it is
+   * not, so folding it under `connectionWired` would report a real,
+   * currently-shipped gap as closed.
+   */
+  readonly capabilityDiscoveryWired: boolean;
 }
 
 /**
@@ -168,6 +177,7 @@ export function checkProductionDependencyWiring(): ProductionDependencyWiring {
     learningWired: deps.learning !== undefined,
     trustWired: deps.trust !== undefined,
     connectionWired: deps.connection !== undefined,
+    capabilityDiscoveryWired: deps.connection?.discoverCapabilities !== undefined,
   };
 }
 
@@ -190,6 +200,7 @@ const DEPENDENCY_GATED_COMMANDS: Readonly<Record<string, keyof ProductionDepende
   "connection-add": "connectionWired",
   "connection-list": "connectionWired",
   "connection-doctor": "connectionWired",
+  "connection-capabilities": "capabilityDiscoveryWired",
 };
 
 export interface CliNotImplementedFinding {

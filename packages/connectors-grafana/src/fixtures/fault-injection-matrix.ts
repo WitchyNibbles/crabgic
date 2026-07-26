@@ -37,7 +37,6 @@ const forgedDeleteAdminScenario: FaultInjectionScenario = {
   run: async () => {
     const { send, calls } = neverCalledSend();
     const adapter = createGrafanaProviderAdapter({
-      baseUrl: "https://fake-grafana.invalid",
       externalConnectionId: "00000000-0000-4000-8000-000000000601",
       tenant: "tenant-1",
       envelopeId: "00000000-0000-4000-8000-000000000602",

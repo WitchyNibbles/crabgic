@@ -10,8 +10,8 @@ import type { GrafanaResourceKind } from "./resource-kinds.js";
 import { assertWritableCapability } from "./mutation/write-eligibility-guard.js";
 import { deriveDeterministicUid } from "./reconciliation/marker-reconciler.js";
 import { buildGrafanaMutationPlan } from "./mutation/mutation-plan-builder.js";
-import { GrafanaPlanPayloadStore } from "./mutation/plan-payload-store.js";
-import { GrafanaRollbackSnapshotStore } from "./mutation/snapshot-store.js";
+import type { GrafanaPlanPayloadStoreLike } from "./mutation/plan-payload-store.js";
+import type { GrafanaRollbackSnapshotStoreLike } from "./mutation/snapshot-store.js";
 import type { GrafanaRawHttpResponse } from "./mutation/mutation-apply-client.js";
 
 /**
@@ -43,8 +43,17 @@ export interface GrafanaProviderAdapter {
   ): Promise<RemoteMutationPlan>;
 }
 
+/**
+ * ADVERSARIAL-REVIEW FIX (2026-07-26). This shape used to declare a
+ * `baseUrl` that nothing in this module ever read — the adapter's reads all
+ * go out through the connection-scoped `send`, and the only place a Grafana
+ * base URL is dialled is `./mutation/mutation-apply-client.ts`, which takes
+ * its own. A dead field here is a trap rather than a tidiness issue: a
+ * caller wiring a new connection would reasonably assume it was what the
+ * adapter dialled, and a mutation of it was unkillable by construction.
+ * Removed; `createGrafanaMutationApplyClient` keeps its (live) one.
+ */
 export interface GrafanaProviderAdapterDeps {
-  readonly baseUrl: string;
   readonly externalConnectionId: string;
   readonly tenant: string;
   readonly envelopeId: string;
@@ -53,8 +62,8 @@ export interface GrafanaProviderAdapterDeps {
     readonly method: string;
     readonly path: string;
   }) => Promise<GrafanaRawHttpResponse>;
-  readonly payloadStore: GrafanaPlanPayloadStore;
-  readonly snapshotStore: GrafanaRollbackSnapshotStore;
+  readonly payloadStore: GrafanaPlanPayloadStoreLike;
+  readonly snapshotStore: GrafanaRollbackSnapshotStoreLike;
   readonly generatePlanId?: () => string;
 }
 

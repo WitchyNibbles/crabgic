@@ -136,7 +136,6 @@ export const SECURITY_FIXTURE_MANIFEST: readonly SecurityFixtureEntry[] = [
     blocking: true,
     verify: async () => {
       const adapter = createGrafanaProviderAdapter({
-        baseUrl: "https://fake-grafana.invalid",
         externalConnectionId: "00000000-0000-4000-8000-000000000901",
         tenant: "tenant-fixture",
         envelopeId: "00000000-0000-4000-8000-000000000902",

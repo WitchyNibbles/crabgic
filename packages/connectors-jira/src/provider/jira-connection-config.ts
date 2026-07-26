@@ -63,6 +63,21 @@ export const JiraConnectionConfigSchema = z
     patSecretRef: SecretReferenceSchema.optional(),
     basicAuthUsernameSecretRef: SecretReferenceSchema.optional(),
     basicAuthPasswordSecretRef: SecretReferenceSchema.optional(),
+    // `authMode: "oauth"` (Cloud's service-account client-credentials
+    // grant, 18's `buildJiraOAuthTokenFetcher`) needs a PAIR of secret
+    // references — client id AND client secret — while P02's
+    // `ExternalConnection` carries exactly one `secretRef`. These two live
+    // here, alongside the PAT/basic refs above and for the identical
+    // reason: roadmap/19-jira-datacenter-adapter.md:16 rules that a new
+    // auth discriminator goes on "this package's own JiraConnectionConfig
+    // shape, nested under P02's provider-neutral ExternalConnection; no
+    // change to ExternalConnection itself." Optional, like every sibling
+    // ref — cross-field validity ("does authMode: 'oauth' actually carry
+    // both?") stays out of zod here for the same reason the PAT/basic
+    // refs' does: it is enforced where the credential is resolved, as a
+    // typed `ConnectorError.authentication`, never a `ZodError`.
+    oauthClientIdSecretRef: SecretReferenceSchema.optional(),
+    oauthClientSecretRef: SecretReferenceSchema.optional(),
   })
   .strict();
 

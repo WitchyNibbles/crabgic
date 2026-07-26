@@ -38,6 +38,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@eo/connectors-grafana": "0.0.0",
+    "@eo/connectors-jira": "0.0.0",
     "@eo/contracts": "0.0.0",
     "@eo/detect": "0.0.0",
     "@eo/engine-claude": "0.0.0",

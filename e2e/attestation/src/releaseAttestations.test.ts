@@ -156,7 +156,7 @@ describe("release attestations — the seven previously-unreported checklist ite
   });
 
   it("emits performance-contracts evidence", async () => {
-    const result = checkPerformanceContracts(await runPerformanceContracts(REPO_ROOT));
+    const result = checkPerformanceContracts(await runPerformanceContracts(REPO_ROOT, objectId));
     await emitAndAssert(
       PERFORMANCE_CONTRACTS_GATE_TAG,
       "attestation:performance-contracts",

@@ -30,7 +30,6 @@ function buildTestAdapter() {
     bodyText: JSON.stringify([{ uid: "fold-1", title: "Team" }]),
   });
   const adapter = createGrafanaProviderAdapter({
-    baseUrl: "https://fake-grafana.invalid",
     externalConnectionId: "00000000-0000-4000-8000-000000000701",
     tenant: "tenant-1",
     envelopeId: "00000000-0000-4000-8000-000000000702",
@@ -92,7 +91,6 @@ describe("buildGrafanaGenericProviderClient — validated boundary", () => {
     const payloadStore = new GrafanaPlanPayloadStore();
     const snapshotStore = new GrafanaRollbackSnapshotStore();
     const adapter = createGrafanaProviderAdapter({
-      baseUrl: "https://fake-grafana.invalid",
       externalConnectionId: "00000000-0000-4000-8000-000000000704",
       tenant: "tenant-1",
       envelopeId: "00000000-0000-4000-8000-000000000705",

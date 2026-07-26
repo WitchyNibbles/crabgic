@@ -13,20 +13,21 @@
  * do — the command surface is 09's, and the feature package supplies only
  * the primitives.
  *
- * `connection capabilities` is DELIBERATELY ABSENT (2026-07-25). It needs a
- * live `CapabilitySnapshot` discovery call, and neither provider has the
- * production HTTP plumbing for one: `@eo/connectors-grafana` exposes
- * `buildGrafanaCapabilitySnapshotDiscoverer` but its `GrafanaDiscoveryDeps`
- * (`fetchBuildInfo`/`probeRoute`) has no non-fixture implementation
- * anywhere in the repo, and `@eo/connectors-jira`'s
+ * `connection capabilities` lives in `./connection-capabilities.ts` and is
+ * dependency-gated on `ConnectionDependencies.discoverCapabilities` below,
+ * the same way the other three are gated on the whole bag.
+ *
+ * CORRECTED 2026-07-25 (WP5). The previous note here justified that gating
+ * partly on the claim that "`@eo/connectors-jira`'s
  * `discoverJiraCapabilitySnapshot` needs a `JiraHttpContext` whose
- * `JiraTokenManager` that package does not export. Both are phase 19/20
- * gaps. Fabricating that plumbing here would put unreviewed, credential-
- * attaching HTTP code in the CLI, so the command keeps returning the typed
- * NOT_IMPLEMENTED shape until those phases close the gap.
+ * `JiraTokenManager` that package does not export." That was FALSE:
+ * `JiraTokenManager` has been exported from `@eo/connectors-jira`'s public
+ * barrel (`src/index.ts`) all along, alongside `FetchJiraOAuthToken` and
+ * `JiraTokenManagerOptions`. The real, still-open blockers are narrower
+ * and are recorded accurately on `discoverCapabilities` below.
  */
 import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@eo/contracts";
-import type { ExternalConnection, SecretReference } from "@eo/contracts";
+import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@eo/contracts";
 import { CliUsageError } from "../errors.js";
 import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@eo/gateway";
 import type {
@@ -39,6 +40,36 @@ export interface ConnectionDependencies {
   readonly repository: ExternalConnectionRepository;
   /** Injected so tests never issue real network I/O; production wires `@eo/gateway`'s `probeConnectionReachability`. */
   readonly probe: (connection: ExternalConnection) => Promise<ReachabilityProbeResult>;
+  /**
+   * Discovers one connection's live `CapabilitySnapshot` — the injected
+   * counterpart to `probe`, backing `./connection-capabilities.ts`.
+   *
+   * OPTIONAL, and `../bootstrap.ts` does NOT supply one today. Both
+   * connectors are one concrete piece short, and neither piece can be
+   * supplied here without inventing something:
+   *
+   *  - Jira: `discoverJiraCapabilitySnapshot` is real and calls documented
+   *    endpoints (`/rest/api/3/serverInfo`, `/rest/api/3/mypermissions`),
+   *    and every part of its `JiraHttpContext` is constructible —
+   *    `buildHttpClientForConnection` plus the exported `JiraTokenManager`
+   *    over `buildJiraOAuthTokenFetcher`. What is missing is STORAGE for
+   *    the OAuth client-credentials PAIR: `JiraConnectionConfigSchema`
+   *    gained `oauthClientIdSecretRef`/`oauthClientSecretRef` in WP5, but
+   *    nothing persists a `JiraConnectionConfig`, and P02's
+   *    `ExternalConnection` carries exactly ONE `secretRef` by a
+   *    roadmap/19 ruling that must not be widened.
+   *  - Grafana: `GrafanaBuildInfoResponse` is documented in its own file
+   *    as "fixture data, not an assertion about Grafana's exact wire
+   *    format ... pending live verification". Writing `fetchBuildInfo`
+   *    against it would be guessing at an unverified engine fact, which
+   *    this repo's ground rules forbid; the containerized Grafana run is
+   *    where that gets settled.
+   *
+   * Leaving it undefined keeps `connection capabilities` visible to
+   * `e2e/live`'s NOT_IMPLEMENTED sweep instead of converting a tracked
+   * deferral into an always-failing command that merely looks wired.
+   */
+  readonly discoverCapabilities?: (connection: ExternalConnection) => Promise<CapabilitySnapshot>;
 }
 
 /**

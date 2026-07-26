@@ -21,8 +21,20 @@ import {
 import {
   FileExternalConnectionStore,
   probeConnectionReachability,
+  ProviderRegistry,
   type GatewayToolRegistry,
+  type GenericProviderClient,
+  type MutationApplyClient,
 } from "@eo/gateway";
+import { registerJiraCloudProvider, type JiraConnectionRegistry } from "@eo/connectors-jira";
+import {
+  createFileGrafanaPlanPayloadStore,
+  createFileGrafanaRollbackSnapshotStore,
+  registerRoutedGrafanaProvider,
+  type GrafanaConnectionRegistry,
+  type GrafanaPlanPayloadStoreLike,
+  type GrafanaRollbackSnapshotStoreLike,
+} from "@eo/connectors-grafana";
 import { buildProductionGatewayToolRegistry } from "./gateway-mcp/build-tool-registry.js";
 import {
   ApprovalTokenMinter,
@@ -74,6 +86,75 @@ import type { ConnectionDependencies } from "./connection/connection-commands.js
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
+
+/**
+ * 20's plan-payload and rollback-snapshot stores, durable under the
+ * project's XDG state root (not cache). A pending mutation plan is state
+ * an operator's approval already authorized, and losing it strands the
+ * mutation half-applied with no rollback baseline — `resolveCacheRoot`
+ * would invite cleaners to delete exactly that.
+ */
+const GRAFANA_PLAN_PAYLOADS_FILE_NAME = "grafana-plan-payloads.json";
+const GRAFANA_ROLLBACK_SNAPSHOTS_FILE_NAME = "grafana-rollback-snapshots.json";
+
+/**
+ * roadmap/18/19's Jira and roadmap/20's Grafana provider dispatch, wired
+ * into 16's two `ProviderRegistry` instances.
+ *
+ * REGISTRATION IS CREDENTIAL-FREE. `registerJiraCloudProvider` and
+ * `registerRoutedGrafanaProvider` take only the two registries — no secret
+ * is resolved, no HTTP client is built, no network call is made — and each
+ * returns the per-CONNECTION registry that the connection lifecycle fills
+ * in once an operator has configured a connection and its credentials
+ * resolve. Doing this at boot is therefore not "wiring credentials early";
+ * it is telling the gateway which provider keys this build knows how to
+ * dispatch at all. Before it, a perfectly valid Jira connection answered
+ * `UnknownProviderError` — "this build has no Jira connector" — which was
+ * simply false.
+ *
+ * The two returned registries are handed back so a caller that DOES hold
+ * resolved credentials can call `register(connection, ...)` on them. No
+ * such caller exists yet; that is the genuinely-blocked half, tracked in
+ * `e2e/live/src/knownDeferredAllowlist.ts` rather than faked here. The
+ * same is true of the two Grafana stores below: they are CONSTRUCTED here,
+ * durable and owner-only, and travel with the registry they belong to, but
+ * nothing consumes them until that `register(connection, {payloadStore,
+ * snapshotStore})` call site exists. Stated plainly rather than described
+ * as "wired" — `./bootstrap.test.ts` pins what is actually true of them
+ * (their exact paths, their mode, and that they survive a process
+ * boundary), and nothing claims more.
+ */
+export interface ProviderDispatchWiring {
+  readonly providers: ProviderRegistry<GenericProviderClient>;
+  readonly mutationApplyClients: ProviderRegistry<MutationApplyClient>;
+  readonly jira: JiraConnectionRegistry;
+  readonly grafana: GrafanaConnectionRegistry;
+  /** Durable, so a plan built in one `gateway mcp` process is appliable from the next. Passed to `GrafanaConnectionRegistry.register` by whoever makes that call — see the note above. */
+  readonly grafanaPayloadStore: GrafanaPlanPayloadStoreLike;
+  readonly grafanaSnapshotStore: GrafanaRollbackSnapshotStoreLike;
+}
+
+export function buildProviderDispatchWiring(
+  xdgEnv: XdgEnv,
+  projectHash: string,
+): ProviderDispatchWiring {
+  const stateRoot = resolveStateRoot(xdgEnv, projectHash);
+  const providers = new ProviderRegistry<GenericProviderClient>();
+  const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+
+  return {
+    providers,
+    mutationApplyClients,
+    jira: registerJiraCloudProvider({ providers, mutationApplyClients }),
+    grafana: registerRoutedGrafanaProvider({ providers, mutationApplyClients }),
+    grafanaPayloadStore: createFileGrafanaPlanPayloadStore({
+      path: join(stateRoot, GRAFANA_PLAN_PAYLOADS_FILE_NAME),
+    }),
+    grafanaSnapshotStore: createFileGrafanaRollbackSnapshotStore({
+      path: join(stateRoot, GRAFANA_ROLLBACK_SNAPSHOTS_FILE_NAME),
+    }),
+  };
+}
 
 export interface BuildRealCliDependenciesOverrides {
   readonly xdgEnv?: XdgEnv;
@@ -229,10 +310,13 @@ export function buildRealGatewayToolRegistry(
   // deliberately injected replacements.
   const intake = deps.intake!;
   const trust = deps.trust!;
+  const dispatch = buildProviderDispatchWiring(xdgEnv, projectHash);
 
   return buildProductionGatewayToolRegistry({
     journal: intake.journal,
     connections: deps.connection!.repository,
+    providers: dispatch.providers,
+    mutationApplyClients: dispatch.mutationApplyClients,
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
     approvalSigningKey: loadOrCreateApprovalSigningKey(
       resolveApprovalSigningKeyPath(xdgEnv, projectHash),

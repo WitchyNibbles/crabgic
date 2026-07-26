@@ -587,6 +587,24 @@ describe("readArm64RunRecord", () => {
     expect(read.record.commitSha).toBe(RC);
   });
 
+  /**
+   * Gap 16's ruling is the `trim()` form, and this reader diverged from it:
+   * an all-whitespace `$EO_ARM64_RUN_RECORD` is an UNSET variable that
+   * passed through a shell (`RECORD="$(…)"` over empty output, a heredoc
+   * that rendered a newline), never a filename. Treating it as a path made
+   * the record silently `absent` instead of falling back — the in-repo
+   * archived record was never even looked at.
+   */
+  it("falls back to the in-repo path when the override is only whitespace", () => {
+    const root = scratchRepoRoot(materializeCiRunRecord(CI_RUN_RECORD_BODY));
+    process.env[ARM64_RUN_RECORD_ENV] = "  \t\n ";
+    const read = readArm64RunRecord(root);
+    expect(read.outcome).toBe("ok");
+    if (read.outcome !== "ok") throw new Error("unreachable");
+    expect(read.path).toBe(join(root, ARM64_RUN_RECORD_PATH));
+    expect(read.record.commitSha).toBe(RC);
+  });
+
   it("falls back to the in-repo path when the override is absent entirely", () => {
     const root = scratchRepoRoot(materializeCiRunRecord(CI_RUN_RECORD_BODY));
     delete process.env[ARM64_RUN_RECORD_ENV];

@@ -110,6 +110,20 @@ export type {
   RemoteResourceRelation,
 } from "./remote-evidence-pointer.js";
 
+// Evidence-pointer + RemoteResource PRODUCTION WRITER (work item 1's writer
+// half + work item 2's revision binding) — the previously-missing caller of
+// `stampJiraRemoteResource`/`stampGrafanaRemoteResource`/`recordEvidencePointer`.
+export {
+  bindRemoteResourceEvidence,
+  MissingConfirmedRevisionError,
+  UnbindableRemoteResourceKindError,
+} from "./remote-resource-binding.js";
+export type {
+  BindRemoteResourceEvidenceInput,
+  RemoteBindingTarget,
+  RemoteResourceBinding,
+} from "./remote-resource-binding.js";
+
 // `remote_verification` gate (work item 3)
 export { createRemoteVerificationGate } from "./remote-verification-gate.js";
 export type {

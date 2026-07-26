@@ -8,6 +8,7 @@
  * branch genuinely fires given a real auth signal, not just that an
  * injected fake can be made to say so.
  */
+import { readFileSync, statSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,7 +22,7 @@ import {
 import { resolveStateRoot } from "@eo/journal";
 import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@eo/supervisor";
 import { buildChangeSet } from "@eo/testkit";
-import { buildRealCliDependencies } from "./bootstrap.js";
+import { buildProviderDispatchWiring, buildRealCliDependencies } from "./bootstrap.js";
 import { SupervisorUnavailableError } from "./errors.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
 
@@ -271,5 +272,92 @@ describe("buildRealCliDependencies", () => {
         digest: "e".repeat(64),
       }),
     ).not.toThrow();
+  });
+});
+
+/**
+ * ADVERSARIAL-REVIEW FIX (2026-07-25). `buildProviderDispatchWiring`
+ * constructs 20's two durable Grafana stores, and NOTHING pinned them: a
+ * validator replaced both with `undefined`, renamed their backing files,
+ * and relocated them from the XDG state root to a hardcoded `/tmp` path —
+ * all three survived the whole packages/cli suite. The last one is
+ * security-relevant, because `../bootstrap.ts`'s own comment argues at
+ * length that these `0o600` files belong under the state root rather than
+ * the cache root ("a pending mutation plan is state an operator's approval
+ * already authorized"), and that argument was enforced by nothing.
+ *
+ * These tests are deliberately I/O-level rather than identity-level: they
+ * write THROUGH the store the wiring hands back and assert the bytes land
+ * at the exact path, with the exact mode, and survive into a second
+ * process's view of the same project.
+ */
+describe("buildProviderDispatchWiring — durable Grafana stores", () => {
+  const XDG = () => ({ HOME: home }) as const;
+  const PLAN_PAYLOAD = {
+    kind: "folder",
+    action: "create",
+    input: { title: "Team" },
+  } as const;
+  const SNAPSHOT = {
+    kind: "folder",
+    externalId: "fold-1",
+    revision: "etag-7",
+    fields: { title: "Team" },
+  } as const;
+
+  it("registers BOTH connector provider keys — the credential-free half of the wiring", () => {
+    const wiring = buildProviderDispatchWiring(XDG(), "wiring-hash");
+    expect([...wiring.providers.registeredProviders].sort()).toEqual(["grafana", "jira-cloud"]);
+    expect([...wiring.mutationApplyClients.registeredProviders].sort()).toEqual([
+      "grafana",
+      "jira-cloud",
+    ]);
+  });
+
+  it("backs the plan-payload store with an 0o600 file at <state root>/grafana-plan-payloads.json", () => {
+    const wiring = buildProviderDispatchWiring(XDG(), "wiring-hash");
+    wiring.grafanaPayloadStore.set("plan-1", PLAN_PAYLOAD);
+
+    const path = join(resolveStateRoot(XDG(), "wiring-hash"), "grafana-plan-payloads.json");
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual([
+      { planId: "plan-1", payload: PLAN_PAYLOAD },
+    ]);
+  });
+
+  it("backs the rollback-snapshot store with an 0o600 file at <state root>/grafana-rollback-snapshots.json", () => {
+    const wiring = buildProviderDispatchWiring(XDG(), "wiring-hash");
+    wiring.grafanaSnapshotStore.capture("plan-2", SNAPSHOT);
+
+    const path = join(resolveStateRoot(XDG(), "wiring-hash"), "grafana-rollback-snapshots.json");
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual([
+      { planId: "plan-2", snapshot: SNAPSHOT },
+    ]);
+  });
+
+  /**
+   * The whole point of making them durable: `observability.plan_create`
+   * stashes the desired-state body in one `gateway mcp` process and
+   * `observability.apply` reads it back in another.
+   */
+  it("survives a process boundary — a second wiring over the same project reads what the first wrote", () => {
+    buildProviderDispatchWiring(XDG(), "wiring-hash").grafanaPayloadStore.set(
+      "plan-3",
+      PLAN_PAYLOAD,
+    );
+    const second = buildProviderDispatchWiring(XDG(), "wiring-hash");
+    expect(second.grafanaPayloadStore.get("plan-3")).toEqual(PLAN_PAYLOAD);
+  });
+
+  /** Scoped per project, exactly as every other durable registry this function resolves is. */
+  it("scopes both stores per project hash — another project sees neither record", () => {
+    const first = buildProviderDispatchWiring(XDG(), "wiring-hash");
+    first.grafanaPayloadStore.set("plan-4", PLAN_PAYLOAD);
+    first.grafanaSnapshotStore.capture("plan-4", SNAPSHOT);
+
+    const other = buildProviderDispatchWiring(XDG(), "other-project-hash");
+    expect(other.grafanaPayloadStore.get("plan-4")).toBeUndefined();
+    expect(other.grafanaSnapshotStore.get("plan-4")).toBeUndefined();
   });
 });

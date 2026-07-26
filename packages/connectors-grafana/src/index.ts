@@ -83,6 +83,25 @@ export {
 } from "./provider-registration.js";
 export type { RegisterGrafanaProviderDeps } from "./provider-registration.js";
 
+// ---- Per-connection provider dispatch (WP5, 2026-07-25) ----
+export {
+  GrafanaConnectionNotRegisteredError,
+  GrafanaConnectionRegistry,
+} from "./provider/grafana-connection-registry.js";
+export type {
+  GrafanaConnectionEntry,
+  RegisterGrafanaConnectionOptions,
+} from "./provider/grafana-connection-registry.js";
+export { registerRoutedGrafanaProvider } from "./provider/register-grafana-routed.js";
+export type { RegisterRoutedGrafanaProviderDeps } from "./provider/register-grafana-routed.js";
+export {
+  createFileGrafanaPlanPayloadStore,
+  createFileGrafanaRollbackSnapshotStore,
+} from "./mutation/file-backed-store.js";
+export type { FileBackedStoreOptions } from "./mutation/file-backed-store.js";
+export type { GrafanaPlanPayloadStoreLike } from "./mutation/plan-payload-store.js";
+export type { GrafanaRollbackSnapshotStoreLike } from "./mutation/snapshot-store.js";
+
 // ---- Mutation glue (work item 4) ----
 export { buildGrafanaMutationPlan } from "./mutation/mutation-plan-builder.js";
 export type { BuildGrafanaMutationPlanInput } from "./mutation/mutation-plan-builder.js";

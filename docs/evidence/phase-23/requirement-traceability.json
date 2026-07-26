@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "source": "containerized",
+    "statement": "This traceability evidence came from a CONTAINERIZED run against grafana/grafana-oss:11.6.5 (compose file docker/grafana/11.6/docker-compose.yml, reported oss 11.6.5) — NOT a live-SaaS tenant, and not a cassette. The container was reached through the repo's established two-seam test pattern with the address-resolution seams ENGAGED: resolveHostAddresses was overridden to answer 203.0.113.60 (TEST-NET-3, which ssrf-guard does not block, so the guard passed on its own terms and no production guard was modified), while the actual dial was pinned to 127.0.0.1 via sendHttpRequest's pinnedAddress. TLS: in-process Node HTTPS terminator fronting the container's plain-HTTP port, disposable self-signed CA supplied to the connection as customCaRef. The revision below is the confirmed MutationApplyResult.appliedRevision from a real executeMutationPlan run whose outcome was \"recorded\". evidence journal: the shared release journal (EO_RELEASE_GATE_JOURNAL_DIR=/tmp/eo-gate-bIfB/journal) — the evidenceRecordId below resolves there, and e2e/report's generator reads the same directory.",
+    "capturedAt": "2026-07-26T00:57:06.570Z",
+    "releaseCandidateObjectId": "767ba4d5cbbe2a965271c01e44363f4bc6c2deab",
+    "mutationOutcome": "recorded",
+    "evidenceJournal": "evidence journal: the shared release journal (EO_RELEASE_GATE_JOURNAL_DIR=/tmp/eo-gate-bIfB/journal) — the evidenceRecordId below resolves there, and e2e/report's generator reads the same directory.",
+    "container": {
+      "image": "grafana/grafana-oss:11.6.5",
+      "composeFile": "docker/grafana/11.6/docker-compose.yml",
+      "reportedVersion": "11.6.5",
+      "edition": "oss"
+    },
+    "transportSeams": {
+      "resolveHostAddresses": "203.0.113.60",
+      "sendRequestPinnedAddress": "127.0.0.1",
+      "tlsTermination": "in-process Node HTTPS terminator fronting the container's plain-HTTP port, disposable self-signed CA supplied to the connection as customCaRef"
+    }
+  },
+  "remoteResources": [
+    {
+      "id": "cc55e5ef-0059-4670-9948-2359f70374ca",
+      "externalConnectionId": "ae0a0156-477f-44dd-8259-db3991cd144d",
+      "resourceKind": "dashboard",
+      "externalId": "6ff82a5f51a41c58",
+      "revision": "1",
+      "observedAt": "2026-07-26T00:57:06.566Z",
+      "schemaVersion": 1,
+      "canonicalUrl": "https://127.0.0.1:34693/d/6ff82a5f51a41c58"
+    }
+  ],
+  "pointers": [
+    {
+      "requirementId": "7fb7556e-ee93-50c4-9d08-b8a06c577e1d",
+      "remoteResourceId": "cc55e5ef-0059-4670-9948-2359f70374ca",
+      "relation": "dashboard",
+      "objectId": "767ba4d5cbbe2a965271c01e44363f4bc6c2deab",
+      "confirmedRevision": "1",
+      "evidenceRecordId": "fbc94ded-cb8e-47ac-aa23-2fcf6f8f2373"
+    }
+  ]
+}

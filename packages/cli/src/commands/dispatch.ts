@@ -38,6 +38,7 @@ import {
   runConnectionDoctorCommand,
   runConnectionListCommand,
 } from "../connection/connection-commands.js";
+import { runConnectionCapabilitiesCommand } from "../connection/connection-capabilities.js";
 import { renderHelp } from "./help.js";
 
 export async function dispatchCommand(
@@ -148,12 +149,20 @@ export async function dispatchCommand(
           ? await runConnectionDoctorCommand(command, deps.connection)
           : notImplementedResult(command.command, command.json);
 
-      // The one command still without a backend: live CapabilitySnapshot
-      // discovery has no production HTTP plumbing in either connector
-      // (phase 19/20 gap) — see `../connection/connection-commands.ts`'s
-      // own doc comment for exactly what is missing.
+      // Same optional-bag convention as its three siblings, one level
+      // deeper: the backend exists (`../connection/connection-capabilities.ts`)
+      // and is gated on `deps.connection.discoverCapabilities`, the
+      // injected discovery function that plays the role `probe` plays for
+      // `connection-doctor`. `../bootstrap.ts` does not supply one yet —
+      // see `ConnectionDependencies.discoverCapabilities` for exactly what
+      // each connector is still missing — so in the shipped binary this
+      // remains the typed NOT_IMPLEMENTED shape, visible to `e2e/live`'s
+      // sweep. It is no longer UNCONDITIONAL: a caller holding a real
+      // discoverer now reaches a real command.
       case "connection-capabilities":
-        return notImplementedResult(command.command, command.json);
+        return deps.connection?.discoverCapabilities !== undefined
+          ? await runConnectionCapabilitiesCommand(command, deps.connection)
+          : notImplementedResult(command.command, command.json);
 
       case "gateway-mcp":
         // `gateway mcp` is a long-running stdio process, never a single

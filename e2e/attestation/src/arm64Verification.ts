@@ -231,13 +231,21 @@ export function extractCloseOutSection(markdown: string): string | undefined {
  * `malformed` so this one item FAILs with a reason, instead of a `ZodError`
  * escaping into the release-evidence run and aborting every other item's
  * emitter along with it.
+ *
+ * The override wins only when it is NON-BLANK after trimming, which is
+ * `docs/interface-ledger.md` Gap 16 part (2)'s form and the form
+ * `readPerformanceRerunEvidence` already used: an all-whitespace variable is
+ * an unset variable that passed through a shell — `RECORD="$(…)"` over empty
+ * output, a heredoc that rendered a newline — never a filename. Treating one
+ * as a path reports the record `absent` without ever looking at the in-repo
+ * archived copy.
  */
 export function readArm64RunRecord(repoRoot: string): Arm64RunRecordRead {
   const override = process.env[ARM64_RUN_RECORD_ENV];
   const path =
-    override !== undefined && override.length > 0
-      ? override
-      : join(repoRoot, ARM64_RUN_RECORD_PATH);
+    override === undefined || override.trim() === ""
+      ? join(repoRoot, ARM64_RUN_RECORD_PATH)
+      : override;
   if (!existsSync(path)) return { outcome: "absent" };
 
   let parsed: unknown;

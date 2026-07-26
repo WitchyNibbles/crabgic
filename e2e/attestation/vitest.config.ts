@@ -37,14 +37,32 @@ export default defineConfig({
   test: {
     root: HERE,
     include: ["src/**/*.test.ts"],
-    exclude: ["**/dist/**", "**/node_modules/**"],
+    // `*.live.test.ts` boots a real Grafana OSS container via `docker
+    // compose` (the containerized requirement-traceability binding); it is
+    // picked up only by `vitest.live.config.ts`, exactly as
+    // `e2e/provisioning` and the repo root already do for their own
+    // `@live` suites.
+    exclude: ["**/dist/**", "**/node_modules/**", "**/*.live.test.ts"],
     testTimeout: 120_000,
     coverage: {
       provider: "v8",
       enabled: true,
       reporter: ["text", "lcov", "html"],
       include: ["src/**/*.ts"],
-      exclude: ["**/dist/**", "**/*.d.ts", "**/*.config.*"],
+      // Only the ONE live helper that genuinely cannot run without a Docker
+      // daemon is exempt from the denominator (mirroring
+      // `e2e/provisioning/vitest.config.ts`). Its siblings —
+      // `live/tlsFrontedContainer.ts`, `live/basicAuth.ts`,
+      // `live/selfSignedCert.ts` — need only `openssl` and loopback, exactly
+      // like `packages/gateway/src/transport/http-transport.test.ts`, so they
+      // ARE measured here and carry their own unit tests. A blanket
+      // `src/live/**` exclusion let ~380 lines ship untested.
+      exclude: [
+        "**/dist/**",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "src/live/grafanaTraceabilityBinding.ts",
+      ],
       thresholds: {
         lines: 80,
         branches: 80,
