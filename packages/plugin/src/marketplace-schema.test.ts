@@ -93,21 +93,39 @@ describe("UnpinnedMarketplaceSchema / loadUnpinnedMarketplace — identity-only 
 });
 
 describe("loadMarketplace — this package's own real, committed marketplace.json", () => {
-  // WAS: "is schema-valid and SHA-pinned", asserting only
-  // /^[0-9a-f]{40}$/ — which the committed all-zero PLACEHOLDER satisfies.
-  // That test asserted a falsehood: nothing about this repo's listing is
-  // pinned to a release commit. The assertions below record the real state.
-  it("is NOT SHA-pinned today — the committed entry carries the all-zero placeholder, which strict validation now REJECTS", () => {
+  // HISTORY, because this expectation has now flipped twice and each flip
+  // was meant to be deliberate. It first asserted "is schema-valid and
+  // SHA-pinned" against only /^[0-9a-f]{40}$/ — which the all-zero
+  // PLACEHOLDER satisfies, so it asserted a falsehood. It was then rewritten
+  // to record the honest placeholder state, with a note that cutting the
+  // real v1.0.0 entry would require flipping it back "knowingly, rather than
+  // a check that silently passes either way". This is that flip: the entry
+  // is now pinned at the v1.0.0 release commit.
+  it("is SHA-pinned to a real release commit, not the all-zero placeholder", () => {
     const raw = readMarketplaceJson(resolvePluginRoot()) as {
-      readonly plugins: readonly { readonly commit: string }[];
+      readonly plugins: readonly { readonly commit: string; readonly version: string }[];
     };
     expect(raw.plugins).toHaveLength(1);
-    expect(raw.plugins[0]!.commit).toBe(NULL_GIT_OBJECT_ID);
-    expect(() => loadMarketplace(resolvePluginRoot())).toThrow(/all-zero placeholder/);
-    // When the owner actually cuts the v1.0.0 marketplace entry at the
-    // release commit, this expectation flips to `loadMarketplace` returning
-    // a real 40-hex SHA — deliberately a test edit the owner must make
-    // knowingly, rather than a check that silently passes either way.
+    expect(raw.plugins[0]!.commit).not.toBe(NULL_GIT_OBJECT_ID);
+    expect(raw.plugins[0]!.commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(raw.plugins[0]!.version).toBe("1.0.0");
+
+    // Strict validation, which rejects the placeholder, now accepts it.
+    const marketplace = loadMarketplace(resolvePluginRoot());
+    expect(marketplace.plugins[0]!.commit).toBe(raw.plugins[0]!.commit);
+  });
+
+  // The 40-hex shape is necessary but not sufficient — it says nothing about
+  // whether that commit EXISTS, or whether it is the one being released.
+  // `e2e/release`'s `marketplacePinCheck` resolves it against the repository
+  // and compares it to the release-candidate object ID; this only guards the
+  // shape, and says so rather than implying more.
+  it("still REJECTS the all-zero placeholder, so the pin cannot regress to it", () => {
+    const placeholder = {
+      ...validMarketplace(),
+      plugins: [{ ...validEntry, commit: NULL_GIT_OBJECT_ID }],
+    };
+    expect(MarketplaceSchema.safeParse(placeholder).success).toBe(false);
   });
 
   it("its recorded digest matches a fresh recomputation from this package's own on-disk files (freshness)", () => {

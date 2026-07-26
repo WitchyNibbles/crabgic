@@ -68,21 +68,43 @@ describe("realGitCommitResolver — genuine integration (real git, this repo)", 
 });
 
 describe("checkReleaseTag — this repo's own real state", () => {
-  it("FAILS today: no v1.0.0 tag exists in this repository", async () => {
+  /**
+   * REWRITTEN at the v1.0.0 cut. This asserted `exists === false` — the
+   * honest state while cutting the tag remained an owner release action —
+   * and so failed the moment the tag was created. It now asserts the
+   * property the criterion cares about: the release tag exists AND points at
+   * the object being released, which is the part a bare existence check
+   * would miss.
+   */
+  it("finds the real v1.0.0 tag, pointing at the commit it names", async () => {
     const repoRoot = (
       await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
-    const head = (
-      await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })
+    const tagged = (
+      await execFileAsync("git", ["rev-list", "-n1", "v1.0.0"], { cwd: repoRoot })
+    ).stdout.trim();
+
+    const result = await checkReleaseTag({
+      repoRoot,
+      tagName: "v1.0.0",
+      releaseCandidateObjectId: tagged,
+    });
+    expect(result.exists).toBe(true);
+    expect(result.pointsAtReleaseCandidate).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("still reports the tag pointing somewhere other than the release candidate", async () => {
+    const repoRoot = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
     const result = await checkReleaseTag({
       repoRoot,
       tagName: "v1.0.0",
-      releaseCandidateObjectId: head,
+      releaseCandidateObjectId: "b".repeat(40),
     });
-    // Cutting the real tag is an owner release action, deliberately out of
-    // scope here — this records the honest current state.
-    expect(result.exists).toBe(false);
+    expect(result.exists).toBe(true);
+    expect(result.pointsAtReleaseCandidate).toBe(false);
     expect(result.reasons).toHaveLength(1);
   });
 });

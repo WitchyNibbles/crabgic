@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -119,22 +119,44 @@ describe("checkMarketplacePin — unit", () => {
 });
 
 describe("checkMarketplacePin — this repo's own real, committed marketplace.json", () => {
-  it("FAILS today: the committed entry's commit is git's all-zero null object ID", async () => {
+  /**
+   * REWRITTEN at the v1.0.0 cut, which pinned the entry at the release
+   * commit. This asserted the all-zero placeholder — honest while the pin
+   * was an owner release action, and false as soon as it was cut.
+   */
+  it("finds the committed entry pinned at a real commit, and matching the candidate it names", async () => {
     const repoRoot = (
       await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
-    const head = (
-      await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })
+    const pinned = JSON.parse(
+      await readFile(
+        resolve(repoRoot, "packages", "plugin", ".claude-plugin", "marketplace.json"),
+        "utf-8",
+      ),
+    ).plugins[0].commit as string;
+
+    const result = await checkMarketplacePin({
+      pluginRoot: resolve(repoRoot, "packages", "plugin"),
+      repoRoot,
+      releaseCandidateObjectId: pinned,
+    });
+    expect(result.pinned).toBe(true);
+    expect(result.resolvesInRepo).toBe(true);
+    expect(result.matchesReleaseCandidate).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("still reports the committed pin naming a commit other than the release candidate", async () => {
+    const repoRoot = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
     const result = await checkMarketplacePin({
       pluginRoot: resolve(repoRoot, "packages", "plugin"),
       repoRoot,
-      releaseCandidateObjectId: head,
+      releaseCandidateObjectId: "b".repeat(40),
     });
-    // Cutting the real marketplace entry is an owner release action,
-    // deliberately out of scope here — this records the honest state.
-    expect(result.pinned).toBe(false);
+    expect(result.pinned).toBe(true);
+    expect(result.matchesReleaseCandidate).toBe(false);
     expect(result.reasons).toHaveLength(1);
-    expect(result.reasons[0]).toContain("all-zero placeholder");
   });
 });

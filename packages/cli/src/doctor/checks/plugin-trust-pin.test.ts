@@ -76,16 +76,16 @@ describe("createPluginTrustPinCheck", () => {
     expect(finding.evidence).toContain("all-zero placeholder");
   });
 
-  // WAS: "this package's own real @crabgic/plugin marketplace.json passes".
-  // It does not, and never did in any meaningful sense: the committed entry
-  // carries git's all-zero null object ID, which the old regex-only pin
-  // check accepted. The listing has never been cut at a release commit, so
-  // the honest doctor verdict for this repo's own plugin source is a FAULT
-  // until the owner pins it.
-  it("this package's own real @crabgic/plugin marketplace.json FAILS today — its commit is still the unpinned placeholder", async () => {
+  // HISTORY, because this has flipped twice and both flips were meant to be
+  // deliberate. It first claimed "this package's own real marketplace.json
+  // passes", which the old regex-only pin check allowed because git's
+  // all-zero null object ID has a pin's shape. It was then made honest: a
+  // FAULT until the listing was cut at a release commit. The v1.0.0 entry is
+  // now pinned, so the doctor verdict is a genuine pass.
+  it("this package's own real @crabgic/plugin marketplace.json now PASSES — the entry is pinned at the release commit", async () => {
     const pluginRoot = new URL("../../../../plugin", import.meta.url).pathname;
     const finding = await createPluginTrustPinCheck({ pluginSourceDir: pluginRoot }).run();
-    expect(finding.passed).toBe(false);
-    expect(finding.evidence).toContain("all-zero placeholder");
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).not.toContain("all-zero placeholder");
   });
 });

@@ -305,11 +305,21 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // This item is FAIL today by design: making it green means cutting a
       // real release (CHANGELOG, tag, marketplace pin, an actual publish),
       // which is the owner's action, not this harness's.
+      // ONE substantive clause remains, and it is the only one that cannot
+      // be satisfied by preparation: the registry has nothing under this
+      // name. Everything else the criterion asks for has been cut.
       expect(result.verdict).toBe("FAIL");
       const joined = result.reasons.join("\n");
-      expect(joined).toContain("v1.0.0 tag");
-      expect(joined).toContain("all-zero placeholder");
       expect(joined).toContain("package published");
+
+      // Cleared by the 1.0.0 preparation, each asserted as an ABSENCE so it
+      // cannot silently regress: the tag exists and points at the candidate,
+      // and the marketplace entry is pinned there rather than at git's
+      // all-zero null object ID.
+      expect(result.releaseTag.reasons).toEqual([]);
+      expect(result.marketplacePin.reasons).toEqual([]);
+      expect(joined).not.toContain("v1.0.0 tag");
+      expect(joined).not.toContain("all-zero placeholder");
 
       // The CHANGELOG clause is NO LONGER among them: 1.0.0's notes were cut
       // from a reviewed changeset into both CHANGELOG.md and
@@ -346,20 +356,18 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // the two whole-repo exports, the clause is genuinely satisfied, and
       // the reason is correctly absent. Asserting its presence
       // unconditionally would turn the flag path red on a false failure.
-      // Counts as the 1.0.0 preparation landed. Each drop is a clause that
-      // was genuinely satisfied, and each is asserted individually above:
-      // 8/7 originally, then -1 when the npm-name verdict was re-probed
-      // inside its window, -1 when the CHANGELOG was cut, and -1 when the
-      // `"private": true` latch was released. What remains is the tag, the
-      // marketplace pin and the publish itself — the three that cannot be
-      // cleared without pushing the tag.
+      // Counts as the 1.0.0 preparation landed, from 8/7 originally: -1 for
+      // the re-probed npm-name verdict, -1 for the CHANGELOG, -1 for the
+      // released `"private": true` latch, -1 for the tag, -1 for the
+      // marketplace pin. What is left is the publish, plus the rebuild
+      // clause when this runs without the flag.
       expect(result.reproducibleBuild.rebuiltFromCleanCheckout).toBe(rebuilding);
       if (rebuilding) {
         expect(joined).not.toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(3);
+        expect(result.reasons).toHaveLength(1);
       } else {
         expect(joined).toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(4);
+        expect(result.reasons).toHaveLength(2);
       }
 
       const byTag = new Map<string, number>();

@@ -123,16 +123,17 @@ describe("doctor.plugin-faults.test — all three seeded faults are reported wit
     expect(buildRepairPlan(report)).toEqual([]);
   });
 
-  it("runs the FULL check set against the REAL packages/plugin source and reports exactly one fault: the unpinned entry", async () => {
+  it("runs the FULL check set against the REAL packages/plugin source and reports no faults", async () => {
     // The seeded all-clear case above keeps the fault-free shape under test,
     // but it stopped exercising the real, shipped plugin source. This case
-    // puts it back, and pins the whole verdict rather than one check's:
-    // today the real directory has EXACTLY ONE fault — its marketplace entry
-    // is still git's all-zero null object ID — and the other two checks pass
-    // against it. When the owner pins the entry at the release commit this
-    // test flips to all-clear by DELETING nothing: the expectations below
-    // describe the fault, so the assertion that must then change is the one
-    // that names it, which is the point.
+    // puts it back, and pins the whole verdict rather than one check's.
+    //
+    // It previously expected EXACTLY ONE fault — the marketplace entry was
+    // still git's all-zero null object ID — and said that pinning the entry
+    // at the release commit would flip it to all-clear. The v1.0.0 cut did
+    // exactly that, so this is that flip. The value of the case is unchanged:
+    // it is the only one that runs every check against the directory that
+    // actually ships, so a regression in any of the three surfaces here.
     const targetDir = await makeTmpDir();
     const realPluginSourceDir = new URL("../../../plugin", import.meta.url).pathname;
 
@@ -142,9 +143,8 @@ describe("doctor.plugin-faults.test — all three seeded faults are reported wit
       createCapabilityManifestFreshnessCheck({ targetDir, pluginSourceDir: realPluginSourceDir }),
     ]);
 
-    expect(report.allPassed).toBe(false);
-    const failed = report.findings.filter((f) => !f.passed).map((f) => f.id);
-    expect(failed).toEqual(["installer.plugin-trust-pin"]);
-    expect(buildRepairPlan(report)).toHaveLength(1);
+    expect(report.findings.filter((f) => !f.passed).map((f) => f.id)).toEqual([]);
+    expect(report.allPassed).toBe(true);
+    expect(buildRepairPlan(report)).toEqual([]);
   });
 });
