@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -121,15 +121,24 @@ describe("runPublishDryRun — unit (fake runner, no real npm)", () => {
 });
 
 describe("RealPublishRunner + runPublishDryRun — genuine integration (real npm publish --dry-run, this repo's own packages/cli, NEVER a real publish)", () => {
-  it("captures npm's real dry-run output, confirms the private-package skip, and surfaces today's real missing-repository-field metadata gap", async () => {
+  it("captures npm's real dry-run output against this repo's publishable manifest", async () => {
     const packageDir = resolve(import.meta.dirname, "..", "..", "..", "packages", "cli");
     const runner = new RealPublishRunner();
     const result = await runPublishDryRun({ runner, packageDir });
 
+    // NEVER a real publish — that invariant is the whole point of this
+    // module and holds regardless of the manifest's publishability.
     expect(result.realPublishAttempted).toBe(false);
-    // packages/cli/package.json is "private": true today — npm publish
-    // itself refuses to actually publish, regardless of --dry-run.
-    expect(result.skippedDueToPrivate).toBe(true);
+
+    // `skippedDueToPrivate` was `true` here for as long as
+    // packages/cli/package.json carried `"private": true` — the deliberate
+    // PREPARE-DON'T-PUBLISH latch. That latch was released to cut 1.0.0, so
+    // npm now really packs the tarball instead of refusing outright. The
+    // assertion tracks the manifest rather than a remembered state, so it
+    // stays correct whichever side of the latch the repository is on.
+    const isPrivate =
+      JSON.parse(await readFile(join(packageDir, "package.json"), "utf-8")).private === true;
+    expect(result.skippedDueToPrivate).toBe(isPrivate);
     expect(result.dryRun.exitCode).toBe(0);
 
     // The publish metadata is now complete: license, access, name, and —

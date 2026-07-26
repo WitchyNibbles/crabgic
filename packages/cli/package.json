@@ -1,7 +1,6 @@
 {
   "name": "crabgic",
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "crabgic CLI & doctor (roadmap/09-cli-and-doctor.md).",
   "license": "Apache-2.0",
   "repository": {

@@ -1,0 +1,107 @@
+name: publish
+
+# roadmap/23-release-hardening.md §In scope, "Reproducible release pipeline":
+# "npm build with provenance; ... publication dry-run before the real publish
+# + `v1.0.0` tag", and the exit criterion at `:136` whose clauses include
+# "npm provenance attestation present" and "package published".
+#
+# WHY THIS JOB HAS TO EXIST AT ALL, rather than the owner running `npm
+# publish` locally: `--provenance` is not a flag npm can honour anywhere. It
+# mints a signed attestation from the CI provider's OIDC identity, so it
+# works only from a supported CI with `id-token: write`, and fails outright
+# on a developer machine. Until this file existed the release could be
+# prepared but the provenance clause could not be met by any route — the
+# gate's `publishDryRunCheck` asserted the STATIC prerequisites (a
+# `repository` field, public access) and deliberately never passed
+# `--provenance` for real, precisely because there was nowhere to pass it.
+#
+# TRIGGERED BY THE TAG, NOT BY A PUSH TO MAIN. A release is a deliberate
+# act on a frozen commit, and the tag IS that act (roadmap/23's "v1.0.0 tag
+# created" clause). Nothing on `main` publishes; pushing `v*` does.
+#
+# THIS JOB IS THE POINT OF NO RETURN. npm refuses to republish a version
+# that has ever existed, and unpublish is restricted to a 72-hour window. The
+# guards below are therefore fail-closed and run BEFORE the publish: a
+# missing token, or a tag that disagrees with the manifest it is about to
+# publish, stops the job rather than shipping something nobody asked for.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# `id-token: write` is what makes `--provenance` possible; `contents: read`
+# is all the checkout needs. No other permission is granted — this job
+# publishes to npm and touches nothing in the repository.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: publish crabgic to npm (provenance-attested)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          # Points npm at the public registry and wires NODE_AUTH_TOKEN
+          # through, which is what the publish step below authenticates with.
+          registry-url: "https://registry.npmjs.org"
+
+      # FAIL-CLOSED AUTH GUARD, mirroring `engine-live.yml`'s own precedent.
+      # A missing token would otherwise surface as an opaque npm ENEEDAUTH
+      # deep inside the publish step, after the build has run.
+      - name: Require the publish token before doing anything irreversible
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::NPM_TOKEN repository secret is not configured; crabgic cannot be published. Set it with 'gh secret set NPM_TOKEN'."
+            exit 1
+          fi
+          echo "publish token is configured"
+
+      # THE TAG AND THE MANIFEST MUST AGREE. Publishing 1.0.0 from a tag that
+      # says v1.0.1 (or the reverse) puts a version on the registry that no
+      # commit in this repository claims — unfixable afterwards, since the
+      # version is then permanently taken. Checked before the build so the
+      # job fails in seconds rather than minutes.
+      - name: Assert the tag matches the version being published
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(node -p "require('./packages/cli/package.json').version")"
+          echo "tag=$TAG manifest=$VERSION"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match packages/cli version ${VERSION}"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+
+      # The same dry run the release gate models, executed here against the
+      # real registry immediately before the real publish — the last chance
+      # to find a packing or metadata problem while it is still free.
+      - name: Publication dry run
+        run: npm publish --dry-run --access public --workspace packages/cli
+
+      - name: Publish with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public --workspace packages/cli
+
+      # Reads back what the registry actually serves, so the run's own log is
+      # evidence the publish landed rather than merely that the command
+      # exited zero — the "npm view crabgic re-check passes" clause.
+      - name: Re-check the published package
+        run: |
+          set -euo pipefail
+          npm view crabgic version
+          npm view crabgic dist-tags

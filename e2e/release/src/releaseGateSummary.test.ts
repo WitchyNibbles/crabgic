@@ -154,14 +154,36 @@ describe("computeReleaseGateVerdict — the three preparers that used to be comp
     expect(result.reasons[0]).toContain("b".repeat(40));
   });
 
-  it("scores the PREPARED CHANGELOG draft: the header-only placeholder is not reviewed change notes", () => {
+  const PLACEHOLDER_DRAFT =
+    "## 1.0.0 (2026-07-25)\n\n_No `.changeset/*.md` entries were recorded at draft time — this is a header-only placeholder. Author real changesets (`npx changeset add`) before the actual v1.0.0 cut so this section reflects real, reviewed change notes._\n";
+
+  /**
+   * THE DRAFT AND THE COMMITTED CHANGELOG ARE ALTERNATIVES, NOT BOTH.
+   *
+   * The draft is synthesized from PENDING `.changeset/*.md` entries, and
+   * `changeset version` consumes those entries to write `CHANGELOG.md`.
+   * Blocking unconditionally on a header-only draft therefore demanded two
+   * mutually exclusive states at once — pending changesets AND a committed
+   * changelog entry — and made the clause unsatisfiable at an actual release
+   * cut. What it exists to guarantee is that reviewed notes back the
+   * release, from whichever of the two places currently holds them.
+   */
+  it("does NOT block on a header-only draft when the committed CHANGELOG backs the release", () => {
+    const result = verdictWith({ changelogDraft: PLACEHOLDER_DRAFT });
+    expect(result.reasons.join("\n")).not.toContain("placeholder");
+    expect(result.verdict).toBe("PASS");
+  });
+
+  it("DOES block on a header-only draft when nothing else records what is shipping", () => {
     const result = verdictWith({
-      changelogDraft:
-        "## 1.0.0 (2026-07-25)\n\n_No `.changeset/*.md` entries were recorded at draft time — this is a header-only placeholder. Author real changesets (`npx changeset add`) before the actual v1.0.0 cut so this section reflects real, reviewed change notes._\n",
+      changelogDraft: PLACEHOLDER_DRAFT,
+      releaseArtifacts: {
+        ...passingInputs().releaseArtifacts,
+        changelog: { reasons: ["no CHANGELOG.md exists at the repository root"] },
+      },
     });
     expect(result.verdict).toBe("FAIL");
-    expect(result.reasons).toHaveLength(1);
-    expect(result.reasons[0]).toContain("placeholder");
+    expect(result.reasons.join("\n")).toContain("nothing reviewed records what is shipping");
   });
 
   it("scores the PREPARED CHANGELOG draft's own version heading", () => {
@@ -272,7 +294,8 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       expect(result.enginePin.match).toBe(true);
       expect(result.enginePin.matchesBaseline).toBe(true);
       expect(result.publishDryRun.metadata.ready).toBe(true);
-      expect(result.publishDryRun.skippedDueToPrivate).toBe(true);
+      // NEVER a real publish — the invariant that holds on both sides of the
+      // PREPARE-DON'T-PUBLISH latch, and the one that actually matters here.
       expect(result.publishDryRun.realPublishAttempted).toBe(false);
       expect(result.marketplaceEntry.version).toBe("1.0.0");
       expect(result.changelogDraft).toContain("## 1.0.0");
@@ -284,10 +307,17 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // which is the owner's action, not this harness's.
       expect(result.verdict).toBe("FAIL");
       const joined = result.reasons.join("\n");
-      expect(joined).toContain("CHANGELOG.md");
       expect(joined).toContain("v1.0.0 tag");
       expect(joined).toContain("all-zero placeholder");
       expect(joined).toContain("package published");
+
+      // The CHANGELOG clause is NO LONGER among them: 1.0.0's notes were cut
+      // from a reviewed changeset into both CHANGELOG.md and
+      // packages/cli/CHANGELOG.md. Asserted as an absence for the same
+      // reason as the npm-name one below — a quietly dropped expectation
+      // would let the clause regress unnoticed.
+      expect(result.changelog.reasons).toEqual([]);
+      expect(joined).not.toContain("no CHANGELOG.md exists");
 
       // The npm-name re-check is NO LONGER among them, and its absence is
       // asserted rather than merely dropped. It was a blocking reason for as
@@ -298,13 +328,15 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // expectation would let the clause regress unnoticed.
       expect(result.npmNameRecheck.fresh).toBe(true);
       expect(joined).not.toContain("npm view");
-      // TWO publication reasons, both true and both independently checked:
-      // the manifest is `"private": true` (so `npm publish` would refuse it
-      // outright), AND the real registry says the name has nothing
-      // published under it at all.
-      expect(result.publication.manifestPrivate).toBe(true);
+      // ONE publication reason now, where there were two. The manifest was
+      // `"private": true` — the deliberate latch that made `npm publish`
+      // refuse outright — until 1.0.0 was prepared; releasing that latch
+      // removed its reason and left the substantive one, which no amount of
+      // local preparation can clear: the registry says nothing has ever been
+      // published under this name.
+      expect(result.publication.manifestPrivate).toBe(false);
       expect(result.publication.published).toBe(false);
-      expect(result.publication.reasons).toHaveLength(2);
+      expect(result.publication.reasons).toHaveLength(1);
 
       // The rebuild clause is the ONE reason whose presence depends on how
       // this leg was invoked, so it is asserted BOTH ways rather than
@@ -314,16 +346,20 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // the two whole-repo exports, the clause is genuinely satisfied, and
       // the reason is correctly absent. Asserting its presence
       // unconditionally would turn the flag path red on a false failure.
-      // Counts dropped by one on 2026-07-26 (7->6 and 8->7) when the
-      // npm-name re-check stopped being a blocking reason — see the
-      // `not.toContain("npm view")` assertion above.
+      // Counts as the 1.0.0 preparation landed. Each drop is a clause that
+      // was genuinely satisfied, and each is asserted individually above:
+      // 8/7 originally, then -1 when the npm-name verdict was re-probed
+      // inside its window, -1 when the CHANGELOG was cut, and -1 when the
+      // `"private": true` latch was released. What remains is the tag, the
+      // marketplace pin and the publish itself — the three that cannot be
+      // cleared without pushing the tag.
       expect(result.reproducibleBuild.rebuiltFromCleanCheckout).toBe(rebuilding);
       if (rebuilding) {
         expect(joined).not.toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(6);
+        expect(result.reasons).toHaveLength(3);
       } else {
         expect(joined).toContain(REBUILD_CHECKOUTS_ENV_VAR);
-        expect(result.reasons).toHaveLength(7);
+        expect(result.reasons).toHaveLength(4);
       }
 
       const byTag = new Map<string, number>();

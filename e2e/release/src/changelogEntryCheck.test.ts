@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -66,14 +66,36 @@ describe("checkChangelogEntry — unit", () => {
 });
 
 describe("checkChangelogEntry — this repo's own real state", () => {
-  it("FAILS today: this repository has no CHANGELOG.md at all", async () => {
+  /**
+   * REWRITTEN at the release cut. This asserted `fileExists === false` —
+   * "this repository has no CHANGELOG.md at all" — which was the honest
+   * state while writing one remained an owner release action, and became
+   * false the moment the 1.0.0 notes were cut. A test that fails on being
+   * satisfied pins a moment rather than a contract, so it now asserts the
+   * property the criterion actually cares about: the committed changelog
+   * carries an entry for the version being released.
+   */
+  it("finds this repository's real CHANGELOG.md, with an entry for the released version", async () => {
     const repoRoot = (
       await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
-    const result = checkChangelogEntry({ repoRoot, version: "1.0.0" });
-    // Writing a real CHANGELOG.md is an owner release action, deliberately
-    // out of scope here — this records the honest current state.
-    expect(result.fileExists).toBe(false);
+    const version = JSON.parse(
+      await readFile(join(repoRoot, "packages", "cli", "package.json"), "utf-8"),
+    ).version as string;
+
+    const result = checkChangelogEntry({ repoRoot, version });
+    expect(result.fileExists).toBe(true);
+    expect(result.hasVersionEntry).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("still reports a version the changelog does not mention", async () => {
+    const repoRoot = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
+    ).stdout.trim();
+    const result = checkChangelogEntry({ repoRoot, version: "99.99.99" });
+    expect(result.fileExists).toBe(true);
+    expect(result.hasVersionEntry).toBe(false);
     expect(result.reasons).toHaveLength(1);
   });
 });

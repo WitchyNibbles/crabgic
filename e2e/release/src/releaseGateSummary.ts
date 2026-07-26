@@ -325,11 +325,31 @@ function preparedArtifactReasons(inputs: ReleaseGateVerdictInputs): readonly str
         `release candidate ${inputs.releaseCandidateObjectId}.`,
     );
   }
+  // AN EMPTY DRAFT IS ONLY A PROBLEM IF NOTHING ELSE BACKS THE RELEASE.
+  //
+  // This used to block unconditionally on a header-only draft, which made
+  // the criterion unsatisfiable at an actual release cut: the draft is
+  // synthesized from PENDING `.changeset/*.md` entries, and
+  // `changeset version` CONSUMES those entries to write `CHANGELOG.md`. So
+  // the gate demanded pending changesets AND a committed changelog entry —
+  // mutually exclusive states, one before versioning and one after. Cutting
+  // 1.0.0 is what surfaced it.
+  //
+  // What the clause actually exists to guarantee is that REVIEWED change
+  // notes back the release, and after versioning those notes live in
+  // `CHANGELOG.md`, which `checkChangelogEntry` verifies independently and
+  // whose reasons are folded into the same verdict. The draft is therefore
+  // only owed when the committed changelog does not already carry this
+  // version — never both, never neither.
+  const changelogBacksRelease = inputs.releaseArtifacts.changelog.reasons.length === 0;
   if (isPlaceholderChangelogDraft(inputs.changelogDraft)) {
-    reasons.push(
-      "the PREPARED CHANGELOG draft is the header-only placeholder — zero .changeset/*.md " +
-        `entries exist, so no reviewed change notes back a ${inputs.version} release.`,
-    );
+    if (!changelogBacksRelease) {
+      reasons.push(
+        "the PREPARED CHANGELOG draft is the header-only placeholder — zero .changeset/*.md " +
+          `entries exist, and no committed CHANGELOG.md entry backs a ${inputs.version} ` +
+          "release either, so nothing reviewed records what is shipping.",
+      );
+    }
   } else if (!inputs.changelogDraft.includes(`## ${inputs.version}`)) {
     reasons.push(`the PREPARED CHANGELOG draft carries no "## ${inputs.version}" section heading.`);
   }
