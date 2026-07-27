@@ -23,6 +23,7 @@
  * absent at session start (see §17.1's nullability notes).
  */
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 /** Cells in the context-window meter. */
@@ -266,8 +267,28 @@ async function main() {
   process.stdout.write(`${renderStatusLine(data, { color, ascii })}\n`);
 }
 
-/* c8 ignore start -- executable entry point; the renderer it calls is covered above. */
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/**
+ * True when this module is the process entry point.
+ *
+ * `process.argv[1]` is the path AS INVOKED, but `import.meta.url` is the
+ * REAL path — Node resolves symlinks for module identity. Comparing the two
+ * directly makes a symlinked invocation look like a plain import, so `main()`
+ * silently never runs: exit 0, empty stdout, no error, and Claude Code
+ * renders a blank status row with nothing to debug. 1.1.0 shipped that way.
+ * Resolving argv[1] first is what makes both invocations agree.
+ */
+function isEntryPoint() {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    // argv[1] names something unresolvable — not this module either way.
+    return false;
+  }
+}
+
+/* c8 ignore start -- executable entry point; covered by the spawning tests in ../src/statusline.test.ts, whose subprocess coverage v8 cannot attribute back here. */
+if (isEntryPoint()) {
   await main();
 }
 /* c8 ignore stop */

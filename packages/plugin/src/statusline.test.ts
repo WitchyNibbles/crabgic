@@ -19,9 +19,10 @@
  * response.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import {
   contextBar,
@@ -221,6 +222,61 @@ describe("readGitStatus", () => {
       { color: false, nowMs: NOW_MS },
     );
     expect(line).toContain("⎇ main");
+  });
+});
+
+/**
+ * The script is also an executable, and how it is INVOKED turns out to
+ * matter. These spawn it for real rather than importing it, because the
+ * regression below is invisible to an importing test by construction.
+ */
+describe("executable entry point", () => {
+  const created: string[] = [];
+
+  afterAll(async () => {
+    for (const dir of created.splice(0)) await rm(dir, { recursive: true, force: true });
+  });
+
+  const SCRIPT = fileURLToPath(new URL("../statusline/crabgic-statusline.mjs", import.meta.url));
+  const PAYLOAD = JSON.stringify({
+    model: { display_name: "Claude Opus 5 (1M context)" },
+    context_window: { used_percentage: 10 },
+    effort: { level: "high" },
+  });
+
+  function run(entryPath: string): string {
+    return execFileSync("node", [entryPath], {
+      input: PAYLOAD,
+      encoding: "utf8",
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+  }
+
+  it("prints a line when invoked directly", () => {
+    expect(run(SCRIPT).trim()).toContain("Opus 5 1M·hi");
+  });
+
+  it("REGRESSION: prints a line when invoked through a symlink", async () => {
+    // Node resolves symlinks for module identity, so `import.meta.url` is the
+    // REAL path while `process.argv[1]` is the LINK path. A main-module guard
+    // comparing the two therefore silently declines to run — exit 0, empty
+    // stdout, no error — and Claude Code renders a blank status row with
+    // nothing to debug. Shipped that way in 1.1.0; found by pointing a real
+    // `~/.claude/` symlink at the installed package.
+    const dir = await mkdtemp(join(tmpdir(), "crabgic-statusline-link-"));
+    created.push(dir);
+    const link = join(dir, "linked-statusline.mjs");
+    await symlink(SCRIPT, link);
+    expect(run(link).trim()).toContain("Opus 5 1M·hi");
+  });
+
+  it("prints a usable line even when stdin carries no valid JSON", () => {
+    const out = execFileSync("node", [SCRIPT], {
+      input: "not json",
+      encoding: "utf8",
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+    expect(out.trim().length).toBeGreaterThan(0);
   });
 });
 
