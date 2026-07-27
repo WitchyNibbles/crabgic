@@ -8,6 +8,46 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## 1.3.0
+
+Say it so it can be read: a presentation policy for everything Crabgic tells its owner.
+
+Crabgic already had a policy for what it says to *third parties* — `CommunicationPolicy`, enforced
+by a blocking lint: neutral voice, no first person, no decoration, no emoji. Nothing governed what
+it says to the person running it, so every surface improvised. For an owner who reads structured,
+signposted text far faster than prose, and who loses a flat monochrome wall of text entirely, that
+is an accessibility defect rather than a matter of taste.
+
+**`PresentationPolicy`** is new, and is the counterpart rather than an edit to the existing one:
+answer first in two lines, headings past five, no more than three unbroken prose lines, bullets
+under fifteen words, a table once three or more items each carry two or more attributes. The limits
+live in one place and every surface quotes them, so they cannot drift apart.
+
+**A closed glyph vocabulary** replaces ad-hoc markers: ✅ ok, ❌ fail, ⚠️ warn, 🛑 blocked, ⏳ pending,
+🔄 running, ⏸️ parked, ❓ question, 📎 evidence, ℹ️ info. Roles are chosen by meaning — a glyph is a
+navigation aid only if the same shape always means the same thing, so there are no decorative ones.
+Three profiles ship: emoji for a terminal, plain symbols for a pipe, and 7-bit ASCII for a terminal
+without Unicode coverage.
+
+**Colour by verdict**, reusing the status line's existing 256-colour hues so the two surfaces read
+as one product. Leads and headings are bold, scaffolding is dimmed, and each status line takes its
+role's colour. Colour is additive only: stripping the escapes from any coloured render reproduces
+the monochrome render byte for byte, so nothing is ever visible in colour alone and the whole
+surface survives `NO_COLOR`, a monochrome terminal, colour-vision deficiency, and a paste into a
+plain-text ticket.
+
+**The manager session reports under the same rules.** Its half ships in the managed `CLAUDE.md`
+block, quoting the limits and the vocabulary rather than restating them; `/eo:protocol` carries the
+long form. It cannot emit terminal colour, so its contrast channel is markdown weight.
+
+Selection is automatic — emoji and colour on a terminal, monochrome plain text when piped — and
+overridable: `CRABGIC_PRESENTATION=emoji|text|ascii`, `CRABGIC_ASCII=1`, `CRABGIC_COLOR=1|0`, and
+`NO_COLOR` (which drops colour without touching structure).
+
+Nothing here reaches shared artifacts, and `--json` is untouched: PR, commit, Jira and Grafana text
+stays neutral and emoji-free, and `status --watch`'s piped output is byte-identical to 1.2.0. The
+full rationale and resolution rules are in `docs/presentation-policy.md`.
+
 ## 1.2.0
 
 Give the manager session an operating protocol, and enforce the autonomous half of it.
