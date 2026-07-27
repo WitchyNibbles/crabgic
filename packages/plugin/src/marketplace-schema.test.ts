@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   loadMarketplace,
@@ -98,9 +100,10 @@ describe("loadMarketplace — this package's own real, committed marketplace.jso
   // SHA-pinned" against only /^[0-9a-f]{40}$/ — which the all-zero
   // PLACEHOLDER satisfies, so it asserted a falsehood. It was then rewritten
   // to record the honest placeholder state, with a note that cutting the
-  // real v1.0.0 entry would require flipping it back "knowingly, rather than
-  // a check that silently passes either way". This is that flip: the entry
-  // is now pinned at the v1.0.0 release commit.
+  // real entry would require flipping it back "knowingly, rather than a check
+  // that silently passes either way". This is that flip: the entry is pinned
+  // at a real release commit, and the version is read from the CLI manifest
+  // so the case does not need re-editing at each cut.
   it("is SHA-pinned to a real release commit, not the all-zero placeholder", () => {
     const raw = readMarketplaceJson(resolvePluginRoot()) as {
       readonly plugins: readonly { readonly commit: string; readonly version: string }[];
@@ -108,7 +111,13 @@ describe("loadMarketplace — this package's own real, committed marketplace.jso
     expect(raw.plugins).toHaveLength(1);
     expect(raw.plugins[0]!.commit).not.toBe(NULL_GIT_OBJECT_ID);
     expect(raw.plugins[0]!.commit).toMatch(/^[0-9a-f]{40}$/);
-    expect(raw.plugins[0]!.version).toBe("1.0.0");
+    // Read from the CLI manifest rather than hardcoded: the listing's version
+    // tracks the published package, so pinning a literal here would need an
+    // edit at every release and would fail the cut rather than guard it.
+    const cliVersion = JSON.parse(
+      readFileSync(resolve(resolvePluginRoot(), "..", "cli", "package.json"), "utf-8"),
+    ).version as string;
+    expect(raw.plugins[0]!.version).toBe(cliVersion);
 
     // Strict validation, which rejects the placeholder, now accepts it.
     const marketplace = loadMarketplace(resolvePluginRoot());
