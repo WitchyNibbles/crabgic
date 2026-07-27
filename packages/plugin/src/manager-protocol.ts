@@ -1,3 +1,5 @@
+import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
+
 /**
  * The manager session's operating protocol — roadmap/10-plugin-and-installer.md
  * (managed `CLAUDE.md` block) and roadmap/11-intake-contract-approval.md (the
@@ -15,9 +17,14 @@
  *   1. the manager asked the owner to type "continue" after every step;
  *   2. when it did have a real question, it rendered the choices as a
  *      plain-text "option 1 / 2 / 3 / 4" list instead of using the engine's
- *      structured question tool.
+ *      structured question tool;
+ *   3. it reported in long, unordered prose. The owner has a condition that
+ *      makes that hard to read, so this one is an accessibility defect, not
+ *      a matter of taste — the reporting rules and the glyph vocabulary come
+ *      from `PresentationPolicy` (`@crabgic/contracts`), documented in
+ *      `docs/presentation-policy.md`.
  *
- * Both are addressed here, in prose, because both are model behavior. Prose is
+ * All three are addressed here, in prose, because all are model behavior. Prose is
  * not enforcement, which is why `hooks/stop-autonomy-gate.mjs` exists as the
  * deterministic second layer: this module says what should happen, that hook
  * makes the "don't stop mid-run" half actually stick.
@@ -41,6 +48,15 @@
  * shipped depends on §18.2 resolving PASS.
  */
 export const QUESTION_TOOL_NAME = "AskUserQuestion";
+
+/**
+ * The reporting half of the protocol reads its numbers and its glyph
+ * vocabulary from `@crabgic/contracts`' `PresentationPolicy` rather than
+ * restating them, for the same reason phase 17's templates read their
+ * lengths from `CommunicationPolicy` at call time: a limit that exists in
+ * two places drifts. `docs/presentation-policy.md` holds the rationale.
+ */
+const REPORT_LIMITS = DEFAULT_PRESENTATION_POLICY.limits;
 
 export interface ManagerStopCondition {
   /**
@@ -140,6 +156,25 @@ export const MANAGER_APPROVAL_GATES: readonly ManagerApprovalGate[] = [
   },
 ];
 
+/**
+ * The glyph vocabulary, rendered as fixed rows of five. Fixed-width rows
+ * rather than a single joined line because this text lands in a consuming
+ * repo's `CLAUDE.md`, where a 200-character line is exactly the kind of
+ * thing the policy it describes exists to prevent — and because a wrap
+ * computed from the terminal would make the block non-deterministic, which
+ * the installer's byte-preserving merge forbids.
+ */
+const GLYPHS_PER_ROW = 5;
+
+function renderGlyphVocabulary(): string {
+  const entries = PRESENTATION_GLYPH_ROLES.map((role) => `${glyph(role, "emoji")} ${role}`);
+  const rows: string[] = [];
+  for (let index = 0; index < entries.length; index += GLYPHS_PER_ROW) {
+    rows.push(entries.slice(index, index + GLYPHS_PER_ROW).join(" · "));
+  }
+  return rows.join("\n");
+}
+
 function renderStopConditions(): string {
   return MANAGER_STOP_CONDITIONS.map((condition) => {
     const suffix = condition.asksTheHuman ? " — ASK the owner, see below" : "";
@@ -188,5 +223,24 @@ Put every open decision into ONE call (up to 4 questions), give each question
 trade-off rather than restating the label. The interface supplies its own
 "Other" choice and a free-text notes field, so never hand-roll either.
 If ${QUESTION_TOOL_NAME} is unavailable, ask ONE consolidated question in
-prose and carry on — never a step-by-step interrogation.`;
+prose and carry on — never a step-by-step interrogation.
+
+**Report so it can be read at a glance.** The owner has a condition that
+makes long, unordered prose hard to read — an accessibility requirement,
+not a style preference. Answer first, in ≤${REPORT_LIMITS.leadAnswerMaxLines} lines. Past ${REPORT_LIMITS.headingRequiredAboveLines} lines use
+\`##\` headings. Never write more than ${REPORT_LIMITS.proseBlockMaxLines} unbroken prose lines. Prefer bullets
+(≤${REPORT_LIMITS.bulletMaxWords} words, ≤${REPORT_LIMITS.sectionMaxBullets} per section) over paragraphs, and once ${REPORT_LIMITS.tableMinRows}+ items each
+carry two or more attributes, make it a table. Stay brief unless the owner
+asks for detail — and format the long answer too. Signpost state with these
+glyphs and no others; they are navigation aids, not decoration:
+
+${renderGlyphVocabulary()}
+
+Flat monochrome text is as hard to hold onto as unstructured text, so carry
+contrast too. You cannot emit terminal colour here — weight is your channel:
+**bold** the verdict and the numbers that matter, wrap every identifier, path
+and command in \`code\`, and let the glyphs above carry the rest.
+
+None of this reaches shared artifacts: PR, commit, Jira and Grafana text
+stays neutral and emoji-free under the renderer's own policy.`;
 }

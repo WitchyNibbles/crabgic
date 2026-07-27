@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
 import {
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
@@ -111,8 +112,13 @@ describe("buildManagerProtocolBlock", () => {
     // The placement decision was "compact always-loaded block + detailed skill".
     // A block that grows without bound defeats the point; the full rationale
     // belongs in skills/protocol/SKILL.md, which is loaded on demand.
+    //
+    // Raised 45 -> 55 when the reporting rules landed (see the reporting-format
+    // suite below): the block now carries three mandated behaviors — autonomy,
+    // structured questions, and report formatting — not two. The cap exists to
+    // force new rationale into the on-demand skill, and it still does.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(45);
+    expect(lines.length).toBeLessThanOrEqual(55);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -123,5 +129,65 @@ describe("buildManagerProtocolBlock", () => {
     for (const line of block.split("\n")) {
       expect(line).toBe(line.replace(/\s+$/, ""));
     }
+  });
+});
+
+/**
+ * The reporting half of the protocol. Defect 3, reported by the owner: the
+ * manager reported in long unstructured prose, which the owner has a
+ * condition that makes very hard to read. Like the two defects above this is
+ * model behavior, so it is addressed in prose and pinned here only for the
+ * parts that CAN regress silently — that the rules are present, that the
+ * numbers come from `PresentationPolicy` rather than being retyped, and that
+ * the outbound-artifact carve-out survives.
+ */
+describe("buildManagerProtocolBlock — reporting format", () => {
+  const block = buildManagerProtocolBlock();
+
+  it("states the accessibility reason, so the rule is not read as a style preference", () => {
+    expect(block).toMatch(/hard to read|hard to parse/i);
+  });
+
+  it("puts the answer first", () => {
+    expect(block).toMatch(/answer first/i);
+  });
+
+  it("quotes every structural limit from PresentationPolicy rather than hardcoding a second copy", () => {
+    const limits = DEFAULT_PRESENTATION_POLICY.limits;
+    expect(block).toContain(`${limits.leadAnswerMaxLines} lines`);
+    expect(block).toContain(`${limits.headingRequiredAboveLines} lines`);
+    expect(block).toContain(`${limits.proseBlockMaxLines} unbroken`);
+    expect(block).toContain(`${limits.bulletMaxWords} words`);
+    expect(block).toContain(`${limits.sectionMaxBullets} per section`);
+    expect(block).toContain(`${limits.tableMinRows}+ items`);
+  });
+
+  it("renders the whole emoji glyph vocabulary, each paired with its role name", () => {
+    for (const role of PRESENTATION_GLYPH_ROLES) {
+      expect(block, `missing glyph role: ${role}`).toContain(`${glyph(role, "emoji")} ${role}`);
+    }
+  });
+
+  it("frames emoji as navigation aids rather than decoration", () => {
+    expect(block).toMatch(/not decoration|never decoration/i);
+  });
+
+  it("carves out the outbound artifacts, which stay neutral and emoji-free", () => {
+    // packages/renderer's Jira ADF whitelist rejects the `emoji` node outright;
+    // a manager that decorates a PR body would produce a policy_blocked render.
+    expect(block).toMatch(/emoji-free|no emoji/i);
+    expect(block.toLowerCase()).toMatch(/pr|commit|jira|grafana/);
+  });
+
+  it("keeps brevity the default without licensing a wall of prose when detail is asked for", () => {
+    // `[\s\S]` rather than `.` — the clause legitimately spans a line break.
+    expect(block).toMatch(/unless[\s\S]{0,60}ask/i);
+  });
+
+  it("names the session's colour channel — weight, not ANSI, which the manager cannot emit", () => {
+    // The CLI paints its own stdout with SGR codes. The manager writes into a
+    // markdown-rendering TUI, so its only weight controls are bold and code.
+    expect(block).toMatch(/\*\*bold\*\*|bold/i);
+    expect(block).toContain("`code`");
   });
 });

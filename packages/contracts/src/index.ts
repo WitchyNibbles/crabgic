@@ -68,6 +68,12 @@ export * from "./errors/connector-error.js";
 // renderer-core: length/line counters + attribution-token scanner primitives.
 export * from "./renderer-core/index.js";
 
+// presentation: the owner-facing glyph vocabulary, human-report structure
+// limits and profile resolution. The counterpart to CommunicationPolicy —
+// that one governs what Crabgic says to third parties, this one governs what
+// it says to its owner. Never imported by packages/renderer.
+export * from "./presentation/index.js";
+
 // The 21 contracts (zod schemas + inferred types), alphabetized by contract name.
 export * from "./contracts/authorization-envelope.js";
 export * from "./contracts/capability-manifest.js";

@@ -73,6 +73,7 @@ export * from "./evidence/query.js";
 
 // ---- Output conventions + status --watch renderer ----
 export * from "./output/format.js";
+export * from "./output/human.js";
 export * from "./output/status-renderer.js";
 
 // ---- Commands: dependency bag, NOT_IMPLEMENTED shape, dispatch, help ----

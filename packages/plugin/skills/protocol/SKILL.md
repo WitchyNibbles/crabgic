@@ -1,6 +1,6 @@
 ---
 name: protocol
-description: The manager session's operating protocol — when to keep going on your own, the seven conditions that may halt a run, the approval gates, and how to ask the owner a question. Read this when unsure whether to stop, or before asking the owner anything.
+description: The manager session's operating protocol — when to keep going on your own, the seven conditions that may halt a run, the approval gates, how to ask the owner a question, and how to format what you report back. Read this when unsure whether to stop, before asking the owner anything, or before writing a long report.
 disable-model-invocation: false
 ---
 
@@ -105,6 +105,69 @@ If `AskUserQuestion` is unavailable (see `docs/engine-baseline.md` §18 — its
 presence in an interactive session is an in-session observation, not a
 probe-verified fact), fall back to **one consolidated question in prose**.
 Never a step-by-step interrogation.
+
+## How to report
+
+The owner has a condition that makes long, unordered prose very hard to read.
+This is an **accessibility requirement**, not a style preference — a report
+that technically contains the answer somewhere inside a wall of text has not
+delivered it. The limits and the glyph vocabulary below are not invented here;
+they come from `PresentationPolicy` in `@crabgic/contracts`, and
+`docs/presentation-policy.md` holds the full rationale.
+
+**Answer first.** The conclusion goes in the first two lines. A reader who
+stops there must still have the answer. Detail comes after, under headings.
+
+**Structure past a glance.** More than five lines needs `##` headings. Never
+write more than three unbroken prose lines — if the thought needs a fourth,
+it needs bullets or a break.
+
+**Prefer lists and tables to paragraphs.** Bullets stay under fifteen words
+and under seven per section. Once three or more items each carry two or more
+attributes, it is a table, not a list.
+
+**Signpost state with the shared glyphs, and only these:**
+
+| Glyph | Means                                       |
+| ----- | ------------------------------------------- |
+| ✅    | passed / succeeded                          |
+| ❌    | failed                                      |
+| ⚠️    | succeeded, but degraded or with a caveat    |
+| 🛑    | halted at a stop condition or approval gate |
+| ⏳    | accepted, not started                       |
+| 🔄    | in flight now                               |
+| ⏸️    | parked by an external limit, not a failure  |
+| ❓    | an open decision for the owner              |
+| 📎    | an evidence reference                       |
+| ℹ️    | a neutral note, no verdict                  |
+
+Emoji are navigation aids. One per structural element, chosen for meaning —
+never sprinkled for warmth, and never a glyph outside this table.
+
+**Carry contrast, not just structure.** Flat monochrome text is as easy to
+slide off as unstructured text: with nothing to catch the eye there is nothing
+to return to after a lapse in attention. You cannot emit terminal colour in
+this session — the CLI paints its own stdout, you are writing into a
+markdown-rendering interface — so weight is your channel:
+
+- **bold** the verdict, the decision, and the numbers that matter;
+- wrap every identifier, path, command and flag in `code`;
+- let the glyphs above carry the state, so a reader scanning for the failure
+  finds it without reading a word.
+
+Use them for emphasis that earns it. Bolding half a paragraph is the same
+defect as bolding none of it.
+
+**Brevity is the default.** Be short unless the owner asks for detail. When
+they do ask, the answer gets longer, not looser: a long report is still
+answer-first, still headed, still bulleted.
+
+**None of this reaches shared artifacts.** Branch names, commit messages, PR
+titles and bodies, Jira comments and Grafana annotations are rendered by
+`packages/renderer` under `CommunicationPolicy`, which is the opposite policy:
+neutral voice, no first person, no decoration, no emoji. Jira Cloud's ADF
+whitelist rejects the `emoji` node outright, so decorating an outbound artifact
+does not merely look wrong — it fails the render with `policy_blocked`.
 
 ## Enforcement
 
