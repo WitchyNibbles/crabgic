@@ -3,13 +3,42 @@
  * `../bootstrap.ts` the same way that module already factors out the rest
  * of `CliDependencies`, so it stays independently unit-testable.
  */
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Readable, Writable } from "node:stream";
 import type { InstallerDependencies } from "./types.js";
 
-/** Resolves `@crabgic/plugin`'s own installed root directory via real Node module resolution — works identically whether `@crabgic/plugin` is a workspace symlink (dev) or a real published dependency (a real install). */
+/**
+ * Resolves the directory holding the plugin's distributable assets — the
+ * subagents, hooks, skills, `.mcp.json` and `.claude-plugin/marketplace.json`
+ * that `install` copies into a project and `doctor` verifies.
+ *
+ * TWO LAYOUTS, AND THE PUBLISHED ONE COMES FIRST.
+ *
+ * In the published package the assets sit beside the bundle at
+ * `<dist>/plugin`, copied there by `scripts/bundle-cli.mjs`. In this
+ * monorepo they live in the `@crabgic/plugin` workspace package, reachable by
+ * ordinary module resolution.
+ *
+ * This used to try only the second, on the stated assumption that it "works
+ * identically whether `@crabgic/plugin` is a workspace symlink (dev) or a
+ * real published dependency". That assumption was false in the only case
+ * that matters: `@crabgic/plugin` is `private: true` and is never published,
+ * so a real install has no such module. 1.0.0 shipped with `crabgic doctor`
+ * failing in any consuming repo with `Cannot find module
+ * '@crabgic/plugin/package.json'`, and `crabgic install` — the command an
+ * operator installs this package FOR — equally dead.
+ *
+ * The published layout is checked first because it is the one real users
+ * have; the workspace fallback keeps development and the e2e harnesses
+ * working unchanged.
+ */
 export function resolvePluginSourceDir(fromUrl: string = import.meta.url): string {
+  const bundled = join(dirname(fileURLToPath(fromUrl)), "plugin");
+  if (existsSync(join(bundled, ".claude-plugin", "marketplace.json"))) return bundled;
+
   const require = createRequire(fromUrl);
   const packageJsonPath = require.resolve("@crabgic/plugin/package.json");
   return dirname(packageJsonPath);

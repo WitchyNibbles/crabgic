@@ -52,7 +52,7 @@
 // and the version is pinned as a devDependency rather than resolved from a
 // range.
 
-import { copyFile, readdir, rm } from "node:fs/promises";
+import { copyFile, cp, mkdir, readdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +74,19 @@ export const EXTERNAL_DEPENDENCIES = [
   "zod",
   "zod-to-json-schema",
 ];
+
+/**
+ * Everything `@crabgic/plugin` distributes that is DATA rather than code.
+ *
+ * Deliberately an explicit list rather than "copy the package": `src/`,
+ * `dist/`, `tsconfig.json` and `package.json` are build inputs and outputs,
+ * and shipping them would both bloat the tarball and change what
+ * `listPackagedFiles` (which excludes exactly those) considers packaged.
+ * `.claude-plugin` is excluded from the content digest by design — it holds
+ * `marketplace.json`, which CITES that digest — but the trust-pin check
+ * still needs to read it, so it ships too.
+ */
+const PLUGIN_ASSET_ENTRIES = ["agents", "hooks", "skills", ".mcp.json", ".claude-plugin"];
 
 async function main() {
   // Wipe everything EXCEPT the two artifacts this script does not own.
@@ -131,6 +144,32 @@ async function main() {
     );
   }
   await copyFile(cachedTypes, join(OUT_DIR, "index.d.ts"));
+
+  // THE PLUGIN'S DATA ASSETS, which are not code and cannot be bundled.
+  //
+  // `@crabgic/plugin` is a private workspace package, so bundling inlines its
+  // JS and the published tarball would otherwise contain none of the FILES it
+  // exists to distribute: `.mcp.json`, the two subagents, the hooks, the five
+  // skills, and the `.claude-plugin/marketplace.json` the trust-pin check
+  // reads. `crabgic install` copies those into a consuming project and
+  // `crabgic doctor` verifies them, so without them the published package
+  // cannot do the one thing an operator installs it for.
+  //
+  // This was shipped broken in 1.0.0: `crabgic doctor` in a real consuming
+  // repo died with `Cannot find module '@crabgic/plugin/package.json'`,
+  // because `resolvePluginSourceDir` resolved a workspace package that does
+  // not exist outside this monorepo. The smoke check missed it by probing
+  // only the argument parser, never a real command; it now runs `doctor`.
+  //
+  // Copied rather than symlinked, and kept byte-identical to the source, so
+  // `computeContentDigest` over the installed copy equals the digest
+  // `marketplace.json` records — the trust pin compares exactly that.
+  const pluginRoot = join(REPO_ROOT, "packages", "plugin");
+  const pluginOut = join(OUT_DIR, "plugin");
+  await mkdir(pluginOut, { recursive: true });
+  for (const entry of PLUGIN_ASSET_ENTRIES) {
+    await cp(join(pluginRoot, entry), join(pluginOut, entry), { recursive: true });
+  }
 
   const emitted = Object.keys(result.metafile.outputs).length;
   process.stderr.write(`bundle-cli: emitted ${String(emitted)} file(s) into packages/cli/dist\n`);

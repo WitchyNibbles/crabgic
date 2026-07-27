@@ -191,6 +191,45 @@ try {
     }
   }
 
+  // (3b) A REAL COMMAND MUST RUN, not just the argument parser.
+  //
+  // The probe above proves the module graph loads. It does NOT prove the
+  // package can do anything, and 1.0.0 shipped with `crabgic doctor` broken
+  // in every consuming repo — `Cannot find module
+  // '@crabgic/plugin/package.json'`, because the plugin's data assets
+  // (subagents, hooks, skills, marketplace.json) were never in the tarball
+  // and `resolvePluginSourceDir` looked for a workspace package that is
+  // never published. Everything else was green, including this check.
+  //
+  // `doctor` is the right command to run: it is read-only, needs no
+  // credentials and no network, and it exercises the installer's plugin
+  // resolution — the exact seam that was broken.
+  {
+    const doctorPath = join(project, "node_modules", ".bin", "crabgic");
+    let output = "";
+    try {
+      output = execFileSync(doctorPath, ["doctor", "--json"], {
+        cwd: project,
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      // A non-zero exit is fine — doctor reports faults about the CONSUMING
+      // project, which is an empty scratch directory. What must not happen is
+      // the command failing to run at all.
+      output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
+    }
+    if (/Cannot find module|unexpected error|ERR_MODULE_NOT_FOUND/.test(output)) {
+      fail(
+        "`crabgic doctor` could not run from the installed package — the tarball is missing " +
+          `something it needs at runtime:\n${output.trim().slice(0, 600)}`,
+      );
+    }
+    if (output.trim().length === 0) {
+      fail("`crabgic doctor` produced no output at all from the installed package");
+    }
+  }
+
   // (4) THE TYPES MUST WORK TOO. The package declares `types`/`exports`, so a
   //     consumer can `import { … } from "crabgic"` in TypeScript. `tsc`'s
   //     per-file declarations reference `@crabgic/*` by module specifier and
