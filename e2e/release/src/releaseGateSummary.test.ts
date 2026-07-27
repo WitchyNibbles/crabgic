@@ -305,12 +305,17 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // This item is FAIL today by design: making it green means cutting a
       // real release (CHANGELOG, tag, marketplace pin, an actual publish),
       // which is the owner's action, not this harness's.
-      // ONE substantive clause remains, and it is the only one that cannot
-      // be satisfied by preparation: the registry has nothing under this
-      // name. Everything else the criterion asks for has been cut.
-      expect(result.verdict).toBe("FAIL");
+      // EVERY clause of the criterion is now satisfiable, and the publish
+      // clause actually is: crabgic@1.0.0 shipped with provenance, so the
+      // registry answers for it and `publication` carries no reason. What
+      // this case still exercises is that the composite really runs each
+      // constituent check against the real repository — the verdict itself
+      // depends on which commit is being scored (see the reason categories
+      // below), so it is deliberately not pinned here.
       const joined = result.reasons.join("\n");
-      expect(joined).toContain("package published");
+      expect(result.publication.published).toBe(true);
+      expect(result.publication.reasons).toEqual([]);
+      expect(joined).not.toContain("package published");
 
       // Cleared by the 1.0.0 preparation, each asserted as an ABSENCE so it
       // cannot silently regress: the tag exists and points at the candidate,
@@ -347,15 +352,14 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // expectation would let the clause regress unnoticed.
       expect(result.npmNameRecheck.fresh).toBe(true);
       expect(joined).not.toContain("npm view");
-      // ONE publication reason now, where there were two. The manifest was
-      // `"private": true` — the deliberate latch that made `npm publish`
-      // refuse outright — until 1.0.0 was prepared; releasing that latch
-      // removed its reason and left the substantive one, which no amount of
-      // local preparation can clear: the registry says nothing has ever been
-      // published under this name.
+      // ZERO publication reasons now, where there were two. The first went
+      // when the `"private": true` latch was released to prepare 1.0.0; the
+      // second — "the registry has nothing under this name" — went when
+      // crabgic@1.0.0 was actually published with provenance. Both are
+      // asserted rather than dropped so a regression in either is visible.
       expect(result.publication.manifestPrivate).toBe(false);
-      expect(result.publication.published).toBe(false);
-      expect(result.publication.reasons).toHaveLength(1);
+      expect(result.publication.published).toBe(true);
+      expect(result.publication.reasons).toEqual([]);
 
       // The rebuild clause is the ONE reason whose presence depends on how
       // this leg was invoked, so it is asserted BOTH ways rather than
@@ -386,7 +390,6 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // Asserting the categories keeps the case meaningful — an unexpected
       // reason still fails it — without making ordinary commits red.
       const EXPECTED_REASON_PATTERNS = [
-        /package published/,
         /npm registry reports/,
         /does not evidence THIS candidate/,
         /binds a different commit|not at the release candidate|not the release candidate/,

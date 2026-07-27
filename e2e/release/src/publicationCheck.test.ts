@@ -131,11 +131,30 @@ describe("checkPublication — the exit criterion's `package published` clause",
 });
 
 describe("RealNpmViewRunner — genuine `npm view` child process", () => {
-  it("does not report this repo's own package as published, on or off the network", async () => {
+  /**
+   * FLIPPED AT THE 1.0.0 CUT. This asserted `published === false` — true for
+   * as long as the registry had nothing under this name, and false from the
+   * moment `crabgic@1.0.0` was actually published with provenance. The check
+   * queries the REAL registry, so its verdict tracks reality rather than a
+   * fixture; the test now asserts the version that shipped is visible, and
+   * that a version which never shipped is not.
+   */
+  it("reports this repo's own published version as published", async () => {
     const result = await checkPublication({
       packageJsonPath: await seedManifest(PUBLISHED_MANIFEST),
       packageName: "crabgic",
       version: "1.0.0",
+      runner: new RealNpmViewRunner(),
+    });
+    expect(result.published).toBe(true);
+    expect(result.reasons).toEqual([]);
+  }, 60_000);
+
+  it("still reports a version that was never published", async () => {
+    const result = await checkPublication({
+      packageJsonPath: await seedManifest(PUBLISHED_MANIFEST),
+      packageName: "crabgic",
+      version: "99.99.99",
       runner: new RealNpmViewRunner(),
     });
     expect(result.published).toBe(false);

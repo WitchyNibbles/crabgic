@@ -139,7 +139,17 @@ describe("RealPublishRunner + runPublishDryRun — genuine integration (real npm
     const isPrivate =
       JSON.parse(await readFile(join(packageDir, "package.json"), "utf-8")).private === true;
     expect(result.skippedDueToPrivate).toBe(isPrivate);
-    expect(result.dryRun.exitCode).toBe(0);
+
+    // A dry run of an ALREADY-PUBLISHED version exits non-zero: npm refuses
+    // with "You cannot publish over the previously published versions". That
+    // is the correct answer once 1.0.0 shipped, and asserting `exitCode === 0`
+    // unconditionally made this case fail the moment the release succeeded.
+    // The distinction that matters is WHY it failed — a version conflict is
+    // benign here, anything else is a real packing or metadata problem.
+    const output = `${result.dryRun.stdout}${result.dryRun.stderr}`;
+    if (result.dryRun.exitCode !== 0) {
+      expect(output).toMatch(/cannot publish over the previously published versions/i);
+    }
 
     // The publish metadata is now complete: license, access, name, and —
     // as of the phase-23 publish-prep pass — the "repository" field, which
