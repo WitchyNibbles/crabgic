@@ -8,6 +8,39 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## 1.2.0
+
+Give the manager session an operating protocol, and enforce the autonomous half of it.
+
+Installed projects received a managed `CLAUDE.md` block that listed the plugin's capabilities and
+said nothing about how to operate. With no instruction to the contrary a Claude Code session uses
+its conversational default and checks in after every step — the opposite of a harness whose own
+design names seven, and only seven, conditions that may halt a run. Reported from real use: the
+manager asked the owner to type "continue" after every step, and asked genuine questions as
+plain-text "option 1 / 2 / 3 / 4" lists.
+
+**The manager operating protocol** is new. Autonomy by default, the seven stop conditions as the
+only legitimate halts, the approval gates, and `AskUserQuestion` as the way to put a decision to
+the owner. It ships in the managed `CLAUDE.md` block, and `/eo:protocol` carries the long form.
+
+**The Stop autonomy gate** is new, and is the first manager hook permitted to block. It refuses to
+end a turn while a run is in flight, so the autonomy clause is enforced rather than requested. It
+allows the stop at `awaiting_approval` — blocking there would trap you in a session whose only
+exit is the approval the block prevents you reaching — and at every terminal state. It cannot
+loop, and it fails open on every error path: no supervisor, no runs, a timeout or a bad response
+all end the turn normally, so it does nothing at all in a project that has never run Crabgic.
+
+**Repos with an `AGENTS.md` now get the protocol too.** The `@AGENTS.md` bridge collapsed the
+entire managed block to that one import line, so such projects received no Crabgic instructions of
+any kind. The bridge is now additive.
+
+**`CRABGIC_NO_SPAWN=1`** is new: it makes a CLI command observe an already-running supervisor
+rather than start one on demand.
+
+Engine facts behind both features are recorded in `docs/engine-baseline.md` §18 and §19, each with
+a re-runnable spike. §18's interactive half is deliberately left UNRESOLVED, so the protocol
+degrades to a single consolidated prose question if the tool is ever absent.
+
 ## 1.1.2
 
 Stop publishing `dist/.tsbuildinfo`, which was 15% of the package.
