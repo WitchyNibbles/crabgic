@@ -101,7 +101,27 @@ jobs:
       # evidence the publish landed rather than merely that the command
       # exited zero — the "npm view crabgic re-check passes" clause.
       - name: Re-check the published package
+        # Reads back what the registry actually serves, so the run's own log is
+        # evidence the publish landed rather than merely that the command
+        # exited zero — the "npm view crabgic re-check passes" clause.
+        #
+        # RETRIED, because the registry is read-after-write EVENTUALLY
+        # consistent. On the v1.0.0 cut the publish step succeeded and this one
+        # failed seconds later with `E404 ... /crabgic - Not found`; the package
+        # was visible ~30s afterwards. A bare `npm view` here marks every
+        # successful release as a failed workflow run, which is worse than
+        # useless — it trains the reader to ignore a red publish job.
         run: |
-          set -euo pipefail
-          npm view crabgic version
-          npm view crabgic dist-tags
+          set -uo pipefail
+          for attempt in $(seq 1 10); do
+            if npm view crabgic version >/dev/null 2>&1; then
+              echo "registry answered on attempt ${attempt}"
+              npm view crabgic version
+              npm view crabgic dist-tags
+              exit 0
+            fi
+            echo "registry has not caught up yet (attempt ${attempt}/10); waiting 15s"
+            sleep 15
+          done
+          echo "::error::crabgic is still not readable from the registry after ~150s — the publish step reported success, so check https://www.npmjs.com/package/crabgic before re-running"
+          exit 1

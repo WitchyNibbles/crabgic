@@ -10,6 +10,26 @@ Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §
 - **A phase is "done"** when its exit criteria all pass on the exact merge candidate, its docs are updated, and downstream phases' interfaces are unblocked.
 - Engine facts drift fast (Claude Code ships weekly). Anything engine-touching cites `docs/engine-baseline.md` (produced in phase 00) and the pinned version range — never memory.
 
+## Completion ledger — read this before trusting a checkbox
+
+**Phase 23 is closed and evidenced.** Its sixteen exit criteria are ticked against
+`release-e2e` run
+[30250453824](https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824), which
+scored 15 PASS / 0 FAIL in `final` mode at release candidate `2435cb9` with 160 linked
+`EvidenceRecord`s. `crabgic@1.0.0` is published with provenance.
+
+**Phases 00–22 have 186 unticked criteria, and that is a bookkeeping gap rather than a
+statement that the work is undone.** Much of it demonstrably is done — those phases'
+packages are built, tested and exercised by the release gate that just passed. What has
+never happened is the per-criterion verification the third ground rule demands: "each
+checkbox must map to a CI run, journal entry, or committed artifact."
+
+They are deliberately left unticked. Ticking them from general confidence would be exactly
+the aspirational bookkeeping that rule forbids, and would make every box in this repository
+worth less. Closing them honestly means walking each phase's criteria against its own
+recorded evidence, as 23 was — a real piece of work, and one nobody should shortcut by
+editing checkboxes.
+
 ## Phase index
 
 | # | File | Title | Depends on |

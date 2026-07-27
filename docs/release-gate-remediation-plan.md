@@ -438,3 +438,76 @@ the `v1.0.0` tag, the marketplace SHA pin, publication — are release actions, 
 checkboxes across the 24 roadmap phase files is unticked. Ticking them without per-criterion
 evidence would be the aspirational bookkeeping `roadmap/README.md`'s own ground rule forbids,
 so the ledger gap is recorded here rather than papered over.
+
+---
+
+# Outcome — v1.0.0 shipped, 2026-07-27
+
+`crabgic@1.0.0` is published on npm with a SLSA provenance attestation, and `release-e2e`
+run [30250453824](https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824) scored
+the gate **15 PASS / 0 FAIL, `overallVerdict: PASS`** in `final` mode at release candidate
+`2435cb955809a5420f396043e5bc7003282491fa`, with 160 linked `EvidenceRecord`s. Verified
+from the public registry: installs, links `crabgic` and `crabgic-supervisord`, boots.
+
+`docs/release-gate-handoff.md` is deleted with this entry — it was session state by its own
+declaration ("once its open items are actioned it can be deleted"), and every one of its
+open items is now actioned. What follows is the part worth keeping.
+
+## The defect the gate could not see
+
+`crabgic@1.0.0` was **uninstallable** right up to the moment of publishing. It declared 13
+runtime dependencies on `@crabgic/*` workspace packages — every one `private: true`, pinned
+`0.0.0`, never published and unpublishable while private — so `npm install crabgic` died
+with `404 ... /@crabgic%2fconnectors-grafana` and neither binary linked.
+
+Fifteen checklist items scored PASS over that. The reason is worth stating plainly, because
+it generalises: **every check verified a property adjacent to the one that mattered.**
+
+- `check-published-tarball.mjs` inspected file _contents_ — 282 files, no tests, no sources
+  — and never resolved a dependency.
+- `reproducible-build` compared tarball _hashes_ between two clean checkouts, which is
+  equally blind on both sides: two identical broken tarballs compare byte-identical and
+  pass.
+- Nothing anywhere installed the artifact.
+
+npm never lets a version be republished. The first publish attempt failing on an OTP prompt
+is the only reason 1.0.0 was still available to fix.
+
+`scripts/check-install-smoke.mjs` is the answer: it packs, installs into a clean project
+outside the workspace, boots both binaries, and compiles a TypeScript consumer against the
+installed package. Both failure modes are proven caught — reintroducing a workspace
+dependency, and corrupting the bundled declarations.
+
+## The conflict that had been hiding
+
+Fixing the above required the published package to declare
+`@anthropic-ai/claude-agent-sdk`, which peer-requires `zod@^4` while the repository pinned
+`zod@3.25.76`. That had been latent for as long as the SDK sat in `engine-claude`, where
+npm nested zod@4 out of sight. Publishing forced it out: declaring the SDK made npm hoist
+zod@4 into `packages/cli` and shadow v3 for the CLI's own imports, breaking `tsc -b`;
+declaring zod@3 alongside made `npm ci` fail with ERESOLVE; `overrides` did not resolve it.
+
+The migration to zod 4 turned out to be **two files** — `ZodIssue.path` widened from
+`(string | number)[]` to `PropertyKey[]`. Everything else (`.strict()`, `.passthrough()`,
+`z.enum` over const tuples, two-argument `z.record`) was already v4-compatible, and
+`engine-claude` was already on 4.4.3. One zod now hoists for the whole workspace.
+
+## Things that will bite the next release
+
+- **`ci.yml` runs on `push: branches: [main]`, not tags.** The release candidate must be
+  pushed as a _normal forward move_ and go green before the marketplace-pin commit follows,
+  or `arm64-verification` has no run record for it. A force-push also breaks commitlint
+  with `Invalid revision range`, because the previous head becomes unreachable.
+- **The marketplace pin cannot live in the commit it names** — a commit cannot contain its
+  own SHA. Pin in a follow-up commit and score with an explicit
+  `release_candidate_object_id`.
+- **The registry is read-after-write eventually consistent.** The v1.0.0 publish succeeded
+  and the immediate `npm view` 404'd seconds later; the package was visible ~30s
+  afterwards. `publish.yml`'s re-check now retries for ~150s.
+- **Pack-time lifecycle hooks are hostile to `reproducible-build`.** It exports clean
+  checkouts with `git archive` and packs them; a `prepack` needing `node_modules` fails
+  there. The publishable artifact is therefore built by `npm run build`, not by pack hooks.
+- **Bundled declarations lose nominal type identity.** `GatewayToolRegistry` is a class with
+  a `#private` field, so the inlined declaration and `@crabgic/gateway`'s own are not
+  interchangeable. A consumer must take paired symbols from one module — which is why the
+  barrel now re-exports `connectGatewayMcpStdio` alongside the registry builder.

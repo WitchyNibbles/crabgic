@@ -119,22 +119,36 @@ This phase *is* mostly its own test plan — every matrix run emits `EvidenceRec
 
 ## Exit criteria
 
-- [ ] `release-e2e` CI job's archived `e2e/release-gate-report.json` shows PASS for every item below, each linked to ≥1 `EvidenceRecord` from the exact release-candidate object ID.
-- [ ] All applicable quality/security/perf/learning gates (14/15/22) pass on the release candidate with the coverage policy satisfied — not a synthetic fixture.
-- [ ] No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16 keystones + 17's lint surface).
-- [ ] Every requirement linked to evidence from the exact final Git object ID and remote (Jira/Grafana) revisions (21's traceability report).
-- [ ] Performance contracts satisfied rather than skipped, measured on a quiet host (15).
-- [ ] Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).
-- [ ] Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).
-- [ ] Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero `NOT_IMPLEMENTED` remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).
-- [ ] No development-engine attribution in any project-controlled shared artifact (08/10/17).
-- [ ] No user checkout, remote Git repository, or unauthorized provider resource modified anywhere in the matrix (assertion-harness log).
-- [ ] A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via `evidence <change-set-id>`), never an opened PR (Gap 6, by design).
-- [ ] ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate.
-- [ ] Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).
-- [ ] `docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, and `upgrade-guide.md` are committed, and every claim in them cites a passing CI run or `EvidenceRecord` from the release candidate — no aspirational text.
-- [ ] Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view crabgic` re-check passes.
-- [ ] Release artifact records the exact pinned engine/SDK version (`@anthropic-ai/claude-agent-sdk`, exact-pinned per 01's `engine-pin-lint` policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; `docs/compatibility-matrix.md` states the pinned version alongside the tested Claude Code engine version range — evidenced by the `engine-pin-lint` CI run and the tarball manifest check cited in the release-gate report.
+**CLOSED 2026-07-27, evidenced.** `release-e2e` run
+[30250453824](https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824) scored the
+archived `e2e/release-gate-report.json` at release candidate
+`2435cb955809a5420f396043e5bc7003282491fa` in **`final`** mode — the mode in which missing
+evidence is a FAIL rather than a deferral — and returned **15 PASS / 0 FAIL,
+`overallVerdict: PASS`**, with 160 `EvidenceRecord`s linked at that exact object ID. That
+run is the citation for every box below; the first is the report's own umbrella statement,
+satisfied by the run's overall verdict, and the remaining fifteen are its fifteen items.
+
+`crabgic@1.0.0` is published on npm with a SLSA provenance attestation, tagged `v1.0.0` at
+the same object ID, and verified to install from the public registry, link both binaries
+and boot.
+
+
+- [x] `release-e2e` CI job's archived `e2e/release-gate-report.json` shows PASS for every item below, each linked to ≥1 `EvidenceRecord` from the exact release-candidate object ID.
+- [x] All applicable quality/security/perf/learning gates (14/15/22) pass on the release candidate with the coverage policy satisfied — not a synthetic fixture.
+- [x] No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16 keystones + 17's lint surface).
+- [x] Every requirement linked to evidence from the exact final Git object ID and remote (Jira/Grafana) revisions (21's traceability report).
+- [x] Performance contracts satisfied rather than skipped, measured on a quiet host (15).
+- [x] Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).
+- [x] Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).
+- [x] Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero `NOT_IMPLEMENTED` remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).
+- [x] No development-engine attribution in any project-controlled shared artifact (08/10/17).
+- [x] No user checkout, remote Git repository, or unauthorized provider resource modified anywhere in the matrix (assertion-harness log).
+- [x] A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via `evidence <change-set-id>`), never an opened PR (Gap 6, by design).
+- [x] ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate.
+- [x] Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).
+- [x] `docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, and `upgrade-guide.md` are committed, and every claim in them cites a passing CI run or `EvidenceRecord` from the release candidate — no aspirational text.
+- [x] Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view crabgic` re-check passes.
+- [x] Release artifact records the exact pinned engine/SDK version (`@anthropic-ai/claude-agent-sdk`, exact-pinned per 01's `engine-pin-lint` policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; `docs/compatibility-matrix.md` states the pinned version alongside the tested Claude Code engine version range — evidenced by the `engine-pin-lint` CI run and the tarball manifest check cited in the release-gate report.
 
 ## Risks & open questions
 
