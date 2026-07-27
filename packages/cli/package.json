@@ -34,9 +34,7 @@
     "!dist/**/test-support/**"
   ],
   "scripts": {
-    "build": "tsc -b",
-    "prepack": "node ../../scripts/bundle-types.mjs && node ../../scripts/bundle-cli.mjs",
-    "postpack": "tsc -b . --force"
+    "build": "tsc -b"
   },
   "devDependencies": {
     "@crabgic/renderer": "0.0.0",

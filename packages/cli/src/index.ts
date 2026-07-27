@@ -26,6 +26,23 @@ export * from "./uds-client/ensure-supervisor.js";
 export * from "./gateway-mcp/registry.js";
 export * from "./gateway-mcp/build-tool-registry.js";
 
+/**
+ * Re-exported so this barrel's gateway surface is USABLE, not merely
+ * present. `buildRealGatewayToolRegistry` above produces a
+ * `GatewayToolRegistry`, and the only thing to do with one is serve it —
+ * which `cli-entry.ts` itself does, pairing the two on one line.
+ *
+ * A consumer previously had to reach into `@crabgic/gateway` for the other
+ * half, and that stopped working once this package began publishing bundled
+ * declarations: `GatewayToolRegistry` is a class with a `#private` field, so
+ * the inlined declaration and `@crabgic/gateway`'s own are NOMINALLY
+ * distinct and structural typing cannot bridge them ("Property '#private' …
+ * refers to a different member"). Exporting both halves from one module is
+ * what makes the pair type-compatible for anyone outside this monorepo — the
+ * published package cannot hand out a registry it gives no way to use.
+ */
+export { connectGatewayMcpStdio } from "@crabgic/gateway";
+
 // ---- Approval-token minting primitive + terminal prompt (Interfaces produced item 6) ----
 export * from "./approval/token.js";
 export * from "./approval/prompt.js";

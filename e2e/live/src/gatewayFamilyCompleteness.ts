@@ -26,8 +26,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PassThrough } from "node:stream";
-import { connectGatewayMcpStdio } from "@crabgic/gateway";
-import { buildRealGatewayToolRegistry } from "crabgic";
+// BOTH from the published barrel, deliberately. `GatewayToolRegistry` is a
+// class with a `#private` field, so the declaration bundled into `crabgic`
+// and `@crabgic/gateway`'s own are nominally distinct — mixing the two
+// sources here failed with "Property '#private' … refers to a different
+// member". Taking the pair from one module is also what a real consumer of
+// the published package must do.
+import { buildRealGatewayToolRegistry, connectGatewayMcpStdio } from "crabgic";
 
 export type GatewayFamily =
   | "tracker"
