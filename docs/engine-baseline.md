@@ -290,11 +290,14 @@ Re-run the full probe suite (`spikes/README.md` procedure) and update this docum
 - The `enabledPlugins` settings-key format (§12) or the `<plugin-name>@<marketplace-name>` composition it depends on.
 - **(added 2026-07-25; CORRECTED same day)** The setup-dependent matching of path-scoped permission rules (§14) — **both** of §14's observations are invalidation-relevant, in opposite directions. If the compiled profile's owned-path anchoring stops scoping (§14.2's in-path-allowed / one-directory-up-denied split no longer reproduces), phase 03's compiler and phase 06's containment story lose the mechanism they currently rest on and must both be re-derived. If an ISOLATED `Write(<path-pattern>)`/`Edit(<path-pattern>)` rule in §14.1's setup starts matching, that is a capability appearing rather than disappearing, and it would also collapse the divergence §14.3 leaves undetermined — which is a finding in its own right. This bullet previously read "the non-matching of path-scoped permission rules"; that framing came from the over-broad conclusion §14 has since retracted.
 - **(added 2026-07-25)** The `--allowedTools`/`--allowed-tools` argument arity on the CLI (§15) — if the flag stops being declared `<tools...>` (variadic), argv builders that currently use the `=` form to protect a trailing positional prompt can be simplified, and any that rely on the space-separated form swallowing operands would break.
+- **(added 2026-07-27)** The status-line payload contract (§17.1 — member names, the nullability of `context_window.used_percentage`, the absence of `effort` on non-effort models, `rate_limits`' subscription/first-response preconditions, epoch-seconds `resets_at`), the plugin manifest's lack of a `statusLine` key (§17.2), or the availability of `${CLAUDE_PLUGIN_ROOT}`/`$CLAUDE_PROJECT_DIR` in a `settings.json` command (§17.3). Phase 10's installer writes a `statusLine` entry that depends on all three. **This item is binary-sourced and documentation-corroborated, not probe-verified** (§17).
 - **(added 2026-07-27)** The plugin version-resolution order (§16) — if `plugin.json` stops silently outranking the marketplace entry's `version`, or the precedence chain gains/loses a level, then phase 10's manifest may declare a version again and `packages/plugin/src/plugin-manifest-version.test.ts` must be re-derived. **This item is documentation-sourced, not probe-verified** (§16); it is the weakest-evidence entry on this list.
 
 ---
 
 ## 11. NEEDS_ORCHESTRATOR
+
+- **Status-line payload live verification (§17): OWED, non-blocking.** §17's contract is a static read of the 2.1.220 binary corroborated by the vendor reference, not an observed payload. Owed: configure `statusLine` in a scratch project, capture the real stdin JSON across a cold session and a post-first-response one, and confirm `CLAUDE_PROJECT_DIR` is exported into the command's environment. Not blocking — the consumer degrades safely if the environment half is wrong (§17.3).
 
 - **Auth token path (§1): RESOLVED 2026-07-24 — no longer blocking.** The owner populated `~/.claude/.eo-oauth-token` out-of-band since the original pass; `spikes/01-auth.mjs` picked it up with no code change (beyond the $HOME-leak sanitization fix, §1) and both auth mechanisms now PASS.
 - **Tool-taxonomy (§4): RESOLVED — no longer blocking phase 03.** The `Agent` rule name aliases the live `Task` tool literal; deny enforcement is fail-closed catalog-removal; env-contamination hypothesis refuted; SDK and CLI transports identical. **The residual "clean non-dev-workstation install" mitigation is now also satisfied**: the 2026-07-24 re-baseline explicitly re-captured the catalog on this same host at a different engine version (2.1.218 vs the original 2.1.210) and it was still byte-identical across both SDK-env variants and the CLI transport (§4.4) — this is the strongest evidence available short of a literally different machine, and closes the open mitigation for this baseline's purposes.
@@ -444,3 +447,49 @@ Setting `version` **pins** the plugin: users receive an update only when that st
 **Evidence caveat (load-bearing):** this fact comes from the vendor's published plugin-marketplace reference, read 2026-07-27, **not** from a spike, a live probe, or a package-level live test — unlike §12 (live-verified at 2.1.218) and §15 (verified against a real `--help` at 2.1.220). No `spikes/0N-*.mjs` probes it. A live verification — install the plugin from a scratch marketplace at a known manifest/entry version pair and read back the resolved version — is **OWED** and belongs on §11's list. Until then, treat §16 as the documented contract rather than an observed one. The remediation it motivated is safe in either direction: removing a redundant `version` from the manifest cannot pin users worse than declaring `0.0.0` did, whichever way precedence actually runs.
 
 **Invalidation trigger (also listed in §10):** any change to the precedence chain, or to the silent-override behavior when both files declare a version.
+
+---
+
+## 17. Status-line payload contract and its two distribution constraints (2026-07-27)
+
+**Added 2026-07-27. BINARY-SOURCED + DOCUMENTATION-CORROBORATED, not probe-verified** — read the evidence caveat below before relying on this the way §1–§9's live verdicts can be relied on.
+
+**Source of the fact:** the payload builder was read directly out of the installed CLI binary at **2.1.220** (`~/.local/share/claude/versions/2.1.220`, the same `PATH` binary §15 was read from), and every field below was then cross-checked against the vendor's published status-line reference. The two agree field-for-field.
+
+### 17.1 The payload
+
+Claude Code spawns the configured `statusLine.command` through a shell and pipes one JSON object on stdin. The members this repository consumes:
+
+| Member                                        | Shape                                   | Notes                                                                                                                                                             |
+| --------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model.display_name`                          | string                                  | e.g. `"Claude Opus 5 (1M context)"`.                                                                                                                              |
+| `effort.level`                                | `low`\|`medium`\|`high`\|`xhigh`\|`max` | **The whole `effort` object is ABSENT** when the current model does not support the reasoning-effort parameter. Ultracode reports as `xhigh`.                     |
+| `context_window.used_percentage`              | number \| **null**                      | Pre-computed, input-only (`input + cache_creation + cache_read`; excludes output). `null` before the first API response of a session, and again after `/compact`. |
+| `context_window.context_window_size`          | number                                  | 200000, or 1000000 on extended-context models.                                                                                                                    |
+| `rate_limits.five_hour.used_percentage`       | number 0–100                            | Derived from the `anthropic-ratelimit-unified-5h-utilization` response header (`utilization × 100`).                                                              |
+| `rate_limits.seven_day.used_percentage`       | number 0–100                            | Likewise from `-7d-`.                                                                                                                                             |
+| `rate_limits.{five_hour,seven_day}.resets_at` | number                                  | Unix epoch **seconds**.                                                                                                                                           |
+| `workspace.current_dir`, `cwd`                | string                                  | Session working directory.                                                                                                                                        |
+| `workspace.repo`                              | `{host, owner, name}`                   | Parsed from the git remote URL.                                                                                                                                   |
+| `worktree.branch`                             | string                                  | Present only inside a git worktree.                                                                                                                               |
+| `fast_mode`, `thinking.enabled`               | boolean                                 |                                                                                                                                                                   |
+
+**`rate_limits` is absent entirely** until the first API response of the session populates the header cache, and exists only for Claude.ai subscription auth. Each of `five_hour`/`seven_day` may be independently absent.
+
+**THE GIT BRANCH IS NOT IN THE PAYLOAD.** `workspace.repo` carries only host/owner/name, and `worktree.branch` only populates inside a worktree. An ordinary branch name must be read from `git` by the status-line script itself.
+
+`statusLine` settings shape: `{type: "command", command: string, padding?: number, refreshInterval?: number (min 1, seconds), hideVimModeIndicator?: boolean}`. There is **no `args` (exec) form** for `statusLine` — unlike hooks, it is shell-form only. Output is re-rendered on model/permission/token change with a 300ms debounce, plus the `refreshInterval` timer; stdout is split on newlines and each line rendered `dimColor` + truncate, so ANSI colour passes through but is composed with the engine's own dim attribute.
+
+### 17.2 Constraint 1 — a plugin cannot register a status line
+
+The plugin manifest schema at 2.1.220 accepts `commands`, `agents`, `skills`, `hooks`, `mcpServers` and `lspServers`. **It has no `statusLine` key.** `statusLine` exists only in `settings.json`, so a status line cannot be distributed the way the rest of this plugin's behaviour is — it has to be written into the consuming project's settings by the installer.
+
+### 17.3 Constraint 2 — `${CLAUDE_PLUGIN_ROOT}` is rejected in `settings.json`
+
+Placeholder substitution is applied to plugin-sourced config only. A `settings.json` command containing `${CLAUDE_PLUGIN_ROOT}` does not silently fail to expand — the engine **throws**, with the message `Hook command references ${CLAUDE_PLUGIN_ROOT} but the hook is not associated with a plugin. This variable is only available in hooks defined in a plugin's hooks/hooks.json file, not in settings.json.` `${CLAUDE_PROJECT_DIR}` **is** available: the same helper-exec path that runs hooks runs the status line, and it exports `CLAUDE_PROJECT_DIR` into the child environment.
+
+**Consumer:** `packages/plugin/statusline/crabgic-statusline.mjs` reads the payload; `packages/cli/src/installer/statusline-writer.ts` copies it to `.claude/crabgic-statusline.mjs` in the target project and registers it via `$CLAUDE_PROJECT_DIR` (never `${CLAUDE_PLUGIN_ROOT}`, per §17.3) with a `:-.` cwd fallback. Both cite this section.
+
+**Evidence caveat (load-bearing):** no `spikes/0N-*.mjs` probes this, and no live session was driven with a configured `statusLine` to observe a real payload end-to-end. §17.1's field list is a static read of the 2.1.220 binary plus the vendor reference; §17.2 is a static read of the manifest schema; §17.3's error string is quoted from the binary, not observed being thrown. A live verification — configure the status line in a scratch project, capture the actual stdin JSON, and confirm `CLAUDE_PROJECT_DIR` is exported to it — is **OWED** and belongs on §11's list. The consumer is written to be safe if §17.3's environment half turns out to be wrong: the `${CLAUDE_PROJECT_DIR:-.}` form degrades to the session cwd, which is the project directory in the ordinary case.
+
+**Invalidation trigger (also listed in §10):** any member in §17.1 changing name/shape/nullability; `rate_limits` becoming available without an API response; the plugin manifest gaining a `statusLine` key (§17.2); or `${CLAUDE_PLUGIN_ROOT}`/`$CLAUDE_PROJECT_DIR` availability in `settings.json` commands changing (§17.3).

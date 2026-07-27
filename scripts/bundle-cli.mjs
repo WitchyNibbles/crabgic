@@ -86,7 +86,14 @@ export const EXTERNAL_DEPENDENCIES = [
  * `marketplace.json`, which CITES that digest — but the trust-pin check
  * still needs to read it, so it ships too.
  */
-const PLUGIN_ASSET_ENTRIES = ["agents", "hooks", "skills", ".mcp.json", ".claude-plugin"];
+const PLUGIN_ASSET_ENTRIES = [
+  "agents",
+  "hooks",
+  "skills",
+  "statusline",
+  ".mcp.json",
+  ".claude-plugin",
+];
 
 async function main() {
   // Wipe everything EXCEPT the two artifacts this script does not own.

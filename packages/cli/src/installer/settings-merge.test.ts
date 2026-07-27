@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { mergeSettingsJson } from "./settings-merge.js";
+import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
 
 const PLUGIN = "crabgic";
 
+/** Every add-only key already at its installed value — the "nothing left to add" fixture. */
+const FULLY_INSTALLED = {
+  attribution: { commit: "", pr: "" },
+  sessionUrl: false,
+  statusLine: { ...STATUSLINE_SETTINGS_ENTRY },
+};
+
 describe("mergeSettingsJson — add-only defaults", () => {
-  it("adds attribution, sessionUrl, and enabledPlugins to a brand-new (empty) settings object", () => {
+  it("adds attribution, sessionUrl, statusLine, and enabledPlugins to a brand-new (empty) settings object", () => {
     const result = mergeSettingsJson({}, PLUGIN);
     expect(result.changed).toBe(true);
     expect(result.settings).toEqual({
-      attribution: { commit: "", pr: "" },
-      sessionUrl: false,
+      ...FULLY_INSTALLED,
       enabledPlugins: { [PLUGIN]: true },
     });
   });
@@ -29,6 +36,25 @@ describe("mergeSettingsJson — monotonicity: never touches a key already presen
     expect(result.settings.attribution).toEqual({ commit: "abc123", pr: "42" });
   });
 
+  it("never replaces a status line the user already configured", () => {
+    // Overwriting someone's own status line is the display-layer equivalent
+    // of loosening a key they set deliberately: it silently removes output
+    // they chose to see.
+    const existing = { statusLine: { type: "command", command: "~/bin/my-own-statusline.sh" } };
+    const result = mergeSettingsJson(existing, PLUGIN);
+    expect(result.settings.statusLine).toEqual({
+      type: "command",
+      command: "~/bin/my-own-statusline.sh",
+    });
+  });
+
+  it("never revives a status line the user deliberately blanked out or disabled", () => {
+    for (const disabled of [null, false, {}]) {
+      const result = mergeSettingsJson({ statusLine: disabled }, PLUGIN);
+      expect(result.settings.statusLine).toEqual(disabled);
+    }
+  });
+
   it("never overwrites a pre-existing sessionUrl value", () => {
     const existing = { sessionUrl: true };
     const result = mergeSettingsJson(existing, PLUGIN);
@@ -46,8 +72,7 @@ describe("mergeSettingsJson — monotonicity: never touches a key already presen
 
   it("never re-enables this plugin's own enabledPlugins entry if the user explicitly disabled it (security: a crafted attempt to widen enabledPlugins is rejected)", () => {
     const existing = {
-      attribution: { commit: "", pr: "" },
-      sessionUrl: false,
+      ...FULLY_INSTALLED,
       enabledPlugins: { [PLUGIN]: false },
     };
     const result = mergeSettingsJson(existing, PLUGIN);
@@ -58,8 +83,7 @@ describe("mergeSettingsJson — monotonicity: never touches a key already presen
 
   it("ADVERSARIAL-REVIEW REGRESSION (2026-07-24, CONFIRMED): never clobbers a present-but-non-object enabledPlugins value (a string)", () => {
     const existing = {
-      attribution: { commit: "", pr: "" },
-      sessionUrl: false,
+      ...FULLY_INSTALLED,
       enabledPlugins: "foo",
     };
     const result = mergeSettingsJson(existing, PLUGIN);

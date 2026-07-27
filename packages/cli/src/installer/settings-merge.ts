@@ -9,6 +9,8 @@
  * trivially satisfies "never loosen a security key already present" because
  * this code never writes to one.
  */
+import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
+
 export interface SettingsMergeResult {
   readonly settings: Record<string, unknown>;
   readonly changed: boolean;
@@ -32,6 +34,16 @@ export function mergeSettingsJson(
   }
   if (!("sessionUrl" in merged)) {
     merged.sessionUrl = false;
+    changed = true;
+  }
+
+  // The status line (`./statusline-writer.ts`). Add-only on exactly the same
+  // terms as the keys above: a user who already configured a `statusLine` —
+  // their own script, or a disabled/blank one — keeps it untouched, because
+  // silently replacing someone's status line is the display equivalent of
+  // loosening a key they set deliberately.
+  if (!("statusLine" in merged)) {
+    merged.statusLine = { ...STATUSLINE_SETTINGS_ENTRY };
     changed = true;
   }
 

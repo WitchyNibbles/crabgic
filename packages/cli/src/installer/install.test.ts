@@ -2,11 +2,13 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { ENABLED_PLUGIN_KEY } from "@crabgic/plugin";
 import { runInstall } from "./install.js";
 import { readInstallState } from "./state-store.js";
+import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
 import type { InstallerDependencies } from "./types.js";
 
 const dirs: string[] = [];
@@ -44,6 +46,40 @@ describe("runInstall — basic writes", () => {
     expect(existsSync(join(dir, ".mcp.json"))).toBe(true);
     expect(existsSync(join(dir, ".claude", "agents", "eo-explore.md"))).toBe(true);
     expect(existsSync(join(dir, ".claude", "agents", "eo-reviewer.md"))).toBe(true);
+    expect(existsSync(join(dir, ".claude", "crabgic-statusline.mjs"))).toBe(true);
+  });
+
+  it("registers the installed status-line script in settings.json, at the path it actually wrote it to", async () => {
+    const dir = await makeTmpDir();
+    await runInstall(deps(dir), { dryRun: false });
+    const settings = JSON.parse(await readFile(join(dir, ".claude", "settings.json"), "utf8"));
+    expect(settings.statusLine).toEqual({ ...STATUSLINE_SETTINGS_ENTRY });
+    // The registered command must resolve to the file the installer wrote —
+    // a status line pointing at a missing script renders nothing at all.
+    const scriptPath = join(dir, ".claude", "crabgic-statusline.mjs");
+    expect(existsSync(scriptPath)).toBe(true);
+    expect(settings.statusLine.command).toContain(".claude/crabgic-statusline.mjs");
+  });
+
+  it("renders a real status line end-to-end from the copy it installed", async () => {
+    const dir = await makeTmpDir();
+    await runInstall(deps(dir), { dryRun: false });
+    const { renderStatusLine } = await import(
+      pathToFileURL(join(dir, ".claude", "crabgic-statusline.mjs")).href
+    );
+    const line = renderStatusLine(
+      {
+        model: { display_name: "Claude Opus 5 (1M context)" },
+        context_window: { used_percentage: 38 },
+        effort: { level: "high" },
+        rate_limits: {
+          five_hour: { used_percentage: 24 },
+          seven_day: { used_percentage: 41 },
+        },
+      },
+      { color: false, git: { branch: "main", dirty: false }, nowMs: 0 },
+    );
+    expect(line).toBe("🦀 Opus 5 1M·hi │ ⎇ main │ ▰▰▰▰▱▱▱▱▱▱ 38% │ 🕐 24% │ 📅 41%");
   });
 
   it("writes a .mcp.json whose entry is keyed GATEWAY_MCP_SERVER_NAME with the exact gateway command", async () => {
@@ -69,7 +105,9 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const state = await readInstallState(dir);
     expect(state?.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
-    expect(state?.artifacts).toHaveLength(5);
+    // CLAUDE.md, .claude/settings.json, .mcp.json, two eo-* subagents, and
+    // the status-line script.
+    expect(state?.artifacts).toHaveLength(6);
   });
 
   it("writes enabledPlugins keyed by the LIVE-VERIFIED <plugin-name>@<marketplace-name> format, not the bare plugin name", async () => {

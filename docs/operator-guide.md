@@ -13,11 +13,24 @@ crabgic install [--dry-run] [--json]
 
 Scaffolds the plugin/managed configuration into the current project: the `CLAUDE.md` managed
 block, `.claude/settings.json` add-only keys (attribution suppression,
-`enabledPlugins`), `.claude/agents/eo-*.md`, and a project-scope `.mcp.json` entry for the
+`enabledPlugins`, `statusLine`), `.claude/agents/eo-*.md`,
+`.claude/crabgic-statusline.mjs`, and a project-scope `.mcp.json` entry for the
 gateway MCP server. The merge is **add-only**: every user-added key already present is
 byte-preserved, and a security-relevant key already present is never loosened
 (`docs/evidence/phase-10/README.md`, property-tested over a fuzzed fixture corpus). Run
 `--dry-run --json` first to inspect what would change before committing to it.
+
+The status line renders the model and its reasoning effort, the current branch and
+dirty flag, session context-window usage, and the 5-hour and weekly subscription usage
+windows. It is registered as
+`node "${CLAUDE_PROJECT_DIR:-.}/.claude/crabgic-statusline.mjs"` rather than an absolute
+path, so a committed `.claude/settings.json` stays portable across machines. Two engine
+constraints force this shape and are recorded in `docs/engine-baseline.md` §17: the
+plugin manifest has no `statusLine` key, and a `settings.json` command referencing
+`${CLAUDE_PLUGIN_ROOT}` is rejected outright. The two usage segments render only for
+Claude.ai subscription auth, and only after the session's first API response populates
+the rate-limit headers. `CRABGIC_STATUSLINE_ASCII=1` selects plain glyphs; `NO_COLOR`
+is honoured.
 
 Distribution is via a SHA-pinned marketplace listing or a digest-pinned vendored plugin
 directory; the plugin bundle itself passes the capability-quarantine pipeline (12) before

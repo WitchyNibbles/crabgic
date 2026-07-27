@@ -45,7 +45,8 @@ until the gates say so, and every decision leaves an `EvidenceRecord` behind. �
 npm install -g crabgic
 
 # 2. set up this project — writes a managed CLAUDE.md block,
-#    .claude/settings.json keys, the eo-* subagents and the gateway MCP entry
+#    .claude/settings.json keys, the eo-* subagents, the status line
+#    and the gateway MCP entry
 cd your-project
 crabgic install            # add --dry-run first if you like to look before you leap 👀
 
@@ -66,6 +67,37 @@ crabgic evidence <change-set-id>    # 📜 what it did and why you should believ
 > 🦀 **Crab tip:** `crabgic install` is add-only and byte-preserving. It never runs
 > `git add` or `git commit` for you, and `git init` on a non-repo is gated behind an
 > explicit approval.
+
+## 📊 The status line
+
+`crabgic install` also drops a status line into your Claude Code session, so the
+numbers that decide whether you should keep going are always on screen:
+
+```text
+🦀 Opus 5 1M·hi │ ⎇ main* │ ▰▰▰▰▱▱▱▱▱▱ 38% │ 🕐 24% │ 📅 41%
+```
+
+| Segment | What it is |
+| --- | --- |
+| `🦀 Opus 5 1M·hi` | Model and its reasoning effort (`lo`/`md`/`hi`/`xh`/`max`); `⚡` marks fast mode |
+| `⎇ main*` | Current branch — `*` means the working tree is dirty |
+| `▰▰▰▰▱▱▱▱▱▱ 38%` | Session context window used |
+| `🕐 24%` | 5-hour usage limit consumed |
+| `📅 41%` | Weekly usage limit consumed |
+
+All three meters share one green → amber → red scale. Once a usage window passes
+80% it also shows how long until it resets (`🕐 87%↻1h16m`) — before that the
+countdown stays out of the way.
+
+A few things worth knowing:
+
+- **The two usage segments appear once your session makes its first request.** Claude
+  Code only learns your limits from a response header, and only for Claude.ai
+  subscriptions — so a brand-new session, or an API-key session, shows neither.
+- **It never overwrites a status line you already have.** Like every other key the
+  installer touches, `statusLine` is add-only: if you configured your own, yours stays.
+- **No emoji in your font?** Set `CRABGIC_STATUSLINE_ASCII=1` for a plain-glyph line.
+  `NO_COLOR` is honoured too.
 
 ## 🎩 Driving it from inside Claude Code
 

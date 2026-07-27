@@ -90,7 +90,13 @@ export default defineConfig({
       provider: "v8",
       enabled: true,
       reporter: ["text", "lcov", "html"],
-      include: ["packages/*/src/**/*.ts", "e2e/report/src/**/*.ts"],
+      // `packages/*/statusline/*.mjs` is the plugin's status-line renderer.
+      // It lives outside `src/` and ships as an uncompiled `.mjs` data asset
+      // (same reasoning as `hooks/*.mjs`: the engine re-runs it on every
+      // token change, so bundle-load time is on the hot path). Naming it
+      // explicitly here keeps it inside the 80% gate's denominator rather
+      // than silently exempt the way the hooks are.
+      include: ["packages/*/src/**/*.ts", "packages/*/statusline/*.mjs", "e2e/report/src/**/*.ts"],
       // `src/live/**` is exercised only by the `@live` engine suite (real
       // engine required), so it is exempt from the default-gate coverage
       // denominator the same way the live tests themselves are excluded.

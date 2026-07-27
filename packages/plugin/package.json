@@ -2,7 +2,7 @@
   "name": "@crabgic/plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "Claude Code plugin: skills, subagents, advisory hooks, gateway MCP registration reference (roadmap/10-plugin-and-installer.md).",
+  "description": "Claude Code plugin: skills, subagents, advisory hooks, status line, gateway MCP registration reference (roadmap/10-plugin-and-installer.md).",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -25,7 +25,8 @@
     ".mcp.json",
     "skills",
     "agents",
-    "hooks"
+    "hooks",
+    "statusline"
   ],
   "scripts": {
     "build": "tsc -b"
