@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   draftChangelog,
+  isPlaceholderChangelogDraft,
   parseChangesetFile,
   readChangesetEntries,
 } from "./changelogDraftPreparer.js";
@@ -120,17 +121,57 @@ describe("draftChangelog — unit", () => {
 });
 
 describe("readChangesetEntries + draftChangelog — genuine integration (this repo's own real .changeset/ directory)", () => {
-  it("reflects today's real state: zero real changesets recorded yet, so the draft is an honest header-only placeholder", async () => {
+  /**
+   * This assertion deliberately covers BOTH states of the real directory
+   * rather than pinning the one that happened to hold when it was written.
+   *
+   * It originally asserted `entries` was exactly `[]` — "zero real changesets
+   * recorded yet". That is a snapshot of a moment, not an invariant: the
+   * moment anyone does the right thing and records a changeset for a feature,
+   * a green suite turns red for a reason that has nothing to do with the code
+   * under test. (It did, on the status-line change.) What this test is really
+   * for is that `readChangesetEntries` reads THIS repo's own directory and
+   * `draftChangelog` turns whatever it finds into a coherent draft — and that
+   * holds either way, so that is what is asserted.
+   */
+  it("drafts from whatever is really recorded in .changeset/, in either state", async () => {
     const repoRoot = (
       await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
     ).stdout.trim();
     const changesetDir = resolve(repoRoot, ".changeset");
 
     const entries = readChangesetEntries(changesetDir);
-    expect(entries).toEqual([]);
-
     const draft = draftChangelog({ version: "1.0.0", entries });
     expect(draft).toContain("## 1.0.0");
-    expect(draft).toContain("No `.changeset/*.md` entries were recorded");
+
+    if (entries.length === 0) {
+      // Nothing recorded — the draft must say so rather than fabricate notes.
+      expect(isPlaceholderChangelogDraft(draft)).toBe(true);
+      return;
+    }
+
+    // Something recorded — every real entry reaches the draft, and the
+    // placeholder sentence must not survive alongside real notes.
+    expect(isPlaceholderChangelogDraft(draft)).toBe(false);
+    for (const entry of entries) {
+      if (entry.summary.length === 0) continue;
+      // Summaries are newline-collapsed into a single bullet, so the first
+      // line is what identifies the entry in the rendered draft.
+      expect(draft).toContain(entry.summary.split("\n")[0]!.trim());
+      for (const bump of entry.packages) {
+        expect(draft).toContain(`${bump.packageName}: ${bump.bump}`);
+      }
+    }
+  });
+
+  it("ignores the changesets scaffolding, counting only real entries", async () => {
+    const repoRoot = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
+    ).stdout.trim();
+    const entries = readChangesetEntries(resolve(repoRoot, ".changeset"));
+    // `README.md` (scaffolded doc) and `config.json` (not markdown) are never
+    // changesets, whatever else the directory happens to hold.
+    expect(entries.map((e) => e.filename)).not.toContain("README.md");
+    expect(entries.map((e) => e.filename)).not.toContain("config.json");
   });
 });
