@@ -11,7 +11,7 @@
       "name": "crabgic",
       "source": "./",
       "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "license": "Apache-2.0",
       "digest": "023a7b036fe447ce2f1f2699165aa5b2c58f5de05682a453fc9e79e148db539a",
       "displayName": "Crabgic",
@@ -31,7 +31,7 @@
         "grafana",
         "gateway"
       ],
-      "commit": "f72849dad86e0e0d2345f60a63e0686a2f1e7e97"
+      "commit": "45caff21c06df90114088b9129240841dcac08f6"
     }
   ]
 }
