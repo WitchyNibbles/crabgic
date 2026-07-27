@@ -290,6 +290,7 @@ Re-run the full probe suite (`spikes/README.md` procedure) and update this docum
 - The `enabledPlugins` settings-key format (§12) or the `<plugin-name>@<marketplace-name>` composition it depends on.
 - **(added 2026-07-25; CORRECTED same day)** The setup-dependent matching of path-scoped permission rules (§14) — **both** of §14's observations are invalidation-relevant, in opposite directions. If the compiled profile's owned-path anchoring stops scoping (§14.2's in-path-allowed / one-directory-up-denied split no longer reproduces), phase 03's compiler and phase 06's containment story lose the mechanism they currently rest on and must both be re-derived. If an ISOLATED `Write(<path-pattern>)`/`Edit(<path-pattern>)` rule in §14.1's setup starts matching, that is a capability appearing rather than disappearing, and it would also collapse the divergence §14.3 leaves undetermined — which is a finding in its own right. This bullet previously read "the non-matching of path-scoped permission rules"; that framing came from the over-broad conclusion §14 has since retracted.
 - **(added 2026-07-25)** The `--allowedTools`/`--allowed-tools` argument arity on the CLI (§15) — if the flag stops being declared `<tools...>` (variadic), argv builders that currently use the `=` form to protect a trailing positional prompt can be simplified, and any that rely on the space-separated form swallowing operands would break.
+- **(added 2026-07-27)** The plugin version-resolution order (§16) — if `plugin.json` stops silently outranking the marketplace entry's `version`, or the precedence chain gains/loses a level, then phase 10's manifest may declare a version again and `packages/plugin/src/plugin-manifest-version.test.ts` must be re-derived. **This item is documentation-sourced, not probe-verified** (§16); it is the weakest-evidence entry on this list.
 
 ---
 
@@ -421,3 +422,25 @@ Separating these is a NEW probe (one dimension at a time, deny-side and allow-si
 **Invalidation trigger (also listed in §10):** the flag ceasing to be declared variadic.
 
 No dedicated `spikes/0N-*.mjs` script probes §14 or §15 — both were established in package-level live tests during a round that deliberately re-ran no spike (§9), and are recorded here so they are citable per the project's ground rule without a detour through a phase-specific evidence file.
+
+---
+
+## 16. Plugin version resolution: `plugin.json` silently outranks the marketplace entry (2026-07-27)
+
+**Added 2026-07-27. DOCUMENTATION-SOURCED, not probe-verified** — read the evidence caveat below before relying on this the way §1–§9's live verdicts can be relied on.
+
+**Fact:** a plugin's effective version resolves in this order, highest first:
+
+1. `version` in the plugin's `.claude-plugin/plugin.json`
+2. `version` in the plugin's marketplace entry
+3. the git commit SHA of the plugin's source
+
+Setting `version` **pins** the plugin: users receive an update only when that string changes, so pushing new commits under an unchanged `version` delivers nothing to anyone already installed. Declaring it in **both** places is called out explicitly by the vendor reference as a mistake — "Claude Code always uses the `plugin.json` value without warning" — because the manifest wins silently and a stale manifest version therefore masks a correct marketplace entry.
+
+**Why this is recorded:** this repository shipped exactly that defect in `1.0.0` and `1.0.1`. `packages/plugin/.claude-plugin/plugin.json` declared `"version": "0.0.0"` (the workspace placeholder every private package here carries) while the marketplace entry declared the real release version. Per the resolution order above, every install of `crabgic@crabgic-marketplace` resolved to `0.0.0`, and no subsequent release would have reached an installed user. Nothing in the repository tested it, and this baseline did not record the fact, so no citation existed to check the manifest against.
+
+**Consumer:** `packages/plugin/.claude-plugin/plugin.json` now declares **no** `version` key, leaving the marketplace entry — which `e2e/release/src/marketplaceEntryPreparer.ts` recomputes at every release — as the sole declared version. `packages/plugin/src/plugin-manifest-version.test.ts` asserts the key's absence and cites this section.
+
+**Evidence caveat (load-bearing):** this fact comes from the vendor's published plugin-marketplace reference, read 2026-07-27, **not** from a spike, a live probe, or a package-level live test — unlike §12 (live-verified at 2.1.218) and §15 (verified against a real `--help` at 2.1.220). No `spikes/0N-*.mjs` probes it. A live verification — install the plugin from a scratch marketplace at a known manifest/entry version pair and read back the resolved version — is **OWED** and belongs on §11's list. Until then, treat §16 as the documented contract rather than an observed one. The remediation it motivated is safe in either direction: removing a redundant `version` from the manifest cannot pin users worse than declaring `0.0.0` did, whichever way precedence actually runs.
+
+**Invalidation trigger (also listed in §10):** any change to the precedence chain, or to the silent-override behavior when both files declare a version.

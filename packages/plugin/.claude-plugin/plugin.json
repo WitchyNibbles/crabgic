@@ -1,6 +1,5 @@
 {
   "name": "crabgic",
-  "version": "0.0.0",
   "description": "Crabgic — autonomous engineering orchestration for Claude Code. Wraps the crabgic CLI/gateway with slash commands, review subagents, and advisory hooks (roadmap/10-plugin-and-installer.md).",
   "license": "Apache-2.0",
   "author": { "name": "Crabgic" },
