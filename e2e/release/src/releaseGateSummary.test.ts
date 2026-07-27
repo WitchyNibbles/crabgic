@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
@@ -16,6 +17,12 @@ import { REBUILD_CHECKOUTS_ENV_VAR } from "./rebuildPopulator.js";
 import { createTestJournal, type TestJournal } from "./testJournal.js";
 
 const execFileAsync = promisify(execFile);
+
+/** The version this repository is actually preparing — `packages/cli/package.json`'s own, which is what `changeset version` bumps and what the tag/changelog/publication clauses are all cut against. */
+function releaseVersion(repoRoot: string): string {
+  const raw = readFileSync(resolve(repoRoot, "packages", "cli", "package.json"), "utf8");
+  return (JSON.parse(raw) as { readonly version: string }).version;
+}
 
 const PASSING_METADATA = {
   hasLicenseApache2: true,
@@ -283,7 +290,15 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
         cliPackageSubPath: "packages/cli",
         enginePackageSubPath: "packages/engine-claude",
         pluginRoot: resolve(repoRoot, "packages", "plugin"),
-        version: "1.0.0",
+        // THE VERSION ACTUALLY BEING RELEASED, read from the manifest rather
+        // than a literal. This used to be a hardcoded "1.0.0", so from 1.0.1
+        // onward the composed gate scored every candidate against the WRONG
+        // release: it looked for a `v1.0.0` tag and a `## 1.0.0` changelog
+        // entry while the repository was preparing something else entirely,
+        // and reported the resulting mismatches as release-blocking reasons.
+        // The clause it is meant to check — "does the repository evidence THE
+        // release it is cutting" — is only meaningful against the real one.
+        version: releaseVersion(repoRoot),
       });
 
       // Real, current facts this harness independently verifies and that
@@ -297,9 +312,14 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // NEVER a real publish — the invariant that holds on both sides of the
       // PREPARE-DON'T-PUBLISH latch, and the one that actually matters here.
       expect(result.publishDryRun.realPublishAttempted).toBe(false);
-      expect(result.marketplaceEntry.version).toBe("1.0.0");
-      expect(result.changelogDraft).toContain("## 1.0.0");
-      expect(result.tagScript).toContain("git tag -a 'v1.0.0'");
+      // Every prepared artifact names the version actually being released,
+      // not a literal — these three used to hardcode 1.0.0 alongside the
+      // input above, which is what let the mismatch go unnoticed from 1.0.1
+      // onward.
+      const version = releaseVersion(repoRoot);
+      expect(result.marketplaceEntry.version).toBe(version);
+      expect(result.changelogDraft).toContain(`## ${version}`);
+      expect(result.tagScript).toContain(`git tag -a 'v${version}'`);
 
       // ...and the clauses of the SAME exit criterion that are NOT met.
       // This item is FAIL today by design: making it green means cutting a
@@ -411,11 +431,19 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
         }
       }
       // Scored INDEPENDENTLY: the SDK-pin cross-check genuinely passed, so
-      // its own checklist item's evidence must stay green even though the
+      // its own checklist item's evidence must stay green even where the
       // composed reproducible-build verdict is a genuine FAIL. Emitting one
       // shared exit status would have turned engine-pin-recorded into a
       // false negative.
-      expect(byTag.get(REPRODUCIBLE_BUILD_GATE_TAG)).toBe(1);
+      //
+      // The reproducible-build status is asserted as the INVARIANT — the
+      // emitted exit status is the verdict — rather than pinned to 1. It used
+      // to be pinned, back when the clause was unsatisfiable by construction
+      // ("FAIL today by design"). It no longer is: on a properly cut release
+      // commit every clause can now be met, so hardcoding the failure would
+      // turn a correct green into a red the moment one is cut, and would hide
+      // a regression that flipped it back.
+      expect(byTag.get(REPRODUCIBLE_BUILD_GATE_TAG)).toBe(result.verdict === "PASS" ? 0 : 1);
       expect(byTag.get(ENGINE_PIN_RECORDED_GATE_TAG)).toBe(0);
       expect([...byTag.keys()].sort()).toEqual(
         [REPRODUCIBLE_BUILD_GATE_TAG, ENGINE_PIN_RECORDED_GATE_TAG].sort(),

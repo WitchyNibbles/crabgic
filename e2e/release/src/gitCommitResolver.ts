@@ -23,6 +23,50 @@ export type GitCommitResolver = (repoRoot: string, rev: string) => Promise<strin
  * points at rather than to the tag object's own id, so a tag and the
  * release-candidate object id are compared like for like.
  */
+/**
+ * Injectable seam over "which paths changed between these two commits, and
+ * is the first an ancestor of the second?" — needed by the marketplace-pin
+ * check to tell an entry pinned one commit behind the candidate (the
+ * unavoidable self-reference described in `./marketplacePinCheck.ts`) from
+ * one pinned at a genuinely different release.
+ *
+ * Resolves to the changed paths (repo-relative, POSIX separators), or
+ * `undefined` when `fromCommit` is NOT an ancestor of `toCommit` — including
+ * when either does not resolve. "Not an ancestor" is an ordinary reportable
+ * fact, never an exception, for the same reason as `GitCommitResolver`.
+ */
+export type GitChangedPathsResolver = (
+  repoRoot: string,
+  fromCommit: string,
+  toCommit: string,
+) => Promise<readonly string[] | undefined>;
+
+/** Real resolver: `git merge-base --is-ancestor` to establish direction, then `git diff --name-only from..to`. */
+export const realGitChangedPathsResolver: GitChangedPathsResolver = async (
+  repoRoot,
+  fromCommit,
+  toCommit,
+) => {
+  try {
+    // Ancestry FIRST: without it a pin at an unrelated or later commit would
+    // still produce a diff, and a diff alone says nothing about direction.
+    await execFile("git", ["merge-base", "--is-ancestor", fromCommit, toCommit], { cwd: repoRoot });
+    const { stdout } = await execFile(
+      "git",
+      ["diff", "--name-only", `${fromCommit}..${toCommit}`],
+      {
+        cwd: repoRoot,
+      },
+    );
+    return stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  } catch {
+    return undefined;
+  }
+};
+
 export const realGitCommitResolver: GitCommitResolver = async (repoRoot, rev) => {
   try {
     const { stdout } = await execFile(

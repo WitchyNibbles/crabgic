@@ -160,3 +160,81 @@ describe("checkMarketplacePin — this repo's own real, committed marketplace.js
     expect(result.reasons).toHaveLength(1);
   });
 });
+
+/**
+ * The release-cut self-reference: writing the pin CHANGES the commit, so the
+ * commit carrying the pin can never be the one the pin names. Under plain
+ * equality this clause was unsatisfiable and every release cut so far failed
+ * it for that reason alone. The rule is now "the pin names the candidate, OR
+ * an ancestor from which nothing the plugin distributes has changed".
+ */
+describe("checkMarketplacePin — the release-cut self-reference", () => {
+  const CANDIDATE = "c".repeat(40);
+  const PARENT = "d".repeat(40);
+
+  async function checkWithDiff(
+    changedPaths: readonly string[] | undefined,
+  ): ReturnType<typeof checkMarketplacePin> {
+    return checkMarketplacePin({
+      pluginRoot: await makePluginRoot(PARENT),
+      repoRoot: "/repo",
+      releaseCandidateObjectId: CANDIDATE,
+      resolveCommit: async () => PARENT,
+      resolveChangedPaths: async () => changedPaths,
+    });
+  }
+
+  it("accepts a pin one commit back when the only divergence is the marketplace entry itself", async () => {
+    const result = await checkWithDiff(["packages/plugin/.claude-plugin/marketplace.json"]);
+    expect(result.matchesReleaseCandidate).toBe(true);
+    expect(result.pinEquivalence).toBe("digest-neutral-ancestor");
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("records an exact pin distinctly from the tolerated one", async () => {
+    const result = await checkMarketplacePin({
+      pluginRoot: await makePluginRoot(CANDIDATE),
+      repoRoot: "/repo",
+      releaseCandidateObjectId: CANDIDATE,
+      resolveCommit: async () => CANDIDATE,
+      resolveChangedPaths: async () => {
+        throw new Error("must not be consulted when the pin is exact");
+      },
+    });
+    expect(result.pinEquivalence).toBe("exact");
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("REJECTS an ancestor whose range touches a packaged plugin file", async () => {
+    // A pin left at a previous release: the intervening range changed real
+    // distributed content, so the entry does not describe this candidate.
+    const result = await checkWithDiff([
+      "packages/plugin/.claude-plugin/marketplace.json",
+      "packages/plugin/statusline/crabgic-statusline.mjs",
+    ]);
+    expect(result.matchesReleaseCandidate).toBe(false);
+    expect(result.pinEquivalence).toBe("mismatched");
+    expect(result.reasons[0]).toContain("crabgic-statusline.mjs");
+  });
+
+  it("REJECTS an ancestor whose range touches anything outside the plugin", async () => {
+    const result = await checkWithDiff(["packages/cli/src/installer/install.ts"]);
+    expect(result.matchesReleaseCandidate).toBe(false);
+    expect(result.reasons[0]).toContain("install.ts");
+  });
+
+  it("REJECTS a pinned commit that is not an ancestor of the candidate", async () => {
+    const result = await checkWithDiff(undefined);
+    expect(result.matchesReleaseCandidate).toBe(false);
+    expect(result.reasons[0]).toContain("not an ancestor");
+  });
+
+  it("REJECTS an identical-tree commit rather than treating an empty diff as equivalence", async () => {
+    // An empty diff means the pin names a different commit with the same
+    // tree — a rewrite, not the release cut. Accepting it would let any
+    // cherry-pick or revert pair satisfy the clause.
+    const result = await checkWithDiff([]);
+    expect(result.matchesReleaseCandidate).toBe(false);
+    expect(result.reasons[0]).toContain("identical trees");
+  });
+});

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { realGitCommitResolver } from "./gitCommitResolver.js";
+import { realGitChangedPathsResolver, realGitCommitResolver } from "./gitCommitResolver.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,5 +51,48 @@ describe("realGitCommitResolver", () => {
     const dir = await mkdtemp(join(tmpdir(), "eo-git-commit-resolver-"));
     dirs.push(dir);
     await expect(realGitCommitResolver(dir, "HEAD")).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * `realGitChangedPathsResolver` against this repository's own real history —
+ * the seam the marketplace-pin check's self-reference tolerance rests on. A
+ * wrong answer here would either block every release or wave a stale pin
+ * through, so it is exercised against real commits rather than a fake.
+ */
+describe("realGitChangedPathsResolver — real git, this repository", () => {
+  let repoRoot: string;
+
+  beforeAll(async () => {
+    repoRoot = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
+    ).stdout.trim();
+  });
+
+  async function rev(ref: string): Promise<string> {
+    return (await execFileAsync("git", ["rev-parse", ref], { cwd: repoRoot })).stdout.trim();
+  }
+
+  it("lists the paths changed between a commit and its descendant", async () => {
+    const [parent, child] = [await rev("HEAD~1"), await rev("HEAD")];
+    const paths = await realGitChangedPathsResolver(repoRoot, parent, child);
+    expect(paths).toBeDefined();
+    expect(paths?.length).toBeGreaterThan(0);
+  });
+
+  it("returns undefined when the direction is reversed, so ancestry is genuinely enforced", async () => {
+    const [parent, child] = [await rev("HEAD~1"), await rev("HEAD")];
+    expect(await realGitChangedPathsResolver(repoRoot, child, parent)).toBeUndefined();
+  });
+
+  it("returns an empty list for a commit compared with itself", async () => {
+    const head = await rev("HEAD");
+    expect(await realGitChangedPathsResolver(repoRoot, head, head)).toEqual([]);
+  });
+
+  it("returns undefined for a commit that does not exist here", async () => {
+    expect(
+      await realGitChangedPathsResolver(repoRoot, "f".repeat(40), await rev("HEAD")),
+    ).toBeUndefined();
   });
 });
