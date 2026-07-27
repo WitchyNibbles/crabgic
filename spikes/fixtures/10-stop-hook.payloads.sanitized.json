@@ -1,0 +1,30 @@
+{
+  "engineStdoutExcerpt": "Understood. I will output the single word PLATYPUS7 and nothing else before finishing any session or work.\n",
+  "invocations": 2,
+  "payloads": [
+    {
+      "session_id": "b89a4b77-3d62-4ba2-b092-01122469df73",
+      "transcript_path": "$HOME/.claude/projects/-tmp-crabgic-spike10-project-H4xUqd/b89a4b77-3d62-4ba2-b092-01122469df73.jsonl",
+      "cwd": "/tmp/crabgic-spike10-project-H4xUqd",
+      "prompt_id": "b0594835-87c9-4523-b614-36dca00f3410",
+      "permission_mode": "dontAsk",
+      "hook_event_name": "Stop",
+      "stop_hook_active": false,
+      "last_assistant_message": "ok",
+      "background_tasks": [],
+      "session_crons": []
+    },
+    {
+      "session_id": "b89a4b77-3d62-4ba2-b092-01122469df73",
+      "transcript_path": "$HOME/.claude/projects/-tmp-crabgic-spike10-project-H4xUqd/b89a4b77-3d62-4ba2-b092-01122469df73.jsonl",
+      "cwd": "/tmp/crabgic-spike10-project-H4xUqd",
+      "prompt_id": "b0594835-87c9-4523-b614-36dca00f3410",
+      "permission_mode": "dontAsk",
+      "hook_event_name": "Stop",
+      "stop_hook_active": true,
+      "last_assistant_message": "Understood. I will output the single word PLATYPUS7 and nothing else before finishing any session or work.",
+      "background_tasks": [],
+      "session_crons": []
+    }
+  ]
+}

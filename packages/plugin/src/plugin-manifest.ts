@@ -18,6 +18,13 @@ export const REQUIRED_SKILL_NAMES = [
   "approve",
   "evidence",
   "connections",
+  // Added 2026-07-27 alongside the manager operating protocol (roadmap/10
+  // amendment). Carries the long-form rationale the always-loaded `CLAUDE.md`
+  // block is deliberately too small to hold; both render from
+  // `./manager-protocol.ts`. Model-invocable on purpose — it changes no state,
+  // and the manager needs to be able to reach it mid-run when it is unsure
+  // whether a situation is a real stop condition.
+  "protocol",
 ] as const;
 
 /** The two manager-side subagents roadmap/10 §Interfaces produced names verbatim. */

@@ -62,6 +62,7 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [14](#gap-14--minor-two-independent-xdg-cache-usages-with-no-shared-pinned-path-constant) | Two unpinned "XDG cache" usages | Pinned once in Phase 04, sibling to `$XDG_STATE_HOME` |
 | [15](#gap-15--minor-engine-live-ci-job-name-and-live-test-tag-never-explicitly-linked) | `engine-live`/`@live` link never stated | Phase 01 states Phase 06 wires it; Phase 06 does |
 | [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `CRABGIC_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
+| [17](#gap-17--the-manager-session-has-no-operating-protocol-and-manager-hooks-may-not-block) | Manager session has no operating protocol | Protocol owned by `@crabgic/plugin`'s `manager-protocol.ts`, always shipped in the `CLAUDE.md` managed block (additive to the `@AGENTS.md` bridge, never replaced by it); `Stop` may block via the autonomy gate, `PreToolUse` still may not |
 
 ---
 
@@ -879,6 +880,84 @@ code that implements it, and it must not be cited as settled authority against a
 1-15 can be. It is a **new** ruling and contradicts no ruling above —
 no existing entry names `docs/evidence/`, any `CRABGIC_*` variable, or a record-read failure mode. Gap 14 is the
 only adjacent entry and governs a disjoint (runtime-cache) path space, as part (1) states explicitly.
+
+---
+
+## Gap 17 — The manager session has no operating protocol, and manager hooks may not block
+
+**Origin:** Identified 2026-07-27 from **reported behavior in a consuming repo**, not from a roadmap
+read-through — like Gap 16, this entry carries its own provenance rather than a four-resolver record. The
+owner installed Crabgic into a real project and found the manager session (a) asking them to type "continue"
+after every step of the process, and (b) when it did have a genuine question, rendering the choices as a
+plain-text "option 1 / 2 / 3 / 4" list rather than using the engine's structured question tool.
+
+**Gap statement:** Nothing in the roadmap or in this ledger said what the manager session's *operating
+posture* is. The artifact that reaches it — the `CLAUDE.md` managed block written by
+`packages/cli/src/installer/claude-md.ts` — carried a capability list ("here are your slash commands, here
+are your subagents") and no instructions at all. With no instruction to the contrary a Claude Code session
+uses its conversational default and checks in after every step, which directly contradicts the product
+(README: "the design goal is full autonomy end to end. A human is required at exactly two blocking gates").
+Roadmap/11 names seven stop conditions that halt a run and no phase file mapped them onto anything the
+manager session can read; roadmap/10 scoped every manager hook as advisory, so no enforcement layer was
+available even in principle. Two further consequences were latent rather than theoretical: the block
+**collapsed to the bare line `@AGENTS.md`** whenever the target repo kept an `AGENTS.md`, deleting the
+capability list too; and nothing anywhere named the tool a manager should ask questions with.
+
+**Ruling:** Four parts.
+
+1. **One source of truth for the protocol text.** `@crabgic/plugin`'s `src/manager-protocol.ts` owns it, and
+   is the only place it is written. `buildManagerProtocolBlock()` renders the compact always-loaded form;
+   `skills/protocol/SKILL.md` carries the long-form rationale; `packages/cli`'s installer renders the block
+   into the managed `CLAUDE.md`. No phase restates the protocol in prose of its own. The seven stop
+   conditions in it are keyed by the supervisor's own `STOP_CONDITION_KINDS` strings, and
+   `packages/cli/src/installer/stop-condition-parity.test.ts` fails if the two lists ever drift.
+2. **The protocol always ships.** The `@AGENTS.md` bridge (adaptation §6.2) is now **additive**: the import
+   line still carries the target repo's own instructions exactly once, and Crabgic's block is emitted
+   alongside it rather than replaced by it. §6.2's "one source of truth per repo" argument is about not
+   duplicating *the repo's* content; Crabgic's protocol exists in no `AGENTS.md` and had no second source to
+   conflict with, so collapsing the block bought no de-duplication and cost the entire protocol.
+3. **`Stop` may block; `PreToolUse` still may not.** Roadmap/10's "advisory manager hooks ... non-blocking"
+   scope is amended for exactly one event. `hooks/stop-autonomy-gate.mjs` is a deliberately blocking `Stop`
+   hook: it refuses to end a turn while a run is in one of the six in-flight lifecycle states, and allows the
+   stop at `awaiting_approval` (a human gate is legitimately open) and at the four absorbing states. The
+   engine contract it rests on is `docs/engine-baseline.md` §19 — including §19.2's `stop_hook_active`
+   re-entry flag, which is the loop guard. `PreToolUse` remains forbidden in the manager context: blocking a
+   turn from *ending* is bounded, recoverable and loop-guarded; blocking arbitrary tool calls from a
+   user-editable settings scope is none of those, and stays 03/06's worker-context privilege.
+   `MANAGER_HOOK_EVENTS` in `src/hooks-manifest.ts` is the enforced allowlist (the old
+   `ADVISORY_ONLY_EVENTS` name is kept as a deprecated alias).
+4. **`AskUserQuestion` is how the manager asks.** Named as the tool for any decision put to the owner, with
+   its structured-option shape (up to 4 questions per call, 2-4 options each, engine-supplied "Other" and
+   free-text notes). Cited to `docs/engine-baseline.md` §18 — and because §18.2 records the tool's
+   *interactive* presence as an in-session observation rather than a probe result, the protocol text
+   **degrades gracefully**: if the tool is unavailable the instruction is one consolidated prose question,
+   never a step-by-step interrogation. No shipped behavior depends on §18.2 resolving PASS.
+
+**Rationale:** The two reported defects have one root cause — the manager was never told what it was — and
+one of them needed more than prose to fix. Parts 1 and 2 make the instruction exist and make it reliably
+arrive; part 3 makes the half that can be enforced deterministically actually enforced, because "be
+autonomous" is precisely the instruction a model under uncertainty will violate by being polite. Part 4 is
+separated from part 3 on purpose: it is a UX ruling resting on a weaker evidentiary base (§18.2), so it is
+written to fail soft, whereas part 3 rests on three PASS verdicts (§19) and is allowed to fail hard.
+
+The fail-open discipline in part 3 is not incidental. The gate runs on every session end in every project
+with the plugin installed, including projects that have never started a run. Every error path — no CLI, no
+supervisor, timeout, malformed JSON, unrecognized state — allows the stop. A false negative costs one
+unnecessary "continue"; a false positive costs the owner a session they cannot exit.
+
+**Phases affected:** `roadmap/10-plugin-and-installer.md` (owns the plugin, the installer, the managed block
+and the hooks — carries the scope amendment), `roadmap/11-intake-contract-approval.md` (owns the seven stop
+conditions and the approval flow the protocol describes).
+
+**Consumers in source today:** `packages/plugin/src/manager-protocol.ts`,
+`packages/plugin/skills/protocol/SKILL.md`, `packages/plugin/hooks/stop-autonomy-gate.mjs`,
+`packages/plugin/hooks/hooks.json`, `packages/plugin/src/hooks-manifest.ts`,
+`packages/cli/src/installer/claude-md.ts`, `packages/cli/src/uds-client/passive-mode.ts`.
+
+**Where this ruling could be got wrong later:** re-collapsing the managed block to the bare `@AGENTS.md`
+bridge "per adaptation §6.2" (part 2 exists because that reading is the live defect); or generalizing part 3
+into "manager hooks may block" and adding a `PreToolUse` hook to the plugin (part 3 is scoped to `Stop`
+alone, and deliberately).
 
 ---
 

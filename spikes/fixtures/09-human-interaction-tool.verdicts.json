@@ -1,0 +1,27 @@
+[
+  {
+    "probe": "human-interaction-tool.absent-headless-sdk",
+    "expectation": "the headless SDK tool catalog does NOT contain AskUserQuestion — a worker must be structurally unable to ask a human anything",
+    "observed": "sdk tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; AskUserQuestion present=false; engine=2.1.218",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "human-interaction-tool.absent-headless-cli",
+    "expectation": "the headless CLI tool catalog does NOT contain AskUserQuestion either — absence is an engine property of headless mode, not an SDK-transport artifact",
+    "observed": "cli tools (29): [\"Task\",\"Bash\",\"CronCreate\",\"CronDelete\",\"CronList\",\"DesignSync\",\"Edit\",\"EnterWorktree\",\"ExitWorktree\",\"Monitor\",\"NotebookEdit\",\"PushNotification\",\"Read\",\"RemoteTrigger\",\"ReportFindings\",\"ScheduleWakeup\",\"SendMessage\",\"Skill\",\"TaskCreate\",\"TaskGet\",\"TaskList\",\"TaskOutput\",\"TaskStop\",\"TaskUpdate\",\"ToolSearch\",\"WebFetch\",\"WebSearch\",\"Workflow\",\"Write\"]; AskUserQuestion present=false; engine=2.1.220; exit=0",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "human-interaction-tool.catalog-matches-baseline-4-4",
+    "expectation": "the headless catalog still equals the 29-tool list docs/engine-baseline.md §4.4 recorded (as a set) — so the absence asserted above is absence from a KNOWN catalog, not from a drifted one",
+    "observed": "sdk matches §4.4 set=true; cli matches §4.4 set=true; both equal the recorded 29-tool list",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "human-interaction-tool.present-interactive",
+    "expectation": "AskUserQuestion IS present in an INTERACTIVE (TUI) session, which is what the manager session runs as",
+    "observed": "NOT CAPTURED BY THIS SCRIPT. Interactive mode emits no `system/init` line (that is a --print/stream-json surface), so the technique probes A/B use does not apply. Two bounded attempts at driving a pty (`script -qec claude --debug api --debug-file ...`, once with the prompt as a positional arg and once submitting via a `\\r` on stdin) both produced a debug log with no outbound request payload: the `api` debug filter does not dump the `tools` array. A third data point exists but is NOT a fixture: in a live interactive Claude Code session on this host at engine 2.1.220, the tool is present and its input schema carries `questions[]` with `question`/`header`/`options[]`/`multiSelect`, options carrying `label`/`description`/optional `preview`, plus a top-level `annotations` map used to return the user's free-text notes per question. That is a first-party in-session observation, recorded in docs/engine-baseline.md, NOT committed evidence produced by this script.",
+    "verdict": "UNRESOLVED",
+    "note": "MITIGATION (non-blocking): capture the interactive catalog properly before it is ever load-bearing — e.g. a pty harness that reads the TUI's own tool-list surface, or an engine build that logs the request payload under a debug filter. NOT blocking today: the manager protocol that uses this tool is written to degrade gracefully (fall back to a single consolidated prose question when the tool is absent), so no shipped behavior depends on this probe resolving PASS."
+  }
+]

@@ -292,10 +292,14 @@ Re-run the full probe suite (`spikes/README.md` procedure) and update this docum
 - **(added 2026-07-25)** The `--allowedTools`/`--allowed-tools` argument arity on the CLI (§15) — if the flag stops being declared `<tools...>` (variadic), argv builders that currently use the `=` form to protect a trailing positional prompt can be simplified, and any that rely on the space-separated form swallowing operands would break.
 - **(added 2026-07-27)** The status-line payload contract (§17.1 — member names, the nullability of `context_window.used_percentage`, the absence of `effort` on non-effort models, `rate_limits`' subscription/first-response preconditions, epoch-seconds `resets_at`), the plugin manifest's lack of a `statusLine` key (§17.2), or the availability of `${CLAUDE_PLUGIN_ROOT}`/`$CLAUDE_PROJECT_DIR` in a `settings.json` command (§17.3). Phase 10's installer writes a `statusLine` entry that depends on all three. **This item is binary-sourced and documentation-corroborated, not probe-verified** (§17).
 - **(added 2026-07-27)** The plugin version-resolution order (§16) — if `plugin.json` stops silently outranking the marketplace entry's `version`, or the precedence chain gains/loses a level, then phase 10's manifest may declare a version again and `packages/plugin/src/plugin-manifest-version.test.ts` must be re-derived. **This item is documentation-sourced, not probe-verified** (§16); it is the weakest-evidence entry on this list.
+- **(added 2026-07-27)** The `Stop` hook control contract (§19) — `decision:"block"` ceasing to prevent a turn ending, `reason` ceasing to reach the model, the `Stop` payload losing `cwd`, or (**release-blocking**) `stop_hook_active` ceasing to be set on re-entry, which is the manager autonomy gate's loop guard.
+- **(added 2026-07-27)** `AskUserQuestion` appearing in the **headless** tool catalog on either transport (§18.1) — "a worker can never block a run waiting on a human" stops being true by construction and becomes dependent on the worker profile's allow-list alone; phase 06's profile must be re-checked. Also: the tool's input-schema shape changing (§18.2 — `questions[]`, `question`/`header`/`options[]`/`multiSelect`, option `label`/`description`/`preview`, or the `annotations` notes map), which is what the manager operating protocol's wording describes. **The absence half is probe-verified; the interactive-presence half is an in-session observation only** (§18.2).
 
 ---
 
 ## 11. NEEDS_ORCHESTRATOR
+
+- **Interactive-catalog capture of `AskUserQuestion` (§18.2): OWED, non-blocking.** §18.1's absence-from-headless half is probe-verified on both transports; the complementary "present in an interactive TUI session" half is an in-session observation, not a fixture, because interactive mode emits no `system/init` and the `api` debug filter does not dump the outbound `tools` array (two bounded pty attempts recorded in §18.2). Owed: a pty harness that reads the TUI's own tool-list surface. Not blocking — the manager operating protocol that uses the tool degrades gracefully to a single consolidated prose question if it is absent, so nothing shipped depends on this resolving PASS.
 
 - **Status-line payload live verification (§17): OWED, non-blocking.** §17's contract is a static read of the 2.1.220 binary corroborated by the vendor reference, not an observed payload. Owed: configure `statusLine` in a scratch project, capture the real stdin JSON across a cold session and a post-first-response one, and confirm `CLAUDE_PROJECT_DIR` is exported into the command's environment. Not blocking — the consumer degrades safely if the environment half is wrong (§17.3).
 
@@ -339,6 +343,8 @@ All paths relative to repo root. **Re-baseline note (2026-07-24):** every fixtur
 - `spikes/fixtures/06-sessions.verdicts.json`, `06-sessions.raw.sanitized.json`
 - `spikes/fixtures/07-ratelimit.verdicts.json`
 - `spikes/fixtures/08-tool-catalog-env.verdicts.json`, `08-tool-catalog-env.catalogs.sanitized.json`
+- `spikes/fixtures/09-human-interaction-tool.verdicts.json`, `09-human-interaction-tool.catalogs.sanitized.json` (added 2026-07-27, §18 — captured at 2.1.218/SDK + 2.1.220/CLI, NOT part of the 2026-07-24 re-baseline pass described above)
+- `spikes/fixtures/10-stop-hook.verdicts.json`, `10-stop-hook.payloads.sanitized.json` (added 2026-07-27, §19 — captured at 2.1.220/CLI; payload paths redacted to `$HOME` before the sanitization scan, since the fixture's value is the payload SHAPE, not the host's paths)
 
 Roadmap/00 work item 9 requires the fixture set to span five scenario classes. Coverage:
 
@@ -493,3 +499,82 @@ Placeholder substitution is applied to plugin-sourced config only. A `settings.j
 **Evidence caveat (load-bearing):** no `spikes/0N-*.mjs` probes this, and no live session was driven with a configured `statusLine` to observe a real payload end-to-end. §17.1's field list is a static read of the 2.1.220 binary plus the vendor reference; §17.2 is a static read of the manifest schema; §17.3's error string is quoted from the binary, not observed being thrown. A live verification — configure the status line in a scratch project, capture the actual stdin JSON, and confirm `CLAUDE_PROJECT_DIR` is exported to it — is **OWED** and belongs on §11's list. The consumer is written to be safe if §17.3's environment half turns out to be wrong: the `${CLAUDE_PROJECT_DIR:-.}` form degrades to the session cwd, which is the project directory in the ordinary case.
 
 **Invalidation trigger (also listed in §10):** any member in §17.1 changing name/shape/nullability; `rate_limits` becoming available without an API response; the plugin manifest gaining a `statusLine` key (§17.2); or `${CLAUDE_PLUGIN_ROOT}`/`$CLAUDE_PROJECT_DIR` availability in `settings.json` commands changing (§17.3).
+
+---
+
+## 18. The human-interaction tool surface — `AskUserQuestion` is INTERACTIVE-ONLY; it is absent from the headless catalog on both transports (2026-07-27)
+
+**Added 2026-07-27**, for the manager operating protocol (roadmap/10's managed `CLAUDE.md` block and Stop hook, roadmap/11's "irreducible product decision" stop condition). Producing script: `spikes/09-human-interaction-tool.mjs`. Fixtures: `spikes/fixtures/09-human-interaction-tool.verdicts.json`, `09-human-interaction-tool.catalogs.sanitized.json`.
+
+**Read the two halves separately — they have deliberately different evidentiary strength**, and only the first is scripted.
+
+### 18.1 Scripted and load-bearing: absent from the headless catalog, both transports
+
+At engine **2.1.218 (SDK transport) / 2.1.220 (CLI transport)** — the exact transport split this document's header describes, reproduced again here and therefore corroborating it — a headless session's tool catalog does **not** contain `AskUserQuestion`:
+
+| Probe                                                 | Transport                                                 | Catalog size | `AskUserQuestion` | Verdict                                                     |
+| ----------------------------------------------------- | --------------------------------------------------------- | ------------ | ----------------- | ----------------------------------------------------------- |
+| `human-interaction-tool.absent-headless-sdk`          | SDK (`query()`, the transport phase 06 spawns workers on) | 29           | **absent**        | **PASS**                                                    |
+| `human-interaction-tool.absent-headless-cli`          | CLI (`-p --output-format stream-json`)                    | 29           | **absent**        | **PASS**                                                    |
+| `human-interaction-tool.catalog-matches-baseline-4-4` | both                                                      | 29           | —                 | **PASS** (both equal §4.4's recorded 29-tool list as a set) |
+
+**Why this is the load-bearing half:** it is what makes "a worker can never block a run waiting on a human" true **by construction** rather than by policy. A headless worker has no such tool in its catalog to call, independent of its permission profile. The profile's `dontAsk` + explicit allow-list (§3) is then a second, redundant layer rather than the only one.
+
+The third probe is a drift guard: it re-asserts §4.4's 29-tool list, so that if the catalog ever changes, the failure surfaces here as well rather than silently changing _what_ `AskUserQuestion` is absent from. It passed, which additionally re-confirms §4.4's catalog unchanged at 2.1.220 on the CLI transport.
+
+**A FAIL on any of the three is a real regression**, and phase 06's worker profile must be re-checked before shipping: workers would still be blocked by the allow-list, but the by-construction guarantee would be gone.
+
+### 18.2 NOT scripted, UX-relevant only: presence in an interactive session
+
+The complementary claim — that `AskUserQuestion` **is** present in an **interactive (TUI)** session, which is what the manager session runs as — is recorded as **UNRESOLVED**, not PASS. `spikes/09` cannot capture it, and says so:
+
+- Interactive mode emits no `system/init` line; that is a `--print`/stream-json surface, so the technique §18.1's probes use does not apply.
+- Two bounded attempts at driving a pty (`script -qec "claude --debug api --debug-file …"`, once with the prompt as a positional argument and once submitting via a `\r` on stdin) both produced a debug log containing **no outbound request payload** — the `api` debug filter does not dump the `tools` array. The first attempt additionally confirmed an unrelated obstacle worth recording: in an untrusted directory the run stalls on the workspace-trust dialog and logs `Skipping SessionEnd:other hook execution - workspace trust not accepted`.
+
+What does exist is a **first-party in-session observation, which is NOT committed evidence**: in a live interactive Claude Code session on this host at engine 2.1.220, the tool is present, and its input schema carries `questions[]` (1–4 entries), each with `question`, `header` (≤12 chars), `options[]` (2–4 entries, each `label` + `description` + optional `preview`) and `multiSelect`; option sets are rendered by the TUI with an automatic "Other" escape hatch for free-text, and the user's per-question free-text notes come back in a top-level `annotations` map. This is recorded because it is the actual basis for the protocol's wording, and flagged because a reader must not mistake it for a probe result.
+
+**Consequence, deliberately bounded:** nothing shipped depends on §18.2 resolving PASS. The manager operating protocol that mandates this tool is written to **degrade gracefully** — if the tool is absent, the instruction is to fall back to a single consolidated prose question rather than to a step-by-step interrogation. That fallback is the behavior the protocol is trying to prevent in its _worst_ case, which keeps the failure mode no worse than today's.
+
+**MITIGATION (non-blocking, belongs on §11's owed list):** capture the interactive catalog properly before this fact is ever made load-bearing — a pty harness that reads the TUI's own tool-list surface, or an engine build that logs the request payload under a debug filter.
+
+### 18.3 Invalidation triggers (also listed in §10)
+
+- `AskUserQuestion` appearing in the **headless** catalog on either transport (§18.1 FAIL) — the by-construction guarantee is gone.
+- The `AskUserQuestion` **input schema** changing shape: `questions[]`, `question`/`header`/`options[]`/`multiSelect`, option `label`/`description`/`preview`, or the `annotations` notes map (§18.2).
+- The headless catalog drifting from §4.4's 29-tool list (already a §10 trigger; re-asserted by `human-interaction-tool.catalog-matches-baseline-4-4`).
+
+---
+
+## 19. The `Stop` hook control contract — a Stop hook CAN block a turn from ending, and `stop_hook_active` is the loop guard (2026-07-27)
+
+**Added 2026-07-27**, for the manager autonomy gate (`packages/plugin/hooks/stop-autonomy-gate.mjs`, roadmap/10 amendment). Producing script: `spikes/10-stop-hook.mjs`. Fixtures: `spikes/fixtures/10-stop-hook.verdicts.json`, `10-stop-hook.payloads.sanitized.json`. Verified at CLI engine **2.1.220**.
+
+**Why this needed its own probe.** The adaptation doc's hook analysis (§3.1) is entirely about **PreToolUse** — `permissionDecision`, exit-2-blocks-the-call, `updatedInput`. Nothing in it, and nothing previously in this baseline, says what a **`Stop`** hook can do. The autonomy gate's whole function is to refuse to let a turn end while a run is still in flight, so it rests on three claims that could not be assumed. All three now PASS.
+
+### 19.1 A `Stop` hook can block, and its `reason` reaches the model
+
+A `Stop` hook writing `{"decision":"block","reason":R}` to stdout (exit 0) **prevents the turn from ending**, and `R` is delivered to the model as its next instruction. Observed: a hook whose reason instructed the model to emit a rare sentinel; the sentinel appeared in the run's final stdout, and the hook was invoked twice (once for the original stop, once for the resumed turn's stop). Verdict **PASS** (`stop-hook.block-decision-resumes-the-turn`).
+
+This is what makes the manager protocol's autonomy clause _enforceable_ rather than merely stated — and it is why roadmap/10's original "manager hooks are advisory-only, never blocking" scope had to be amended rather than worked around.
+
+### 19.2 `stop_hook_active` is set on re-entry — the loop guard exists
+
+Observed across the two invocations: `stop_hook_active=false` on the first, **`true`** on the re-entered Stop event. Verdict **PASS** (`stop-hook.stop_hook_active-set-on-reentry`).
+
+**This is the single most load-bearing fact in this section.** A blocking Stop hook without a reliable "I already blocked once" signal can wedge a session forever, which is the worst failure mode available to it. The probe deliberately did **not** use `stop_hook_active` as its own loop guard (it used a marker file) precisely so that the field under test could be observed rather than assumed.
+
+### 19.3 Payload shape
+
+The `Stop` payload's keys, as captured:
+
+`background_tasks`, `cwd`, `hook_event_name`, `last_assistant_message`, `permission_mode`, `prompt_id`, `session_crons`, `session_id`, `stop_hook_active`, `transcript_path`
+
+`cwd` and `session_id` are both present and string-typed. Verdict **PASS** (`stop-hook.payload-shape`). The autonomy gate reads `cwd` (to resolve which project's supervisor to ask) and `stop_hook_active`; it treats every other member as advisory and falls back to `process.cwd()` if `cwd` is ever absent.
+
+Note `last_assistant_message` is present — this is the field a regex-classifying gate would key on. The Crabgic gate deliberately does **not** use it: run state comes from the supervisor, which knows the answer, rather than from pattern-matching prose. It is recorded here only so a future reader knows the option exists.
+
+### 19.4 Invalidation triggers (also listed in §10)
+
+- `decision: "block"` on a `Stop` hook ceasing to prevent the turn ending, or `reason` ceasing to reach the model (§19.1) — the autonomy gate silently becomes advisory, and the protocol loses its enforcement layer.
+- **`stop_hook_active` ceasing to be set on re-entry (§19.2) — treat as a release blocker, not a drift note.** The gate would lose its loop guard. Its own defense-in-depth (it also fails open on every error path) reduces but does not eliminate the wedge risk.
+- The `Stop` payload losing `cwd` (§19.3), which is how the gate resolves the project.

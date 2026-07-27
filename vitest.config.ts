@@ -96,7 +96,21 @@ export default defineConfig({
       // token change, so bundle-load time is on the hot path). Naming it
       // explicitly here keeps it inside the 80% gate's denominator rather
       // than silently exempt the way the hooks are.
-      include: ["packages/*/src/**/*.ts", "packages/*/statusline/*.mjs", "e2e/report/src/**/*.ts"],
+      // `packages/plugin/hooks/stop-autonomy-gate.mjs` is named for the same
+      // reason: it is the one hook with real decision logic (which run states
+      // block a turn from ending), it is covered by
+      // `packages/plugin/src/stop-autonomy-gate.test.ts`, and leaving it out
+      // would exempt the only manager hook permitted to BLOCK from the gate
+      // that governs everything else. Its two siblings stay exempt on a
+      // narrower ground than "hooks are exempt": they are I/O-only shims that
+      // execute their effect at import time (one reads fd 0, one writes
+      // stderr), so importing them to measure them would run them.
+      include: [
+        "packages/*/src/**/*.ts",
+        "packages/*/statusline/*.mjs",
+        "packages/plugin/hooks/stop-autonomy-gate.mjs",
+        "e2e/report/src/**/*.ts",
+      ],
       // `src/live/**` is exercised only by the `@live` engine suite (real
       // engine required), so it is exempt from the default-gate coverage
       // denominator the same way the live tests themselves are excluded.

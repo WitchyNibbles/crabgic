@@ -102,3 +102,81 @@ describe("ensureSupervisorConnection — CLI spawn-on-demand", () => {
     ).rejects.toThrow("ENOENT");
   });
 });
+
+/**
+ * Passive mode — added 2026-07-27 for the manager Stop hook
+ * (`packages/plugin/hooks/stop-autonomy-gate.mjs`).
+ *
+ * The hook asks "is a run still in flight?" on every Stop event, in a session
+ * that may have nothing to do with Crabgic. The ordinary spawn-on-demand
+ * policy is exactly wrong there: booting a supervisor daemon as a side effect
+ * of a session ending would be a surprising process to start, and the retry
+ * budget (25 attempts x 200ms) would stall the turn for seconds before
+ * concluding what passive mode learns immediately — that no daemon is running,
+ * so no run can be in flight, so the hook has nothing to say.
+ */
+describe("ensureSupervisorConnection — passive mode", () => {
+  it("never spawns, and surfaces unavailability immediately", async () => {
+    let spawns = 0;
+    let attempts = 0;
+    await expect(
+      ensureSupervisorConnection({
+        connect: () => {
+          attempts += 1;
+          return Promise.resolve(unavailable());
+        },
+        spawnDaemon: () => {
+          spawns += 1;
+        },
+        spawn: false,
+        retryDelayMs: 1,
+      }),
+    ).rejects.toBeInstanceOf(SupervisorUnavailableError);
+    expect(spawns).toBe(0);
+    // One attempt only: with no spawn there is nothing for a retry to wait for.
+    expect(attempts).toBe(1);
+  });
+
+  it("still returns a client when the daemon happens to already be up", async () => {
+    let spawns = 0;
+    const client = await ensureSupervisorConnection({
+      connect: () => Promise.resolve(FAKE_CLIENT),
+      spawnDaemon: () => {
+        spawns += 1;
+      },
+      spawn: false,
+    });
+    expect(client).toBe(FAKE_CLIENT);
+    expect(spawns).toBe(0);
+  });
+
+  it("propagates a non-unavailable error untouched, exactly as active mode does", async () => {
+    const boom = new Error("handshake rejected");
+    await expect(
+      ensureSupervisorConnection({
+        connect: () => Promise.reject(boom),
+        spawnDaemon: () => {
+          throw new Error("must not spawn");
+        },
+        spawn: false,
+      }),
+    ).rejects.toBe(boom);
+  });
+
+  it("defaults to active spawn-on-demand when the flag is omitted", async () => {
+    let spawns = 0;
+    let attempts = 0;
+    const client = await ensureSupervisorConnection({
+      connect: () => {
+        attempts += 1;
+        return attempts === 1 ? Promise.resolve(unavailable()) : Promise.resolve(FAKE_CLIENT);
+      },
+      spawnDaemon: () => {
+        spawns += 1;
+      },
+      retryDelayMs: 1,
+    });
+    expect(client).toBe(FAKE_CLIENT);
+    expect(spawns).toBe(1);
+  });
+});

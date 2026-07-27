@@ -210,3 +210,72 @@ started directly by the CLI's entry point (`bin.ts`), never dispatched through t
 command/response model. This is the process a Claude Code session connects to as the sole
 MCP server this system registers; operators do not invoke it directly in normal use — the
 plugin/installer wires it into the project's `.mcp.json` automatically.
+
+---
+
+## 12. What the manager session will and will not stop for
+
+`crabgic install` writes a **manager operating protocol** into your project's `CLAUDE.md`
+(and the long form is readable in-session with `/eo:protocol`). It exists because a Claude
+Code session with no instructions falls back to checking in after every step, which is the
+opposite of what this product is.
+
+### It will not ask you to continue
+
+The manager is expected to drive an approved run to completion on its own initiative. It
+should never ask "continue?", "shall I proceed?", or "ready for the next step?", and should
+never describe a plan and then wait to be told to run it.
+
+### The only reasons it stops
+
+Seven stop conditions (roadmap/11 — the same list the supervisor enforces in code):
+
+| Condition                        | What it means                                                                                       |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| material amendment               | the work diverged from the approved contract in a way that changes what is being built              |
+| expanded authority               | finishing would need a command, path, network destination or credential the envelope does not grant |
+| critical security issue          | a vulnerability or exposed secret that must not be worked around                                    |
+| unsafe overlap                   | two work units would write the same region and it cannot be ordered away                            |
+| **irreducible product decision** | two defensible options, materially different products — **the only one that asks you a question**   |
+| exhausted repairs                | the initial attempt plus both evidence-driven repairs are spent                                     |
+| blocking verification            | a gate fails in a way no repair can clear                                                           |
+
+Plus the approval gates in §2, §5 and §7, which are a human act by design.
+
+### How it asks
+
+Through Claude Code's structured question interface — several decisions in one prompt, real
+options, an "Other" escape hatch, and a free-text notes field. Not a plain-text list of
+numbered options. If the question tool is unavailable, it falls back to a single
+consolidated question rather than interrogating you step by step.
+
+### The Stop hook, and how to turn it off
+
+The protocol is prose, so the "don't stop mid-run" half is also enforced by a hook. On every
+`Stop` event, `stop-autonomy-gate.mjs` asks the supervisor whether a run is still in flight
+and, if so, blocks the turn from ending and tells the model to keep working.
+
+It stays out of the way when it should:
+
+- **A run parked at `awaiting_approval` does not block.** You must be able to reach
+  `/eo:approve` — blocking there would trap you in a session whose only exit is the thing
+  the block prevents.
+- **Terminal states do not block** (`published_local`, `failed`, `blocked`, `cancelled`).
+- **It fails open, always.** No supervisor, no runs, a timeout, malformed output, an
+  unrecognized state — the turn ends normally. It cannot wedge a session, and it does
+  nothing at all in a project that has never run Crabgic.
+- **It cannot loop.** The engine sets `stop_hook_active` on the re-entered `Stop` event
+  (`docs/engine-baseline.md` §19.2) and the gate returns immediately when it sees it.
+
+To disable it, remove the `Stop` entry for `stop-autonomy-gate.mjs` from the plugin's
+`hooks/hooks.json`, or disable the plugin's hooks in your `.claude/settings.json`. Removing
+it leaves the protocol in place as instructions — you lose the enforcement, not the guidance.
+
+To query run state the way the hook does, without starting a supervisor:
+
+```
+CRABGIC_NO_SPAWN=1 crabgic status --json
+```
+
+`CRABGIC_NO_SPAWN=1` makes any CLI command connect to an already-running supervisor and fail
+fast if there is none, rather than starting one on demand.

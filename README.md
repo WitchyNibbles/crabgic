@@ -110,6 +110,7 @@ A few things worth knowing:
 | `/eo:evidence` | 📜 Pull the recorded evidence for a change set |
 | `/eo:connections` | 🔌 List and inspect Jira / Grafana connections |
 | `/eo:approve` | 🔐 Approve a pending envelope — **never** model-invocable |
+| `/eo:protocol` | 🤖 The manager's operating protocol — when it keeps going, when it stops, how it asks |
 
 It also brings two subagents — `eo-explore` (haiku, cheap and fast) and `eo-reviewer`
 (sonnet, does the reading) — plus two advisory hooks that are always non-blocking.
@@ -143,6 +144,25 @@ The full command surface, straight from `crabgic --help`:
 | `crabgic gateway mcp` | 🛡️ Boot the gateway MCP server over stdio |
 
 The supervisor daemon starts on demand — there is no daemon to babysit. 😌
+
+## 🤖 How autonomous it actually is
+
+Once a run is approved, the manager session is supposed to drive it to completion without
+checking in — and it is held to that, not merely asked. `crabgic install` writes an
+operating protocol into your project's `CLAUDE.md`, and a `Stop` hook refuses to let a
+turn end while a run is still in flight. 🦀
+
+It will **never** ask you to type "continue". It stops for exactly seven reasons — a
+material amendment, expanded authority, a critical security issue, an unsafe overlap, an
+irreducible product decision, exhausted repairs, or a blocking verification failure — plus
+the approval gates below. Run `/eo:protocol` in a session to read the long version.
+
+When it *does* need a decision from you, it asks through Claude Code's own question UI
+with real options and a notes field — never a plain-text "1 / 2 / 3 / 4" list.
+
+> 🦀 **Crab tip:** the gate fails open by design. No supervisor, no runs, a timeout, or any
+> error at all and your turn just ends normally. It can't trap a session, and it never
+> fires in a project that isn't running Crabgic.
 
 ## 🔐 Where you actually stay in the loop
 

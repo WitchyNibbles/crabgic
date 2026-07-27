@@ -41,7 +41,13 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   create new envelope versions requiring delta re-approval.
 - **Stop conditions enforced:** material amendment, expanded authority, critical security issue, unsafe
   overlap, irreducible product decision, exhausted repairs, blocking verification. New requests → separate
-  `ChangeSet` unless explicit amendment.
+  `ChangeSet` unless explicit amendment. **These seven are also the manager session's complete list of
+  legitimate reasons to stop** — 10's manager operating protocol renders them (keyed by this phase's own
+  `STOP_CONDITION_KINDS` strings, parity-tested in `packages/cli`) into the managed `CLAUDE.md` block, and
+  10's Stop autonomy gate refuses to end a turn while a run is in flight for any other reason. Exactly one
+  of the seven — `irreducible_product_decision` — is a QUESTION put to the owner rather than a halt, and
+  it is asked with `AskUserQuestion` (`docs/engine-baseline.md` §18), never as a plain-text option list.
+  See interface-ledger Gap 17.
 
 ## Out of scope
 
@@ -109,6 +115,9 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   into it at 11's build time; full 8-family registry completeness remains a phase-23 gate.
 
 **From 10 (`packages/plugin`):**
+- Manager operating protocol (`buildManagerProtocolBlock()`, `MANAGER_STOP_CONDITIONS`) — the
+  manager-facing rendering of this phase's seven stop conditions and approval gates, plus the Stop
+  autonomy gate that enforces "do not stop mid-run for any other reason" (ledger Gap 17).
 - `/eo:approve` skill — the only non-CLI approval trigger; a thin wrapper reaching the same verify-only
   `contract.approve` path, never a bare model-satisfiable call.
 - `eo-explore`, `eo-reviewer` subagents — manager-session read-heavy exploration and drafting review used

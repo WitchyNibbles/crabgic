@@ -38,7 +38,16 @@ export {
 export {
   validateHooksManifest,
   HooksManifestSchema,
+  MANAGER_HOOK_EVENTS,
   ADVISORY_ONLY_EVENTS,
   type HooksManifestValidationResult,
 } from "./hooks-manifest.js";
 export { ENABLED_PLUGIN_KEY } from "./enabled-plugin-key.js";
+export {
+  buildManagerProtocolBlock,
+  MANAGER_STOP_CONDITIONS,
+  MANAGER_APPROVAL_GATES,
+  QUESTION_TOOL_NAME,
+  type ManagerStopCondition,
+  type ManagerApprovalGate,
+} from "./manager-protocol.js";

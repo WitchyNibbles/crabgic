@@ -18,6 +18,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-autonomy-gate.mjs\""
+          }
+        ],
+        "description": "The manager autonomy gate — the ONE deliberately BLOCKING manager hook (roadmap/10 scope amendment, 2026-07-27). Refuses to let a turn end while a Crabgic run is still in flight, so the operating protocol's autonomy clause is enforced rather than merely requested. Allows the stop at `awaiting_approval` (a human gate is legitimately open) and at every terminal state, honors `stop_hook_active` as its loop guard (docs/engine-baseline.md §19.2), and fails open on every error path."
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-reminder.mjs\""
           }
         ],

@@ -36,6 +36,21 @@ export interface EnsureSupervisorConnectionOptions {
   readonly maxAttempts?: number;
   /** Delay between retries while the spawned daemon comes up. Default 200ms. */
   readonly retryDelayMs?: number;
+  /**
+   * Whether an unreachable socket may start a daemon. Default `true` — the
+   * spawn-on-demand policy roadmap/05 §Lifecycle describes.
+   *
+   * Set `false` for PASSIVE callers: read-only observers that want to know
+   * whether a supervisor is already running and must not cause one to exist.
+   * The manager Stop hook is the motivating case — it runs on every session
+   * end, including in projects with no Crabgic run at all, where spawning a
+   * daemon would be a surprising side effect and the retry budget would stall
+   * the turn for seconds to learn what one failed connect already proves.
+   *
+   * Passive mode makes exactly one attempt: with no spawn, there is nothing a
+   * retry could be waiting for.
+   */
+  readonly spawn?: boolean;
 }
 
 function delay(ms: number): Promise<void> {
@@ -49,7 +64,10 @@ function delay(ms: number): Promise<void> {
 export async function ensureSupervisorConnection(
   options: EnsureSupervisorConnectionOptions,
 ): Promise<UdsClient> {
-  const maxAttempts = Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
+  const maySpawn = options.spawn ?? true;
+  // Passive mode collapses the retry budget to a single attempt: retries exist
+  // only to wait out a daemon we started, and passive mode never starts one.
+  const maxAttempts = maySpawn ? Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS) : 1;
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
 
   let spawned = false;

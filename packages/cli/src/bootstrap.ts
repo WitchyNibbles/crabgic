@@ -79,6 +79,7 @@ import {
   spawnSupervisorDaemon,
   type SpawnSupervisorDaemonOptions,
 } from "./uds-client/ensure-supervisor.js";
+import { isPassiveMode } from "./uds-client/passive-mode.js";
 import { deriveProjectHash } from "./project-hash.js";
 import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
 import type { InstallerDependencies } from "./installer/types.js";
@@ -175,6 +176,8 @@ export interface BuildRealCliDependenciesOverrides {
     readonly spawnDaemon?: (options: SpawnSupervisorDaemonOptions) => void;
     readonly maxAttempts?: number;
     readonly retryDelayMs?: number;
+    /** Explicit passive-mode override; when omitted, `CRABGIC_NO_SPAWN` in the process env decides. Tests set it directly so they never depend on ambient env. */
+    readonly spawn?: boolean;
   };
 }
 
@@ -205,6 +208,10 @@ export function buildRealCliDependencies(
 
   const supervisorSpawn = overrides.supervisorSpawn ?? {};
   const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;
+  // Passive observers (the manager Stop hook) set this to ask whether a
+  // supervisor is ALREADY up without causing one to exist. See
+  // `./uds-client/passive-mode.ts` for why it is an env var and not a flag.
+  const passive = supervisorSpawn.spawn === false || isPassiveMode(process.env);
 
   return {
     // roadmap/05-supervisor-daemon.md §Lifecycle: the daemon is "started on
@@ -216,6 +223,7 @@ export function buildRealCliDependencies(
       ensureSupervisorConnection({
         connect: () => connectUdsClient({ socketPath }),
         spawnDaemon: () => spawnDaemon({ projectHash }),
+        spawn: !passive,
         ...(supervisorSpawn.maxAttempts !== undefined
           ? { maxAttempts: supervisorSpawn.maxAttempts }
           : {}),

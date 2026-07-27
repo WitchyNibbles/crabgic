@@ -13,13 +13,53 @@ A Claude Code plugin (skills, subagents, advisory hooks, gateway MCP registratio
 
 ## In scope
 
-- **Plugin** (`.claude-plugin/plugin.json`): skills `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` (thin wrappers over the CLI/gateway MCP tools; `disable-model-invocation: true` on state-changing ones — `/eo:approve` MUST set it, since adaptation §5.5 requires approval never be a bare model-initiated tool call, and this skill only wraps 09's human-confirmed terminal approval flow, never mints a token itself); manager subagents `eo-explore`, `eo-reviewer` (narrow `tools:`, routed `model:`, read-heavy exploration/review, manager-side only — never write-capable workers); advisory manager hooks (PostToolUse formatting warnings, Stop-time reminders — non-blocking, distinct from the worker-context blocking hooks owned by 03/06); gateway MCP registration reference (see Interfaces consumed).
-- **Installer artifacts (§6.1):** `CLAUDE.md` managed block (`@AGENTS.md` import when the target repo already has one, §3.4/§6.2); `.claude/settings.json` add-only keys — `attribution: {"commit": "", "pr": ""}`, `sessionUrl: false` (§5.4), `enabledPlugins` — honoring monotonicity (never loosen a security key already present in the target repo); `.claude/agents/eo-*.md`; project-scope `.mcp.json` entry keyed **`GATEWAY_MCP_SERVER_NAME`** (constant, 02) whose command is exactly **`crabgic gateway mcp`** (09); ownership + original/installed checksums + source version + backups recorded in an on-disk state store.
+- **Plugin** (`.claude-plugin/plugin.json`): skills `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections`, `/eo:protocol` (thin wrappers over the CLI/gateway MCP tools; `disable-model-invocation: true` on state-changing ones — `/eo:approve` MUST set it, since adaptation §5.5 requires approval never be a bare model-initiated tool call, and this skill only wraps 09's human-confirmed terminal approval flow, never mints a token itself; `/eo:protocol` is model-invocable and state-free, carrying the long form of the manager operating protocol); manager subagents `eo-explore`, `eo-reviewer` (narrow `tools:`, routed `model:`, read-heavy exploration/review, manager-side only — never write-capable workers); manager hooks — **advisory PostToolUse formatting warnings and Stop-time reminders, plus exactly ONE deliberately blocking hook, the Stop autonomy gate (see the amendment below)**; gateway MCP registration reference (see Interfaces consumed).
+- **Manager operating protocol** (ledger Gap 17): `src/manager-protocol.ts` owns the text — autonomy by default, 11's seven stop conditions as the only legitimate halts, the approval gates, and `AskUserQuestion` as the way to put a decision to the owner. Rendered into the managed `CLAUDE.md` block by the installer and into `skills/protocol/SKILL.md` in long form. Cites `docs/engine-baseline.md` §18 for the question tool.
+- **Installer artifacts (§6.1):** `CLAUDE.md` managed block — capability list + the manager operating protocol, **plus** an `@AGENTS.md` import when the target repo already has one (§3.4/§6.2). The import is **additive, never a replacement**: §6.2's "one source of truth" argument governs the target repo's own instructions, not Crabgic's protocol, which has no second source and previously vanished entirely from any repo that kept an `AGENTS.md` (ledger Gap 17, part 2); `.claude/settings.json` add-only keys — `attribution: {"commit": "", "pr": ""}`, `sessionUrl: false` (§5.4), `enabledPlugins` — honoring monotonicity (never loosen a security key already present in the target repo); `.claude/agents/eo-*.md`; project-scope `.mcp.json` entry keyed **`GATEWAY_MCP_SERVER_NAME`** (constant, 02) whose command is exactly **`crabgic gateway mcp`** (09); ownership + original/installed checksums + source version + backups recorded in an on-disk state store.
 - **CLI backends wired into 09's skeletons:** `install [--dry-run] [--json]`, `upgrade [--dry-run]`, `uninstall [--keep-state]` — the first three of 09's `NOT_IMPLEMENTED` stubs to actually land.
 - **Doctor checks contributed** (registered into 09's `check = id, severity, evidence, repair step` framework): checksum/drift check, plugin-trust/pin check, CapabilityManifest-digest-freshness check; repair plans are non-destructive-only, matching 09's `--repair-plan` convention.
 - **Lifecycle:** full dry-run diff preview (`--json`); drift warnings; upgrade with backup + rollback; interrupted-upgrade recovery; uninstall removing only unchanged owned content.
 - **Non-Git projects:** `git init` only after explicit approval; never sweep ignored files/secrets into a first commit.
 - **Distribution:** marketplace repo (`marketplace.json`, SHA-pinned) + vendored `--plugin-dir`/`--plugin-url` flow for digest-pinned installs; a CapabilityManifest entry (schema owned by 02) for the plugin itself, digest-pinned.
+
+## Scope amendment — manager hooks may block, for `Stop` only (2026-07-27)
+
+**What changed.** This phase originally scoped every manager-side hook as advisory and non-blocking,
+"distinct from the worker-context blocking hooks owned by 03/06". That is amended for exactly one event:
+`Stop`.
+
+**Why.** Reported from real use in a consuming repo: the manager session asked the owner to type "continue"
+after every step, and rendered genuine questions as plain-text "option 1 / 2 / 3 / 4" lists. The root cause
+was that the managed `CLAUDE.md` block carried a capability list and no instructions, so the session used
+Claude Code's conversational default. The protocol above fixes the instruction half — but "be autonomous" is
+exactly the instruction a model under uncertainty violates by being polite, and the defect as reported *was*
+a model ignoring its own product's stated posture. An instruction-only fix would have shipped the same class
+of bug with better documentation.
+
+**What the amendment permits, precisely.** One hook, `hooks/stop-autonomy-gate.mjs`, registered on `Stop`.
+It asks the supervisor whether any run is in one of the six in-flight run-lifecycle states and, if so,
+returns `{"decision":"block","reason":…}` to keep the turn going. It allows the stop at `awaiting_approval`
+— where a human gate is legitimately open and blocking would trap the owner in a session whose only exit is
+the act the block prevents — and at all four absorbing states.
+
+**What it does not permit.** `PreToolUse` remains forbidden in the manager context, and
+`MANAGER_HOOK_EVENTS` in `src/hooks-manifest.ts` still enforces the allowlist. The asymmetry is deliberate:
+blocking a turn from *ending* is bounded, recoverable, and has an engine-provided loop guard
+(`stop_hook_active`, `docs/engine-baseline.md` §19.2); blocking arbitrary tool calls from a user-editable
+settings scope has none of those properties and stays 03/06's worker-context privilege.
+
+**Evidence.** `docs/engine-baseline.md` §19, produced by `spikes/10-stop-hook.mjs` at engine 2.1.220 — three
+PASS verdicts covering the block contract, the `stop_hook_active` loop guard, and the payload shape. §19.2 is
+flagged release-blocking on drift.
+
+**Fail-open, as a scope condition.** The gate runs on every session end in every project with the plugin
+installed, including projects that have never started a run. Every error path — no CLI, no supervisor,
+timeout, malformed JSON, unrecognized state — must allow the stop. A false negative costs one unnecessary
+"continue"; a false positive costs the owner a session they cannot exit. Any future change to this hook that
+weakens fail-open is outside this amendment.
+
+**Ledger:** Gap 17. **Coordinated with:** `roadmap/11-intake-contract-approval.md`.
+
 
 ## Out of scope
 
@@ -36,7 +76,8 @@ A Claude Code plugin (skills, subagents, advisory hooks, gateway MCP registratio
 - **Plugin package** `packages/plugin` → `.claude-plugin/plugin.json` — loaded by the manager session (11) and packaged/gated by 23.
 - **Skills**: `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` (`skills/`, frontmatter `description` + `disable-model-invocation` where applicable) — `/eo:approve` is 11's only non-model-satisfiable approval path besides 09's own CLI prompt.
 - **Subagents**: `.claude/agents/eo-explore.md`, `.claude/agents/eo-reviewer.md` — manager-session read-heavy exploration/review, available to 11's inspection/drafting flow.
-- **Advisory manager hooks** (non-blocking; manager-context only) — operate inside the same manager session 11 drives.
+- **Manager hooks** (manager-context only) — operate inside the same manager session 11 drives. Two advisory (non-blocking, always exit 0) and one blocking: the **Stop autonomy gate**, `hooks/stop-autonomy-gate.mjs`.
+- **Manager operating protocol** — `buildManagerProtocolBlock()` (consumed by 09/10's installer for the managed `CLAUDE.md` block) and `MANAGER_STOP_CONDITIONS` (keyed by 11's own `STOP_CONDITION_KINDS`, parity-tested in `packages/cli`).
 - **Installer-written artifacts**: `CLAUDE.md` managed block; `.claude/settings.json` add-only keys (`attribution`, `sessionUrl`, `enabledPlugins`); `.claude/agents/eo-*.md` (copied); project-scope `.mcp.json` entry — **key `GATEWAY_MCP_SERVER_NAME`, command `crabgic gateway mcp`**; ownership/checksum/backup state store — together, these are what makes the manager session (11) and the gateway MCP connection possible in a target project.
 - **CLI command backends**: `install [--dry-run] [--json]`, `upgrade [--dry-run]`, `uninstall [--keep-state]` (implementations of 09's command shapes) — re-exercised by 23's installation E2E matrix.
 - **Doctor checks**: checksum-drift, plugin-trust/pin, CapabilityManifest-digest-freshness (registered into 09's doctor framework) — re-run as part of 23's release gate.

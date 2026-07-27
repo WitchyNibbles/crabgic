@@ -1,0 +1,20 @@
+[
+  {
+    "probe": "stop-hook.block-decision-resumes-the-turn",
+    "expectation": "a Stop hook emitting {\"decision\":\"block\",\"reason\":R} prevents the turn from ending, and R reaches the model as its next instruction",
+    "observed": "hook invoked 2x; sentinel \"PLATYPUS7\" present in final stdout=true; exit=0; timedOut=false; stdout=\"Understood. I will output the single word PLATYPUS7 and nothing else before finishing any session or work.\\n\"",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "stop-hook.stop_hook_active-set-on-reentry",
+    "expectation": "the re-entered Stop event carries stop_hook_active:true, giving a blocking hook a reliable way to avoid looping forever",
+    "observed": "first invocation stop_hook_active=false; second invocation stop_hook_active=true",
+    "verdict": "PASS"
+  },
+  {
+    "probe": "stop-hook.payload-shape",
+    "expectation": "the Stop payload carries at least `cwd` (which project's supervisor to ask) and `session_id`",
+    "observed": "payload keys: [\"background_tasks\",\"cwd\",\"hook_event_name\",\"last_assistant_message\",\"permission_mode\",\"prompt_id\",\"session_crons\",\"session_id\",\"stop_hook_active\",\"transcript_path\"]; cwd present=true; session_id present=true",
+    "verdict": "PASS"
+  }
+]
