@@ -8,6 +8,30 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## 1.0.2
+
+Stop the plugin manifest pinning every install to version `0.0.0`, and give the package a
+README.
+
+A plugin's effective version resolves `plugin.json` → marketplace entry → source commit
+SHA, and when both files declare one the manifest wins silently. The manifest carried the
+`0.0.0` workspace placeholder while the marketplace entry carried the real release
+version, so every install of `crabgic@crabgic-marketplace` resolved to `0.0.0` — and no
+later release would have reached an already-installed user. The manifest no longer
+declares a version at all, leaving the marketplace entry, which the release preparer
+recomputes each release, as the sole declared version. The resolution order is now
+recorded as `docs/engine-baseline.md` §16, flagged documentation-sourced rather than
+probe-verified, with a live verification recorded as owed.
+
+The published package also had no README — `npm view crabgic readme` returned "No README
+data found" — so the npm listing rendered blank. It now ships one, using absolute asset
+URLs because npm resolves neither relative images nor relative links.
+
+The marketplace listing carries the real owner address in place of a placeholder, plus the
+optional discovery metadata the marketplace reference supports (`displayName`, `author`,
+`homepage`, `repository`, `keywords`). Deliberately no `icon`: the plugin system has no
+such field on either a marketplace entry or `plugin.json`.
+
 ## 1.0.1
 
 Ship the plugin's distributable assets in the published package.

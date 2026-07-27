@@ -1,5 +1,26 @@
 # crabgic
 
+## 1.0.2
+
+### Patch Changes
+
+- Stop the plugin manifest pinning every install to version `0.0.0`, and give the package a README.
+
+  A plugin's effective version resolves `plugin.json` → marketplace entry → source commit SHA,
+  and when both files declare one the manifest wins silently. The manifest carried the `0.0.0`
+  workspace placeholder while the marketplace entry carried the real release version, so every
+  install of `crabgic@crabgic-marketplace` resolved to `0.0.0` — and no later release would have
+  reached an already-installed user. The manifest no longer declares a version at all, leaving
+  the marketplace entry, which the release preparer recomputes each release, as the sole
+  declared version. The resolution order is now recorded as `docs/engine-baseline.md` §16.
+
+  The published package also had no README — `npm view crabgic readme` returned "No README data
+  found" — so the npm listing rendered blank. It now ships one.
+
+  The marketplace listing carries the real owner address in place of a placeholder, plus the
+  optional discovery metadata the marketplace reference supports (`displayName`, `author`,
+  `homepage`, `repository`, `keywords`).
+
 ## 1.0.1
 
 ### Patch Changes
