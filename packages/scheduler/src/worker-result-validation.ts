@@ -42,10 +42,14 @@ export type SchedulerWorkerResultValidation =
 const STRUCTURED_OUTPUT_RETRIES_EXHAUSTED_SUBTYPE = "error_max_structured_output_retries";
 
 function diagnosticFor(issue: {
-  readonly path: readonly (string | number)[];
+  // zod 4 widened `ZodIssue.path` from `(string | number)[]` to
+  // `PropertyKey[]` — it can now contain symbols, because a schema may key
+  // on one. `String(segment)` is what keeps this a total function over the
+  // real type rather than one that happens to fit the common case.
+  readonly path: readonly PropertyKey[];
   readonly code: string;
 }): string {
-  const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+  const path = issue.path.length > 0 ? issue.path.map(String).join(".") : "(root)";
   return `${path}: ${issue.code}`;
 }
 

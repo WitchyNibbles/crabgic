@@ -28,7 +28,7 @@
     "@crabgic/contracts": "0.0.0",
     "@crabgic/gateway": "0.0.0",
     "@crabgic/renderer": "0.0.0",
-    "zod": "3.25.76"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@crabgic/journal": "0.0.0",

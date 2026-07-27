@@ -34,9 +34,12 @@
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:release-notes": "node scripts/check-release-notes.mjs",
     "check:engine-pin": "node scripts/check-engine-pin.mjs",
-    "check:all": "npm run check:workspace-count && npm run check:package-graph && npm run check:hygiene && npm run check:release-notes && npm run check:engine-pin && npm run check:tarball",
+    "check:all": "npm run check:workspace-count && npm run check:package-graph && npm run check:hygiene && npm run check:release-notes && npm run check:engine-pin && npm run check:tarball && npm run check:install-smoke",
     "check:package-graph": "node scripts/check-package-graph-acyclic.mjs",
-    "check:tarball": "node scripts/check-published-tarball.mjs"
+    "check:tarball": "node scripts/check-published-tarball.mjs",
+    "bundle:cli": "node scripts/bundle-cli.mjs",
+    "check:install-smoke": "node scripts/check-install-smoke.mjs",
+    "bundle:types": "node scripts/bundle-types.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
@@ -45,6 +48,8 @@
     "@eslint/js": "10.0.1",
     "@types/node": "24.13.3",
     "@vitest/coverage-v8": "4.1.10",
+    "dts-bundle-generator": "9.5.1",
+    "esbuild": "0.28.1",
     "eslint": "10.7.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.7.0",

@@ -17,7 +17,7 @@
     "attestation:test:live": "vitest run --config attestation/vitest.live.config.ts"
   },
   "dependencies": {
-    "zod": "3.25.76"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.10",

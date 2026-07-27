@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -83,8 +83,41 @@ describe("checkGatewayDependencyEdge", () => {
     }
   });
 
-  it("genuine integration: packages/cli/package.json now declares the @crabgic/gateway edge the native families need", () => {
-    expect(checkGatewayDependencyEdge()).toEqual({ hasGatewayDependency: true });
+  /**
+   * REWRITTEN when the published package began bundling its workspace code.
+   *
+   * This asserted that `packages/cli/package.json` DECLARES `@crabgic/gateway`
+   * — true while the CLI carried 13 `@crabgic/*` runtime dependencies, and
+   * the very thing that made `crabgic@1.0.0` uninstallable: those packages are
+   * `private: true` and 404 from the registry. They are now inlined by
+   * `scripts/bundle-cli.mjs`, so the manifest declares none of them by design.
+   *
+   * The dependency EDGE still has to exist — the native gateway families are
+   * unreachable without it — so what is asserted is the edge itself, at the
+   * level it now lives: the CLI's source really imports `@crabgic/gateway`,
+   * and the built output really carries its code. A manifest entry was only
+   * ever a proxy for that.
+   */
+  it("genuine integration: the CLI really depends on @crabgic/gateway, now via the bundle rather than a manifest entry", async () => {
+    const repoRoot = new URL("../../..", import.meta.url).pathname;
+    const manifest = JSON.parse(
+      await readFile(join(repoRoot, "packages", "cli", "package.json"), "utf8"),
+    ) as { readonly dependencies?: Readonly<Record<string, string>> };
+
+    // No workspace package is a declared runtime dependency any more — that is
+    // what `scripts/check-install-smoke.mjs` enforces, and what makes the
+    // package installable at all.
+    expect(
+      Object.keys(manifest.dependencies ?? {}).filter((name) => name.startsWith("@crabgic/")),
+    ).toEqual([]);
+    expect(checkGatewayDependencyEdge()).toEqual({ hasGatewayDependency: false });
+
+    // ...but the edge is real: the source imports it directly.
+    const registryModule = await readFile(
+      join(repoRoot, "packages", "cli", "src", "gateway-mcp", "build-tool-registry.ts"),
+      "utf8",
+    );
+    expect(registryModule).toContain('from "@crabgic/gateway"');
   });
 });
 
