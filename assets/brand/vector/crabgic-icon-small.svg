@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Crabgic">
+<g transform="translate(32 34) scale(0.92) translate(-32 -34)">
+  <path d="M 32 31 C 44 31 54 38 54 46 C 54 54 44 59 32 59 C 20 59 10 54 10 46 C 10 38 20 31 32 31 Z" fill="#F97036" stroke="#1B1B45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <g transform="translate(17 46) scale(1.05 1.05) rotate(-14)"><path d="M 0 -5 C -6 -9 -13 -9 -16.5 -3.5 L -9 -0.5 L -15 4 C -12.5 10 -4 10.5 0 5.5 Z" fill="#F97036" stroke="#1B1B45" stroke-width="2.857142857142857" stroke-linejoin="round" stroke-linecap="round"/></g>
+  <g transform="translate(47 46) scale(-1.05 1.05) rotate(-14)"><path d="M 0 -5 C -6 -9 -13 -9 -16.5 -3.5 L -9 -0.5 L -15 4 C -12.5 10 -4 10.5 0 5.5 Z" fill="#F97036" stroke="#1B1B45" stroke-width="2.857142857142857" stroke-linejoin="round" stroke-linecap="round"/></g>
+  <circle cx="24" cy="43" r="6.9" fill="#FFFFFF" stroke="#1B1B45" stroke-width="3"/>
+  <circle cx="40" cy="43" r="6.9" fill="#FFFFFF" stroke="#1B1B45" stroke-width="3"/>
+  <circle cx="24.9" cy="43.6" r="3.4" fill="#1B1B45"/>
+  <circle cx="40.9" cy="43.6" r="3.4" fill="#1B1B45"/>
+  <path d="M 6 29 C 15 21 49 21 58 29 C 49 35 15 35 6 29 Z" fill="#8257E0" stroke="#1B1B45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 43 3 C 52 8 51 17 44 22 C 39 25 26 26 19 24 C 20 12 30 3 43 3 Z" fill="#6B3FC9" stroke="#1B1B45" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 30 8.4 L 31.45 12.01 L 35.33 12.27 L 32.34 14.76 L 33.29 18.53 L 30 16.46 L 26.71 18.53 L 27.66 14.76 L 24.67 12.27 L 28.55 12.01 Z" fill="#FBBF24" stroke="#1B1B45" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+</svg>
