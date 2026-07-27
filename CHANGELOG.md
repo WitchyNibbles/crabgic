@@ -8,6 +8,31 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## 1.1.0
+
+Add a Claude Code status line, installed and registered by `crabgic install`.
+
+The line shows the model and its reasoning effort, the current git branch and dirty flag,
+session context-window usage as a meter, and the 5-hour and weekly subscription usage
+windows — each value clearly divided from the next, on one shared green → amber → red
+scale. A reset countdown appears on a usage window only once it passes 80%. The two usage
+segments render only for Claude.ai subscription auth, and only once the session's first
+API response populates the rate-limit headers; `CRABGIC_STATUSLINE_ASCII=1` selects plain
+glyphs for fonts without emoji coverage, and `NO_COLOR` is honoured.
+
+Two engine constraints shape how it is delivered, both read from the 2.1.220 binary and
+recorded as `docs/engine-baseline.md` §17: the plugin manifest has no `statusLine` key, so
+a plugin cannot register one, and a `settings.json` command referencing
+`${CLAUDE_PLUGIN_ROOT}` is rejected outright rather than left unexpanded. The installer
+therefore copies the script to `.claude/crabgic-statusline.mjs` as a wholly-owned artifact
+and registers it through `$CLAUDE_PROJECT_DIR`, so a committed `.claude/settings.json`
+stays portable across machines. `statusLine` is add-only like every other key the
+installer writes: a status line already configured is never replaced.
+
+The renderer is a zero-dependency `.mjs` rather than compiled TypeScript, for the same
+reason the hooks are — the engine re-runs it on every token change, so process startup is
+on the hot path (~34ms standalone against ~300ms through the bundled CLI).
+
 ## 1.0.2
 
 Stop the plugin manifest pinning every install to version `0.0.0`, and give the package a
