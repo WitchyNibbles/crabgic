@@ -4,15 +4,32 @@
   "description": "Marketplace listing for the Crabgic Claude Code plugin (roadmap/10-plugin-and-installer.md §In scope, \"Distribution\").",
   "owner": {
     "name": "Crabgic",
-    "email": "eng-orchestrator@example.invalid"
+    "email": "eimimartinezarenas@gmail.com"
   },
   "plugins": [
     {
       "name": "crabgic",
+      "displayName": "Crabgic",
       "source": "./",
       "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
       "version": "1.0.1",
       "license": "Apache-2.0",
+      "author": {
+        "name": "Crabgic",
+        "email": "eimimartinezarenas@gmail.com",
+        "url": "https://github.com/WitchyNibbles"
+      },
+      "homepage": "https://github.com/WitchyNibbles/crabgic#readme",
+      "repository": "https://github.com/WitchyNibbles/crabgic",
+      "keywords": [
+        "orchestration",
+        "autonomous",
+        "agent",
+        "supervisor",
+        "jira",
+        "grafana",
+        "gateway"
+      ],
       "commit": "93bd58c4b8bf25c7443dc74cacbc34415d6dac30",
       "digest": "1a8891fec8b477499c43b241bdc61375ce76f03daa97be0dee3f1b7be27edb25"
     }

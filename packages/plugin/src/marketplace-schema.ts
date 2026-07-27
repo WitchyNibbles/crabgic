@@ -41,15 +41,50 @@ const CommitPinSchema = z
  */
 export const MARKETPLACE_NAME = "crabgic-marketplace" as const;
 
+/**
+ * Optional discovery metadata the vendor's plugin-marketplace reference lists
+ * as supported entry fields. Every one is optional, so an entry that predates
+ * them still validates. There is deliberately NO `icon` member: the plugin
+ * system has no icon field on either a marketplace entry or `plugin.json`, and
+ * `.strict()` below must keep refusing one rather than carrying a key the
+ * engine would ignore.
+ *
+ * `displayName` carries a documented minimum engine version of 2.1.143, which
+ * the accepted range in `docs/engine-baseline.md` (2.1.207–2.1.220) clears at
+ * its lower bound.
+ */
+const discoveryMetadataShape = {
+  /** Human-readable name for UI surfaces; falls back to `name` when omitted. May contain spaces and capitals, unlike the kebab-case `name`. */
+  displayName: z.string().min(1).optional(),
+  author: z
+    .object({
+      name: z.string().min(1),
+      email: z.string().min(1).optional(),
+      url: z.string().min(1).optional(),
+    })
+    .strict()
+    .optional(),
+  homepage: z.string().min(1).optional(),
+  repository: z.string().min(1).optional(),
+  keywords: z.array(z.string().min(1)).optional(),
+} as const;
+
 /** Every plugin-entry field except `commit`, whose strictness is the one thing the two entry schemas below differ on. */
 const pluginEntryCommonShape = {
   name: z.string().min(1),
   source: z.string().min(1),
   description: z.string().min(1),
+  /**
+   * The SOLE declared version for this plugin. Never mirror it into
+   * `.claude-plugin/plugin.json`: per `docs/engine-baseline.md` §16 the
+   * manifest's value silently outranks this one, which is how 1.0.0/1.0.1
+   * shipped pinned to the manifest's `0.0.0` placeholder.
+   */
   version: z.string().min(1),
   license: z.string().min(1),
   /** Content digest (`./content-digest.ts`), cross-checked against a vendored `--plugin-dir` install at install time. */
   digest: z.string().min(1),
+  ...discoveryMetadataShape,
 } as const;
 
 export const MarketplacePluginEntrySchema = z
