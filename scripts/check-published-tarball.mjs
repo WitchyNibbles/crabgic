@@ -32,6 +32,15 @@ const FORBIDDEN_PATTERNS = [
   { label: "compiled test files", test: (p) => /(^|\/)[^/]*\.test\.[^/]+$/.test(p) },
   { label: "test-support fixtures", test: (p) => p.includes("/test-support/") },
   { label: "TypeScript sources", test: (p) => p.endsWith(".ts") && !p.endsWith(".d.ts") },
+  // `tsc -b`'s incremental build STATE. `bundle-cli.mjs` deliberately keeps it
+  // on disk between builds (it is what makes rebuilds incremental), and
+  // `files: ["dist"]` swept it into the tarball as a side effect: 199 kB,
+  // 15% of the published package, of no use whatsoever to a consumer. Worse,
+  // it is the one file that differs between two builds of identical sources
+  // in different environments, so shipping it makes the published artifact
+  // non-reproducible — directly undermining roadmap/23's reproducible-build
+  // criterion. Shipped in 1.0.0 through 1.1.1.
+  { label: "incremental build state", test: (p) => p.endsWith(".tsbuildinfo") },
 ];
 
 function packFileList() {
