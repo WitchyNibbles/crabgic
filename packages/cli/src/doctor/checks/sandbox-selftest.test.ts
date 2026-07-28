@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_STALE_MARKER_SWEEP,
   SANDBOX_SHELL_ARGV0,
+  SCAN_LIMIT,
   createSandboxSelftestCheck,
+  sweepStaleMarkerDirs,
 } from "./sandbox-selftest.js";
 
 describe("createSandboxSelftestCheck", () => {
@@ -1023,59 +1025,123 @@ describe("sandbox-selftest — a refusal must come from the sandbox, not a missi
 });
 
 /**
- * Round 27, finding 4 — the cap bounds the WORK, not the search.
+ * Roast round 28 — the sweep must be bounded in BOTH dimensions.
  *
- * It used to slice the `readdir` result BEFORE testing staleness, and `readdir`
- * order is stable, so a fixed prefix of a fixed set was inspected every run:
- * with 2000 permanently-unremovable prefix entries (another uid's directories
- * on a sticky /tmp, or root-owned leaks from a `sudo` run), a perfectly
- * sweepable stale directory at index 900 survived 20 consecutive runs. Removing
- * the cap entirely also survived every test, so both halves are pinned here.
+ * Round 27 capped only removals, to defeat the starvation its predecessor had.
+ * `swept` counts only SUCCESSFUL removals, so unremovable entries never advance
+ * the cap and every run re-stats the whole directory forever: 20,000 entries
+ * cost 7.3-7.6s against 104ms for the code it replaced, permanently, with the
+ * docblock still promising a health check could not become a filesystem scan.
+ *
+ * And round 27's own test could not see it — it seeded only REMOVABLE stale
+ * dirs, where both loops behave identically, so the literal prior code was
+ * 204/204 green. That is round 27's finding 1 (a paraphrased mutation gives
+ * false confidence) reproduced inside round 27's own fix.
+ *
+ * These seed UNREMOVABLE entries, which is the only shape that separates them.
  */
-describe("sandbox-selftest — the stale sweep is bounded but not starvable", () => {
-  it("removes at most the cap per run, and converges over runs", async () => {
-    const { mkdtemp, mkdir, rm, utimes, readdir } = await import("node:fs/promises");
+describe("sandbox-selftest — the stale sweep is bounded in scan AND removals", () => {
+  async function seed(
+    dir: string,
+    count: number,
+    kind: "removable" | "unremovable",
+    prefix: string,
+  ): Promise<void> {
+    const { mkdir, writeFile, chmod, utimes } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (let i = 0; i < count; i += 1) {
+      const entry = join(dir, `eo-sandbox-selftest-${prefix}${String(i).padStart(5, "0")}`);
+      await mkdir(entry);
+      if (kind === "unremovable") {
+        // Non-empty and mode 0500: `rm -r` cannot unlink through it.
+        await writeFile(join(entry, "held"), "");
+        await chmod(entry, 0o500);
+      }
+      await utimes(entry, old, old);
+    }
+  }
+
+  async function withSandbox<T>(run: (dir: string) => Promise<T>): Promise<T> {
+    const { mkdtemp, rm, readdir, chmod } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
-
-    const sandbox = await mkdtemp(join(tmpdir(), "eo-r27-cap-"));
-    const previousTmpdir = process.env["TMPDIR"];
-    process.env["TMPDIR"] = sandbox;
+    const dir = await mkdtemp(join(tmpdir(), "eo-r28-sweep-"));
     try {
-      const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      const total = MAX_STALE_MARKER_SWEEP + 25;
-      for (let i = 0; i < total; i += 1) {
-        const dir = join(sandbox, `eo-sandbox-selftest-P${String(i).padStart(5, "0")}`);
-        await mkdir(dir);
-        await utimes(dir, old, old);
-      }
-
-      const run = async (): Promise<number> => {
-        await createSandboxSelftestCheck({
-          probe: async (_command, args) =>
-            args.includes("--version")
-              ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
-              : {
-                  stdout: "WROTE:2\n",
-                  stderr: "eo-sandbox-selftest: 1: cannot create x: Read-only file system",
-                  exitCode: 2,
-                },
-        }).run();
-        const left = (await readdir(sandbox)).filter((n) => n.startsWith("eo-sandbox-selftest-"));
-        // The run's own marker directory is created after the sweep, so it is
-        // cleaned up by the check itself and never counted here.
-        return left.length;
-      };
-
-      // One run cannot exceed the cap: a health check must not turn into an
-      // unbounded filesystem operation on a large /tmp.
-      expect(await run()).toBe(total - MAX_STALE_MARKER_SWEEP);
-      // And the remainder is reached on the next run rather than starved.
-      expect(await run()).toBe(0);
+      return await run(dir);
     } finally {
-      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
-      else process.env["TMPDIR"] = previousTmpdir;
-      await rm(sandbox, { recursive: true, force: true });
+      for (const name of await readdir(dir)) {
+        await chmod(join(dir, name), 0o700).catch(() => undefined);
+      }
+      await rm(dir, { recursive: true, force: true });
     }
-  }, 30_000);
+  }
+
+  it("examines at most SCAN_LIMIT entries, so unremovable ones cannot make it unbounded", async () => {
+    const { readdir } = await import("node:fs/promises");
+    await withSandbox(async (dir) => {
+      const previous = process.env["TMPDIR"];
+      process.env["TMPDIR"] = dir;
+      try {
+        // A wall of unremovable entries, then one removable one BEYOND the
+        // scan window. Round 27's loop would stat every entry to reach it.
+        await seed(dir, SCAN_LIMIT + 50, "unremovable", "U");
+        await seed(dir, 1, "removable", "Z");
+        const before = (await readdir(dir)).length;
+
+        // Starting at 0, the removable entry is past the window.
+        await sweepStaleMarkerDirs(0);
+        expect((await readdir(dir)).length).toBe(before);
+
+        // Starting past the wall, the rotation reaches it -- so bounding the
+        // scan does not reintroduce starvation.
+        await sweepStaleMarkerDirs(SCAN_LIMIT + 40);
+        expect((await readdir(dir)).length).toBe(before - 1);
+      } finally {
+        if (previous === undefined) delete process.env["TMPDIR"];
+        else process.env["TMPDIR"] = previous;
+      }
+    });
+  }, 60_000);
+
+  it("removes at most MAX_STALE_MARKER_SWEEP per run, and converges", async () => {
+    const { readdir } = await import("node:fs/promises");
+    await withSandbox(async (dir) => {
+      const previous = process.env["TMPDIR"];
+      process.env["TMPDIR"] = dir;
+      try {
+        const total = MAX_STALE_MARKER_SWEEP + 25;
+        await seed(dir, total, "removable", "R");
+
+        await sweepStaleMarkerDirs(0);
+        expect((await readdir(dir)).length).toBe(total - MAX_STALE_MARKER_SWEEP);
+
+        await sweepStaleMarkerDirs(0);
+        expect((await readdir(dir)).length).toBe(0);
+      } finally {
+        if (previous === undefined) delete process.env["TMPDIR"];
+        else process.env["TMPDIR"] = previous;
+      }
+    });
+  }, 60_000);
+
+  it("never removes a fresh directory, whatever the offset", async () => {
+    const { readdir, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await withSandbox(async (dir) => {
+      const previous = process.env["TMPDIR"];
+      process.env["TMPDIR"] = dir;
+      try {
+        await seed(dir, 5, "removable", "S");
+        await mkdir(join(dir, "eo-sandbox-selftest-LIVE"));
+
+        await sweepStaleMarkerDirs(0);
+        const left = await readdir(dir);
+        expect(left).toEqual(["eo-sandbox-selftest-LIVE"]);
+      } finally {
+        if (previous === undefined) delete process.env["TMPDIR"];
+        else process.env["TMPDIR"] = previous;
+      }
+    });
+  });
 });

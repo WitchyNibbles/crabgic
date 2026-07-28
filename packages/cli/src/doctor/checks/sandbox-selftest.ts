@@ -73,14 +73,44 @@ export interface SandboxSelftestOptions {
  * That is round 21's leak on a path round 21 did not cover.
  *
  * Age-gated so a concurrent `doctor` cannot have its live marker deleted from
- * under it, and capped so a directory with thousands of entries cannot turn a
- * health check into a filesystem scan.
+ * under it, and bounded in BOTH dimensions — how many entries are examined and
+ * how many are removed.
+ *
+ * Round 27 capped only the removals, on the reasoning that capping the search
+ * starved entries behind unremovable ones. That is true, and the replacement
+ * was worse: `swept` counts only SUCCESSFUL removals, so entries that can never
+ * be removed never advance the cap and every run re-`stat`s and re-`rm`s the
+ * whole directory forever. Measured against the code it replaced:
+ *
+ *   20,000 unremovable stale entries -> 7,282-7,600ms   vs 104ms   (70x)
+ *   100,000 fresh prefix entries     -> 5,183-5,402ms   vs  99ms   (53x)
+ *
+ * with `entriesLeft` constant across runs, so the cost is permanent rather than
+ * amortised — and the docblock went on claiming a health check could not become
+ * a filesystem scan while being the thing that made it one.
+ *
+ * Round 28 bounds the scan and defeats starvation with a ROTATING start offset
+ * instead: any one run examines at most `SCAN_LIMIT` entries, and successive
+ * runs start at a different place, so an entry behind a wall of unremovable
+ * ones is reached by a later run rather than never. The offset is a parameter
+ * so the property is testable without depending on the clock.
  */
 const STALE_MARKER_AGE_MS = 60 * 60 * 1000;
 /** Exported so the cap's behaviour is assertable without hard-coding it in a test. */
 export const MAX_STALE_MARKER_SWEEP = 200;
 
-async function sweepStaleMarkerDirs(): Promise<void> {
+/** How many entries a single run may examine. Bounds `stat` calls, which the removal cap does not. */
+export const SCAN_LIMIT = 400;
+
+/**
+ * Where this run starts scanning. Time-derived so consecutive runs cover
+ * different windows; a caller (only tests) may pin it.
+ */
+function rotatingOffset(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+export async function sweepStaleMarkerDirs(startOffset?: number): Promise<void> {
   const root = tmpdir();
   let entries: string[];
   try {
@@ -88,17 +118,15 @@ async function sweepStaleMarkerDirs(): Promise<void> {
   } catch {
     return; // nothing to sweep, and a sweep failure is never a health verdict
   }
+  if (entries.length === 0) return;
   const cutoff = Date.now() - STALE_MARKER_AGE_MS;
-  // Round 27: the cap USED to slice before the staleness test, and `readdir`
-  // order is stable — so a fixed prefix of a fixed set was inspected every run.
-  // Measured with 2000 permanently-unremovable prefix entries (another uid's
-  // directories on a sticky /tmp, or root-owned leaks from a `sudo` run), a
-  // perfectly sweepable stale directory at index 900 survived 20 consecutive
-  // runs. The cap now bounds the WORK, not the search: staleness is decided
-  // first, and only the removals are capped.
+  const start =
+    (((startOffset ?? rotatingOffset()) % entries.length) + entries.length) % entries.length;
+  let examined = 0;
   let swept = 0;
-  for (const name of entries) {
-    if (swept >= MAX_STALE_MARKER_SWEEP) break;
+  while (examined < SCAN_LIMIT && examined < entries.length && swept < MAX_STALE_MARKER_SWEEP) {
+    const name = entries[(start + examined) % entries.length] as string;
+    examined += 1;
     const candidate = join(root, name);
     try {
       const info = await stat(candidate);
