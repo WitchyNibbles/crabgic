@@ -194,9 +194,15 @@ export function isUsablePathPrefix(prefix: string): boolean {
  * SEGMENTS ARE NOT TRIMMED, and that is the whole correctness argument.
  * Round 7 trimmed them, and round 8 measured the result: **1791 containment
  * false positives** where round 6 had zero. The compiler is the authority on
- * what directory a path names — `emitPermissionProfile` and
- * `narrowedAllowWrite` both emit `validateOwnedPath`'s output, which trims the
- * whole string and nothing else. So `"src /"` names a directory called
+ * what directory a path names, and `emitPermissionProfile` — which emits
+ * `validateOwnedPath`'s output, trimming the whole string and nothing else —
+ * is that authority's surviving expression. (Round 11 correction:
+ * `narrowedAllowWrite` was cited here too and no longer qualifies, because
+ * round 10 changed it to emit THIS function's output. The two now differ in
+ * string form for 11,650 of 13,061 shared paths — `src/.` vs `src` — while
+ * resolving to the identical POSIX directory in every one. The conclusion
+ * stands; the premise had rotted, which matters because rounds 4-8 each went
+ * wrong reasoning from this very paragraph.) So `"src /"` names a directory called
  * `"src "`, and a normalizer that trims it to `"src"` tells the gate a run is
  * contained while the compiler grants somewhere the owner never approved.
  * `is-contained.ts`'s own header calls that the unacceptable direction: "a

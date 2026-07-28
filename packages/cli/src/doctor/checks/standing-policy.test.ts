@@ -121,18 +121,31 @@ describe("policy.standing — prefixes that cannot grant", () => {
       }));
 
       expect(finding.passed).toBe(false);
-      expect(finding.evidence).toMatch(/grants no writable paths/);
+      // Round 11 made the reason MORE precise: an unusable entry is now named
+      // as such rather than being reported only as "the policy grants
+      // nothing", which is true but does not say which line to fix.
+      expect(finding.evidence).toMatch(/cannot grant anything|grants no writable paths/);
     },
   );
 
-  it("passes when at least one prefix is usable", async () => {
+  /**
+   * INVERTED by round 11. This asserted that a mixed list PASSES, which
+   * encoded the defect rather than the requirement: `["src/**", "src"]` is
+   * not vacuous -- one prefix works -- so the check reported it healthy while
+   * rendering `src/**` as granted, and a worker owning anything under it was
+   * refused for ever with nothing pointing at the policy line. The assertion
+   * was written by the round-3 fix and survived four rounds because vacuity
+   * and usability are different questions and only one was being asked.
+   */
+  it("FAILS a mixed list, naming the entry that grants nothing", async () => {
     const finding = await run(() => ({
       status: "loaded" as const,
       policy: policy({ allowedPathPrefixes: ["src/**", "src"] }),
       digest: "sha256:mixed",
     }));
 
-    expect(finding.passed).toBe(true);
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/src\/\*\*/);
   });
 });
 
@@ -219,5 +232,60 @@ describe("policy.standing — a transient failure must not invite a rewrite", ()
     // Evidence says the file is fine; the remedy must not say to rewrite it.
     expect(transient.evidence).toMatch(/probably fine/);
     expect(transient.repairStep).not.toMatch(/edit .* by hand/i);
+  });
+});
+
+/**
+ * Roast round 11. The round-9 usability check was applied to
+ * `allowedWriteScratchPaths` and never carried to `allowedPathPrefixes`, so a
+ * MIXED list passed: `["src", "dist/**"]` rendered as "grants paths [src,
+ * dist/**]" while `isContained` refused every dispatch for ever.
+ * `isVacuousPolicy` needs only one usable prefix, so it cannot catch this.
+ *
+ * Round 3's F3 in its third field -- and reachable through the very remedy
+ * this check prints, since "edit the policy by hand" is how such a list gets
+ * written.
+ */
+describe("policy.standing — unusable entries in EITHER list field", () => {
+  it.each(["dist/**", "/etc", "~/x", "../up"])(
+    "FAILS a mixed prefix list containing %j",
+    async (bad) => {
+      const finding = await run(() => ({
+        status: "loaded" as const,
+        policy: policy({ allowedPathPrefixes: ["src", bad] }),
+        digest: "sha256:mixed",
+      }));
+
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/cannot grant anything/i);
+      expect(finding.evidence).toMatch(/allowedPathPrefixes/);
+    },
+  );
+
+  it("names which field the offending entry is in", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "bad/**"],
+        allowedWriteScratchPaths: ["dist", "worse/**"],
+      }),
+      digest: "sha256:both",
+    }));
+
+    expect(finding.evidence).toMatch(/allowedPathPrefixes "bad\/\*\*"/);
+    expect(finding.evidence).toMatch(/allowedWriteScratchPaths "worse\/\*\*"/);
+  });
+
+  it("still passes when every entry in both fields is usable", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "packages"],
+        allowedWriteScratchPaths: ["dist", "packages/cli/dist"],
+      }),
+      digest: "sha256:clean",
+    }));
+
+    expect(finding.passed).toBe(true);
   });
 });

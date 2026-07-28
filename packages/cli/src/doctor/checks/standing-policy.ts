@@ -76,19 +76,32 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
       // with nothing pointing at the policy. This is round 3's F3 in the
       // sibling field: the fix was applied to path prefixes and never carried
       // across.
-      const unusableScratch = loaded.policy.allowedWriteScratchPaths.filter(
-        (entry) => !isUsablePathPrefix(entry),
-      );
-      if (unusableScratch.length > 0) {
+      // BOTH list fields, not just scratch. Round 11: the round-9 fix was
+      // applied to `allowedWriteScratchPaths` and never carried to
+      // `allowedPathPrefixes`, so `["src", "dist/**"]` PASSED -- the evidence
+      // rendered "grants paths [src, dist/**]" -- while `isContained` refused
+      // every dispatch for ever with `policy path prefix "dist/**" ... grants
+      // nothing`. `isVacuousPolicy` needs only ONE usable prefix, so a mixed
+      // list slips through it. This is round 3's F3 in its third field, and
+      // it was reachable through the very remedy this check prints.
+      const unusable = [
+        ...loaded.policy.allowedPathPrefixes
+          .filter((entry) => !isUsablePathPrefix(entry))
+          .map((entry) => ({ field: "allowedPathPrefixes", entry })),
+        ...loaded.policy.allowedWriteScratchPaths
+          .filter((entry) => !isUsablePathPrefix(entry))
+          .map((entry) => ({ field: "allowedWriteScratchPaths", entry })),
+      ];
+      if (unusable.length > 0) {
         return Promise.resolve({
           id: CHECK_ID,
           severity: "error",
           passed: false,
           evidence:
-            `the standing policy at ${options.path} lists build-output paths that cannot grant ` +
-            `anything: ${unusableScratch.map((entry) => JSON.stringify(entry)).join(", ")}. ` +
-            "They are shown as granted but silently dropped when the worker profile is compiled, " +
-            "so a build writing there is denied with nothing to point at.",
+            `the standing policy at ${options.path} lists paths that cannot grant anything: ` +
+            `${unusable.map(({ field, entry }) => `${field} ${JSON.stringify(entry)}`).join(", ")}. ` +
+            "They are shown as granted but match nothing, so a run is refused -- or a build is " +
+            "denied -- with nothing pointing back at the policy.",
           repairStep: `replace them with literal directory names in ${options.path} (no globs, no leading slash)`,
         });
       }

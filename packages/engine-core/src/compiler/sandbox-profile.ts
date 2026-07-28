@@ -155,6 +155,14 @@ function narrowedAllowWrite(
     // uses, so compiler and check now agree about every scratch entry — the
     // same "measure the gate against the compiler" rule round 8 established
     // for owned paths.
+    // `validateOwnedPath` is called for its BOUNDARY, not for a decision this
+    // loop depends on. Round 11 proved the guard dead — every condition under
+    // which it throws is one under which `normalizePathPrefix` returns
+    // `undefined`, 0 of 60,000 corpus entries separate them, and deleting the
+    // try/catch survived the whole suite. It stays because 03 owns that
+    // boundary and this function must not quietly stop honouring it if the
+    // two ever diverge; what changes is that the comment no longer implies it
+    // is catching something the line below would miss.
     try {
       validateOwnedPath(raw);
     } catch {
