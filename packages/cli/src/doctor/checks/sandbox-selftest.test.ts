@@ -158,8 +158,11 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     });
     await check.run();
 
-    const script = confinementArgs[confinementArgs.length - 1] ?? "";
-    const writeAt = script.indexOf("> '/owned/marker'");
+    // ROUND 22: the path is the LAST argv element and the script is the one
+    // before `$0`. The path is no longer inside the script at all.
+    expect(confinementArgs[confinementArgs.length - 1]).toBe("/owned/marker");
+    const script = confinementArgs[confinementArgs.length - 3] ?? "";
+    const writeAt = script.indexOf('> "$1"');
     const markerAt = script.indexOf("WROTE:");
 
     expect(writeAt).toBeGreaterThanOrEqual(0);
@@ -173,9 +176,9 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     // purpose), decoupling `$?` with an intervening `true`, and redirecting
     // the marker to stderr so it never reaches the guard. The script's shape
     // is asserted as a whole instead.
-    // ROUND 21: the target is QUOTED. See the round-21 describe block below
-    // for the measurement that forced it.
-    expect(script).toBe(`echo x > '/owned/marker'; s=$?; echo "WROTE:$s"; exit $s`);
+    // ROUND 22: the target is a positional ARGUMENT. Quoting was escapable
+    // with a single `'`; an argument is never re-parsed by the shell.
+    expect(script).toBe('echo x > "$1"; s=$?; echo "WROTE:$s"; exit $s');
 
     // The read-only bind is the confinement under test; without it the probe
     // measures nothing. Deleting it survived every assertion.
@@ -245,12 +248,14 @@ describe("sandbox-selftest — the probe target must be one this account owns", 
     // fail for a reason that is not the property under test. Asserted at the
     // only moment it is meaningful: while the sandboxed write would be running.
     let writableDuringProbe: unknown = "probe never ran";
+    let argvTarget = "";
     await createSandboxSelftestCheck({
       probe: async (_command, args) => {
         if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
-        script = args[args.length - 1] ?? "";
+        script = args[args.length - 3] ?? "";
+        argvTarget = args[args.length - 1] ?? "";
         const { access, constants } = await import("node:fs/promises");
-        const target = /> '([^']+)';/.exec(script)?.[1] ?? "";
+        const target = argvTarget;
         writableDuringProbe = await access(target, constants.W_OK).then(
           () => "writable",
           (err: unknown) => err,
@@ -261,11 +266,12 @@ describe("sandbox-selftest — the probe target must be one this account owns", 
 
     // Not `/`: a write there is refused by ordinary permissions, so it
     // measures nothing about the sandbox.
-    expect(script).not.toContain("> /eo-sandbox-selftest-marker");
-    // ROUND 21: `/> (\S+);/` could not match a quoted-or-spaced target, so it
-    // silently yielded "" and the two assertions below stopped testing
-    // anything the moment the target was quoted. Matched inside the quotes.
-    const target = /> '([^']+)';/.exec(script)?.[1] ?? "";
+    expect(script).not.toContain("/eo-sandbox-selftest-marker");
+    // ROUND 22: read from the argv, not from the script text. Every previous
+    // extraction regex here broke silently when the shape changed -- round
+    // 21's `/> (\S+);/` yielded "" the moment the target was quoted, and its
+    // replacement was itself quote-unsafe.
+    const target = argvTarget;
     expect(target.split("/").length).toBeGreaterThan(2);
 
     // And it must really exist and be writable at the moment the sandboxed
@@ -309,27 +315,27 @@ describe("sandbox-selftest — the probe target must be one this account owns", 
  * created -- false.
  */
 describe("sandbox-selftest — a marker path with whitespace must not truncate", () => {
-  async function scriptForMarker(markerPath: string): Promise<string> {
-    let script = "";
+  async function argvForMarker(markerPath: string): Promise<readonly string[]> {
+    let argv: readonly string[] = [];
     await createSandboxSelftestCheck({
       markerPath,
       probe: async (_command, args) => {
         if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
-        script = args[args.length - 1] ?? "";
+        argv = args;
         return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
       },
     }).run();
-    return script;
+    return argv;
   }
 
   it("keeps the whole path as the redirect target when TMPDIR contains a space", async () => {
     const marker = "/tmp/r21/John Smith/eo-sandbox-selftest-x/marker";
-    const script = await scriptForMarker(marker);
+    const argv = await argvForMarker(marker);
 
-    // The shell must see ONE word. Unquoted, `sh` redirects to `/tmp/r21/John`
-    // and passes `Smith/...` as an argument to `echo`.
-    expect(script).toContain(`> '${marker}';`);
-    expect(script).not.toContain(`> ${marker};`);
+    // The shell must see ONE word. ROUND 22: guaranteed structurally now --
+    // the path is its own argv element, so the shell never word-splits it.
+    expect(argv[argv.length - 1]).toBe(marker);
+    expect(argv[argv.length - 3]).not.toContain(marker);
   });
 
   it("writes to the owned path itself, not to a truncated prefix of it", async () => {
@@ -350,10 +356,11 @@ describe("sandbox-selftest — a marker path with whitespace must not truncate",
       const marker = join(owned, "marker");
       await writeFile(marker, "", { mode: 0o600 });
 
-      const script = await scriptForMarker(marker);
-      // Execute the real script with no sandbox at all. The write must land on
+      const argv = await argvForMarker(marker);
+      // Execute the REAL argv with no sandbox at all. The write must land on
       // the marker, proving the target is the owned path and nothing else.
-      await promisify(execFile)("sh", ["-c", script]).catch(() => undefined);
+      const shellArgs = argv.slice(argv.indexOf("-c"));
+      await promisify(execFile)("sh", shellArgs).catch(() => undefined);
       await expect(access(marker)).resolves.toBeUndefined();
       const { readFile } = await import("node:fs/promises");
       expect((await readFile(marker, "utf8")).trim()).toBe("x");
@@ -477,5 +484,207 @@ describe("sandbox-selftest — the confinement probe must be bounded", () => {
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("never reported running");
     expect(finding.evidence).not.toContain("correctly denied");
+  });
+});
+
+/**
+ * Roast round 22 — the round-21 quoting fix was escapable with one character.
+ *
+ * `marker.path` was interpolated inside single quotes, and single quotes are
+ * not an escape for a string that may contain a single quote. `os.tmpdir()`
+ * honours `TMPDIR`; `mkdtemp` only appends random characters to a
+ * `TMPDIR`-derived prefix.
+ *
+ * Measured end-to-end through the real CLI bundle against a no-op `bwrap` shim
+ * -- a host with NO sandbox at all:
+ *
+ *   TMPDIR="…/x'; echo WROTE:2; exit 2; '"
+ *     -> "✓ sandbox.selftest: … a write to a read-only-bound path was
+ *         correctly denied"                                  <-- FALSE PASS
+ *   TMPDIR="…/tmp-benign"
+ *     -> "✗ sandbox.selftest: … unexpectedly succeeded"       <-- correct
+ *
+ * The inverse payload forced a FAIL on a genuinely working sandbox, and
+ * `id -u > FILE` inside a payload really executed, so this was arbitrary
+ * command execution, not merely verdict control.
+ *
+ * An ODD number of quotes is worse than a wrong verdict -- it is a permanent
+ * one. `TMPDIR=/mnt/c/Users/O'Brien/AppData/Local/Temp` (a Windows username
+ * with an apostrophe, exactly the WSL2 shape round 21 cited as its own
+ * justification) produced `sh: 1: Syntax error: Unterminated quoted string` on
+ * a completely healthy host.
+ *
+ * The fix is not better quoting. The path is a positional argument now, so the
+ * shell never re-parses it.
+ */
+describe("sandbox-selftest — the marker path must not be shell-interpretable", () => {
+  const PAYLOADS = [
+    ["closes the quote and injects a passing verdict", `/tmp/x'; echo WROTE:2; exit 2; '/marker`],
+    ["closes the quote and injects a failing verdict", `/tmp/x'; echo WROTE:0; exit 0; '/marker`],
+    ["an odd quote, which broke the script outright", `/tmp/O'Brien/marker`],
+    ["command substitution", "/tmp/$(id -u)/marker"],
+    ["a backtick", "/tmp/`id -u`/marker"],
+    ["a semicolon", "/tmp/a;id -u;b/marker"],
+    ["a newline", "/tmp/a\nid -u\nb/marker"],
+  ] as const;
+
+  it.each(PAYLOADS)("keeps %s out of the script entirely", async (_name, markerPath) => {
+    let argv: readonly string[] = [];
+    await createSandboxSelftestCheck({
+      markerPath,
+      probe: async (_command, args) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        argv = args;
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+
+    const script = argv[argv.length - 3] ?? "";
+    // The script is a CONSTANT. Nothing derived from the path appears in it.
+    expect(script).toBe('echo x > "$1"; s=$?; echo "WROTE:$s"; exit $s');
+    expect(script).not.toContain(markerPath);
+    // And the path arrives whole, as its own argument.
+    expect(argv[argv.length - 1]).toBe(markerPath);
+  });
+
+  it("executes the real argv without the payload running, and writes only the marker", async () => {
+    const { mkdtemp, rm, mkdir, writeFile, access, readFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+
+    const base = await mkdtemp(join(tmpdir(), "eo-r22-"));
+    try {
+      // A real directory whose name closes a single quote and appends a
+      // command -- the exact payload that produced the false PASS.
+      // No `/` — this is one directory NAME. The payload writes a relative
+      // file, and the shell below runs with `cwd: base`, so a successful
+      // injection is visible at `base/INJECTED`.
+      const hostile = join(base, `x'; : > INJECTED; exit 2; '`);
+      await mkdir(hostile);
+      const marker = join(hostile, "marker");
+      await writeFile(marker, "", { mode: 0o600 });
+
+      let argv: readonly string[] = [];
+      await createSandboxSelftestCheck({
+        markerPath: marker,
+        probe: async (_command, args) => {
+          if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+          argv = args;
+          return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+        },
+      }).run();
+
+      // Run the REAL shell invocation, unsandboxed -- the worst case.
+      const shellArgs = argv.slice(argv.indexOf("-c"));
+      const { stdout } = await promisify(execFile)("sh", shellArgs, { cwd: base }).catch(
+        (err: { stdout?: string }) => ({ stdout: err.stdout ?? "" }),
+      );
+
+      // The injected command did NOT run.
+      await expect(access(join(base, "INJECTED"))).rejects.toThrow();
+      // The write landed on the marker, and the marker line is the shell's own.
+      expect((await readFile(marker, "utf8")).trim()).toBe("x");
+      expect(stdout.trim()).toBe("WROTE:0");
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * Round 22, finding 3 — the presence probe two lines above the confinement
+ * probe had no ceiling, so `doctor` still hung forever on the adjacent call.
+ * Measured with a `bwrap` shim that sleeps on `--version`: `wall=28.35s`,
+ * killed externally, no output and no diagnosis.
+ */
+describe("sandbox-selftest — the presence probe must be bounded too", () => {
+  it("passes a timeout to `bwrap --version`", async () => {
+    let presenceOptions: unknown = "probe never called";
+    await createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args, options) => {
+        if (args.includes("--version")) {
+          presenceOptions = options;
+          return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+
+    expect(presenceOptions).toMatchObject({ timeoutMs: expect.any(Number) });
+    expect((presenceOptions as { timeoutMs: number }).timeoutMs).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Round 22, finding 4 — a throw from the `finally` cleanup DISCARDED the
+ * verdict just computed.
+ *
+ * Measured with the marker directory left at 0500: a live "confinement is not
+ * holding" became "check threw unexpectedly: EACCES ... unlink", with a repair
+ * step saying to re-run. Cleanup failing is a leaked temp directory, not a
+ * finding about the sandbox, and must never overwrite one.
+ */
+describe("sandbox-selftest — a cleanup failure must not replace the verdict", () => {
+  it("keeps a confinement FAILURE when cleanup throws", async () => {
+    const { mkdtemp, chmod, rm, readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    // The check must take its REAL created-and-cleaned path, so `TMPDIR` is
+    // pointed at a fresh empty directory. A first attempt injected
+    // `markerPath` instead -- and that branch deliberately never calls `rm`,
+    // so the test could not fire at all and the mutation survived it. Found by
+    // mutation-checking the fix rather than by the suite going green.
+    const sandbox = await mkdtemp(join(tmpdir(), "eo-r22-nocleanup-"));
+    const previousTmpdir = process.env["TMPDIR"];
+    process.env["TMPDIR"] = sandbox;
+    let created: string | undefined;
+
+    try {
+      const finding = await createSandboxSelftestCheck({
+        probe: async (_command, args) => {
+          if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+          // The check created exactly one directory in this empty TMPDIR.
+          // Stripping write permission makes `rm`'s unlink raise EACCES.
+          const [only] = await readdir(sandbox);
+          created = join(sandbox, only ?? "");
+          await chmod(created, 0o500);
+          // A live confinement failure: the write succeeded inside the bind.
+          return { stdout: "WROTE:0\n", stderr: "", exitCode: 0 };
+        },
+      }).run();
+
+      // The health answer survives, unaltered.
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/unexpectedly succeeded/i);
+      expect(finding.evidence).not.toContain("threw unexpectedly");
+      expect(finding.evidence).not.toContain("EACCES");
+    } finally {
+      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmpdir;
+      if (created !== undefined) await chmod(created, 0o700).catch(() => undefined);
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  it("really does induce a cleanup throw, so the test above can fire", async () => {
+    // Guards the guard: if `rm` stopped throwing for this shape, the test
+    // above would pass for the wrong reason and prove nothing.
+    const { mkdtemp, chmod, rm, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const dir = await mkdtemp(join(tmpdir(), "eo-r22-throws-"));
+    await writeFile(join(dir, "marker"), "", { mode: 0o600 });
+    await chmod(dir, 0o500);
+    try {
+      await expect(rm(dir, { recursive: true, force: true })).rejects.toThrow(/EACCES|EPERM/);
+    } finally {
+      await chmod(dir, 0o700).catch(() => undefined);
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    }
   });
 });

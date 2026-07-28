@@ -97,15 +97,52 @@ function isSetupFailure(stderr: string): boolean {
   return SETUP_FAILURE_MARKERS.some((marker) => lower.includes(marker.toLowerCase()));
 }
 
+/**
+ * The confinement script. The marker path is NEVER interpolated into it — it
+ * arrives as `$1`, a positional argument, which the shell never re-parses.
+ *
+ * Rounds 20, 21 and 22 all died on this one line. Round 20's target sat at `/`,
+ * unwritable by anyone, so the refusal was ordinary DAC. Round 21 quoted the
+ * interpolated path, and round 22 escaped the quotes with one character:
+ * `os.tmpdir()` honours `TMPDIR`, `mkdtemp` only appends to a `TMPDIR`-derived
+ * prefix, and a `TMPDIR` containing `'` closed the quote. Measured end-to-end
+ * through the real CLI: `TMPDIR="…/x'; echo WROTE:2; exit 2; '"` made `doctor`
+ * report the sandbox self-test as PASSING with a no-op `bwrap` shim on the
+ * PATH — no sandbox whatsoever — and the inverse payload forced a FAIL on a
+ * genuinely working one. `id -u > FILE` inside the payload really executed.
+ *
+ * An ODD number of quotes is not merely a wrong verdict but a permanent one:
+ * `TMPDIR=/mnt/c/Users/O'Brien/AppData/Local/Temp` — a Windows username with an
+ * apostrophe, exactly the WSL2 configuration round 21 cited as its own
+ * justification — produced `sh: 1: Syntax error: Unterminated quoted string` on
+ * a completely healthy host, with a repair step blaming signals and OOM.
+ *
+ * Quoting is a losing game; not interpolating at all is not. `;`, `&&`, `$(…)`,
+ * backticks and newlines in `TMPDIR` were all already neutralised — only `'`
+ * escaped — and as an argument none of them are even parsed.
+ */
+const CONFINEMENT_SCRIPT = `echo x > "$1"; s=$?; echo "${WRITE_MARKER}$s"; exit $s`;
+
 /** Generous next to a probe that normally completes in single-digit milliseconds. */
 const CONFINEMENT_TIMEOUT_MS = 30_000;
+
+/**
+ * Round 22: the presence probe two lines above the confinement probe had NO
+ * ceiling, so `doctor` still hung forever on the adjacent call. Measured with a
+ * `bwrap` shim that sleeps on `--version`: `wall=28.35s`, killed by an external
+ * timeout, no output and no diagnosis. `grep timeoutMs packages/cli/src` found
+ * exactly one call site — this closes the other.
+ */
+const PRESENCE_TIMEOUT_MS = 10_000;
 
 export function createSandboxSelftestCheck(options: SandboxSelftestOptions): DoctorCheck {
   return {
     id: CHECK_ID,
     severity: "error",
     async run(): Promise<DoctorFinding> {
-      const presence = await options.probe("bwrap", ["--version"]);
+      const presence = await options.probe("bwrap", ["--version"], {
+        timeoutMs: PRESENCE_TIMEOUT_MS,
+      });
       if (presence.exitCode !== 0) {
         return {
           id: CHECK_ID,
@@ -170,16 +207,11 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
             //     0/20 PASS on a host where the write is demonstrably refused,
             //     while the check held `WROTE:2` and "Read-only file system" in
             //     hand and declared the write had succeeded.
-            // The path is QUOTED. Round 21: unquoted, any whitespace in
-            // `TMPDIR` truncated the redirect target — and this project targets
-            // WSL2, where `TMPDIR=/mnt/c/Users/<name with space>/AppData/Local/Temp`
-            // is an ordinary configuration. Measured with a colliding sibling
-            // directory present, a no-op `bwrap` shim PASSED on a host with no
-            // sandbox at all: the round-20 defect reproduced verbatim, because
-            // the write landed somewhere ordinary permissions refuse. Without a
-            // collision it silently wrote OUTSIDE its own owned directory, making
-            // this function's central claim false.
-            `echo x > '${marker.path}'; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
+            CONFINEMENT_SCRIPT,
+            // `$0`, then `$1`. The marker path is an ARGUMENT, never text
+            // spliced into the script — see `CONFINEMENT_SCRIPT`.
+            "eo-sandbox-selftest",
+            marker.path,
           ],
           // Round 21, finding 3: without a ceiling, a bwrap child that
           // survives its parent while holding the stdout pipe hangs `doctor`
@@ -255,7 +287,13 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
           evidence: "bwrap is present and a write to a read-only-bound path was correctly denied",
         };
       } finally {
-        await marker.cleanup();
+        // Round 22: a throw from `rm` DISCARDED the verdict just computed. A
+        // marker directory left at 0500 turned a live "confinement is not
+        // holding" into "check threw unexpectedly: EACCES ... unlink", with a
+        // repair step saying to re-run — the health answer replaced by a
+        // filesystem detail. Cleanup failing is a leaked temp directory, not a
+        // finding about the sandbox, so it must never overwrite one.
+        await marker.cleanup().catch(() => undefined);
       }
     },
   };

@@ -14,6 +14,7 @@
  * own doc comment for the concrete case this fixes.
  */
 import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 
 export interface ProbeResult {
   readonly stdout: string;
@@ -43,8 +44,19 @@ export interface ProcessProbeOptions {
    * showing stuck `bwrap` processes 20+ minutes later. `crabgic doctor` hung
    * with no output and no way to know why.
    *
-   * On expiry the child is SIGKILLed and the probe RESOLVES with `exitCode:
-   * -1` and whatever output arrived. That lands in the "never reported
+   * On expiry the child's whole PROCESS GROUP is SIGKILLed and the probe
+   * RESOLVES with `exitCode: -1` and whatever output arrived.
+   *
+   * Round 22: killing the direct child alone was not enough. `sh -c "sleep 1;
+   * ..."` forks, so the SIGKILL hit `sh` while the grandchild survived holding
+   * the probe's stdout/stderr pipes — `close` never fired, both `PipeWrap`
+   * handles stayed ref'd, and the hang was not removed but RELOCATED to process
+   * exit (`bin.ts` sets `process.exitCode` and relies on a natural exit).
+   * Measured: `node` still alive at 12s, `activeResources: [PipeWrap, PipeWrap,
+   * Timeout]`. Round 21's own test file orphaned two `sleep 300` processes per
+   * run. Supplying `timeoutMs` therefore makes the child a group leader, so the
+   * kill reaches the tree; the streams are destroyed as a backstop for anything
+   * that escapes the group. That lands in the "never reported
    * running" branch -- UNVERIFIED, never a pass -- which is the fail-closed
    * direction: a check that timed out has not demonstrated confinement.
    */
@@ -58,12 +70,41 @@ export type ProcessProbeFn = (
   options?: ProcessProbeOptions,
 ) => Promise<ProbeResult>;
 
+/**
+ * SIGKILL the child's entire process group, falling back to the child alone.
+ *
+ * `process.kill(-pid)` addresses the group, which only exists because `spawn`
+ * was given `detached: true`. It can still throw — ESRCH if everything already
+ * exited, EPERM in constrained environments — and a bare child kill is strictly
+ * better than nothing there. The streams are destroyed either way: a grandchild
+ * that somehow escapes the group must not be able to hold the event loop open,
+ * which is the failure this exists to prevent.
+ */
+function killProcessTree(child: ChildProcess): void {
+  try {
+    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
+    else child.kill("SIGKILL");
+  } catch {
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      // Already gone; the streams are still destroyed below.
+    }
+  }
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+}
+
 export function createRealProcessProbe(): ProcessProbeFn {
   return (command, args, options) =>
     new Promise<ProbeResult>((resolve) => {
       const child = spawn(command, [...args], {
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
+        // Only when a ceiling was asked for: a group leader is what makes the
+        // expiry kill reach the whole tree. Without a ceiling the previous
+        // (attached) behaviour is preserved exactly.
+        ...(options?.timeoutMs !== undefined ? { detached: true } : {}),
         ...(options?.cwd !== undefined ? { cwd: options.cwd } : {}),
         ...(options?.env !== undefined ? { env: options.env } : {}),
       });
@@ -80,7 +121,7 @@ export function createRealProcessProbe(): ProcessProbeFn {
         options?.timeoutMs === undefined
           ? undefined
           : setTimeout(() => {
-              child.kill("SIGKILL");
+              killProcessTree(child);
               settle({
                 stdout,
                 stderr:

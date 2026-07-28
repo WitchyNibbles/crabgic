@@ -130,6 +130,62 @@ describe("createRealProcessProbe — timeoutMs", () => {
     }
   });
 
+  /**
+   * Roast round 22: the round-21 test above passes only because `dash` holds
+   * that whole script itself. ONE SUBSHELL DEEPER, the SIGKILL hit `sh` while
+   * the grandchild survived, wrote its witness a second after the probe gave
+   * up, and -- worse -- kept the probe's stdout/stderr pipes open, so `close`
+   * never fired and both `PipeWrap` handles stayed ref'd. The hang round 21
+   * removed was relocated to process exit: measured `node` still alive at 12s
+   * with `activeResources: [PipeWrap, PipeWrap, Timeout]`, and round 21's own
+   * test file orphaning two `sleep 300` processes per run.
+   */
+  it("kills the whole process tree, not just the direct child", async () => {
+    const { mkdtemp, rm, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const dir = await mkdtemp(join(tmpdir(), "eo-probe-tree-"));
+    try {
+      const witness = join(dir, "grandchild-survived");
+      const probe = createRealProcessProbe();
+
+      // `( ... ) & wait` forces a real grandchild. Killing the direct child
+      // alone leaves it running, and it writes the witness after the ceiling.
+      const result = await probe("sh", ["-c", `(sleep 1; : > '${witness}') & wait`], {
+        timeoutMs: 250,
+      });
+      expect(result.exitCode).toBe(-1);
+
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+      await expect(access(witness)).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The other half of the same defect, and the one that actually hung the CLI:
+   * a survivor holding the pipes stops the event loop draining. `bin.ts` sets
+   * `process.exitCode` and relies on a natural exit, so ref'd handles mean
+   * `crabgic doctor` never returns even after every check has reported.
+   */
+  it("leaves no handle holding the event loop open after a timeout", async () => {
+    const countPipes = (): number =>
+      process.getActiveResourcesInfo().filter((name) => name === "PipeWrap").length;
+
+    // A DELTA, not an absolute count: the vitest worker holds its own IPC
+    // pipes, and asserting none exist measured the runner rather than the
+    // probe. (Round 22 measured this in a standalone `node`, where the
+    // absolute count was meaningful; here it is not.)
+    const before = countPipes();
+    const probe = createRealProcessProbe();
+    await probe("sh", ["-c", "(sleep 300) & wait"], { timeoutMs: 250 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(countPipes()).toBe(before);
+  });
+
   it("waits indefinitely when no ceiling is given, preserving the default", async () => {
     const probe = createRealProcessProbe();
     // A process that outlives any plausible timeout default would hang the
