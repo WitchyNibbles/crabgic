@@ -199,3 +199,39 @@ describe("findLiveRunForChangeSet", () => {
     expect(findLiveRunForChangeSet(runs, "77777777-7777-4777-8777-777777777777")).toBeUndefined();
   });
 });
+
+/**
+ * Roast round 2, F6 — closed by the per-run serialization in
+ * `run-transition.ts` rather than by anything here, so it is asserted at this
+ * level to prove the fix reaches the caller that motivated it.
+ *
+ * Two concurrent `createRun` with the SAME caller-supplied runId both used to
+ * see `runs.get() === undefined`, both validate `draft -> awaiting_approval`,
+ * and both proceed — journalling the entire three-step walk twice. The
+ * sequential test above asserted the transition table refuses a duplicate,
+ * which was true only when nothing raced it.
+ */
+describe("createRun — concurrent calls with the same runId", () => {
+  it("journals exactly one lifecycle walk", async () => {
+    changeSets.put(changeSet("ready"));
+
+    const outcomes = await Promise.allSettled([
+      createRun({ journal, runs, changeSets, changeSetId: CHANGE_SET_ID, runId: RUN_ID }),
+      createRun({ journal, runs, changeSets, changeSetId: CHANGE_SET_ID, runId: RUN_ID }),
+    ]);
+
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(1);
+
+    const transitions: { from: string; to: string }[] = [];
+    for await (const entry of journal.queryEntries({ runId: RUN_ID })) {
+      if (entry.type === "run_transition") {
+        transitions.push(entry.payload as { from: string; to: string });
+      }
+    }
+    expect(transitions).toEqual([
+      { from: "draft", to: "awaiting_approval" },
+      { from: "awaiting_approval", to: "ready" },
+      { from: "ready", to: "running" },
+    ]);
+  });
+});
