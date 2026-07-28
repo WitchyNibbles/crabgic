@@ -113,3 +113,55 @@ describe("derivePolicy — vacuity", () => {
     expect(vacuous).toBe(true);
   });
 });
+
+/**
+ * Roast round 3, F1. On this very repo every package sets `outDir: "./dist"`,
+ * so `tsc -b` writes `packages/<name>/dist` for all 15 projects -- none of
+ * which a top-level `dist` grant covers, and the top-level `dist` it does
+ * grant does not exist here at all. So `npm run build`, one of only two
+ * grantable build commands, failed under the narrowed sandbox at any policy
+ * setting the owner could express: `packages/<name>/dist` is a glob and grants
+ * nothing.
+ */
+describe("derivePolicy — workspace build output", () => {
+  function deriveWorkspace(top: readonly string[], children: Record<string, string[]>) {
+    return derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) => {
+        if (path === dir) return top;
+        for (const [container, kids] of Object.entries(children)) {
+          if (path.endsWith(container)) return kids;
+        }
+        return [];
+      },
+    });
+  }
+
+  it("grants each workspace package its own build output", () => {
+    const { policy } = deriveWorkspace(["packages"], { packages: ["cli", "contracts"] });
+
+    expect(policy.allowedWriteScratchPaths).toContain("packages/cli/dist");
+    expect(policy.allowedWriteScratchPaths).toContain("packages/contracts/dist");
+    expect(policy.allowedWriteScratchPaths).toContain("packages/cli/coverage");
+  });
+
+  it("covers apps/ as well as packages/", () => {
+    const { policy } = deriveWorkspace(["apps"], { apps: ["web"] });
+    expect(policy.allowedWriteScratchPaths).toContain("apps/web/dist");
+  });
+
+  /** Every entry stays a literal path — a glob would be dropped at compile time while still appearing in the policy an owner reads. */
+  it("emits only literal paths, never a pattern", () => {
+    const { policy } = deriveWorkspace(["packages"], { packages: ["cli"] });
+
+    for (const path of policy.allowedWriteScratchPaths) {
+      expect(path).not.toMatch(/[*?[\]{}]/);
+    }
+  });
+
+  it("adds nothing for a repo with no workspace container", () => {
+    const flat = derive(["src"]).policy.allowedWriteScratchPaths;
+    expect(flat.every((p) => !p.startsWith("packages/"))).toBe(true);
+  });
+});

@@ -62,6 +62,18 @@ const CANDIDATE_SCRATCH_DIRS = [
   "node_modules/.cache",
 ] as const;
 
+/**
+ * Workspace container directories whose children each get their own build
+ * output. Roast round 3 (F1) found what their absence cost: on this very
+ * repo every package sets `outDir: "./dist"`, so `tsc -b` writes
+ * `packages/<name>/dist` for all 15 projects — none of which a top-level
+ * `dist` grant covers, and the top-level `dist` it does grant does not exist
+ * here at all. The owner's obvious repair — a `packages` glob — grants nothing, and
+ * grants nothing. Enumerating the children at derive time keeps every grant a
+ * literal path, which is the property that makes a policy readable.
+ */
+const WORKSPACE_CONTAINER_DIRS = ["packages", "apps"] as const;
+
 export interface DerivePolicyOptions {
   readonly projectDir: string;
   readonly id: string;
@@ -112,6 +124,34 @@ function deriveCommands(scripts: ReadonlySet<string>): readonly GrantableCommand
   return GRANTABLE_COMMAND_PREFIXES.filter((prefix) => granted.includes(prefix));
 }
 
+/**
+ * Per-package build output for a workspace repo — `packages/<name>/dist` and
+ * friends, one literal entry each.
+ *
+ * Enumerated rather than pattern-matched. A glob here would be a second
+ * matching language on the write-grant surface, and `validateOwnedPath`
+ * rejects one anyway, so a pattern would be silently dropped at compile time
+ * while still appearing in the policy an owner reads.
+ */
+function deriveWorkspaceScratchPaths(
+  options: DerivePolicyOptions,
+  present: ReadonlySet<string>,
+): readonly string[] {
+  const paths: string[] = [];
+  for (const container of WORKSPACE_CONTAINER_DIRS) {
+    if (!present.has(container)) continue;
+    for (const child of options.listDirectories(join(options.projectDir, container))) {
+      for (const output of CANDIDATE_SCRATCH_DIRS) {
+        // Only the shallow build outputs; `node_modules/.cache` is a
+        // top-level concern and is already granted above.
+        if (output.includes("/")) continue;
+        paths.push(`${container}/${child}/${output}`);
+      }
+    }
+  }
+  return paths;
+}
+
 export function derivePolicy(options: DerivePolicyOptions): DerivedPolicy {
   const present = new Set(options.listDirectories(options.projectDir));
 
@@ -123,7 +163,10 @@ export function derivePolicy(options: DerivePolicyOptions): DerivedPolicy {
     // Scratch paths are granted whether or not they exist yet: a build output
     // directory is created BY the build, so requiring it to be present at
     // install time would deny exactly the directory the first run needs.
-    allowedWriteScratchPaths: [...CANDIDATE_SCRATCH_DIRS],
+    allowedWriteScratchPaths: [
+      ...CANDIDATE_SCRATCH_DIRS,
+      ...deriveWorkspaceScratchPaths(options, present),
+    ],
     allowedCommands: deriveCommands(readPackageScripts(options.projectDir)),
     // Deliberately not derived — see the file-level note.
     allowedNetworkDestinations: [],
