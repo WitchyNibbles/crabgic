@@ -149,6 +149,7 @@ describe("sandbox-selftest — the marker must follow the write", () => {
   it("emits the marker after the write, carrying its exit status", async () => {
     let confinementArgs: readonly string[] = [];
     const check = createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
       probe: async (_command, args) => {
         if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
         confinementArgs = args;
@@ -158,7 +159,7 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     await check.run();
 
     const script = confinementArgs[confinementArgs.length - 1] ?? "";
-    const writeAt = script.indexOf("> /eo-sandbox-selftest-marker");
+    const writeAt = script.indexOf("> /owned/marker");
     const markerAt = script.indexOf("WROTE:");
 
     expect(writeAt).toBeGreaterThanOrEqual(0);
@@ -172,7 +173,7 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     // purpose), decoupling `$?` with an intervening `true`, and redirecting
     // the marker to stderr so it never reaches the guard. The script's shape
     // is asserted as a whole instead.
-    expect(script).toBe('echo x > /eo-sandbox-selftest-marker; s=$?; echo "WROTE:$s"; exit $s');
+    expect(script).toBe('echo x > /owned/marker; s=$?; echo "WROTE:$s"; exit $s');
 
     // The read-only bind is the confinement under test; without it the probe
     // measures nothing. Deleting it survived every assertion.
@@ -217,5 +218,56 @@ describe("sandbox-selftest — stdout and exit status must agree", () => {
     }).run();
 
     expect(finding.passed).toBe(true);
+  });
+});
+
+/**
+ * Roast round 20, and the defect predated every fix in this series.
+ *
+ * The probe wrote to `/eo-sandbox-selftest-marker` -- at `/`, which uid 1000
+ * cannot write REGARDLESS of any sandbox -- so the refusal the check called
+ * proof of confinement was ordinary DAC. Measured: real bwrap, a deliberately
+ * WRITABLE bind, bare `sh` with no sandbox, and a no-op `bwrap` shim that
+ * strips every flag all produced identical output and all four PASSED. The
+ * test file went 14/14 green with no sandbox at all.
+ *
+ * Writing somewhere this account owns is what makes the denial attributable
+ * to the `--ro-bind` and nothing else.
+ */
+describe("sandbox-selftest — the probe target must be one this account owns", () => {
+  it("defaults to a path it created, not an unwritable system path", async () => {
+    let script = "";
+    await createSandboxSelftestCheck({
+      probe: async (_command, args) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        script = args[args.length - 1] ?? "";
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+
+    // Not `/`: a write there is refused by ordinary permissions, so it
+    // measures nothing about the sandbox.
+    expect(script).not.toContain("> /eo-sandbox-selftest-marker");
+    const target = /> (\S+);/.exec(script)?.[1] ?? "";
+    expect(target.split("/").length).toBeGreaterThan(2);
+
+    // And it must really exist and be writable, or the probe would be
+    // refused for the wrong reason again.
+    const { access, constants } = await import("node:fs/promises");
+    await expect(access(target, constants.W_OK)).resolves.toBeUndefined();
+  });
+
+  it("reports confinement broken when the owned path IS writable", async () => {
+    // What a missing/no-op sandbox now looks like: the write succeeds.
+    const finding = await createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:0\n", stderr: "", exitCode: 0 },
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/unexpectedly succeeded/i);
   });
 });

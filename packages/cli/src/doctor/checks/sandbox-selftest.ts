@@ -18,10 +18,19 @@
  * system"/"Permission denied" wording, never bwrap-prefixed) — this is the
  * signal used below to tell the two failure modes apart.
  */
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 import type { ProcessProbeFn } from "../process-probe.js";
 
 export interface SandboxSelftestOptions {
+  /**
+   * Seam: the path the probe attempts to write. Defaults to a freshly created
+   * 0600 file this account owns — see `createOwnedMarkerPath` for why that
+   * matters. Injected by tests so the argv is assertable.
+   */
+  readonly markerPath?: string;
   readonly probe: ProcessProbeFn;
 }
 
@@ -36,7 +45,29 @@ export interface SandboxSelftestOptions {
  * was attempted and denied. A single constant makes that mutation
  * unexpressible.
  */
-const MARKER_PATH = "/eo-sandbox-selftest-marker";
+/**
+ * The probe writes to a path THIS ACCOUNT OWNS, created read-write at run
+ * time, and relies on the `--ro-bind` to make it unwritable.
+ *
+ * Round 20 measured what the previous target cost. It was
+ * `/eo-sandbox-selftest-marker` — at `/`, which uid 1000 cannot write
+ * REGARDLESS of any sandbox — so the refusal the check treated as proof of
+ * confinement was ordinary DAC. Executed differential: real bwrap, a
+ * deliberately WRITABLE `--bind / /`, bare `sh` with no sandbox, and a no-op
+ * `bwrap` shim that strips every flag all produced the identical
+ * `WROTE:2 / exit 2` and all four PASSED. The check had no security property
+ * at all, and the test file went 14/14 green with no sandbox whatsoever.
+ *
+ * Writing somewhere this uid genuinely owns separates them: without the bind
+ * the write SUCCEEDS (`WROTE:0`, caught by the branch below), and only the
+ * read-only bind can refuse it. The denial becomes attributable.
+ */
+async function createOwnedMarkerPath(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "eo-sandbox-selftest-"));
+  const path = join(dir, "marker");
+  await writeFile(path, "", { mode: 0o600 });
+  return path;
+}
 const WRITE_MARKER = "WROTE:";
 
 const CHECK_ID = "sandbox.selftest";
@@ -72,6 +103,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
 
       // Confinement self-test: bind `/` read-only and attempt a write; a
       // correctly-confined sandbox must refuse the write (non-zero exit).
+      const markerPath = options.markerPath ?? (await createOwnedMarkerPath());
       const confinement = await options.probe("bwrap", [
         "--ro-bind",
         "/",
@@ -115,7 +147,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
         //     0/20 PASS on a host where the write is demonstrably refused,
         //     while the check held `WROTE:2` and "Read-only file system" in
         //     hand and declared the write had succeeded.
-        `echo x > ${MARKER_PATH}; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
+        `echo x > ${markerPath}; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
       ]);
       if (confinement.exitCode === 0) {
         return {
