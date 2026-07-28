@@ -121,12 +121,29 @@ describe("sandbox-selftest — a denial requires proof the write was attempted",
  * bwrap is unavailable rather than pretending to have checked.
  */
 describe("sandbox-selftest — the real argv against the real bwrap", () => {
-  it("PASSES on a host whose sandbox genuinely denies the write", async () => {
+  it("PASSES on a host whose sandbox genuinely denies the write", async (ctx) => {
     const { createRealProcessProbe } = await import("../process-probe.js");
     const probe = createRealProcessProbe();
 
     const presence = await probe("bwrap", ["--version"]).catch(() => undefined);
-    if (presence === undefined || presence.exitCode !== 0) return; // no bwrap here
+    const bwrapPresent = presence !== undefined && presence.exitCode === 0;
+
+    // ROUND 23: this used to be a bare `return`, so on a host without bwrap the
+    // test reported a green tick having asserted NOTHING -- and the main CI
+    // job installed no bubblewrap, which is exactly where the round-18 defect
+    // class (`echo RAN` -> `echo RUN` survived 5260 tests) had to be caught.
+    // CI now installs bubblewrap and sets this variable, so a missing sandbox
+    // there is a failure rather than a silent pass; locally it still skips.
+    if (!bwrapPresent) {
+      if (process.env["CRABGIC_REQUIRE_BWRAP"] === "1") {
+        throw new Error(
+          "CRABGIC_REQUIRE_BWRAP=1 but `bwrap --version` failed: the confinement " +
+            "self-test cannot be verified against a real sandbox on this host",
+        );
+      }
+      ctx.skip();
+      return;
+    }
 
     const finding = await createSandboxSelftestCheck({ probe }).run();
 

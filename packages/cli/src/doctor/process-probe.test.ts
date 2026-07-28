@@ -8,8 +8,12 @@
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createRealProcessProbe } from "./process-probe.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createRealProcessProbe,
+  killProcessTreeForTest,
+  liveDetachedChildCountForTest,
+} from "./process-probe.js";
 
 let scratchDir: string;
 
@@ -194,4 +198,261 @@ describe("createRealProcessProbe — timeoutMs", () => {
     expect(result.stdout.trim()).toBe("late");
     expect(result.exitCode).toBe(0);
   });
+});
+
+/**
+ * Roast round 23, finding 1 — `detached: true` made probe children immune to
+ * Ctrl-C.
+ *
+ * A detached child leads its own process group, so it is not in the terminal's
+ * foreground group and never receives SIGINT. Measured end-to-end against the
+ * real CLI with a `bwrap` whose `--version` hangs: SIGINT to `crabgic doctor`
+ * left the probe alive and reparented to init (survivors: 1), while the same
+ * build with the handler install removed... left it alive too — that IS the
+ * control, and the fixed build leaves survivors: 0, twice.
+ *
+ * Real bwrap's `--die-with-parent` masks this for the confinement probe, but
+ * the PRESENCE probe carries no such flag, and any non-real `bwrap` escapes
+ * both. The group kill lived only in a timer, and a timer dies with the CLI.
+ */
+describe("createRealProcessProbe — a bounded child must not outlive the CLI", () => {
+  it("registers a bounded child and releases it once settled", async () => {
+    const probe = createRealProcessProbe();
+    const before = liveDetachedChildCountForTest();
+
+    const pending = probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+    // Registered while in flight.
+    expect(liveDetachedChildCountForTest()).toBeGreaterThan(before);
+
+    await pending;
+    // And released, so the set cannot grow without bound across a long run.
+    expect(liveDetachedChildCountForTest()).toBe(before);
+  });
+
+  it("releases a child that had to be killed on expiry, not only a clean one", async () => {
+    const probe = createRealProcessProbe();
+    const before = liveDetachedChildCountForTest();
+
+    await probe("sh", ["-c", "sleep 300"], { timeoutMs: 250 });
+
+    expect(liveDetachedChildCountForTest()).toBe(before);
+  });
+
+  it("never registers an UNBOUNDED child, which is not detached and dies with the CLI already", async () => {
+    const probe = createRealProcessProbe();
+    const before = liveDetachedChildCountForTest();
+
+    const pending = probe("sh", ["-c", "exit 0"]);
+    expect(liveDetachedChildCountForTest()).toBe(before);
+
+    await pending;
+    expect(liveDetachedChildCountForTest()).toBe(before);
+  });
+
+  it("installs a signal handler, exactly once, however many probes run", async () => {
+    const probe = createRealProcessProbe();
+    await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+    const afterFirst = process.listenerCount("SIGINT");
+    expect(afterFirst).toBeGreaterThan(0);
+
+    await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+    await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+
+    // Installed once. A per-call handler would exhaust the listener limit and
+    // print a MaxListenersExceededWarning on a long doctor run.
+    expect(process.listenerCount("SIGINT")).toBe(afterFirst);
+  });
+});
+
+/**
+ * Roast round 23, finding 2 — the stream-destroy backstop had no test that
+ * could fire.
+ *
+ * Deleting `child.stdout?.destroy(); child.stderr?.destroy()` left the suite
+ * 44/44 green, INCLUDING the test written for exactly that line: the group kill
+ * already reaps every pipe holder, so the pipes close naturally either way.
+ *
+ * The backstop earns its place against a descendant that LEAVES the group —
+ * `setsid` — while holding stdout. Measured in standalone node: with the
+ * destroys, `activeResources: [Timeout]` and `rc=0`; without them,
+ * `[PipeWrap, PipeWrap, Timeout]` and `rc=124`, the CLI never exiting.
+ */
+describe("createRealProcessProbe — a group-escaping descendant must not hold the loop", () => {
+  it("releases the pipes even when a descendant escapes the process group", async () => {
+    const countPipes = (): number =>
+      process.getActiveResourcesInfo().filter((name) => name === "PipeWrap").length;
+
+    const before = countPipes();
+    const probe = createRealProcessProbe();
+
+    // `setsid` puts the grandchild in a NEW session and group, so the expiry
+    // group-kill cannot reach it; it keeps stdout open. It exits on its own
+    // shortly after, so nothing is leaked past this test.
+    await probe("sh", ["-c", "setsid sleep 4 & wait"], { timeoutMs: 250 });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(countPipes()).toBe(before);
+  });
+});
+
+/**
+ * Roast round 23, finding 3 — `process.kill(-pid)` on a REAPED child can signal
+ * a recycled process group.
+ *
+ * The window is exactly when `close` has not fired but the child has exited: a
+ * descendant outside the group holds the pipes, the child's group is empty, and
+ * the pid is free to be reused. Constructed inside a PID namespace by writing
+ * `ns_last_pid`: the group kill SIGKILLed an unrelated `sleep 400` that had
+ * inherited the number. The bare-child fallback covers the reaped case
+ * perfectly well, so the negative-pid form is simply not used there.
+ */
+describe("killProcessTree — the group kill is not used on a reaped child", () => {
+  it("kills a live child by group and a reaped one by pid", async () => {
+    const killed: (number | string)[] = [];
+    const realKill = process.kill.bind(process);
+    const spy = vi.spyOn(process, "kill").mockImplementation(((pid: number, signal?: string) => {
+      killed.push(pid);
+      return realKill(pid, signal as NodeJS.Signals);
+    }) as typeof process.kill);
+
+    try {
+      const probe = createRealProcessProbe();
+      // A live child at expiry: the group form is correct and expected.
+      await probe("sh", ["-c", "sleep 300"], { timeoutMs: 250 });
+      expect(killed.some((pid) => typeof pid === "number" && pid < 0)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("createRealProcessProbe — detachment follows the ceiling, and only the ceiling", () => {
+  async function childPgid(options?: { timeoutMs?: number }): Promise<string> {
+    const probe = createRealProcessProbe();
+    const result = await probe("sh", ["-c", "ps -o pgid= -p $$"], options);
+    return result.stdout.trim();
+  }
+
+  it("puts a BOUNDED child in its own group, and an UNBOUNDED one in ours", async () => {
+    const { execSync } = await import("node:child_process");
+    const ownPgid = execSync(`ps -o pgid= -p ${String(process.pid)}`)
+      .toString()
+      .trim();
+
+    // Unbounded: same group as this process, so a terminal SIGINT reaches it
+    // exactly as it did before ceilings existed.
+    expect(await childPgid()).toBe(ownPgid);
+
+    // Bounded: its own group -- which is what makes the expiry group-kill
+    // possible, and what the signal sweep exists to compensate for.
+    expect(await childPgid({ timeoutMs: 5_000 })).not.toBe(ownPgid);
+  });
+});
+
+/**
+ * Round 23, finding 3 — the reaped-child branch. Unreachable deterministically
+ * through a real spawn (it needs `close` not to have fired while the child has
+ * been reaped), so the branch is exercised directly.
+ */
+describe("killProcessTree — pid form by liveness", () => {
+  function fakeChild(
+    over: Partial<Record<string, unknown>>,
+  ): Parameters<typeof killProcessTreeForTest>[0] {
+    return {
+      pid: 4242,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+      stdout: undefined,
+      stderr: undefined,
+      ...over,
+    } as unknown as Parameters<typeof killProcessTreeForTest>[0];
+  }
+
+  it("uses the NEGATIVE pid (the group) for a child still running", () => {
+    const spy = vi.spyOn(process, "kill").mockImplementation((() => true) as typeof process.kill);
+    try {
+      killProcessTreeForTest(fakeChild({}));
+      expect(spy).toHaveBeenCalledWith(-4242, "SIGKILL");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each([
+    ["exited normally", { exitCode: 0 }],
+    ["exited non-zero", { exitCode: 137 }],
+    ["killed by a signal", { signalCode: "SIGKILL" }],
+  ])("never signals a group for a child that %s — its pid may be recycled", (_name, over) => {
+    const spy = vi.spyOn(process, "kill").mockImplementation((() => true) as typeof process.kill);
+    const child = fakeChild(over);
+    try {
+      killProcessTreeForTest(child);
+      expect(spy).not.toHaveBeenCalled();
+      // The bare-child fallback still runs, which is harmless and correct.
+      expect(child.kill).toHaveBeenCalledWith("SIGKILL");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+/**
+ * Round 23, finding 1, END TO END — and the mutant that survived everything
+ * else.
+ *
+ * Deleting `killAllDetachedChildren()` from the signal handler left the suite
+ * green: the registry was still maintained, the handler was still installed,
+ * and nothing checked that it did the one thing it exists for. Verified
+ * manually against the real CLI (survivors 1 without the fix, 0 with it,
+ * twice), which is exactly the kind of proof that does not survive contact
+ * with a refactor. Automated here.
+ *
+ * A real child process is required: sending SIGINT to the vitest worker would
+ * kill the run. The helper starts a bounded probe whose grandchild outlives it,
+ * then takes a SIGINT the way a user's Ctrl-C delivers one.
+ */
+describe("createRealProcessProbe — SIGINT to the CLI must take the probe with it", () => {
+  it("kills a detached probe child when the process is interrupted", async () => {
+    const { spawn: spawnHelper } = await import("node:child_process");
+    const { writeFile, mkdtemp, rm, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join, resolve } = await import("node:path");
+
+    const dir = await mkdtemp(join(tmpdir(), "eo-sigint-"));
+    try {
+      const witness = join(dir, "probe-survived-sigint");
+      const { fileURLToPath } = await import("node:url");
+      const here = fileURLToPath(new URL(".", import.meta.url));
+      const modulePath = resolve(here, "process-probe.ts");
+      const helper = join(dir, "helper.mts");
+      // The probe's child writes the witness 2s from now. If SIGINT does not
+      // take it down, the witness appears.
+      await writeFile(
+        helper,
+        `import { createRealProcessProbe } from ${JSON.stringify(modulePath)};\n` +
+          `const probe = createRealProcessProbe();\n` +
+          `probe("sh", ["-c", "sleep 2; : > '${witness}'"], { timeoutMs: 60000 });\n` +
+          `setTimeout(() => { process.stdout.write("ready\\n"); }, 400);\n` +
+          `setTimeout(() => {}, 60000);\n`,
+      );
+
+      const child = spawnHelper(resolve("node_modules/.bin/tsx"), [helper], {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      await new Promise<void>((done) => {
+        child.stdout.on("data", (chunk: Buffer) => {
+          if (chunk.toString("utf8").includes("ready")) done();
+        });
+      });
+
+      child.kill("SIGINT");
+      await new Promise((r) => setTimeout(r, 3000));
+
+      await expect(access(witness)).rejects.toThrow();
+      child.kill("SIGKILL");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 25_000);
 });

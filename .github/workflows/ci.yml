@@ -61,8 +61,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Roast round 23, finding 4: the ONLY test that executes the real
+      # confinement argv against a real sandbox early-returns when `bwrap` is
+      # absent, so on a runner without bubblewrap it reported a green tick
+      # having asserted nothing. `release-e2e.yml` and `engine-live.yml` both
+      # install bubblewrap explicitly, which is what makes it clear the runner
+      # image does not carry it — so the round-18 defect class (`echo RAN` ->
+      # `echo RUN` survived 5260 tests) was guarded here by nothing at all.
+      - name: install bubblewrap (the sandbox self-test needs a real one)
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - name: bwrap must actually be present, or the guard above is a no-op
+        run: bwrap --version
       - name: test with 80% line+branch coverage gate
-        run: npm test
+        run: CRABGIC_REQUIRE_BWRAP=1 npm test
 
       # roadmap/23 Exit criteria: "ARM64 build+test verified on real
       # hardware/CI, or an explicitly documented substitute recorded —

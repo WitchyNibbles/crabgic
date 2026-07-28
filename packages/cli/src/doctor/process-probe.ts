@@ -81,8 +81,18 @@ export type ProcessProbeFn = (
  * which is the failure this exists to prevent.
  */
 function killProcessTree(child: ChildProcess): void {
+  // Round 23: the group kill is gated on the child NOT having been reaped.
+  // The dangerous window is precisely when `close` has not fired but the child
+  // has exited — a descendant outside the group holds the pipes, the child's
+  // group is empty, and the kernel is free to recycle the pid. Constructed
+  // inside a PID namespace by writing `ns_last_pid`: `process.kill(-pid)`
+  // SIGKILLed an unrelated `sleep 400` that had inherited the number. Poorly
+  // exploitable on a real host (it needs a group-escaping descendant plus a
+  // full pid wrap inside the ceiling) but the state is observable here for
+  // free, and the bare-child fallback already covers the reaped case.
+  const reaped = child.exitCode !== null || child.signalCode !== null;
   try {
-    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
+    if (child.pid !== undefined && !reaped) process.kill(-child.pid, "SIGKILL");
     else child.kill("SIGKILL");
   } catch {
     try {
@@ -95,19 +105,76 @@ function killProcessTree(child: ChildProcess): void {
   child.stderr?.destroy();
 }
 
+/**
+ * Detached children currently running under a ceiling.
+ *
+ * Round 23, finding 1: `detached: true` makes a child a process-group leader,
+ * so it is NOT in the terminal's foreground group and never receives SIGINT.
+ * Measured end-to-end — SIGINT to `crabgic doctor`'s group with a `bwrap` whose
+ * `--version` hangs left the probe alive and reparented to init, while the same
+ * run with `detached` removed left nothing behind. Real bwrap's
+ * `--die-with-parent` masks this for the confinement probe, but the presence
+ * probe carries no such flag, and any non-real `bwrap` escapes both.
+ *
+ * The group kill lived only in a timer, and a timer dies with the CLI. So the
+ * groups are tracked and killed on the way out too.
+ */
+const liveDetachedChildren = new Set<ChildProcess>();
+const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+let signalHandlersInstalled = false;
+
+function killAllDetachedChildren(): void {
+  for (const child of liveDetachedChildren) killProcessTree(child);
+  liveDetachedChildren.clear();
+}
+
+function installSignalHandlersOnce(): void {
+  if (signalHandlersInstalled) return;
+  signalHandlersInstalled = true;
+  for (const signal of FORWARDED_SIGNALS) {
+    process.on(signal, () => {
+      killAllDetachedChildren();
+      // Restore the default disposition and re-raise, so the CLI still dies
+      // the way the user asked it to rather than silently absorbing Ctrl-C.
+      process.removeAllListeners(signal);
+      process.kill(process.pid, signal);
+    });
+  }
+  // A normal exit path must not strand a group either.
+  process.on("exit", killAllDetachedChildren);
+}
+
+/** Exposed for tests: the tracked set must not grow without bound. */
+export function liveDetachedChildCountForTest(): number {
+  return liveDetachedChildren.size;
+}
+
+/** Exposed for tests: the reaped-child branch cannot be reached deterministically otherwise. */
+export const killProcessTreeForTest = killProcessTree;
+
 export function createRealProcessProbe(): ProcessProbeFn {
   return (command, args, options) =>
     new Promise<ProbeResult>((resolve) => {
+      // ONE decision, used by both the spawn option and the registry below.
+      // Round 23 found that making `detached` unconditional left the suite
+      // green: an unbounded child would then lead its own group (surviving
+      // Ctrl-C) while never being registered for the signal sweep, which is
+      // the worst of both. They cannot drift now.
+      const detached = options?.timeoutMs !== undefined;
       const child = spawn(command, [...args], {
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
         // Only when a ceiling was asked for: a group leader is what makes the
         // expiry kill reach the whole tree. Without a ceiling the previous
         // (attached) behaviour is preserved exactly.
-        ...(options?.timeoutMs !== undefined ? { detached: true } : {}),
+        ...(detached ? { detached: true } : {}),
         ...(options?.cwd !== undefined ? { cwd: options.cwd } : {}),
         ...(options?.env !== undefined ? { env: options.env } : {}),
       });
+      if (detached) {
+        liveDetachedChildren.add(child);
+        installSignalHandlersOnce();
+      }
       let stdout = "";
       let stderr = "";
       let settled = false;
@@ -115,6 +182,7 @@ export function createRealProcessProbe(): ProcessProbeFn {
         if (settled) return;
         settled = true;
         if (timer !== undefined) clearTimeout(timer);
+        liveDetachedChildren.delete(child);
         resolve(result);
       };
       const timer =
