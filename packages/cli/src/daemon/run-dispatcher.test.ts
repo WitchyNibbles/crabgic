@@ -23,6 +23,7 @@ import {
   type AuthorizationEnvelope,
   type ChangeSet,
   type WorkUnit,
+  RUN_LIFECYCLE_STATES,
 } from "@crabgic/contracts";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
@@ -410,4 +411,40 @@ describe("createRealRunDispatcher — concurrent dispatch", () => {
     const again = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(again.reason).toBe(refused.reason);
   });
+});
+
+/**
+ * Roast round 2, F2. Nothing ever moves a ChangeSet out of `ready`, so it
+ * behaves as a reusable dispatch ticket. Retrying after a failure is
+ * legitimate; re-publishing a success is not.
+ */
+describe("createRealRunDispatcher — a published change set", () => {
+  function withPriorRun(runState: (typeof RUN_LIFECYCLE_STATES)[number]) {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState,
+      updatedAt: "2026-07-28T00:00:00.000Z",
+    });
+    return deps;
+  }
+
+  it("refuses to re-dispatch a change set that already published", async () => {
+    const result = await newDispatcher(withPriorRun("published_local")).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/already published/i);
+  });
+
+  it.each(["failed", "blocked", "cancelled"] as const)(
+    "still allows a retry after the prior run ended %s",
+    async (ended) => {
+      const dispatcher = newDispatcher(withPriorRun(ended), {
+        createAdapter: () => new Promise(() => undefined),
+      });
+
+      expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    },
+  );
 });

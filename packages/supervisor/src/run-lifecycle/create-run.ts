@@ -117,3 +117,28 @@ export function findLiveRunForChangeSet(
     .list()
     .find((run) => run.changeSetId === changeSetId && !isRunLifecycleAbsorbing(run.runState));
 }
+
+/**
+ * The run that already **published** for `changeSetId`, if any.
+ *
+ * Roast round 2 (F2): nothing ever moves a `ChangeSet` out of `ready` — the
+ * only writers are the intake pipeline, the amendment flow and the
+ * ready-transition, and the dispatch/drive path never writes one. So `ready`
+ * behaves as a REUSABLE dispatch ticket: once a run reaches `published_local`
+ * and its drive settles, the change set is no longer "live", is still
+ * `ready`, and dispatching again mints a second run that re-executes and
+ * re-publishes already-published work with no human anywhere in the loop.
+ *
+ * Retrying after `failed`, `blocked` or `cancelled` is legitimate and stays
+ * allowed — that is why `findLiveRunForChangeSet` treats all four absorbing
+ * states as finished. Re-publishing a success is not, so it is separated out
+ * rather than folded into that predicate.
+ */
+export function findPublishedRunForChangeSet(
+  runs: RunsRegistry,
+  changeSetId: string,
+): RunRecord | undefined {
+  return runs
+    .list()
+    .find((run) => run.changeSetId === changeSetId && run.runState === "published_local");
+}

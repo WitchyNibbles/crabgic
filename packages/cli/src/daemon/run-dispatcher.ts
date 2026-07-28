@@ -38,6 +38,7 @@ import type { JournalStore } from "@crabgic/journal";
 import {
   createRun,
   findLiveRunForChangeSet,
+  findPublishedRunForChangeSet,
   provisionWorkerDirs,
   type RunDispatcher,
   type RunDispatchOutcome,
@@ -348,6 +349,20 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
           return {
             accepted: false,
             reason: `change set "${changeSetId}" already has run "${live.runId}" in flight (${live.runState})`,
+          };
+        }
+
+        // Roast round 2, F2: `ready` is never cleared, so without this a
+        // change set whose run already published would mint a second run and
+        // re-publish finished work unreviewed. Retrying after a failure,
+        // block or cancel stays allowed — only re-publishing a success is
+        // refused.
+        const published = findPublishedRunForChangeSet(deps.runs, changeSetId);
+        if (published !== undefined) {
+          release();
+          return {
+            accepted: false,
+            reason: `change set "${changeSetId}" already published under run "${published.runId}"; amend it rather than dispatching it again`,
           };
         }
 
