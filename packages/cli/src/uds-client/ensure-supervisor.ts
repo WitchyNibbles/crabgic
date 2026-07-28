@@ -53,11 +53,36 @@ export interface EnsureSupervisorConnectionOptions {
   readonly spawn?: boolean;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref?.();
+/**
+ * The bounded wait between connection attempts, and the one place this
+ * module's process-liveness contract lives.
+ *
+ * The timer is deliberately **ref'd**. It used to be `unref()`'d, which is
+ * correct for a background heartbeat and wrong for this: in a one-shot CLI
+ * process nothing else holds the event loop open across a retry — the
+ * spawned daemon is detached and `unref()`'d (`spawnSupervisorDaemon`
+ * below) and the failed connect has already closed its socket. Node
+ * therefore drained the loop mid-retry and exited **0 with no output**, so
+ * `status`/`resume`/`cancel` silently no-op'd whenever the daemon was not
+ * already up, rather than reporting `SupervisorUnavailableError`. Observed
+ * live at 1.3.0; see this module's test for the full note.
+ *
+ * Holding the loop cannot hang a process: the loop above is bounded by
+ * `maxAttempts`, so the total wait is at most
+ * `(maxAttempts - 1) * retryDelayMs` — 4.8s at the defaults.
+ *
+ * Exported (with its timer handle) purely so that contract is assertable;
+ * it has no other caller.
+ */
+export function retryDelay(ms: number): {
+  readonly promise: Promise<void>;
+  readonly timer: NodeJS.Timeout;
+} {
+  let timer!: NodeJS.Timeout;
+  const promise = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
   });
+  return { promise, timer };
 }
 
 /** Connects to the supervisor, spawning it on demand. See the file-level doc comment for the policy. */
@@ -87,7 +112,7 @@ export async function ensureSupervisorConnection(
       options.spawnDaemon();
       spawned = true;
     }
-    await delay(retryDelayMs);
+    await retryDelay(retryDelayMs).promise;
   }
 }
 

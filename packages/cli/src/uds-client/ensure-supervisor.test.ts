@@ -13,13 +13,40 @@
 import { describe, expect, it } from "vitest";
 import { SupervisorUnavailableError } from "../errors.js";
 import type { UdsClient } from "./client.js";
-import { ensureSupervisorConnection } from "./ensure-supervisor.js";
+import { ensureSupervisorConnection, retryDelay } from "./ensure-supervisor.js";
 
 const FAKE_CLIENT = { close: () => Promise.resolve() } as unknown as UdsClient;
 
 function unavailable(): never {
   throw new SupervisorUnavailableError("no socket");
 }
+
+/**
+ * REGRESSION (2026-07-28, observed live before it was understood). Every
+ * test in this file injects `retryDelayMs`, and vitest's own event loop is
+ * kept alive by the runner — so the retry wait could be, and was, an
+ * `unref()`'d timer and no test here could tell. In a real one-shot CLI
+ * process nothing else holds the loop: `spawnSupervisorDaemon` detaches and
+ * `unref()`s the child, the failed connect closes its socket, and an
+ * `unref()`'d retry timer lets Node drain and exit **0 with no output at
+ * all** — so `status`/`resume`/`cancel` silently no-op'd against a project
+ * whose daemon was not already running, instead of reporting
+ * `SupervisorUnavailableError`. Reproduced by hand three times at
+ * `crabgic@1.3.0`; correct output returned the moment a daemon was started
+ * manually.
+ *
+ * The contract this pins is therefore about the PROCESS, not the promise: a
+ * pending retry must hold the event loop open. It is asserted on the timer
+ * because that is the only in-process observable — a subprocess test would
+ * need a build step to exist first, and would not fail any faster.
+ */
+describe("retryDelay — a pending retry keeps the process alive", () => {
+  it("does not unref its timer", async () => {
+    const { promise, timer } = retryDelay(1);
+    expect(timer.hasRef()).toBe(true);
+    await promise;
+  });
+});
 
 describe("ensureSupervisorConnection — CLI spawn-on-demand", () => {
   it("returns the client without spawning when the daemon is already up", async () => {
