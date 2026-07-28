@@ -240,6 +240,7 @@ export function buildRealCliDependencies(
       }),
     journal,
     projectHash,
+    standingPolicyPath: resolveEnvelopePolicyPath(xdgEnv, projectHash),
     // Honors the SAME HOME the rest of this function resolved paths
     // against — both for real-world correctness (the auth probe's
     // `~/.claude/...` lookups match whichever HOME this invocation

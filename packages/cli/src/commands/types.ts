@@ -45,6 +45,8 @@ export interface IntakeDependencies {
 }
 
 export interface CliDependencies {
+  /** Absolute path to the project's standing `EnvelopePolicy` (ledger Gap 18). Optional so pre-existing callers keep the same doctor check set. */
+  readonly standingPolicyPath?: string;
   /** Connects to the supervisor's UDS control socket. Throws `SupervisorUnavailableError` if unreachable. */
   readonly connectClient: () => Promise<UdsClient>;
   readonly journal: Pick<JournalStore, "queryEntries" | "verifyJournal">;

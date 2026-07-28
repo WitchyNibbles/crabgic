@@ -227,6 +227,11 @@ export async function runDoctorCommand(
     // is present — see `../doctor/run-doctor.ts`'s own optionality
     // comment; every pre-existing roadmap/09 test (no `deps.installer`)
     // keeps observing the exact same 8-check default set unchanged.
+    // Gap 18: the standing policy's own check, wired whenever the caller knows
+    // where the policy lives.
+    ...(deps.standingPolicyPath !== undefined
+      ? { standingPolicyPath: deps.standingPolicyPath }
+      : {}),
     ...(deps.installer !== undefined
       ? {
           installer: {
