@@ -583,3 +583,39 @@ describe("createRealRunDispatcher — the standing-approval gate", () => {
     expect(result.reason).toMatch(/EnvelopePolicy/i);
   });
 });
+
+/**
+ * Round 9 found the doctor pairing "the policy is probably fine" with "go
+ * rewrite it". The dispatch gate is the second consumer of the same result
+ * and had the same gap -- it refused (correctly) with a message that read
+ * like a broken policy.
+ */
+describe("createRealRunDispatcher — a transient policy failure", () => {
+  it("still refuses, but says it is worth retrying", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({
+        status: "invalid" as const,
+        transient: true as const,
+        reason: "could not open /p because this process is out of resources (EMFILE)",
+      }),
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(deps.runs.list()).toHaveLength(0);
+    expect(result.reason).toMatch(/retry once resources free up/i);
+  });
+
+  it("does not offer a retry for a genuinely broken policy", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({
+        status: "invalid" as const,
+        reason: "policy file /p is not valid JSON",
+      }),
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).not.toMatch(/retry/i);
+  });
+});

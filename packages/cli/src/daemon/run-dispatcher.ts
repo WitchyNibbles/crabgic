@@ -211,7 +211,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
       };
     }
     if (loaded.status === "invalid") {
-      return { ok: false, reason: loaded.reason };
+      // A transient failure still REFUSES -- fail-closed is not negotiable at
+      // this gate -- but it must not read like a broken policy. Round 9 found
+      // exactly this mismatch in the doctor and fixed it there; the dispatch
+      // gate is the second consumer and had the same gap.
+      return {
+        ok: false,
+        reason:
+          loaded.transient === true
+            ? `${loaded.reason}; dispatch refused rather than run unauthorized — retry once resources free up`
+            : loaded.reason,
+      };
     }
 
     const containment = isContained(envelope, loaded.policy);

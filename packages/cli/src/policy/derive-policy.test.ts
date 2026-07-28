@@ -317,3 +317,34 @@ describe("derivePolicy — the cap fills its budget", () => {
     expect([...grants].some((p) => p.startsWith("apps/"))).toBe(true);
   });
 });
+
+/**
+ * The deriver must never emit a policy its own doctor rejects -- that would
+ * be a self-inflicted broken install: `crabgic install` writes it, `crabgic
+ * doctor` immediately calls it broken, and the owner has done nothing wrong.
+ *
+ * Round 9 added a usability check for `allowedWriteScratchPaths`; this pins
+ * the two together so a future candidate directory carrying a glob, a leading
+ * slash or a `..` cannot be added on one side without the other noticing.
+ */
+describe("derivePolicy — never emits what its own doctor rejects", () => {
+  const SHAPES: Record<string, { top: string[]; kids: string[] }> = {
+    flat: { top: ["src", "docs"], kids: [] },
+    monorepo: { top: ["packages", "apps", "docs"], kids: ["cli", "contracts", "web"] },
+    empty: { top: [], kids: [] },
+    "unusual package names": { top: ["packages"], kids: ["a b", ".hidden", "x"] },
+  };
+
+  it.each(Object.keys(SHAPES))("every derived path is usable for the %s shape", async (name) => {
+    const { isUsablePathPrefix } = await import("@crabgic/contracts");
+    const shape = SHAPES[name]!;
+    const { policy } = derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) => (path === dir ? shape.top : shape.kids),
+    });
+
+    expect(policy.allowedWriteScratchPaths.filter((e) => !isUsablePathPrefix(e))).toEqual([]);
+    expect(policy.allowedPathPrefixes.filter((e) => !isUsablePathPrefix(e))).toEqual([]);
+  });
+});
