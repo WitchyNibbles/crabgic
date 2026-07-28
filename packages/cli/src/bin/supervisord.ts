@@ -39,6 +39,7 @@ import {
 // import (erased under `verbatimModuleSyntax`), and the dispatcher itself is
 // loaded on first dispatch — see `../daemon/lazy-run-dispatcher.ts`.
 import { createLazyRunDispatcher } from "../daemon/lazy-run-dispatcher.js";
+import { loadEnvelopePolicy, resolveEnvelopePolicyPath } from "../policy/policy-store.js";
 import { resolveWorkerAuthMaterial } from "../daemon/worker-auth.js";
 import type { RealRunDispatcherOptions } from "../daemon/run-dispatcher.js";
 
@@ -85,6 +86,14 @@ async function main(): Promise<void> {
                 xdgEnv,
                 projectHash,
                 auth,
+                // The standing approval, re-read on EVERY dispatch rather
+                // than captured at boot (ledger Gap 18). An owner who
+                // narrows the policy must have that bind to the next
+                // dispatch, not to the next daemon restart -- a long-lived
+                // daemon caching it would make tightening the gate silently
+                // ineffective for as long as it stays up.
+                loadPolicy: () =>
+                  loadEnvelopePolicy(resolveEnvelopePolicyPath(xdgEnv, projectHash)),
                 onDriveError: (runId, err) => {
                   process.stderr.write(
                     `supervisord: run ${runId} failed to drive: ${toErrorMessage(err)}\n`,

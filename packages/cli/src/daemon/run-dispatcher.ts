@@ -32,7 +32,12 @@
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { isRunLifecycleAbsorbing } from "@crabgic/contracts";
-import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@crabgic/contracts";
+import type {
+  AuthorizationEnvelope,
+  ChangeSet,
+  EnvelopePolicy,
+  WorkUnit,
+} from "@crabgic/contracts";
 import type { XdgEnv } from "@crabgic/journal";
 import type { JournalStore } from "@crabgic/journal";
 import {
@@ -55,10 +60,11 @@ import {
   resolveWorktreesRootDir,
   type GitPlumbing,
 } from "@crabgic/git-engine";
-import { compileEnvelope } from "@crabgic/engine-core";
+import { compileEnvelope, isContained } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
 import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
 import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@crabgic/scheduler";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
 const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
@@ -133,6 +139,16 @@ export interface RealRunDispatcherOptions {
   readonly plumbing?: GitPlumbing;
   /** Reports a background drive that ended in an error. Defaults to a no-op; the daemon supplies real logging. */
   readonly onDriveError?: (runId: string, err: unknown) => void;
+  /**
+   * Loads the project's standing `EnvelopePolicy` (ledger Gap 18).
+   *
+   * A seam so tests need no real XDG state, but NOT an optional gate: a
+   * dispatcher with no loader, or a loader that finds no policy, refuses to
+   * dispatch. It never falls back to compiling wide — that would turn the
+   * absence of an approval into a broader grant than any approval could
+   * express, which is the exact inversion this ruling exists to prevent.
+   */
+  readonly loadPolicy?: () => LoadPolicyResult;
 }
 
 type ResolvedRun =
@@ -142,6 +158,10 @@ type ResolvedRun =
       readonly workUnits: readonly WorkUnit[];
       readonly envelope: AuthorizationEnvelope;
     }
+  | { readonly ok: false; readonly reason: string };
+
+type PolicyGate =
+  | { readonly ok: true; readonly policy: EnvelopePolicy; readonly digest: string }
   | { readonly ok: false; readonly reason: string };
 
 export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunDispatcher {
@@ -160,6 +180,52 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    * existed.
    */
   const inFlight = new Set<string>();
+
+  /**
+   * The standing-approval gate: load the policy, then test the envelope for
+   * containment in it.
+   *
+   * NO POLICY MEANS NO DISPATCH. Not "dispatch wide" -- an absent or
+   * unreadable policy must never be a broader grant than any policy could
+   * express, which is what falling back to the unnarrowed compile would make
+   * it. Absent and invalid are reported differently because they are
+   * different owner problems: one means `install` never ran, the other means
+   * the file was hand-edited into a state the schema rejects.
+   */
+  function resolvePolicyGate(envelope: AuthorizationEnvelope): PolicyGate {
+    if (options.loadPolicy === undefined) {
+      return {
+        ok: false,
+        reason:
+          "no standing EnvelopePolicy is configured on this daemon; run `crabgic install` to author one",
+      };
+    }
+
+    const loaded = options.loadPolicy();
+    if (loaded.status === "absent") {
+      return {
+        ok: false,
+        reason:
+          "this project has no standing EnvelopePolicy; run `crabgic install` to author one, then dispatch again",
+      };
+    }
+    if (loaded.status === "invalid") {
+      return { ok: false, reason: loaded.reason };
+    }
+
+    const containment = isContained(envelope, loaded.policy);
+    if (!containment.contained) {
+      // Every escaping dimension, not the first: the owner has to edit a file
+      // this process cannot reach, so one refusal must tell them the whole
+      // gap rather than making recovery an iterative guessing game.
+      return {
+        ok: false,
+        reason: `this change set needs authority the standing policy does not grant: ${containment.reasons.join("; ")}`,
+      };
+    }
+
+    return { ok: true, policy: loaded.policy, digest: loaded.digest };
+  }
 
   /** Resolves everything a change set needs to run, or explains precisely what is missing. */
   function resolveChangeSet(changeSetId: string): ResolvedRun {
@@ -191,6 +257,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     changeSet: ChangeSet,
     workUnits: readonly WorkUnit[],
     envelope: AuthorizationEnvelope,
+    policy: EnvelopePolicy,
   ): Promise<void> {
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
@@ -223,7 +290,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 
     // Compiled once: the profile is a pure function of the envelope, and
     // every worker in this run runs under the same authorization.
-    const profile = compileEnvelope(envelope);
+    const profile = compileEnvelope(envelope, policy);
 
     await driveRun(
       { runId, changeSetId: changeSet.id, workUnits },
@@ -290,13 +357,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   function beginDriving(
     runId: string,
     resolved: Extract<ResolvedRun, { ok: true }>,
+    policy: EnvelopePolicy,
     /** Releases the caller's in-flight claim. Called exactly once, when the drive settles. */
     release: () => void,
   ): void {
     // Deliberately NOT awaited — see the file-level doc comment. Errors
     // are reported through `onDriveError`, never left as an unhandled
     // rejection that could take the whole daemon down.
-    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope)
+    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
       .catch((err: unknown) => {
         onDriveError(runId, err);
       })
@@ -372,6 +440,27 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
           return { accepted: false, reason: resolved.reason };
         }
 
+        // THE STANDING-APPROVAL GATE (ledger Gap 18). Everything from here
+        // to `beginDriving` is what replaces the per-ChangeSet human prompt.
+        const gate = resolvePolicyGate(resolved.envelope);
+        if (!gate.ok) {
+          release();
+          return { accepted: false, reason: gate.reason };
+        }
+
+        // Part 4: the authorizing digest is journaled WITH the dispatch, so
+        // "what was the human standing behind when this ran" stays answerable
+        // after the fact. A standing approval makes that unanswerable
+        // otherwise -- there is no per-run artifact to point at.
+        await deps.journal.appendEntry({
+          type: "adjudication_decision",
+          changeSetId,
+          payload: {
+            decision: "policy_contained",
+            rationale: `dispatch authorized by standing EnvelopePolicy ${gate.digest}`,
+          },
+        });
+
         let runId: string;
         try {
           runId = (
@@ -392,7 +481,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         }
 
         // Hands the claim over to the drive, which releases it when it settles.
-        beginDriving(runId, resolved, release);
+        beginDriving(runId, resolved, gate.policy, release);
         return { accepted: true, runId };
       } catch (err) {
         release();
@@ -422,9 +511,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
       const resolved = resolveChangeSet(run.changeSetId);
       if (!resolved.ok) return Promise.resolve({ accepted: false, reason: resolved.reason });
 
+      // Resume runs the SAME gate. A run that was authorized once must not
+      // keep executing under an authorization the owner has since narrowed --
+      // otherwise editing the policy would silently fail to bind anything
+      // already in flight, and "re-drive after a crash" would become a way
+      // around it.
+      const gate = resolvePolicyGate(resolved.envelope);
+      if (!gate.ok) return Promise.resolve({ accepted: false, reason: gate.reason });
+
       inFlight.add(run.changeSetId);
       let released = false;
-      beginDriving(runId, resolved, () => {
+      beginDriving(runId, resolved, gate.policy, () => {
         if (!released) {
           released = true;
           inFlight.delete(run.changeSetId);

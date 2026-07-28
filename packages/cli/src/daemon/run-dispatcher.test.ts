@@ -24,6 +24,7 @@ import {
   type ChangeSet,
   type WorkUnit,
   RUN_LIFECYCLE_STATES,
+  EnvelopePolicySchema,
 } from "@crabgic/contracts";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
@@ -150,11 +151,29 @@ function fakePlumbing() {
   } as never;
 }
 
+/**
+ * The standing policy these fixtures run under. Grants exactly the fixture
+ * envelope's own owned path and nothing else, so a case that widens the
+ * envelope must widen this too -- the gate stays load-bearing in the suite
+ * rather than being a rubber stamp.
+ */
+const FIXTURE_POLICY = EnvelopePolicySchema.parse({
+  schemaVersion: 1,
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  allowedPathPrefixes: ["packages/example/src"],
+});
+
 function newDispatcher(
   deps: ReturnType<typeof buildDeps>,
   overrides: Record<string, unknown> = {},
 ) {
   return createRealRunDispatcher({
+    loadPolicy: () => ({
+      status: "loaded" as const,
+      policy: FIXTURE_POLICY,
+      digest: "sha256:fixture",
+    }),
     deps,
     projectDir: dir,
     xdgEnv: { HOME: dir },
@@ -447,4 +466,120 @@ describe("createRealRunDispatcher — a published change set", () => {
       expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
     },
   );
+});
+
+/**
+ * The standing-approval gate (ledger Gap 18). These are the cases that
+ * replace the per-ChangeSet human prompt, so each one is the difference
+ * between "a human said yes to this" and "nobody did".
+ */
+describe("createRealRunDispatcher — the standing-approval gate", () => {
+  /**
+   * NO POLICY MEANS NO DISPATCH, never "dispatch wide". Falling back to the
+   * unnarrowed compile would make the ABSENCE of an approval a broader grant
+   * than any approval could express -- the exact inversion the ruling exists
+   * to prevent.
+   */
+  it("refuses when the daemon has no policy loader at all", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = createRealRunDispatcher({
+      deps,
+      projectDir: dir,
+      xdgEnv: { HOME: dir },
+      projectHash: "dispatch-hash",
+      auth: { kind: "oauthToken", token: PLACEHOLDER_ENGINE_CREDENTIAL },
+      plumbing: fakePlumbing(),
+      prepareRun: () => Promise.resolve("a".repeat(40)),
+      createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/no standing EnvelopePolicy/i);
+    expect(deps.runs.list()).toHaveLength(0);
+  });
+
+  it("refuses when the project has no policy on disk, and says how to author one", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({ status: "absent" as const }),
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/crabgic install/);
+  });
+
+  /** Invalid is a different owner problem from absent, and must read as one. */
+  it("surfaces an invalid policy's own reason rather than blaming the installer", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({ status: "invalid" as const, reason: "policy file X is not valid JSON" }),
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/not valid JSON/);
+    expect(result.reason).not.toMatch(/crabgic install/);
+  });
+
+  /** The gate is load-bearing: an envelope outside the policy never runs. */
+  it("refuses an envelope whose owned path the policy does not grant", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const narrow = EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["docs"],
+    });
+
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({ status: "loaded" as const, policy: narrow, digest: "sha256:narrow" }),
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/authority the standing policy does not grant/i);
+    expect(result.reason).toMatch(/packages\/example\/src/);
+    expect(deps.runs.list()).toHaveLength(0);
+  });
+
+  /**
+   * Part 4 of the ruling: a standing approval leaves no per-run artifact to
+   * point at, so "what was the human standing behind when this ran" is only
+   * answerable if the authorizing digest is journaled with the dispatch.
+   */
+  it("journals the authorizing policy digest with the dispatch", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    const rationales: string[] = [];
+    for await (const entry of deps.journal.queryEntries({ type: "adjudication_decision" })) {
+      rationales.push((entry.payload as { rationale: string }).rationale);
+    }
+    expect(rationales.some((r) => r.includes("sha256:fixture"))).toBe(true);
+  });
+
+  /**
+   * Resume runs the same gate. Otherwise narrowing the policy would silently
+   * fail to bind anything already in flight, and "re-drive after a crash"
+   * would become a way around it.
+   */
+  it("applies the gate to resume, not only to dispatch", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-28T00:00:00.000Z",
+    });
+
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({ status: "absent" as const }),
+    }).resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/EnvelopePolicy/i);
+  });
 });
