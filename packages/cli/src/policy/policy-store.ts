@@ -204,13 +204,23 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
   try {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ELOOP") {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ELOOP") {
       return {
         status: "invalid",
         reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
       };
     }
-    return { status: "absent" };
+    // ONLY a genuinely missing path is `absent`. Roast round 5 caught the
+    // read-side of this and the open-side survived: a mode-000 policy fails
+    // here with `EACCES`, and reporting that as "no policy exists, run
+    // `crabgic install`" both misdiagnoses it and invites `install` to
+    // overwrite a file the owner deliberately locked.
+    if (code === "ENOENT") return { status: "absent" };
+    return {
+      status: "invalid",
+      reason: `policy file ${path} exists but could not be opened (${code ?? "unknown error"})`,
+    };
   }
 
   let raw: string;
@@ -218,8 +228,23 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
     const check = validateOpenPolicyFile(fd, path);
     if (check !== undefined) return check;
     raw = readFileSync(fd, "utf8");
-  } catch {
-    return { status: "absent" };
+  } catch (err) {
+    // A policy that EXISTS but cannot be read is `invalid`, never `absent`.
+    // Roast round 5: a directory at the policy path opens fine under
+    // `O_RDONLY|O_NOFOLLOW` and passes every ownership check, then throws
+    // `EISDIR` on read — which the blanket catch reported as "no policy
+    // exists, run `crabgic install`", and `install` then crashed trying to
+    // `rename` over it. Same for `EACCES` on a mode-000 file. The whole point
+    // of the absent/invalid split is not sending an owner to re-run an
+    // installer that is not what is broken.
+    const code = (err as NodeJS.ErrnoException).code;
+    return {
+      status: "invalid",
+      reason:
+        code === "EISDIR"
+          ? `${path} is a directory, not a policy file; remove it and re-run \`crabgic install\``
+          : `policy file ${path} exists but could not be read (${code ?? "unknown error"})`,
+    };
   } finally {
     closeSync(fd);
   }

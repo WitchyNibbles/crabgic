@@ -206,3 +206,58 @@ describe("derivePolicy — the policy stays readable", () => {
     );
   });
 });
+
+/**
+ * Roast round 5. Two findings this suite structurally could not see: it never
+ * exercised two containers, and it never checked the deriver against the list
+ * of directories provisioning actually creates.
+ */
+describe("derivePolicy — round 5", () => {
+  /**
+   * The scratch list and git-engine's WORKTREE_LOCAL_MODULE_DIRS must move
+   * together. Round 3 added .vite/.vite-temp to the provisioner and left the
+   * deriver behind, so provisioning anchored a .cache this repo does not have
+   * while omitting the two vitest actually writes.
+   */
+  it("grants every module directory the provisioner creates", async () => {
+    const { WORKTREE_LOCAL_MODULE_DIRS } = await import("@crabgic/git-engine");
+    const { policy } = derive(["src"]);
+
+    for (const dir of WORKTREE_LOCAL_MODULE_DIRS) {
+      expect(policy.allowedWriteScratchPaths).toContain(`node_modules/${dir}`);
+    }
+  });
+
+  /**
+   * The cap used to return from the whole function mid-container, so 45
+   * packages plus 3 apps granted every package and nothing at all for apps --
+   * silently, with no marker in the policy an owner reads.
+   */
+  it("shares the cap between containers instead of starving the second", () => {
+    const packages = Array.from({ length: 45 }, (_, i) => `pkg${i}`);
+    const { policy } = derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) =>
+        path === dir ? ["packages", "apps"] : path.endsWith("apps") ? ["web", "admin"] : packages,
+    });
+
+    expect(policy.allowedWriteScratchPaths).toContain("apps/web/dist");
+    expect(policy.allowedWriteScratchPaths).toContain("apps/admin/dist");
+    expect(policy.allowedWriteScratchPaths.some((p) => p.startsWith("packages/"))).toBe(true);
+  });
+
+  /** readdir order is filesystem-dependent, so an unsorted cap made the policy -- and its digest -- differ between machines for one repo. */
+  it("selects the same packages regardless of listing order", () => {
+    const forward = ["a", "b", "c", "d"];
+    const backward = [...forward].reverse();
+    const pick = (order: string[]) =>
+      derivePolicy({
+        ...BASE,
+        projectDir: dir,
+        listDirectories: (path) => (path === dir ? ["packages"] : order),
+      }).policy.allowedWriteScratchPaths;
+
+    expect(pick(forward)).toEqual(pick(backward));
+  });
+});

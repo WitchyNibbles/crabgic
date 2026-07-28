@@ -59,7 +59,16 @@ const CANDIDATE_SCRATCH_DIRS = [
   ".turbo",
   ".cache",
   "target",
+  // Every member of git-engine's `WORKTREE_LOCAL_MODULE_DIRS`, which are the
+  // directories provisioning creates as REAL dirs inside the worktree.
+  // Roast round 5: that list gained `.vite`/`.vite-temp` in round 3 and this
+  // one was never updated, so provisioning anchored a `.cache` this repo does
+  // not have while omitting the two vitest actually writes — breaking one of
+  // the only two grantable commands that work. The two lists must move
+  // together; the parity is asserted in this module's tests.
   "node_modules/.cache",
+  "node_modules/.vite",
+  "node_modules/.vite-temp",
 ] as const;
 
 /**
@@ -154,13 +163,23 @@ function deriveWorkspaceScratchPaths(
   options: DerivePolicyOptions,
   present: ReadonlySet<string>,
 ): readonly string[] {
+  const containers = WORKSPACE_CONTAINER_DIRS.filter((c) => present.has(c));
+  if (containers.length === 0) return [];
+
+  // The cap is shared out BETWEEN containers, not consumed by whichever is
+  // read first. Roast round 5: the previous form returned from the whole
+  // function mid-container, so a repo with 45 packages and 3 apps granted
+  // every package and NOTHING for apps — silently, with no marker in the
+  // policy the owner reads. The test only ever exercised one container.
+  const perContainer = Math.max(1, Math.floor(MAX_WORKSPACE_PACKAGES / containers.length));
+
   const paths = new Set<string>();
-  let packages = 0;
-  for (const container of WORKSPACE_CONTAINER_DIRS) {
-    if (!present.has(container)) continue;
-    for (const child of options.listDirectories(join(options.projectDir, container))) {
-      if (packages >= MAX_WORKSPACE_PACKAGES) return [...paths];
-      packages += 1;
+  for (const container of containers) {
+    // Sorted: `readdirSync` order is filesystem-dependent, so an unsorted cap
+    // made WHICH packages got grants — and therefore the policy's digest, its
+    // authorization identity — differ between machines for the same repo.
+    const children = [...options.listDirectories(join(options.projectDir, container))].sort();
+    for (const child of children.slice(0, perContainer)) {
       for (const output of WORKSPACE_SCRATCH_OUTPUTS) {
         paths.add(`${container}/${child}/${output}`);
       }

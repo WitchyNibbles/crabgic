@@ -140,3 +140,16 @@ describe("isVacuousPolicy — prefixes that cannot grant", () => {
     },
   );
 });
+
+/** Roast round 5: `./~` slipped past a leading-`~` check that ran before the split. */
+describe("isUsablePathPrefix — home anchoring after collapse", () => {
+  it.each(["~", "~/x", "./~", ".///~/.ssh"])("rejects %j", async (prefix) => {
+    const { isUsablePathPrefix } = await import("./envelope-policy.js");
+    expect(isUsablePathPrefix(prefix)).toBe(false);
+  });
+
+  it("still accepts a path merely containing a tilde mid-segment", async () => {
+    const { isUsablePathPrefix } = await import("./envelope-policy.js");
+    expect(isUsablePathPrefix("src/a~b")).toBe(true);
+  });
+});

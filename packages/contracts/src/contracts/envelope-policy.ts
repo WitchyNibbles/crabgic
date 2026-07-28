@@ -174,10 +174,18 @@ export function isVacuousPolicy(policy: EnvelopePolicy): boolean {
 export function isUsablePathPrefix(prefix: string): boolean {
   const trimmed = prefix.trim();
   if (trimmed.length === 0) return false;
-  if (trimmed.startsWith("/") || trimmed.startsWith("~")) return false;
+  if (trimmed.startsWith("/")) return false;
   if (/[*?[\]{}\\]/.test(trimmed)) return false;
 
   const segments = trimmed.split("/").filter((s) => s !== "" && s !== ".");
+  // Home-anchoring is checked on the FIRST SURVIVING SEGMENT, not the raw
+  // string. Roast round 5: the leading-`~` test ran before the split, so
+  // `"./~"` slipped past it and reported usable while the containment
+  // normalizer collapsed it to `~`, re-validated, and granted nothing —
+  // the exact sibling of the `"."` case the empty-segment guard was added to
+  // close, in a function whose own doc promises "exactly one answer shared by
+  // the installer, the doctor check and containment".
+  if (segments[0]?.startsWith("~") === true) return false;
   // A prefix that collapses to NOTHING is unusable, not vacuously fine.
   // Roast round 4: `"."` — the obvious way to write "the whole project" —
   // filtered to an empty array and `.every()` on an empty array is `true`, so

@@ -346,3 +346,33 @@ describe("loadEnvelopePolicy — checks bind to the file it read", () => {
     expect(result.reason).toMatch(/writable by other accounts|owned by uid/i);
   });
 });
+
+/**
+ * Roast round 5. A policy that EXISTS but cannot be read is `invalid`, never
+ * `absent` -- the whole point of that split is not sending an owner to re-run
+ * an installer that is not what is broken.
+ */
+describe("loadEnvelopePolicy — present but unreadable", () => {
+  it("reports a directory at the policy path as invalid, not absent", async () => {
+    const { mkdirSync } = await import("node:fs");
+    // 0700 so it passes every ownership and mode check and reaches the READ,
+    // which is the path round 5 identified -- a 0755 directory is refused
+    // earlier, for a different and also-correct reason.
+    mkdirSync(path, { recursive: true, mode: 0o700 });
+    chmodSync(path, 0o700);
+
+    const result = loadEnvelopePolicy(path);
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    // "absent" sent the owner to `install`, which then crashed on EISDIR.
+    expect(result.reason).toMatch(/is a directory/i);
+  });
+
+  it("reports an unreadable file as invalid, not absent", () => {
+    write(VALID, 0o600);
+    chmodSync(path, 0o000);
+
+    const result = loadEnvelopePolicy(path);
+    expect(result.status).toBe("invalid");
+  });
+});

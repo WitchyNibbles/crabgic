@@ -169,11 +169,20 @@ async function linkEntry(
     // A scope directory that is ITSELF a symlink (pnpm/yarn layouts) reports
     // `isDirectory() === false` from `lstat`, so it used to fall through to
     // the wholesale-share branch — carrying every self-link inside it back to
-    // the source, which is the case the recursion exists to prevent. `.bin`
-    // is recursed for the same reason: its entries are relative links that
-    // would otherwise resolve into the source's `node_modules`.
-    const isScopeLike = entry.startsWith("@") || entry === ".bin";
-    if (isScopeLike && (await isDirectoryAfterLinks(sourcePath))) {
+    // the source, which is the case the recursion exists to prevent.
+    //
+    // `.bin` is deliberately NOT recursed, and that is a reversal. Round 4
+    // added it on the reasoning that its relative links resolve into the
+    // source's `node_modules`; round 5 showed recursing it is worse. A
+    // workspace `.bin` entry points at `../<pkg>/dist/<bin>.js`, which does
+    // not exist in an installed-but-unbuilt checkout — so `realpath` throws,
+    // the dangling branch shares it back to source, and the moment the owner
+    // builds THEIR checkout the worktree's binary silently resolves to the
+    // owner's file. That is this module's own headline failure, reintroduced
+    // order-dependently. Sharing `.bin` wholesale keeps every binary pointing
+    // at the source consistently, which is wrong in a knowable way rather
+    // than wrong depending on when someone last ran a build.
+    if (entry.startsWith("@") && (await isDirectoryAfterLinks(sourcePath))) {
       await mkdir(targetPath, { recursive: true });
       const scoped = await readdir(sourcePath);
       let any = false;
@@ -236,7 +245,12 @@ async function resolveLinkTarget(
   try {
     real = await realpath(sourcePath);
   } catch {
-    return sourcePath; // dangling: share it and let the build complain precisely
+    // Dangling. ABSOLUTE, like the branch below — roast round 5 caught the
+    // round-4 fix being applied to one return and not its sibling, so a
+    // relative `sourceDir` produced a relative target here that resolved
+    // against `<worktree>/node_modules/` and dangled, while `symlink()`
+    // succeeded and the entry was counted as linked rather than skipped.
+    return resolve(sourcePath);
   }
 
   const insideCheckout = real.startsWith(`${sourceRoot}/`);
