@@ -101,7 +101,21 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
         // disjunction -- an unusable prefix refuses every run, an unusable
         // scratch entry denies a build, and saying "or" for both was less
         // precise than the field-specific wording it replaced.
-        const alsoVacuous = isVacuousPolicy(loaded.policy);
+        // `length === 0`, NOT `isVacuousPolicy`. Round 13 measured the
+        // difference: `isVacuousPolicy` asks whether the policy grants
+        // anything AS IT STANDS, but the sentence below is a claim about the
+        // policy AFTER the repair it prints. For `allowedPathPrefixes:
+        // ["src/**"]` the policy is vacuous today AND fixing that one entry
+        // is exactly what makes it work -- so the claim "fixing these entries
+        // alone will not make it work" was false in 3066 of 3132 executed
+        // cases. The repairStep half was worse than wrong: under a standing
+        // approval it told the owner to add a directory they do not need,
+        // widening a grant nobody reviews.
+        //
+        // An EMPTY prefix list is the only shape where there is genuinely
+        // nothing to repair into a prefix -- the round-12 case this clause
+        // was added for.
+        const nothingToRepairInto = loaded.policy.allowedPathPrefixes.length === 0;
         const byField = unusable
           .map(({ field, entry }) => `${field} ${JSON.stringify(entry)}`)
           .join(", ");
@@ -127,12 +141,12 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
             `the standing policy at ${options.path} lists paths that cannot grant anything: ` +
             `${byField}. They are shown as granted but match nothing, so ${consequence} ` +
             "with nothing pointing back at the policy." +
-            (alsoVacuous
+            (nothingToRepairInto
               ? " It also grants no usable writable path at all, so fixing these entries alone will not make it work."
               : ""),
           repairStep:
             `replace them with literal directory names in ${options.path} (no globs, no leading slash)` +
-            (alsoVacuous ? ", and add at least one directory work may touch" : ""),
+            (nothingToRepairInto ? ", and add at least one directory work may touch" : ""),
         });
       }
 

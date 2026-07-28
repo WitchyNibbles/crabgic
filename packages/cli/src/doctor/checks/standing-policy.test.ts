@@ -403,3 +403,87 @@ describe("policy.standing — both consequences when both fields are broken", ()
     expect(prefixOnly.evidence).not.toMatch(/build be denied/);
   });
 });
+
+/**
+ * Roast round 13, and the mutant that survived was the CORRECT
+ * implementation.
+ *
+ * The vacuity sentence gates on whether the policy grants anything AS IT
+ * STANDS, but it is a claim about the policy AFTER the repair it prints.
+ * Measured: 3132 policies carried the sentence and 3066 were
+ * execution-verified false. The repair-step half was the security-relevant
+ * part -- under a standing approval it told the owner to add a directory they
+ * do not need, widening a grant nobody reviews.
+ */
+describe("policy.standing — the vacuity claim must survive the repair", () => {
+  /**
+   * `is-contained.ts`'s own headline example. The policy IS vacuous today,
+   * and fixing that single entry is exactly what makes it work.
+   */
+  it.each(["src/**", "packages/old[1]", "/abs/src", "~/src"])(
+    "does not claim %j is unfixable when repairing it is enough",
+    async (bad) => {
+      const finding = await run(() => ({
+        status: "loaded" as const,
+        policy: policy({ allowedPathPrefixes: [bad] }),
+        digest: "d",
+      }));
+
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).not.toMatch(/will not make it work/);
+      // And it must not tell the owner to widen the grant.
+      expect(finding.repairStep).not.toMatch(/add at least one directory/);
+    },
+  );
+
+  /** The one shape where there really is nothing to repair into a prefix. */
+  it("still says so when the prefix list is empty", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toMatch(/will not make it work/);
+    expect(finding.repairStep).toMatch(/add at least one directory/);
+  });
+
+  it("repairing the named entry really does make the check pass", async () => {
+    const broken = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src/**"] }),
+      digest: "d",
+    }));
+    expect(broken.passed).toBe(false);
+
+    // The repair the finding prints, applied.
+    const repaired = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src"] }),
+      digest: "d",
+    }));
+    expect(repaired.passed).toBe(true);
+  });
+});
+
+/**
+ * Round 13, finding 2: mutating the joiner to `""` survived all 67 tests,
+ * emitting "…refuses every runan unusable build-output path lets…". Both
+ * existing tests regex individual phrases, so nothing pinned that the two
+ * consequences form a sentence -- in a round whose whole subject is
+ * owner-facing wording.
+ */
+describe("policy.standing — the consequences read as one sentence", () => {
+  it("joins two consequences legibly", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "bad/**"],
+        allowedWriteScratchPaths: ["dist", "worse/**"],
+      }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toMatch(/refuses every run, and an unusable build-output path/);
+  });
+});
