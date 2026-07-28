@@ -37,6 +37,17 @@ import { join, relative, resolve } from "node:path";
  * its `node_modules`) is REWRITTEN to the equivalent path inside the
  * worktree; only genuinely external packages are shared.
  *
+ * KNOWN COST OF THE REWRITE, stated rather than discovered. A workspace
+ * package's `main` usually points into `dist/`, which is gitignored — so in a
+ * fresh worktree the redirected link resolves to a package with no build
+ * output, and the first cross-package `import` fails with
+ * `ERR_MODULE_NOT_FOUND` until something runs the build. Nothing currently
+ * orders that build first, so an attempt can fail for this reason and look
+ * like a genuine test failure. The trade is still right — validating against
+ * the owner's checkout would be silently WRONG, where this is loudly broken —
+ * but it is a real gap between here and a first green run, and it belongs to
+ * the scheduler's ordering rather than to this module.
+ *
  * WHAT MAKES SHARING EXTERNAL PACKAGES SAFE — and what it does not cover. A
  * shared entry points at the source checkout, outside the worktree, so a
  * write through it resolves outside every path the narrowed sandbox grants
