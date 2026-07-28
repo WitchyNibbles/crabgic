@@ -122,7 +122,13 @@ function buildDeps(
 
 function fullySeeded(): Seeded {
   return {
-    changeSet: buildChangeSet({ id: CHANGE_SET_ID, authorizationEnvelopeId: ENVELOPE_ID }),
+    changeSet: buildChangeSet({
+      id: CHANGE_SET_ID,
+      authorizationEnvelopeId: ENVELOPE_ID,
+      // `ready` is the state a satisfied approval gate produces, and the one
+      // state `createRun` will dispatch from (ledger Gap 18).
+      state: "ready",
+    }),
     workUnits: [
       buildWorkUnit({
         id: UNIT_ID,
@@ -162,24 +168,22 @@ function newDispatcher(
 }
 
 describe("createRealRunDispatcher — refusals", () => {
-  it("refuses an unknown run", async () => {
-    const dispatcher = newDispatcher(buildDeps({ run: false }));
-    const result = await dispatcher.dispatch(RUN_ID);
-    expect(result.accepted).toBe(false);
-    expect(result.reason).toMatch(/unknown run/i);
-  });
-
+  /**
+   * There is no "unknown run" refusal any more: dispatch takes a ChangeSet
+   * and CREATES the run (ledger Gap 18). The pre-existing-run case moved to
+   * `resume`, below.
+   */
   it("refuses when the change set is not available", async () => {
-    const dispatcher = newDispatcher(buildDeps({}));
-    const result = await dispatcher.dispatch(RUN_ID);
+    const dispatcher = newDispatcher(buildDeps({ run: false }));
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(result.accepted).toBe(false);
     expect(result.reason).toMatch(/unknown change set/i);
   });
 
   it("refuses a change set with no work units rather than driving an empty DAG", async () => {
     const { changeSet, envelope } = fullySeeded();
-    const dispatcher = newDispatcher(buildDeps({ changeSet, envelope, workUnits: [] }));
-    const result = await dispatcher.dispatch(RUN_ID);
+    const dispatcher = newDispatcher(buildDeps({ run: false, changeSet, envelope, workUnits: [] }));
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(result.accepted).toBe(false);
     expect(result.reason).toMatch(/no work units/i);
   });
@@ -192,8 +196,8 @@ describe("createRealRunDispatcher — refusals", () => {
    */
   it("refuses to dispatch when the authorization envelope is missing", async () => {
     const { changeSet, workUnits } = fullySeeded();
-    const dispatcher = newDispatcher(buildDeps({ changeSet, workUnits }));
-    const result = await dispatcher.dispatch(RUN_ID);
+    const dispatcher = newDispatcher(buildDeps({ run: false, changeSet, workUnits }));
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(result.accepted).toBe(false);
     expect(result.reason).toMatch(/envelope .* not available|unbounded/i);
   });
@@ -201,7 +205,7 @@ describe("createRealRunDispatcher — refusals", () => {
 
 describe("createRealRunDispatcher — dispatch", () => {
   it("accepts a fully-defined run and returns without waiting for it to finish", async () => {
-    const deps = buildDeps(fullySeeded());
+    const deps = buildDeps({ ...fullySeeded(), run: false });
     let driveStarted = false;
     const dispatcher = newDispatcher(deps, {
       createAdapter: () => {
@@ -216,10 +220,12 @@ describe("createRealRunDispatcher — dispatch", () => {
       },
     });
 
-    const result = await dispatcher.dispatch(RUN_ID);
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
 
     // Ownership decided immediately; the drive is still only just beginning.
-    expect(result).toEqual({ accepted: true });
+    expect(result.accepted).toBe(true);
+    // The runId is an OUTPUT -- dispatch is where a run comes into existence.
+    expect(result.runId).toMatch(/^[0-9a-f-]{36}$/);
     expect(driveStarted).toBe(false);
   });
 
@@ -235,7 +241,7 @@ describe("createRealRunDispatcher — dispatch", () => {
    * the transition landed there proves the run was really driven.
    */
   it("drives the DAG through to a journaled work-unit transition", async () => {
-    const deps = buildDeps(fullySeeded());
+    const deps = buildDeps({ ...fullySeeded(), run: false });
     const dispatcher = newDispatcher(deps, {
       createAdapter: () =>
         Promise.resolve(
@@ -247,7 +253,7 @@ describe("createRealRunDispatcher — dispatch", () => {
         ),
     });
 
-    expect(await dispatcher.dispatch(RUN_ID)).toEqual({ accepted: true });
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
 
     await vi.waitFor(
       async () => {
@@ -261,16 +267,16 @@ describe("createRealRunDispatcher — dispatch", () => {
     );
   });
 
-  it("is idempotent per run — a second dispatch never starts a competing driver", async () => {
-    const deps = buildDeps(fullySeeded());
+  it("is idempotent per CHANGE SET — a second dispatch never starts a competing driver", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
     // A drive that never settles, so the run stays in flight for the
     // duration of the assertion.
     const dispatcher = newDispatcher(deps, {
       createAdapter: () => new Promise(() => undefined),
     });
 
-    expect(await dispatcher.dispatch(RUN_ID)).toEqual({ accepted: true });
-    const second = await dispatcher.dispatch(RUN_ID);
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    const second = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(second.accepted).toBe(false);
     expect(second.reason).toMatch(/already being dispatched/i);
   });
@@ -281,17 +287,127 @@ describe("createRealRunDispatcher — dispatch", () => {
    * daemon (and every other run it is driving) down.
    */
   it("reports a failing background drive instead of crashing the daemon", async () => {
-    const deps = buildDeps(fullySeeded());
+    const deps = buildDeps({ ...fullySeeded(), run: false });
     const errors: unknown[] = [];
     const dispatcher = newDispatcher(deps, {
       createAdapter: () => Promise.reject(new Error("worktree exploded")),
       onDriveError: (_runId: string, err: unknown) => errors.push(err),
     });
 
-    expect(await dispatcher.dispatch(RUN_ID)).toEqual({ accepted: true });
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
     await vi.waitFor(() => {
       expect(errors).toHaveLength(1);
     });
     expect((errors[0] as Error).message).toContain("worktree exploded");
+  });
+});
+
+/**
+ * `resume` is the half that kept the old runId-keyed shape. It re-drives a
+ * run that already exists; it never creates one.
+ */
+describe("createRealRunDispatcher — resume", () => {
+  it("refuses an unknown run", async () => {
+    const dispatcher = newDispatcher(buildDeps({ run: false }));
+    const result = await dispatcher.resume(RUN_ID);
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/unknown run/i);
+  });
+
+  /**
+   * A finished run must not be re-driven. `blocked`/`cancelled` in
+   * particular are states an owner or a stop condition put the run into
+   * deliberately, and quietly restarting one would defeat the halt.
+   */
+  it.each(["published_local", "failed", "blocked", "cancelled"] as const)(
+    "refuses to resume a run in the absorbing state %s",
+    async (absorbing) => {
+      const deps = buildDeps({ ...fullySeeded(), run: false });
+      deps.runs.upsert({
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        runState: absorbing,
+        updatedAt: "2026-07-28T00:00:00.000Z",
+      });
+
+      const result = await newDispatcher(deps).resume(RUN_ID);
+      expect(result.accepted).toBe(false);
+      expect(result.reason).toMatch(new RegExp(absorbing));
+    },
+  );
+
+  it("re-drives an in-flight run and reports no new runId", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-28T00:00:00.000Z",
+    });
+
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    const result = await dispatcher.resume(RUN_ID);
+    expect(result.accepted).toBe(true);
+    expect(result.runId).toBeUndefined();
+  });
+});
+
+/**
+ * Roast round 2, F1 — PROVEN before it was fixed.
+ *
+ * The guards used to be read before the first `await` while the in-flight
+ * claim was written after it, so two concurrent dispatches on one change set
+ * each saw an empty in-flight set and an empty run registry and BOTH created
+ * a run: two live runs over the same work units and the same worktrees, with
+ * no human review anywhere. The UDS server serializes per connection only,
+ * so two connections was the whole exploit.
+ */
+describe("createRealRunDispatcher — concurrent dispatch", () => {
+  it("creates exactly one run when two dispatches race on the same change set", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      // Never settles, so both racers are in flight across the assertion.
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    const [first, second] = await Promise.all([
+      dispatcher.dispatch(CHANGE_SET_ID),
+      dispatcher.dispatch(CHANGE_SET_ID),
+    ]);
+
+    const accepted = [first, second].filter((outcome) => outcome.accepted);
+    expect(accepted).toHaveLength(1);
+    expect(deps.runs.list()).toHaveLength(1);
+  });
+
+  /** Ten at once — a Set add is atomic per tick, and this proves the claim really is. */
+  it("creates exactly one run under a wider race", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    const outcomes = await Promise.all(
+      Array.from({ length: 10 }, () => dispatcher.dispatch(CHANGE_SET_ID)),
+    );
+
+    expect(outcomes.filter((outcome) => outcome.accepted)).toHaveLength(1);
+    expect(deps.runs.list()).toHaveLength(1);
+  });
+
+  /** A refused dispatch must release its claim, or the change set is wedged forever. */
+  it("releases the claim when it refuses, so a later dispatch can still succeed", async () => {
+    const deps = buildDeps({ run: false });
+    const dispatcher = newDispatcher(deps);
+
+    const refused = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(refused.accepted).toBe(false);
+
+    // Same refusal, not "already being dispatched" — the claim was released.
+    const again = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(again.reason).toBe(refused.reason);
   });
 });

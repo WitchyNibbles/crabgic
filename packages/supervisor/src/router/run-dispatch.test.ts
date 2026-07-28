@@ -31,6 +31,7 @@ import { buildSupervisorRouter, type SupervisorDependencies } from "./build-rout
 import type { RunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
+const CHANGE_SET_ID = "99999999-9999-4999-8999-999999999999";
 
 let journalDir: string;
 let journal: JournalStore;
@@ -61,17 +62,20 @@ describe("run.dispatch", () => {
     const dispatched: string[] = [];
     const router = buildSupervisorRouter(
       baseDeps({
-        dispatch: (runId) => {
-          dispatched.push(runId);
-          return Promise.resolve({ accepted: true });
+        dispatch: (changeSetId) => {
+          dispatched.push(changeSetId);
+          return Promise.resolve({ accepted: true, runId: RUN_ID });
         },
+        resume: () => Promise.resolve({ accepted: true }),
       }),
     );
 
-    const result = await router.dispatch("run.dispatch", { runId: RUN_ID });
+    const result = await router.dispatch("run.dispatch", { changeSetId: CHANGE_SET_ID });
 
-    expect(result).toEqual({ accepted: true });
-    expect(dispatched).toEqual([RUN_ID]);
+    // The runId is an OUTPUT: dispatch is where a run comes into existence,
+    // so the caller cannot have supplied one (ledger Gap 18).
+    expect(result).toEqual({ accepted: true, runId: RUN_ID });
+    expect(dispatched).toEqual([CHANGE_SET_ID]);
   });
 
   /**
@@ -95,12 +99,13 @@ describe("run.dispatch", () => {
       baseDeps({
         // Models a real driver: kicks the (still-unfinished) run off in the
         // background and resolves its own promise immediately.
-        dispatch: () => Promise.resolve({ accepted: true }),
+        dispatch: () => Promise.resolve({ accepted: true, runId: RUN_ID }),
+        resume: () => Promise.resolve({ accepted: true }),
       }),
     );
 
-    const result = await router.dispatch("run.dispatch", { runId: RUN_ID });
-    expect(result).toEqual({ accepted: true });
+    const result = await router.dispatch("run.dispatch", { changeSetId: CHANGE_SET_ID });
+    expect(result).toEqual({ accepted: true, runId: RUN_ID });
     expect(runCompleted).toBe(false); // the run is still going
 
     releaseRun();
@@ -111,10 +116,11 @@ describe("run.dispatch", () => {
     const router = buildSupervisorRouter(
       baseDeps({
         dispatch: () => Promise.resolve({ accepted: false, reason: "run is already dispatching" }),
+        resume: () => Promise.resolve({ accepted: true }),
       }),
     );
 
-    expect(await router.dispatch("run.dispatch", { runId: RUN_ID })).toEqual({
+    expect(await router.dispatch("run.dispatch", { changeSetId: CHANGE_SET_ID })).toEqual({
       accepted: false,
       reason: "run is already dispatching",
     });
@@ -128,11 +134,58 @@ describe("run.dispatch", () => {
   it("refuses cleanly when no dispatcher is configured, rather than throwing", async () => {
     const router = buildSupervisorRouter(baseDeps());
 
-    const result = (await router.dispatch("run.dispatch", { runId: RUN_ID })) as {
+    const result = (await router.dispatch("run.dispatch", { changeSetId: CHANGE_SET_ID })) as {
       accepted: boolean;
       reason?: string;
     };
     expect(result.accepted).toBe(false);
     expect(result.reason).toMatch(/dispatcher/i);
+  });
+});
+
+/**
+ * `run.resume` was split out of `run.dispatch` on 2026-07-28. They used to be
+ * one operation keyed on a runId, which is why the case that actually
+ * mattered — starting an approved change set — had no reachable form at all:
+ * every caller needed an id that nothing in the system ever minted.
+ */
+describe("run.resume", () => {
+  it("re-drives an existing run without minting a new id", async () => {
+    const resumed: string[] = [];
+    const router = buildSupervisorRouter(
+      baseDeps({
+        dispatch: () => Promise.resolve({ accepted: true, runId: RUN_ID }),
+        resume: (runId) => {
+          resumed.push(runId);
+          return Promise.resolve({ accepted: true });
+        },
+      }),
+    );
+
+    expect(await router.dispatch("run.resume", { runId: RUN_ID })).toEqual({ accepted: true });
+    expect(resumed).toEqual([RUN_ID]);
+  });
+
+  it("refuses cleanly when no dispatcher is configured", async () => {
+    const router = buildSupervisorRouter(baseDeps());
+
+    const result = (await router.dispatch("run.resume", { runId: RUN_ID })) as {
+      accepted: boolean;
+      reason?: string;
+    };
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/dispatcher/i);
+  });
+
+  /** A resume never returns a runId — it did not create one. Pins the two shapes apart. */
+  it("never reports a runId, even on success", async () => {
+    const router = buildSupervisorRouter(
+      baseDeps({
+        dispatch: () => Promise.resolve({ accepted: true, runId: RUN_ID }),
+        resume: () => Promise.resolve({ accepted: true, runId: RUN_ID }),
+      }),
+    );
+
+    expect(await router.dispatch("run.resume", { runId: RUN_ID })).toEqual({ accepted: true });
   });
 });

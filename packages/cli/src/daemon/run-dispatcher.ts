@@ -31,10 +31,13 @@
  */
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { isRunLifecycleAbsorbing } from "@crabgic/contracts";
 import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@crabgic/contracts";
 import type { XdgEnv } from "@crabgic/journal";
 import type { JournalStore } from "@crabgic/journal";
 import {
+  createRun,
+  findLiveRunForChangeSet,
   provisionWorkerDirs,
   type RunDispatcher,
   type RunDispatchOutcome,
@@ -148,20 +151,20 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   const plumbing = options.plumbing ?? createGitPlumbing({ spawnFn: createNodeGitSpawn() });
   const onDriveError = options.onDriveError ?? ((): void => undefined);
 
-  /** Runs this daemon is already driving — makes `dispatch` idempotent per run. */
+  /**
+   * Change sets this daemon is already driving — makes `dispatch` idempotent
+   * per CHANGE SET rather than per run. It has to be: the caller no longer
+   * supplies a runId, so keying on the run would mean minting one just to
+   * discover it was a duplicate, journalling a run that should never have
+   * existed.
+   */
   const inFlight = new Set<string>();
 
-  /** Resolves everything a run needs, or explains precisely what is missing. */
-  function resolveRun(runId: string): ResolvedRun {
-    const run = deps.runs.get(runId);
-    if (run === undefined) return { ok: false, reason: `unknown run "${runId}"` };
-
-    const changeSet = deps.changeSets.get(run.changeSetId);
+  /** Resolves everything a change set needs to run, or explains precisely what is missing. */
+  function resolveChangeSet(changeSetId: string): ResolvedRun {
+    const changeSet = deps.changeSets.get(changeSetId);
     if (changeSet === undefined) {
-      return {
-        ok: false,
-        reason: `run "${runId}" references unknown change set "${run.changeSetId}"`,
-      };
+      return { ok: false, reason: `unknown change set "${changeSetId}"` };
     }
 
     const workUnits = deps.workUnits.query((unit) => unit.changeSetId === changeSet.id);
@@ -277,26 +280,141 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     );
   }
 
+  /**
+   * Hands the resolved DAG to the driver in the background and reports
+   * ownership immediately. Shared by `dispatch` and `resume` so the
+   * not-awaited discipline, the error routing and the in-flight bookkeeping
+   * have exactly one definition.
+   */
+  function beginDriving(
+    runId: string,
+    resolved: Extract<ResolvedRun, { ok: true }>,
+    /** Releases the caller's in-flight claim. Called exactly once, when the drive settles. */
+    release: () => void,
+  ): void {
+    // Deliberately NOT awaited — see the file-level doc comment. Errors
+    // are reported through `onDriveError`, never left as an unhandled
+    // rejection that could take the whole daemon down.
+    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope)
+      .catch((err: unknown) => {
+        onDriveError(runId, err);
+      })
+      .finally(release);
+  }
+
   return {
-    dispatch(runId: string): Promise<RunDispatchOutcome> {
-      if (inFlight.has(runId)) {
+    /**
+     * Creates a run for an approved change set and starts driving it.
+     *
+     * Refusing NEVER creates a run to block. `blocked` is absorbing, so a
+     * halted run would strand the change set with no recovery path short of a
+     * hand-edited policy and a brand-new `requestKey`; and at dispatch time a
+     * run has no prior record, so `draft → blocked` is not even a legal edge
+     * — the halt would have thrown inside an un-awaited driver after this
+     * method already answered `accepted: true`. Refusing leaves the change
+     * set `ready`, so fixing the cause and dispatching again just works.
+     */
+    async dispatch(changeSetId: string): Promise<RunDispatchOutcome> {
+      // CLAIM THE CHANGE SET SYNCHRONOUSLY, before any `await`. Roast round 2
+      // (F1) proved the read-then-await-then-write form: both guards were
+      // read before the first await and `inFlight.add` happened after it, so
+      // two concurrent `run.dispatch` calls on one change set each saw an
+      // empty in-flight set and an empty registry, and BOTH created a run —
+      // two live runs over the same work units and worktrees, with no human
+      // review anywhere. The UDS server serializes per connection only, so
+      // two connections is all it took. Reproduced: `runs.list()` returned
+      // two records in `running` for one changeSetId.
+      //
+      // A `Set` add is atomic with respect to the event loop, so claiming
+      // first and releasing in `finally` is what actually delivers the
+      // "idempotent per change set" contract this method documents.
+      if (inFlight.has(changeSetId)) {
+        return { accepted: false, reason: "change set is already being dispatched" };
+      }
+      inFlight.add(changeSetId);
+
+      let released = false;
+      const release = (): void => {
+        if (!released) {
+          released = true;
+          inFlight.delete(changeSetId);
+        }
+      };
+
+      try {
+        const live = findLiveRunForChangeSet(deps.runs, changeSetId);
+        if (live !== undefined) {
+          release();
+          return {
+            accepted: false,
+            reason: `change set "${changeSetId}" already has run "${live.runId}" in flight (${live.runState})`,
+          };
+        }
+
+        const resolved = resolveChangeSet(changeSetId);
+        if (!resolved.ok) {
+          release();
+          return { accepted: false, reason: resolved.reason };
+        }
+
+        let runId: string;
+        try {
+          runId = (
+            await createRun({
+              journal: deps.journal,
+              runs: deps.runs,
+              changeSets: deps.changeSets,
+              changeSetId,
+              runId: randomUUID(),
+            })
+          ).runId;
+        } catch (err) {
+          // `createRun` refuses a change set that is not `ready` — i.e. one no
+          // approval gate has passed. That is the standing-approval boundary
+          // itself, so it is reported as a refusal rather than raised.
+          release();
+          return { accepted: false, reason: err instanceof Error ? err.message : String(err) };
+        }
+
+        // Hands the claim over to the drive, which releases it when it settles.
+        beginDriving(runId, resolved, release);
+        return { accepted: true, runId };
+      } catch (err) {
+        release();
+        throw err;
+      }
+    },
+
+    /** Re-drives a run that already exists — crash recovery and limit-park re-dispatch. */
+    resume(runId: string): Promise<RunDispatchOutcome> {
+      const run = deps.runs.get(runId);
+      if (run === undefined) {
+        return Promise.resolve({ accepted: false, reason: `unknown run "${runId}"` });
+      }
+      if (isRunLifecycleAbsorbing(run.runState)) {
+        return Promise.resolve({
+          accepted: false,
+          reason: `run "${runId}" is ${run.runState} and cannot be resumed`,
+        });
+      }
+      // Claimed synchronously, for the same reason `dispatch` does it (F1):
+      // this method has no `await` before the claim today, and must not grow
+      // one without keeping the claim first.
+      if (inFlight.has(run.changeSetId)) {
         return Promise.resolve({ accepted: false, reason: "run is already being dispatched" });
       }
-      const resolved = resolveRun(runId);
+
+      const resolved = resolveChangeSet(run.changeSetId);
       if (!resolved.ok) return Promise.resolve({ accepted: false, reason: resolved.reason });
 
-      inFlight.add(runId);
-      // Deliberately NOT awaited — see the file-level doc comment. Errors
-      // are reported through `onDriveError`, never left as an unhandled
-      // rejection that could take the whole daemon down.
-      void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope)
-        .catch((err: unknown) => {
-          onDriveError(runId, err);
-        })
-        .finally(() => {
-          inFlight.delete(runId);
-        });
-
+      inFlight.add(run.changeSetId);
+      let released = false;
+      beginDriving(runId, resolved, () => {
+        if (!released) {
+          released = true;
+          inFlight.delete(run.changeSetId);
+        }
+      });
       return Promise.resolve({ accepted: true });
     },
   };

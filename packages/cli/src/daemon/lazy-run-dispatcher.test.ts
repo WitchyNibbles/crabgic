@@ -42,6 +42,20 @@ import type { RealRunDispatcherOptions } from "./run-dispatcher.js";
 /** The options bundle is passed straight through; nothing here inspects it. */
 const OPTIONS = { projectDir: "/nowhere" } as unknown as RealRunDispatcherOptions;
 
+/**
+ * Fills in whichever of the two `RunDispatcher` methods a case does not
+ * exercise. `resume` was split out of `dispatch` on 2026-07-28 (ledger Gap
+ * 18); these cases are about the LAZY LOADING contract, not about either
+ * method's own semantics, so they should not have to restate both.
+ */
+function asDispatcher(partial: Partial<RunDispatcher>): RunDispatcher {
+  return {
+    dispatch: () => Promise.resolve({ accepted: true }),
+    resume: () => Promise.resolve({ accepted: true }),
+    ...partial,
+  };
+}
+
 function stubModule(dispatcher: RunDispatcher): {
   readonly load: () => Promise<RunDispatcherModule>;
   readonly created: () => number;
@@ -70,7 +84,7 @@ describe("createLazyRunDispatcher", () => {
 
   it("loads on first dispatch and delegates the runId, returning the real outcome", async () => {
     const dispatch = vi.fn(() => Promise.resolve({ accepted: true as const }));
-    const stub = stubModule({ dispatch });
+    const stub = stubModule(asDispatcher({ dispatch }));
     const load = vi.fn(stub.load);
 
     const outcome = await createLazyRunDispatcher(OPTIONS, load).dispatch("run-1");
@@ -82,7 +96,7 @@ describe("createLazyRunDispatcher", () => {
 
   it("builds exactly ONE real dispatcher across many dispatches, so per-run idempotency holds", async () => {
     const dispatch = vi.fn(() => Promise.resolve({ accepted: true as const }));
-    const stub = stubModule({ dispatch });
+    const stub = stubModule(asDispatcher({ dispatch }));
     const load = vi.fn(stub.load);
     const lazy = createLazyRunDispatcher(OPTIONS, load);
 
@@ -97,7 +111,7 @@ describe("createLazyRunDispatcher", () => {
 
   it("shares a single load across CONCURRENT first dispatches rather than racing two instances", async () => {
     const dispatch = vi.fn(() => Promise.resolve({ accepted: true as const }));
-    const stub = stubModule({ dispatch });
+    const stub = stubModule(asDispatcher({ dispatch }));
     const load = vi.fn(stub.load);
     const lazy = createLazyRunDispatcher(OPTIONS, load);
 
@@ -109,7 +123,7 @@ describe("createLazyRunDispatcher", () => {
 
   it("propagates a load failure and does not poison the dispatcher against a later retry", async () => {
     const dispatch = vi.fn(() => Promise.resolve({ accepted: true as const }));
-    const stub = stubModule({ dispatch });
+    const stub = stubModule(asDispatcher({ dispatch }));
     const load = vi
       .fn<() => Promise<RunDispatcherModule>>()
       .mockRejectedValueOnce(new Error("module load failed"))

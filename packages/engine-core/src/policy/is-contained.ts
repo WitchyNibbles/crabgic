@@ -57,7 +57,23 @@ function normalizePath(raw: string): string | undefined {
   // can never shorten a path into a parent directory. Doing it here rather
   // than in `validateOwnedPath` keeps the compiler's own boundary untouched.
   const segments = validated.split("/").filter((segment) => segment !== "" && segment !== ".");
-  return segments.length === 0 ? undefined : segments.join("/");
+  if (segments.length === 0) return undefined;
+  const collapsed = segments.join("/");
+
+  // RE-VALIDATE the collapsed result. Roast round 2 (F9) showed the collapse
+  // can produce a string `validateOwnedPath` would itself reject: `"./~"`
+  // collapses to `"~"` and `"./~/.ssh"` to `"~/.ssh"`, re-creating the
+  // home-anchored form the validator exists to refuse. Not exploitable
+  // against a well-formed policy — a `"~"` prefix normalizes to `undefined`
+  // and so can never match — but the original "safe by construction" note
+  // argued only about `..` and therefore overclaimed. Re-validating makes the
+  // postcondition true rather than nearly true.
+  try {
+    validateOwnedPath(collapsed);
+  } catch {
+    return undefined;
+  }
+  return collapsed;
 }
 
 /**
@@ -91,6 +107,24 @@ export function isContained(
   policy: EnvelopePolicy,
 ): ContainmentResult {
   const reasons: string[] = [];
+
+  // A policy prefix that cannot be normalized grants nothing, for ever. Say
+  // so explicitly and FIRST: roast round 2 (F4) showed that
+  // `allowedPathPrefixes: ["src/**"]` — the natural way to write "everything
+  // under src" — parses, is not vacuous, passes every doctor check, matches
+  // nothing, and was then reported as `owned path "src/login" is not at or
+  // below any allowed path prefix`. That names the envelope and never says
+  // the prefix itself was rejected, sending the owner to fix the wrong file
+  // at a gate they must edit out-of-band.
+  const unusablePrefixes = policy.allowedPathPrefixes.filter(
+    (prefix) => normalizePath(prefix) === undefined,
+  );
+  for (const prefix of unusablePrefixes) {
+    reasons.push(
+      `policy path prefix ${JSON.stringify(prefix)} is not a usable worktree-relative directory ` +
+        `(absolute, home-anchored, containing "..", or containing glob metacharacters), so it grants nothing`,
+    );
+  }
 
   for (const ownedPath of envelope.ownedPaths) {
     if (!pathContained(ownedPath, policy.allowedPathPrefixes)) {

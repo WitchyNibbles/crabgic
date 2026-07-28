@@ -75,9 +75,9 @@ describe("EnvelopePolicySchema", () => {
    */
   it("treats unix sockets as a grant that must be asked for", () => {
     expect(EnvelopePolicySchema.parse(MINIMAL).allowUnixSockets).toBe(false);
-    expect(EnvelopePolicySchema.parse({ ...MINIMAL, allowUnixSockets: true }).allowUnixSockets).toBe(
-      true,
-    );
+    expect(
+      EnvelopePolicySchema.parse({ ...MINIMAL, allowUnixSockets: true }).allowUnixSockets,
+    ).toBe(true);
   });
 
   it("rejects an unknown field rather than ignoring it", () => {
@@ -93,9 +93,9 @@ describe("EnvelopePolicySchema", () => {
    */
   it("parses a vacuous policy but reports it as vacuous", async () => {
     const { isVacuousPolicy } = await import("./envelope-policy.js");
-    expect(isVacuousPolicy(EnvelopePolicySchema.parse({ ...MINIMAL, allowedPathPrefixes: [] }))).toBe(
-      true,
-    );
+    expect(
+      isVacuousPolicy(EnvelopePolicySchema.parse({ ...MINIMAL, allowedPathPrefixes: [] })),
+    ).toBe(true);
     expect(isVacuousPolicy(EnvelopePolicySchema.parse(MINIMAL))).toBe(false);
   });
 });

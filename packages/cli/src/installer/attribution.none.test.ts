@@ -47,15 +47,16 @@ describe("attribution.none.test", () => {
   });
 
   it("cross-check (17's renderer lint): a synthetic post-install commit body carries no attribution/engine-credit tokens", () => {
-    // NOTE: this synthetic body deliberately avoids the literal words
-    // "Claude"/"claude" — 17's own attribution-neutral stage independently
-    // (and correctly) treats any engine/vendor name as an attribution
-    // token, per the assertion below, so the "neutral" body under test
-    // must itself already be vendor-neutral, exactly as a real
-    // renderer-produced commit body would be.
+    // NOTE: this synthetic body must name NEITHER an engine vendor nor the
+    // harness itself. 17's attribution-neutral stage treats both as
+    // attribution tokens (owner ruling 2026-07-28 added the harness's own
+    // name alongside the vendors), so the "neutral" body under test has to
+    // be genuinely neutral — exactly as a real renderer-produced commit body
+    // would be. It previously read "install the crabgic plugin", which this
+    // cross-check correctly began rejecting the moment the rule landed.
     const policy = buildCommunicationPolicy();
     const commitBody =
-      "feat: install the crabgic plugin\n\n" +
+      "feat: install the orchestration plugin\n\n" +
       "Adds the managed instructions block, project settings, gateway MCP entry, and eo-* subagents.";
 
     const outcome = lint(commitBody, "commit_body", policy);

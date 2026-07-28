@@ -113,8 +113,40 @@ export const RegistryChangeSetGetResultSchema = z
  * and is NOT registered as a gateway MCP tool: dispatching a run is an
  * operator action, never a model-satisfiable one.
  */
-export const RunDispatchParamsSchema = z.object({ runId: IdSchema }).strict();
+/**
+ * Takes a **ChangeSetId**, not a runId (changed 2026-07-28, ledger Gap 18).
+ *
+ * The original shape was unsatisfiable in production: it required a runId,
+ * and nothing in the system ever created a `RunRecord`, so every caller had
+ * an id it could not obtain. Dispatch is therefore the point at which a run
+ * comes into existence — the id is an OUTPUT — and re-driving an existing
+ * run is a separate operation (`run.resume`) rather than the same one
+ * wearing two meanings.
+ *
+ * `accepted: false` stays a normal answer, never an error: not ready, no work
+ * units, no envelope, already in flight, out of standing policy, or no
+ * dispatcher configured. Refusing here deliberately does NOT create a run to
+ * block — a blocked run is absorbing and would strand the ChangeSet, whereas
+ * refusing leaves it `ready` so that fixing the cause and dispatching again
+ * simply works.
+ */
+export const RunDispatchParamsSchema = z.object({ changeSetId: IdSchema }).strict();
 export const RunDispatchResultSchema = z
+  .object({
+    accepted: z.boolean(),
+    /** Present iff `accepted` — the run this call brought into existence. */
+    runId: IdSchema.optional(),
+    reason: NonEmptyStringSchema.optional(),
+  })
+  .strict();
+
+/**
+ * Re-drives a run that already exists — crash recovery, and re-dispatch after
+ * a limit park. Split from `run.dispatch` so that "start this approved change
+ * set" and "pick this run back up" cannot be confused for one another.
+ */
+export const RunResumeParamsSchema = z.object({ runId: IdSchema }).strict();
+export const RunResumeResultSchema = z
   .object({ accepted: z.boolean(), reason: NonEmptyStringSchema.optional() })
   .strict();
 
@@ -170,6 +202,7 @@ export const SUPERVISOR_OPERATIONS = [
   "run.status",
   "run.cancel",
   "run.dispatch",
+  "run.resume",
   "registry.runs.list",
   "registry.changeSets.get",
   "registry.changeSets.list",

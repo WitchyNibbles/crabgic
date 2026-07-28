@@ -104,6 +104,60 @@ describe("isContained — owned paths", () => {
     expect(result.contained).toBe(false);
   });
 
+  /**
+   * Roast round 2, F4. `"src/**"` is the natural way to write "everything
+   * under src" and it grants NOTHING -- glob metacharacters are rejected. It
+   * parses, it is not vacuous, and it passes every structural doctor check,
+   * so the refusal reason is the only thing that can tell an owner their
+   * policy is the broken file rather than the envelope.
+   */
+  it.each(["src/**", "src/*", "/abs/src", "~/src", "../src"])(
+    "names the POLICY as the fault when the prefix %j cannot grant anything",
+    (badPrefix) => {
+      const result = isContained(
+        envelope({ ownedPaths: ["src/login"] }),
+        policy({ allowedPathPrefixes: [badPrefix] }),
+      );
+
+      expect(result.contained).toBe(false);
+      expect(result.reasons.some((reason) => /policy path prefix/.test(reason))).toBe(true);
+    },
+  );
+
+  /**
+   * Roast round 2, F8: the interior-`//` case was never covered, so the
+   * `segment !== ""` filter was dead to the suite -- deleting it left every
+   * test passing. `validateOwnedPath` strips only TRAILING slashes.
+   */
+  it("normalizes an interior double slash", () => {
+    expect(isContained(envelope({ ownedPaths: ["src//login"] }), policy()).contained).toBe(true);
+  });
+
+  /**
+   * Roast round 2, F9: the collapse could return a string `validateOwnedPath`
+   * itself rejects -- `"./~"` collapses to `"~"`, re-creating the
+   * home-anchored form. Both sides must refuse it.
+   */
+  it.each(["./~", "./~/.ssh"])(
+    "re-rejects %j, which the collapse would otherwise re-create",
+    (raw) => {
+      expect(isContained(envelope({ ownedPaths: [raw] }), policy()).contained).toBe(false);
+      expect(
+        isContained(envelope({ ownedPaths: ["src/login"] }), policy({ allowedPathPrefixes: [raw] }))
+          .contained,
+      ).toBe(false);
+    },
+  );
+
+  /**
+   * Roast round 2, F9: mutating the empty-result guard to `segments.join("/")`
+   * left every test passing, because nothing used a path that collapses to
+   * nothing. `"."` is the whole worktree written as a no-op.
+   */
+  it.each([".", "./", "./."])("treats %j, which collapses to nothing, as not contained", (raw) => {
+    expect(isContained(envelope({ ownedPaths: [raw] }), policy()).contained).toBe(false);
+  });
+
   it("contains nothing when the policy allows no paths", () => {
     expect(
       isContained(envelope({ ownedPaths: ["src"] }), policy({ allowedPathPrefixes: [] })).contained,
@@ -142,9 +196,27 @@ describe("isContained — exact-set dimensions", () => {
   });
 
   it("requires every credential reference to be listed, and defaults to none", () => {
-    expect(isContained(envelope({ credentialReferences: ["JIRA_TOKEN"] }), policy()).contained).toBe(
-      false,
-    );
+    expect(
+      isContained(envelope({ credentialReferences: ["JIRA_TOKEN"] }), policy()).contained,
+    ).toBe(false);
+  });
+
+  /**
+   * Roast round 2, F7. Deleting both `.trim()` calls in `exactlyContained`
+   * left every test passing, because no case ever passed an untrimmed value.
+   * The trim is kept and now covered -- but note the asymmetry it creates:
+   * `sandbox-profile.ts` does NOT trim, so a padded credential reference is
+   * judged contained under one identity and compiled under another. It fails
+   * closed (the variable will not resolve), and is recorded here rather than
+   * silently relied on.
+   */
+  it("matches an untrimmed envelope value against a trimmed policy entry", () => {
+    expect(
+      isContained(
+        envelope({ credentialReferences: [" JIRA_TOKEN "] }),
+        policy({ allowedCredentialReferences: ["JIRA_TOKEN"] }),
+      ).contained,
+    ).toBe(true);
   });
 
   /**
@@ -187,7 +259,10 @@ describe("isContained — dimensions it deliberately does not gate", () => {
    * BOTH directions and the schema documents it as inert.
    */
   it("ignores prohibitedActions rather than crediting it as a narrowing", () => {
-    const withProhibitions = envelope({ ownedPaths: ["src"], prohibitedActions: ["do not touch src/auth"] });
+    const withProhibitions = envelope({
+      ownedPaths: ["src"],
+      prohibitedActions: ["do not touch src/auth"],
+    });
     const without = envelope({ ownedPaths: ["src"], prohibitedActions: [] });
 
     expect(isContained(withProhibitions, policy()).contained).toBe(

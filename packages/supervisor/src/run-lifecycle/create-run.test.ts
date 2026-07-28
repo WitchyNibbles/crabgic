@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
-import { IllegalTransitionError, type ChangeSet } from "@crabgic/contracts";
+import { IllegalTransitionError, RUN_LIFECYCLE_STATES, type ChangeSet } from "@crabgic/contracts";
 import { createRunsRegistry, type RunsRegistry } from "../registries/runs-registry.js";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import type { Registry } from "../registries/registry.js";
@@ -59,7 +59,13 @@ describe("createRun", () => {
   it("puts a ready ChangeSet's run into `running`", async () => {
     changeSets.put(changeSet("ready"));
 
-    const record = await createRun({ journal, runs, changeSets, changeSetId: CHANGE_SET_ID, runId: RUN_ID });
+    const record = await createRun({
+      journal,
+      runs,
+      changeSets,
+      changeSetId: CHANGE_SET_ID,
+      runId: RUN_ID,
+    });
 
     expect(record.runId).toBe(RUN_ID);
     expect(record.changeSetId).toBe(CHANGE_SET_ID);
@@ -113,6 +119,27 @@ describe("createRun", () => {
     expect(entries).toHaveLength(0);
     expect(runs.get(RUN_ID)).toBeUndefined();
   });
+
+  /**
+   * REGRESSION GUARD. The `ready` check is deny-by-default and must stay
+   * that way. Rewriting it as a list of disallowed states — "not draft and
+   * not awaiting_approval" — passes the single-state test above while
+   * admitting `cancelled`, `blocked`, `failed` and `published_local`: it
+   * would dispatch a change set the owner had explicitly stopped.
+   * `ChangeSet.state` is `RunLifecycleStateSchema`, so this enumerates every
+   * member of that union rather than a sample, and a member added later
+   * fails here until it is deliberately considered.
+   */
+  it.each(RUN_LIFECYCLE_STATES.filter((state) => state !== "ready"))(
+    "refuses to dispatch a ChangeSet in state %s",
+    async (state) => {
+      changeSets.put(changeSet(state));
+
+      await expect(
+        createRun({ journal, runs, changeSets, changeSetId: CHANGE_SET_ID, runId: RUN_ID }),
+      ).rejects.toThrow(NOT_READY_REASON(CHANGE_SET_ID, state));
+    },
+  );
 
   it("refuses an unknown ChangeSet", async () => {
     await expect(

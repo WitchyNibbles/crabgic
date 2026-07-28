@@ -74,6 +74,13 @@ export async function createRun(options: CreateRunOptions): Promise<RunRecord> {
   if (changeSet === undefined) {
     throw new Error(`unknown change set "${options.changeSetId}"`);
   }
+  // DENY BY DEFAULT — never a list of disallowed states. `ChangeSet.state` is
+  // `RunLifecycleStateSchema`, the same 11-member union a run uses, so a
+  // "not draft and not awaiting_approval" formulation would admit
+  // `cancelled`, `blocked`, `failed` and `published_local`: it would dispatch
+  // a change set the owner had explicitly stopped. `ready` is the single
+  // state a satisfied approval gate produces, and every other member —
+  // including any added to that union later — must fail closed.
   if (changeSet.state !== "ready") {
     throw new Error(NOT_READY_REASON(options.changeSetId, changeSet.state));
   }
