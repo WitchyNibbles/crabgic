@@ -229,7 +229,7 @@ describe("xdg-permissions — cannot look is not the same as not there", () => {
     // 5260 tests -- which is the losing game an earlier commit in this very
     // file already named and abandoned.
     expect(finding.repairStep).toBe(
-      "chmod the paths listed with a wrong mode back to it (0700 dirs / 0600 files); " +
+      "chmod the paths listed with a wrong mode back to their required mode (0700 dirs / 0600 files); " +
         "make the uninspectable paths readable by this account and re-run, rather than assuming they are absent",
     );
   });

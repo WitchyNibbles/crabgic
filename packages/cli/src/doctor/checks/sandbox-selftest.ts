@@ -99,7 +99,23 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
         // `$?` is captured whether the write succeeded or was refused, so the
         // marker is present in both legitimate outcomes and absent in exactly
         // the case that matters: the write never happened.
-        `echo x > ${MARKER_PATH}; echo "${WRITE_MARKER}$?"`,
+        // Attempt the write, CAPTURE its status, emit the marker, then exit
+        // with the write's status. All three properties are needed and each
+        // was broken by a previous attempt:
+        //
+        //   - the marker follows the write, so it proves the write was
+        //     ATTEMPTED (round 17 put it first, and a kill at 10ms+ then
+        //     produced a false "correctly denied" 10/10 against real bwrap);
+        //   - the marker carries `$?`, so a broken sandbox is distinguishable
+        //     from a working one;
+        //   - `exit $s` restores the WRITE's status as the shell's. Round 18
+        //     moved the write off the end, and `sh -c` exits with the LAST
+        //     command's status -- always 0 from the echo -- so every healthy
+        //     host fell into the "unexpectedly succeeded" branch. Measured
+        //     0/20 PASS on a host where the write is demonstrably refused,
+        //     while the check held `WROTE:2` and "Read-only file system" in
+        //     hand and declared the write had succeeded.
+        `echo x > ${MARKER_PATH}; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
       ]);
       if (confinement.exitCode === 0) {
         return {
@@ -129,6 +145,22 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
       // remaining ways the command can fail to start — signal-kill (exit -1),
       // OOM (137), fork failure — which round 17 showed were all read as "the
       // write was correctly denied" from a command that never executed.
+      // The marker's VALUE, not merely its presence. `WROTE:0` means the
+      // write SUCCEEDED inside a read-only bind -- confinement is broken --
+      // and reading only `includes(WRITE_MARKER)` left a broken sandbox
+      // indistinguishable from a working one (round 19).
+      if (confinement.stdout.includes(`${WRITE_MARKER}0`)) {
+        return {
+          id: CHECK_ID,
+          severity: "error",
+          passed: false,
+          evidence:
+            "a write to a read-only-bound path inside bwrap unexpectedly SUCCEEDED — confinement is not holding",
+          repairStep:
+            "investigate the bwrap installation/kernel configuration — confinement is not holding",
+        };
+      }
+
       if (!confinement.stdout.includes(WRITE_MARKER)) {
         return {
           id: CHECK_ID,

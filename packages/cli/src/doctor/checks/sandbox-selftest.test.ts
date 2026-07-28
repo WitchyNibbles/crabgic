@@ -121,40 +121,30 @@ describe("sandbox-selftest — a denial requires proof the write was attempted",
  * bwrap is unavailable rather than pretending to have checked.
  */
 describe("sandbox-selftest — the real argv against the real bwrap", () => {
-  it("produces a verdict consistent with what the shell actually did", async () => {
+  it("PASSES on a host whose sandbox genuinely denies the write", async () => {
     const { createRealProcessProbe } = await import("../process-probe.js");
     const probe = createRealProcessProbe();
 
     const presence = await probe("bwrap", ["--version"]).catch(() => undefined);
-    if (presence === undefined || presence.exitCode !== 0) {
-      // No bwrap here. Asserting anything would be an assertion of absence --
-      // the exact defect this check exists to avoid making about itself.
-      return;
-    }
+    if (presence === undefined || presence.exitCode !== 0) return; // no bwrap here
 
     const finding = await createSandboxSelftestCheck({ probe }).run();
 
-    // Whatever the host does, the verdict must not contradict its own
-    // evidence: a refusal quoted in stderr means the write WAS attempted.
-    if (/read-only file system/i.test(finding.evidence)) {
-      expect(finding.evidence).not.toContain("never reported running");
-      expect(finding.passed).toBe(true);
-    }
+    // ROUND 19: the previous version of this test guarded on
+    // /read-only file system/ against the EVIDENCE -- a string the PASS
+    // branch never contains -- so zero assertions ever executed while the
+    // check returned a flatly false verdict on this very host. A test that
+    // cannot fire is worse than none.
+    //
+    // Asserted unconditionally instead: on a host with a working bwrap the
+    // write must be refused and the check must say so.
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toContain("correctly denied");
+    expect(finding.evidence).not.toContain("unexpectedly");
+    expect(finding.evidence).not.toContain("never reported running");
   });
 });
 
-/**
- * The marker's POSITION, asserted on the argv itself.
- *
- * No injected probe can distinguish `echo MARKER; write` from `write; echo
- * MARKER` -- both yield a marker on a host where the write is denied -- yet
- * the difference is the whole security property. Round 18 measured it against
- * real bwrap: with the marker first, a SIGKILL at 10ms, 50ms or 200ms
- * produced a false "correctly denied" 10 times out of 10, because the marker
- * lands ~1ms after spawn and proves only that a shell started.
- *
- * So the ordering is pinned where it actually lives.
- */
 describe("sandbox-selftest — the marker must follow the write", () => {
   it("emits the marker after the write, carrying its exit status", async () => {
     let confinementArgs: readonly string[] = [];
@@ -175,5 +165,57 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     expect(markerAt).toBeGreaterThan(writeAt);
     // And it must carry the write's status, not a constant.
     expect(script).toContain("$?");
+
+    // ROUND 19: the three assertions above pin surface strings, and every
+    // SEMANTIC mutation survived them -- wrapping the write in `if false;
+    // then ... fi` (so it is never attempted, defeating the test's stated
+    // purpose), decoupling `$?` with an intervening `true`, and redirecting
+    // the marker to stderr so it never reaches the guard. The script's shape
+    // is asserted as a whole instead.
+    expect(script).toBe('echo x > /eo-sandbox-selftest-marker; s=$?; echo "WROTE:$s"; exit $s');
+
+    // The read-only bind is the confinement under test; without it the probe
+    // measures nothing. Deleting it survived every assertion.
+    expect(confinementArgs).toContain("--ro-bind");
+    expect(confinementArgs.join(" ")).toContain("--ro-bind / /");
+  });
+});
+
+/**
+ * The marker's VALUE, as a second, independent discriminator.
+ *
+ * With `exit $s` restored the exit status already carries the write's result,
+ * so this branch is defence in depth rather than the primary signal -- and
+ * round 19 showed why a second one is worth having: an earlier edit destroyed
+ * the exit-status signal outright and left `includes(WRITE_MARKER)` unable to
+ * tell a broken sandbox from a working one.
+ *
+ * The case it uniquely catches is DISAGREEMENT: stdout saying the write
+ * succeeded while the exit status says otherwise. Something is wrong, and
+ * "confinement holds" is not a safe reading of it.
+ */
+describe("sandbox-selftest — stdout and exit status must agree", () => {
+  it("refuses to pass when the marker says the write succeeded", async () => {
+    const finding = await createSandboxSelftestCheck({
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : // WROTE:0 -- the write worked -- yet a non-zero exit claims otherwise.
+            { stdout: "WROTE:0\n", stderr: "", exitCode: 1 },
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/unexpectedly SUCCEEDED/);
+  });
+
+  it("passes only when the marker reports the write was refused", async () => {
+    const finding = await createSandboxSelftestCheck({
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 },
+    }).run();
+
+    expect(finding.passed).toBe(true);
   });
 });

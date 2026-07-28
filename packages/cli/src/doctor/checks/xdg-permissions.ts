@@ -109,7 +109,9 @@ export function createXdgPermissionsCheck(options: XdgPermissionsCheckOptions): 
           // was pinning the defect in place.
           repairStep: [
             ...(violations.length > 0
-              ? ["chmod the paths listed with a wrong mode back to it (0700 dirs / 0600 files)"]
+              ? [
+                  "chmod the paths listed with a wrong mode back to their required mode (0700 dirs / 0600 files)",
+                ]
               : []),
             ...(unknown.length > 0
               ? [
