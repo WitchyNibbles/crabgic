@@ -15,9 +15,11 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 
 - **Contracts (zod + JSON Schema export, 21):** ProjectProfile, StackEvidence, IntentContract, Requirement, AuthorizationEnvelope, CapabilityManifest, PerformanceContract, ChangeSet, WorkUnit (carries the engine `session_id` field, adaptation §4.5), TaskPacket, WorkerResult, EvidenceRecord, ExternalConnection, CapabilitySnapshot, RemoteMutationPlan, RemoteOperationRecord, RemoteResource, CommunicationPolicy, RenderedArtifact, LearningProposal, RunSnapshot, **EnvelopePolicy**.
 - **`EnvelopePolicy` (added 2026-07-28 — ledger Gap 18):** the standing approval every dispatch is checked
-  against — path globs, allowed commands, network destinations and credential references (**both defaulting
-  to empty, i.e. deny**), and the high-impact connector flags that are never auto-granted, named with this
-  phase's own canonical labels. Written by 10's `install`, read by 03's containment check, applied by 13 at
+  against — **path prefixes** (segment-aware, never globs: `validateOwnedPath` already rejects glob
+  metacharacters, and a second matching language on that surface is where 03's CRITICAL confinement escape
+  lived), allowed commands, network destinations and credential references (**both defaulting to empty, i.e.
+  deny**), and the high-impact connector flags that may be auto-granted (**also defaulting to empty**), named
+  with this phase's own canonical labels. Written by 10's `install`, read by 03's containment check, applied by 13 at
   dispatch. This phase owns the schema and the **containment predicate's specification** only — an
   `AuthorizationEnvelope` is contained iff every one of its authority dimensions is a subset of the policy's;
   the implementation is 03's, as the security keystone.

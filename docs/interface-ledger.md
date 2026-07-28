@@ -988,9 +988,16 @@ Four parts.
 
 1. **New artifact `EnvelopePolicy`**, schema owned by 02 (`@crabgic/contracts`), written by `crabgic install`
    (10) into the project's XDG **state** root, owner-only (0600), never committed to the repo. It declares
-   the classes of authority a run may assume without asking: path globs, allowed commands, network
-   destinations (**default: none**), credential references (**default: none**), and the high-impact connector
-   flags (02's canonical labels) it will never auto-grant.
+   the classes of authority a run may assume without asking: **path prefixes** (segment-aware, never globs —
+   see below), allowed commands, network destinations (**default: none**), credential references (**default:
+   none**), and the high-impact connector flags (02's canonical labels) it may auto-grant (**default: none**).
+
+   **Path prefixes, not globs — corrected 2026-07-28 during implementation research, before any code was
+   written.** This part first said "path globs." `validateOwnedPath` (03) already **rejects** every glob
+   metacharacter in an `ownedPath`, because owned paths are literal directory names; a glob-matching policy
+   would have introduced a second, richer matching language on the exact surface phase 03's CRITICAL
+   owned-path confinement escape lived on. Containment is segment-aware prefix containment: `src` contains
+   `src/login`, and does **not** contain `srcfoo`.
 2. **The gate becomes a subset check.** At dispatch the compiled `AuthorizationEnvelope` is tested for
    containment in the `EnvelopePolicy`. Contained → the standing approval covers it; the run dispatches with
    no prompt and no token. Not contained → 11's existing **`expanded_authority`** stop condition fires and
