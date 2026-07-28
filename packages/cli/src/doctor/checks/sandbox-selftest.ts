@@ -25,6 +25,20 @@ export interface SandboxSelftestOptions {
   readonly probe: ProcessProbeFn;
 }
 
+/**
+ * The path the probe tries to write, and the marker proving it tried.
+ *
+ * Both are shared between the argv and the verdict deliberately. Round 18:
+ * with the marker written as a literal in two places, changing the argv alone
+ * (`echo RAN` -> `echo RUN`) survived all 5260 tests while making EVERY host
+ * fail forever, with evidence that contradicted itself in one sentence --
+ * asserting the write was never attempted while quoting the stderr proving it
+ * was attempted and denied. A single constant makes that mutation
+ * unexpressible.
+ */
+const MARKER_PATH = "/eo-sandbox-selftest-marker";
+const WRITE_MARKER = "WROTE:";
+
 const CHECK_ID = "sandbox.selftest";
 
 /** Substrings observed in `bwrap`'s OWN setup-failure diagnostics (never emitted by the inner confined command) — a hit here means bwrap never even got to attempt the write. */
@@ -67,15 +81,25 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
         "--",
         "sh",
         "-c",
-        // `RAN` first, on STDOUT, so the verdict has positive proof the inner
-        // shell executed. Round 17: without it, a signal-kill (exitCode -1),
-        // an OOM (137) or a fork failure all produced a non-zero exit with
-        // empty stderr and were read as "the write was correctly denied" --
-        // an assertion of confinement from a command that never ran. A real
-        // denial on this host always carries `sh`'s own "Read-only file
-        // system" message, so empty stderr is positive evidence AGAINST
-        // having reached the write.
-        "echo RAN; echo x > /eo-sandbox-selftest-marker",
+        // The marker comes AFTER the write and carries ITS exit status, so
+        // it proves the write was ATTEMPTED — not merely that a shell
+        // started.
+        //
+        // Round 17 put `echo RAN` first. Round 18 measured what that actually
+        // bought: the marker lands ~1ms after spawn, so a SIGKILL at 2ms or
+        // later leaves it present with empty stderr and a non-zero exit, and
+        // the check reported "correctly denied" for a command that never
+        // attempted any write. Verified against real bwrap at
+        // `{stdout:"RAN\n", stderr:"", exitCode:137}` — verbatim the OOM case
+        // the new tests enumerate. Killing at 10ms/50ms/200ms produced a
+        // false PASS 10 times out of 10; only a kill inside the ~1ms exec
+        // window behaved as the fixtures assumed. The fix passed its own
+        // tests and missed reality.
+        //
+        // `$?` is captured whether the write succeeded or was refused, so the
+        // marker is present in both legitimate outcomes and absent in exactly
+        // the case that matters: the write never happened.
+        `echo x > ${MARKER_PATH}; echo "${WRITE_MARKER}$?"`,
       ]);
       if (confinement.exitCode === 0) {
         return {
@@ -105,7 +129,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
       // remaining ways the command can fail to start — signal-kill (exit -1),
       // OOM (137), fork failure — which round 17 showed were all read as "the
       // write was correctly denied" from a command that never executed.
-      if (!confinement.stdout.includes("RAN")) {
+      if (!confinement.stdout.includes(WRITE_MARKER)) {
         return {
           id: CHECK_ID,
           severity: "error",

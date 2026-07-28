@@ -195,7 +195,9 @@ describe("xdg-permissions — cannot look is not the same as not there", () => {
 
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("could not be inspected");
-    expect(finding.repairStep).toMatch(/do not assume they are absent/);
+    expect(finding.repairStep).toBe(
+      "make the uninspectable paths readable by this account and re-run, rather than assuming they are absent",
+    );
   });
 
   it("still treats a genuinely missing path as nothing to check", async () => {
@@ -222,8 +224,14 @@ describe("xdg-permissions — cannot look is not the same as not there", () => {
     // the defect -- whenever a real violation coexists with an uninspectable
     // path, "do not assume they are absent" was dropped and the owner was
     // told to chmod a path whose fault is that it cannot be read.
-    expect(finding.repairStep).toMatch(/chmod the listed paths/);
-    expect(finding.repairStep).toMatch(/do not assume they are absent/);
+    // ROUND 18: asserted as ONE complete string. Fragment regexes left the
+    // seam between the two steps unpinned -- changing the joiner survived all
+    // 5260 tests -- which is the losing game an earlier commit in this very
+    // file already named and abandoned.
+    expect(finding.repairStep).toBe(
+      "chmod the paths listed with a wrong mode back to it (0700 dirs / 0600 files); " +
+        "make the uninspectable paths readable by this account and re-run, rather than assuming they are absent",
+    );
   });
 });
 
