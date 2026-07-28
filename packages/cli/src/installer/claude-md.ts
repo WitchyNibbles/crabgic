@@ -18,7 +18,8 @@ session in this repo has access to:
 
 - Slash commands: \`/eo:run\`, \`/eo:status\`, \`/eo:approve\`, \`/eo:evidence\`,
   \`/eo:connections\`, \`/eo:protocol\`.
-- Read-heavy exploration/review subagents: \`eo-explore\`, \`eo-reviewer\`.
+- Read-only subagents: \`eo-explore\` (research), \`eo-reviewer\` (review),
+  \`eo-roaster\` (adversarial refutation — one fresh instance per roast round).
 - The \`${GATEWAY_MCP_SERVER_NAME}\` MCP server (registered in this project's \`.mcp.json\`).
 
 Run \`crabgic doctor\` to check installation health, or

@@ -28,7 +28,7 @@ export const REQUIRED_SKILL_NAMES = [
 ] as const;
 
 /** The two manager-side subagents roadmap/10 §Interfaces produced names verbatim. */
-export const REQUIRED_SUBAGENT_NAMES = ["eo-explore", "eo-reviewer"] as const;
+export const REQUIRED_SUBAGENT_NAMES = ["eo-explore", "eo-reviewer", "eo-roaster"] as const;
 
 /** Adaptation §5.5: "the model must not be able to satisfy its own approval gate" — `/eo:approve` MUST set this. */
 const SKILLS_REQUIRING_DISABLED_MODEL_INVOCATION: ReadonlySet<string> = new Set(["approve"]);

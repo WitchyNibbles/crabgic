@@ -105,9 +105,11 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const state = await readInstallState(dir);
     expect(state?.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
-    // CLAUDE.md, .claude/settings.json, .mcp.json, two eo-* subagents, and
-    // the status-line script.
-    expect(state?.artifacts).toHaveLength(6);
+    // CLAUDE.md, .claude/settings.json, .mcp.json, THREE eo-* subagents
+    // (eo-roaster joined them with the roast loops, ledger Gap 19), and the
+    // status-line script. The standing policy is deliberately NOT among them:
+    // it lands in XDG state, never the repo.
+    expect(state?.artifacts).toHaveLength(7);
   });
 
   it("writes enabledPlugins keyed by the LIVE-VERIFIED <plugin-name>@<marketplace-name> format, not the bare plugin name", async () => {
