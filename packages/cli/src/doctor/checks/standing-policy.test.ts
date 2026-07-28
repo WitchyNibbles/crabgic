@@ -370,3 +370,36 @@ describe("policy.standing — reports every problem it can see at once", () => {
     expect(prefixToo.evidence).toMatch(/refuses every run/);
   });
 });
+
+/**
+ * When both fields carry unusable entries the finding must explain BOTH.
+ * Picking one consequence by `some()` was incomplete rather than false, but a
+ * finding that lists two broken entries and explains one of them invites the
+ * owner to fix only what was explained.
+ */
+describe("policy.standing — both consequences when both fields are broken", () => {
+  it("explains the prefix AND the scratch consequence", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "bad/**"],
+        allowedWriteScratchPaths: ["dist", "worse/**"],
+      }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toMatch(/refuses every run/);
+    expect(finding.evidence).toMatch(/build be denied at runtime/);
+    expect(finding.evidence).toMatch(/bad\/\*\*/);
+    expect(finding.evidence).toMatch(/worse\/\*\*/);
+  });
+
+  it("explains only the one that applies", async () => {
+    const prefixOnly = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src", "bad/**"] }),
+      digest: "d",
+    }));
+    expect(prefixOnly.evidence).not.toMatch(/build be denied/);
+  });
+});

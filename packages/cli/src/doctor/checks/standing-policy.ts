@@ -105,9 +105,19 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
         const byField = unusable
           .map(({ field, entry }) => `${field} ${JSON.stringify(entry)}`)
           .join(", ");
-        const consequence = unusable.some((u) => u.field === "allowedPathPrefixes")
-          ? "an unusable path prefix refuses every run"
-          : "an unusable build-output path lets the build be denied at runtime";
+        // Both consequences when both fields are affected. Picking one by
+        // `some()` named the prefix consequence and silently dropped the
+        // scratch one, which is incomplete rather than false — but a finding
+        // that lists two broken entries and explains one of them invites the
+        // owner to fix only what was explained.
+        const hasBadPrefix = unusable.some((u) => u.field === "allowedPathPrefixes");
+        const hasBadScratch = unusable.some((u) => u.field === "allowedWriteScratchPaths");
+        const consequence = [
+          ...(hasBadPrefix ? ["an unusable path prefix refuses every run"] : []),
+          ...(hasBadScratch
+            ? ["an unusable build-output path lets the build be denied at runtime"]
+            : []),
+        ].join(", and ");
 
         return Promise.resolve({
           id: CHECK_ID,
