@@ -52,3 +52,90 @@ describe("createRealProcessProbe", () => {
     expect(result.stdout.trim()).toBe(process.cwd());
   });
 });
+
+/**
+ * Roast round 21, finding 3 — `doctor` could hang forever.
+ *
+ * A SIGKILL landing inside bwrap's ~0-1ms setup window races
+ * `--die-with-parent`'s `PR_SET_PDEATHSIG`: the in-namespace child can survive
+ * holding the stdout pipe, so Node's `close` never fires and the promise never
+ * settles. Measured 2/12 hangs at a 0ms kill, with `ps` showing stuck `bwrap`
+ * processes still running 20+ minutes later. The probe had no ceiling at all.
+ *
+ * Exercised against a REAL process that really does hang, never a fixture --
+ * round 19's lesson was that fixtures encoded a host that cannot exist.
+ */
+describe("createRealProcessProbe — timeoutMs", () => {
+  it("settles a process that would otherwise never exit, and fails closed", async () => {
+    const probe = createRealProcessProbe();
+    const started = performance.now();
+
+    const result = await probe("sh", ["-c", "sleep 300"], { timeoutMs: 400 });
+    const elapsed = performance.now() - started;
+
+    // It came back at all -- the property the hang violated.
+    expect(elapsed).toBeLessThan(10_000);
+    // And it came back as UNVERIFIED, not as a success. `exitCode: -1` with no
+    // stdout is exactly the shape the sandbox check reads as "the command
+    // never reported running".
+    expect(result.exitCode).toBe(-1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("timed out");
+  });
+
+  it("does not truncate a process that finishes inside its ceiling", async () => {
+    const probe = createRealProcessProbe();
+    const result = await probe("sh", ["-c", "echo done; exit 3"], { timeoutMs: 10_000 });
+
+    expect(result.stdout.trim()).toBe("done");
+    expect(result.exitCode).toBe(3);
+    expect(result.stderr).not.toContain("timed out");
+  });
+
+  it("keeps the output the process managed to emit before the ceiling", async () => {
+    const probe = createRealProcessProbe();
+    const result = await probe("sh", ["-c", "echo partial; sleep 300"], { timeoutMs: 600 });
+
+    expect(result.stdout.trim()).toBe("partial");
+    expect(result.exitCode).toBe(-1);
+  });
+
+  /**
+   * Mutation-checked: deleting `child.kill("SIGKILL")` from the expiry path
+   * survived every other assertion here. Resolving the promise while leaving
+   * the process running is precisely the failure round 21 measured -- `ps`
+   * showing stuck `bwrap` processes 20+ minutes after the probe returned.
+   * Observed through a side effect the process performs AFTER the ceiling,
+   * because the probe deliberately does not expose the pid.
+   */
+  it("actually kills the process it gave up on, rather than orphaning it", async () => {
+    const { mkdtemp, rm, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const dir = await mkdtemp(join(tmpdir(), "eo-probe-kill-"));
+    try {
+      const witness = join(dir, "still-alive");
+      const probe = createRealProcessProbe();
+
+      // Touches the witness one second AFTER the ceiling expires. If the
+      // process survives, the file appears.
+      const result = await probe("sh", ["-c", `sleep 1; : > '${witness}'`], { timeoutMs: 250 });
+      expect(result.exitCode).toBe(-1);
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await expect(access(witness)).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("waits indefinitely when no ceiling is given, preserving the default", async () => {
+    const probe = createRealProcessProbe();
+    // A process that outlives any plausible timeout default would hang the
+    // suite if one had been introduced silently.
+    const result = await probe("sh", ["-c", "sleep 1.2; echo late"], {});
+    expect(result.stdout.trim()).toBe("late");
+    expect(result.exitCode).toBe(0);
+  });
+});

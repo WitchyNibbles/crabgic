@@ -159,7 +159,7 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     await check.run();
 
     const script = confinementArgs[confinementArgs.length - 1] ?? "";
-    const writeAt = script.indexOf("> /owned/marker");
+    const writeAt = script.indexOf("> '/owned/marker'");
     const markerAt = script.indexOf("WROTE:");
 
     expect(writeAt).toBeGreaterThanOrEqual(0);
@@ -173,7 +173,9 @@ describe("sandbox-selftest — the marker must follow the write", () => {
     // purpose), decoupling `$?` with an intervening `true`, and redirecting
     // the marker to stderr so it never reaches the guard. The script's shape
     // is asserted as a whole instead.
-    expect(script).toBe('echo x > /owned/marker; s=$?; echo "WROTE:$s"; exit $s');
+    // ROUND 21: the target is QUOTED. See the round-21 describe block below
+    // for the measurement that forced it.
+    expect(script).toBe(`echo x > '/owned/marker'; s=$?; echo "WROTE:$s"; exit $s`);
 
     // The read-only bind is the confinement under test; without it the probe
     // measures nothing. Deleting it survived every assertion.
@@ -237,10 +239,22 @@ describe("sandbox-selftest — stdout and exit status must agree", () => {
 describe("sandbox-selftest — the probe target must be one this account owns", () => {
   it("defaults to a path it created, not an unwritable system path", async () => {
     let script = "";
+    // ROUND 21: the writability assertion moved INSIDE the probe. The marker
+    // directory is now removed in a `finally`, so checking after `run()`
+    // resolves tests a path that has been deliberately deleted -- it would
+    // fail for a reason that is not the property under test. Asserted at the
+    // only moment it is meaningful: while the sandboxed write would be running.
+    let writableDuringProbe: unknown = "probe never ran";
     await createSandboxSelftestCheck({
       probe: async (_command, args) => {
         if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
         script = args[args.length - 1] ?? "";
+        const { access, constants } = await import("node:fs/promises");
+        const target = /> '([^']+)';/.exec(script)?.[1] ?? "";
+        writableDuringProbe = await access(target, constants.W_OK).then(
+          () => "writable",
+          (err: unknown) => err,
+        );
         return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
       },
     }).run();
@@ -248,13 +262,15 @@ describe("sandbox-selftest — the probe target must be one this account owns", 
     // Not `/`: a write there is refused by ordinary permissions, so it
     // measures nothing about the sandbox.
     expect(script).not.toContain("> /eo-sandbox-selftest-marker");
-    const target = /> (\S+);/.exec(script)?.[1] ?? "";
+    // ROUND 21: `/> (\S+);/` could not match a quoted-or-spaced target, so it
+    // silently yielded "" and the two assertions below stopped testing
+    // anything the moment the target was quoted. Matched inside the quotes.
+    const target = /> '([^']+)';/.exec(script)?.[1] ?? "";
     expect(target.split("/").length).toBeGreaterThan(2);
 
-    // And it must really exist and be writable, or the probe would be
-    // refused for the wrong reason again.
-    const { access, constants } = await import("node:fs/promises");
-    await expect(access(target, constants.W_OK)).resolves.toBeUndefined();
+    // And it must really exist and be writable at the moment the sandboxed
+    // write happens, or the probe would be refused for the wrong reason again.
+    expect(writableDuringProbe).toBe("writable");
   });
 
   it("reports confinement broken when the owned path IS writable", async () => {
@@ -269,5 +285,197 @@ describe("sandbox-selftest — the probe target must be one this account owns", 
 
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toMatch(/unexpectedly succeeded/i);
+  });
+});
+
+/**
+ * Roast round 21 — the round-20 false PASS, reproduced verbatim through a
+ * quoting defect.
+ *
+ * The marker path was interpolated UNQUOTED into `sh -c`, and it derives from
+ * `os.tmpdir()`, which honours `TMPDIR`. Any whitespace truncated the redirect
+ * target. This project explicitly targets WSL2, where
+ * `TMPDIR=/mnt/c/Users/<name with space>/AppData/Local/Temp` is an ordinary
+ * configuration.
+ *
+ * Measured with `TMPDIR="/tmp/r21b/John Smith"` and a sibling directory
+ * `/tmp/r21b/John` present: real bwrap PASSED, and a **no-op `bwrap` shim that
+ * strips every flag also PASSED** -- the shell redirected to `/tmp/r21b/John`,
+ * a directory, refused by ordinary DAC on a host with no sandbox at all.
+ *
+ * Without any collision it is still wrong in a quieter way: the probe wrote
+ * OUTSIDE its own owned directory (a 20-byte file at `/tmp/r21/John`), making
+ * this check's central claim -- that it writes somewhere this account owns and
+ * created -- false.
+ */
+describe("sandbox-selftest — a marker path with whitespace must not truncate", () => {
+  async function scriptForMarker(markerPath: string): Promise<string> {
+    let script = "";
+    await createSandboxSelftestCheck({
+      markerPath,
+      probe: async (_command, args) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        script = args[args.length - 1] ?? "";
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+    return script;
+  }
+
+  it("keeps the whole path as the redirect target when TMPDIR contains a space", async () => {
+    const marker = "/tmp/r21/John Smith/eo-sandbox-selftest-x/marker";
+    const script = await scriptForMarker(marker);
+
+    // The shell must see ONE word. Unquoted, `sh` redirects to `/tmp/r21/John`
+    // and passes `Smith/...` as an argument to `echo`.
+    expect(script).toContain(`> '${marker}';`);
+    expect(script).not.toContain(`> ${marker};`);
+  });
+
+  it("writes to the owned path itself, not to a truncated prefix of it", async () => {
+    const { mkdtemp, rm, writeFile, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+
+    // A real directory whose name contains a space, with a real sibling at the
+    // truncation point -- the exact shape that produced the false PASS.
+    const base = await mkdtemp(join(tmpdir(), "eo-r21-"));
+    try {
+      const owned = join(base, "John Smith");
+      await mkdtemp(join(base, "John-")); // sibling near the truncation point
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(owned);
+      const marker = join(owned, "marker");
+      await writeFile(marker, "", { mode: 0o600 });
+
+      const script = await scriptForMarker(marker);
+      // Execute the real script with no sandbox at all. The write must land on
+      // the marker, proving the target is the owned path and nothing else.
+      await promisify(execFile)("sh", ["-c", script]).catch(() => undefined);
+      await expect(access(marker)).resolves.toBeUndefined();
+      const { readFile } = await import("node:fs/promises");
+      expect((await readFile(marker, "utf8")).trim()).toBe("x");
+      // And nothing was created at the truncation point.
+      await expect(access(join(base, "John"))).rejects.toThrow();
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * Roast round 21, finding 2 — an unbounded leak.
+ *
+ * `createOwnedMarkerPath` called `mkdtemp` and nothing ever removed the result.
+ * `grep -rn "eo-sandbox-selftest"` across `packages/`, `scripts/` and `e2e/`
+ * found no cleanup anywhere. Measured: 10 direct runs left 10 directories, 5
+ * runs through the real `runDoctor()` left 5, one run of this very file added
+ * 14, and `/tmp` on the development host had accumulated **98** before anyone
+ * looked. ~4 KB and one inode per `doctor` invocation, permanently.
+ */
+describe("sandbox-selftest — the marker directory must not leak", () => {
+  async function countMarkerDirs(): Promise<number> {
+    const { readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const entries = await readdir(tmpdir()).catch(() => [] as string[]);
+    return entries.filter((name) => name.startsWith("eo-sandbox-selftest-")).length;
+  }
+
+  it("removes the directory it created, on the passing path", async () => {
+    const before = await countMarkerDirs();
+    await createSandboxSelftestCheck({
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 },
+    }).run();
+    expect(await countMarkerDirs()).toBe(before);
+  });
+
+  it("removes it on a refusal path too, and when the probe throws", async () => {
+    const before = await countMarkerDirs();
+
+    // Confinement broken -> an early `return`, not the happy path.
+    await createSandboxSelftestCheck({
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:0\n", stderr: "", exitCode: 0 },
+    }).run();
+
+    // And a throw, which no `return`-site cleanup would survive.
+    await expect(
+      createSandboxSelftestCheck({
+        probe: async (_command, args) => {
+          if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+          throw new Error("spawn bwrap ENOENT");
+        },
+      }).run(),
+    ).rejects.toThrow(/ENOENT/);
+
+    expect(await countMarkerDirs()).toBe(before);
+  });
+
+  it("does not delete a caller-injected path, which is the caller's to manage", async () => {
+    const { mkdtemp, rm, writeFile, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = await mkdtemp(join(tmpdir(), "eo-r21-injected-"));
+    try {
+      const marker = join(dir, "marker");
+      await writeFile(marker, "", { mode: 0o600 });
+      await createSandboxSelftestCheck({
+        markerPath: marker,
+        probe: async (_command, args) =>
+          args.includes("--version")
+            ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+            : { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 },
+      }).run();
+      await expect(access(marker)).resolves.toBeUndefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * Round 21, finding 3, at the call site: the confinement probe must carry a
+ * ceiling, or a surviving bwrap child hangs `crabgic doctor` with no output.
+ */
+describe("sandbox-selftest — the confinement probe must be bounded", () => {
+  it("passes a timeout to the confinement spawn", async () => {
+    let confinementOptions: unknown = "probe never called";
+    await createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args, options) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        confinementOptions = options;
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+
+    expect(confinementOptions).toMatchObject({ timeoutMs: expect.any(Number) });
+    expect((confinementOptions as { timeoutMs: number }).timeoutMs).toBeGreaterThan(0);
+  });
+
+  it("reports a timed-out probe as UNVERIFIED, never as a passing sandbox", async () => {
+    // Exactly what the bounded probe returns on expiry.
+    const finding = await createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : {
+              stdout: "",
+              stderr: "\n[probe timed out after 30000ms and was killed]",
+              exitCode: -1,
+            },
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("never reported running");
+    expect(finding.evidence).not.toContain("correctly denied");
   });
 });

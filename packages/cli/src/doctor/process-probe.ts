@@ -33,6 +33,22 @@ export interface ProcessProbeOptions {
    * process's own `process.env`.
    */
   readonly env?: Readonly<Record<string, string>>;
+  /**
+   * Wall-clock ceiling. Omitted = wait forever.
+   *
+   * Roast round 21, finding 3: a SIGKILL landing inside bwrap's ~0-1ms setup
+   * window races `--die-with-parent`'s `PR_SET_PDEATHSIG`, and the in-namespace
+   * child can survive holding the stdout pipe -- so Node's `close` never fires
+   * and `check.run()` never settles. Measured 2/12 hangs at 0ms, with `ps`
+   * showing stuck `bwrap` processes 20+ minutes later. `crabgic doctor` hung
+   * with no output and no way to know why.
+   *
+   * On expiry the child is SIGKILLed and the probe RESOLVES with `exitCode:
+   * -1` and whatever output arrived. That lands in the "never reported
+   * running" branch -- UNVERIFIED, never a pass -- which is the fail-closed
+   * direction: a check that timed out has not demonstrated confinement.
+   */
+  readonly timeoutMs?: number;
 }
 
 /** Injectable seam: real spawn, or a fixture double for a seeded fault (roadmap/09 §Test plan: "each fixture is seeded before its check is registered and must fail red first"). */
@@ -53,6 +69,28 @@ export function createRealProcessProbe(): ProcessProbeFn {
       });
       let stdout = "";
       let stderr = "";
+      let settled = false;
+      const settle = (result: ProbeResult): void => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        resolve(result);
+      };
+      const timer =
+        options?.timeoutMs === undefined
+          ? undefined
+          : setTimeout(() => {
+              child.kill("SIGKILL");
+              settle({
+                stdout,
+                stderr:
+                  stderr +
+                  `\n[probe timed out after ${String(options.timeoutMs)}ms and was killed]`,
+                exitCode: -1,
+              });
+            }, options.timeoutMs);
+      // Do not hold the event loop open on the timer alone.
+      timer?.unref?.();
       child.stdout?.on("data", (chunk: Buffer) => {
         stdout += chunk.toString("utf8");
       });
@@ -60,10 +98,10 @@ export function createRealProcessProbe(): ProcessProbeFn {
         stderr += chunk.toString("utf8");
       });
       child.on("error", (err) => {
-        resolve({ stdout, stderr: err.message, exitCode: -1 });
+        settle({ stdout, stderr: err.message, exitCode: -1 });
       });
       child.on("close", (code) => {
-        resolve({ stdout, stderr, exitCode: code ?? -1 });
+        settle({ stdout, stderr, exitCode: code ?? -1 });
       });
     });
 }

@@ -18,7 +18,7 @@
  * system"/"Permission denied" wording, never bwrap-prefixed) — this is the
  * signal used below to tell the two failure modes apart.
  */
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
@@ -62,11 +62,23 @@ export interface SandboxSelftestOptions {
  * the write SUCCEEDS (`WROTE:0`, caught by the branch below), and only the
  * read-only bind can refuse it. The denial becomes attributable.
  */
-async function createOwnedMarkerPath(): Promise<string> {
+async function createOwnedMarkerPath(): Promise<{ path: string; cleanup: () => Promise<void> }> {
   const dir = await mkdtemp(join(tmpdir(), "eo-sandbox-selftest-"));
   const path = join(dir, "marker");
   await writeFile(path, "", { mode: 0o600 });
-  return path;
+  // Round 21: nothing removed these, so every `doctor` invocation leaked a
+  // directory and an inode permanently — 98 had already accumulated on the
+  // development host, and a single run of the test file added 14.
+  return { path, cleanup: () => rm(dir, { recursive: true, force: true }) };
+}
+
+/** The marker to write, plus how to clean it up. An injected path is the caller's to manage. */
+async function resolveMarker(
+  options: SandboxSelftestOptions,
+): Promise<{ path: string; cleanup: () => Promise<void> }> {
+  return options.markerPath !== undefined
+    ? { path: options.markerPath, cleanup: () => Promise.resolve() }
+    : createOwnedMarkerPath();
 }
 const WRITE_MARKER = "WROTE:";
 
@@ -84,6 +96,9 @@ function isSetupFailure(stderr: string): boolean {
   const lower = stderr.toLowerCase();
   return SETUP_FAILURE_MARKERS.some((marker) => lower.includes(marker.toLowerCase()));
 }
+
+/** Generous next to a probe that normally completes in single-digit milliseconds. */
+const CONFINEMENT_TIMEOUT_MS = 30_000;
 
 export function createSandboxSelftestCheck(options: SandboxSelftestOptions): DoctorCheck {
   return {
@@ -103,116 +118,145 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
 
       // Confinement self-test: bind `/` read-only and attempt a write; a
       // correctly-confined sandbox must refuse the write (non-zero exit).
-      const markerPath = options.markerPath ?? (await createOwnedMarkerPath());
-      const confinement = await options.probe("bwrap", [
-        "--ro-bind",
-        "/",
-        "/",
-        "--unshare-all",
-        "--die-with-parent",
-        "--",
-        "sh",
-        "-c",
-        // The marker comes AFTER the write and carries ITS exit status, so
-        // it proves the write was ATTEMPTED — not merely that a shell
-        // started.
-        //
-        // Round 17 put `echo RAN` first. Round 18 measured what that actually
-        // bought: the marker lands ~1ms after spawn, so a SIGKILL at 2ms or
-        // later leaves it present with empty stderr and a non-zero exit, and
-        // the check reported "correctly denied" for a command that never
-        // attempted any write. Verified against real bwrap at
-        // `{stdout:"RAN\n", stderr:"", exitCode:137}` — verbatim the OOM case
-        // the new tests enumerate. Killing at 10ms/50ms/200ms produced a
-        // false PASS 10 times out of 10; only a kill inside the ~1ms exec
-        // window behaved as the fixtures assumed. The fix passed its own
-        // tests and missed reality.
-        //
-        // `$?` is captured whether the write succeeded or was refused, so the
-        // marker is present in both legitimate outcomes and absent in exactly
-        // the case that matters: the write never happened.
-        // Attempt the write, CAPTURE its status, emit the marker, then exit
-        // with the write's status. All three properties are needed and each
-        // was broken by a previous attempt:
-        //
-        //   - the marker follows the write, so it proves the write was
-        //     ATTEMPTED (round 17 put it first, and a kill at 10ms+ then
-        //     produced a false "correctly denied" 10/10 against real bwrap);
-        //   - the marker carries `$?`, so a broken sandbox is distinguishable
-        //     from a working one;
-        //   - `exit $s` restores the WRITE's status as the shell's. Round 18
-        //     moved the write off the end, and `sh -c` exits with the LAST
-        //     command's status -- always 0 from the echo -- so every healthy
-        //     host fell into the "unexpectedly succeeded" branch. Measured
-        //     0/20 PASS on a host where the write is demonstrably refused,
-        //     while the check held `WROTE:2` and "Read-only file system" in
-        //     hand and declared the write had succeeded.
-        `echo x > ${markerPath}; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
-      ]);
-      if (confinement.exitCode === 0) {
+      const marker = await resolveMarker(options);
+      // Round 21: nothing ever removed the marker directory, so every
+      // `doctor` invocation leaked one plus an inode, permanently -- 98 had
+      // accumulated on the development host, and one run of this check's own
+      // test file added 14. Cleanup is in a `finally` so it survives every
+      // refusal branch and any throw from the probe.
+      try {
+        const confinement = await options.probe(
+          "bwrap",
+          [
+            "--ro-bind",
+            "/",
+            "/",
+            "--unshare-all",
+            "--die-with-parent",
+            "--",
+            "sh",
+            "-c",
+            // The marker comes AFTER the write and carries ITS exit status, so
+            // it proves the write was ATTEMPTED — not merely that a shell
+            // started.
+            //
+            // Round 17 put `echo RAN` first. Round 18 measured what that actually
+            // bought: the marker lands ~1ms after spawn, so a SIGKILL at 2ms or
+            // later leaves it present with empty stderr and a non-zero exit, and
+            // the check reported "correctly denied" for a command that never
+            // attempted any write. Verified against real bwrap at
+            // `{stdout:"RAN\n", stderr:"", exitCode:137}` — verbatim the OOM case
+            // the new tests enumerate. Killing at 10ms/50ms/200ms produced a
+            // false PASS 10 times out of 10; only a kill inside the ~1ms exec
+            // window behaved as the fixtures assumed. The fix passed its own
+            // tests and missed reality.
+            //
+            // `$?` is captured whether the write succeeded or was refused, so the
+            // marker is present in both legitimate outcomes and absent in exactly
+            // the case that matters: the write never happened.
+            // Attempt the write, CAPTURE its status, emit the marker, then exit
+            // with the write's status. All three properties are needed and each
+            // was broken by a previous attempt:
+            //
+            //   - the marker follows the write, so it proves the write was
+            //     ATTEMPTED (round 17 put it first, and a kill at 10ms+ then
+            //     produced a false "correctly denied" 10/10 against real bwrap);
+            //   - the marker carries `$?`, so a broken sandbox is distinguishable
+            //     from a working one;
+            //   - `exit $s` restores the WRITE's status as the shell's. Round 18
+            //     moved the write off the end, and `sh -c` exits with the LAST
+            //     command's status -- always 0 from the echo -- so every healthy
+            //     host fell into the "unexpectedly succeeded" branch. Measured
+            //     0/20 PASS on a host where the write is demonstrably refused,
+            //     while the check held `WROTE:2` and "Read-only file system" in
+            //     hand and declared the write had succeeded.
+            // The path is QUOTED. Round 21: unquoted, any whitespace in
+            // `TMPDIR` truncated the redirect target — and this project targets
+            // WSL2, where `TMPDIR=/mnt/c/Users/<name with space>/AppData/Local/Temp`
+            // is an ordinary configuration. Measured with a colliding sibling
+            // directory present, a no-op `bwrap` shim PASSED on a host with no
+            // sandbox at all: the round-20 defect reproduced verbatim, because
+            // the write landed somewhere ordinary permissions refuse. Without a
+            // collision it silently wrote OUTSIDE its own owned directory, making
+            // this function's central claim false.
+            `echo x > '${marker.path}'; s=$?; echo "${WRITE_MARKER}$s"; exit $s`,
+          ],
+          // Round 21, finding 3: without a ceiling, a bwrap child that
+          // survives its parent while holding the stdout pipe hangs `doctor`
+          // FOREVER — `close` never fires, so `run()` never settles. Measured
+          // 2/12 hangs at a 0ms SIGKILL, with `ps` showing stuck `bwrap`
+          // processes 20+ minutes later. A timeout resolves with `exitCode:
+          // -1` and no write marker, landing in the UNVERIFIED branch:
+          // fail-closed, never a pass.
+          { timeoutMs: CONFINEMENT_TIMEOUT_MS },
+        );
+        if (confinement.exitCode === 0) {
+          return {
+            id: CHECK_ID,
+            severity: "error",
+            passed: false,
+            evidence: "a write to a read-only-bound path inside bwrap unexpectedly succeeded",
+            repairStep:
+              "investigate the bwrap installation/kernel configuration — confinement is not holding",
+          };
+        }
+
+        if (isSetupFailure(confinement.stderr)) {
+          return {
+            id: CHECK_ID,
+            severity: "error",
+            passed: false,
+            evidence: `bwrap failed to set up the sandbox before any write was attempted — confinement is UNVERIFIED, not confirmed: ${confinement.stderr.trim()}`,
+            repairStep:
+              "enable unprivileged user namespaces (e.g. `sysctl -w kernel.unprivileged_userns_clone=1`) or run under a host/container that permits bwrap's own namespace setup, then re-run `doctor`",
+          };
+        }
+
+        // The executed-call guard, AFTER the bwrap-setup branch above. A setup
+        // failure is a KNOWN reason the shell never ran and carries a far more
+        // actionable remedy, so it must diagnose first; this catches the
+        // remaining ways the command can fail to start — signal-kill (exit -1),
+        // OOM (137), fork failure — which round 17 showed were all read as "the
+        // write was correctly denied" from a command that never executed.
+        // The marker's VALUE, not merely its presence. `WROTE:0` means the
+        // write SUCCEEDED inside a read-only bind -- confinement is broken --
+        // and reading only `includes(WRITE_MARKER)` left a broken sandbox
+        // indistinguishable from a working one (round 19).
+        if (confinement.stdout.includes(`${WRITE_MARKER}0`)) {
+          return {
+            id: CHECK_ID,
+            severity: "error",
+            passed: false,
+            evidence:
+              "a write to a read-only-bound path inside bwrap unexpectedly SUCCEEDED — confinement is not holding",
+            repairStep:
+              "investigate the bwrap installation/kernel configuration — confinement is not holding",
+          };
+        }
+
+        if (!confinement.stdout.includes(WRITE_MARKER)) {
+          return {
+            id: CHECK_ID,
+            severity: "error",
+            passed: false,
+            evidence:
+              `the sandboxed shell never reported running (exit ${String(confinement.exitCode)}), ` +
+              "so the write was never attempted — confinement is UNVERIFIED, not confirmed" +
+              (confinement.stderr.trim().length > 0 ? `: ${confinement.stderr.trim()}` : ""),
+            repairStep:
+              "investigate why the sandboxed command did not start (signal, OOM, or fork failure); do not treat this as a passing sandbox",
+          };
+        }
+
         return {
           id: CHECK_ID,
           severity: "error",
-          passed: false,
-          evidence: "a write to a read-only-bound path inside bwrap unexpectedly succeeded",
-          repairStep:
-            "investigate the bwrap installation/kernel configuration — confinement is not holding",
+          passed: true,
+          evidence: "bwrap is present and a write to a read-only-bound path was correctly denied",
         };
+      } finally {
+        await marker.cleanup();
       }
-
-      if (isSetupFailure(confinement.stderr)) {
-        return {
-          id: CHECK_ID,
-          severity: "error",
-          passed: false,
-          evidence: `bwrap failed to set up the sandbox before any write was attempted — confinement is UNVERIFIED, not confirmed: ${confinement.stderr.trim()}`,
-          repairStep:
-            "enable unprivileged user namespaces (e.g. `sysctl -w kernel.unprivileged_userns_clone=1`) or run under a host/container that permits bwrap's own namespace setup, then re-run `doctor`",
-        };
-      }
-
-      // The executed-call guard, AFTER the bwrap-setup branch above. A setup
-      // failure is a KNOWN reason the shell never ran and carries a far more
-      // actionable remedy, so it must diagnose first; this catches the
-      // remaining ways the command can fail to start — signal-kill (exit -1),
-      // OOM (137), fork failure — which round 17 showed were all read as "the
-      // write was correctly denied" from a command that never executed.
-      // The marker's VALUE, not merely its presence. `WROTE:0` means the
-      // write SUCCEEDED inside a read-only bind -- confinement is broken --
-      // and reading only `includes(WRITE_MARKER)` left a broken sandbox
-      // indistinguishable from a working one (round 19).
-      if (confinement.stdout.includes(`${WRITE_MARKER}0`)) {
-        return {
-          id: CHECK_ID,
-          severity: "error",
-          passed: false,
-          evidence:
-            "a write to a read-only-bound path inside bwrap unexpectedly SUCCEEDED — confinement is not holding",
-          repairStep:
-            "investigate the bwrap installation/kernel configuration — confinement is not holding",
-        };
-      }
-
-      if (!confinement.stdout.includes(WRITE_MARKER)) {
-        return {
-          id: CHECK_ID,
-          severity: "error",
-          passed: false,
-          evidence:
-            `the sandboxed shell never reported running (exit ${String(confinement.exitCode)}), ` +
-            "so the write was never attempted — confinement is UNVERIFIED, not confirmed" +
-            (confinement.stderr.trim().length > 0 ? `: ${confinement.stderr.trim()}` : ""),
-          repairStep:
-            "investigate why the sandboxed command did not start (signal, OOM, or fork failure); do not treat this as a passing sandbox",
-        };
-      }
-
-      return {
-        id: CHECK_ID,
-        severity: "error",
-        passed: true,
-        evidence: "bwrap is present and a write to a read-only-bound path was correctly denied",
-      };
     },
   };
 }
