@@ -33,7 +33,55 @@ const INITIAL_RUN_STATE: RunLifecycleState = "draft";
  * prior `RunRecord` is treated as starting from `draft` (matching 02's own
  * run-lifecycle initial state).
  */
-export async function transitionRun(options: TransitionRunOptions): Promise<RunRecord> {
+/**
+ * Per-run write queues, scoped to the registry they belong to.
+ *
+ * ROAST ROUND 2, F3 — PROVEN. This function reads `from` and then `await`s a
+ * journal append before upserting: a read-modify-write straddling an await.
+ * Two concurrent transitions on one run both saw the same `from`, both
+ * validated against it, and both wrote — putting two outgoing edges from a
+ * single state into the record this module's own doc comment calls the audit
+ * record. `createRun` performs three of these back to back and `run.cancel`
+ * racing that walk is the ordinary way to hit it; which value survived was
+ * decided by filesystem append order.
+ *
+ * Keyed by REGISTRY first, then run. A module-global keyed only by `runId`
+ * would make two independent registries (every test that builds its own, and
+ * any future embedding) serialize against each other and, worse, share a
+ * queue for ids that name different runs. The `WeakMap` also means a
+ * discarded registry's queues are collectable rather than a permanent leak
+ * in a long-lived daemon.
+ *
+ * Serialization is PER RUN, not global: two different runs transitioning at
+ * once is normal and correct, and queueing them behind one another would turn
+ * a correctness fix into a throughput bug.
+ */
+const WRITE_QUEUES = new WeakMap<RunsRegistry, Map<string, Promise<unknown>>>();
+
+function enqueue<T>(runs: RunsRegistry, runId: string, work: () => Promise<T>): Promise<T> {
+  let queues = WRITE_QUEUES.get(runs);
+  if (queues === undefined) {
+    queues = new Map();
+    WRITE_QUEUES.set(runs, queues);
+  }
+
+  const previous = queues.get(runId) ?? Promise.resolve();
+  // `.then(work, work)` rather than `.finally`: a failed transition must not
+  // poison every later one for the same run. `IllegalTransitionError` is an
+  // ordinary, expected outcome here — it is exactly what the loser of a race
+  // receives — so the queue has to survive it.
+  const next = previous.then(work, work);
+  queues.set(runId, next);
+  void next.catch(() => undefined);
+  return next;
+}
+
+export function transitionRun(options: TransitionRunOptions): Promise<RunRecord> {
+  return enqueue(options.runs, options.runId, () => transitionRunExclusive(options));
+}
+
+/** The critical section: reads `from`, validates, journals, upserts — with no other transition for this run interleaved. */
+async function transitionRunExclusive(options: TransitionRunOptions): Promise<RunRecord> {
   const current = options.runs.get(options.runId);
   const from = current?.runState ?? INITIAL_RUN_STATE;
 
