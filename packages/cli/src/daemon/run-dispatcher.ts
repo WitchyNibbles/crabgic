@@ -54,6 +54,7 @@ import {
   createGitPlumbing,
   createNodeGitSpawn,
   createWorktree,
+  provisionWorktreeDependencies,
   ensureControlClone,
   freezeIntake,
   resolveGitControlDir,
@@ -317,8 +318,8 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
           const worktreePath =
             options.createAttemptWorktree !== undefined
               ? await options.createAttemptWorktree(ctx, baseObjectId)
-              : (
-                  await createWorktree(plumbing, {
+              : await (async (): Promise<string> => {
+                  const created = await createWorktree(plumbing, {
                     repoDir: controlDir,
                     worktreesRootDir,
                     runId,
@@ -326,8 +327,20 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
                     taskId: ctx.workUnit.id,
                     baseObjectId,
                     serviceEmail,
-                  })
-                ).worktreePath;
+                  });
+                  // `git worktree add` leaves no `node_modules`, and
+                  // `npm run test`/`npm run build` are two of only four
+                  // grantable command prefixes -- so without this every
+                  // attempt on a Node project fails at the build, not at a
+                  // gate (roast round 1, F7). Dependencies are shared from
+                  // the user's own checkout; a non-Node project provisions
+                  // nothing and proceeds.
+                  await provisionWorktreeDependencies({
+                    worktreePath: created.worktreePath,
+                    sourceDir: projectDir,
+                  });
+                  return created.worktreePath;
+                })();
           if (options.createAdapter !== undefined) {
             return options.createAdapter(ctx, worktreePath, deps.journal);
           }
