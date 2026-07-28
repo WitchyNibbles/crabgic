@@ -12,6 +12,9 @@
  * this package's public API surface.
  */
 
+// Standing-approval containment check (ledger Gap 18, part 2).
+export * from "./policy/is-contained.js";
+
 // EngineAdapter contract: types + interface (work item 1).
 export * from "./adapter/engine-event.js";
 export * from "./adapter/engine-capabilities.js";
