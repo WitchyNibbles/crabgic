@@ -101,3 +101,43 @@ compared across two branches reads exactly like a regression.
 workers. Those are a materially larger subscription spend than the plugin subset, and they
 verify phase 06's adapter rather than anything this branch changed. A first full run
 belongs to the owner.
+
+## Live worker verification (2026-07-28, second addendum)
+
+The `engine-claude` half of the `@live` suite — the nine files that spawn **real bounded
+workers** — run against `claude` 2.1.220.
+
+| Suite                                   | Result                      |
+| --------------------------------------- | --------------------------- |
+| `envelope-conformance`                  | 7/7 ✅ (after a fix, below) |
+| `path-anchor`                           | 20/20 ✅                    |
+| `crash-recovery`                        | 3/3 ✅ (after a fix, below) |
+| `secret-mask`                           | 1/1 ✅                      |
+| `adjudication-bridge`                   | 1/1 ✅                      |
+| `plugin-load` + `plugin-negative-space` | 4/4 ✅ (after a fix)        |
+
+### Three probes were asserting things the engine does not reliably produce
+
+None was reachable without actually spawning workers.
+
+1. **`envelope-conformance` path-escape** failed with the SDK's _"Reached maximum number of
+   turns (4)"_ and passed on a re-run of identical code. Four turns is tight for
+   attempt-then-report, and exhausting them made a **security** conformance assertion go
+   red for a reason that is no evidence about containment in either direction — a false
+   negative in the dangerous direction.
+2. **`crash-recovery` fork probe** failed the same way at `maxTurns: 3` — **twice in a row**,
+   so not a flake. Three turns cannot cover acknowledge → fork → answer again.
+3. **`plugin-load` subagent probe** contradicted itself: its prompt ended _"Report only the
+   subagent's finding"_ while the assertion required the subagent's **name** to appear. A
+   model that followed the instruction well failed; one that padded its answer passed.
+
+The first two now get a workable budget, and turn exhaustion is re-raised as an explicitly
+`INCONCLUSIVE` error naming what it means. The test still fails — what changes is that the
+failure no longer misrepresents itself as a capability defect.
+
+### A near-miss worth recording
+
+The plugin probe passed on `main` and failed on this branch, which read exactly like a
+regression this branch had caused. One sample on each side does not support that, and a
+re-run on the branch passed. **A flaky test compared across two branches is indistinguishable
+from a regression** unless you re-sample.
