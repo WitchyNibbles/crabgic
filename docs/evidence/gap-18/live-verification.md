@@ -74,3 +74,30 @@ only. The blocker is recorded in `design-roast-round-1.md` (F7): no dependency p
 exists for a fresh worktree, so `npm run test` — one of only two grantable build commands —
 cannot succeed there at any policy setting. That is the next thing standing between this and a
 first real run.
+
+## Live engine verification (2026-07-28, addendum)
+
+The sanctioned `@live` suite (`CRABGIC_LIVE=1`, `vitest.live.config.ts`) run against the
+real pinned engine — `claude` **2.1.220**, inside the accepted range.
+
+`packages/plugin/src/live/` — **4/4 green**. The plugin loads via `--plugin-dir` in a real
+session; the negative-space assertions hold; and a subagent is genuinely spawnable through
+the `Task` tool. That covers this branch's plugin changes — the third subagent, the
+protocol block — against the real engine rather than a fixture.
+
+**It found a real defect.** `plugin-load.live.test.ts` failed and then passed on identical
+code minutes apart. The prompt ended _"Report only the subagent's finding"_ while the
+assertion required the subagent's **name** in the answer: a model that followed the
+instruction well answered with the file count alone and failed, while one that padded its
+answer passed. Fixed by asking for the name explicitly, so obeying the prompt and
+satisfying the assertion are the same act.
+
+Worth recording how that was nearly misdiagnosed: the test passed on `main` and failed on
+this branch, which looked like a regression this branch had caused. One sample on each
+side does not support that conclusion, and a re-run on the branch passed. A flaky test
+compared across two branches reads exactly like a regression.
+
+**Not run:** `packages/engine-claude/src/live/` — nine files that spawn real bounded
+workers. Those are a materially larger subscription spend than the plugin subset, and they
+verify phase 06's adapter rather than anything this branch changed. A first full run
+belongs to the owner.
