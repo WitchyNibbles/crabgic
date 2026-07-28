@@ -1145,3 +1145,156 @@ describe("sandbox-selftest — the stale sweep is bounded in scan AND removals",
     });
   });
 });
+
+/**
+ * Roast round 29 — the rotation was uncovered, and it did not rotate.
+ *
+ * Round 28's anti-starvation mechanism survived being deleted outright:
+ * `rotatingOffset()` → `return 0` left the whole doctor directory at 206/206,
+ * because every test passed an explicit offset and nothing exercised the
+ * default. Coverage reported the function at 100% — it was EXECUTED by 17 tests
+ * and ASSERTED by none. That is the third round running in which the headline
+ * fix shipped without coverage.
+ *
+ * And the mechanism itself was wrong: derived from `Date.now()/1000`, it
+ * advanced with the wall clock rather than with invocations. Measured, 297 real
+ * runs in 60s visited **61** of 600 start positions — 0.2 entries per run — so
+ * a script looping `doctor` 1,000 times covers ~40 positions out of 20,000. A
+ * FIXED period was worse: at N=900 with a 15-minute timer, 5,000 runs visited
+ * exactly ONE start value, making the docblock's "rather than never" false.
+ */
+describe("sandbox-selftest — the sweep window advances once per run", () => {
+  async function withTmpdir<T>(run: (dir: string) => Promise<T>): Promise<T> {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = await mkdtemp(join(tmpdir(), "eo-r29-cursor-"));
+    const previous = process.env["TMPDIR"];
+    process.env["TMPDIR"] = dir;
+    try {
+      return await run(dir);
+    } finally {
+      if (previous === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previous;
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  /** Marker dirs whose names encode their index, so a removal names its window. */
+  async function seedStale(dir: string, count: number): Promise<void> {
+    const { mkdir, utimes } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (let i = 0; i < count; i += 1) {
+      const entry = join(dir, `eo-sandbox-selftest-${String(i).padStart(5, "0")}`);
+      await mkdir(entry);
+      await utimes(entry, old, old);
+    }
+  }
+
+  it("moves a full scan window per invocation, not per elapsed second", async () => {
+    const { readdir } = await import("node:fs/promises");
+    await withTmpdir(async (dir) => {
+      // More than one window's worth, so a second run must reach new ground.
+      await seedStale(dir, SCAN_LIMIT + MAX_STALE_MARKER_SWEEP);
+      const marked = (n: string): boolean => n.startsWith("eo-sandbox-selftest-");
+
+      // No explicit offset: this is the production path round 28 never tested.
+      await sweepStaleMarkerDirs();
+      const afterFirst = (await readdir(dir)).filter(marked);
+
+      // Immediately -- same wall-clock second. Under the clock-derived offset
+      // this second run re-scanned the same window and removed nothing new.
+      await sweepStaleMarkerDirs();
+      const afterSecond = (await readdir(dir)).filter(marked);
+
+      expect(afterFirst.length).toBeLessThan(SCAN_LIMIT + MAX_STALE_MARKER_SWEEP);
+      expect(afterSecond.length).toBeLessThan(afterFirst.length);
+    });
+  }, 60_000);
+
+  it("persists its cursor between processes, and the cursor is never swept", async () => {
+    const { readdir, readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await withTmpdir(async (dir) => {
+      await seedStale(dir, 10);
+      await sweepStaleMarkerDirs();
+
+      // The cursor exists, holds a number, and survives its own sweep.
+      const cursor = join(dir, ".eo-sandbox-selftest-sweep-cursor");
+      const value = Number.parseInt((await readFile(cursor, "utf8")).trim(), 10);
+      expect(Number.isSafeInteger(value)).toBe(true);
+      expect(value).toBeGreaterThanOrEqual(SCAN_LIMIT);
+      expect((await readdir(dir)).includes(".eo-sandbox-selftest-sweep-cursor")).toBe(true);
+    });
+  });
+
+  it("still sweeps when the cursor cannot be persisted", async () => {
+    const { readdir, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await withTmpdir(async (dir) => {
+      await seedStale(dir, 5);
+      // A DIRECTORY where the cursor file belongs: every write fails.
+      await mkdir(join(dir, ".eo-sandbox-selftest-sweep-cursor"));
+
+      await sweepStaleMarkerDirs();
+
+      // The run still did its work; only the rotation degrades.
+      expect((await readdir(dir)).filter((n) => n.startsWith("eo-sandbox-selftest-"))).toEqual([]);
+
+      // And the DEGRADED rotation still rotates. With the cursor permanently
+      // unwritable every run takes the fallback, so a CONSTANT fallback is
+      // round 27's starvation restored.
+      //
+      // The entries in front must be UNREMOVABLE. Seeded with removable ones a
+      // constant offset still converges -- the window empties and the next run
+      // sees new entries at the same index -- which is precisely the flaw round
+      // 28 found in round 27's test, and which this assertion had at first.
+      const { writeFile, chmod, utimes, access } = await import("node:fs/promises");
+      const stale = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      for (let i = 0; i < SCAN_LIMIT + 20; i += 1) {
+        const wall = join(dir, `eo-sandbox-selftest-W${String(i).padStart(5, "0")}`);
+        await mkdir(wall);
+        await writeFile(join(wall, "held"), "");
+        await chmod(wall, 0o500);
+        await utimes(wall, stale, stale);
+      }
+      // Sorts after the wall, so it lies beyond the first window.
+      const victim = join(dir, "eo-sandbox-selftest-ZZZZZ");
+      await mkdir(victim);
+      await utimes(victim, stale, stale);
+
+      // A constant fallback re-scans the same window forever and never reaches
+      // it; an advancing one does, within a few calls.
+      for (let call = 0; call < 4; call += 1) await sweepStaleMarkerDirs();
+      await expect(access(victim)).rejects.toThrow();
+
+      for (const name of await readdir(dir)) {
+        await chmod(join(dir, name), 0o700).catch(() => undefined);
+      }
+    });
+  });
+
+  it.each([1.5, Number.NaN, -0.5, Number.POSITIVE_INFINITY])(
+    "does not throw for a non-integer offset (%s)",
+    async (offset) => {
+      // `sweepStaleMarkerDirs` is on the public API surface. A non-integer index
+      // made `entries[i]` undefined, and `join` threw -- from a call site
+      // OUTSIDE `run()`'s try/finally, so the framework reported "check threw
+      // unexpectedly" instead of a health verdict.
+      await withTmpdir(async (dir) => {
+        await seedStale(dir, 5);
+        await expect(sweepStaleMarkerDirs(offset)).resolves.toBeUndefined();
+
+        // And it must still SWEEP. Without the normalisation every index is
+        // fractional, so every lookup is `undefined`, every iteration throws
+        // into the catch, and the sweep silently does nothing at all -- which
+        // no "did not throw" assertion can distinguish from working.
+        const { readdir } = await import("node:fs/promises");
+        expect((await readdir(dir)).filter((n) => n.startsWith("eo-sandbox-selftest-"))).toEqual(
+          [],
+        );
+      });
+    },
+  );
+});

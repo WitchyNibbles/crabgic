@@ -19,7 +19,7 @@
  * signal used below to tell the two failure modes apart.
  */
 import { existsSync } from "node:fs";
-import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
@@ -102,12 +102,61 @@ export const MAX_STALE_MARKER_SWEEP = 200;
 /** How many entries a single run may examine. Bounds `stat` calls, which the removal cap does not. */
 export const SCAN_LIMIT = 400;
 
+/** Not marker-prefixed, so the sweep never deletes its own cursor. */
+const SWEEP_CURSOR_FILE = ".eo-sandbox-selftest-sweep-cursor";
+
 /**
- * Where this run starts scanning. Time-derived so consecutive runs cover
- * different windows; a caller (only tests) may pin it.
+ * Where this run starts scanning, advanced ONCE PER RUN.
+ *
+ * Round 28 derived this from `Math.floor(Date.now() / 1000)`, and round 29
+ * measured what that actually bought: 297 real runs in 60s visited **61** of 600
+ * start positions — the window advances 0.2 entries per run, so convergence is
+ * bounded by elapsed wall clock rather than by how often `doctor` is invoked. A
+ * script looping it 1,000 times covers ~40 positions out of 20,000. Worse, a
+ * FIXED period confines starts to a coset of `gcd(period, entryCount)`: at
+ * N=900 with a 15-minute timer, 5,000 runs visited exactly **one** start value,
+ * so the docblock's "reached by a later run rather than never" was false in the
+ * literal sense.
+ *
+ * A persisted cursor advances by exactly one scan window per invocation, which
+ * is the property the rotation was supposed to have. The clock remains as a
+ * fallback for the run where the cursor cannot be read — a fresh `TMPDIR`, or
+ * one this account cannot write — because a sweep failure must never become a
+ * health verdict.
  */
+let fallbackAdvance = 0;
+
 function rotatingOffset(): number {
-  return Math.floor(Date.now() / 1000);
+  // The clock varies BETWEEN processes; `fallbackAdvance` varies WITHIN one, so
+  // the fallback still moves a window per call. Round 29 measured that a
+  // constant here is undetectable — `return 0` left 206/206 green — and it is
+  // not harmless: where the cursor can never be written (its path occupied by a
+  // directory, a read-only TMPDIR), every run falls back, and a constant
+  // fallback is round 27's starvation restored.
+  const offset = Math.floor(Date.now() / 1000) + fallbackAdvance;
+  fallbackAdvance += SCAN_LIMIT;
+  return offset;
+}
+
+async function nextSweepStart(root: string): Promise<number> {
+  const cursorPath = join(root, SWEEP_CURSOR_FILE);
+  let start: number | undefined;
+  try {
+    const parsed = Number.parseInt((await readFile(cursorPath, "utf8")).trim(), 10);
+    if (Number.isSafeInteger(parsed) && parsed >= 0) start = parsed;
+  } catch {
+    // Absent on a fresh TMPDIR, or unreadable. Either falls back below.
+  }
+  const chosen = start ?? rotatingOffset();
+  try {
+    await writeFile(cursorPath, String((chosen + SCAN_LIMIT) % Number.MAX_SAFE_INTEGER), {
+      mode: 0o600,
+    });
+  } catch {
+    // Cannot persist: this run still sweeps, the next one falls back to the
+    // clock. Never a health verdict.
+  }
+  return chosen;
 }
 
 export async function sweepStaleMarkerDirs(startOffset?: number): Promise<void> {
@@ -120,15 +169,23 @@ export async function sweepStaleMarkerDirs(startOffset?: number): Promise<void> 
   }
   if (entries.length === 0) return;
   const cutoff = Date.now() - STALE_MARKER_AGE_MS;
-  const start =
-    (((startOffset ?? rotatingOffset()) % entries.length) + entries.length) % entries.length;
+  // Round 29: a non-integer offset made `entries[start + examined]` `undefined`,
+  // which `join` then threw on — and the throw escapes to `resolveMarker`,
+  // OUTSIDE `run()`'s try/finally, so the framework reported "check threw
+  // unexpectedly". `sweepStaleMarkerDirs` is on the public API surface, so the
+  // argument is normalised rather than trusted.
+  const requested = startOffset ?? (await nextSweepStart(root));
+  const base = Number.isSafeInteger(requested) ? requested : 0;
+  const start = ((base % entries.length) + entries.length) % entries.length;
   let examined = 0;
   let swept = 0;
   while (examined < SCAN_LIMIT && examined < entries.length && swept < MAX_STALE_MARKER_SWEEP) {
     const name = entries[(start + examined) % entries.length] as string;
     examined += 1;
-    const candidate = join(root, name);
     try {
+      // Round 29: `join` used to sit OUTSIDE this try, in a function whose
+      // stated contract is that a sweep failure is never a health verdict.
+      const candidate = join(root, name);
       const info = await stat(candidate);
       if (info.mtimeMs >= cutoff) continue;
       await rm(candidate, { recursive: true, force: true });
