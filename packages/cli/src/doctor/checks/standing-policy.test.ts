@@ -321,3 +321,52 @@ describe("policy.standing — the most actionable diagnosis wins", () => {
     expect(finding.repairStep).toMatch(/allowedPathPrefixes/);
   });
 });
+
+/**
+ * Roast round 12: reporting one problem at a time cost the owner a round
+ * trip. A policy with an empty prefix list AND an unusable scratch entry
+ * reported only the glob -- so they fixed it, re-ran, and only then learned
+ * the policy grants nothing at all.
+ */
+describe("policy.standing — reports every problem it can see at once", () => {
+  it("names the unusable entry AND says the policy still grants nothing", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/dist\/\*\*/);
+    expect(finding.evidence).toMatch(/grants no usable writable path at all/);
+    expect(finding.repairStep).toMatch(/add at least one directory/);
+  });
+
+  it("does not claim vacuity when the policy has a usable prefix", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src"], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).not.toMatch(/grants no usable writable path/);
+  });
+
+  /** The consequence is stated per field -- a scratch glob does not refuse runs. */
+  it("states the consequence that actually applies to the offending field", async () => {
+    const scratchOnly = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src"], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+    expect(scratchOnly.evidence).toMatch(/build be denied at runtime/);
+    expect(scratchOnly.evidence).not.toMatch(/refuses every run/);
+
+    const prefixToo = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src", "bad/**"] }),
+      digest: "d",
+    }));
+    expect(prefixToo.evidence).toMatch(/refuses every run/);
+  });
+});

@@ -391,10 +391,70 @@ describe("derivePolicy — the unusable-name skip", () => {
     expect(withJunk.filter((p) => p.endsWith("/dist"))).toHaveLength(40);
   });
 
-  it("validates every output it emits, not just the first", () => {
-    // Both outputs share the same prefix, so a name that fails for one fails
-    // for both -- asserted so the equivalence is pinned rather than assumed.
+  /**
+   * RENAMED after round 12. This was titled "validates every output it emits,
+   * not just the first", which it does not test: appending `/dist` or
+   * `/coverage` cannot change any clause of `normalizePathPrefix`, so the
+   * `every` is provably equivalent to checking one -- measured at 0
+   * disagreements over 16,682 (container, child) pairs, and reverting to a
+   * dist-only check survives this suite.
+   *
+   * The `every` stays, because it is the form that keeps covering the emitted
+   * set if `WORKSPACE_SCRATCH_OUTPUTS` ever gains a member with a
+   * metacharacter. But a title claiming coverage the assertion cannot provide
+   * is round 10's "untested headline" in weaker form, so it now says what it
+   * actually pins.
+   */
+  it("rejects a child name for every output, since all outputs share its prefix", () => {
     const grants = deriveWith(["q?mark"]);
     expect(grants).toEqual([]);
+  });
+});
+
+/**
+ * Roast round 12. Mutating the skip's `continue` to `break` SURVIVED all 654
+ * CLI tests, and it is not an equivalent mutant: with
+ * `packages=["old[1]","cli","core"]` and `apps=["web","admin","docs"]` it
+ * drops `apps/web/dist` entirely.
+ *
+ * That is exactly the failure rounds 5 and 6 measured and fixed -- "twenty
+ * packages whose tsc output silently fell outside allowWrite". The three skip
+ * tests written in round 11 all inject a SINGLE container, so the skip's
+ * interaction with the round-robin, which is the thing round 6 exists to
+ * protect, was never exercised.
+ */
+describe("derivePolicy — the skip must not abandon the round-robin", () => {
+  function deriveTwoContainers(packages: readonly string[], apps: readonly string[]) {
+    return derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) =>
+        path === dir ? ["packages", "apps"] : path.endsWith("apps") ? [...apps] : [...packages],
+    }).policy.allowedWriteScratchPaths;
+  }
+
+  it("keeps granting the other container after skipping an unusable name", () => {
+    const grants = deriveTwoContainers(["old[1]", "cli", "core"], ["web", "admin", "docs"]);
+
+    // `break` would abandon the whole loop at the junk name and lose these.
+    expect(grants).toContain("apps/web/dist");
+    expect(grants).toContain("apps/admin/dist");
+    expect(grants).toContain("packages/cli/dist");
+    expect(grants.some((p) => p.includes("old[1]"))).toBe(false);
+  });
+
+  it("skips a junk name in EITHER container without losing the other", () => {
+    const grants = deriveTwoContainers(["cli"], ["bad{1}", "web"]);
+
+    expect(grants).toContain("packages/cli/dist");
+    expect(grants).toContain("apps/web/dist");
+    expect(grants.some((p) => p.includes("bad{1}"))).toBe(false);
+  });
+
+  it("survives a junk name sorting first in both containers", () => {
+    const grants = deriveTwoContainers(["[a]", "cli"], ["[b]", "web"]);
+
+    expect(grants).toContain("packages/cli/dist");
+    expect(grants).toContain("apps/web/dist");
   });
 });

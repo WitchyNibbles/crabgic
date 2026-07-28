@@ -93,16 +93,36 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
           .map((entry) => ({ field: "allowedWriteScratchPaths", entry })),
       ];
       if (unusable.length > 0) {
+        // Round 12: reporting ONE problem at a time cost the owner a round
+        // trip. `{prefixes: [], scratch: ["dist/**"]}` reported only the
+        // glob, so they fixed it, re-ran, and only then learned the policy
+        // grants nothing at all. Every problem the check can see is named at
+        // once, and the consequence is stated per FIELD rather than as a
+        // disjunction -- an unusable prefix refuses every run, an unusable
+        // scratch entry denies a build, and saying "or" for both was less
+        // precise than the field-specific wording it replaced.
+        const alsoVacuous = isVacuousPolicy(loaded.policy);
+        const byField = unusable
+          .map(({ field, entry }) => `${field} ${JSON.stringify(entry)}`)
+          .join(", ");
+        const consequence = unusable.some((u) => u.field === "allowedPathPrefixes")
+          ? "an unusable path prefix refuses every run"
+          : "an unusable build-output path lets the build be denied at runtime";
+
         return Promise.resolve({
           id: CHECK_ID,
           severity: "error",
           passed: false,
           evidence:
             `the standing policy at ${options.path} lists paths that cannot grant anything: ` +
-            `${unusable.map(({ field, entry }) => `${field} ${JSON.stringify(entry)}`).join(", ")}. ` +
-            "They are shown as granted but match nothing, so a run is refused -- or a build is " +
-            "denied -- with nothing pointing back at the policy.",
-          repairStep: `replace them with literal directory names in ${options.path} (no globs, no leading slash)`,
+            `${byField}. They are shown as granted but match nothing, so ${consequence} ` +
+            "with nothing pointing back at the policy." +
+            (alsoVacuous
+              ? " It also grants no usable writable path at all, so fixing these entries alone will not make it work."
+              : ""),
+          repairStep:
+            `replace them with literal directory names in ${options.path} (no globs, no leading slash)` +
+            (alsoVacuous ? ", and add at least one directory work may touch" : ""),
         });
       }
 
