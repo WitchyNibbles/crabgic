@@ -155,8 +155,13 @@ describe("sandbox-selftest — the real argv against the real bwrap", () => {
     //
     // Asserted unconditionally instead: on a host with a working bwrap the
     // write must be refused and the check must say so.
-    expect(finding.passed).toBe(true);
+    // ROUND 24: assert the EVIDENCE first. Asserting `passed` first reported
+    // `expected false to be true` and discarded the check's own diagnosis --
+    // which, on a runner whose kernel forbids unprivileged namespaces, names
+    // the exact sysctl to set. A required job going red with a message that
+    // says nothing is worse than one that explains itself.
     expect(finding.evidence).toContain("correctly denied");
+    expect(finding.passed).toBe(true);
     expect(finding.evidence).not.toContain("unexpectedly");
     expect(finding.evidence).not.toContain("never reported running");
   });
@@ -703,5 +708,90 @@ describe("sandbox-selftest — a cleanup failure must not replace the verdict", 
       await chmod(dir, 0o700).catch(() => undefined);
       await rm(dir, { recursive: true, force: true }).catch(() => undefined);
     }
+  });
+});
+
+/**
+ * Roast round 24 — a `TMPDIR` class rounds 21–23 all missed.
+ *
+ * `isSetupFailure` matched its markers ANYWHERE in stderr, and the marker path
+ * is `TMPDIR`-derived and echoed back by the shell in its own error message. So
+ * a `TMPDIR` containing `bwrap:` flipped a perfectly healthy host to a failure,
+ * measured on the same host in the same second:
+ *
+ *   TMPDIR=.../bwrap:x -> passed:false "bwrap failed to set up the sandbox …"
+ *   TMPDIR=.../benign  -> passed:true  "correctly denied"
+ *
+ * Round 18's self-contradicting-evidence defect exactly: it asserts the write
+ * was never attempted while quoting the shell proving it was attempted AND
+ * denied — then tells the owner to reconfigure their kernel.
+ *
+ * `$0` is the discriminator, and it was already in the argv, unused.
+ */
+describe("sandbox-selftest — a setup failure is decided by SOURCE, not substring", () => {
+  function checkWithStderr(stderr: string) {
+    return createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:2\n", stderr, exitCode: 2 },
+    });
+  }
+
+  it.each([
+    ["bwrap: in the path", "eo-sandbox-selftest: 1: cannot create /tmp/bwrap:x/marker: Read-only"],
+    [
+      "a userns phrase in the path",
+      "eo-sandbox-selftest: 1: cannot create /tmp/creating new namespace failed/m: Read-only",
+    ],
+    [
+      "the whole marker text in the path",
+      "eo-sandbox-selftest: 1: cannot create /tmp/unprivileged_userns_clone/m: Read-only",
+    ],
+  ])("does not read the SHELL's own error as bwrap's, for %s", async (_name, stderr) => {
+    const finding = await checkWithStderr(stderr).run();
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toContain("correctly denied");
+    expect(finding.evidence).not.toContain("failed to set up the sandbox");
+  });
+
+  it("does not read a mid-line `bwrap:` as bwrap's own diagnostic", async () => {
+    // bwrap prefixes ITS diagnostics at the start of a line. A line from any
+    // other source that merely contains the marker path -- which is
+    // TMPDIR-derived and may contain anything -- is not evidence about the
+    // sandbox. Mutation-checked: matching `bwrap:` anywhere in the line
+    // survived every other test in this file.
+    const finding = await checkWithStderr(
+      "cannot create /tmp/bwrap:x/eo-sandbox-selftest-Ab12/marker: Read-only file system",
+    ).run();
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toContain("correctly denied");
+    expect(finding.evidence).not.toContain("failed to set up the sandbox");
+  });
+
+  it("still reports a REAL bwrap setup failure, whatever the path contains", async () => {
+    const finding = await checkWithStderr(
+      "bwrap: No permissions to creating new namespace, likely because the kernel does not " +
+        "allow non-privileged user namespaces. (Set the kernel.unprivileged_userns_clone sysctl " +
+        "to 1 if available.)",
+    ).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("failed to set up the sandbox");
+    expect(finding.repairStep).toContain("unprivileged_userns_clone");
+  });
+
+  it("reports a real setup failure even when a shell line is present too", async () => {
+    // Both sources in one stderr: bwrap's line must still decide.
+    const finding = await checkWithStderr(
+      "eo-sandbox-selftest: 1: cannot create /tmp/x/marker: Read-only file system\n" +
+        "bwrap: creating new namespace failed",
+    ).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("failed to set up the sandbox");
   });
 });

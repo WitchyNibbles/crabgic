@@ -81,18 +81,27 @@ export type ProcessProbeFn = (
  * which is the failure this exists to prevent.
  */
 function killProcessTree(child: ChildProcess): void {
-  // Round 23: the group kill is gated on the child NOT having been reaped.
-  // The dangerous window is precisely when `close` has not fired but the child
-  // has exited — a descendant outside the group holds the pipes, the child's
-  // group is empty, and the kernel is free to recycle the pid. Constructed
-  // inside a PID namespace by writing `ns_last_pid`: `process.kill(-pid)`
-  // SIGKILLed an unrelated `sleep 400` that had inherited the number. Poorly
-  // exploitable on a real host (it needs a group-escaping descendant plus a
-  // full pid wrap inside the ceiling) but the state is observable here for
-  // free, and the bare-child fallback already covers the reaped case.
-  const reaped = child.exitCode !== null || child.signalCode !== null;
+  // Round 24 REVERTED round 23's reaped gate, and the reasoning it rested on.
+  //
+  // Round 23 argued the group kill was unsafe on a reaped child because its pid
+  // could be recycled, and reasoned that the case needed "a descendant OUTSIDE
+  // the group". That was wrong, and it is the commoner case that suffers: any
+  // child that forks and exits — `sh -c 'x & exit'`, a wrapper script, a shim —
+  // is reaped while the grandchild INSIDE the group holds the pipes. The gate
+  // then skipped the kill entirely and the survivor lived on. Measured with the
+  // same grandchild under the same 400ms ceiling, the only difference being
+  // whether `sh` had already exited:
+  //
+  //   child reaped,  grandchild in group -> survivor wrote its witness 2s later
+  //   child alive,   grandchild in group -> survivor killed
+  //
+  // That is round 22's finding 1 verbatim. The hazard traded away needs a full
+  // pid wrap inside the ceiling (~40s of churn measured, against a 30s and a
+  // 10s ceiling) AND the recycled pid to become a group leader; the hazard
+  // traded for needs one fork. `close` not having fired is exactly the state in
+  // which survivors may still hold the pipes, and that is when this runs.
   try {
-    if (child.pid !== undefined && !reaped) process.kill(-child.pid, "SIGKILL");
+    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
     else child.kill("SIGKILL");
   } catch {
     try {
@@ -120,7 +129,10 @@ function killProcessTree(child: ChildProcess): void {
  * groups are tracked and killed on the way out too.
  */
 const liveDetachedChildren = new Set<ChildProcess>();
-const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+// SIGQUIT is keyboard-generated from the terminal exactly like SIGINT (Ctrl-\),
+// and round 24 measured it as the one interactive signal that still orphaned the
+// probe child. SIGKILL cannot be caught and is unavoidable.
+const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const;
 let signalHandlersInstalled = false;
 
 function killAllDetachedChildren(): void {
@@ -132,13 +144,23 @@ function installSignalHandlersOnce(): void {
   if (signalHandlersInstalled) return;
   signalHandlersInstalled = true;
   for (const signal of FORWARDED_SIGNALS) {
-    process.on(signal, () => {
+    const handler = (): void => {
       killAllDetachedChildren();
-      // Restore the default disposition and re-raise, so the CLI still dies
-      // the way the user asked it to rather than silently absorbing Ctrl-C.
-      process.removeAllListeners(signal);
-      process.kill(process.pid, signal);
-    });
+      // Round 24: this used to call `process.removeAllListeners(signal)`, which
+      // destroyed EVERY other listener and then killed the process
+      // synchronously inside the same emission — so any other handler's async
+      // shutdown was aborted mid-flight, whether it had registered before us or
+      // after. Measured with one bounded probe as the only difference:
+      // `gracefulShutdownCompleted: true` became `false`.
+      // `boot-supervisor.ts` registers exactly that shape (`await
+      // composed.close(); await lease.release()`), so a SIGTERM would have left
+      // the lease held and the socket open the moment the daemon ran a bounded
+      // probe. Only OUR listener is removed, and the signal is re-raised only
+      // when nobody else is handling it — otherwise theirs decides how to exit.
+      process.off(signal, handler);
+      if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
+    };
+    process.on(signal, handler);
   }
   // A normal exit path must not strand a group either.
   process.on("exit", killAllDetachedChildren);

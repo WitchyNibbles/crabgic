@@ -354,7 +354,7 @@ describe("createRealProcessProbe — detachment follows the ceiling, and only th
  * through a real spawn (it needs `close` not to have fired while the child has
  * been reaped), so the branch is exercised directly.
  */
-describe("killProcessTree — pid form by liveness", () => {
+describe("killProcessTree — the group is always the target while pipes may be held", () => {
   function fakeChild(
     over: Partial<Record<string, unknown>>,
   ): Parameters<typeof killProcessTreeForTest>[0] {
@@ -369,28 +369,20 @@ describe("killProcessTree — pid form by liveness", () => {
     } as unknown as Parameters<typeof killProcessTreeForTest>[0];
   }
 
-  it("uses the NEGATIVE pid (the group) for a child still running", () => {
-    const spy = vi.spyOn(process, "kill").mockImplementation((() => true) as typeof process.kill);
-    try {
-      killProcessTreeForTest(fakeChild({}));
-      expect(spy).toHaveBeenCalledWith(-4242, "SIGKILL");
-    } finally {
-      spy.mockRestore();
-    }
-  });
-
   it.each([
+    ["still running", {}],
+    // ROUND 24: these three USED to assert the opposite -- that a reaped child
+    // must not be group-killed -- and in doing so the suite enforced the
+    // orphan. A reaped `sh` whose grandchild holds the pipes is the single
+    // commonest shape this exists to kill.
     ["exited normally", { exitCode: 0 }],
     ["exited non-zero", { exitCode: 137 }],
     ["killed by a signal", { signalCode: "SIGKILL" }],
-  ])("never signals a group for a child that %s — its pid may be recycled", (_name, over) => {
+  ])("targets the group for a child that %s", (_name, over) => {
     const spy = vi.spyOn(process, "kill").mockImplementation((() => true) as typeof process.kill);
-    const child = fakeChild(over);
     try {
-      killProcessTreeForTest(child);
-      expect(spy).not.toHaveBeenCalled();
-      // The bare-child fallback still runs, which is harmless and correct.
-      expect(child.kill).toHaveBeenCalledWith("SIGKILL");
+      killProcessTreeForTest(fakeChild(over));
+      expect(spy).toHaveBeenCalledWith(-4242, "SIGKILL");
     } finally {
       spy.mockRestore();
     }
@@ -455,4 +447,93 @@ describe("createRealProcessProbe — SIGINT to the CLI must take the probe with 
       await rm(dir, { recursive: true, force: true });
     }
   }, 25_000);
+});
+
+/**
+ * Roast round 24 — round 23's reaped gate re-opened round 22's orphan.
+ *
+ * Round 23 skipped the group kill for a child that had already been reaped,
+ * reasoning that a pid could be recycled. But it argued the case needed "a
+ * descendant OUTSIDE the group", and the commoner case is INSIDE it: any child
+ * that forks and exits is reaped while the grandchild holds the pipes. The gate
+ * then skipped the kill and the survivor lived on — round 22's finding 1
+ * verbatim, and the suite ENFORCED it (three fake-child tests asserted the
+ * group form was not used, and nothing asserted the absence of the orphan).
+ *
+ * Measured with the same grandchild under the same 400ms ceiling, the only
+ * difference being whether `sh` had already exited:
+ *
+ *   child reaped, grandchild in group -> survivor wrote its witness 2s later
+ *   child alive,  grandchild in group -> survivor killed
+ */
+describe("createRealProcessProbe — a reaped child must not shelter its children", () => {
+  it.each([
+    ["the direct child has already exited (reaped)", "{ sleep 2; : > 'W'; } & exit 0"],
+    ["the direct child is still running", "{ sleep 2; : > 'W'; } & wait"],
+  ])(
+    "kills the grandchild when %s",
+    async (_name, template) => {
+      const { mkdtemp, rm, access } = await import("node:fs/promises");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+
+      const dir = await mkdtemp(join(tmpdir(), "eo-probe-reaped-"));
+      try {
+        const witness = join(dir, "survivor");
+        const probe = createRealProcessProbe();
+
+        const result = await probe("sh", ["-c", template.replace("W", witness)], {
+          timeoutMs: 300,
+        });
+        expect(result.exitCode).toBe(-1);
+
+        await new Promise((resolve) => setTimeout(resolve, 2600));
+        await expect(access(witness)).rejects.toThrow();
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    },
+    20_000,
+  );
+});
+
+/**
+ * Roast round 24 — the signal handler destroyed every OTHER handler.
+ *
+ * `process.removeAllListeners(signal)` plus a synchronous re-raise inside the
+ * same emission aborted any other listener's async shutdown, whether it had
+ * registered before us or after. `boot-supervisor.ts` registers exactly that
+ * shape (`await composed.close(); await lease.release()`), so a SIGTERM would
+ * have left the lease held and the socket open the moment the daemon ran a
+ * bounded probe. Measured with one bounded probe as the only difference:
+ * `gracefulShutdownCompleted: true` became `false`.
+ */
+describe("createRealProcessProbe — the signal handler must not evict other handlers", () => {
+  it("leaves a pre-existing listener installed and lets it decide the exit", async () => {
+    const probe = createRealProcessProbe();
+    const other = (): void => undefined;
+    process.on("SIGHUP", other);
+    try {
+      await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+
+      // Our handler is installed alongside, not instead of.
+      expect(process.listenerCount("SIGHUP")).toBeGreaterThanOrEqual(2);
+
+      // Emitting the signal must run OUR sweep without removing THEIR listener,
+      // and must not kill this process — someone else is still handling it.
+      process.emit("SIGHUP");
+      expect(process.listeners("SIGHUP")).toContain(other);
+    } finally {
+      process.off("SIGHUP", other);
+    }
+  });
+
+  it("forwards SIGQUIT too, which Ctrl-\\ generates exactly like SIGINT", async () => {
+    const probe = createRealProcessProbe();
+    await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+
+    // Round 24 measured SIGQUIT as the one interactive signal that still
+    // orphaned the probe child.
+    expect(process.listenerCount("SIGQUIT")).toBeGreaterThan(0);
+  });
 });

@@ -70,10 +70,31 @@ jobs:
       # `echo RUN` survived 5260 tests) was guarded here by nothing at all.
       - name: install bubblewrap (the sandbox self-test needs a real one)
         run: sudo apt-get update && sudo apt-get install -y bubblewrap
-      - name: bwrap must actually be present, or the guard above is a no-op
-        run: bwrap --version
+      # Roast round 24: `bwrap --version` was the wrong guard. It asserts
+      # PRESENCE while the test needs working CONFINEMENT, and the two differ
+      # exactly where it matters — Ubuntu 24.04's
+      # `apparmor_restrict_unprivileged_userns`, containers, hardened kernels.
+      # bwrap would install, `--version` would exit 0, the require-flag would be
+      # set, and the test would fail with `expected false to be true` on a
+      # required every-push job, throwing away the check's own finding which
+      # names the exact sysctl. So the real confinement argv decides, and the
+      # flag is only set when the sandbox demonstrably works.
+      - name: require a WORKING sandbox only where one can exist
+        run: |
+          if bwrap --ro-bind / / --unshare-all --die-with-parent -- \
+               sh -c 'echo x > "$1"' eo-ci-probe /tmp/eo-ci-probe-marker 2>/dev/null; then
+            echo "bwrap ran but the read-only bind did not deny the write" >&2
+            exit 1
+          fi
+          if bwrap --ro-bind / / --unshare-all --die-with-parent -- true 2>/dev/null; then
+            echo "confinement verified — the sandbox self-test must not skip"
+            echo "CRABGIC_REQUIRE_BWRAP=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::bwrap cannot create a namespace on this runner;" \
+                 "the sandbox self-test will skip rather than fail"
+          fi
       - name: test with 80% line+branch coverage gate
-        run: CRABGIC_REQUIRE_BWRAP=1 npm test
+        run: npm test
 
       # roadmap/23 Exit criteria: "ARM64 build+test verified on real
       # hardware/CI, or an explicitly documented substitute recorded —

@@ -92,9 +92,48 @@ const SETUP_FAILURE_MARKERS = [
   "unprivileged_userns_clone",
 ];
 
+/**
+ * The shell's `$0`, so its diagnostics are attributable.
+ *
+ * Passed as the argv element before the marker path, which makes `sh` prefix
+ * every error it emits with `eo-sandbox-selftest:`. One constant, used by the
+ * argv and by the classifier below, because round 18 showed what happens when
+ * the same literal lives in two places: changing one survived 5260 tests while
+ * breaking every host.
+ */
+const SHELL_ARGV0 = "eo-sandbox-selftest";
+
+/**
+ * Round 24: this matched the markers ANYWHERE in stderr, and the marker path is
+ * `TMPDIR`-derived and echoed back by the shell in its own error message. So a
+ * `TMPDIR` containing `bwrap:` or `creating new namespace failed` flipped a
+ * healthy host to a failure — measured on the same host in the same second:
+ *
+ *   TMPDIR=.../bwrap:x  -> passed:false "bwrap failed to set up the sandbox …
+ *                          eo-sandbox-selftest: 1: cannot create …/marker:
+ *                          Read-only file system"
+ *   TMPDIR=.../benign   -> passed:true  "correctly denied"
+ *
+ * Round 18's self-contradicting-evidence defect exactly: it asserts the write
+ * was never attempted while quoting the shell proving it was attempted AND
+ * denied, then tells the owner to reconfigure their kernel.
+ *
+ * The discriminator was already in the argv and unused. Classification is now
+ * per LINE and by SOURCE: lines the shell owns (it prefixes them with `$0`) can
+ * never be read as bwrap's, and bwrap's own prefix must start the line.
+ */
 function isSetupFailure(stderr: string): boolean {
-  const lower = stderr.toLowerCase();
-  return SETUP_FAILURE_MARKERS.some((marker) => lower.includes(marker.toLowerCase()));
+  return stderr.split("\n").some((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(`${SHELL_ARGV0}:`)) return false;
+    const lower = trimmed.toLowerCase();
+    return (
+      lower.startsWith("bwrap:") ||
+      SETUP_FAILURE_MARKERS.filter((marker) => marker !== "bwrap:").some((marker) =>
+        lower.includes(marker.toLowerCase()),
+      )
+    );
+  });
 }
 
 /**
@@ -210,7 +249,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
             CONFINEMENT_SCRIPT,
             // `$0`, then `$1`. The marker path is an ARGUMENT, never text
             // spliced into the script — see `CONFINEMENT_SCRIPT`.
-            "eo-sandbox-selftest",
+            "sh",
             marker.path,
           ],
           // Round 21, finding 3: without a ceiling, a bwrap child that
