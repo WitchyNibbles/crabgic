@@ -15,8 +15,20 @@ export interface Wsl2WarningsCheckOptions {
   readonly cacheRootPath: string;
 }
 
-function isUnderMntC(path: string): boolean {
-  return path.startsWith("/mnt/c/") || path === "/mnt/c";
+/**
+ * Any Windows drive mount, not just `/mnt/c`.
+ *
+ * Roast round 16, on pristine code: this tested `/mnt/c` alone while the
+ * PASS evidence claimed the roots were "on the Linux filesystem". Measured
+ * through the production path computation, `/mnt/d/wsl-state`,
+ * `/mnt/C/Users/...` (capital) and a `HOME` under `/mnt/e` all passed while
+ * being drvfs/9p — the check said the opposite of what it had established.
+ * Every `/mnt/<letter>` is a drive mount with the same performance
+ * characteristics, and the comparison is case-insensitive because WSL
+ * accepts both.
+ */
+function isUnderWindowsDriveMount(path: string): boolean {
+  return /^\/mnt\/[a-z](\/|$)/i.test(path);
 }
 
 export function createWsl2WarningsCheck(options: Wsl2WarningsCheckOptions): DoctorCheck {
@@ -35,11 +47,15 @@ export function createWsl2WarningsCheck(options: Wsl2WarningsCheckOptions): Doct
       }
 
       const warnings: string[] = [];
-      if (isUnderMntC(options.stateRootPath)) {
-        warnings.push(`state root "${options.stateRootPath}" is under /mnt/c (slow 9p filesystem)`);
+      if (isUnderWindowsDriveMount(options.stateRootPath)) {
+        warnings.push(
+          `state root "${options.stateRootPath}" is under a Windows drive mount (slow 9p/drvfs filesystem)`,
+        );
       }
-      if (isUnderMntC(options.cacheRootPath)) {
-        warnings.push(`cache root "${options.cacheRootPath}" is under /mnt/c (slow 9p filesystem)`);
+      if (isUnderWindowsDriveMount(options.cacheRootPath)) {
+        warnings.push(
+          `cache root "${options.cacheRootPath}" is under a Windows drive mount (slow 9p/drvfs filesystem)`,
+        );
       }
 
       if (warnings.length > 0) {

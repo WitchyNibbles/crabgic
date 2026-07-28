@@ -604,3 +604,45 @@ describe("policy.standing — every owner-facing string, in full", () => {
     );
   });
 });
+
+/**
+ * Roast round 16, F5/F6. Round 13 removed a grant-widening hazard from the
+ * unusable-entry branch -- "it told the owner to add a directory they do not
+ * need, widening a grant nobody reviews" -- and left the VACUITY branch
+ * pinned only by a regex. Mutating its repair step to say `add "/" to
+ * allowedPathPrefixes` survived the full suite: under a standing approval,
+ * instructing the owner to grant the filesystem root.
+ *
+ * F6 is the one junction the whole-string assertions did not transitively
+ * reach: dropping the leading space on the vacuity clause emitted
+ * "...back to the policy.It also grants no usable...".
+ */
+describe("policy.standing — the remaining owner-facing strings, in full", () => {
+  it("renders the vacuity finding exactly, without widening the grant", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [] }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toBe(
+      `the standing policy at ${PATH} grants no writable paths, so every run will be refused ` +
+        "(it is well-formed, which is why nothing else reports it)",
+    );
+    expect(finding.repairStep).toBe(
+      `add the directories work may touch to \`allowedPathPrefixes\` in ${PATH}`,
+    );
+    // The hazard round 13 removed from the sibling branch.
+    expect(finding.repairStep).not.toMatch(/"\/"|\s\/\s/);
+  });
+
+  it("joins the vacuity clause onto the sentence before it", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toMatch(/policy\. It also grants no usable writable path/);
+  });
+});

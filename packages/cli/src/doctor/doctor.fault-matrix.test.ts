@@ -171,3 +171,136 @@ describe("doctor fault-fixture matrix", () => {
     expect(report.findings).toEqual([]);
   });
 });
+
+/**
+ * Roast round 16, on PRISTINE code -- not a mutant.
+ *
+ * `realStatMode` laundered every `stat` failure into "does not exist", so a
+ * state root at 0777 under an unreadable parent reported passed:true with "no
+ * XDG state/cache paths exist yet". The check asserted the paths did not
+ * exist when all it knew was that it could not look -- reachable via `sudo
+ * crabgic doctor`, ENOTDIR or ELOOP. The sibling hermeticity check states the
+ * violated principle outright: "an assertion of absence is only sound when
+ * the probing command demonstrably ran".
+ */
+describe("xdg-permissions — cannot look is not the same as not there", () => {
+  const paths = [{ path: "/state/crabgic/abc", expectedMode: 0o700, kind: "dir" as const }];
+
+  it("FAILS when a path could not be inspected, rather than reporting absence", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths,
+      statMode: () => Promise.resolve("unknown" as const),
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("could not be inspected");
+    expect(finding.repairStep).toMatch(/do not assume they are absent/);
+  });
+
+  it("still treats a genuinely missing path as nothing to check", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths,
+      statMode: () => Promise.resolve(undefined),
+    }).run();
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toMatch(/exist yet/);
+  });
+
+  it("reports a real mode violation ahead of an uninspectable path", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths: [...paths, { path: "/state/other", expectedMode: 0o700, kind: "dir" as const }],
+      statMode: (p) => Promise.resolve(p === "/state/other" ? ("unknown" as const) : 0o777),
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("has mode 0777, expected 0700");
+    expect(finding.repairStep).toMatch(/chmod the listed paths/);
+  });
+});
+
+/**
+ * Roast round 16, also pristine code. The check tested `/mnt/c` alone while
+ * its PASS evidence claimed the roots were "on the Linux filesystem" --
+ * measured through the production path computation, `/mnt/d`, `/mnt/C` and a
+ * HOME under `/mnt/e` all passed while being drvfs.
+ */
+describe("wsl2-warnings — every Windows drive mount, not just C", () => {
+  async function check(stateRootPath: string) {
+    const { createWsl2WarningsCheck } = await import("./checks/wsl2-warnings.js");
+    return createWsl2WarningsCheck({
+      isWsl2: () => Promise.resolve(true),
+      stateRootPath,
+      cacheRootPath: "/home/u/.cache/crabgic",
+    }).run();
+  }
+
+  it.each(["/mnt/d/wsl-state", "/mnt/C/Users/me/state", "/mnt/e/wslhome/.local/state"])(
+    "warns for %s",
+    async (path) => {
+      const finding = await check(path);
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/Windows drive mount/);
+    },
+  );
+
+  it("still passes for a genuinely Linux-side root", async () => {
+    expect((await check("/home/u/.local/state/crabgic")).passed).toBe(true);
+  });
+});
+
+/**
+ * `realStatMode`'s own errno classification -- the line round 16 found
+ * laundering every failure into "does not exist".
+ *
+ * The tests above inject `"unknown"` directly, so they pin the CHECK's
+ * handling of it and not the classification that produces it: reverting
+ * `realStatMode` to return `undefined` for every error survived them. That is
+ * the round-10 lesson repeating -- testing the consumer is not testing the
+ * thing you changed.
+ */
+describe("realStatMode — absence versus inability to look", () => {
+  it("reports a genuinely missing path as absent", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    expect(await realStatMode(join(dir, "definitely-not-here"))).toBeUndefined();
+  });
+
+  it("reports an unreadable parent as unknown, NOT as absent", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const parent = join(dir, "locked");
+    mkdirSync(join(parent, "child"), { recursive: true });
+    chmodSync(parent, 0o000);
+    try {
+      // The child EXISTS; the parent simply cannot be traversed.
+      expect(await realStatMode(join(parent, "child"))).toBe("unknown");
+    } finally {
+      chmodSync(parent, 0o700);
+    }
+  });
+
+  it("reports a real mode for a path it can read", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const target = join(dir, "state");
+    mkdirSync(target);
+    chmodSync(target, 0o700);
+    expect(await realStatMode(target)).toBe(0o700);
+  });
+});
