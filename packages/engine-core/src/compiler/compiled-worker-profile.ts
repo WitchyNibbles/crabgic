@@ -51,7 +51,14 @@ export type PermissionProfile = z.infer<typeof PermissionProfileSchema>;
 export const SandboxNetworkProfileSchema = z
   .object({
     allowedDomains: z.array(z.string()),
-    allowAllUnixSockets: z.literal(true),
+    // `boolean`, not `z.literal(true)` (widened 2026-07-28, ledger Gap 18
+    // part 5). Pinning it to `true` made an ambient grant unrepresentable as
+    // anything else: `allowedNetworkDestinations: []` did not mean "no
+    // network", because a reachable docker socket is host-root write and
+    // `SSH_AUTH_SOCK` is not covered by the `~/.ssh` read deny. Under a
+    // standing approval that grant has to be declarable — and therefore
+    // deniable — so the type has to admit `false`.
+    allowAllUnixSockets: z.boolean(),
     allowLocalBinding: z.literal(false),
   })
   .strict();

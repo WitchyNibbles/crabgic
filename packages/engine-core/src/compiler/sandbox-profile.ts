@@ -1,6 +1,7 @@
-import type { AuthorizationEnvelope } from "@crabgic/contracts";
+import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { SandboxProfileSchema, type SandboxProfile } from "./compiled-worker-profile.js";
 import { validateNetworkDestination } from "./network-destination.js";
+import { validateOwnedPath } from "./owned-path.js";
 import {
   CONTROL_REPO_STATE_ROOT_DENY_PATH,
   CONTROL_REPO_CACHE_ROOT_DENY_PATH,
@@ -126,7 +127,62 @@ const WORKTREE_GIT_INTERNALS_DENY_PATHS: readonly string[] = [
  *    with the sandbox off, the compiled profile denied `printf > ` writes to
  *    every out-of-owned-path target).
  */
-export function emitSandboxProfile(envelope: AuthorizationEnvelope): SandboxProfile {
+/**
+ * Worktree-relative write grants, narrowed by a policy.
+ *
+ * Owned paths plus the policy's declared scratch paths, each anchored under
+ * the worktree placeholder, de-duplicated and order-stable. Anything that is
+ * not a legal worktree-relative directory is DROPPED rather than emitted: a
+ * grant is the one thing that must never be produced from a string the
+ * validator refuses.
+ */
+function narrowedAllowWrite(
+  envelope: AuthorizationEnvelope,
+  policy: EnvelopePolicy,
+): readonly string[] {
+  const anchored = new Set<string>();
+  for (const raw of [...envelope.ownedPaths, ...policy.allowedWriteScratchPaths]) {
+    let relative: string;
+    try {
+      relative = validateOwnedPath(raw);
+    } catch {
+      continue;
+    }
+    anchored.add(`${WORKTREE_WRITE_PLACEHOLDER}/${relative}`);
+  }
+  return [...anchored, WORKER_TMP_WRITE_PLACEHOLDER];
+}
+
+/**
+ * Compiles the sandbox half of a worker profile.
+ *
+ * `policy` is the standing approval (ledger Gap 18 part 5), and supplying it
+ * is what narrows the two grants this function otherwise has to make wide:
+ *
+ * - **`filesystem.allowWrite`** drops from the whole worktree to owned paths
+ *   plus the policy's declared scratch paths. The long note above explains
+ *   why the whole worktree is correct *without* a policy — the four
+ *   allow-listed commands all write outside any owned path, and build-output
+ *   directory names are project-specific and unknowable from one envelope's
+ *   four fields. They are not unknowable to a human authoring a policy once,
+ *   which is exactly what `allowedWriteScratchPaths` supplies.
+ * - **`network.allowAllUnixSockets`** drops to `false` unless declared. It was
+ *   unconditional, so `allowedNetworkDestinations: []` did not mean "no
+ *   network": a reachable docker socket is host-root write, and `SSH_AUTH_SOCK`
+ *   is not covered by the `~/.ssh` read deny.
+ *
+ * OMITTING THE POLICY KEEPS THE WIDE GRANT, deliberately and visibly. That is
+ * the pre-Gap-18 mode, and it is sound there because a human reviews the
+ * resulting diff. It is NOT sound under a standing approval, where nobody
+ * does — so the dispatch path must always supply a policy and must refuse to
+ * dispatch without one, rather than quietly compiling wide. The parameter is
+ * optional to keep that a visible choice at four call sites instead of an
+ * invisible default in one.
+ */
+export function emitSandboxProfile(
+  envelope: AuthorizationEnvelope,
+  policy?: EnvelopePolicy,
+): SandboxProfile {
   return SandboxProfileSchema.parse({
     enabled: true,
     failIfUnavailable: true,
@@ -138,11 +194,14 @@ export function emitSandboxProfile(envelope: AuthorizationEnvelope): SandboxProf
       // correction: Unix-socket allow flag") — NEVER `allowUnixSockets`
       // (a differently-typed, macOS-only, `string[]` path allowlist,
       // "ignored on Linux (seccomp cannot filter by path)").
-      allowAllUnixSockets: true,
+      allowAllUnixSockets: policy === undefined ? true : policy.allowUnixSockets,
       allowLocalBinding: false,
     },
     filesystem: {
-      allowWrite: [WORKTREE_WRITE_PLACEHOLDER, WORKER_TMP_WRITE_PLACEHOLDER],
+      allowWrite:
+        policy === undefined
+          ? [WORKTREE_WRITE_PLACEHOLDER, WORKER_TMP_WRITE_PLACEHOLDER]
+          : narrowedAllowWrite(envelope, policy),
       denyWrite: [...WORKTREE_GIT_INTERNALS_DENY_PATHS, ...MANDATORY_SENSITIVE_DENY_PATHS],
       denyRead: [...MANDATORY_SENSITIVE_DENY_PATHS],
     },

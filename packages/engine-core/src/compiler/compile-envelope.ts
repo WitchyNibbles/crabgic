@@ -1,4 +1,4 @@
-import type { AuthorizationEnvelope } from "@crabgic/contracts";
+import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { emitPermissionProfile } from "./permission-profile.js";
 import { emitSandboxProfile } from "./sandbox-profile.js";
 import { toWorkerSettingsJson, toWorkerSdkOptions } from "./worker-settings.js";
@@ -13,10 +13,19 @@ import {
  * `AuthorizationEnvelope -> CompiledWorkerProfile`. Never mutates its
  * input (coding-style: immutability) — every sub-emitter only reads from
  * `envelope` and returns freshly-constructed values.
+ *
+ * `policy` (ledger Gap 18 part 5) narrows the two grants the compiler must
+ * otherwise make wide — `filesystem.allowWrite` and unix sockets. See
+ * `./sandbox-profile.ts` for why they are wide without one, and why omitting
+ * it is sound ONLY where a human reviews the resulting diff. The standing
+ * approval path must always supply one.
  */
-export function compileEnvelope(envelope: AuthorizationEnvelope): CompiledWorkerProfile {
+export function compileEnvelope(
+  envelope: AuthorizationEnvelope,
+  policy?: EnvelopePolicy,
+): CompiledWorkerProfile {
   const permissions = emitPermissionProfile(envelope);
-  const sandbox = emitSandboxProfile(envelope);
+  const sandbox = emitSandboxProfile(envelope, policy);
   const settingsJson = toWorkerSettingsJson(permissions, sandbox);
   const sdkOptions = toWorkerSdkOptions(permissions);
 
