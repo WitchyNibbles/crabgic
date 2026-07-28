@@ -155,25 +155,13 @@ describe("isUsablePathPrefix — home anchoring after collapse", () => {
 });
 
 /**
- * Roast round 6 brute-forced 17,476 prefixes against the containment
- * normalizer and found 113 mismatches, every one requiring a
- * whitespace-leading first segment -- one space defeated the tilde check the
- * previous round had just added.
+ * RETIRED after round 8. This block asserted that a whitespace-leading
+ * segment disguises a home anchor, which round 8 disproved by measurement:
+ * trimming segments to make `"./ ~"` "look like" `~` produced 1791
+ * containment false positives, because the compiler trims only the whole
+ * string and would grant the directory `" ~"` that the path actually names.
+ * The corrected assertions live in the block above.
  */
-describe("isUsablePathPrefix — whitespace inside segments", () => {
-  it.each(["./ ~", "./ ~/.ssh", ". / ~"])("rejects %j", async (prefix) => {
-    const { isUsablePathPrefix } = await import("./envelope-policy.js");
-    expect(isUsablePathPrefix(prefix)).toBe(false);
-  });
-
-  it.each(["./ /src", "src/ /login"])(
-    "accepts %j, which collapses to a real path",
-    async (prefix) => {
-      const { isUsablePathPrefix } = await import("./envelope-policy.js");
-      expect(isUsablePathPrefix(prefix)).toBe(true);
-    },
-  );
-});
 
 /**
  * Roast round 7 measured the round-6 trim and found it made things worse:
@@ -192,6 +180,7 @@ describe("isUsablePathPrefix is exactly normalizePathPrefix", () => {
     "./",
     "./~",
     "./ ~",
+    "src /",
     "~/x",
     "/abs",
     "../up",
@@ -205,9 +194,17 @@ describe("isUsablePathPrefix is exactly normalizePathPrefix", () => {
     expect(isUsablePathPrefix(prefix)).toBe(normalizePathPrefix(prefix) !== undefined);
   });
 
-  it("collapses whitespace-only segments rather than trimming one side only", async () => {
+  /**
+   * The normalizer must name the SAME directory the compiler grants. It
+   * removes `.` and empty segments -- which change nothing on disk -- and
+   * leaves everything else alone, because `validateOwnedPath`, whose output
+   * the compiler emits, trims only the whole string.
+   */
+  it("preserves whitespace segments, which name real directories", async () => {
     const { normalizePathPrefix } = await import("./envelope-policy.js");
-    expect(normalizePathPrefix("./ /src")).toBe("src");
     expect(normalizePathPrefix("./src")).toBe("src");
+    expect(normalizePathPrefix("src/")).toBe("src");
+    expect(normalizePathPrefix("./ /src")).toBe(" /src");
+    expect(normalizePathPrefix("src /")).toBe("src ");
   });
 });

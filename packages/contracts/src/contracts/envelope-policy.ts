@@ -191,10 +191,22 @@ export function isUsablePathPrefix(prefix: string): boolean {
  * cannot grant anything: empty, absolute, home-anchored, containing `..`,
  * carrying a glob metacharacter, or collapsing to no segments at all.
  *
- * Whitespace-only segments are DROPPED. That is the specific divergence round
- * 6 introduced by trimming on one side only: a `" "` segment has to mean the
- * same thing to both callers, and dropping it makes `"./ /src"` and `"./src"`
- * the same grant rather than one usable and one silently not.
+ * SEGMENTS ARE NOT TRIMMED, and that is the whole correctness argument.
+ * Round 7 trimmed them, and round 8 measured the result: **1791 containment
+ * false positives** where round 6 had zero. The compiler is the authority on
+ * what directory a path names — `emitPermissionProfile` and
+ * `narrowedAllowWrite` both emit `validateOwnedPath`'s output, which trims the
+ * whole string and nothing else. So `"src /"` names a directory called
+ * `"src "`, and a normalizer that trims it to `"src"` tells the gate a run is
+ * contained while the compiler grants somewhere the owner never approved.
+ * `is-contained.ts`'s own header calls that the unacceptable direction: "a
+ * false positive is an unreviewed run with authority nobody granted".
+ *
+ * Not trimming also settles the tilde case correctly rather than by accident:
+ * `"./~"` collapses to `"~"` and is refused, while `"./ ~"` collapses to
+ * `" ~"` — a directory whose name begins with a space, which is odd but real,
+ * and which the compiler would grant. Both answers now match what actually
+ * gets emitted.
  */
 export function normalizePathPrefix(prefix: string): string | undefined {
   const trimmed = prefix.trim();
@@ -202,10 +214,7 @@ export function normalizePathPrefix(prefix: string): string | undefined {
   if (trimmed.startsWith("/") || trimmed.startsWith("~")) return undefined;
   if (/[*?[\]{}\\]/.test(trimmed)) return undefined;
 
-  const segments = trimmed
-    .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "" && segment !== ".");
+  const segments = trimmed.split("/").filter((segment) => segment !== "" && segment !== ".");
 
   if (segments.length === 0) return undefined;
   if (segments[0]!.startsWith("~")) return undefined;

@@ -306,3 +306,84 @@ describe("isContained — all-or-nothing", () => {
     expect(result.reasons).toHaveLength(3);
   });
 });
+
+/**
+ * THE GUARD THAT WAS MISSING. Roast round 8 measured 1791 containment false
+ * positives -- the gate approving paths the COMPILER resolves somewhere else
+ * -- while all 155 tests in the affected suites passed. Nothing compared the
+ * two.
+ *
+ * The compiler is the authority: `emitPermissionProfile` emits
+ * `validateOwnedPath`'s output, and that is the directory a worker actually
+ * gets. So containment must agree with it, and this asserts that directly
+ * rather than asserting the normalizer's internals.
+ *
+ * `is-contained.ts`'s own header names the direction that matters: "a false
+ * negative costs one refused dispatch and a policy edit; a false positive is
+ * an unreviewed run with authority nobody granted."
+ */
+describe("isContained agrees with what the compiler actually grants", () => {
+  const CASES = [
+    // [ownedPath, policyPrefix, mustBeContained]
+    ["src", "src", true],
+    ["src/login", "src", true],
+    ["./src", "src", true],
+    ["src/", "src", true],
+    // Whitespace names a REAL directory. The compiler grants `src `, which
+    // the policy's `src` never approved -- so containment must refuse.
+    ["src /", "src", false],
+    ["./ /src", "src", false],
+    [" /src", "src", false],
+    // ...but a whitespace segment BELOW an approved prefix is genuinely
+    // inside it: the compiler grants `src/ /login`, which is under `src`.
+    ["src/ /login", "src", true],
+    // A trailing-whitespace directory can be OWNED but never GRANTED: the
+    // whole-string trim that `validateOwnedPath` applies eats it on the
+    // policy side, so `"src "` as a prefix means `src`. That asymmetry fails
+    // CLOSED -- such a path is always refused -- and is left rather than
+    // "fixed", because removing the trim on one side is exactly the kind of
+    // divergence from the compiler that produced 1791 false positives.
+    ["src /", "src ", false],
+    ["srcfoo", "src", false],
+  ] as const;
+
+  it.each(CASES)(
+    "ownedPath %j under policy %j -> contained=%s, matching the compiled grant",
+    (ownedPath, prefix, expected) => {
+      const result = isContained(
+        envelope({ ownedPaths: [ownedPath] }),
+        policy({ allowedPathPrefixes: [prefix] }),
+      );
+      expect(result.contained).toBe(expected);
+    },
+  );
+
+  /**
+   * Directly: whatever directory the compiler names must be at or below a
+   * policy prefix whenever containment says yes. Asserted against
+   * `validateOwnedPath`, which is literally what the profile emitters call.
+   */
+  it.each([
+    "src",
+    "src/login",
+    "./src",
+    "src/",
+    "src /",
+    "./ /src",
+    "src/ /login",
+    "srcfoo",
+    "src-secrets/keys",
+  ])("never approves %j while the compiler resolves it outside the policy", async (ownedPath) => {
+    const { validateOwnedPath } = await import("../compiler/owned-path.js");
+    const result = isContained(
+      envelope({ ownedPaths: [ownedPath] }),
+      policy({ allowedPathPrefixes: ["src"] }),
+    );
+    if (!result.contained) return;
+
+    // The compiler's own view of which directory this is.
+    const granted = validateOwnedPath(ownedPath);
+    const segments = granted.split("/").filter((s) => s !== "" && s !== ".");
+    expect(segments[0]).toBe("src");
+  });
+});

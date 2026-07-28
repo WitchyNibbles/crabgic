@@ -241,6 +241,17 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
     // be opened" — misdiagnosing in the opposite direction from the bug it
     // was written to fix. Both cases need an owner to look, which is what the
     // message now asks for.
+    // Resource-exhaustion codes describe THIS PROCESS, not the file. Round 8:
+    // under an exhausted descriptor table a perfectly valid policy was
+    // reported `invalid`, sending the owner to inspect a file that is fine.
+    // There is no third bucket in the absent/invalid split, so the message
+    // has to carry the distinction.
+    if (code === "EMFILE" || code === "ENFILE" || code === "ENOMEM") {
+      return {
+        status: "invalid",
+        reason: `could not open ${path} because this process is out of resources (${code}); the policy itself is probably fine — retry, or raise the open-file limit`,
+      };
+    }
     return {
       status: "invalid",
       reason: `policy file ${path} could not be opened (${code ?? "unknown error"}); check the file and the directory holding it`,
