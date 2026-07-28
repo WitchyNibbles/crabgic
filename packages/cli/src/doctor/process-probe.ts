@@ -135,6 +135,7 @@ const liveDetachedChildren = new Set<ChildProcess>();
 const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const;
 let signalHandlersInstalled = false;
 const installedHandlers: ((...args: unknown[]) => void)[] = [];
+let exitHandlerInstalled = false;
 
 function killAllDetachedChildren(): void {
   for (const child of liveDetachedChildren) killProcessTree(child);
@@ -186,8 +187,13 @@ function installSignalHandlersOnce(): void {
     process.on(signal, handler);
     installedHandlers.push(handler as (...args: unknown[]) => void);
   }
-  // A normal exit path must not strand a group either.
+  // A normal exit path must not strand a group either. Tracked, because round
+  // 27 found `resetSignalHandlersForTest` cleared everything BUT this, so each
+  // install/reset cycle added one: 12 cycles left 12 `exit` listeners and a
+  // MaxListenersExceededWarning printed into exactly the stderr a mutation
+  // battery greps.
   process.on("exit", killAllDetachedChildren);
+  exitHandlerInstalled = true;
 }
 
 /**
@@ -203,6 +209,10 @@ export function resetSignalHandlersForTest(): void {
     for (const listener of installedHandlers) process.off(signal, listener);
   }
   installedHandlers.length = 0;
+  if (exitHandlerInstalled) {
+    process.off("exit", killAllDetachedChildren);
+    exitHandlerInstalled = false;
+  }
   signalHandlersInstalled = false;
 }
 

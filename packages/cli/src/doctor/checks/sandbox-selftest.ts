@@ -18,9 +18,10 @@
  * system"/"Permission denied" wording, never bwrap-prefixed) — this is the
  * signal used below to tell the two failure modes apart.
  */
+import { existsSync } from "node:fs";
 import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 import type { ProcessProbeFn } from "../process-probe.js";
 
@@ -76,7 +77,8 @@ export interface SandboxSelftestOptions {
  * health check into a filesystem scan.
  */
 const STALE_MARKER_AGE_MS = 60 * 60 * 1000;
-const MAX_STALE_MARKERS_SWEPT = 200;
+/** Exported so the cap's behaviour is assertable without hard-coding it in a test. */
+export const MAX_STALE_MARKER_SWEEP = 200;
 
 async function sweepStaleMarkerDirs(): Promise<void> {
   const root = tmpdir();
@@ -87,11 +89,22 @@ async function sweepStaleMarkerDirs(): Promise<void> {
     return; // nothing to sweep, and a sweep failure is never a health verdict
   }
   const cutoff = Date.now() - STALE_MARKER_AGE_MS;
-  for (const name of entries.slice(0, MAX_STALE_MARKERS_SWEPT)) {
+  // Round 27: the cap USED to slice before the staleness test, and `readdir`
+  // order is stable — so a fixed prefix of a fixed set was inspected every run.
+  // Measured with 2000 permanently-unremovable prefix entries (another uid's
+  // directories on a sticky /tmp, or root-owned leaks from a `sudo` run), a
+  // perfectly sweepable stale directory at index 900 survived 20 consecutive
+  // runs. The cap now bounds the WORK, not the search: staleness is decided
+  // first, and only the removals are capped.
+  let swept = 0;
+  for (const name of entries) {
+    if (swept >= MAX_STALE_MARKER_SWEEP) break;
     const candidate = join(root, name);
     try {
       const info = await stat(candidate);
-      if (info.mtimeMs < cutoff) await rm(candidate, { recursive: true, force: true });
+      if (info.mtimeMs >= cutoff) continue;
+      await rm(candidate, { recursive: true, force: true });
+      swept += 1;
     } catch {
       // Raced with another sweep, or not ours to remove. Either is fine.
     }
@@ -114,10 +127,39 @@ async function createOwnedMarkerPath(): Promise<{ path: string; cleanup: () => P
 /** The marker to write, plus how to clean it up. An injected path is the caller's to manage. */
 async function resolveMarker(
   options: SandboxSelftestOptions,
-): Promise<{ path: string; cleanup: () => Promise<void> }> {
+): Promise<{ path: string; cleanup: () => Promise<void>; owned: boolean }> {
   return options.markerPath !== undefined
-    ? { path: options.markerPath, cleanup: () => Promise.resolve() }
-    : createOwnedMarkerPath();
+    ? { path: options.markerPath, cleanup: () => Promise.resolve(), owned: false }
+    : { ...(await createOwnedMarkerPath()), owned: true };
+}
+
+/**
+ * Reasons a write can be refused that say NOTHING about confinement.
+ *
+ * Round 27: the verdict read only `WROTE:<n>` and the setup-failure classifier,
+ * so it could not tell "refused by the read-only bind" from "failed because the
+ * directory is gone" — round 20's defect class, re-admitted. Measured with a
+ * no-op `bwrap` shim, i.e. NO SANDBOX AT ALL:
+ *
+ *   marker file exists       -> passed:false "unexpectedly succeeded"  (correct)
+ *   parent directory deleted -> passed:true  "correctly denied"        (FALSE PASS)
+ *
+ * And round 26 introduced an actor that deletes exactly this prefix. The
+ * discriminator was in stderr and discarded:
+ *
+ *   `cannot create …: Directory nonexistent`   <- not confinement
+ *   `cannot create …: Read-only file system`   <- confinement
+ */
+const UNATTRIBUTABLE_WRITE_FAILURES = [
+  "directory nonexistent",
+  "no such file or directory",
+  "not a directory",
+];
+
+function isUnattributableRefusal(stderr: string, markerPath: string): boolean {
+  const attributable = markerPath.length > 0 ? stderr.split(markerPath).join("") : stderr;
+  const lower = attributable.toLowerCase();
+  return UNATTRIBUTABLE_WRITE_FAILURES.some((reason) => lower.includes(reason));
 }
 const WRITE_MARKER = "WROTE:";
 
@@ -368,6 +410,27 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
               (confinement.stderr.trim().length > 0 ? `: ${confinement.stderr.trim()}` : ""),
             repairStep:
               "investigate why the sandboxed command did not start (signal, OOM, or fork failure); do not treat this as a passing sandbox",
+          };
+        }
+
+        // Round 27: the refusal must be attributable to the BIND. A missing
+        // directory refuses the write just as surely, on a host with no sandbox
+        // at all. The structural guarantee covers wordings the stderr list does
+        // not: if we created the marker, its parent must still be there, or the
+        // refusal proves nothing.
+        const parentGone = marker.owned && !existsSync(dirname(marker.path));
+        if (parentGone || isUnattributableRefusal(confinement.stderr, marker.path)) {
+          return {
+            id: CHECK_ID,
+            severity: "error",
+            passed: false,
+            evidence:
+              "the write was refused, but not by the sandbox: its target directory was missing, " +
+              "so confinement is UNVERIFIED, not confirmed" +
+              (confinement.stderr.trim().length > 0 ? `: ${confinement.stderr.trim()}` : ""),
+            repairStep:
+              "re-run `doctor`; if this persists, something is deleting temporary directories " +
+              "while the check runs",
           };
         }
 

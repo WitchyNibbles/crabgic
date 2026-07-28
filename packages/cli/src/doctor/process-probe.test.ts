@@ -559,7 +559,29 @@ describe("createRealProcessProbe — the signal handler must not evict other han
  */
 describe("createRealProcessProbe — who owns termination is decided at install", () => {
   it("only sweeps, and keeps its handler, when someone was already listening", async () => {
-    const other = (): void => undefined;
+    // ROUND 27: the stand-in must DE-REGISTER ITSELF, because that is what
+    // `boot-supervisor.ts` does -- `runShutdown`'s first synchronous statement
+    // is `for (const s of signals) unregisterSignal(s, signalHandler)`. Round 26
+    // diagnosed exactly this flaw in round 24's test and then reproduced it: a
+    // stand-in that never de-registers leaves the count at 2, so the old
+    // handler-time `=== 1` predicate is false and nothing is killed. The
+    // mutation therefore passed, and round 26's record of it failing was WRONG.
+    // With self-de-registration the count is back to 1 when our handler runs,
+    // which is the state that killed the daemon mid-teardown.
+    let otherRan = 0;
+    // `rearm` is gated, because an un-gated `setImmediate` re-registered the
+    // listener AFTER the cleanup below had removed it, leaving one behind for
+    // every later test in this file. Caught by the exit-listener test.
+    let rearm = true;
+    const other = (): void => {
+      otherRan += 1;
+      process.off("SIGHUP", other);
+      // A real shutdown continues asynchronously from here; re-arm so the next
+      // emission still finds it, exactly as a supervisor re-registers on reload.
+      setImmediate(() => {
+        if (rearm) process.on("SIGHUP", other);
+      });
+    };
     resetSignalHandlersForTest();
     process.on("SIGHUP", other);
     try {
@@ -568,18 +590,27 @@ describe("createRealProcessProbe — who owns termination is decided at install"
 
       const installed = process.listenerCount("SIGHUP");
       expect(installed).toBeGreaterThanOrEqual(2);
+      // Our handler must exist AND must not be the one that decides.
+      expect(otherRan).toBe(0);
 
       // Emitting must NOT terminate this process -- if it did, the run would
       // die here rather than fail -- and must leave both handlers in place so
       // the sweep survives a signal the process survives (round 25).
+      // If we owned termination here, this emission would kill the worker and
+      // the run would die rather than fail. It must not: the other party is
+      // shutting down and gets to decide.
       process.emit("SIGHUP");
-      expect(process.listenerCount("SIGHUP")).toBe(installed);
+      expect(otherRan).toBe(1);
+      await new Promise((resolve) => setImmediate(resolve));
       expect(process.listeners("SIGHUP")).toContain(other);
 
-      // Twice, because a one-shot handler passes a single round.
+      // Twice, because a one-shot handler passes a single round -- round 25's
+      // finding, which this must keep covering.
       process.emit("SIGHUP");
-      expect(process.listenerCount("SIGHUP")).toBe(installed);
+      expect(otherRan).toBe(2);
     } finally {
+      rearm = false;
+      await new Promise((resolve) => setImmediate(resolve));
       process.off("SIGHUP", other);
       resetSignalHandlersForTest();
     }
@@ -657,4 +688,28 @@ describe("createRealProcessProbe — an interrupted run must exit as interrupted
       await rm(dir, { recursive: true, force: true });
     }
   }, 25_000);
+});
+
+/**
+ * Roast round 27, finding 3 — `resetSignalHandlersForTest` cleared every
+ * registration except the `exit` one, so each install/reset cycle added another.
+ * Twelve cycles left twelve listeners and a `MaxListenersExceededWarning`
+ * printed into exactly the stderr a mutation battery greps for failures.
+ */
+describe("resetSignalHandlersForTest — leaves no registration behind", () => {
+  it("does not accumulate exit listeners across install/reset cycles", async () => {
+    resetSignalHandlersForTest();
+    const before = process.listenerCount("exit");
+    const probe = createRealProcessProbe();
+
+    for (let i = 0; i < 6; i += 1) {
+      await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+      resetSignalHandlersForTest();
+    }
+
+    expect(process.listenerCount("exit")).toBe(before);
+    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const) {
+      expect(process.listenerCount(signal)).toBe(0);
+    }
+  });
 });

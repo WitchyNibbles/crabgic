@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { SANDBOX_SHELL_ARGV0, createSandboxSelftestCheck } from "./sandbox-selftest.js";
+import {
+  MAX_STALE_MARKER_SWEEP,
+  SANDBOX_SHELL_ARGV0,
+  createSandboxSelftestCheck,
+} from "./sandbox-selftest.js";
 
 describe("createSandboxSelftestCheck", () => {
   it("passes when bwrap is present and confinement holds (write denied)", async () => {
@@ -932,4 +936,146 @@ describe("sandbox-selftest — stale markers from interrupted runs are swept", (
       await rm(sandbox, { recursive: true, force: true });
     }
   });
+});
+
+/**
+ * Roast round 27, finding 2 — a refusal must be attributable to the BIND.
+ *
+ * The verdict read only `WROTE:<n>` and the setup-failure classifier, so a write
+ * that failed because its directory was gone was indistinguishable from one the
+ * sandbox denied. Measured with a no-op `bwrap` shim — no sandbox at all:
+ *
+ *   marker file exists       -> passed:false "unexpectedly succeeded"  (correct)
+ *   parent directory deleted -> passed:true  "correctly denied"        (FALSE PASS)
+ *
+ * Round 20's defect class re-admitted, and round 26 introduced a sweeper for
+ * exactly this prefix, which makes concurrent deletion a live path rather than a
+ * hypothetical one.
+ */
+describe("sandbox-selftest — a refusal must come from the sandbox, not a missing directory", () => {
+  it.each([
+    ["dash's wording", "eo-sandbox-selftest: 1: cannot create /t/x/marker: Directory nonexistent"],
+    ["errno wording", "sh: cannot create /t/x/marker: No such file or directory"],
+    ["a file in the path", "sh: cannot create /t/x/marker: Not a directory"],
+  ])("refuses to pass when the write failed for %s", async (_name, stderr) => {
+    const finding = await createSandboxSelftestCheck({
+      markerPath: "/t/x/marker",
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : { stdout: "WROTE:2\n", stderr, exitCode: 2 },
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("not by the sandbox");
+    expect(finding.evidence).not.toContain("correctly denied");
+  });
+
+  it("fails when the marker it created has had its directory deleted underneath it", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { readdir } = await import("node:fs/promises");
+
+    const sandbox = await mkdtemp(join(tmpdir(), "eo-r27-vanish-"));
+    const previousTmpdir = process.env["TMPDIR"];
+    process.env["TMPDIR"] = sandbox;
+    try {
+      const finding = await createSandboxSelftestCheck({
+        probe: async (_command, args) => {
+          if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+          // Delete the marker's directory while the "sandbox" runs -- what a
+          // concurrent sweep or an operator's `rm -rf` does.
+          for (const name of await readdir(sandbox)) {
+            await rm(join(sandbox, name), { recursive: true, force: true });
+          }
+          // A refusal with NO stderr at all: only the structural check can
+          // catch this one.
+          return { stdout: "WROTE:2\n", stderr: "", exitCode: 2 };
+        },
+      }).run();
+
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toContain("not by the sandbox");
+    } finally {
+      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmpdir;
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  it("still passes a genuine read-only-bind denial", async () => {
+    const finding = await createSandboxSelftestCheck({
+      markerPath: "/t/x/marker",
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : {
+              stdout: "WROTE:2\n",
+              stderr: "eo-sandbox-selftest: 1: cannot create /t/x/marker: Read-only file system",
+              exitCode: 2,
+            },
+    }).run();
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toContain("correctly denied");
+  });
+});
+
+/**
+ * Round 27, finding 4 — the cap bounds the WORK, not the search.
+ *
+ * It used to slice the `readdir` result BEFORE testing staleness, and `readdir`
+ * order is stable, so a fixed prefix of a fixed set was inspected every run:
+ * with 2000 permanently-unremovable prefix entries (another uid's directories
+ * on a sticky /tmp, or root-owned leaks from a `sudo` run), a perfectly
+ * sweepable stale directory at index 900 survived 20 consecutive runs. Removing
+ * the cap entirely also survived every test, so both halves are pinned here.
+ */
+describe("sandbox-selftest — the stale sweep is bounded but not starvable", () => {
+  it("removes at most the cap per run, and converges over runs", async () => {
+    const { mkdtemp, mkdir, rm, utimes, readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const sandbox = await mkdtemp(join(tmpdir(), "eo-r27-cap-"));
+    const previousTmpdir = process.env["TMPDIR"];
+    process.env["TMPDIR"] = sandbox;
+    try {
+      const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const total = MAX_STALE_MARKER_SWEEP + 25;
+      for (let i = 0; i < total; i += 1) {
+        const dir = join(sandbox, `eo-sandbox-selftest-P${String(i).padStart(5, "0")}`);
+        await mkdir(dir);
+        await utimes(dir, old, old);
+      }
+
+      const run = async (): Promise<number> => {
+        await createSandboxSelftestCheck({
+          probe: async (_command, args) =>
+            args.includes("--version")
+              ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+              : {
+                  stdout: "WROTE:2\n",
+                  stderr: "eo-sandbox-selftest: 1: cannot create x: Read-only file system",
+                  exitCode: 2,
+                },
+        }).run();
+        const left = (await readdir(sandbox)).filter((n) => n.startsWith("eo-sandbox-selftest-"));
+        // The run's own marker directory is created after the sweep, so it is
+        // cleaned up by the check itself and never counted here.
+        return left.length;
+      };
+
+      // One run cannot exceed the cap: a health check must not turn into an
+      // unbounded filesystem operation on a large /tmp.
+      expect(await run()).toBe(total - MAX_STALE_MARKER_SWEEP);
+      // And the remainder is reached on the next run rather than starved.
+      expect(await run()).toBe(0);
+    } finally {
+      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmpdir;
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  }, 30_000);
 });

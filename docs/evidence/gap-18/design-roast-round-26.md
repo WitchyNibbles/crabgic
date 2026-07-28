@@ -80,7 +80,7 @@ a no-op shim's write succeeds and fails the job.
 
 | # | mutation | result |
 | --- | --- | --- |
-| S1 | decide ownership at handler time again | 1 failed |
+| S1 | decide ownership at handler time again | ~~1 failed~~ **CORRECTED — see below** |
 | S2 | never sweep stale markers | 1 failed |
 | S3 | sweep ignores the age cutoff | 1 failed |
 | S4 | sweep ignores the prefix | 1 failed |
@@ -126,3 +126,27 @@ that check passing.
   `packages/cli/dist`; they are mutually destructive.
 - `--reporter=basic` is invalid in this vitest version and prints nothing to a
   grep pipeline, which looks exactly like "0 failures".
+
+
+## CORRECTION (round 27)
+
+The S1 row above is **wrong**, and the error matters more than the row.
+
+S1 was written as `ownsTermination = true`, which the test does catch. The
+mutation that matters is the *literal* pre-round-26 predicate — restoring
+`if (process.listenerCount(signal) === 1)` — and round 27 measured that as
+**73/73 green**, widening to 197/197 across the whole doctor directory. Built to
+`dist` and run in a `boot-supervisor`-shaped process it reproduces this round's
+own finding-1 evidence verbatim: `rc=143, gracefulShutdownCompleted=0`, twice,
+with the entire suite passing.
+
+The cause is the stand-in listener: `const other = (): void => undefined` never
+de-registers itself, so the count stays at 2 and `=== 1` is false. **This round
+diagnosed exactly that flaw in round 24's test and then reproduced it in the
+replacement.** Fixed in round 27 by having the stand-in `process.off` itself
+first, as `boot-supervisor.ts` really does; the literal mutation now kills the
+test worker outright (0% coverage, red build).
+
+Recorded rather than quietly amended, because a mutation record that claims
+coverage it does not have is worse than no record: it is the thing later rounds
+reason from.
