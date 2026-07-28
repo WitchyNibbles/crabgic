@@ -289,3 +289,35 @@ describe("policy.standing — unusable entries in EITHER list field", () => {
     expect(finding.passed).toBe(true);
   });
 });
+
+/**
+ * The unusable-entry check runs BEFORE the vacuity check, and the order
+ * determines which message an owner reads. Pinned because "both are failures"
+ * is not good enough: one names the line to fix and the other does not, and
+ * nothing else in this suite asserts which one arrives.
+ */
+describe("policy.standing — the most actionable diagnosis wins", () => {
+  it("names the offending entry when there is one to name", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src/**"] }),
+      digest: "d",
+    }));
+
+    // "grants no writable paths" is also true here, but it does not tell the
+    // owner WHICH line is wrong.
+    expect(finding.evidence).toMatch(/cannot grant anything/);
+    expect(finding.evidence).toMatch(/src\/\*\*/);
+  });
+
+  it("falls back to the vacuity message when there is nothing to name", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [] }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toMatch(/grants no writable paths/);
+    expect(finding.repairStep).toMatch(/allowedPathPrefixes/);
+  });
+});
