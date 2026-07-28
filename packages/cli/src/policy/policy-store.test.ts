@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -262,5 +262,87 @@ describe("digestPolicy — the replacer trap", () => {
     const nestedB = { ...EnvelopePolicySchema.parse(VALID), limits: { maxTurns: 9999 } };
 
     expect(digestPolicy(nestedA as never)).not.toBe(digestPolicy(nestedB as never));
+  });
+});
+
+/**
+ * Roast round 4. Each of these was a working attack or a wrong verdict on a
+ * real host, not a theoretical one.
+ */
+describe("writeEnvelopePolicy — the temp file cannot be hijacked", () => {
+  /**
+   * The previous form used `${path}.${process.pid}.tmp` -- entirely
+   * predictable -- with the default `w` flag, which follows symlinks. Planting
+   * that name as a link to any file the owner owns made install truncate the
+   * victim, write the policy into it, and rename the policy path into a
+   * symlink pointing at it: victim destroyed, install "successful", product
+   * permanently bricked because the loader then rejects its own policy.
+   */
+  it("refuses to write through a pre-planted symlink at the temp path", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    const { symlinkSync, readdirSync } = await import("node:fs");
+    const victim = join(dir, "precious.txt");
+    writeFileSync(victim, "do not destroy me");
+
+    // Plant every temp name the old scheme could have produced.
+    symlinkSync(victim, `${path}.${process.pid}.tmp`);
+
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+
+    expect(readFileSync(victim, "utf8")).toBe("do not destroy me");
+    expect(loadEnvelopePolicy(path).status).toBe("loaded");
+    expect(readdirSync(dir).filter((f) => f.endsWith(".tmp"))).toEqual([
+      `envelope-policy.json.${process.pid}.tmp`,
+    ]);
+  });
+
+  it("uses an unpredictable temp name", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    const { readdirSync } = await import("node:fs");
+
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+
+    // Nothing left behind, and nothing named after the pid.
+    expect(readdirSync(dir).filter((f) => f.includes(".tmp"))).toEqual([]);
+  });
+});
+
+describe("loadEnvelopePolicy — checks bind to the file it read", () => {
+  /**
+   * The previous form read the bytes and THEN validated the path, so the
+   * inode checked need not be the inode read. Everything now goes through one
+   * descriptor opened O_NOFOLLOW.
+   */
+  it("refuses a symlink at open time rather than after reading it", async () => {
+    const { symlinkSync } = await import("node:fs");
+    const real = join(dir, "elsewhere.json");
+    writeFileSync(real, JSON.stringify(VALID), { mode: 0o600 });
+    chmodSync(real, 0o600);
+    symlinkSync(real, path);
+
+    const result = loadEnvelopePolicy(path);
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    expect(result.reason).toMatch(/symbolic link/i);
+  });
+
+  /**
+   * A directory this account does not own grants its owner unlink and rename
+   * whatever the mode bits say, so ownership is checked as well as mode.
+   */
+  it("reports a directory problem as invalid, never as absent", async () => {
+    const openDir = join(dir, "open");
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(openDir, { recursive: true });
+    chmodSync(openDir, 0o777);
+    const target = join(openDir, "envelope-policy.json");
+    writeFileSync(target, JSON.stringify(VALID), { mode: 0o600 });
+    chmodSync(target, 0o600);
+
+    const result = loadEnvelopePolicy(target);
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    // "absent" would send the owner to re-run an installer that is not broken.
+    expect(result.reason).toMatch(/writable by other accounts|owned by uid/i);
   });
 });

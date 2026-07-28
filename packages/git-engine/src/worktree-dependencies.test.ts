@@ -246,3 +246,64 @@ describe("provisionWorktreeDependencies — reporting", () => {
     }
   });
 });
+
+/**
+ * Roast round 4. Both of these silently DISABLED the self-link rewrite that
+ * exists to stop a worker validating the owner's checkout — the worst kind of
+ * failure, because the module still reported a healthy provision.
+ */
+describe("provisionWorktreeDependencies — non-canonical paths", () => {
+  it("still rewrites self-links when sourceDir has a symlinked component", async () => {
+    const physical = join(root, "physical");
+    const aliased = join(root, "alias");
+    await mkdir(join(physical, "packages", "contracts"), { recursive: true });
+    await mkdir(join(physical, "node_modules", "@acme"), { recursive: true });
+    await symlink(
+      join(physical, "packages", "contracts"),
+      join(physical, "node_modules", "@acme", "contracts"),
+    );
+    await symlink(physical, aliased);
+
+    // Provision through the ALIAS, as a shell with a symlinked home would.
+    await provisionWorktreeDependencies({ worktreePath, sourceDir: aliased });
+
+    const target = await readlink(join(worktreePath, "node_modules", "@acme", "contracts"));
+    expect(target).toBe(join(worktreePath, "packages", "contracts"));
+  });
+
+  it("emits absolute targets even when sourceDir is relative", async () => {
+    await seedSourceModules({ vitest: "a" });
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      await provisionWorktreeDependencies({ worktreePath, sourceDir: "source" });
+    } finally {
+      process.chdir(previous);
+    }
+
+    const target = await readlink(join(worktreePath, "node_modules", "vitest"));
+    // A relative target resolves against <worktree>/node_modules/ and dangles,
+    // while symlink() still succeeds -- so nothing would have reported it.
+    expect(target.startsWith("/")).toBe(true);
+    expect(readFileSync(join(worktreePath, "node_modules", "vitest", "index.js"), "utf8")).toBe(
+      "a",
+    );
+  });
+
+  it("recurses into a scope directory that is itself a symlink", async () => {
+    await mkdir(join(sourceDir, "packages", "contracts"), { recursive: true });
+    const realScope = join(sourceDir, "scope-store");
+    await mkdir(realScope, { recursive: true });
+    await symlink(join(sourceDir, "packages", "contracts"), join(realScope, "contracts"));
+    await mkdir(join(sourceDir, "node_modules"), { recursive: true });
+    await symlink(realScope, join(sourceDir, "node_modules", "@acme"));
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    // Wholesale-sharing the scope would have carried the self-link back out.
+    expect(lstatSync(join(worktreePath, "node_modules", "@acme")).isSymbolicLink()).toBe(false);
+    expect(await readlink(join(worktreePath, "node_modules", "@acme", "contracts"))).toBe(
+      join(worktreePath, "packages", "contracts"),
+    );
+  });
+});

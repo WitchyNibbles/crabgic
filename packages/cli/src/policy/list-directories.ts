@@ -1,4 +1,5 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, statSync, type Dirent } from "node:fs";
+import { join } from "node:path";
 
 /**
  * The directory entries directly under `projectDir`.
@@ -13,9 +14,26 @@ import { readdirSync } from "node:fs";
 export function listTopLevelDirectories(projectDir: string): readonly string[] {
   try {
     return readdirSync(projectDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
+      .filter((entry) => isDirectoryEntry(projectDir, entry))
       .map((entry) => entry.name);
   } catch {
     return [];
+  }
+}
+
+/**
+ * A dirent's `isDirectory()` is **false** for a symlink, so a repo whose
+ * `src` or `packages` is a link derived no prefix for it — silently
+ * under-granting, and in the limit calling a repo with plenty of source
+ * "vacuous" (roast round 4). Symlinked source directories are ordinary in
+ * monorepos and bind-mounted checkouts, so this follows the link.
+ */
+function isDirectoryEntry(parent: string, entry: Dirent): boolean {
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try {
+    return statSync(join(parent, entry.name)).isDirectory();
+  } catch {
+    return false;
   }
 }

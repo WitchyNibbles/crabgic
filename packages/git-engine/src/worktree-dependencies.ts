@@ -1,4 +1,4 @@
-import { lstat, mkdir, readdir, realpath, symlink } from "node:fs/promises";
+import { mkdir, readdir, realpath, stat, symlink } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 /**
@@ -155,9 +155,14 @@ async function linkEntry(
   const targetPath = join(targetModules, entry);
 
   try {
-    const stats = await lstat(sourcePath);
-
-    if (stats.isDirectory() && entry.startsWith("@")) {
+    // A scope directory that is ITSELF a symlink (pnpm/yarn layouts) reports
+    // `isDirectory() === false` from `lstat`, so it used to fall through to
+    // the wholesale-share branch — carrying every self-link inside it back to
+    // the source, which is the case the recursion exists to prevent. `.bin`
+    // is recursed for the same reason: its entries are relative links that
+    // would otherwise resolve into the source's `node_modules`.
+    const isScopeLike = entry.startsWith("@") || entry === ".bin";
+    if (isScopeLike && (await isDirectoryAfterLinks(sourcePath))) {
       await mkdir(targetPath, { recursive: true });
       const scoped = await readdir(sourcePath);
       let any = false;
@@ -181,6 +186,15 @@ async function linkEntry(
   }
 }
 
+/** Whether `path` is a directory once symlinks are followed — `lstat` alone says no for a symlinked scope dir. */
+async function isDirectoryAfterLinks(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Where a worktree entry should actually point.
  *
@@ -193,7 +207,18 @@ async function resolveLinkTarget(
   options: ProvisionWorktreeDependenciesOptions,
   sourcePath: string,
 ): Promise<string> {
-  const sourceRoot = resolve(options.sourceDir);
+  // `realpath` on BOTH sides. Roast round 4: this compared `resolve()`d
+  // source root against a `realpath`d target, so any non-canonical component
+  // in `sourceDir` — a symlinked `~/dev`, a bind-mount alias — made
+  // `insideCheckout` false for every workspace self-link. The rewrite then
+  // silently turned itself off and shared them back to the source checkout,
+  // which is the exact defect this module exists to prevent, failing open.
+  let sourceRoot: string;
+  try {
+    sourceRoot = await realpath(options.sourceDir);
+  } catch {
+    sourceRoot = resolve(options.sourceDir);
+  }
   const sourceModulesRoot = join(sourceRoot, "node_modules");
 
   let real: string;
@@ -208,5 +233,9 @@ async function resolveLinkTarget(
   if (insideCheckout && !insideModules) {
     return join(resolve(options.worktreePath), relative(sourceRoot, real));
   }
-  return sourcePath;
+  // Absolute, always. A relative `sourceDir` (CRABGIC_PROJECT_DIR is read
+  // straight from the environment) would otherwise produce a relative symlink
+  // target, which resolves against `<worktree>/node_modules/` and dangles —
+  // while `symlink()` still succeeds, so nothing reports it (roast round 4).
+  return resolve(sourcePath);
 }

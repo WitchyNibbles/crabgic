@@ -165,3 +165,44 @@ describe("derivePolicy — workspace build output", () => {
     expect(flat.every((p) => !p.startsWith("packages/"))).toBe(true);
   });
 });
+
+/**
+ * Roast round 4. The first version emitted every scratch name for every
+ * workspace child -- 153 entries on this repo -- which install prints one per
+ * line before a single `yes`, pushing the paths and commands sections off the
+ * screen. "Literal paths, which is what makes a policy readable" was the
+ * stated justification; at 153 lines it was precisely not that.
+ */
+describe("derivePolicy — the policy stays readable", () => {
+  function deriveWide(count: number) {
+    const children = Array.from({ length: count }, (_, i) => `pkg${i}`);
+    return derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) => (path === dir ? ["packages"] : children),
+    }).policy;
+  }
+
+  it("emits two outputs per package, not one per candidate name", () => {
+    const policy = deriveWide(3);
+    const perPackage = policy.allowedWriteScratchPaths.filter((p) =>
+      p.startsWith("packages/pkg0/"),
+    );
+    expect(perPackage).toEqual(["packages/pkg0/dist", "packages/pkg0/coverage"]);
+  });
+
+  it("caps a very large monorepo rather than emitting thousands of lines", () => {
+    const policy = deriveWide(500);
+    const workspaceEntries = policy.allowedWriteScratchPaths.filter((p) =>
+      p.startsWith("packages/"),
+    );
+    expect(workspaceEntries.length).toBeLessThanOrEqual(80);
+  });
+
+  it("de-duplicates", () => {
+    const policy = deriveWide(3);
+    expect(new Set(policy.allowedWriteScratchPaths).size).toBe(
+      policy.allowedWriteScratchPaths.length,
+    );
+  });
+});

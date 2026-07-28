@@ -63,6 +63,23 @@ const CANDIDATE_SCRATCH_DIRS = [
 ] as const;
 
 /**
+ * The per-package outputs worth enumerating, and a cap on how many packages
+ * get them.
+ *
+ * Roast round 4: the first version emitted every scratch name for every
+ * workspace child — 153 entries on this repo, 1600 on a 200-package monorepo
+ * — which the install prompt printed one per line before a single `yes`,
+ * pushing the paths and commands sections off the screen. The justification
+ * given was "literal paths, which is the property that makes a policy
+ * readable"; at 153 lines it was precisely not that. Two outputs per package
+ * covers what `tsc`/`vitest` actually write, and the cap keeps the artifact
+ * something a human can read in one sitting — which is the entire premise of
+ * confirming it.
+ */
+const WORKSPACE_SCRATCH_OUTPUTS = ["dist", "coverage"] as const;
+const MAX_WORKSPACE_PACKAGES = 40;
+
+/**
  * Workspace container directories whose children each get their own build
  * output. Roast round 3 (F1) found what their absence cost: on this very
  * repo every package sets `outDir: "./dist"`, so `tsc -b` writes
@@ -137,19 +154,19 @@ function deriveWorkspaceScratchPaths(
   options: DerivePolicyOptions,
   present: ReadonlySet<string>,
 ): readonly string[] {
-  const paths: string[] = [];
+  const paths = new Set<string>();
+  let packages = 0;
   for (const container of WORKSPACE_CONTAINER_DIRS) {
     if (!present.has(container)) continue;
     for (const child of options.listDirectories(join(options.projectDir, container))) {
-      for (const output of CANDIDATE_SCRATCH_DIRS) {
-        // Only the shallow build outputs; `node_modules/.cache` is a
-        // top-level concern and is already granted above.
-        if (output.includes("/")) continue;
-        paths.push(`${container}/${child}/${output}`);
+      if (packages >= MAX_WORKSPACE_PACKAGES) return [...paths];
+      packages += 1;
+      for (const output of WORKSPACE_SCRATCH_OUTPUTS) {
+        paths.add(`${container}/${child}/${output}`);
       }
     }
   }
-  return paths;
+  return [...paths];
 }
 
 export function derivePolicy(options: DerivePolicyOptions): DerivedPolicy {

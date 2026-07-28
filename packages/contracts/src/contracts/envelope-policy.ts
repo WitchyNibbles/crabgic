@@ -176,8 +176,14 @@ export function isUsablePathPrefix(prefix: string): boolean {
   if (trimmed.length === 0) return false;
   if (trimmed.startsWith("/") || trimmed.startsWith("~")) return false;
   if (/[*?[\]{}\\]/.test(trimmed)) return false;
-  return trimmed
-    .split("/")
-    .filter((segment) => segment !== "" && segment !== ".")
-    .every((segment) => segment !== "..");
+
+  const segments = trimmed.split("/").filter((s) => s !== "" && s !== ".");
+  // A prefix that collapses to NOTHING is unusable, not vacuously fine.
+  // Roast round 4: `"."` — the obvious way to write "the whole project" —
+  // filtered to an empty array and `.every()` on an empty array is `true`, so
+  // it reported usable while the containment check's own `normalizePath`
+  // returned `undefined` and refused every dispatch. That is byte-for-byte
+  // the scenario this function was added to close for `src/**`.
+  if (segments.length === 0) return false;
+  return segments.every((segment) => segment !== "..");
 }

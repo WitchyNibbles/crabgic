@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, statSync } from "node:fs";
-import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
+import { closeSync, constants, fstatSync, openSync, readFileSync, statSync } from "node:fs";
+import { chmod, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
@@ -41,6 +41,73 @@ export type LoadPolicyResult =
  * policy whose defaults were filled in by the schema digests identically to
  * one that spelled them out.
  */
+/**
+ * Validates the OPEN policy file, returning a refusal or `undefined`.
+ *
+ * Every check is against the descriptor (`fstatSync`), never the path, so
+ * nothing can be swapped between checking and reading.
+ */
+function validateOpenPolicyFile(fd: number, path: string): LoadPolicyResult | undefined {
+  const stats = fstatSync(fd);
+
+  // Ownership, not just mode. A 0600 file owned by someone else is a policy
+  // this account cannot edit and did not write — the opposite of a standing
+  // approval given by the owner.
+  //
+  // `getuid` is absent on platforms this project does not support (README
+  // pins Linux x64/arm64/WSL2). Refusing there is deliberate and explicit
+  // rather than an accident of `0 !== undefined`: an unsupported platform
+  // must not silently accept a policy whose ownership cannot be established.
+  const uid = process.getuid?.();
+  if (uid === undefined) {
+    return {
+      status: "invalid",
+      reason: `cannot establish ownership of ${path} on this platform; Crabgic supports Linux (x64, arm64) and WSL2`,
+    };
+  }
+  if (stats.uid !== uid) {
+    return {
+      status: "invalid",
+      reason:
+        `policy file ${path} is owned by uid ${stats.uid}, not the account running Crabgic (uid ${uid}); ` +
+        `if you are running under sudo, run without it rather than changing the file's owner`,
+    };
+  }
+
+  const mode = stats.mode & 0o077;
+  if (mode !== 0) {
+    return {
+      status: "invalid",
+      reason: `policy file ${path} is accessible to other accounts (mode ${(mode | 0o600).toString(8)}); it decides what runs without review and must be 0600`,
+    };
+  }
+
+  // The containing directory too: a policy is only as protected as the
+  // directory it can be replaced in. Owner AND mode — a foreign-owned 0755
+  // directory grants its owner unlink and rename regardless of the mode bits
+  // this masks (roast round 4).
+  let dirStats;
+  try {
+    dirStats = statSync(dirname(path));
+  } catch (err) {
+    // Distinct from "absent": the policy WAS read successfully one step ago,
+    // so reporting it missing would send the owner to re-run an installer
+    // that is not what is broken.
+    return {
+      status: "invalid",
+      reason: `cannot inspect the directory holding ${path}: ${(err as Error).message}`,
+    };
+  }
+  if (dirStats.uid !== uid || (dirStats.mode & 0o022) !== 0) {
+    return {
+      status: "invalid",
+      reason: `the directory holding ${path} is owned by uid ${dirStats.uid} or writable by other accounts, so the policy can be replaced regardless of its own mode`,
+    };
+  }
+
+  return undefined;
+}
+
 export function digestPolicy(policy: EnvelopePolicy): string {
   // `JSON.stringify(policy)` with NO replacer. The replacer array form used
   // here originally — `Object.keys(policy).sort()` — is not an ordering
@@ -86,10 +153,29 @@ export async function writeEnvelopePolicy(path: string, policy: EnvelopePolicy):
   // exact window the old comment claimed to avoid (F5). Rename is also
   // atomic, so a concurrent `doctor` or dispatch can never observe a
   // half-written policy.
-  const temporary = `${path}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
-  await chmod(temporary, 0o600);
-  await rename(temporary, path);
+  // `wx` — O_CREAT|O_EXCL, which REFUSES to open an existing path and does
+  // not follow symlinks. Roast round 4 found the attack the previous form
+  // allowed: the temp name was `${path}.${process.pid}.tmp`, entirely
+  // predictable, and the default `w` flag follows links — so pre-planting
+  // that name as a symlink to any file the owner owns made `install`
+  // truncate the victim, write the policy into it, and then `rename` the
+  // policy path into a symlink pointing at it. The victim was destroyed and
+  // the loader then permanently rejected the policy, so the install reported
+  // success and the product was bricked. A random suffix removes the
+  // predictability; `wx` removes the primitive.
+  const temporary = `${path}.${randomBytes(8).toString("hex")}.tmp`;
+  try {
+    await writeFile(temporary, `${JSON.stringify(policy, null, 2)}\n`, {
+      mode: 0o600,
+      flag: "wx",
+    });
+    await rename(temporary, path);
+  } catch (err) {
+    // Never leave a temp file behind on a failed write — nothing else would
+    // ever unlink it.
+    await rm(temporary, { force: true });
+    throw err;
+  }
 }
 
 /**
@@ -108,55 +194,34 @@ export async function writeEnvelopePolicy(path: string, policy: EnvelopePolicy):
  * thoroughly as a session-reachable writer would.
  */
 export function loadEnvelopePolicy(path: string): LoadPolicyResult {
-  let raw: string;
+  // Opened ONCE, and every check made against that descriptor. Roast round 4:
+  // the previous form read the bytes and then validated the path, so the
+  // inode that was checked need not be the inode that was read — an attacker
+  // with directory write could swap their own file in, let it be read, and
+  // restore the owner's real 0600 file before the checks ran. `O_NOFOLLOW`
+  // refuses a symlink at open time rather than detecting one afterwards.
+  let fd: number;
   try {
-    raw = readFileSync(path, "utf8");
-  } catch {
-    return { status: "absent" };
-  }
-
-  try {
-    // `lstat`, not `stat`: `stat` follows symlinks, so a policy path that is
-    // a link to a file owned by another account passed the mode check by
-    // validating the TARGET's mode (roast round 3, F4). The link itself is
-    // what an attacker controls.
-    const linkStats = lstatSync(path);
-    if (linkStats.isSymbolicLink()) {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ELOOP") {
       return {
         status: "invalid",
         reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
       };
     }
+    return { status: "absent" };
+  }
 
-    // Ownership, not just mode. A 0600 file owned by someone else is a policy
-    // this account cannot edit and did not write — the opposite of a standing
-    // approval given by the owner.
-    if (linkStats.uid !== process.getuid?.()) {
-      return {
-        status: "invalid",
-        reason: `policy file ${path} is owned by another account (uid ${linkStats.uid}); it must be owned by the account running Crabgic`,
-      };
-    }
-
-    const mode = linkStats.mode & 0o077;
-    if (mode !== 0) {
-      return {
-        status: "invalid",
-        reason: `policy file ${path} is accessible to other accounts (mode ${(mode | 0o600).toString(8)}); it decides what runs without review and must be 0600`,
-      };
-    }
-
-    // The containing directory too: a policy is only as protected as the
-    // directory it can be replaced in.
-    const dirMode = statSync(dirname(path)).mode & 0o022;
-    if (dirMode !== 0) {
-      return {
-        status: "invalid",
-        reason: `the directory holding ${path} is writable by other accounts, so the policy can be replaced regardless of its own mode`,
-      };
-    }
+  let raw: string;
+  try {
+    const check = validateOpenPolicyFile(fd, path);
+    if (check !== undefined) return check;
+    raw = readFileSync(fd, "utf8");
   } catch {
     return { status: "absent" };
+  } finally {
+    closeSync(fd);
   }
 
   let parsed: unknown;
