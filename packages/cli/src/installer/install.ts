@@ -11,6 +11,7 @@
  * files/secrets into a first commit" is satisfied by never committing
  * anything here at all, ever.
  */
+import type { EnvelopePolicy } from "@crabgic/contracts";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -57,12 +58,31 @@ export interface ArtifactDiffEntry {
 export type InstallStatus =
   "installed" | "already-installed" | "dry-run" | "aborted-git-init-declined";
 
+/**
+ * What happened to the standing `EnvelopePolicy` during this install (ledger
+ * Gap 18). Reported rather than folded into `status`, because none of these
+ * outcomes makes the INSTALL itself a failure: a project with no policy has a
+ * working plugin whose dispatches refuse until one exists, which is the
+ * correct fail-closed posture.
+ */
+export type PolicyInstallOutcome =
+  /** No policy bag was supplied — every pre-existing caller, and the shape they keep observing. */
+  | { readonly status: "not-configured" }
+  /** Derivation found nothing to grant. Writing it would have produced a green install, a green doctor, and a product that never runs. */
+  | { readonly status: "vacuous" }
+  | { readonly status: "dry-run"; readonly policy: EnvelopePolicy }
+  /** The owner read the candidate and said no. Not an error. */
+  | { readonly status: "declined" }
+  | { readonly status: "written"; readonly policy: EnvelopePolicy };
+
 export interface InstallResult {
   readonly status: InstallStatus;
   readonly repoState: GitRepoState;
   readonly monorepoDetected: boolean;
   readonly gitInitPerformed: boolean;
   readonly diff: readonly ArtifactDiffEntry[];
+  /** Absent only for callers that supplied no policy bag at all. */
+  readonly policy?: PolicyInstallOutcome;
 }
 
 export async function readTextIfExists(path: string): Promise<string | undefined> {
@@ -224,8 +244,25 @@ export async function runInstall(
     });
   }
 
+  // THE STANDING-APPROVAL BOOTSTRAP (ledger Gap 18; roadmap/10's 2026-07-28
+  // scope amendment). Deliberately after the artifact loop and before the
+  // install state is recorded: the policy is not an artifact of the repo — it
+  // lands in the project's XDG state root, because a standing grant that
+  // could be committed would be a standing grant every clone carried.
+  //
+  // A dry run derives and reports, and writes nothing, exactly like every
+  // other artifact above.
+  const policyOutcome = await bootstrapPolicy(deps, options.dryRun);
+
   if (options.dryRun) {
-    return { status: "dry-run", repoState, monorepoDetected, gitInitPerformed, diff };
+    return {
+      status: "dry-run",
+      repoState,
+      monorepoDetected,
+      gitInitPerformed,
+      diff,
+      policy: policyOutcome,
+    };
   }
 
   const state: InstallState = {
@@ -244,5 +281,41 @@ export async function runInstall(
     monorepoDetected,
     gitInitPerformed,
     diff,
+    policy: policyOutcome,
   };
+}
+
+/**
+ * Derives, renders and (on confirmation) writes the project's standing
+ * `EnvelopePolicy`.
+ *
+ * REFUSES TO WRITE A VACUOUS ONE. Roast round 1 (F9): an all-empty policy
+ * passes every structural check a doctor can make — it exists, it parses, it
+ * is 0600, it is untracked — while refusing every dispatch, so an owner would
+ * see a green install and a green doctor and a product that never runs. A
+ * repo with no recognisable source directory derives exactly that, and the
+ * honest answer is to say so rather than to write it.
+ *
+ * A DECLINE IS NOT AN ERROR. Installing without a policy leaves a working
+ * plugin whose dispatches refuse until one exists, which is the correct
+ * fail-closed posture — not a half-installed project.
+ */
+async function bootstrapPolicy(
+  deps: InstallerDependencies,
+  dryRun: boolean,
+): Promise<PolicyInstallOutcome> {
+  if (deps.policy === undefined) return { status: "not-configured" };
+
+  const derived = deps.policy.derive();
+  if (derived.vacuous) {
+    return { status: "vacuous" };
+  }
+  if (dryRun) {
+    return { status: "dry-run", policy: derived.policy };
+  }
+  if (!(await deps.policy.confirm(derived))) {
+    return { status: "declined" };
+  }
+  await deps.policy.write(deps.policy.path, derived.policy);
+  return { status: "written", policy: derived.policy };
 }
