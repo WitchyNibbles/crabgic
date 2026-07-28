@@ -304,3 +304,46 @@ describe("realStatMode — absence versus inability to look", () => {
     expect(await realStatMode(target)).toBe(0o700);
   });
 });
+
+/**
+ * Roast round 15, finding 6 -- the same class as the journal-chain
+ * contradiction, in the check next door. Swapping the missing/invalid
+ * evidence strings survived the whole suite, because the invalid-state test
+ * asserted only `passed === false`.
+ *
+ * Each diagnosis carries a DIFFERENT remedy: "no auth was found" pairs with
+ * `claude setup-token` OR setting the env var, while "present but invalid"
+ * pairs with re-authenticating. An owner told the wrong one either sets a
+ * token they already have, or re-authenticates a credential that was never
+ * there. Both directions are pinned so the evidence cannot drift from the
+ * remedy it must agree with.
+ */
+describe("auth-probe — the diagnosis must match its remedy", () => {
+  async function findingFor(state: "valid" | "missing" | "invalid") {
+    const { createAuthProbeCheck } = await import("./checks/auth-probe.js");
+    return createAuthProbeCheck({ probe: () => Promise.resolve(state) }).run();
+  }
+
+  it("says auth is absent, and offers to obtain one", async () => {
+    const finding = await findingFor("missing");
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toBe("no subscription auth was found");
+    expect(finding.evidence).not.toMatch(/present but invalid/);
+    expect(finding.repairStep).toBe("run `claude setup-token` or set CLAUDE_CODE_OAUTH_TOKEN");
+  });
+
+  it("says auth is present but bad, and offers to re-authenticate", async () => {
+    const finding = await findingFor("invalid");
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toBe("subscription auth is present but invalid");
+    expect(finding.evidence).not.toMatch(/no subscription auth/);
+    expect(finding.repairStep).toBe("re-authenticate via `claude setup-token`");
+  });
+
+  it("reports valid auth without leaking anything about the credential", async () => {
+    const finding = await findingFor("valid");
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toBe("subscription auth is valid");
+    expect(finding.repairStep).toBeUndefined();
+  });
+});
