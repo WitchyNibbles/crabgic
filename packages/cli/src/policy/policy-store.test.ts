@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -120,5 +120,65 @@ describe("digestPolicy", () => {
     expect(
       digestPolicy(EnvelopePolicySchema.parse({ ...VALID, allowedWriteScratchPaths: ["dist"] })),
     ).not.toBe(digestPolicy(base));
+  });
+});
+
+describe("writeEnvelopePolicy", () => {
+  /**
+   * 0600 at creation, not chmod-after-write. A window in which the file
+   * exists world-readable is a window in which another local account can read
+   * what this project will run unattended -- and the loader would then refuse
+   * it, so getting the mode wrong is also a self-inflicted outage.
+   */
+  it("writes a policy the loader accepts, at 0600", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    const target = join(dir, "nested", "envelope-policy.json");
+
+    await writeEnvelopePolicy(target, EnvelopePolicySchema.parse(VALID));
+
+    expect(statSync(target).mode & 0o777).toBe(0o600);
+    expect(loadEnvelopePolicy(target).status).toBe("loaded");
+  });
+
+  it("round-trips to the identical digest", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    const target = join(dir, "envelope-policy.json");
+    const policy = EnvelopePolicySchema.parse(VALID);
+
+    await writeEnvelopePolicy(target, policy);
+    const loaded = loadEnvelopePolicy(target);
+
+    expect(loaded.status).toBe("loaded");
+    if (loaded.status !== "loaded") return;
+    expect(loaded.digest).toBe(digestPolicy(policy));
+  });
+});
+
+/**
+ * Ledger Gap 18 part 3, asserted as a repo fact rather than a promise: the
+ * only writer must have exactly one call site. This is the check that notices
+ * when a later change makes the policy writable from somewhere a session can
+ * reach, which would collapse the whole gate silently.
+ */
+describe("the policy has exactly one writer", () => {
+  it("is called only from the installer wiring", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const root = new URL("../../../..", import.meta.url).pathname;
+
+    const hits = execFileSync(
+      "grep",
+      ["-rl", "writeEnvelopePolicy", "--include=*.ts", "--exclude-dir=dist", "packages"],
+      { cwd: root, encoding: "utf8" },
+    )
+      .split("\n")
+      .filter((line) => line.length > 0 && !line.endsWith(".test.ts"));
+    // `dist` is excluded above rather than filtered here: a build artifact is
+    // a copy of a source call site, not an independent one, and letting it
+    // count would make this check pass or fail on whether someone had built.
+
+    expect(hits.sort()).toEqual([
+      "packages/cli/src/bootstrap.ts",
+      "packages/cli/src/policy/policy-store.ts",
+    ]);
   });
 });

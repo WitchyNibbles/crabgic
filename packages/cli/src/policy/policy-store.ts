@@ -1,20 +1,22 @@
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
 
 /**
  * Reading the standing `EnvelopePolicy` from disk (ledger Gap 18).
  *
- * WHY READ-ONLY, AND WHY THERE IS NO WRITER HERE. Part 3 of the ruling is
- * that nothing reachable from a manager session may create or widen the
- * policy — that, and not the retired terminal prompt, is what still makes
- * "the model cannot satisfy its own approval gate" true. So this module
- * exposes a loader and nothing else. The only writer is `crabgic install`,
- * which is an out-of-band human act. A `writePolicy` export here would be
- * reachable from any command the model can invoke, and would collapse the
- * whole gate; its absence is load-bearing, not an omission.
+ * ONE WRITER, ONE CALL SITE. Part 3 of the ruling is that nothing reachable
+ * from a manager session may create or widen the policy — that, and not the
+ * retired terminal prompt, is what still makes "the model cannot satisfy its
+ * own approval gate" true. `writeEnvelopePolicy` below is the only writer in
+ * the system and is called from exactly one place: `crabgic install`, after
+ * an interactive human confirmation. Every other consumer — the daemon, the
+ * gateway, every command — takes the loader. A second call site is not a
+ * refactor; it is a change to the security model, and the grep that finds
+ * them is the check.
  */
 
 /** Pinned file name under the project's XDG **state** root — durable owner state, never a regenerable cache artifact. */
@@ -42,6 +44,27 @@ export type LoadPolicyResult =
 export function digestPolicy(policy: EnvelopePolicy): string {
   const canonical = JSON.stringify(policy, Object.keys(policy).sort());
   return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
+}
+
+/**
+ * Writes a confirmed policy `0600`.
+ *
+ * This is the ONLY writer in the system, and it is reachable from exactly one
+ * place: `crabgic install`, after an interactive human confirmation. Ledger
+ * Gap 18 part 3 is that nothing reachable from a manager session may create
+ * or widen the policy — no MCP tool, no session-invocable CLI command, no
+ * skill — because that, and not the retired terminal prompt, is what still
+ * makes "the model cannot satisfy its own approval gate" true. Adding a
+ * second call site is not a refactor; it is a change to the security model.
+ *
+ * `0600` at creation, not chmod-after-write: a window in which the file
+ * exists world-readable is a window in which another local account can read
+ * what this project will run unattended.
+ */
+export async function writeEnvelopePolicy(path: string, policy: EnvelopePolicy): Promise<void> {
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  await writeFile(path, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
+  await chmod(path, 0o600);
 }
 
 /**

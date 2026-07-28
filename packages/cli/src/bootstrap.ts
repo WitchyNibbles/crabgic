@@ -9,6 +9,7 @@
  * always FAILING even on an authenticated host. `buildRealCliDependencies`
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   createJournalStore,
@@ -81,7 +82,13 @@ import {
 } from "./uds-client/ensure-supervisor.js";
 import { isPassiveMode } from "./uds-client/passive-mode.js";
 import { deriveProjectHash } from "./project-hash.js";
-import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
+import {
+  buildRealInstallerDependencies,
+  createRealConfirmPolicy,
+} from "./installer/real-installer-dependencies.js";
+import { derivePolicy } from "./policy/derive-policy.js";
+import { resolveEnvelopePolicyPath, writeEnvelopePolicy } from "./policy/policy-store.js";
+import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
 
@@ -240,7 +247,26 @@ export function buildRealCliDependencies(
     // (overriding `xdgEnv` deterministically controls auth resolution too).
     resolveAuthState:
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
-    installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
+    installer:
+      overrides.installer ??
+      buildRealInstallerDependencies(process.cwd(), {
+        // The standing-approval bootstrap (ledger Gap 18). Wired HERE because
+        // this is the only place that knows the project's XDG paths, and the
+        // policy is deliberately not a repo artifact — a standing grant that
+        // could be committed would be a standing grant every clone carried.
+        policy: {
+          path: resolveEnvelopePolicyPath(xdgEnv, projectHash),
+          derive: () =>
+            derivePolicy({
+              projectDir: process.cwd(),
+              id: randomUUID(),
+              createdAt: new Date().toISOString(),
+              listDirectories: listTopLevelDirectories,
+            }),
+          confirm: createRealConfirmPolicy({ input: process.stdin, output: process.stdout }),
+          write: writeEnvelopePolicy,
+        },
+      }),
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
     intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
