@@ -485,5 +485,40 @@ describe("policy.standing — the consequences read as one sentence", () => {
     }));
 
     expect(finding.evidence).toMatch(/refuses every run, and an unusable build-output path/);
+    // Round 14: the entry LIST one line above had the identical defect, and
+    // this test already constructs the only policy that renders it -- two
+    // unusable entries -- while asserting just the consequence half. Mutating
+    // its joiner to "" survived all 38 tests, emitting
+    // `allowedPathPrefixes "bad/**"allowedWriteScratchPaths "worse/**"`.
+    // That list is the round-12 fix's entire payload, so the unseparated
+    // rendering hits exactly the case round 12 was added for.
+    expect(finding.evidence).toMatch(
+      /allowedPathPrefixes "bad\/\*\*", allowedWriteScratchPaths "worse\/\*\*"/,
+    );
+  });
+
+  /**
+   * Round 14, 2b: the repair step's text was never asserted end to end --
+   * appending trailing garbage to its non-vacuous branch survived the whole
+   * suite. It is the sentence an owner acts on, so it is pinned exactly.
+   */
+  it("prints a repair step with no trailing garbage", async () => {
+    const withPrefix = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src", "bad/**"] }),
+      digest: "d",
+    }));
+    expect(withPrefix.repairStep).toBe(
+      "replace them with literal directory names in /state/envelope-policy.json (no globs, no leading slash)",
+    );
+
+    const emptyPrefix = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: [], allowedWriteScratchPaths: ["dist/**"] }),
+      digest: "d",
+    }));
+    expect(emptyPrefix.repairStep).toBe(
+      "replace them with literal directory names in /state/envelope-policy.json (no globs, no leading slash), and add at least one directory work may touch",
+    );
   });
 });
