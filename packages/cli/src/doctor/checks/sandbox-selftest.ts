@@ -67,7 +67,15 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
         "--",
         "sh",
         "-c",
-        "echo x > /eo-sandbox-selftest-marker",
+        // `RAN` first, on STDOUT, so the verdict has positive proof the inner
+        // shell executed. Round 17: without it, a signal-kill (exitCode -1),
+        // an OOM (137) or a fork failure all produced a non-zero exit with
+        // empty stderr and were read as "the write was correctly denied" --
+        // an assertion of confinement from a command that never ran. A real
+        // denial on this host always carries `sh`'s own "Read-only file
+        // system" message, so empty stderr is positive evidence AGAINST
+        // having reached the write.
+        "echo RAN; echo x > /eo-sandbox-selftest-marker",
       ]);
       if (confinement.exitCode === 0) {
         return {
@@ -88,6 +96,26 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
           evidence: `bwrap failed to set up the sandbox before any write was attempted — confinement is UNVERIFIED, not confirmed: ${confinement.stderr.trim()}`,
           repairStep:
             "enable unprivileged user namespaces (e.g. `sysctl -w kernel.unprivileged_userns_clone=1`) or run under a host/container that permits bwrap's own namespace setup, then re-run `doctor`",
+        };
+      }
+
+      // The executed-call guard, AFTER the bwrap-setup branch above. A setup
+      // failure is a KNOWN reason the shell never ran and carries a far more
+      // actionable remedy, so it must diagnose first; this catches the
+      // remaining ways the command can fail to start — signal-kill (exit -1),
+      // OOM (137), fork failure — which round 17 showed were all read as "the
+      // write was correctly denied" from a command that never executed.
+      if (!confinement.stdout.includes("RAN")) {
+        return {
+          id: CHECK_ID,
+          severity: "error",
+          passed: false,
+          evidence:
+            `the sandboxed shell never reported running (exit ${String(confinement.exitCode)}), ` +
+            "so the write was never attempted — confinement is UNVERIFIED, not confirmed" +
+            (confinement.stderr.trim().length > 0 ? `: ${confinement.stderr.trim()}` : ""),
+          repairStep:
+            "investigate why the sandboxed command did not start (signal, OOM, or fork failure); do not treat this as a passing sandbox",
         };
       }
 

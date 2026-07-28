@@ -42,7 +42,20 @@ export async function realStatMode(path: string): Promise<number | "unknown" | u
     // ONLY a genuinely missing path is absence. Anything else is a failure to
     // determine, and a permissions check that cannot look must say so rather
     // than pass.
-    return (err as NodeJS.ErrnoException).code === "ENOENT" ? undefined : "unknown";
+    // ABSENT: the path cannot exist. `ENOTDIR` means a component of the path
+    // is not a directory, so nothing can live below it; `ENAMETOOLONG` means
+    // the name is unrepresentable. Round 17 measured both being reported as
+    // "could not be inspected", which fired the new failure branch where the
+    // old code was right to pass -- with evidence and remedy that were BOTH
+    // false: the paths are absent, readability is not the fault, and chmod
+    // cannot help.
+    //
+    // UNVERIFIED: everything else. `EACCES`/`EPERM`/`EIO`/`EOVERFLOW` and
+    // `ELOOP` all mean something is there, or might be, and we could not look.
+    const code = (err as NodeJS.ErrnoException).code;
+    return code === "ENOENT" || code === "ENOTDIR" || code === "ENAMETOOLONG"
+      ? undefined
+      : "unknown";
   }
 }
 
@@ -86,10 +99,24 @@ export function createXdgPermissionsCheck(options: XdgPermissionsCheckOptions): 
             ...violations,
             ...unknown.map((path) => `${path} could not be inspected, so its mode is unverified`),
           ].join("; "),
-          repairStep:
-            violations.length > 0
-              ? "chmod the listed paths back to their required mode (0700 dirs / 0600 files)"
-              : "make the listed paths readable by this account, then re-run; do not assume they are absent",
+          // BOTH steps when both problems are present. Round 17: emitting
+          // only the chmod step meant that whenever any real violation
+          // coexisted with an uninspectable path, "do not assume they are
+          // absent" -- the entire point of the round-16 fix -- never reached
+          // the owner, and they were told to chmod a path whose fault is that
+          // it cannot be read. Worse, the test added alongside that fix
+          // asserted the chmod step for exactly this shape, so the new test
+          // was pinning the defect in place.
+          repairStep: [
+            ...(violations.length > 0
+              ? ["chmod the listed paths back to their required mode (0700 dirs / 0600 files)"]
+              : []),
+            ...(unknown.length > 0
+              ? [
+                  "make the uninspectable paths readable by this account, then re-run; do not assume they are absent",
+                ]
+              : []),
+          ].join("; "),
         };
       }
       return {

@@ -218,7 +218,12 @@ describe("xdg-permissions — cannot look is not the same as not there", () => {
 
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("has mode 0777, expected 0700");
+    // ROUND 17 CORRECTION: this asserted only the chmod step, which BLESSED
+    // the defect -- whenever a real violation coexists with an uninspectable
+    // path, "do not assume they are absent" was dropped and the owner was
+    // told to chmod a path whose fault is that it cannot be read.
     expect(finding.repairStep).toMatch(/chmod the listed paths/);
+    expect(finding.repairStep).toMatch(/do not assume they are absent/);
   });
 });
 
@@ -345,5 +350,42 @@ describe("auth-probe — the diagnosis must match its remedy", () => {
     expect(finding.passed).toBe(true);
     expect(finding.evidence).toBe("subscription auth is valid");
     expect(finding.repairStep).toBeUndefined();
+  });
+});
+
+/**
+ * Round 17: `ENOTDIR` and `ENAMETOOLONG` were classified as "could not
+ * inspect", firing the new failure branch where the old code was right to
+ * pass -- with evidence and a remedy that were both false, since the paths
+ * really are absent and chmod cannot help.
+ *
+ * Exercised through `realStatMode` against real filesystem conditions,
+ * because that is where the classification lives: injecting a rejection into
+ * the CHECK tests the check's handling, not the mapping that produces it --
+ * the same mistake this file already made once.
+ */
+describe("realStatMode — errno shapes that mean the path cannot exist", () => {
+  it("treats a non-directory path component as absence", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const file = join(dir, "not-a-dir");
+    writeFileSync(file, "x");
+
+    // ENOTDIR: nothing can live below a regular file.
+    expect(await realStatMode(join(file, "child"))).toBeUndefined();
+  });
+
+  it("treats an unrepresentable name as absence", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    expect(await realStatMode(join(dir, "n".repeat(5000)))).toBeUndefined();
   });
 });
