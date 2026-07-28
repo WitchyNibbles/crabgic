@@ -296,18 +296,18 @@ describe("createRealProcessProbe — a group-escaping descendant must not hold t
 });
 
 /**
- * Roast round 23, finding 3 — `process.kill(-pid)` on a REAPED child can signal
- * a recycled process group.
+ * Round 25 (finding 7) rewrote this block. It carried round 23's rationale for
+ * a gate round 24 REVERTED, asserting in its own name that the group kill "is
+ * not used on a reaped child" — directly above the sibling describe that
+ * asserts the opposite — while its body only ever covered the live-child case.
+ * A comment that contradicts the code it sits on is worse than none: rounds 4-8
+ * each went wrong reasoning from a stale paragraph exactly like it.
  *
- * The window is exactly when `close` has not fired but the child has exited: a
- * descendant outside the group holds the pipes, the child's group is empty, and
- * the pid is free to be reused. Constructed inside a PID namespace by writing
- * `ns_last_pid`: the group kill SIGKILLed an unrelated `sleep 400` that had
- * inherited the number. The bare-child fallback covers the reaped case
- * perfectly well, so the negative-pid form is simply not used there.
+ * The recycle hazard is real but was mis-quantified; see `killProcessTree`'s own
+ * comment for the corrected numbers and why the group kill stays.
  */
-describe("killProcessTree — the group kill is not used on a reaped child", () => {
-  it("kills a live child by group and a reaped one by pid", async () => {
+describe("killProcessTree — a live child's group is the kill target", () => {
+  it("uses the group form for a child still running at expiry", async () => {
     const killed: (number | string)[] = [];
     const realKill = process.kill.bind(process);
     const spy = vi.spyOn(process, "kill").mockImplementation(((pid: number, signal?: string) => {
@@ -429,7 +429,12 @@ describe("createRealProcessProbe — SIGINT to the CLI must take the probe with 
           `setTimeout(() => {}, 60000);\n`,
       );
 
-      const child = spawnHelper(resolve("node_modules/.bin/tsx"), [helper], {
+      // ROUND 25: `node_modules/.bin/tsx` is a WRAPPER PROCESS, so a signal
+      // sent here landed on tsx and the test measured tsx's disposition rather
+      // than the probe's. Deleting the re-raise from the product left it green.
+      // `node --import tsx` loads the same TypeScript in ONE process, which is
+      // the process under test.
+      const child = spawnHelper(process.execPath, ["--import", "tsx", helper], {
         stdio: ["ignore", "pipe", "pipe"],
       });
       await new Promise<void>((done) => {
@@ -536,4 +541,100 @@ describe("createRealProcessProbe — the signal handler must not evict other han
     // orphaned the probe child.
     expect(process.listenerCount("SIGQUIT")).toBeGreaterThan(0);
   });
+});
+
+/**
+ * Roast round 25, finding 3 — the sweep was ONE-SHOT.
+ *
+ * `process.off(signal, handler)` ran unconditionally and
+ * `signalHandlersInstalled` is a sticky module flag, so a process that SURVIVES
+ * the signal — which the `listenerCount` guard exists to allow — lost the sweep
+ * permanently. Measured with a daemon whose SIGHUP handler reloads rather than
+ * exits: probe #1's child was swept; probe #2, started after the first SIGHUP,
+ * survived the second. `boot-supervisor.ts` registers exactly that shape.
+ */
+describe("createRealProcessProbe — the sweep must survive a signal the process survives", () => {
+  it("keeps its handler installed when someone else is handling the signal", async () => {
+    const probe = createRealProcessProbe();
+    const other = (): void => undefined;
+    process.on("SIGHUP", other);
+    try {
+      await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+      const before = process.listenerCount("SIGHUP");
+      expect(before).toBeGreaterThanOrEqual(2);
+
+      // Someone else is listening, so the process survives -- and our handler
+      // must still be there for the NEXT signal.
+      process.emit("SIGHUP");
+      expect(process.listenerCount("SIGHUP")).toBe(before);
+
+      // Twice, because a one-shot handler passes a single round.
+      process.emit("SIGHUP");
+      expect(process.listenerCount("SIGHUP")).toBe(before);
+    } finally {
+      process.off("SIGHUP", other);
+    }
+  });
+});
+
+/**
+ * Roast round 25, finding 4 — deleting `process.off(signal, handler)` survived
+ * all 26 tests, and its absence is not cosmetic: without it the re-raise
+ * re-enters our own handler instead of terminating, so an interrupted run
+ * became a substantive FAILING HEALTH VERDICT rather than an interruption.
+ *
+ * ```
+ * unmutated: SIGINT -> rc=130 (128+2), 0 survivors
+ * mutant:    SIGINT -> rc=2, "✗ sandbox.selftest: the sandboxed shell never
+ *                             reported running (exit -1)"
+ * ```
+ */
+describe("createRealProcessProbe — an interrupted run must exit as interrupted", () => {
+  it("re-raises the signal so the exit status is 128+signum", async () => {
+    const { spawn: spawnHelper } = await import("node:child_process");
+    const { writeFile, mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+
+    const dir = await mkdtemp(join(tmpdir(), "eo-reraise-"));
+    try {
+      const here = fileURLToPath(new URL(".", import.meta.url));
+      const modulePath = resolve(here, "process-probe.ts");
+      const helper = join(dir, "helper.mts");
+      await writeFile(
+        helper,
+        `import { createRealProcessProbe } from ${JSON.stringify(modulePath)};\n` +
+          `const probe = createRealProcessProbe();\n` +
+          `probe("sh", ["-c", "sleep 30"], { timeoutMs: 60000 });\n` +
+          `setTimeout(() => { process.stdout.write("ready\\n"); }, 400);\n` +
+          `setTimeout(() => {}, 60000);\n`,
+      );
+
+      // ROUND 25: `node_modules/.bin/tsx` is a WRAPPER PROCESS, so a signal
+      // sent here landed on tsx and the test measured tsx's disposition rather
+      // than the probe's. Deleting the re-raise from the product left it green.
+      // `node --import tsx` loads the same TypeScript in ONE process, which is
+      // the process under test.
+      const child = spawnHelper(process.execPath, ["--import", "tsx", helper], {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      await new Promise<void>((done) => {
+        child.stdout.on("data", (chunk: Buffer) => {
+          if (chunk.toString("utf8").includes("ready")) done();
+        });
+      });
+
+      const outcome = await new Promise<{ code: number | null; signal: string | null }>((done) => {
+        child.on("close", (code, signal) => done({ code, signal }));
+        child.kill("SIGINT");
+      });
+
+      // Either the shell-visible 130, or death by the re-raised signal itself.
+      // What must NOT happen is a clean, ordinary exit code.
+      expect(outcome.signal === "SIGINT" || outcome.code === 130).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 25_000);
 });

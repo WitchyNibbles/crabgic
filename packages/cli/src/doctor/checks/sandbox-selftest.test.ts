@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSandboxSelftestCheck } from "./sandbox-selftest.js";
+import { SANDBOX_SHELL_ARGV0, createSandboxSelftestCheck } from "./sandbox-selftest.js";
 
 describe("createSandboxSelftestCheck", () => {
   it("passes when bwrap is present and confinement holds (write denied)", async () => {
@@ -146,6 +146,23 @@ describe("sandbox-selftest — the real argv against the real bwrap", () => {
     }
 
     const finding = await createSandboxSelftestCheck({ probe }).run();
+
+    // ROUND 25: the skip above is gated on `bwrap --version`, which SUCCEEDS on
+    // a host where bubblewrap is installed but the kernel forbids unprivileged
+    // namespaces -- `ubuntu-latest` is Ubuntu 24.04, which restricts them by
+    // default. So the skip was unreachable there and this test failed on a
+    // required every-push job, which is exactly what round 24 believed it had
+    // fixed; it changed the failure MESSAGE, not whether it failed. A host that
+    // cannot build a sandbox has not disproved anything about confinement.
+    if (!finding.passed && /failed to set up the sandbox/.test(finding.evidence)) {
+      if (process.env["CRABGIC_REQUIRE_BWRAP"] === "1") {
+        throw new Error(
+          `CRABGIC_REQUIRE_BWRAP=1 but bwrap cannot set up a sandbox here: ${finding.evidence}`,
+        );
+      }
+      ctx.skip();
+      return;
+    }
 
     // ROUND 19: the previous version of this test guarded on
     // /read-only file system/ against the EVIDENCE -- a string the PASS
@@ -739,18 +756,33 @@ describe("sandbox-selftest — a setup failure is decided by SOURCE, not substri
     });
   }
 
+  // ROUND 25: these fixtures used to write `eo-sandbox-selftest:` as the shell
+  // prefix while the argv passed `"sh"` -- so they encoded a host that did not
+  // exist and were green against a defect that was live on every real one. The
+  // prefix is DERIVED from the same constant the argv uses, so a fixture can no
+  // longer disagree with the product.
   it.each([
-    ["bwrap: in the path", "eo-sandbox-selftest: 1: cannot create /tmp/bwrap:x/marker: Read-only"],
-    [
-      "a userns phrase in the path",
-      "eo-sandbox-selftest: 1: cannot create /tmp/creating new namespace failed/m: Read-only",
-    ],
-    [
-      "the whole marker text in the path",
-      "eo-sandbox-selftest: 1: cannot create /tmp/unprivileged_userns_clone/m: Read-only",
-    ],
-  ])("does not read the SHELL's own error as bwrap's, for %s", async (_name, stderr) => {
-    const finding = await checkWithStderr(stderr).run();
+    ["bwrap: in the path", "/tmp/bwrap:x/marker"],
+    ["a userns phrase in the path", "/tmp/creating new namespace failed/marker"],
+    ["the whole marker text in the path", "/tmp/unprivileged_userns_clone/marker"],
+    // Round 25, finding 6: a NEWLINE in the path splits the shell's own error,
+    // so the continuation line carries no prefix at all and was read as
+    // bwrap's. Attribution by prefix cannot work on a line the attacker
+    // composed; the known path is removed before anything is classified.
+    ["a newline forging a bwrap line", "/tmp/x\nbwrap: creating new namespace failed/marker"],
+  ])("does not read the SHELL's own error as bwrap's, for %s", async (_name, markerPath) => {
+    const finding = await createSandboxSelftestCheck({
+      markerPath,
+      probe: async (_command, args) =>
+        args.includes("--version")
+          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+          : {
+              stdout: "WROTE:2\n",
+              // What dash really prints, with `$0` as the argv supplies it.
+              stderr: `${SANDBOX_SHELL_ARGV0}: 1: cannot create ${markerPath}: Read-only file system`,
+              exitCode: 2,
+            },
+    }).run();
 
     expect(finding.passed).toBe(true);
     expect(finding.evidence).toContain("correctly denied");
@@ -793,5 +825,61 @@ describe("sandbox-selftest — a setup failure is decided by SOURCE, not substri
 
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("failed to set up the sandbox");
+  });
+});
+
+/**
+ * Roast round 25, finding 1 — `SHELL_ARGV0` was declared, documented as "used
+ * by the argv and by the classifier", and passed to NEITHER: the argv shipped
+ * the literal `"sh"`. So `startsWith("eo-sandbox-selftest:")` could never match
+ * a real shell and the whole source-attribution fix was dead code, while the
+ * tests stayed green because their fixtures wrote the prefix the argv did not
+ * send. Three of four marker `TMPDIR`s still produced a false setup-failure on
+ * a healthy host.
+ *
+ * (It got there as a leftover mutation: a mutation-testing batch timed out
+ * before its restore ran, and the mutant was committed. The lesson is the test
+ * below, not the anecdote — nothing asserted the wiring.)
+ */
+describe("sandbox-selftest — the shell's $0 must actually be sent", () => {
+  it("passes SANDBOX_SHELL_ARGV0 as $0, so the shell's own errors are attributable", async () => {
+    let argv: readonly string[] = [];
+    await createSandboxSelftestCheck({
+      markerPath: "/owned/marker",
+      probe: async (_command, args) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        argv = args;
+        return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+      },
+    }).run();
+
+    // `$0` is the element before the path, and it must be the constant the
+    // classifier reads -- not a literal that can drift from it.
+    expect(argv[argv.length - 2]).toBe(SANDBOX_SHELL_ARGV0);
+    expect(argv[argv.length - 1]).toBe("/owned/marker");
+  });
+
+  it("really does make a shell prefix its diagnostics with it", async () => {
+    // Executed, not asserted from documentation: run the real argv's shell
+    // portion and read what the shell actually prints.
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+
+    let argv: readonly string[] = [];
+    await createSandboxSelftestCheck({
+      markerPath: "/proc/definitely-not-writable/marker",
+      probe: async (_command, args) => {
+        if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+        argv = args;
+        return { stdout: "WROTE:2\n", stderr: "", exitCode: 2 };
+      },
+    }).run();
+
+    const shellArgs = argv.slice(argv.indexOf("-c"));
+    const { stderr } = await promisify(execFile)("sh", shellArgs).catch(
+      (err: { stderr?: string }) => ({ stderr: err.stderr ?? "" }),
+    );
+
+    expect(stderr.trim()).toMatch(new RegExp(`^${SANDBOX_SHELL_ARGV0}:`));
   });
 });

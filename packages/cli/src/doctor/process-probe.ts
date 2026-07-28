@@ -80,6 +80,16 @@ export type ProcessProbeFn = (
  * that somehow escapes the group must not be able to hold the event loop open,
  * which is the failure this exists to prevent.
  */
+/** Signal 0 tests for existence without delivering anything. */
+function groupStillExists(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function killProcessTree(child: ChildProcess): void {
   // Round 24 REVERTED round 23's reaped gate, and the reasoning it rested on.
   //
@@ -101,7 +111,7 @@ function killProcessTree(child: ChildProcess): void {
   // traded for needs one fork. `close` not having fired is exactly the state in
   // which survivors may still hold the pipes, and that is when this runs.
   try {
-    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
+    if (child.pid !== undefined && groupStillExists(child.pid)) process.kill(-child.pid, "SIGKILL");
     else child.kill("SIGKILL");
   } catch {
     try {
@@ -157,8 +167,18 @@ function installSignalHandlersOnce(): void {
       // the lease held and the socket open the moment the daemon ran a bounded
       // probe. Only OUR listener is removed, and the signal is re-raised only
       // when nobody else is handling it — otherwise theirs decides how to exit.
-      process.off(signal, handler);
-      if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
+      // Round 25: `process.off` ran UNCONDITIONALLY, and `signalHandlersInstalled`
+      // is a sticky module flag, so a process that SURVIVES the signal — which
+      // the guard below exists to allow — lost the sweep permanently. Measured
+      // with a daemon whose SIGHUP handler reloads rather than exits: probe #1's
+      // child was swept, and probe #2, started after the first SIGHUP, survived
+      // the second. `boot-supervisor.ts` registers exactly that shape.
+      //
+      // So the handler is removed ONLY on the path that ends the process.
+      if (process.listenerCount(signal) === 1) {
+        process.off(signal, handler);
+        process.kill(process.pid, signal);
+      }
     };
     process.on(signal, handler);
   }

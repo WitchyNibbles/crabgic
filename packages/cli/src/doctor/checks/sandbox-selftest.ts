@@ -101,7 +101,8 @@ const SETUP_FAILURE_MARKERS = [
  * the same literal lives in two places: changing one survived 5260 tests while
  * breaking every host.
  */
-const SHELL_ARGV0 = "eo-sandbox-selftest";
+export const SANDBOX_SHELL_ARGV0 = "eo-sandbox-selftest";
+const SHELL_ARGV0 = SANDBOX_SHELL_ARGV0;
 
 /**
  * Round 24: this matched the markers ANYWHERE in stderr, and the marker path is
@@ -122,8 +123,20 @@ const SHELL_ARGV0 = "eo-sandbox-selftest";
  * per LINE and by SOURCE: lines the shell owns (it prefixes them with `$0`) can
  * never be read as bwrap's, and bwrap's own prefix must start the line.
  */
-function isSetupFailure(stderr: string): boolean {
-  return stderr.split("\n").some((line) => {
+function isSetupFailure(stderr: string, markerPath: string): boolean {
+  // Round 25: a directory name containing a NEWLINE splits the shell's own
+  // error across lines, so the continuation line carries no `$0` prefix and was
+  // classified as bwrap's. Measured: `TMPDIR=$'/tmp/x\nbwrap: creating new
+  // namespace failed'` produced a setup-failure verdict on a healthy host, and
+  // it survived the `$0` fix because per-line attribution cannot work on a line
+  // the attacker composed.
+  //
+  // The path is known exactly, so every byte of it is ours by construction.
+  // Removing it first deletes the injected content along with it, whatever it
+  // contains — bwrap's own diagnostics never quote the marker path, because a
+  // setup failure happens before the inner command is ever exec'd.
+  const attributable = markerPath.length > 0 ? stderr.split(markerPath).join("") : stderr;
+  return attributable.split("\n").some((line) => {
     const trimmed = line.trim();
     if (trimmed.startsWith(`${SHELL_ARGV0}:`)) return false;
     const lower = trimmed.toLowerCase();
@@ -249,7 +262,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
             CONFINEMENT_SCRIPT,
             // `$0`, then `$1`. The marker path is an ARGUMENT, never text
             // spliced into the script — see `CONFINEMENT_SCRIPT`.
-            "sh",
+            SHELL_ARGV0,
             marker.path,
           ],
           // Round 21, finding 3: without a ceiling, a bwrap child that
@@ -272,7 +285,7 @@ export function createSandboxSelftestCheck(options: SandboxSelftestOptions): Doc
           };
         }
 
-        if (isSetupFailure(confinement.stderr)) {
+        if (isSetupFailure(confinement.stderr, marker.path)) {
           return {
             id: CHECK_ID,
             severity: "error",
