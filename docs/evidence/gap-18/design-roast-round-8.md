@@ -37,9 +37,13 @@ question properly rather than by accident: `"./~"` collapses to `"~"` and is ref
 `"./ ~"` names a directory beginning with a space — odd but real, and exactly what the
 compiler grants. Three assertions from rounds 6 and 7 claimed otherwise and are retired.
 
-**The missing guard is now present.** Containment is asserted directly against
-`validateOwnedPath`'s output rather than against the normalizer's internals — the comparison
-whose absence let 1791 false positives sit behind a green suite.
+**The missing guard is now present, and mutation-checked.** Containment is asserted directly
+against `validateOwnedPath`'s output rather than against the normalizer's internals — the
+comparison whose absence let 1791 false positives sit behind a green suite. Re-adding the
+segment trim fails four of its assertions, including the direct compiler-agreement one, so
+it is load-bearing rather than decorative. That check was run before round 9 reported,
+precisely because a guard written in response to a regression is the last thing that should
+be taken on trust.
 
 ## Also fixed
 
