@@ -1,7 +1,7 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { derivePolicy } from "./derive-policy.js";
 
 let dir: string;
@@ -17,6 +17,14 @@ function derive(dirs: readonly string[]) {
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "eo-derive-"));
+});
+
+// Roast round 23 found ~15,800 leaked `eo-*` directories in /tmp across the
+// repo's suites -- 8,200 from this prefix alone. `beforeEach` created one per
+// test and nothing ever removed it, the same class round 21 fixed in the
+// sandbox self-test and only there.
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
 });
 
 describe("derivePolicy — paths", () => {

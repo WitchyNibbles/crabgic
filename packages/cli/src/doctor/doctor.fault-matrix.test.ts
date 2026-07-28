@@ -13,6 +13,28 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+/**
+ * Roast round 23 counted ~15,800 leaked `eo-*` directories in /tmp across the
+ * repo's suites, 339 of them from this file: every `mkdtempSync` here was
+ * created inside an `it` and never removed. Same class round 21 fixed in the
+ * sandbox self-test, and only there.
+ */
+const trackedTempDirs: string[] = [];
+function trackTempDir(dir: string): string {
+  trackedTempDirs.push(dir);
+  return dir;
+}
+afterEach(async () => {
+  const { rm } = await import("node:fs/promises");
+  const { chmod } = await import("node:fs/promises");
+  for (const dir of trackedTempDirs.splice(0)) {
+    // Several of these tests deliberately strip permissions to provoke a
+    // fault, which would make `rm` fail; restore before removing.
+    await chmod(dir, 0o700).catch(() => undefined);
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  }
+});
 import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@crabgic/supervisor";
 import { createEngineVersionCheck } from "./checks/engine-version.js";
 import { createSandboxSelftestCheck } from "./checks/sandbox-selftest.js";
@@ -282,7 +304,7 @@ describe("realStatMode — absence versus inability to look", () => {
     const { mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
 
-    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
     expect(await realStatMode(join(dir, "definitely-not-here"))).toBeUndefined();
   });
 
@@ -292,7 +314,7 @@ describe("realStatMode — absence versus inability to look", () => {
     const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
 
-    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
     const parent = join(dir, "locked");
     mkdirSync(join(parent, "child"), { recursive: true });
     chmodSync(parent, 0o000);
@@ -310,7 +332,7 @@ describe("realStatMode — absence versus inability to look", () => {
     const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
 
-    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
     const target = join(dir, "state");
     mkdirSync(target);
     chmodSync(target, 0o700);
@@ -379,7 +401,7 @@ describe("realStatMode — errno shapes that mean the path cannot exist", () => 
     const { mkdtempSync, writeFileSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
 
-    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
     const file = join(dir, "not-a-dir");
     writeFileSync(file, "x");
 
@@ -393,7 +415,7 @@ describe("realStatMode — errno shapes that mean the path cannot exist", () => 
     const { mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
 
-    const dir = mkdtempSync(join(tmpdir(), "eo-xdg-"));
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
     expect(await realStatMode(join(dir, "n".repeat(5000)))).toBeUndefined();
   });
 });

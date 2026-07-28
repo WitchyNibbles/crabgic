@@ -1,7 +1,7 @@
-import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EnvelopePolicySchema } from "@crabgic/contracts";
 import { digestPolicy, loadEnvelopePolicy } from "./policy-store.js";
 
@@ -25,6 +25,14 @@ function write(contents: unknown, mode = 0o600): void {
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "eo-policy-"));
   path = join(dir, "envelope-policy.json");
+});
+
+// Roast round 23 found ~15,800 leaked `eo-*` directories in /tmp across the
+// repo's suites -- 8,200 from this prefix alone. `beforeEach` created one per
+// test and nothing ever removed it, the same class round 21 fixed in the
+// sandbox self-test and only there.
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
 });
 
 describe("loadEnvelopePolicy", () => {
