@@ -166,23 +166,40 @@ function deriveWorkspaceScratchPaths(
   const containers = WORKSPACE_CONTAINER_DIRS.filter((c) => present.has(c));
   if (containers.length === 0) return [];
 
-  // The cap is shared out BETWEEN containers, not consumed by whichever is
-  // read first. Roast round 5: the previous form returned from the whole
-  // function mid-container, so a repo with 45 packages and 3 apps granted
-  // every package and NOTHING for apps — silently, with no marker in the
-  // policy the owner reads. The test only ever exercised one container.
-  const perContainer = Math.max(1, Math.floor(MAX_WORKSPACE_PACKAGES / containers.length));
+  // Sorted: `readdirSync` order is filesystem-dependent, so an unsorted cap
+  // made WHICH packages got grants — and therefore the policy's digest, its
+  // authorization identity — differ between machines for the same repo.
+  const queues = containers.map((container) => ({
+    container,
+    children: [...options.listDirectories(join(options.projectDir, container))].sort(),
+  }));
+
+  // ROUND-ROBIN, not a fixed per-container quota. Round 5 split the cap
+  // evenly and round 6 measured what that cost: on a 60-package repo, adding
+  // a SINGLE `apps/` directory halved the packages that got a build-output
+  // grant, from 40 to 20 — twenty packages whose `tsc -b` output silently
+  // fell outside `allowWrite`. An even split also wasted the quota whenever
+  // one container was small (3 packages + 45 apps granted 23 of 48 while
+  // leaving 17 slots unused). Interleaving fills the budget, keeps every
+  // container represented, and degrades evenly instead of by whichever
+  // container happens to be listed first.
+  const selected: { container: string; child: string }[] = [];
+  for (let index = 0; selected.length < MAX_WORKSPACE_PACKAGES; index += 1) {
+    let anyLeft = false;
+    for (const queue of queues) {
+      const child = queue.children[index];
+      if (child === undefined) continue;
+      anyLeft = true;
+      if (selected.length >= MAX_WORKSPACE_PACKAGES) break;
+      selected.push({ container: queue.container, child });
+    }
+    if (!anyLeft) break;
+  }
 
   const paths = new Set<string>();
-  for (const container of containers) {
-    // Sorted: `readdirSync` order is filesystem-dependent, so an unsorted cap
-    // made WHICH packages got grants — and therefore the policy's digest, its
-    // authorization identity — differ between machines for the same repo.
-    const children = [...options.listDirectories(join(options.projectDir, container))].sort();
-    for (const child of children.slice(0, perContainer)) {
-      for (const output of WORKSPACE_SCRATCH_OUTPUTS) {
-        paths.add(`${container}/${child}/${output}`);
-      }
+  for (const { container, child } of selected) {
+    for (const output of WORKSPACE_SCRATCH_OUTPUTS) {
+      paths.add(`${container}/${child}/${output}`);
     }
   }
   return [...paths];

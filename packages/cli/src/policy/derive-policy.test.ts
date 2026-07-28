@@ -261,3 +261,59 @@ describe("derivePolicy — round 5", () => {
     expect(pick(forward)).toEqual(pick(backward));
   });
 });
+
+/**
+ * Roast round 6. The round-5 even split was measured and found to drop
+ * packages that previously had grants: on a 60-package repo, adding a single
+ * apps/ directory halved the packages that got a build-output grant, from 40
+ * to 20 -- twenty packages whose tsc output silently fell outside allowWrite.
+ * The old test passed at 20/45 and would have passed at 1/45.
+ */
+describe("derivePolicy — the cap fills its budget", () => {
+  function grantsFor(counts: Record<string, number>) {
+    const children = Object.fromEntries(
+      Object.entries(counts).map(([k, n]) => [k, Array.from({ length: n }, (_, i) => `${k}${i}`)]),
+    );
+    const policy = derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) => {
+        if (path === dir) return Object.keys(counts);
+        for (const [container, kids] of Object.entries(children)) {
+          if (path.endsWith(container)) return kids;
+        }
+        return [];
+      },
+    }).policy;
+    return new Set(
+      policy.allowedWriteScratchPaths
+        .filter((p) => p.endsWith("/dist") && p.includes("/"))
+        .filter((p) => Object.keys(counts).some((c) => p.startsWith(`${c}/`))),
+    );
+  }
+
+  it("does not shrink one container's grants because another exists", () => {
+    const alone = grantsFor({ packages: 60 });
+    const together = grantsFor({ packages: 60, apps: 1 });
+
+    const packagesAlone = [...alone].filter((p) => p.startsWith("packages/")).length;
+    const packagesTogether = [...together].filter((p) => p.startsWith("packages/")).length;
+
+    // An even split gave 20 here against 40 alone.
+    expect(packagesTogether).toBeGreaterThanOrEqual(packagesAlone - 1);
+  });
+
+  it("fills the budget instead of wasting a small container's quota", () => {
+    // 3 apps + 45 packages: an even split granted 23 of 48 and left 17 unused.
+    expect(grantsFor({ packages: 45, apps: 3 }).size).toBe(40);
+  });
+
+  it("never exceeds the cap", () => {
+    expect(grantsFor({ packages: 500, apps: 500 }).size).toBe(40);
+  });
+
+  it("keeps every container represented", () => {
+    const grants = grantsFor({ packages: 100, apps: 2 });
+    expect([...grants].some((p) => p.startsWith("apps/"))).toBe(true);
+  });
+});

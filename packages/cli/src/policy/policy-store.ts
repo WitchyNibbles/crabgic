@@ -50,6 +50,18 @@ export type LoadPolicyResult =
 function validateOpenPolicyFile(fd: number, path: string): LoadPolicyResult | undefined {
   const stats = fstatSync(fd);
 
+  // Checked BEFORE the mode, or a directory is refused for the wrong reason.
+  // Roast round 6: `mkdir` under a default umask gives 0755, so the mode test
+  // fired first and reported "accessible to other accounts (mode 655)" — a
+  // mode the directory does not even have — leaving the specific message
+  // reachable only for a 0700 directory nobody creates by accident.
+  if (stats.isDirectory()) {
+    return {
+      status: "invalid",
+      reason: `${path} is a directory, not a policy file; remove it and re-run \`crabgic install\``,
+    };
+  }
+
   // Ownership, not just mode. A 0600 file owned by someone else is a policy
   // this account cannot edit and did not write — the opposite of a standing
   // approval given by the owner.
@@ -216,10 +228,16 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
     // here with `EACCES`, and reporting that as "no policy exists, run
     // `crabgic install`" both misdiagnoses it and invites `install` to
     // overwrite a file the owner deliberately locked.
-    if (code === "ENOENT") return { status: "absent" };
+    if (code === "ENOENT" || code === "ENOTDIR") return { status: "absent" };
+    // Deliberately does NOT assert the file exists. Roast round 6: an
+    // unreadable PARENT directory raises `EACCES` here whether or not a
+    // policy is present, and the previous wording said "exists but could not
+    // be opened" — misdiagnosing in the opposite direction from the bug it
+    // was written to fix. Both cases need an owner to look, which is what the
+    // message now asks for.
     return {
       status: "invalid",
-      reason: `policy file ${path} exists but could not be opened (${code ?? "unknown error"})`,
+      reason: `policy file ${path} could not be opened (${code ?? "unknown error"}); check the file and the directory holding it`,
     };
   }
 

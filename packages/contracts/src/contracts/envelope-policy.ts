@@ -177,7 +177,16 @@ export function isUsablePathPrefix(prefix: string): boolean {
   if (trimmed.startsWith("/")) return false;
   if (/[*?[\]{}\\]/.test(trimmed)) return false;
 
-  const segments = trimmed.split("/").filter((s) => s !== "" && s !== ".");
+  // Segments are TRIMMED before anything is decided about them. Roast round 6
+  // brute-forced 17,476 prefixes against the containment normalizer and found
+  // 113 mismatches, every one requiring a whitespace-leading first segment:
+  // `"./ ~"` slipped the tilde check here while `normalizePath` re-ran
+  // `validateOwnedPath` on the collapsed result, which trims again and
+  // rejects. One space defeated the exact case the previous fix named.
+  const segments = trimmed
+    .split("/")
+    .map((s) => s.trim())
+    .filter((s) => s !== "" && s !== ".");
   // Home-anchoring is checked on the FIRST SURVIVING SEGMENT, not the raw
   // string. Roast round 5: the leading-`~` test ran before the split, so
   // `"./~"` slipped past it and reported usable while the containment

@@ -35,16 +35,29 @@ function isDirectoryEntry(parent: string, entry: Dirent): boolean {
     const full = join(parent, entry.name);
     if (!statSync(full).isDirectory()) return false;
 
-    // Only a link that stays INSIDE the repository. Roast round 5: following
-    // links unconditionally meant a tracked `packages/etc -> /etc` — git
-    // tracks symlinks, so `git worktree add` reproduces it — derived
-    // `packages/etc/dist` as a sandbox WRITE grant. Whether that escapes the
-    // worktree depends on the engine's symlink resolution, which is recorded
-    // as unprobed in two places; this would have turned a dormant unknown
-    // into a live one driven by repo-controlled content. Under `packages/`
-    // and `apps/` there is no name allowlist to bound it either.
+    // Excluded: links into `node_modules` or `.git`. Neither is ever a source
+    // directory, and `node_modules` in particular is where this system's own
+    // provisioner puts symlinks back to the owner's checkout — so a tracked
+    // `docs -> node_modules` would derive a write grant that reaches the
+    // source tree two hops later (roast round 6).
+    //
+    // NOT excluded: a link whose target is outside the repository. Round 5
+    // added that restriction and round 6 showed it cancelled the round-4 fix
+    // it was written under: a repo whose source directories are external
+    // links — ordinary with bind mounts and shared monorepos — derived NO
+    // prefixes at all, was reported vacuous, and got no policy written.
+    // Containment is the sandbox's job, at the syscall layer, and the owner
+    // reviews the rendered policy before confirming it; under-granting here
+    // silently breaks real repositories to defend a boundary that is enforced
+    // elsewhere anyway.
+    const real = realpathSync(full);
     const root = realpathSync(parent);
-    return realpathSync(full).startsWith(`${root}/`);
+    for (const excluded of ["node_modules", ".git"]) {
+      if (real === join(root, excluded) || real.startsWith(`${join(root, excluded)}/`)) {
+        return false;
+      }
+    }
+    return true;
   } catch {
     return false;
   }

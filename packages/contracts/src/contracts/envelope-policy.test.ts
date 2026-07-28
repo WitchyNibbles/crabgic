@@ -153,3 +153,24 @@ describe("isUsablePathPrefix — home anchoring after collapse", () => {
     expect(isUsablePathPrefix("src/a~b")).toBe(true);
   });
 });
+
+/**
+ * Roast round 6 brute-forced 17,476 prefixes against the containment
+ * normalizer and found 113 mismatches, every one requiring a
+ * whitespace-leading first segment -- one space defeated the tilde check the
+ * previous round had just added.
+ */
+describe("isUsablePathPrefix — whitespace inside segments", () => {
+  it.each(["./ ~", "./ ~/.ssh", ". / ~"])("rejects %j", async (prefix) => {
+    const { isUsablePathPrefix } = await import("./envelope-policy.js");
+    expect(isUsablePathPrefix(prefix)).toBe(false);
+  });
+
+  it.each(["./ /src", "src/ /login"])(
+    "accepts %j, which collapses to a real path",
+    async (prefix) => {
+      const { isUsablePathPrefix } = await import("./envelope-policy.js");
+      expect(isUsablePathPrefix(prefix)).toBe(true);
+    },
+  );
+});

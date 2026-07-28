@@ -307,3 +307,55 @@ describe("provisionWorktreeDependencies — non-canonical paths", () => {
     );
   });
 });
+
+/**
+ * Roast round 6 measured both previous `.bin` treatments on a fixture
+ * mirroring this repo and found each broken in a different direction:
+ * resolving targets (round 4) dangled in an unbuilt checkout, and sharing the
+ * directory wholesale (round 5) made every binary resolve to the OWNER's file
+ * while `node_modules/<pkg>` beside it correctly resolved to the worktree --
+ * two answers for one package inside one worktree.
+ */
+describe("provisionWorktreeDependencies — .bin", () => {
+  it("keeps a workspace binary agreeing with the package link beside it", async () => {
+    await mkdir(join(sourceDir, "packages", "cli"), { recursive: true });
+    await mkdir(join(sourceDir, "node_modules", ".bin"), { recursive: true });
+    await symlink(join(sourceDir, "packages", "cli"), join(sourceDir, "node_modules", "acme-cli"));
+    // The relative form npm actually writes.
+    await symlink("../acme-cli/dist/bin.js", join(sourceDir, "node_modules", ".bin", "acme"));
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    // Copied verbatim, so it resolves through the worktree's own package link.
+    expect(await readlink(join(worktreePath, "node_modules", ".bin", "acme"))).toBe(
+      "../acme-cli/dist/bin.js",
+    );
+    expect(await readlink(join(worktreePath, "node_modules", "acme-cli"))).toBe(
+      join(worktreePath, "packages", "cli"),
+    );
+  });
+
+  /** Build state must not change the answer in either direction. */
+  it("produces the same links whether or not the source has been built", async () => {
+    await mkdir(join(sourceDir, "packages", "cli", "dist"), { recursive: true });
+    await writeFile(join(sourceDir, "packages", "cli", "dist", "bin.js"), "built");
+    await mkdir(join(sourceDir, "node_modules", ".bin"), { recursive: true });
+    await symlink(join(sourceDir, "packages", "cli"), join(sourceDir, "node_modules", "acme-cli"));
+    await symlink("../acme-cli/dist/bin.js", join(sourceDir, "node_modules", ".bin", "acme"));
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(await readlink(join(worktreePath, "node_modules", ".bin", "acme"))).toBe(
+      "../acme-cli/dist/bin.js",
+    );
+  });
+
+  it("keeps .bin a real directory, not a shared link", async () => {
+    await mkdir(join(sourceDir, "node_modules", ".bin"), { recursive: true });
+    await symlink("../vitest/vitest.mjs", join(sourceDir, "node_modules", ".bin", "vitest"));
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(lstatSync(join(worktreePath, "node_modules", ".bin")).isSymbolicLink()).toBe(false);
+  });
+});

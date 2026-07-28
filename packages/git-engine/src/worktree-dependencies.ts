@@ -1,4 +1,4 @@
-import { mkdir, readdir, realpath, stat, symlink } from "node:fs/promises";
+import { mkdir, readdir, readlink, realpath, stat, symlink } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 /**
@@ -171,17 +171,24 @@ async function linkEntry(
     // the wholesale-share branch — carrying every self-link inside it back to
     // the source, which is the case the recursion exists to prevent.
     //
-    // `.bin` is deliberately NOT recursed, and that is a reversal. Round 4
-    // added it on the reasoning that its relative links resolve into the
-    // source's `node_modules`; round 5 showed recursing it is worse. A
-    // workspace `.bin` entry points at `../<pkg>/dist/<bin>.js`, which does
-    // not exist in an installed-but-unbuilt checkout — so `realpath` throws,
-    // the dangling branch shares it back to source, and the moment the owner
-    // builds THEIR checkout the worktree's binary silently resolves to the
-    // owner's file. That is this module's own headline failure, reintroduced
-    // order-dependently. Sharing `.bin` wholesale keeps every binary pointing
-    // at the source consistently, which is wrong in a knowable way rather
-    // than wrong depending on when someone last ran a build.
+    // `.bin` is recursed and its entries are copied LEXICALLY — see
+    // `linkBinEntry`. Round 4 recursed it and resolved targets, which broke
+    // in an unbuilt checkout; round 5 shared it wholesale, which round 6
+    // measured as strictly worse (a built source made every worktree binary
+    // resolve to the OWNER's file while `node_modules/<pkg>` correctly
+    // resolved to the worktree — two answers for one package). Copying the
+    // relative target verbatim is build-state independent in both directions
+    // and agrees with the package links beside it.
+    if (entry === ".bin" && (await isDirectoryAfterLinks(sourcePath))) {
+      await mkdir(targetPath, { recursive: true });
+      const bins = await readdir(sourcePath);
+      let anyBin = false;
+      for (const bin of bins) {
+        if (await linkBinEntry(join(sourcePath, bin), join(targetPath, bin))) anyBin = true;
+      }
+      return anyBin;
+    }
+
     if (entry.startsWith("@") && (await isDirectoryAfterLinks(sourcePath))) {
       await mkdir(targetPath, { recursive: true });
       const scoped = await readdir(sourcePath);
@@ -202,6 +209,30 @@ async function linkEntry(
     // REPORTED though — see `skipped` — because a silent skip made total
     // failure indistinguishable from "the source had no node_modules"
     // (roast round 3, F10).
+    return false;
+  }
+}
+
+/**
+ * Copies one `node_modules/.bin` entry, preserving a RELATIVE target verbatim.
+ *
+ * A `.bin` entry points at `../<pkg>/<file>`, which resolves through the
+ * sibling package link — and this module has already pointed that link at the
+ * right place. So copying the target unresolved makes the binary agree with
+ * the package beside it: a workspace binary reaches the worktree's copy, an
+ * external one reaches the shared package, and neither answer depends on
+ * whether anyone has run a build yet. Resolving instead (round 4) broke on an
+ * unbuilt checkout; sharing the whole directory (round 5) made every binary
+ * point at the owner's tree even when the package link did not.
+ */
+async function linkBinEntry(sourcePath: string, targetPath: string): Promise<boolean> {
+  try {
+    const raw = await readlink(sourcePath);
+    // Absolute targets are copied as-is; they name a location, not a
+    // relationship, so there is nothing to re-anchor.
+    await symlink(raw, targetPath);
+    return true;
+  } catch {
     return false;
   }
 }
