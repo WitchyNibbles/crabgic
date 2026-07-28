@@ -355,3 +355,46 @@ describe("derivePolicy — never emits what its own doctor rejects", () => {
     expect(policy.allowedPathPrefixes.filter((e) => !isUsablePathPrefix(e))).toEqual([]);
   });
 });
+
+/**
+ * Two properties of the skip that are easy to get wrong and invisible in the
+ * output: it must validate everything it emits, and it must not spend a
+ * capped slot on a name it then discards.
+ */
+describe("derivePolicy — the unusable-name skip", () => {
+  function deriveWith(children: readonly string[]) {
+    return derivePolicy({
+      ...BASE,
+      projectDir: dir,
+      listDirectories: (path) => (path === dir ? ["packages"] : [...children]),
+    }).policy.allowedWriteScratchPaths.filter((p) => p.startsWith("packages/"));
+  }
+
+  it("emits nothing at all for a name it cannot grant", () => {
+    const grants = deriveWith(["old[1]", "fine"]);
+    expect(grants.some((p) => p.includes("old[1]"))).toBe(false);
+    expect(grants).toContain("packages/fine/dist");
+    expect(grants).toContain("packages/fine/coverage");
+  });
+
+  /**
+   * A skipped name must not consume a slot, or a repo with unusable names
+   * would silently lose grants for perfectly good packages further down the
+   * list.
+   */
+  it("does not spend a capped slot on a skipped name", () => {
+    const usable = Array.from({ length: 40 }, (_, i) => `pkg${String(i).padStart(2, "0")}`);
+    const withJunk = deriveWith(["a[1]", "b{2}", "c*3", ...usable]);
+
+    // All 40 usable packages still get their grants despite three junk names
+    // sorting ahead of some of them.
+    expect(withJunk.filter((p) => p.endsWith("/dist"))).toHaveLength(40);
+  });
+
+  it("validates every output it emits, not just the first", () => {
+    // Both outputs share the same prefix, so a name that fails for one fails
+    // for both -- asserted so the equivalence is pinned rather than assumed.
+    const grants = deriveWith(["q?mark"]);
+    expect(grants).toEqual([]);
+  });
+});

@@ -198,7 +198,16 @@ function deriveWorkspaceScratchPaths(
       // vacuity) and `doctor` then rejected — with a repair step saying "use
       // literal directory names", which the owner cannot follow because the
       // directory IS literally named that.
-      if (!isUsablePathPrefix(`${queue.container}/${child}/dist`)) continue;
+      // Checks EVERY output that will actually be emitted, not just `dist`.
+      // Both are clean today so this is equivalent — but validating one path
+      // and emitting several is precisely the shape that let round 10's
+      // `old[1]` through, and it would silently stop covering the emitted set
+      // the moment `WORKSPACE_SCRATCH_OUTPUTS` gained an entry with a
+      // metacharacter in it.
+      const emitted = WORKSPACE_SCRATCH_OUTPUTS.map(
+        (output) => `${queue.container}/${child}/${output}`,
+      );
+      if (!emitted.every(isUsablePathPrefix)) continue;
       if (selected.length >= MAX_WORKSPACE_PACKAGES) break;
       selected.push({ container: queue.container, child });
     }
