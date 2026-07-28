@@ -169,3 +169,55 @@ describe("policy.standing — scratch paths that cannot grant", () => {
     expect(finding.passed).toBe(true);
   });
 });
+
+/**
+ * THE HEADLINE OF ROUND 9, UNTESTED UNTIL ROUND 10 SAID SO.
+ *
+ * `transient` exists for exactly one consumer decision: this repairStep
+ * branch. It shipped with no test -- two independent mutants (force the
+ * ternary false; delete it and restore the old static string) both SURVIVED a
+ * green suite, and the file sat at 81.3% branch coverage, above the repo's
+ * >=80% gate, which is how it got through.
+ *
+ * The commit that added it had just criticised another branch for shipping
+ * untested, in those words. So this pins the distinction both ways: reverting
+ * the ternary as a "dead conditional" must fail here.
+ */
+describe("policy.standing — a transient failure must not invite a rewrite", () => {
+  it("tells the owner to retry, and explicitly NOT to re-run install", async () => {
+    const finding = await run(() => ({
+      status: "invalid" as const,
+      transient: true as const,
+      reason: "could not open /p because this process is out of resources (EMFILE)",
+    }));
+
+    expect(finding.passed).toBe(false);
+    expect(finding.repairStep).toMatch(/retry/i);
+    // Following "re-run install" renames a machine-derived policy over a
+    // hand-tuned one because a descriptor table filled up.
+    expect(finding.repairStep).toMatch(/do NOT re-run/i);
+  });
+
+  it("still points a genuinely broken policy at the file", async () => {
+    const finding = await run(() => ({
+      status: "invalid" as const,
+      reason: "policy file /p is not valid JSON",
+    }));
+
+    expect(finding.passed).toBe(false);
+    expect(finding.repairStep).toMatch(/edit .* by hand|crabgic install/i);
+    expect(finding.repairStep).not.toMatch(/retry/i);
+  });
+
+  it("keeps the evidence and the remedy consistent", async () => {
+    const transient = await run(() => ({
+      status: "invalid" as const,
+      transient: true as const,
+      reason: "out of resources (EMFILE); the policy itself is probably fine",
+    }));
+
+    // Evidence says the file is fine; the remedy must not say to rewrite it.
+    expect(transient.evidence).toMatch(/probably fine/);
+    expect(transient.repairStep).not.toMatch(/edit .* by hand/i);
+  });
+});

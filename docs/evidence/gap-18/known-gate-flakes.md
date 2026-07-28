@@ -1,6 +1,6 @@
 # Known host-load timing flakes (2026-07-28)
 
-Four tests in the default gate fail intermittently under parallel load and pass in
+Five tests in the default gate fail intermittently under parallel load and pass in
 isolation on re-run. All four are **pre-existing** — none was introduced by the
 standing-approval work — and all four are timing-sensitive rather than logically wrong.
 Catalogued here because an uncatalogued flake is indistinguishable from a regression, and

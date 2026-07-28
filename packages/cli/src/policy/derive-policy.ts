@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   EnvelopePolicySchema,
   GRANTABLE_COMMAND_PREFIXES,
+  isUsablePathPrefix,
   isVacuousPolicy,
   type EnvelopePolicy,
   type GrantableCommandPrefix,
@@ -190,6 +191,14 @@ function deriveWorkspaceScratchPaths(
       const child = queue.children[index];
       if (child === undefined) continue;
       anyLeft = true;
+      // A directory name that cannot appear in a grant is skipped rather than
+      // interpolated. `[ ] { } * ? \` are all legal on Linux, and round 10
+      // measured the consequence: a package named `old[1]` produced
+      // `packages/old[1]/dist`, which `install` wrote (its only refusal is
+      // vacuity) and `doctor` then rejected — with a repair step saying "use
+      // literal directory names", which the owner cannot follow because the
+      // directory IS literally named that.
+      if (!isUsablePathPrefix(`${queue.container}/${child}/dist`)) continue;
       if (selected.length >= MAX_WORKSPACE_PACKAGES) break;
       selected.push({ container: queue.container, child });
     }

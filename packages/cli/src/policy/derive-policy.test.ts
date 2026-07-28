@@ -333,6 +333,13 @@ describe("derivePolicy — never emits what its own doctor rejects", () => {
     monorepo: { top: ["packages", "apps", "docs"], kids: ["cli", "contracts", "web"] },
     empty: { top: [], kids: [] },
     "unusual package names": { top: ["packages"], kids: ["a b", ".hidden", "x"] },
+    // Round 10: these are all LEGAL Linux directory names, and all three
+    // previously produced grants the doctor then rejected with a repair step
+    // the owner could not follow.
+    "package names that cannot appear in a grant": {
+      top: ["packages"],
+      kids: ["old[1]", "a{b}", "star*", "q?", "back\\slash", "fine"],
+    },
   };
 
   it.each(Object.keys(SHAPES))("every derived path is usable for the %s shape", async (name) => {

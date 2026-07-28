@@ -1,3 +1,4 @@
+import { normalizePathPrefix } from "@crabgic/contracts";
 import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { SandboxProfileSchema, type SandboxProfile } from "./compiled-worker-profile.js";
 import { validateNetworkDestination } from "./network-destination.js";
@@ -142,12 +143,25 @@ function narrowedAllowWrite(
 ): readonly string[] {
   const anchored = new Set<string>();
   for (const raw of [...envelope.ownedPaths, ...policy.allowedWriteScratchPaths]) {
-    let relative: string;
+    // `normalizePathPrefix`, not `validateOwnedPath` alone. Round 10: a
+    // scratch entry of `"."` passed `validateOwnedPath` and was emitted as
+    // `<worktree>/.` — the WHOLE worktree, i.e. the unnarrowed pre-Gap-18
+    // grant — while the only check that reports on it said it granted
+    // nothing. Understating a grant is the direction `is-contained.ts`'s own
+    // header calls unacceptable, and it silently undid the narrowing this
+    // function exists to perform.
+    //
+    // The shared normalizer is what the doctor's usability check already
+    // uses, so compiler and check now agree about every scratch entry — the
+    // same "measure the gate against the compiler" rule round 8 established
+    // for owned paths.
     try {
-      relative = validateOwnedPath(raw);
+      validateOwnedPath(raw);
     } catch {
       continue;
     }
+    const relative = normalizePathPrefix(raw);
+    if (relative === undefined) continue;
     anchored.add(`${WORKTREE_WRITE_PLACEHOLDER}/${relative}`);
   }
   return [...anchored, WORKER_TMP_WRITE_PLACEHOLDER];

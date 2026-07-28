@@ -334,3 +334,52 @@ describe("emitSandboxProfile — narrowed by an EnvelopePolicy", () => {
     expect(narrowed.filesystem.denyRead).toEqual(wide.filesystem.denyRead);
   });
 });
+
+/**
+ * Roast round 10, F3. A scratch entry of `"."` passed `validateOwnedPath` and
+ * was emitted as `<worktree>/.` -- the WHOLE worktree, the unnarrowed
+ * pre-Gap-18 grant -- while the doctor's usability check reported it as
+ * granting nothing. Understating a grant is the unacceptable direction, and
+ * it silently undid the narrowing this function exists to perform.
+ *
+ * 737 of 200,000 corpus entries disagreed, every one this way.
+ */
+describe("emitSandboxProfile — scratch entries that collapse to the worktree root", () => {
+  function policyWith(scratch: readonly string[]): EnvelopePolicy {
+    return EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "11111111-1111-4111-8111-111111111111",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["src"],
+      allowedWriteScratchPaths: scratch,
+    });
+  }
+
+  // `"./ ."` is deliberately ABSENT: it names a directory called `" "`, which
+  // is real and which round 8 established must not be trimmed away. Only
+  // entries that collapse to NO segments are the worktree root.
+  it.each([".", "./", ".//", "././"])(
+    "drops %j instead of granting the whole worktree",
+    (scratch) => {
+      const profile = emitSandboxProfile(
+        buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+        policyWith([scratch]),
+      );
+
+      expect(profile.filesystem.allowWrite).toEqual([
+        `${WORKTREE_WRITE_PLACEHOLDER}/src/login`,
+        WORKER_TMP_WRITE_PLACEHOLDER,
+      ]);
+    },
+  );
+
+  it("still grants a real scratch directory beside it", () => {
+    const profile = emitSandboxProfile(
+      buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+      policyWith([".", "dist"]),
+    );
+
+    expect(profile.filesystem.allowWrite).toContain(`${WORKTREE_WRITE_PLACEHOLDER}/dist`);
+    expect(profile.filesystem.allowWrite).not.toContain(`${WORKTREE_WRITE_PLACEHOLDER}/.`);
+  });
+});
