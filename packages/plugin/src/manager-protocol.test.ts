@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
 import {
+  CONTRACT_SECTIONS,
+  ROAST_ARTIFACTS,
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
   QUESTION_TOOL_NAME,
@@ -117,8 +119,22 @@ describe("buildManagerProtocolBlock", () => {
     // suite below): the block now carries three mandated behaviors — autonomy,
     // structured questions, and report formatting — not two. The cap exists to
     // force new rationale into the on-demand skill, and it still does.
+    //
+    // Raised 55 -> 70 (2026-07-28) when the clarify loop and the roast loops
+    // landed, taking it to five mandated behaviors. Raising a cap to pass a
+    // test is a thing to be suspicious of, so the reasoning is recorded rather
+    // than assumed: both additions are the PRODUCT — a session that does not
+    // research before asking, or does not roast its own work, is not doing the
+    // thing the owner asked for — and neither can be deferred to an on-demand
+    // skill, because a session only loads that skill if it already knows to.
+    // Everything explanatory about them (why novelty and falsifiability are
+    // the termination rule, why a roast is not a repair attempt) stays in
+    // skills/protocol/SKILL.md; what is here is only the instruction itself.
+    //
+    // The cost is real and worth stating: ~70 lines is roughly 800 tokens on
+    // every manager turn.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(55);
+    expect(lines.length).toBeLessThanOrEqual(70);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -189,5 +205,74 @@ describe("buildManagerProtocolBlock — reporting format", () => {
     // markdown-rendering TUI, so its only weight controls are bold and code.
     expect(block).toMatch(/\*\*bold\*\*|bold/i);
     expect(block).toContain("`code`");
+  });
+});
+
+/**
+ * The two loops the owner's 2026-07-28 direction adds (ledger Gaps 18/19).
+ * They are model behaviour, so they live in the protocol text — and like
+ * everything else in it, they are written here exactly once and rendered
+ * into the managed block and the long-form skill.
+ */
+describe("buildManagerProtocolBlock — the clarify loop", () => {
+  const block = buildManagerProtocolBlock();
+
+  it("tells the session to research BEFORE asking, not instead of asking", () => {
+    expect(block).toMatch(/research/i);
+    expect(block.toLowerCase()).toContain("before");
+  });
+
+  /**
+   * The loop needs a checkable exit condition or it either runs forever or
+   * stops early on a hunch. The IntentContract's own nine sections already
+   * ARE that checklist, which is why the protocol names them rather than
+   * inventing a heuristic.
+   */
+  it("terminates on the IntentContract's nine sections, not on a feeling", () => {
+    for (const section of CONTRACT_SECTIONS) {
+      expect(block).toContain(section);
+    }
+  });
+
+  it("requires acceptance criteria to be testable before the loop may close", () => {
+    expect(block).toMatch(/acceptance criteria/i);
+    expect(block).toMatch(/testable/i);
+  });
+});
+
+describe("buildManagerProtocolBlock — the roast loops", () => {
+  const block = buildManagerProtocolBlock();
+
+  it("names all three artifacts a roast round covers", () => {
+    for (const artifact of ROAST_ARTIFACTS) {
+      expect(block.toLowerCase()).toContain(artifact.toLowerCase());
+    }
+  });
+
+  /**
+   * Gap 19's termination rule, and the whole reason the loop converges: an
+   * adversary told to keep going will manufacture findings, so a round only
+   * counts if it produced something NEW and something FALSIFIABLE.
+   */
+  it("states the novel-and-falsifiable termination rule", () => {
+    expect(block).toMatch(/novel/i);
+    expect(block).toMatch(/falsifiable|failure scenario/i);
+  });
+
+  it("says there is no severity floor, so a minor real finding still counts", () => {
+    expect(block).toMatch(/severity floor/i);
+  });
+
+  it("requires a fresh reviewer per round", () => {
+    expect(block).toMatch(/fresh/i);
+  });
+
+  /**
+   * The distinction Gap 19 exists to draw. A session that reads its own third
+   * roast round as `exhausted_repairs` will halt work that was never failing.
+   */
+  it("separates a roast round from a repair attempt explicitly", () => {
+    expect(block).toMatch(/exhausted_repairs|repair attempt/i);
+    expect(block).toMatch(/read-only|reads only/i);
   });
 });

@@ -131,6 +131,37 @@ export const MANAGER_STOP_CONDITIONS: readonly ManagerStopCondition[] = [
   },
 ];
 
+/**
+ * The `IntentContract`'s nine sections (roadmap/11 §In scope, "Contract
+ * assembly"), which double as the clarify loop's exit condition.
+ *
+ * The loop needs a CHECKABLE termination rule or it either interrogates
+ * forever or stops early on a hunch. These sections already are that
+ * checklist — the contract cannot be built until every one of them is
+ * answerable — so the protocol names them rather than inventing a heuristic
+ * that would drift from what intake actually requires.
+ */
+export const CONTRACT_SECTIONS = [
+  "scope",
+  "non-goals",
+  "audience",
+  "compatibility",
+  "security",
+  "performance",
+  "observability",
+  "rollout",
+  "acceptance",
+] as const;
+
+/**
+ * The three artifacts an adversarial roast round covers (ledger Gap 19).
+ *
+ * Deliberately these three and not "the work": each is reviewable on its own
+ * terms and at its own moment, and a roast of the test suite in particular is
+ * not a gate verdict and never substitutes for one.
+ */
+export const ROAST_ARTIFACTS = ["the design", "the tests", "the implementation"] as const;
+
 export interface ManagerApprovalGate {
   /** The exact command a human types. */
   readonly trigger: string;
@@ -207,6 +238,22 @@ your own initiative. Progress is the default; stopping is what needs a reason.
 then wait to be told to run it. Do the work, then report what you did — not
 what you are about to do. Being autonomous is the product; a check-in that
 carries no decision is a defect.
+
+**Research before you ask, and keep looping.** Read the code and the prior
+art first; ask only what reading cannot answer; then research the answer and
+ask again. Close the loop on a checkable condition, never a feeling: every
+contract section (${CONTRACT_SECTIONS.join(", ")}) answerable,
+and every requirement carrying testable acceptance criteria. Then stop asking
+and build.
+
+**Roast your own work three times: ${ROAST_ARTIFACTS.join(", ")}.** Each
+round is adversarial and gets a fresh reviewer. A round counts only if it
+yields a finding that is **novel** and **falsifiable** — a concrete failure
+scenario, these inputs giving that wrong result. Taste does not count. **No
+severity floor.** Keep going until a round finds nothing new; verify before
+acting, since a confident reviewer is still sometimes wrong. A roast round is
+**read-only**, spends none of \`exhausted_repairs\`' three attempts, and a
+third round is therefore not a stop condition.
 
 **Stop for exactly these, and nothing else:**
 

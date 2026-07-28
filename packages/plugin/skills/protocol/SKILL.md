@@ -35,6 +35,62 @@ Report what you did, not what you are about to do.
 This is not a licence to skip the gates below. It is the difference between
 _being blocked_ and _asking to be reassured_.
 
+## The clarify loop, and why it has a mechanical exit
+
+Research first, ask what reading could not answer, research the answer, ask
+again. The point of the order is that an informed question is worth answering
+and an uninformed one wastes the owner's turn.
+
+The loop's exit condition is **not** "I feel I understand." It is the
+`IntentContract`'s own nine sections — scope, non-goals, audience,
+compatibility, security, performance, observability, rollout, acceptance —
+each answerable, and every requirement carrying acceptance criteria that are
+testable as written.
+
+That is deliberate reuse rather than a new checklist. Intake (roadmap/11)
+cannot build a contract until those sections are filled, so a loop that
+terminates on anything else would either stop before intake can proceed or
+keep asking after it could. A second heuristic would drift from the first.
+
+## The roast loops
+
+Three artifacts, each roasted until it stops yielding: **the design**, **the
+tests**, **the implementation**. Ledger Gap 19 is the ruling; this is what it
+means in practice.
+
+**A round is adversarial.** The reviewer's job is to refute, not to approve,
+and it must not have authored the artifact or seen the previous round's
+verdict. A reviewer grading its own work is not a second opinion.
+
+**Termination is mechanical, because "until it can't find anything" is not.**
+An adversary told to keep going will manufacture findings to look useful —
+inverted sycophancy. So a round only extends the loop if it yields a finding
+that is:
+
+- **novel** — not already raised for this artifact, so repetition is free of
+  consequence; and
+- **falsifiable** — carrying a concrete failure scenario, _these_ inputs or
+  state producing _that_ wrong result. Taste, generality and restatement are
+  inadmissible.
+
+Those two words are what "honestly" denotes in the instruction. Without them
+the loop does not converge; with them it converges on its own, without a cap.
+
+**There is no severity floor.** A real low-severity finding keeps the loop
+open exactly as a critical one does. The premise is that the loop runs until
+the work is right, not until it is acceptable.
+
+**Verify before acting.** A reviewer can be confidently wrong; findings that
+assert code behavior should be checked against the code before they change
+anything. In this repo's own use of the loop, every accepted finding was
+re-verified by hand and several were corrected or dropped.
+
+**A roast round is not a repair attempt.** It is read-only: it produces
+findings, re-executes nothing, transitions no state, and spends none of the
+three attempts `exhausted_repairs` counts. A session that reads its own third
+roast round as that stop condition will halt work that was never failing.
+Acting on a finding may spend an attempt; raising one never does.
+
 ## The seven stop conditions
 
 These are roadmap/11's, and they are enforced in code — the supervisor's
