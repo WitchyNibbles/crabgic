@@ -951,6 +951,16 @@ unnecessary "continue"; a false positive costs the owner a session they cannot e
 and the hooks — carries the scope amendment), `roadmap/11-intake-contract-approval.md` (owns the seven stop
 conditions and the approval flow the protocol describes).
 
+**Implementation status (2026-07-28).** Gaps 18 and 19 are implemented on
+`feat/conversation-first-orchestration`: `EnvelopePolicy` (02), `isContained` (03), the
+policy-narrowed sandbox profile (03), `createRun` and the ChangeSet-keyed `run.dispatch`
+(05/09), the dispatch gate and journaled digest (13), the install-time bootstrap and the
+`policy.standing` doctor check (10), and the clarify/roast loops in `manager-protocol.ts`
+plus the `eo-roaster` subagent (10). Verified live against the bundled binary
+(`docs/evidence/gap-18/live-verification.md`) and end to end against the fake engine
+(`packages/cli/src/intake/closed-loop.e2e.test.ts`). Roast rounds are recorded in
+`docs/evidence/gap-18/design-roast-round-{1,2}.md`.
+
 **Consumers in source today:** `packages/plugin/src/manager-protocol.ts`,
 `packages/plugin/skills/protocol/SKILL.md`, `packages/plugin/hooks/stop-autonomy-gate.mjs`,
 `packages/plugin/hooks/hooks.json`, `packages/plugin/src/hooks-manifest.ts`,
