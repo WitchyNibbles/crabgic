@@ -18,7 +18,7 @@
  * system"/"Permission denied" wording, never bwrap-prefixed) — this is the
  * signal used below to tell the two failure modes apart.
  */
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
@@ -62,8 +62,47 @@ export interface SandboxSelftestOptions {
  * the write SUCCEEDS (`WROTE:0`, caught by the branch below), and only the
  * read-only bind can refuse it. The denial becomes attributable.
  */
+/**
+ * Remove marker directories left by runs that never reached their `finally`.
+ *
+ * Round 26: cleanup lives in a `finally`, which a SIGNAL death skips entirely —
+ * and `process.on("exit")` cannot help, because death by a re-raised signal
+ * never fires `exit`. Measured: one leaked directory per interrupted `doctor`,
+ * for SIGINT, SIGTERM and SIGKILL alike, against zero for an uninterrupted run.
+ * That is round 21's leak on a path round 21 did not cover.
+ *
+ * Age-gated so a concurrent `doctor` cannot have its live marker deleted from
+ * under it, and capped so a directory with thousands of entries cannot turn a
+ * health check into a filesystem scan.
+ */
+const STALE_MARKER_AGE_MS = 60 * 60 * 1000;
+const MAX_STALE_MARKERS_SWEPT = 200;
+
+async function sweepStaleMarkerDirs(): Promise<void> {
+  const root = tmpdir();
+  let entries: string[];
+  try {
+    entries = (await readdir(root)).filter((name) => name.startsWith(MARKER_DIR_PREFIX));
+  } catch {
+    return; // nothing to sweep, and a sweep failure is never a health verdict
+  }
+  const cutoff = Date.now() - STALE_MARKER_AGE_MS;
+  for (const name of entries.slice(0, MAX_STALE_MARKERS_SWEPT)) {
+    const candidate = join(root, name);
+    try {
+      const info = await stat(candidate);
+      if (info.mtimeMs < cutoff) await rm(candidate, { recursive: true, force: true });
+    } catch {
+      // Raced with another sweep, or not ours to remove. Either is fine.
+    }
+  }
+}
+
+const MARKER_DIR_PREFIX = "eo-sandbox-selftest-";
+
 async function createOwnedMarkerPath(): Promise<{ path: string; cleanup: () => Promise<void> }> {
-  const dir = await mkdtemp(join(tmpdir(), "eo-sandbox-selftest-"));
+  await sweepStaleMarkerDirs();
+  const dir = await mkdtemp(join(tmpdir(), MARKER_DIR_PREFIX));
   const path = join(dir, "marker");
   await writeFile(path, "", { mode: 0o600 });
   // Round 21: nothing removed these, so every `doctor` invocation leaked a

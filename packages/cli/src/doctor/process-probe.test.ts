@@ -13,6 +13,7 @@ import {
   createRealProcessProbe,
   killProcessTreeForTest,
   liveDetachedChildCountForTest,
+  resetSignalHandlersForTest,
 } from "./process-probe.js";
 
 let scratchDir: string;
@@ -544,36 +545,55 @@ describe("createRealProcessProbe — the signal handler must not evict other han
 });
 
 /**
- * Roast round 25, finding 3 — the sweep was ONE-SHOT.
+ * Roast round 25 finding 3 (the one-shot sweep) and round 26 finding 1 (the
+ * `listenerCount` guard being inert), together — they are two halves of the
+ * same question: who decides that the process dies?
  *
- * `process.off(signal, handler)` ran unconditionally and
- * `signalHandlersInstalled` is a sticky module flag, so a process that SURVIVES
- * the signal — which the `listenerCount` guard exists to allow — lost the sweep
- * permanently. Measured with a daemon whose SIGHUP handler reloads rather than
- * exits: probe #1's child was swept; probe #2, started after the first SIGHUP,
- * survived the second. `boot-supervisor.ts` registers exactly that shape.
+ * Round 24 read the listener count INSIDE the handler. `boot-supervisor.ts` —
+ * the file its own comment cites — de-registers its listener as the first
+ * synchronous statement of its shutdown, so ours saw a count of 1 and killed
+ * the process inside their in-flight teardown: `rc=143,
+ * gracefulShutdownCompleted=0`, the lease held and the socket open. The answer
+ * is snapshotted at install time instead, which is why this test controls
+ * installation order explicitly.
  */
-describe("createRealProcessProbe — the sweep must survive a signal the process survives", () => {
-  it("keeps its handler installed when someone else is handling the signal", async () => {
-    const probe = createRealProcessProbe();
+describe("createRealProcessProbe — who owns termination is decided at install", () => {
+  it("only sweeps, and keeps its handler, when someone was already listening", async () => {
     const other = (): void => undefined;
+    resetSignalHandlersForTest();
     process.on("SIGHUP", other);
     try {
+      const probe = createRealProcessProbe();
       await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
-      const before = process.listenerCount("SIGHUP");
-      expect(before).toBeGreaterThanOrEqual(2);
 
-      // Someone else is listening, so the process survives -- and our handler
-      // must still be there for the NEXT signal.
+      const installed = process.listenerCount("SIGHUP");
+      expect(installed).toBeGreaterThanOrEqual(2);
+
+      // Emitting must NOT terminate this process -- if it did, the run would
+      // die here rather than fail -- and must leave both handlers in place so
+      // the sweep survives a signal the process survives (round 25).
       process.emit("SIGHUP");
-      expect(process.listenerCount("SIGHUP")).toBe(before);
+      expect(process.listenerCount("SIGHUP")).toBe(installed);
+      expect(process.listeners("SIGHUP")).toContain(other);
 
       // Twice, because a one-shot handler passes a single round.
       process.emit("SIGHUP");
-      expect(process.listenerCount("SIGHUP")).toBe(before);
+      expect(process.listenerCount("SIGHUP")).toBe(installed);
     } finally {
       process.off("SIGHUP", other);
+      resetSignalHandlersForTest();
     }
+  });
+
+  it("still owns termination when nobody else is listening — the CLI case", async () => {
+    resetSignalHandlersForTest();
+    const probe = createRealProcessProbe();
+    await probe("sh", ["-c", "exit 0"], { timeoutMs: 5_000 });
+
+    // Installed, and it is ours alone. The end-to-end test below proves this
+    // shape really does exit 128+signum rather than swallowing the signal.
+    expect(process.listenerCount("SIGINT")).toBe(1);
+    resetSignalHandlersForTest();
   });
 });
 

@@ -883,3 +883,53 @@ describe("sandbox-selftest — the shell's $0 must actually be sent", () => {
     expect(stderr.trim()).toMatch(new RegExp(`^${SANDBOX_SHELL_ARGV0}:`));
   });
 });
+
+/**
+ * Roast round 26, finding 3 — an interrupted `doctor` leaked a marker directory.
+ *
+ * Cleanup is in a `finally`, which a signal death skips, and `process.on("exit")`
+ * cannot help because death by a re-raised signal never fires it. Measured with
+ * a `bwrap` that answers `--version` then hangs, so the marker really exists:
+ * SIGINT, SIGTERM and SIGKILL each left one behind; an uninterrupted run left
+ * none. Round 21's leak, on the one path round 21 did not cover.
+ */
+describe("sandbox-selftest — stale markers from interrupted runs are swept", () => {
+  it("removes an old marker directory and leaves a fresh one alone", async () => {
+    const { mkdtemp, mkdir, rm, utimes, access } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const sandbox = await mkdtemp(join(tmpdir(), "eo-r26-sweep-"));
+    const previousTmpdir = process.env["TMPDIR"];
+    process.env["TMPDIR"] = sandbox;
+    try {
+      const stale = join(sandbox, "eo-sandbox-selftest-STALE1");
+      const fresh = join(sandbox, "eo-sandbox-selftest-FRESH1");
+      const unrelated = join(sandbox, "something-else-STALE");
+      for (const dir of [stale, fresh, unrelated]) await mkdir(dir);
+
+      // Two hours old, comfortably past the one-hour cutoff.
+      const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      await utimes(stale, old, old);
+      await utimes(unrelated, old, old);
+
+      await createSandboxSelftestCheck({
+        probe: async (_command, args) =>
+          args.includes("--version")
+            ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
+            : { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 },
+      }).run();
+
+      // The abandoned one is gone.
+      await expect(access(stale)).rejects.toThrow();
+      // A concurrent run's live marker is NOT, which is why the sweep is age-gated.
+      await expect(access(fresh)).resolves.toBeUndefined();
+      // And nothing outside our own prefix is touched.
+      await expect(access(unrelated)).resolves.toBeUndefined();
+    } finally {
+      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmpdir;
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+});

@@ -80,16 +80,6 @@ export type ProcessProbeFn = (
  * that somehow escapes the group must not be able to hold the event loop open,
  * which is the failure this exists to prevent.
  */
-/** Signal 0 tests for existence without delivering anything. */
-function groupStillExists(pid: number): boolean {
-  try {
-    process.kill(-pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function killProcessTree(child: ChildProcess): void {
   // Round 24 REVERTED round 23's reaped gate, and the reasoning it rested on.
   //
@@ -111,7 +101,7 @@ function killProcessTree(child: ChildProcess): void {
   // traded for needs one fork. `close` not having fired is exactly the state in
   // which survivors may still hold the pipes, and that is when this runs.
   try {
-    if (child.pid !== undefined && groupStillExists(child.pid)) process.kill(-child.pid, "SIGKILL");
+    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
     else child.kill("SIGKILL");
   } catch {
     try {
@@ -144,6 +134,7 @@ const liveDetachedChildren = new Set<ChildProcess>();
 // probe child. SIGKILL cannot be caught and is unavoidable.
 const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"] as const;
 let signalHandlersInstalled = false;
+const installedHandlers: ((...args: unknown[]) => void)[] = [];
 
 function killAllDetachedChildren(): void {
   for (const child of liveDetachedChildren) killProcessTree(child);
@@ -154,6 +145,20 @@ function installSignalHandlersOnce(): void {
   if (signalHandlersInstalled) return;
   signalHandlersInstalled = true;
   for (const signal of FORWARDED_SIGNALS) {
+    // Round 26: whether we own termination is decided HERE, once, and not from
+    // a listener count at handler time. `boot-supervisor.ts` — the file round
+    // 24's comment cites by name — de-registers its own listener as the FIRST
+    // synchronous statement of its shutdown, so by the time our handler ran the
+    // count was back to 1 and we killed the process inside their in-flight
+    // teardown. Measured with one bounded probe as the only difference:
+    // `rc=143, gracefulShutdownCompleted=0` — the lease held and the socket
+    // open, which is the defect round 24 believed it had fixed.
+    //
+    // A snapshot is correct for both measured shapes: in the CLI nobody else is
+    // listening, so we must re-raise or Ctrl-C would be swallowed; in the daemon
+    // someone was already listening at boot, so termination is theirs to decide
+    // and we only sweep.
+    const ownsTermination = process.listenerCount(signal) === 0;
     const handler = (): void => {
       killAllDetachedChildren();
       // Round 24: this used to call `process.removeAllListeners(signal)`, which
@@ -169,21 +174,36 @@ function installSignalHandlersOnce(): void {
       // when nobody else is handling it — otherwise theirs decides how to exit.
       // Round 25: `process.off` ran UNCONDITIONALLY, and `signalHandlersInstalled`
       // is a sticky module flag, so a process that SURVIVES the signal — which
-      // the guard below exists to allow — lost the sweep permanently. Measured
-      // with a daemon whose SIGHUP handler reloads rather than exits: probe #1's
-      // child was swept, and probe #2, started after the first SIGHUP, survived
-      // the second. `boot-supervisor.ts` registers exactly that shape.
-      //
-      // So the handler is removed ONLY on the path that ends the process.
-      if (process.listenerCount(signal) === 1) {
+      // this guard exists to allow — lost the sweep permanently. Measured with a
+      // daemon whose SIGHUP handler reloads rather than exits: probe #1's child
+      // was swept, and probe #2, started after the first SIGHUP, survived the
+      // second. So the handler is removed ONLY on the path that ends the process.
+      if (ownsTermination) {
         process.off(signal, handler);
         process.kill(process.pid, signal);
       }
     };
     process.on(signal, handler);
+    installedHandlers.push(handler as (...args: unknown[]) => void);
   }
   // A normal exit path must not strand a group either.
   process.on("exit", killAllDetachedChildren);
+}
+
+/**
+ * Exposed for tests: tear down the module-level signal registration.
+ *
+ * `ownsTermination` is snapshotted at INSTALL time, and installation happens
+ * once per process, so a test cannot otherwise exercise the "somebody else was
+ * already listening" branch — whichever test ran first fixed the answer for
+ * every later one. Round 26's own regression test needs to control that order.
+ */
+export function resetSignalHandlersForTest(): void {
+  for (const signal of FORWARDED_SIGNALS) {
+    for (const listener of installedHandlers) process.off(signal, listener);
+  }
+  installedHandlers.length = 0;
+  signalHandlersInstalled = false;
 }
 
 /** Exposed for tests: the tracked set must not grow without bound. */

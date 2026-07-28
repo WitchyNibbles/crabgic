@@ -81,11 +81,20 @@ jobs:
       # flag is only set when the sandbox demonstrably works.
       - name: require a WORKING sandbox only where one can exist
         run: |
+          # Roast round 26: the target must be a path this account CREATED and
+          # owns, or the refusal proves nothing about the sandbox. Writing to
+          # /tmp/<name> relies on /tmp being 1777 by convention; on a runner
+          # where it is not, ordinary permissions would deny the write and the
+          # guard would certify a sandbox it never tested. That is exactly the
+          # round-20 defect the product's own check was rewritten to avoid.
+          marker="$(mktemp -d)/marker"
+          : > "$marker"
           if bwrap --ro-bind / / --unshare-all --die-with-parent -- \
-               sh -c 'echo x > "$1"' eo-ci-probe /tmp/eo-ci-probe-marker 2>/dev/null; then
+               sh -c 'echo x > "$1"' eo-ci-probe "$marker" 2>/dev/null; then
             echo "bwrap ran but the read-only bind did not deny the write" >&2
             exit 1
           fi
+          rm -rf "$(dirname "$marker")"
           if bwrap --ro-bind / / --unshare-all --die-with-parent -- true 2>/dev/null; then
             echo "confinement verified — the sandbox self-test must not skip"
             echo "CRABGIC_REQUIRE_BWRAP=1" >> "$GITHUB_ENV"
