@@ -509,7 +509,7 @@ describe("policy.standing — the consequences read as one sentence", () => {
       digest: "d",
     }));
     expect(withPrefix.repairStep).toBe(
-      "replace them with literal directory names in /state/envelope-policy.json (no globs, no leading slash)",
+      `replace them with literal directory names in ${PATH} (no globs, no leading slash)`,
     );
 
     const emptyPrefix = await run(() => ({
@@ -518,7 +518,89 @@ describe("policy.standing — the consequences read as one sentence", () => {
       digest: "d",
     }));
     expect(emptyPrefix.repairStep).toBe(
-      "replace them with literal directory names in /state/envelope-policy.json (no globs, no leading slash), and add at least one directory work may touch",
+      `replace them with literal directory names in ${PATH} (no globs, no leading slash), and add at least one directory work may touch`,
+    );
+  });
+});
+
+/**
+ * WHOLE STRINGS, not separators one at a time.
+ *
+ * Rounds 13, 14 and 15 each found the same defect one token further right:
+ * a joiner or separator that no assertion covered, emitting things like
+ * "refuses every runan unusable build-output path" or
+ * `allowedPathPrefixes"bad/**"`. Pinning each separator as it was found is a
+ * losing game -- round 15 said so plainly, and it was right: the next round
+ * finds the next one.
+ *
+ * Asserting the complete rendered string subsumes every separator in it at
+ * once, and it covers the branches that had NO assertion at all: the PASS
+ * branch's rendered grant (which Gap 18's residual-risk disclosure rests on
+ * -- "a gate nobody can inspect is a gate nobody can narrow"), the
+ * `allowUnixSockets: true` case, and the absent-policy evidence.
+ */
+describe("policy.standing — every owner-facing string, in full", () => {
+  it("renders the grant with multi-element lists and sockets allowed", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "packages"],
+        allowedWriteScratchPaths: ["dist", "packages/cli/dist"],
+        allowedCommands: ["git status", "git diff"],
+        allowedNetworkDestinations: ["registry.npmjs.org"],
+        allowedCredentialReferences: ["JIRA_TOKEN"],
+        allowedRemoteResourceReferences: ["ENG-1"],
+        allowUnixSockets: true,
+      }),
+      digest: "sha256:abc",
+    }));
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toBe(
+      "standing policy sha256:abc grants paths [src, packages]; " +
+        "scratch [dist, packages/cli/dist]; commands [git status, git diff]; " +
+        "network [registry.npmjs.org]; credentials [JIRA_TOKEN]; " +
+        "remote resources [ENG-1]; unix sockets allowed",
+    );
+  });
+
+  it("renders `denied` when sockets are not granted", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src"] }),
+      digest: "sha256:abc",
+    }));
+
+    expect(finding.evidence).toBe(
+      "standing policy sha256:abc grants paths [src]; scratch [none]; commands [none]; " +
+        "network [none]; credentials [none]; remote resources [none]; unix sockets denied",
+    );
+  });
+
+  it("renders the unusable-entry evidence in full, both fields", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({
+        allowedPathPrefixes: ["src", "bad/**"],
+        allowedWriteScratchPaths: ["dist", "worse/**"],
+      }),
+      digest: "d",
+    }));
+
+    expect(finding.evidence).toBe(
+      `the standing policy at ${PATH} lists paths that cannot grant anything: ` +
+        'allowedPathPrefixes "bad/**", allowedWriteScratchPaths "worse/**". ' +
+        "They are shown as granted but match nothing, so an unusable path prefix refuses " +
+        "every run, and an unusable build-output path lets the build be denied at runtime " +
+        "with nothing pointing back at the policy.",
+    );
+  });
+
+  it("renders the absent-policy evidence in full", async () => {
+    const finding = await run(() => ({ status: "absent" as const }));
+
+    expect(finding.evidence).toBe(
+      `no standing authorization policy at ${PATH}; every run will be refused until one exists`,
     );
   });
 });

@@ -131,6 +131,13 @@ describe("doctor fault-fixture matrix", () => {
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("000001.ndjson");
     expect(finding.repairStep).toContain("repairJournal");
+    // Roast round 15: swapping the two evidence classifications survived the
+    // whole suite, so the check could say "mid-journal corruption" while
+    // offering to TRUNCATE the tail -- an evidence/remedy contradiction
+    // pointing an owner at a destructive repair. Only the repairStep was
+    // pinned; the classification it must agree with was not.
+    expect(finding.evidence).toContain("torn tail");
+    expect(finding.evidence).not.toContain("mid-journal corruption");
   });
 
   it("torn journal segment (mid-journal corruption variant): repair step refuses auto-repair", async () => {
@@ -152,6 +159,10 @@ describe("doctor fault-fixture matrix", () => {
     const finding = await check.run();
     expect(finding.passed).toBe(false);
     expect(finding.repairStep).toContain("NOT a safe auto-repair");
+    // The mirror: mid-journal corruption must NOT be described as a torn
+    // tail, or the evidence invites the truncation the remedy refuses.
+    expect(finding.evidence).toContain("mid-journal corruption");
+    expect(finding.evidence).not.toContain("torn tail");
   });
 
   it("every fixture above would produce NO finding at all before its check is registered (work item 4's own failing-first framing)", async () => {
