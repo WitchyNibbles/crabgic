@@ -51,6 +51,15 @@ typed client.
   token bound to it, journaled as `approval_token_mint` (`JournalEntryType`, 02) — the human-only gate; no
   model-driven call can mint one. Reused for two distinct subjects: 11's envelope hash and 12's capability
   digest (see Risks for the payload-discrimination obligation this creates).
+  **Amended 2026-07-28 (ledger Gap 18): this stops being the routine path.** Under the standing
+  `EnvelopePolicy` an in-policy dispatch mints **no token at all**, so this prompt now serves only the
+  escalation subjects — an envelope that fails containment, 12's capability quarantine, and 22's learning
+  promotion. It remains the sole mint path for those, unchanged in mechanism. The retirement is deliberate:
+  in the shipped `1.3.0` binary `run --json` printed the minted token for a caller in another process to
+  relay, which in a manager session made the model the courier for a human-approval token.
+- **`doctor` renders the standing policy (2026-07-28 — ledger Gap 18).** A check contributed by 10 asserts
+  the `EnvelopePolicy` exists, parses, is `0600`, and is untracked by git — and prints it **in full**, since
+  an owner cannot review a standing grant they cannot read. Its digest is what 13 journals per dispatch.
 
 ## Out of scope
 

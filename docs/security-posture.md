@@ -217,6 +217,28 @@ MCP/model-invokable promotion path exists at all** (a permanent CI grep confirms
 `learning.*` tool registrations), which is the real, load-bearing boundary a sandboxed worker
 process cannot cross regardless of the in-process guard's own strength.
 
+## Pending re-review — the approval model is being amended (2026-07-28)
+
+Everything below this heading reviews the security posture **as shipped in `crabgic@1.3.0`**, in which
+approval is a per-ChangeSet terminal prompt and §3's "the prompt is the only mint path" holds exactly as
+written. Owner ruling of 2026-07-28 (**ledger Gap 18**, adaptation §5.5) replaces routine approval with a
+standing `EnvelopePolicy` and a containment check at dispatch. **This document has not yet been re-reviewed
+against that model, and the sign-off below does not cover it.**
+
+Two things the re-review must establish, stated now so they are not lost:
+
+- **The policy is unwritable from any session.** Part 3 of Gap 18 is the entire gate. A single
+  policy-writing MCP tool, CLI command or skill reachable from a manager session collapses it completely,
+  and would be a CRITICAL rather than a design trade-off.
+- **The containment check is non-vacuous.** 03's own history is the reason to say so explicitly: its
+  "no allow outside the envelope" property once re-derived the compiler's own output and could not have
+  detected a confinement escape by construction (§3 below). A subset check tested against envelopes it
+  built itself would repeat that exact defect one layer up.
+
+One finding the amendment **removes** rather than adds: in `1.3.0` the minted approval token is printed by
+`crabgic run --json` and consumed by `contract.approve` in a different process, so in a manager session the
+model is the courier for a human-approval token. Under Gap 18 in-policy dispatch mints no token at all.
+
 ## Residual risk — disclosed, non-blocking
 
 Every item below is a known, intentional design limitation already named in the owning

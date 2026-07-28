@@ -15,9 +15,22 @@
 | v1 scope | **Full plan** — all 10 phases including Jira Cloud + Data Center, Grafana Cloud/OSS/Enterprise, performance contracts, and the learning pipeline |
 | Worker auth | **Owner's Claude subscription (OAuth)** — see §5.7; metered API-key mode is not required for v1 |
 | Worker transport | **Agent SDK in-process** (§5.3) — also pins a reproducible bundled engine version per release |
-| Manager UX | **Claude Code plugin session is the flagship surface** (`/eo:` commands + gateway MCP); the `crabgic` CLI covers approvals, scripting, CI, and recovery |
+| Manager UX | **Claude Code plugin session is the flagship surface** (`/eo:` commands + gateway MCP); the `crabgic` CLI covers scripting, CI, recovery, and approval *escalations* — no longer routine approval (see the 2026-07-28 rows below) |
 | Model routing default | **Balanced** — `sonnet` implementation workers, `opus` architect/planner + integration/security review, `haiku` mechanical chores; per-role overrides in config |
 | Plan-limit policy | **Pause and resume** — on subscription rate/usage limits, work units park (journaled) and resume via session `resume` when the window resets; no silent tier degradation |
+
+### Amendments (owner-approved, 2026-07-28)
+
+These four rows amend the table above rather than extending it; each names the row it changes. They were
+taken after a live audit of the shipped `crabgic@1.3.0` binary and are binding on the same terms as the
+2026-07-12 set. Interface rulings: **ledger Gaps 18 and 19**.
+
+| Decision | Choice | Amends |
+|---|---|---|
+| Command surface | **The user types no Crabgic command.** A request in an ordinary session, answers to clarifying questions, and a finished change set out. Slash commands and the CLI remain, for operators and escalations — never as the required path | Manager UX |
+| Approval model | **Standing approval over an envelope class**, not per-ChangeSet consent. `crabgic install` writes an `EnvelopePolicy`; dispatch is a containment check; anything outside it halts on `expanded_authority`. Nothing reachable from a session may widen the policy | §5.5 (Gap 18) |
+| Execution model | **Always workers, never the manager.** The manager researches, clarifies, designs, roasts and reviews; every write goes through an envelope-bounded worker in its own worktree. The dispatch chain is on the critical path, not optional | §5.3 (unchanged in mechanism; promoted from one option to the only one) |
+| Quality loops | **Unbounded adversarial convergence** over design, tests and implementation. A roast round is read-only and never spends a repair attempt; the loop closes when a round yields no finding that is both novel and falsifiable. No severity floor. `exhausted_repairs` is untouched at initial + 2 | New (Gap 19) |
 
 ---
 
@@ -286,7 +299,7 @@ The manager is an interactive `claude` session in the user's checkout, provision
 
 - **Slash commands** (`skills/` with `disable-model-invocation: true` where appropriate): `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`, `/eo:connections` → thin wrappers over the `crabgic` CLI/MCP tools.
 - **Gateway MCP tools** (core ops from the plan: `project.inspect`, `contract.*`, `capability.*`, `run.*`, `change_set.*`, `evidence.get`, `learning.*`, `tracker.*`, `observability.*`) — names unchanged.
-- **Approval flow**: contract/envelope approval happens in the **orchestrator CLI (terminal prompt) or via an explicitly-confirmed `/eo:approve`**, never as a bare model-initiated tool call — the model must not be able to satisfy its own approval gate. The MCP `contract.approve` tool verifies a supervisor-issued approval token minted by the human-facing CLI.
+- **Approval flow (amended 2026-07-28 — ledger Gap 18).** Routine approval is **standing, given once over an envelope *class*** rather than per ChangeSet: `crabgic install` writes an `EnvelopePolicy` (owner-only, XDG state, never committed), and at dispatch the compiled `AuthorizationEnvelope` is tested for containment in it. Contained → the run proceeds with no prompt and no token. Not contained → `expanded_authority` halts it. **No session-reachable surface — MCP tool, CLI command or skill — may write or widen the policy**, which is what still makes it true that the model cannot satisfy its own gate. The token machinery is retained for the escalation paths it is now scoped to: MCP `contract.approve` (still verify-only), `crabgic trust review`/`capability.approve`, and `crabgic learn approve`. The **superseded** form of this bullet — approval in the CLI terminal prompt or via an explicitly-confirmed `/eo:approve`, per ChangeSet — is recorded in Gap 18 along with what the amendment knowingly gives up.
 - Read-heavy exploration: native subagents (optionally `isolation: worktree`), per the plan's original intent.
 - Advisory hooks in the manager context (PostToolUse formatting warnings, Stop-time reminders) — here "observability" framing is fine because the manager runs under the user's normal interactive permissions.
 
@@ -321,8 +334,16 @@ Workers run on the owner's Claude subscription rather than metered API keys:
 | `.mcp.json` (project scope) | `crabgic_gateway` stdio entry (`crabgic gateway mcp`) | first-use approval prompt is expected UX; document it |
 | Plugin (marketplace or vendored) | commands, skills, hooks, gateway MCP, `bin/` | pin by commit SHA; vendor via `--plugin-dir` for digest-pinned installs (CapabilityManifest) |
 | Worker profiles (XDG state, not repo) | generated per-run settings/permission/sandbox JSON | never checked in; hashed into the envelope |
+| **`EnvelopePolicy`** (XDG state, not repo) | the standing approval every dispatch is checked against (§5.5, ledger Gap 18) | owner-only `0600`; **never committed**, never written by anything a session can reach; `doctor` renders it in full |
 
 Checksum/ownership/backup/drift/rollback/uninstall behavior: unchanged from the plan.
+
+**The `EnvelopePolicy` is bootstrapped here, and only here (2026-07-28).** It is authored once, during
+`install`, from what the repo already states about itself — write paths, the command set implied by the
+project's own scripts, and **default-deny network and credential references** — and confirmed by the owner
+before it is written. It is deliberately not a per-run question: a standing approval re-negotiated every run
+is just the per-ChangeSet prompt Gap 18 replaced, wearing a different interface. `upgrade` never silently
+widens it; a policy change is an owner edit or a fresh `install`, both out-of-band by construction.
 
 ### 6.2 Instruction files
 

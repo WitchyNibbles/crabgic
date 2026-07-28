@@ -63,6 +63,8 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [15](#gap-15--minor-engine-live-ci-job-name-and-live-test-tag-never-explicitly-linked) | `engine-live`/`@live` link never stated | Phase 01 states Phase 06 wires it; Phase 06 does |
 | [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `CRABGIC_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
 | [17](#gap-17--the-manager-session-has-no-operating-protocol-and-manager-hooks-may-not-block) | Manager session has no operating protocol | Protocol owned by `@crabgic/plugin`'s `manager-protocol.ts`, always shipped in the `CLAUDE.md` managed block (additive to the `@AGENTS.md` bridge, never replaced by it); `Stop` may block via the autonomy gate, `PreToolUse` still may not |
+| [18](#gap-18--approval-is-pinned-per-changeset-to-a-command-the-user-must-type) | Approval pinned to a per-ChangeSet terminal prompt | Standing `EnvelopePolicy` (02, written by `install`, owner-only, never in the repo); dispatch does a containment check — inside it runs with no prompt, outside it halts on `expanded_authority`; no session-reachable surface may widen it |
+| [19](#gap-19--adversarial-quality-loops-collide-with-exhausted_repairs) | Adversarial quality loops vs `exhausted_repairs` | Different loops: repairs stay capped at initial + 2; roast rounds are read-only, uncapped, and close when a round yields no **novel + falsifiable** finding — no severity floor, fresh reviewer per round |
 
 ---
 
@@ -958,6 +960,130 @@ conditions and the approval flow the protocol describes).
 bridge "per adaptation §6.2" (part 2 exists because that reading is the live defect); or generalizing part 3
 into "manager hooks may block" and adding a `PreToolUse` hook to the plugin (part 3 is scoped to `Stop`
 alone, and deliberately).
+
+---
+
+## Gap 18 — Approval is pinned per-ChangeSet to a command the user must type
+
+**Origin:** Owner ruling 2026-07-28, from two inputs: a **live audit of the shipped `crabgic@1.3.0` binary**
+(recorded below) and a product-direction decision taken in the same session. Like Gaps 16 and 17 this entry
+carries its own provenance and was never seen by the four resolvers.
+
+**Gap statement:** Three settled artifacts pin approval to a per-ChangeSet interactive terminal prompt —
+adaptation §5.5 ("approval happens in the orchestrator CLI (terminal prompt) or via an explicitly-confirmed
+`/eo:approve`"), roadmap/11 §In scope ("Approval: CLI terminal prompt ... mints one-time token"), and
+`docs/security-posture.md` §3 (the prompt is the only mint path). The owner's product direction is that a
+user **types no Crabgic command at all**: they state a request in an ordinary Claude Code session, answer
+clarifying questions, and receive a finished change set. A per-ChangeSet terminal prompt is, by construction,
+a command they must know and run — once per change set. The two are incompatible.
+
+The audit added a second, independent reason the status quo is not the stronger option it appears to be.
+`crabgic run --json` **prints the minted approval token to stdout**, and `contract.approve` consumes it in a
+different process. In a manager session the only thing standing between those two points is the model — so
+the shipped design already makes the model the courier for a human-approval token, which is precisely the
+property §5.5 exists to prevent.
+
+**Ruling:** Approval moves from *per-envelope, at dispatch time* to *per-envelope-class, ahead of time*.
+Four parts.
+
+1. **New artifact `EnvelopePolicy`**, schema owned by 02 (`@crabgic/contracts`), written by `crabgic install`
+   (10) into the project's XDG **state** root, owner-only (0600), never committed to the repo. It declares
+   the classes of authority a run may assume without asking: path globs, allowed commands, network
+   destinations (**default: none**), credential references (**default: none**), and the high-impact connector
+   flags (02's canonical labels) it will never auto-grant.
+2. **The gate becomes a subset check.** At dispatch the compiled `AuthorizationEnvelope` is tested for
+   containment in the `EnvelopePolicy`. Contained → the standing approval covers it; the run dispatches with
+   no prompt and no token. Not contained → 11's existing **`expanded_authority`** stop condition fires and
+   the run halts. There is no third outcome, and no partial grant of the contained subset.
+3. **The model can never widen the policy.** Creating or extending it is out-of-band: `crabgic install`, or a
+   human editing the file. No MCP tool, no session-reachable CLI command, and no skill may write it. The
+   token machinery is **not deleted** — `contract.approve`, `trust review`/`capability.approve` and
+   `learn approve` keep it for the escalation paths, which are exactly the paths a policy cannot cover.
+4. **Every dispatch journals the authorizing policy digest.** Evidence must be able to answer "what was the
+   human standing behind when this ran," which a standing approval otherwise makes unanswerable.
+
+**Rationale:** The property §5.5 protects is *the model cannot manufacture human consent*, and all four parts
+preserve it: the policy is a human-authored artifact, the containment check is deterministic and
+server-side, and anything outside it halts rather than degrading. What is **given up, knowingly**, is
+per-change-set human review of in-policy work — recorded here explicitly so that nobody later "restores" the
+prompt believing this ruling was an oversight.
+
+A policy read once, carefully, at install time — declaring paths and commands with default-deny network and
+credentials — is a stronger artifact than a digest rubber-stamped under time pressure once per change set.
+The engine itself carries the precedent: `.claude/settings.json`'s `allowedTools` is the same shape, and is
+the mechanism the owner's own standing guidance prefers over blanket permission-skipping.
+
+**Disclosed residual risk:** the blast radius becomes whatever the policy got wrong. Three mitigations are
+part of the ruling, not optional hardening: network and credential references default to none; `doctor`
+renders the policy in full; and part 4's per-dispatch digest makes every run's authorization auditable after
+the fact.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the schema),
+`roadmap/03-envelope-compiler-engine-adapter.md` (owns the containment check, as the security keystone),
+`roadmap/09-cli-and-doctor.md` (the terminal prompt stops being the sole mint path; `doctor` renders the
+policy), `roadmap/10-plugin-and-installer.md` (the installer writes it — carries the scope amendment),
+`roadmap/11-intake-contract-approval.md` (owns the approval flow and `expanded_authority`),
+`roadmap/13-scheduler-packets-context.md` (applies the check at dispatch).
+
+**Where this ruling could be got wrong later:** reintroducing a per-ChangeSet prompt "because §5.5 says so"
+(§5.5 is amended by this entry, not overridden by it); granting the contained subset of a
+partially-out-of-policy envelope instead of halting (part 2 is deliberately all-or-nothing); or exposing any
+policy-writing surface to a session, in any form, which collapses the whole gate (part 3).
+
+---
+
+## Gap 19 — Adversarial quality loops collide with `exhausted_repairs`
+
+**Origin:** Owner ruling 2026-07-28, same session as Gap 18.
+
+**Gap statement:** The roadmap has exactly one bounded loop for "this work is not good enough":
+`exhausted_repairs`, one of 11's seven stop conditions, spent when the initial attempt plus both
+evidence-driven repair attempts are used on a single WorkUnit. The owner's directive adds three
+**quality-convergence** loops the roadmap never modelled — over the design, over the test suite, and over the
+implementation — each running until an adversarial reviewer can no longer honestly find anything to raise.
+Read together the two are contradictory: one says stop at three, the other says do not stop.
+
+**Ruling:** They are different loops over different subjects. Both stand, unchanged in their own domain.
+
+1. **`exhausted_repairs` is untouched.** It counts *attempts against gates* on one WorkUnit — initial plus
+   two. Nothing below consumes one.
+2. **A roast round is read-only.** It is an adversarial review of an artifact (design, test suite, or diff)
+   that produces findings. It never re-executes work, never transitions the run, and never spends a repair
+   attempt. Acting on its findings may.
+3. **The loop is unbounded in rounds.** There is no cap. This is the owner's explicit choice over a
+   three-round or two-clean-round alternative, made with the token cost stated.
+4. **"Honestly" is the termination criterion, and it is mechanical.** A round extends the loop only if it
+   yields at least one finding that is both **novel** — deduplicated against every finding already raised for
+   this artifact — and **falsifiable**, carrying a concrete failure scenario (inputs or state → wrong output
+   or crash). Restatement, generality and taste do not extend it. **There is no severity floor:** a real
+   low-severity finding extends the loop exactly as a critical one does. A round that yields nothing novel
+   and falsifiable closes the loop.
+5. **Each round gets a fresh reviewer.** A round is only evidence of convergence if the reviewer did not
+   author the artifact and did not see the previous round's verdict.
+
+**Rationale:** Part 4 is the whole ruling. An adversary instructed to "keep roasting until nothing remains"
+will manufacture findings to appear useful — inverted sycophancy — and an unbounded loop with no honesty
+test does not terminate. Requiring novelty makes repetition free of consequence; requiring a falsifiable
+failure scenario makes taste inadmissible. Together they are what the word "honestly" in the directive
+actually denotes, so implementing them is fidelity to the instruction rather than a weakening of it.
+
+Dropping the severity floor is deliberate and is the difference from the alternative the owner rejected: a
+genuine minor defect is still a defect, and the product's premise is that the loop runs until the work is
+right rather than until it is acceptable.
+
+**Disclosed residual risk:** termination rests entirely on the falsifiability test being applied strictly. If
+a reviewer's "concrete failure scenario" is accepted loosely, every round produces a novel-looking finding
+and the loop does not converge. This is the load-bearing mechanism and must be tested as one, not asserted.
+
+**Phases affected:** `roadmap/11-intake-contract-approval.md` (owns the seven stop conditions and thus the
+boundary being drawn), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt path),
+`roadmap/14-quality-security-gates.md` (owns the gate verdicts a repair attempt answers),
+`roadmap/10-plugin-and-installer.md` (the manager operating protocol renders the distinction).
+
+**Where this ruling could be got wrong later:** treating a roast round as a repair attempt (or the reverse),
+which either caps quality convergence at three or makes gate failures unbounded; reintroducing a severity
+floor as an optimization; or relaxing the falsifiability test, which silently converts an unbounded loop into
+a non-terminating one.
 
 ---
 
