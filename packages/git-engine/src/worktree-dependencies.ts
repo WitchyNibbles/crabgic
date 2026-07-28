@@ -1,5 +1,5 @@
 import { mkdir, readdir, readlink, realpath, stat, symlink } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 /**
  * Provisioning a fresh worktree's dependencies.
@@ -184,7 +184,8 @@ async function linkEntry(
       const bins = await readdir(sourcePath);
       let anyBin = false;
       for (const bin of bins) {
-        if (await linkBinEntry(join(sourcePath, bin), join(targetPath, bin))) anyBin = true;
+        if (await linkBinEntry(options, join(sourcePath, bin), join(targetPath, bin)))
+          anyBin = true;
       }
       return anyBin;
     }
@@ -225,14 +226,43 @@ async function linkEntry(
  * unbuilt checkout; sharing the whole directory (round 5) made every binary
  * point at the owner's tree even when the package link did not.
  */
-async function linkBinEntry(sourcePath: string, targetPath: string): Promise<boolean> {
+async function linkBinEntry(
+  options: ProvisionWorktreeDependenciesOptions,
+  sourcePath: string,
+  targetPath: string,
+): Promise<boolean> {
   try {
     const raw = await readlink(sourcePath);
-    // Absolute targets are copied as-is; they name a location, not a
-    // relationship, so there is nothing to re-anchor.
+    // An ABSOLUTE target is re-anchored like any other entry. Round 7: the
+    // previous version copied it verbatim on the reasoning that it "names a
+    // location, not a relationship" — but `resolveLinkTarget` already
+    // re-anchors absolute targets inside the checkout for package entries, so
+    // copying here produced two answers for one package in one worktree,
+    // which is exactly what this treatment exists to prevent.
+    if (isAbsolute(raw)) {
+      await symlink(await resolveLinkTarget(options, sourcePath), targetPath);
+      return true;
+    }
+    // A relative target resolves through the sibling package link, which this
+    // module has already pointed at the right place — so it is copied as-is.
     await symlink(raw, targetPath);
     return true;
-  } catch {
+  } catch (err) {
+    // NOT a symlink at all. npm writes real shim FILES for some entries
+    // (`.cmd`/`.ps1`, and whole binaries on some platforms), and `readlink`
+    // raises EINVAL on those. Round 7: they were silently dropped and not
+    // even counted in `skipped`, so a tree whose bins are shims got an EMPTY
+    // `.bin` in the worktree — and `npm run test`, one of only two useful
+    // grantable commands, had no binary at all. A shim is not a relationship
+    // to re-anchor, so it is shared from the source like any other file.
+    if ((err as NodeJS.ErrnoException).code === "EINVAL") {
+      try {
+        await symlink(resolve(sourcePath), targetPath);
+        return true;
+      } catch {
+        return false;
+      }
+    }
     return false;
   }
 }

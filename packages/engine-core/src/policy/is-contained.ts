@@ -1,3 +1,4 @@
+import { normalizePathPrefix } from "@crabgic/contracts";
 import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { validateOwnedPath } from "../compiler/owned-path.js";
 
@@ -39,41 +40,21 @@ export interface ContainmentResult {
  * inconsistently, which is worse to operate than a strict rule.
  */
 function normalizePath(raw: string): string | undefined {
-  let validated: string;
-  try {
-    validated = validateOwnedPath(raw);
-  } catch {
-    return undefined;
-  }
-
-  // Collapse `.` segments and empty segments AFTER validation, so that the
-  // same logical path decides the same way however it was typed. Found by
-  // this module's own test: `src/./login` was contained (it string-prefixes
-  // `src/`) while `./src/login` was not, which is precisely the
-  // typed-form-dependent inconsistency roast round 1 required be eliminated.
+  // Delegates to 02's canonical normalizer. Rounds 4-7 showed that a second
+  // implementation kept here — however carefully written — diverges from the
+  // policy schema's usability predicate somewhere new each time; round 7
+  // measured the divergence at 6895 mismatches over a 51,911-prefix corpus.
+  // One function, called from both sides, is the only form that cannot drift.
   //
-  // Safe by construction rather than by care: `validateOwnedPath` has already
-  // rejected every `..` segment, so collapsing here can only remove no-ops and
-  // can never shorten a path into a parent directory. Doing it here rather
-  // than in `validateOwnedPath` keeps the compiler's own boundary untouched.
-  const segments = validated.split("/").filter((segment) => segment !== "" && segment !== ".");
-  if (segments.length === 0) return undefined;
-  const collapsed = segments.join("/");
-
-  // RE-VALIDATE the collapsed result. Roast round 2 (F9) showed the collapse
-  // can produce a string `validateOwnedPath` would itself reject: `"./~"`
-  // collapses to `"~"` and `"./~/.ssh"` to `"~/.ssh"`, re-creating the
-  // home-anchored form the validator exists to refuse. Not exploitable
-  // against a well-formed policy — a `"~"` prefix normalizes to `undefined`
-  // and so can never match — but the original "safe by construction" note
-  // argued only about `..` and therefore overclaimed. Re-validating makes the
-  // postcondition true rather than nearly true.
+  // `validateOwnedPath` still runs FIRST, because it is 03's own boundary and
+  // carries this phase's security history; the shared normalizer then decides
+  // comparability.
   try {
-    validateOwnedPath(collapsed);
+    validateOwnedPath(raw);
   } catch {
     return undefined;
   }
-  return collapsed;
+  return normalizePathPrefix(raw);
 }
 
 /**

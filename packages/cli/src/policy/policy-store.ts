@@ -228,7 +228,13 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
     // here with `EACCES`, and reporting that as "no policy exists, run
     // `crabgic install`" both misdiagnoses it and invites `install` to
     // overwrite a file the owner deliberately locked.
-    if (code === "ENOENT" || code === "ENOTDIR") return { status: "absent" };
+    // ONLY `ENOENT`. Round 7: `ENOTDIR` was added alongside it and undid the
+    // sibling fix in the same commit — a state root that is a regular file
+    // raises `ENOTDIR`, reporting "absent" sent the owner to `crabgic
+    // install`, and the writer then died with a raw `EEXIST` from `mkdir`.
+    // `ENOTDIR` never means a policy exists, but "absent" is the wrong
+    // REMEDY, which is the whole point of the absent/invalid split.
+    if (code === "ENOENT") return { status: "absent" };
     // Deliberately does NOT assert the file exists. Roast round 6: an
     // unreadable PARENT directory raises `EACCES` here whether or not a
     // policy is present, and the previous wording said "exists but could not

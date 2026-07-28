@@ -51,11 +51,20 @@ function isDirectoryEntry(parent: string, entry: Dirent): boolean {
     // silently breaks real repositories to defend a boundary that is enforced
     // elsewhere anyway.
     const real = realpathSync(full);
-    const root = realpathSync(parent);
     for (const excluded of ["node_modules", ".git"]) {
-      if (real === join(root, excluded) || real.startsWith(`${join(root, excluded)}/`)) {
-        return false;
+      // The EXCLUSION target is realpath'd too. Round 7: comparing against
+      // `join(realpath(parent), "node_modules")` fails the moment
+      // `node_modules` is itself a symlink — a shared store, a bind mount, a
+      // docker volume, which are the very layouts round 6 cited as its reason
+      // for allowing external links at all. A tracked `docs -> node_modules/x`
+      // then derived a write grant into the shared module store.
+      let excludedReal: string;
+      try {
+        excludedReal = realpathSync(join(parent, excluded));
+      } catch {
+        continue; // not present here
       }
+      if (real === excludedReal || real.startsWith(`${excludedReal}/`)) return false;
     }
     return true;
   } catch {

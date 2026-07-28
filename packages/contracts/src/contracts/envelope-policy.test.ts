@@ -174,3 +174,40 @@ describe("isUsablePathPrefix — whitespace inside segments", () => {
     },
   );
 });
+
+/**
+ * Roast round 7 measured the round-6 trim and found it made things worse:
+ * 1143 mismatches became 6895 over a 51,911-prefix corpus. There is now ONE
+ * normalizer, so the two answers cannot differ by construction -- this pins
+ * the equivalence directly rather than sampling it.
+ */
+describe("isUsablePathPrefix is exactly normalizePathPrefix", () => {
+  it.each([
+    "src",
+    "./src",
+    "src/",
+    "./ /src",
+    "src/ /login",
+    ".",
+    "./",
+    "./~",
+    "./ ~",
+    "~/x",
+    "/abs",
+    "../up",
+    "./src/ ..",
+    "src/**",
+    "srcfoo",
+    "  ",
+    "a//b",
+  ])("agrees on %j", async (prefix) => {
+    const { isUsablePathPrefix, normalizePathPrefix } = await import("./envelope-policy.js");
+    expect(isUsablePathPrefix(prefix)).toBe(normalizePathPrefix(prefix) !== undefined);
+  });
+
+  it("collapses whitespace-only segments rather than trimming one side only", async () => {
+    const { normalizePathPrefix } = await import("./envelope-policy.js");
+    expect(normalizePathPrefix("./ /src")).toBe("src");
+    expect(normalizePathPrefix("./src")).toBe("src");
+  });
+});

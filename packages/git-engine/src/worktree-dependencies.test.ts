@@ -359,3 +359,43 @@ describe("provisionWorktreeDependencies — .bin", () => {
     expect(lstatSync(join(worktreePath, "node_modules", ".bin")).isSymbolicLink()).toBe(false);
   });
 });
+
+/**
+ * Roast round 7. Both of these made the round-6 `.bin` treatment strictly
+ * worse than the round-5 one it replaced, for trees it had not been tested on.
+ */
+describe("provisionWorktreeDependencies — .bin edge shapes", () => {
+  it("shares a real shim FILE instead of silently dropping it", async () => {
+    await mkdir(join(sourceDir, "node_modules", ".bin"), { recursive: true });
+    await symlink("../vitest/vitest.mjs", join(sourceDir, "node_modules", ".bin", "vitest"));
+    // npm writes real shim files for some entries; readlink raises EINVAL.
+    await writeFile(join(sourceDir, "node_modules", ".bin", "shimtool"), "#!/bin/sh\n");
+
+    const result = await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    // Previously ABSENT from the worktree and absent from `skipped` too, so a
+    // tree whose bins are shims got an empty .bin and no binary at all.
+    expect(readFileSync(join(worktreePath, "node_modules", ".bin", "shimtool"), "utf8")).toBe(
+      "#!/bin/sh\n",
+    );
+    expect(result.skipped).toEqual([]);
+  });
+
+  it("re-anchors an ABSOLUTE workspace bin target like every other entry", async () => {
+    await mkdir(join(sourceDir, "packages", "cli", "dist"), { recursive: true });
+    await writeFile(join(sourceDir, "packages", "cli", "dist", "bin.js"), "src");
+    await mkdir(join(sourceDir, "node_modules", ".bin"), { recursive: true });
+    await symlink(join(sourceDir, "packages", "cli"), join(sourceDir, "node_modules", "acme-cli"));
+    await symlink(
+      join(sourceDir, "packages", "cli", "dist", "bin.js"),
+      join(sourceDir, "node_modules", ".bin", "acme"),
+    );
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    // Copying it verbatim gave two answers for one package in one worktree.
+    expect(await readlink(join(worktreePath, "node_modules", ".bin", "acme"))).toBe(
+      join(worktreePath, "packages", "cli", "dist", "bin.js"),
+    );
+  });
+});

@@ -172,35 +172,43 @@ export function isVacuousPolicy(policy: EnvelopePolicy): boolean {
  * a grant.
  */
 export function isUsablePathPrefix(prefix: string): boolean {
-  const trimmed = prefix.trim();
-  if (trimmed.length === 0) return false;
-  if (trimmed.startsWith("/")) return false;
-  if (/[*?[\]{}\\]/.test(trimmed)) return false;
+  return normalizePathPrefix(prefix) !== undefined;
+}
 
-  // Segments are TRIMMED before anything is decided about them. Roast round 6
-  // brute-forced 17,476 prefixes against the containment normalizer and found
-  // 113 mismatches, every one requiring a whitespace-leading first segment:
-  // `"./ ~"` slipped the tilde check here while `normalizePath` re-ran
-  // `validateOwnedPath` on the collapsed result, which trims again and
-  // rejects. One space defeated the exact case the previous fix named.
+/**
+ * THE canonical path-prefix normalizer. One implementation, so "is this
+ * usable" and "what does it match" cannot disagree.
+ *
+ * Rounds 4, 5 and 6 each tried to keep a boolean predicate in step with the
+ * containment check's own normalizer by re-deriving the same rules, and each
+ * attempt diverged somewhere new — `"."`, then `"./~"`, then `"./ /src"`.
+ * Round 7 measured the last attempt and found it made things WORSE: 1143
+ * mismatches became 6895 across a 51,911-prefix corpus. Two functions that
+ * must agree will not, however carefully each is written. So there is one,
+ * and `@crabgic/engine-core`'s containment check calls it.
+ *
+ * Returns the collapsed, comparable form, or `undefined` when the prefix
+ * cannot grant anything: empty, absolute, home-anchored, containing `..`,
+ * carrying a glob metacharacter, or collapsing to no segments at all.
+ *
+ * Whitespace-only segments are DROPPED. That is the specific divergence round
+ * 6 introduced by trimming on one side only: a `" "` segment has to mean the
+ * same thing to both callers, and dropping it makes `"./ /src"` and `"./src"`
+ * the same grant rather than one usable and one silently not.
+ */
+export function normalizePathPrefix(prefix: string): string | undefined {
+  const trimmed = prefix.trim();
+  if (trimmed.length === 0) return undefined;
+  if (trimmed.startsWith("/") || trimmed.startsWith("~")) return undefined;
+  if (/[*?[\]{}\\]/.test(trimmed)) return undefined;
+
   const segments = trimmed
     .split("/")
-    .map((s) => s.trim())
-    .filter((s) => s !== "" && s !== ".");
-  // Home-anchoring is checked on the FIRST SURVIVING SEGMENT, not the raw
-  // string. Roast round 5: the leading-`~` test ran before the split, so
-  // `"./~"` slipped past it and reported usable while the containment
-  // normalizer collapsed it to `~`, re-validated, and granted nothing —
-  // the exact sibling of the `"."` case the empty-segment guard was added to
-  // close, in a function whose own doc promises "exactly one answer shared by
-  // the installer, the doctor check and containment".
-  if (segments[0]?.startsWith("~") === true) return false;
-  // A prefix that collapses to NOTHING is unusable, not vacuously fine.
-  // Roast round 4: `"."` — the obvious way to write "the whole project" —
-  // filtered to an empty array and `.every()` on an empty array is `true`, so
-  // it reported usable while the containment check's own `normalizePath`
-  // returned `undefined` and refused every dispatch. That is byte-for-byte
-  // the scenario this function was added to close for `src/**`.
-  if (segments.length === 0) return false;
-  return segments.every((segment) => segment !== "..");
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "" && segment !== ".");
+
+  if (segments.length === 0) return undefined;
+  if (segments[0]!.startsWith("~")) return undefined;
+  if (segments.some((segment) => segment === "..")) return undefined;
+  return segments.join("/");
 }
