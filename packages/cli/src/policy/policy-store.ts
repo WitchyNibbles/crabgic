@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { lstatSync, readFileSync, statSync } from "node:fs";
+import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
@@ -42,7 +42,15 @@ export type LoadPolicyResult =
  * one that spelled them out.
  */
 export function digestPolicy(policy: EnvelopePolicy): string {
-  const canonical = JSON.stringify(policy, Object.keys(policy).sort());
+  // `JSON.stringify(policy)` with NO replacer. The replacer array form used
+  // here originally — `Object.keys(policy).sort()` — is not an ordering
+  // device: it is a DEEP key allow-list applied at every nesting level, so
+  // `{limits:{maxTurns:5}}` and `{limits:{maxTurns:9999}}` both serialize to
+  // `{"limits":{}}` and digest identically (roast round 3, F7). Flat today,
+  // so nothing collides yet — but the first nested field would silently make
+  // the journaled authorization identity a lie. The object comes from a
+  // fixed-shape `.strict()` parse, so plain stringify is already stable.
+  const canonical = JSON.stringify(policy);
   return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
 }
 
@@ -62,9 +70,26 @@ export function digestPolicy(policy: EnvelopePolicy): string {
  * what this project will run unattended.
  */
 export async function writeEnvelopePolicy(path: string, policy: EnvelopePolicy): Promise<void> {
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
-  await chmod(path, 0o600);
+  const dir = dirname(path);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  // Recursive mkdir does NOT chmod a directory that already exists, so an
+  // XDG state root created earlier (or by something else) keeps its mode. A
+  // 0777 directory leaves the policy replaceable by another local account
+  // even at 0600 — unlink and recreate needs only directory write (roast
+  // round 3, F4).
+  await chmod(dir, 0o700);
+
+  // Write to a fresh temp file and rename, rather than opening `path`
+  // directly. `writeFile`'s `mode` is passed to `open(2)` and applies ONLY
+  // when it creates the file, so writing over a pre-existing world-writable
+  // policy put the new grant into it and only then narrowed the mode — the
+  // exact window the old comment claimed to avoid (F5). Rename is also
+  // atomic, so a concurrent `doctor` or dispatch can never observe a
+  // half-written policy.
+  const temporary = `${path}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
+  await chmod(temporary, 0o600);
+  await rename(temporary, path);
 }
 
 /**
@@ -91,11 +116,43 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
   }
 
   try {
-    const mode = statSync(path).mode & 0o077;
+    // `lstat`, not `stat`: `stat` follows symlinks, so a policy path that is
+    // a link to a file owned by another account passed the mode check by
+    // validating the TARGET's mode (roast round 3, F4). The link itself is
+    // what an attacker controls.
+    const linkStats = lstatSync(path);
+    if (linkStats.isSymbolicLink()) {
+      return {
+        status: "invalid",
+        reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
+      };
+    }
+
+    // Ownership, not just mode. A 0600 file owned by someone else is a policy
+    // this account cannot edit and did not write — the opposite of a standing
+    // approval given by the owner.
+    if (linkStats.uid !== process.getuid?.()) {
+      return {
+        status: "invalid",
+        reason: `policy file ${path} is owned by another account (uid ${linkStats.uid}); it must be owned by the account running Crabgic`,
+      };
+    }
+
+    const mode = linkStats.mode & 0o077;
     if (mode !== 0) {
       return {
         status: "invalid",
         reason: `policy file ${path} is accessible to other accounts (mode ${(mode | 0o600).toString(8)}); it decides what runs without review and must be 0600`,
+      };
+    }
+
+    // The containing directory too: a policy is only as protected as the
+    // directory it can be replaced in.
+    const dirMode = statSync(dirname(path)).mode & 0o022;
+    if (dirMode !== 0) {
+      return {
+        status: "invalid",
+        reason: `the directory holding ${path} is writable by other accounts, so the policy can be replaced regardless of its own mode`,
       };
     }
   } catch {

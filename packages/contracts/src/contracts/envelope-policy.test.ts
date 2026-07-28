@@ -99,3 +99,44 @@ describe("EnvelopePolicySchema", () => {
     expect(isVacuousPolicy(EnvelopePolicySchema.parse(MINIMAL))).toBe(false);
   });
 });
+
+/**
+ * Roast round 3, F3. A prefix that cannot grant anything must not make the
+ * policy look healthy. `is-contained.ts` documented this exact scenario in
+ * prose while the vacuity test, written afterwards, checked only length.
+ */
+describe("isVacuousPolicy — prefixes that cannot grant", () => {
+  // `"  "` is deliberately absent: `NonEmptyStringSchema` trims, so the schema
+  // rejects a whitespace-only prefix before this predicate is ever consulted.
+  // That is the stronger guarantee, asserted separately below.
+  it.each(["src/**", "src/*", "/abs/src", "~/src", "../escape", "src\\login"])(
+    "treats a policy whose only prefix is %j as vacuous",
+    async (prefix) => {
+      const { isVacuousPolicy } = await import("./envelope-policy.js");
+      expect(
+        isVacuousPolicy(EnvelopePolicySchema.parse({ ...MINIMAL, allowedPathPrefixes: [prefix] })),
+      ).toBe(true);
+    },
+  );
+
+  it("is not vacuous when at least one prefix is usable", async () => {
+    const { isVacuousPolicy } = await import("./envelope-policy.js");
+    expect(
+      isVacuousPolicy(
+        EnvelopePolicySchema.parse({ ...MINIMAL, allowedPathPrefixes: ["src/**", "src"] }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is rejected by the schema, not merely by the predicate, when whitespace-only", () => {
+    expect(() => EnvelopePolicySchema.parse({ ...MINIMAL, allowedPathPrefixes: ["  "] })).toThrow();
+  });
+
+  it.each(["src", "packages/cli/src", "./src", "src/"])(
+    "accepts the usable prefix %j",
+    async (prefix) => {
+      const { isUsablePathPrefix } = await import("./envelope-policy.js");
+      expect(isUsablePathPrefix(prefix)).toBe(true);
+    },
+  );
+});

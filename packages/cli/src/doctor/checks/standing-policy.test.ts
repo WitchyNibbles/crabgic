@@ -103,3 +103,35 @@ describe("policy.standing", () => {
     }
   });
 });
+
+/**
+ * Roast round 3, F3. `is-contained.ts` documents this scenario verbatim --
+ * "parses, is not vacuous, passes every doctor check, matches nothing" -- and
+ * the fix had been applied to the containment refusal message but not to this
+ * check, which was written afterwards.
+ */
+describe("policy.standing — prefixes that cannot grant", () => {
+  it.each(["src/**", "/abs/src", "~/src", "../escape"])(
+    "FAILS a policy whose only prefix is %j",
+    async (prefix) => {
+      const finding = await run(() => ({
+        status: "loaded" as const,
+        policy: policy({ allowedPathPrefixes: [prefix] }),
+        digest: "sha256:unusable",
+      }));
+
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/grants no writable paths/);
+    },
+  );
+
+  it("passes when at least one prefix is usable", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedPathPrefixes: ["src/**", "src"] }),
+      digest: "sha256:mixed",
+    }));
+
+    expect(finding.passed).toBe(true);
+  });
+});

@@ -149,5 +149,35 @@ export type EnvelopePolicy = z.infer<typeof EnvelopePolicySchema>;
  * other dimension legitimately defaults to empty.
  */
 export function isVacuousPolicy(policy: EnvelopePolicy): boolean {
-  return policy.allowedPathPrefixes.length === 0;
+  return policy.allowedPathPrefixes.filter(isUsablePathPrefix).length === 0;
+}
+
+/**
+ * Whether a declared path prefix can grant anything at all.
+ *
+ * Roast round 3 (F3) found the gap this closes: `allowedPathPrefixes:
+ * ["src/**"]` — the natural way to write "everything under src" — parses, is
+ * non-empty, and was therefore reported as a healthy policy, while the
+ * containment check rejected it and refused every dispatch. `is-contained.ts`
+ * documents that exact scenario in prose ("parses, is not vacuous, passes
+ * every doctor check, matches nothing") and the fix had been applied to the
+ * refusal message but not to the vacuity test written afterwards.
+ *
+ * Kept HERE, in the schema's own module, rather than in the containment
+ * check: 02 owns the predicate's specification, and "does this policy grant
+ * anything" must have exactly one answer shared by the installer, the doctor
+ * check and containment. The rule mirrors `validateOwnedPath`'s — literal,
+ * relative directory names — deliberately in the narrower, allow-listing
+ * direction, so a form nobody has considered reads as unusable rather than as
+ * a grant.
+ */
+export function isUsablePathPrefix(prefix: string): boolean {
+  const trimmed = prefix.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed.startsWith("/") || trimmed.startsWith("~")) return false;
+  if (/[*?[\]{}\\]/.test(trimmed)) return false;
+  return trimmed
+    .split("/")
+    .filter((segment) => segment !== "" && segment !== ".")
+    .every((segment) => segment !== "..");
 }

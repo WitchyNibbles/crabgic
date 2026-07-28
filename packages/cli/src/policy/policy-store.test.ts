@@ -182,3 +182,85 @@ describe("the policy has exactly one writer", () => {
     ]);
   });
 });
+
+/**
+ * Roast round 3, F4/F5/F7. Each of these was reachable on a real host, and
+ * each defeats the standing approval in a different way.
+ */
+describe("loadEnvelopePolicy — ownership and containment", () => {
+  it("refuses a policy path that is a symbolic link", async () => {
+    const { symlinkSync } = await import("node:fs");
+    const real = join(dir, "elsewhere.json");
+    writeFileSync(real, JSON.stringify(VALID), { mode: 0o600 });
+    chmodSync(real, 0o600);
+    symlinkSync(real, path);
+
+    const result = loadEnvelopePolicy(path);
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    // A 0600 target owned by anyone at all used to pass, because `statSync`
+    // follows the link and validated the TARGET's mode.
+    expect(result.reason).toMatch(/symbolic link/i);
+  });
+
+  it("refuses a policy in a directory other accounts can write", async () => {
+    const openDir = join(dir, "open");
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(openDir, { recursive: true });
+    chmodSync(openDir, 0o777);
+    const target = join(openDir, "envelope-policy.json");
+    writeFileSync(target, JSON.stringify(VALID), { mode: 0o600 });
+    chmodSync(target, 0o600);
+
+    const result = loadEnvelopePolicy(target);
+    expect(result.status).toBe("invalid");
+    if (result.status !== "invalid") return;
+    // 0600 does not help when the file can be unlinked and recreated.
+    expect(result.reason).toMatch(/writable by other accounts/i);
+  });
+});
+
+describe("writeEnvelopePolicy — over an existing file", () => {
+  /**
+   * `writeFile`'s `mode` is passed to `open(2)` and applies only when it
+   * CREATES the file, so writing over a pre-existing world-writable policy
+   * put the new grant into it and only then narrowed the mode -- the exact
+   * window the code's own comment claimed to avoid.
+   */
+  it("never writes the grant into a pre-existing world-writable file", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    writeFileSync(path, "{}", { mode: 0o666 });
+    chmodSync(path, 0o666);
+
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(loadEnvelopePolicy(path).status).toBe("loaded");
+  });
+
+  it("leaves no temporary file behind", async () => {
+    const { writeEnvelopePolicy } = await import("./policy-store.js");
+    const { readdirSync } = await import("node:fs");
+
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+
+    expect(readdirSync(dir).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+  });
+});
+
+describe("digestPolicy — the replacer trap", () => {
+  /**
+   * The old implementation passed `Object.keys(policy).sort()` as a replacer,
+   * believing it fixed key order. A replacer ARRAY is a deep key allow-list
+   * applied at every nesting level, so any nested field would have been
+   * erased from the digest -- two policies granting differently would digest
+   * identically, silently, and the journaled authorization identity would be
+   * a lie. This pins the property directly rather than trusting the shape.
+   */
+  it("distinguishes policies that differ only in a nested value", () => {
+    const nestedA = { ...EnvelopePolicySchema.parse(VALID), limits: { maxTurns: 5 } };
+    const nestedB = { ...EnvelopePolicySchema.parse(VALID), limits: { maxTurns: 9999 } };
+
+    expect(digestPolicy(nestedA as never)).not.toBe(digestPolicy(nestedB as never));
+  });
+});

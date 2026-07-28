@@ -180,3 +180,41 @@ describe("transitionRun — concurrent transitions on one run", () => {
     for (const runId of ids) expect(runs.get(runId)?.runState).toBe("awaiting_approval");
   });
 });
+
+/**
+ * Roast round 3, F8. The queue Map entry was never deleted, and
+ * `composeSupervisor` creates exactly one `RunsRegistry` for the daemon's
+ * whole lifetime -- so the WeakMap never shed it and one settled promise,
+ * holding its resolved RunRecord, was retained per run for ever. The comment
+ * claimed the WeakMap prevented precisely the leak it had.
+ */
+describe("transitionRun — the write queue drains", () => {
+  it("retains nothing once a run's transitions have settled", async () => {
+    const { WRITE_QUEUES_FOR_TEST } = await import("./run-transition.js");
+    const runs = createRunsRegistry();
+    const changeSetId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+
+    for (let i = 0; i < 5; i += 1) {
+      const runId = `0000000${i}-0000-4000-8000-000000000000`;
+      await transitionRun({ journal: store, runs, runId, changeSetId, to: "awaiting_approval" });
+    }
+
+    expect(WRITE_QUEUES_FOR_TEST.get(runs)?.size ?? 0).toBe(0);
+  });
+
+  it("keeps the entry while a transition is still queued behind another", async () => {
+    const { WRITE_QUEUES_FOR_TEST } = await import("./run-transition.js");
+    const runs = createRunsRegistry();
+    const runId = "abcdef00-0000-4000-8000-000000000000";
+    const changeSetId = "abcdef01-0000-4000-8000-000000000000";
+
+    const inFlight = Promise.all([
+      transitionRun({ journal: store, runs, runId, changeSetId, to: "awaiting_approval" }),
+      transitionRun({ journal: store, runs, runId, changeSetId, to: "ready" }),
+    ]);
+    expect(WRITE_QUEUES_FOR_TEST.get(runs)?.size).toBe(1);
+
+    await inFlight;
+    expect(WRITE_QUEUES_FOR_TEST.get(runs)?.size ?? 0).toBe(0);
+  });
+});
