@@ -1000,8 +1000,44 @@ Four parts.
    `src/login`, and does **not** contain `srcfoo`.
 2. **The gate becomes a subset check.** At dispatch the compiled `AuthorizationEnvelope` is tested for
    containment in the `EnvelopePolicy`. Contained → the standing approval covers it; the run dispatches with
-   no prompt and no token. Not contained → 11's existing **`expanded_authority`** stop condition fires and
-   the run halts. There is no third outcome, and no partial grant of the contained subset.
+   no prompt and no token. Not contained → **dispatch is refused before a run is created**, and the
+   ChangeSet stays `ready` so that fixing the policy and re-dispatching simply works. There is no third
+   outcome, and no partial grant of the contained subset. 11's `expanded_authority` remains the halt for
+   authority discovered to be missing **mid-run**, where the run is already `running` and `blocked` is a
+   legal edge — see part 5.
+
+   **Amended 2026-07-28 by design roast round 1** (`docs/evidence/gap-18/design-roast-round-1.md`). The
+   original wording halted the run on the stop condition at dispatch. Two independent reviewers refuted it:
+   `draft → blocked` is not an edge in 02's table and a run at dispatch time has no prior record, so the
+   halt would have thrown `IllegalTransitionError` inside an un-awaited driver **after** `dispatch()` had
+   already answered `accepted: true` — the run neither dispatched, nor blocked, nor reported. And `blocked`
+   is absorbing, so even a working halt stranded the ChangeSet with no recovery path short of a hand-edited
+   policy and a brand-new `requestKey`.
+
+5. **The policy is also a compiler input, not only a gate.** This is what the roast forced, and it is the
+   substantive change. `sandbox-profile.ts` deliberately leaves `filesystem.allowWrite` at the **whole
+   worktree**, for a stated and correct reason: build-output directories are "project-specific and unknowable
+   **here**", the compiler's only inputs being one envelope's four fields. Owned-path scoping is left to the
+   permission layer — which sees *tool calls*, and by construction cannot see the syscalls of a process it
+   spawned. So an allow-listed `npm run test` executing a test file the worker legitimately wrote inside its
+   owned path may write anywhere in the worktree, and the containment evidence has **no child-process arm**
+   to say otherwise. Under a human gate that is bounded by someone reading the diff. Under a standing
+   approval nobody reads it.
+
+   What is unknowable to the compiler is knowable to a human authoring a policy once, at install. The policy
+   therefore carries `allowedWriteScratchPaths`, which narrows `allowWrite` to owned paths plus declared
+   scratch, and `allowUnixSockets` (**default false**), which makes today's unconditional
+   `allowAllUnixSockets: true` a declared grant rather than an ambient one. Standing approval is only sound
+   once the profile's *actual* granted authority is inside what the policy can express.
+
+6. **Unknown or absent means deny, and inert fields are never presented as controls.** A policy field the
+   containment check does not recognise, or one absent from an older on-disk policy, denies — never skips.
+   `remoteResourceAuthorizations` escalate by default: *any* entry is out-of-policy unless the policy names
+   an allowed reference, because the high-impact flag taxonomy is assigned by static per-kind tables rather
+   than by risk (a Grafana `dashboard` and a single-issue Jira update both carry **no** flag) and is in any
+   case never compared against the envelope at apply time. `prohibitedActions`, `dependencies`,
+   `temporaryServices` and `commands`-beyond-the-four-literals are **inert** in the compiled profile; the
+   schema documents them as inert rather than letting a policy author believe they bound anything.
 3. **The model can never widen the policy.** Creating or extending it is out-of-band: `crabgic install`, or a
    human editing the file. No MCP tool, no session-reachable CLI command, and no skill may write it. The
    token machinery is **not deleted** — `contract.approve`, `trust review`/`capability.approve` and
@@ -1020,10 +1056,19 @@ credentials — is a stronger artifact than a digest rubber-stamped under time p
 The engine itself carries the precedent: `.claude/settings.json`'s `allowedTools` is the same shape, and is
 the mechanism the owner's own standing guidance prefers over blanket permission-skipping.
 
-**Disclosed residual risk:** the blast radius becomes whatever the policy got wrong. Three mitigations are
-part of the ruling, not optional hardening: network and credential references default to none; `doctor`
-renders the policy in full; and part 4's per-dispatch digest makes every run's authorization auditable after
-the fact.
+**Disclosed residual risk:** the blast radius becomes whatever the policy got wrong. Four mitigations are
+part of the ruling, not optional hardening: network, credential and remote-resource references default to
+none; `doctor` renders the policy in full **and fails a vacuous one** (all-empty lists otherwise pass every
+existence/parse/mode/untracked check while every run halts); part 4's per-dispatch digest makes every run's
+authorization auditable after the fact; and part 5 brings the compiled profile's real granted authority
+inside what the policy can express, without which the other three describe a boundary that is not the one
+being enforced.
+
+**Owed, and deliberately not resolved by this ruling.** Three gaps the roast surfaced sit outside it and
+must not be read as covered: no dependency provisioning exists for a fresh worktree, so a first live run on
+a Node repo cannot proceed at any policy setting; `RemoteMutationPlan.requiredCapabilityFlags` has no
+consumer at apply time; and `envelope.commands` is inert beyond four literals. The latter two predate this
+ruling — standing approval is what makes them load-bearing, not what caused them.
 
 **Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the schema),
 `roadmap/03-envelope-compiler-engine-adapter.md` (owns the containment check, as the security keystone),
