@@ -135,3 +135,37 @@ describe("policy.standing — prefixes that cannot grant", () => {
     expect(finding.passed).toBe(true);
   });
 });
+
+/**
+ * Roast round 9. `allowedWriteScratchPaths` had no usability filter, so a
+ * glob rendered as granted, kept the policy non-vacuous, passed every check,
+ * and was silently dropped when the profile compiled -- leaving the worker's
+ * build denied at runtime with nothing pointing at the policy. Round 3's F3,
+ * fixed for path prefixes and never carried across to the sibling field.
+ */
+describe("policy.standing — scratch paths that cannot grant", () => {
+  it.each(["dist/**", "/abs/dist", "~/dist", "../dist"])(
+    "FAILS a policy whose scratch path %j grants nothing",
+    async (scratch) => {
+      const finding = await run(() => ({
+        status: "loaded" as const,
+        policy: policy({ allowedWriteScratchPaths: [scratch] }),
+        digest: "sha256:scratch",
+      }));
+
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/cannot grant anything/i);
+      expect(finding.repairStep).toMatch(/literal directory names/i);
+    },
+  );
+
+  it("passes when every scratch path is a literal directory", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ allowedWriteScratchPaths: ["dist", "packages/cli/dist"] }),
+      digest: "sha256:ok",
+    }));
+
+    expect(finding.passed).toBe(true);
+  });
+});

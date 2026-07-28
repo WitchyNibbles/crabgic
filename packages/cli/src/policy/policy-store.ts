@@ -29,7 +29,24 @@ export function resolveEnvelopePolicyPath(xdgEnv: XdgEnv, projectHash: string): 
 export type LoadPolicyResult =
   | { readonly status: "loaded"; readonly policy: EnvelopePolicy; readonly digest: string }
   | { readonly status: "absent" }
-  | { readonly status: "invalid"; readonly reason: string };
+  | {
+      readonly status: "invalid";
+      readonly reason: string;
+      /**
+       * True when the policy itself is probably fine and only this process's
+       * state prevented reading it.
+       *
+       * Round 9: the resource-exhaustion message was added to the loader and
+       * the doctor's `repairStep` was left static, so one finding said "the
+       * policy is fine" and "go rewrite it" at once — and following that step
+       * runs `install`, which renames a machine-derived policy over a
+       * hand-tuned one because of a transient descriptor shortage. A remedy
+       * that contradicts its own evidence is worse than no remedy, so the
+       * classification travels with the result instead of being re-derived
+       * from prose by every consumer.
+       */
+      readonly transient?: true;
+    };
 
 /**
  * The digest journaled with every dispatch the policy authorized.
@@ -118,6 +135,42 @@ function validateOpenPolicyFile(fd: number, path: string): LoadPolicyResult | un
   }
 
   return undefined;
+}
+
+/**
+ * Maps an `openSync` failure to a load result.
+ *
+ * Extracted so the branch is reachable from a test without exhausting the
+ * real descriptor table, which would destabilise every other test in the run.
+ * Round 9 found the resource-exhaustion branch shipped with no coverage at
+ * all -- `grep` located these codes nowhere else in the repo, and v8 named
+ * the `return` uncovered -- which is the same "a green suite proves nothing
+ * about the new path" pattern round 8 existed to punish.
+ */
+export function classifyOpenFailure(code: string | undefined, path: string): LoadPolicyResult {
+  if (code === "ELOOP") {
+    return {
+      status: "invalid",
+      reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
+    };
+  }
+  // ONLY a genuinely missing path is `absent`. A mode-000 policy fails here
+  // with `EACCES`, and reporting that as "no policy exists, run `crabgic
+  // install`" both misdiagnoses it and invites `install` to overwrite a file
+  // the owner deliberately locked.
+  if (code === "ENOENT") return { status: "absent" };
+  // Resource-exhaustion codes describe THIS PROCESS, not the file.
+  if (code === "EMFILE" || code === "ENFILE" || code === "ENOMEM") {
+    return {
+      status: "invalid",
+      transient: true,
+      reason: `could not open ${path} because this process is out of resources (${code}); the policy itself is probably fine`,
+    };
+  }
+  return {
+    status: "invalid",
+    reason: `policy file ${path} could not be opened (${code ?? "unknown error"}); check the file and the directory holding it`,
+  };
 }
 
 export function digestPolicy(policy: EnvelopePolicy): string {
@@ -216,46 +269,7 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
   try {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ELOOP") {
-      return {
-        status: "invalid",
-        reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
-      };
-    }
-    // ONLY a genuinely missing path is `absent`. Roast round 5 caught the
-    // read-side of this and the open-side survived: a mode-000 policy fails
-    // here with `EACCES`, and reporting that as "no policy exists, run
-    // `crabgic install`" both misdiagnoses it and invites `install` to
-    // overwrite a file the owner deliberately locked.
-    // ONLY `ENOENT`. Round 7: `ENOTDIR` was added alongside it and undid the
-    // sibling fix in the same commit — a state root that is a regular file
-    // raises `ENOTDIR`, reporting "absent" sent the owner to `crabgic
-    // install`, and the writer then died with a raw `EEXIST` from `mkdir`.
-    // `ENOTDIR` never means a policy exists, but "absent" is the wrong
-    // REMEDY, which is the whole point of the absent/invalid split.
-    if (code === "ENOENT") return { status: "absent" };
-    // Deliberately does NOT assert the file exists. Roast round 6: an
-    // unreadable PARENT directory raises `EACCES` here whether or not a
-    // policy is present, and the previous wording said "exists but could not
-    // be opened" — misdiagnosing in the opposite direction from the bug it
-    // was written to fix. Both cases need an owner to look, which is what the
-    // message now asks for.
-    // Resource-exhaustion codes describe THIS PROCESS, not the file. Round 8:
-    // under an exhausted descriptor table a perfectly valid policy was
-    // reported `invalid`, sending the owner to inspect a file that is fine.
-    // There is no third bucket in the absent/invalid split, so the message
-    // has to carry the distinction.
-    if (code === "EMFILE" || code === "ENFILE" || code === "ENOMEM") {
-      return {
-        status: "invalid",
-        reason: `could not open ${path} because this process is out of resources (${code}); the policy itself is probably fine — retry, or raise the open-file limit`,
-      };
-    }
-    return {
-      status: "invalid",
-      reason: `policy file ${path} could not be opened (${code ?? "unknown error"}); check the file and the directory holding it`,
-    };
+    return classifyOpenFailure((err as NodeJS.ErrnoException).code, path);
   }
 
   let raw: string;

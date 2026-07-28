@@ -1,4 +1,4 @@
-import { isVacuousPolicy, type EnvelopePolicy } from "@crabgic/contracts";
+import { isUsablePathPrefix, isVacuousPolicy, type EnvelopePolicy } from "@crabgic/contracts";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 import { loadEnvelopePolicy } from "../../policy/policy-store.js";
 
@@ -58,7 +58,38 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
           severity: "error",
           passed: false,
           evidence: loaded.reason,
-          repairStep: `edit ${options.path} by hand to correct it, or re-run \`crabgic install\` to author a fresh one`,
+          // The remedy has to agree with the evidence. A transient failure
+          // means the FILE is fine, and telling the owner to re-run `install`
+          // would rename a machine-derived policy over their hand-tuned one
+          // because a descriptor table filled up (round 9).
+          repairStep:
+            loaded.transient === true
+              ? `retry once this process has descriptors available, or raise the open-file limit; do NOT re-run \`crabgic install\`, which would replace ${options.path}`
+              : `edit ${options.path} by hand to correct it, or re-run \`crabgic install\` to author a fresh one`,
+        });
+      }
+
+      // Round 9: `allowedWriteScratchPaths` passes through no usability
+      // filter, so `dist/**` renders as granted, keeps the policy
+      // non-vacuous, passes every check -- and is silently dropped by
+      // `narrowedAllowWrite`, leaving the worker's build denied at runtime
+      // with nothing pointing at the policy. This is round 3's F3 in the
+      // sibling field: the fix was applied to path prefixes and never carried
+      // across.
+      const unusableScratch = loaded.policy.allowedWriteScratchPaths.filter(
+        (entry) => !isUsablePathPrefix(entry),
+      );
+      if (unusableScratch.length > 0) {
+        return Promise.resolve({
+          id: CHECK_ID,
+          severity: "error",
+          passed: false,
+          evidence:
+            `the standing policy at ${options.path} lists build-output paths that cannot grant ` +
+            `anything: ${unusableScratch.map((entry) => JSON.stringify(entry)).join(", ")}. ` +
+            "They are shown as granted but silently dropped when the worker profile is compiled, " +
+            "so a build writing there is denied with nothing to point at.",
+          repairStep: `replace them with literal directory names in ${options.path} (no globs, no leading slash)`,
         });
       }
 
