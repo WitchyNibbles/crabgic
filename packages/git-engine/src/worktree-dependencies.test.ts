@@ -4,7 +4,7 @@
  * command prefixes -- failed immediately in every fresh worktree, and a first
  * real run could not proceed on any Node project at any policy setting.
  */
-import { mkdir, mkdtemp, readlink, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readlink, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { lstatSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -73,7 +73,7 @@ describe("provisionWorktreeDependencies", () => {
     const cache = join(worktreePath, "node_modules", ".cache");
     expect(lstatSync(cache).isSymbolicLink()).toBe(false);
     expect(lstatSync(cache).isDirectory()).toBe(true);
-    expect(result.realDirectories).toEqual([".cache"]);
+    expect(result.realDirectories).toContain(".cache");
     // The source's own cache contents must NOT leak in.
     await expect(stat(join(cache, "stale"))).rejects.toThrow();
   });
@@ -114,7 +114,7 @@ describe("provisionWorktreeDependencies", () => {
 
     const result = await provisionWorktreeDependencies({ worktreePath, sourceDir });
 
-    expect(result).toEqual({ linkedCount: 0, realDirectories: [] });
+    expect(result).toEqual({ linkedCount: 0, realDirectories: [], skipped: [] });
     await expect(stat(join(worktreePath, "node_modules"))).rejects.toThrow();
   });
 
@@ -140,5 +140,109 @@ describe("provisionWorktreeDependencies", () => {
       "a",
     );
     expect(lstatSync(join(worktreePath, "node_modules", ".cache")).isDirectory()).toBe(true);
+  });
+});
+
+/**
+ * Roast round 3, F2 — the defect this module would otherwise have introduced,
+ * and the most serious one found in any round.
+ *
+ * In a workspace repo `node_modules` holds links back into the checkout
+ * itself (verified live here: `node_modules/@crabgic/contracts ->
+ * ../../packages/contracts`). Copying those verbatim points the worktree's
+ * module resolution at the SOURCE checkout, so a worker that edits its own
+ * copy and runs the tests has them resolve the OWNER's code instead. Green
+ * tests would be evidence about a tree the worker never touched.
+ */
+describe("provisionWorktreeDependencies — workspace self-links", () => {
+  async function seedWorkspaceLink(scope: string, name: string): Promise<void> {
+    const pkgDir = join(sourceDir, "packages", name);
+    await mkdir(pkgDir, { recursive: true });
+    await writeFile(join(pkgDir, "index.js"), "module.exports = 'source';");
+    await mkdir(join(sourceDir, "node_modules", scope), { recursive: true });
+    await symlink(join(sourceDir, "packages", name), join(sourceDir, "node_modules", scope, name));
+  }
+
+  it("redirects a workspace self-link into the worktree, not the source", async () => {
+    await seedWorkspaceLink("@acme", "contracts");
+    // The worktree's own copy, with DIFFERENT content — this is what a worker
+    // would have edited.
+    const wtPkg = join(worktreePath, "packages", "contracts");
+    await mkdir(wtPkg, { recursive: true });
+    await writeFile(join(wtPkg, "index.js"), "module.exports = 'worktree';");
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    // Resolving through node_modules must reach the WORKTREE's edit.
+    const resolved = join(worktreePath, "node_modules", "@acme", "contracts", "index.js");
+    expect(readFileSync(resolved, "utf8")).toBe("module.exports = 'worktree';");
+  });
+
+  /**
+   * A scope directory holds a MIX of real packages and self-links, so linking
+   * it wholesale would carry every self-link inside it back to the source.
+   */
+  it("recurses into a scope directory instead of linking it wholesale", async () => {
+    await seedWorkspaceLink("@acme", "contracts");
+    // A genuinely external package sharing the same scope.
+    const external = join(sourceDir, "node_modules", "@acme", "vendor");
+    await mkdir(external, { recursive: true });
+    await writeFile(join(external, "index.js"), "module.exports = 'vendor';");
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(lstatSync(join(worktreePath, "node_modules", "@acme")).isSymbolicLink()).toBe(false);
+    // External stays shared from the source...
+    expect(await readlink(join(worktreePath, "node_modules", "@acme", "vendor"))).toBe(external);
+    // ...while the self-link points into the worktree.
+    expect(await readlink(join(worktreePath, "node_modules", "@acme", "contracts"))).toBe(
+      join(worktreePath, "packages", "contracts"),
+    );
+  });
+
+  it("still shares an ordinary external package from the source", async () => {
+    await seedSourceModules({ vitest: "a" });
+
+    await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(await readlink(join(worktreePath, "node_modules", "vitest"))).toBe(
+      join(sourceDir, "node_modules", "vitest"),
+    );
+  });
+});
+
+describe("provisionWorktreeDependencies — reporting", () => {
+  /**
+   * Roast round 3, F10: every failure was swallowed, so re-provisioning an
+   * already-provisioned worktree returned `linkedCount: 0` — byte-identical
+   * to "the source has no node_modules", which the result type documents as a
+   * normal answer. A caller could not tell a working worktree from an empty
+   * one.
+   */
+  it("names the entries it could not link", async () => {
+    await seedSourceModules({ vitest: "a", typescript: "b" });
+    await mkdir(join(worktreePath, "node_modules", "vitest"), { recursive: true });
+
+    const result = await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(result.skipped).toEqual(["vitest"]);
+    expect(result.linkedCount).toBe(1);
+  });
+
+  it("reports nothing skipped on a clean provision", async () => {
+    await seedSourceModules({ vitest: "a" });
+    expect((await provisionWorktreeDependencies({ worktreePath, sourceDir })).skipped).toEqual([]);
+  });
+
+  /** Roast round 3, F6: this toolchain writes to .vite and .vite-temp, not .cache. */
+  it("gives the worktree real directories for every cache dir the toolchain uses", async () => {
+    await seedSourceModules({ vitest: "a" });
+
+    const result = await provisionWorktreeDependencies({ worktreePath, sourceDir });
+
+    expect(result.realDirectories).toEqual([".cache", ".vite", ".vite-temp"]);
+    for (const dir of result.realDirectories) {
+      expect(lstatSync(join(worktreePath, "node_modules", dir)).isSymbolicLink()).toBe(false);
+    }
   });
 });
