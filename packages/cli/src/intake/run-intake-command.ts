@@ -42,7 +42,9 @@ import {
   ApprovalDeclinedError,
   type ApprovalPromptIo,
 } from "../approval/prompt.js";
-import type { ApprovalTokenMinter, MintedApprovalToken } from "../approval/token.js";
+import type { ApprovalTokenMinter } from "../approval/token.js";
+import { completeEnvelopeApproval } from "./complete-envelope-approval.js";
+import type { ContractApproveResult } from "./contract-approve-handler.js";
 
 export interface RunIntakeCommandDeps {
   readonly journal: JournalStore;
@@ -53,15 +55,24 @@ export interface RunIntakeCommandDeps {
   /** Durable contract store, for the same cross-process reason as `envelopes`: `contract.approve` resolves this ChangeSet's declared `requirementIds` from here to run its unmapped-requirement readiness gate. */
   readonly intentContracts: Registry<IntentContract>;
   readonly minter: ApprovalTokenMinter;
+  /** The same durable signing material `minter` signs with — verification now happens in-process (see `./complete-envelope-approval.ts`). */
+  readonly secretKey: Buffer;
   readonly io: ApprovalPromptIo;
   /** Resolves the drafted intake request content (e.g. a manager-session-authored JSON file) — this module never drafts it itself. */
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
 }
 
+/**
+ * NOTE the minted token is deliberately NOT part of this result. It used to
+ * be, and `run --json` printed it — the exact model-as-courier exposure
+ * ledger Gap 18's audit recorded. Confirmation now completes verification
+ * in-process (`./complete-envelope-approval.ts`), so the token is spent
+ * before this function returns and there is nothing left worth rendering.
+ */
 export interface RunIntakeCommandResult {
   readonly outcome: IntakeOutcome;
-  /** Present only when the human confirmed the terminal approval prompt. */
-  readonly approvalToken?: MintedApprovalToken;
+  /** Present only when the human confirmed the terminal prompt: the in-process verification's own verdict. */
+  readonly approval?: ContractApproveResult;
   /** True when the human explicitly declined the approval prompt (never a token minted). */
   readonly declined?: true;
 }
@@ -94,18 +105,25 @@ export async function runIntakeCommand(
     return { outcome };
   }
 
+  const digest = outcome.artifacts.envelope.canonicalHash;
+  let token: string;
   try {
-    const approvalToken = await runApprovalFlow(
-      deps.minter,
-      "envelope_hash",
-      outcome.artifacts.envelope.canonicalHash,
-      deps.io,
-    );
-    return { outcome, approvalToken };
+    const minted = await runApprovalFlow(deps.minter, "envelope_hash", digest, deps.io);
+    token = minted.token;
   } catch (err) {
     if (err instanceof ApprovalDeclinedError) {
       return { outcome, declined: true };
     }
     throw err;
   }
+
+  const approval = await completeEnvelopeApproval(outcome.artifacts.changeSet, digest, token, {
+    secretKey: deps.secretKey,
+    journal: deps.journal,
+    changeSets: deps.changeSets,
+    envelopes: deps.envelopes,
+    intentContracts: deps.intentContracts,
+    workUnits: deps.workUnits,
+  });
+  return { outcome, approval };
 }

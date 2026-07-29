@@ -286,11 +286,16 @@ export async function runRunCommand(
     envelopes: deps.intake.envelopes,
     intentContracts: deps.intake.intentContracts,
     minter: deps.intake.minter,
+    secretKey: deps.intake.secretKey,
     io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
     readIntakeRequest: deps.intake.readIntakeRequest,
   });
 
   if (cmd.json) {
+    // `result` carries no token by construction (`RunIntakeCommandResult`'s
+    // own doc comment): rendering one here was the model-as-courier exposure
+    // ledger Gap 18's audit recorded, and the shape below is asserted
+    // token-free by `./intake-dispatch.test.ts`.
     return { exitCode: EXIT_OK, stdout: formatJson(result) };
   }
 
@@ -301,13 +306,22 @@ export async function runRunCommand(
     };
   }
   if (result.declined === true) {
+    const digest = result.outcome.artifacts.envelope.canonicalHash;
     return {
       exitCode: EXIT_OK,
-      stdout: "approval declined — no token minted; ChangeSet remains awaiting_approval\n",
+      stdout:
+        "approval declined — no token minted; ChangeSet remains awaiting_approval\n" +
+        `(a human can approve it later with \`crabgic approve ${digest}\`)\n`,
+    };
+  }
+  if (result.approval !== undefined && !result.approval.approved) {
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      stderr: `approval confirmed at the prompt but verification failed: ${result.approval.reason}\n`,
     };
   }
   return {
     exitCode: EXIT_OK,
-    stdout: `ChangeSet ${result.outcome.artifacts.changeSet.id} approved (token minted); awaiting contract.approve verification to reach ready\n`,
+    stdout: `ChangeSet ${result.outcome.artifacts.changeSet.id} approved — now ready\n`,
   };
 }

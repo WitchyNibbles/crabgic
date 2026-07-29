@@ -10,10 +10,17 @@
  * the budget is exhausted. Both seams (`connect`, `spawnDaemon`) are
  * injected, so these tests never touch a real socket or process.
  */
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { SupervisorUnavailableError } from "../errors.js";
 import type { UdsClient } from "./client.js";
-import { ensureSupervisorConnection, retryDelay } from "./ensure-supervisor.js";
+import {
+  ensureSupervisorConnection,
+  readSupervisordStderrTail,
+  retryDelay,
+} from "./ensure-supervisor.js";
 
 const FAKE_CLIENT = { close: () => Promise.resolve() } as unknown as UdsClient;
 
@@ -205,5 +212,136 @@ describe("ensureSupervisorConnection — passive mode", () => {
     });
     expect(client).toBe(FAKE_CLIENT);
     expect(spawns).toBe(1);
+  });
+});
+
+/**
+ * Spawn diagnostics — added 2026-07-29. The daemon is spawned detached with
+ * its stderr discarded, so when it dies during startup the CLI's only report
+ * was a generic "unreachable" after the whole retry budget — the actual
+ * fatal message (`bin/supervisord.ts`'s last words) went nowhere. The spawner
+ * now points the daemon's stderr at a log file, and once the retry budget is
+ * exhausted the error carries that file's tail: the user reads WHY the daemon
+ * died, not just that nothing answered.
+ */
+describe("ensureSupervisorConnection — spawn diagnostics", () => {
+  it("carries the spawned daemon's stderr tail on the exhaustion error", async () => {
+    const err = await ensureSupervisorConnection({
+      connect: () => unavailable(),
+      spawnDaemon: () => {},
+      readSpawnDiagnostics: () => "FATAL: lease directory is not writable",
+      retryDelayMs: 1,
+      maxAttempts: 2,
+    }).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(err).toBeInstanceOf(SupervisorUnavailableError);
+    expect((err as Error).message).toContain("FATAL: lease directory is not writable");
+    expect((err as Error).message).toContain("could not reach the supervisor control socket");
+  });
+
+  it("throws the plain unavailability error when diagnostics come back undefined", async () => {
+    const err = await ensureSupervisorConnection({
+      connect: () => unavailable(),
+      spawnDaemon: () => {},
+      readSpawnDiagnostics: () => undefined,
+      retryDelayMs: 1,
+      maxAttempts: 2,
+    }).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(err).toBeInstanceOf(SupervisorUnavailableError);
+    expect((err as Error).message).not.toContain("reported");
+  });
+
+  it("never consults diagnostics in passive mode (nothing was spawned)", async () => {
+    let reads = 0;
+    await expect(
+      ensureSupervisorConnection({
+        connect: () => unavailable(),
+        spawnDaemon: () => {
+          throw new Error("must not spawn");
+        },
+        readSpawnDiagnostics: () => {
+          reads += 1;
+          return "irrelevant";
+        },
+        spawn: false,
+      }),
+    ).rejects.toBeInstanceOf(SupervisorUnavailableError);
+    expect(reads).toBe(0);
+  });
+
+  it("never consults diagnostics when the connection succeeds", async () => {
+    let reads = 0;
+    let attempts = 0;
+    await ensureSupervisorConnection({
+      connect: () => {
+        attempts += 1;
+        return attempts === 1 ? Promise.resolve(unavailable()) : Promise.resolve(FAKE_CLIENT);
+      },
+      spawnDaemon: () => {},
+      readSpawnDiagnostics: () => {
+        reads += 1;
+        return "irrelevant";
+      },
+      retryDelayMs: 1,
+    });
+    expect(reads).toBe(0);
+  });
+
+  it("a throwing diagnostics reader never masks the unavailability error", async () => {
+    const err = await ensureSupervisorConnection({
+      connect: () => unavailable(),
+      spawnDaemon: () => {},
+      readSpawnDiagnostics: () => {
+        throw new Error("log file exploded");
+      },
+      retryDelayMs: 1,
+      maxAttempts: 2,
+    }).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(err).toBeInstanceOf(SupervisorUnavailableError);
+    expect((err as Error).message).not.toContain("log file exploded");
+  });
+});
+
+describe("readSupervisordStderrTail", () => {
+  let dir: string;
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("returns undefined for a missing file", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-stderr-tail-"));
+    expect(readSupervisordStderrTail(join(dir, "absent.log"))).toBeUndefined();
+  });
+
+  it("returns undefined for an empty or whitespace-only file", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-stderr-tail-"));
+    const path = join(dir, "empty.log");
+    writeFileSync(path, "  \n\n");
+    expect(readSupervisordStderrTail(path)).toBeUndefined();
+  });
+
+  it("returns the trimmed contents of a short file", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-stderr-tail-"));
+    const path = join(dir, "short.log");
+    writeFileSync(path, "FATAL: something specific\n");
+    expect(readSupervisordStderrTail(path)).toBe("FATAL: something specific");
+  });
+
+  it("returns only the last maxBytes of a long file", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-stderr-tail-"));
+    const path = join(dir, "long.log");
+    writeFileSync(path, `${"x".repeat(10_000)}\nTHE END`);
+    const tail = readSupervisordStderrTail(path, 64);
+    expect(tail).toBeDefined();
+    expect(tail!.length).toBeLessThanOrEqual(64);
+    expect(tail).toContain("THE END");
   });
 });

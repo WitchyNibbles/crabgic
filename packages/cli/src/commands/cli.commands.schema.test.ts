@@ -203,6 +203,7 @@ describe("dispatchCommand — NOT_IMPLEMENTED stubs", () => {
   it.each([
     { command: "install", dryRun: false, json: true } as const,
     { command: "run", json: true } as const,
+    { command: "approve", digest: "sha256:abc", json: true } as const,
     {
       command: "connection-add",
       provider: "jira",

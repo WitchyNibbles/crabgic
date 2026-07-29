@@ -98,7 +98,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     expect(parsed.status).toBe("NOT_IMPLEMENTED");
   });
 
-  it("run --json runs the real intake backend when deps.intake is present", async () => {
+  it("run --json runs the real intake backend when deps.intake is present — and never renders a token", async () => {
+    const secretKey = randomBytes(32);
     const input = new PassThrough();
     const output = new PassThrough();
     const deps: CliDependencies = {
@@ -109,7 +110,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
         workUnits: createWorkUnitsRegistry(),
         envelopes: createAuthorizationEnvelopesRegistry(),
         intentContracts: createIntentContractsRegistry(),
-        minter: new ApprovalTokenMinter({ secretKey: randomBytes(32) }),
+        minter: new ApprovalTokenMinter({ secretKey }),
+        secretKey,
         readIntakeRequest: async () => fixtureRequest(),
         io: { input, output },
       },
@@ -120,7 +122,15 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     const result = await resultPromise;
 
     expect(result.exitCode).toBe(EXIT_OK);
-    const parsed = JSON.parse(result.stdout!) as { outcome: { status: string } };
+    const parsed = JSON.parse(result.stdout!) as {
+      outcome: { status: string };
+      approval?: { approved: boolean };
+    };
     expect(parsed.outcome.status).toBe("created");
+    expect(parsed.approval?.approved).toBe(true);
+    // Ledger Gap 18's audit: `run --json` printing the minted token made the
+    // model the courier for a human-approval token. The rendered output must
+    // never contain one again.
+    expect(result.stdout).not.toContain('"token"');
   });
 });

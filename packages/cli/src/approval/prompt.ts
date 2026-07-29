@@ -47,18 +47,56 @@ export interface ApprovalPromptIo {
   readonly output: Writable;
 }
 
-/** Reads one line of confirmation from `io.input`; resolves `true` only for an exact (trimmed, case-insensitive) "yes". */
+/**
+ * Reads one line of confirmation from `io.input`; resolves `true` only for an
+ * exact (trimmed, case-insensitive) "yes".
+ *
+ * EOF terminates the final line: "yes" followed by end-of-input confirms, and
+ * end-of-input with nothing buffered declines. A stream that already ended
+ * before this attached (the `run < intake.json` shape, where the intake JSON
+ * read drained stdin) has emitted its events for good — no listener attached
+ * now will ever fire — so it is declined up front rather than awaited forever.
+ * A stream error declines; it never crashes the process or mints.
+ */
 function readConfirmation(io: ApprovalPromptIo): Promise<boolean> {
   return new Promise((resolve) => {
+    if (io.input.readableEnded || io.input.destroyed) {
+      resolve(false);
+      return;
+    }
     let buffer = "";
+    const isYes = (line: string): boolean => line.trim().toLowerCase() === "yes";
+    const settle = (value: boolean): void => {
+      io.input.off("data", onData);
+      io.input.off("end", onEnd);
+      io.input.off("close", onClose);
+      io.input.off("error", onError);
+      resolve(value);
+    };
     function onData(chunk: Buffer | string): void {
       buffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
       if (buffer.includes("\n")) {
-        io.input.off("data", onData);
-        resolve(buffer.split("\n")[0]!.trim().toLowerCase() === "yes");
+        settle(isYes(buffer.split("\n")[0]!));
       }
     }
+    function onEnd(): void {
+      // An ORDERLY end-of-input terminates the final line: the human typed
+      // "yes" and pressed Ctrl-D instead of Enter, which is a complete answer.
+      settle(isYes(buffer));
+    }
+    function onClose(): void {
+      // An abnormal teardown is NOT an answer. Consent inferred from a line
+      // the human never submitted is consent they never gave, so a close
+      // without a preceding `end` always declines (adversarial review, 2026-07-29).
+      settle(false);
+    }
+    function onError(): void {
+      settle(false);
+    }
     io.input.on("data", onData);
+    io.input.on("end", onEnd);
+    io.input.on("close", onClose);
+    io.input.on("error", onError);
   });
 }
 

@@ -51,6 +51,19 @@ export interface EvidenceCommand extends JsonFlag {
   readonly changeSetId: string;
 }
 
+/**
+ * `approve <digest>` — the terminal half of the escalation path ledger
+ * Gap 18 kept the token machinery for: a human, in a real terminal, approves
+ * a pending authorization envelope by its digest. The `/eo:approve` skill
+ * delegates here. Mint AND verification happen inside this one command
+ * process, so the token never crosses a process or session boundary — the
+ * exact courier exposure Gap 18's audit recorded against `run --json`.
+ */
+export interface ApproveCommand extends JsonFlag {
+  readonly command: "approve";
+  readonly digest: string;
+}
+
 export type ConnectionProvider = "jira" | "grafana";
 
 /**
@@ -148,6 +161,7 @@ export type ParsedCommand =
   | ResumeCommand
   | CancelCommand
   | EvidenceCommand
+  | ApproveCommand
   | ConnectionAddCommand
   | ConnectionListCommand
   | ConnectionDoctorCommand

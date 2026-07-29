@@ -132,6 +132,7 @@ The full command surface, straight from `crabgic --help`:
 | `crabgic install [--dry-run] [--json]` | 📦 Install the plugin / managed config into this project |
 | `crabgic doctor [--repair-plan] [--json]` | 🩺 Validate the host end-to-end against seeded fault checks |
 | `crabgic run [--json]` | 🚀 Dispatch a new run |
+| `crabgic approve <envelope-digest>` | 🤝 Approve a pending envelope at your terminal (human-only escalation path) |
 | `crabgic status [run-id] [--watch] [--json]` | 👀 Show (or stream) a run's status |
 | `crabgic resume <run-id>` | ▶️ Resume a parked or interrupted run |
 | `crabgic cancel <run-id\|task-id>` | 🛑 Cancel a run or a task within it |
@@ -169,11 +170,17 @@ with real options and a notes field — never a plain-text "1 / 2 / 3 / 4" list.
 Two blocking gates — plus one more if you turn on learning. All of them live in your
 terminal, and none can be reached by a model, a script, or a CI job.
 
-- **🤝 Envelope approval** — before work runs, the terminal prints the sha256 digest of
-  the authorization envelope and waits for you to type `yes`. Exactly `yes`. That prompt
-  is the only place in the entire system where an approval token is minted, and the token
-  is single-use, HMAC-signed, and verified in a *different process* against that change
-  set's own digest.
+- **🤝 Envelope approval** — before out-of-policy work runs, `crabgic approve <digest>`
+  prints what the envelope actually grants (change set, owned paths, commands, network
+  destinations, credential references) and waits for you to type `yes`. Exactly `yes`.
+  The token it mints is single-use (durable ledger), HMAC-signed, verified against that
+  change set's own *stored* digest, and spent in the same process before the command
+  returns — it is never printed, so nothing can courier it. The prompt is refused
+  outright on a piped stdin, and refused when the process carries agent-runtime or CI
+  provenance in its environment. **Honest limit:** a determined caller that allocates a
+  pty *and* scrubs those markers can still drive the prompt — no in-process check can
+  tell a typed `yes` from a written one. That is why the standing policy, not this
+  prompt, is the primary control; see [`docs/security-posture.md`](./docs/security-posture.md).
 - **🕵️ Capability quarantine** — `crabgic trust review` shows capability grants that
   crossed the high-impact line; `approve` and `revoke` are yours.
 - **🧠 Learning promotion** — `crabgic learn approve` twice, on two separate invocations,

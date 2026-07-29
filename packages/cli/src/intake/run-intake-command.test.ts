@@ -15,6 +15,8 @@ import {
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 
+const secretKey = randomBytes(32);
+
 let journalDir: string;
 let store: JournalStore;
 
@@ -63,12 +65,12 @@ function fixtureRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
 }
 
 describe("runIntakeCommand", () => {
-  it("runs intake then mints an approval token on an explicit 'yes'", async () => {
+  it("runs intake then completes approval in-process on an explicit 'yes' — ChangeSet reaches ready, no token in the result", async () => {
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+    const minter = new ApprovalTokenMinter({ secretKey });
     const input = new PassThrough();
     const output = new PassThrough();
 
@@ -79,6 +81,7 @@ describe("runIntakeCommand", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input, output },
       readIntakeRequest: async () => fixtureRequest(),
     });
@@ -86,8 +89,13 @@ describe("runIntakeCommand", () => {
     const result = await resultPromise;
 
     expect(result.outcome.status).toBe("created");
-    expect(result.approvalToken).toBeDefined();
+    expect(result.approval?.approved).toBe(true);
     expect(result.declined).toBeUndefined();
+    if (result.outcome.status === "conflict") throw new Error("unreachable");
+    // The whole point of in-process completion: the ChangeSet is READY, and
+    // the spent token appears nowhere in the result (Gap 18's courier fix).
+    expect(changeSets.get(result.outcome.artifacts.changeSet.id)?.state).toBe("ready");
+    expect(JSON.stringify(result)).not.toContain('"token"');
   });
 
   it("runs intake then records a decline on anything other than 'yes' — never mints", async () => {
@@ -95,7 +103,7 @@ describe("runIntakeCommand", () => {
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+    const minter = new ApprovalTokenMinter({ secretKey });
     const input = new PassThrough();
     const output = new PassThrough();
 
@@ -106,6 +114,7 @@ describe("runIntakeCommand", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input, output },
       readIntakeRequest: async () => fixtureRequest(),
     });
@@ -113,7 +122,12 @@ describe("runIntakeCommand", () => {
     const result = await resultPromise;
 
     expect(result.declined).toBe(true);
-    expect(result.approvalToken).toBeUndefined();
+    expect(result.approval).toBeUndefined();
+    // "Never mints" stopped being observable from the result once the token
+    // left it, so the ChangeSet's own state is what proves nothing was
+    // approved (adversarial review, 2026-07-29).
+    if (result.outcome.status === "conflict") throw new Error("unreachable");
+    expect(changeSets.get(result.outcome.artifacts.changeSet.id)?.state).toBe("awaiting_approval");
   });
 
   it("never reaches the approval prompt for a conflict outcome", async () => {
@@ -121,7 +135,7 @@ describe("runIntakeCommand", () => {
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+    const minter = new ApprovalTokenMinter({ secretKey });
 
     const firstInput = new PassThrough();
     const firstResult = runIntakeCommand({
@@ -131,6 +145,7 @@ describe("runIntakeCommand", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input: firstInput, output: new PassThrough() },
       readIntakeRequest: async () => fixtureRequest(),
     });
@@ -150,6 +165,7 @@ describe("runIntakeCommand", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input: new PassThrough(), output },
       readIntakeRequest: async () => fixtureRequest({ rollbackStrategy: "A different strategy." }),
     });
@@ -177,6 +193,7 @@ describe("runIntakeCommand", () => {
       envelopes,
       intentContracts,
       minter: boomMinter,
+      secretKey,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => fixtureRequest({ requestKey: "repo:boom" }),
     });

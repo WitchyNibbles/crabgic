@@ -25,6 +25,7 @@ import {
   runRunCommand,
   runStatusCommand,
 } from "./real-handlers.js";
+import { runApproveCommand } from "./approve.js";
 import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
 import {
   runLearnApproveCommand,
@@ -87,6 +88,12 @@ export async function dispatchCommand(
       // NOT_IMPLEMENTED shape unchanged).
       case "run":
         return await runRunCommand(command, deps);
+
+      // roadmap/11's escalation half (ledger Gap 18): a human approves a
+      // pending envelope digest at a real terminal. Same conditional wiring
+      // as `run` — without `deps.intake` it stays typed NOT_IMPLEMENTED.
+      case "approve":
+        return await runApproveCommand(command, deps);
 
       // `resume <run-id>` asks the daemon to (re-)drive an existing run.
       // Unconditional like `status`/`cancel`: it needs only the UDS client,

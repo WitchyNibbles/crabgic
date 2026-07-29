@@ -63,6 +63,10 @@ exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = 
     "usage": "crabgic evidence <change-set-id>",
     "summary": "Show every EvidenceRecord journaled for a ChangeSet."
   },
+  "approve": {
+    "usage": "crabgic approve <envelope-digest> [--json]",
+    "summary": "Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work)."
+  },
   "connection": {
     "usage": "crabgic connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>",
     "summary": "Manage external connector connections."
@@ -108,6 +112,8 @@ exports[`help text snapshots > top-level help (human) is snapshot-stable 1`] = `
       Cancel a run or a single task within it.
   crabgic evidence <change-set-id>
       Show every EvidenceRecord journaled for a ChangeSet.
+  crabgic approve <envelope-digest> [--json]
+      Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work).
   crabgic connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>
       Manage external connector connections.
   crabgic trust review|approve|revoke
@@ -120,6 +126,12 @@ exports[`help text snapshots > top-level help (human) is snapshot-stable 1`] = `
       Remove the installed plugin/managed config.
   crabgic gateway mcp
       Boot the gateway MCP server over stdio (no user-facing flags).
+"
+`;
+
+exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-approve 1`] = `
+"crabgic approve <envelope-digest> [--json]
+    Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work).
 "
 `;
 

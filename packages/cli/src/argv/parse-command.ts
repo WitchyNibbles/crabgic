@@ -232,6 +232,11 @@ export function parseCommand(argv: readonly string[]): ParsedCommand {
       const changeSetId = requirePositional(t.positionals, 0, "change-set-id");
       return { command: "evidence", changeSetId, json: readBooleanFlag(t, "json") };
     }
+    case "approve": {
+      const t = tokenize(rest);
+      const digest = requirePositional(t.positionals, 0, "envelope-digest");
+      return { command: "approve", digest, json: readBooleanFlag(t, "json") };
+    }
     case "connection":
       return parseConnection(rest);
     case "trust":

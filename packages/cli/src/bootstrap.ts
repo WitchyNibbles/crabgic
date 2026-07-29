@@ -78,7 +78,9 @@ import { CliUsageError } from "./errors.js";
 import { connectUdsClient } from "./uds-client/client.js";
 import {
   ensureSupervisorConnection,
+  readSupervisordStderrTail,
   spawnSupervisorDaemon,
+  SUPERVISORD_STDERR_LOG_FILE_NAME,
   type SpawnSupervisorDaemonOptions,
 } from "./uds-client/ensure-supervisor.js";
 import { isPassiveMode } from "./uds-client/passive-mode.js";
@@ -221,6 +223,15 @@ export function buildRealCliDependencies(
 
   const supervisorSpawn = overrides.supervisorSpawn ?? {};
   const spawnDaemon = supervisorSpawn.spawnDaemon ?? spawnSupervisorDaemon;
+  // The daemon's stderr lands here (truncated per spawn) so that when it dies
+  // during startup the CLI can report WHY, not just that nothing answered.
+  // The state root already exists by now — `loadOrCreateApprovalSigningKey`
+  // above created it — and `spawnSupervisorDaemon` falls back to discarding
+  // stderr if the path is unopenable anyway.
+  const supervisordStderrLogPath = join(
+    resolveStateRoot(xdgEnv, projectHash),
+    SUPERVISORD_STDERR_LOG_FILE_NAME,
+  );
   // Passive observers (the manager Stop hook) set this to ask whether a
   // supervisor is ALREADY up without causing one to exist. See
   // `./uds-client/passive-mode.ts` for why it is an env var and not a flag.
@@ -235,8 +246,9 @@ export function buildRealCliDependencies(
     connectClient: () =>
       ensureSupervisorConnection({
         connect: () => connectUdsClient({ socketPath }),
-        spawnDaemon: () => spawnDaemon({ projectHash }),
+        spawnDaemon: () => spawnDaemon({ projectHash, stderrLogPath: supervisordStderrLogPath }),
         spawn: !passive,
+        readSpawnDiagnostics: () => readSupervisordStderrTail(supervisordStderrLogPath),
         ...(supervisorSpawn.maxAttempts !== undefined
           ? { maxAttempts: supervisorSpawn.maxAttempts }
           : {}),
@@ -279,7 +291,9 @@ export function buildRealCliDependencies(
       }),
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
-    intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
+    intake:
+      overrides.intake ??
+      buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter, signingKey),
     learning:
       overrides.learning ??
       buildRealLearningDependencies(xdgEnv, projectHash, journal, minter, signingKey),
@@ -409,10 +423,12 @@ function buildRealIntakeDependencies(
   projectHash: string,
   journal: JournalStore,
   minter: ApprovalTokenMinter,
+  secretKey: Buffer,
 ): IntakeDependencies {
   const stateRoot = resolveStateRoot(xdgEnv, projectHash);
   return {
     journal,
+    secretKey,
     changeSets: createFileRegistry<ChangeSet>({
       path: join(stateRoot, CHANGE_SETS_FILE_NAME),
       schema: ChangeSetSchema,

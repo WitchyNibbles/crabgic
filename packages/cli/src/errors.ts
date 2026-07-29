@@ -43,9 +43,22 @@ export class NotImplementedError extends Error {
 
 /** The typed UDS client could not reach the supervisor's control socket at all. */
 export class SupervisorUnavailableError extends Error {
-  constructor(cause: string) {
-    super(`could not reach the supervisor control socket: ${cause}`);
+  /**
+   * The bare cause, without this class's own message prefix — kept so a
+   * wrapper can re-compose the message (e.g. to append the spawned daemon's
+   * stderr tail) without string surgery on `message`.
+   */
+  readonly causeText: string;
+
+  constructor(cause: string, diagnostics?: string) {
+    super(
+      `could not reach the supervisor control socket: ${cause}` +
+        (diagnostics === undefined
+          ? ""
+          : `\nthe daemon spawned for this attempt reported:\n${diagnostics}`),
+    );
     this.name = "SupervisorUnavailableError";
+    this.causeText = cause;
   }
 }
 

@@ -20,8 +20,11 @@
  * CLI process can exit while the daemon lives on.
  */
 import { spawn } from "node:child_process";
+import { closeSync, constants, ftruncateSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { openOwnedFile } from "@crabgic/journal";
 import { SupervisorUnavailableError } from "../errors.js";
+import { sanitizeForTerminal } from "../output/sanitize.js";
 import type { UdsClient } from "./client.js";
 
 const DEFAULT_MAX_ATTEMPTS = 25;
@@ -51,6 +54,15 @@ export interface EnsureSupervisorConnectionOptions {
    * retry could be waiting for.
    */
   readonly spawn?: boolean;
+  /**
+   * Reads the tail of whatever the daemon spawned by THIS call wrote to
+   * stderr (see `readSupervisordStderrTail`), consulted only once the retry
+   * budget is exhausted after a spawn — the one situation where "unreachable"
+   * is really "the daemon died, and here is what it said". Never consulted on
+   * success, in passive mode, or when nothing was spawned; a throw from the
+   * reader is swallowed so a broken log file can never mask the real error.
+   */
+  readonly readSpawnDiagnostics?: () => string | undefined;
 }
 
 /**
@@ -106,7 +118,20 @@ export async function ensureSupervisorConnection(
       lastUnavailable = err;
     }
 
-    if (attempt >= maxAttempts) throw lastUnavailable;
+    if (attempt >= maxAttempts) {
+      if (spawned && options.readSpawnDiagnostics !== undefined) {
+        let tail: string | undefined;
+        try {
+          tail = options.readSpawnDiagnostics();
+        } catch {
+          tail = undefined;
+        }
+        if (tail !== undefined) {
+          throw new SupervisorUnavailableError(lastUnavailable.causeText, tail);
+        }
+      }
+      throw lastUnavailable;
+    }
 
     if (!spawned) {
       options.spawnDaemon();
@@ -116,10 +141,57 @@ export async function ensureSupervisorConnection(
   }
 }
 
+/** The pinned stderr-log file name, a sibling of the project's state-root registries. */
+export const SUPERVISORD_STDERR_LOG_FILE_NAME = "supervisord.stderr.log";
+
+/**
+ * The tail of the spawned daemon's stderr log — `undefined` when the file is
+ * missing, refused, or holds nothing but whitespace, so callers can treat "no
+ * diagnostics" as one case. Bounded to `maxBytes` from the END of the file:
+ * the dying words are the last ones.
+ *
+ * Opened through `openOwnedFile` for the same reason the write side is: a
+ * planted FIFO here would block a synchronous read with no timer able to see
+ * it. The contents are sanitized because any same-uid process can write this
+ * file and its tail is spliced into a message printed to the operator's
+ * terminal — the one surface this system's approval gate trusts.
+ */
+export function readSupervisordStderrTail(path: string, maxBytes = 4096): string | undefined {
+  const opened = openOwnedFile(path, constants.O_RDONLY);
+  if (opened.fd === undefined) return undefined;
+  let raw: Buffer;
+  try {
+    raw = readFileSync(opened.fd);
+  } catch {
+    return undefined;
+  } finally {
+    closeSync(opened.fd);
+  }
+  const tail = sanitizeForTerminal(
+    raw
+      .subarray(Math.max(0, raw.length - maxBytes))
+      .toString("utf8")
+      .trim(),
+  ).trim();
+  return tail.length === 0 ? undefined : tail;
+}
+
 export interface SpawnSupervisorDaemonOptions {
   readonly projectHash: string;
   /** The repository checkout the daemon will freeze and cut worktrees from. Defaults to the spawning CLI's own cwd, which is already inside the project. */
   readonly projectDir?: string;
+  /**
+   * When set, the daemon's stderr is written here (truncated per spawn, mode
+   * 0600) instead of discarded, so `readSupervisordStderrTail` can surface a
+   * startup fatal to the user. Spawning never fails over logging: an
+   * unopenable path silently falls back to discarding stderr, exactly the
+   * pre-2026-07-29 behaviour. Truncation means the file only ever holds the
+   * LATEST spawn's output — a benign concurrent spawn (whose lease refusal
+   * exits cleanly) can overwrite a crashed first daemon's message; that
+   * residual is accepted because diagnostics are only read when NO daemon
+   * ended up serving the socket at all.
+   */
+  readonly stderrLogPath?: string;
 }
 
 /**
@@ -137,18 +209,51 @@ export interface SpawnSupervisorDaemonOptions {
 export function spawnSupervisorDaemon(options: SpawnSupervisorDaemonOptions): void {
   const supervisordBin = fileURLToPath(new URL("../bin/supervisord.js", import.meta.url));
 
-  const child = spawn(process.execPath, [supervisordBin], {
-    detached: true,
-    stdio: "ignore",
-    env: {
-      ...process.env,
-      CRABGIC_PROJECT_HASH: options.projectHash,
-      // The daemon drives runs (`run.dispatch`), which means freezing the
-      // repository and creating per-attempt worktrees — both need the
-      // actual checkout path. A project HASH cannot locate a repository, so
-      // the spawning CLI, which is already running inside it, passes it.
-      CRABGIC_PROJECT_DIR: options.projectDir ?? process.cwd(),
-    },
-  });
-  child.unref();
+  // Through `openOwnedFile`, never a bare `openSync(path, "w")`. Adversarial
+  // review reproduced both hazards of the naive form: a FIFO planted at this
+  // path blocks the spawn forever inside a synchronous `open(2)` (no timer,
+  // no output — the same failure a roast round already fixed in the policy
+  // store), and a symlink truncates whatever it points at, which in this
+  // directory means the standing policy, the registries, or the signing key.
+  // `O_TRUNC` is not passed (the primitive refuses it by construction, since
+  // truncating before the checks would defeat them); the descriptor is
+  // truncated below, once it is known to be a regular file this account owns.
+  let stderrFd: number | undefined;
+  if (options.stderrLogPath !== undefined) {
+    const opened = openOwnedFile(options.stderrLogPath, constants.O_WRONLY | constants.O_CREAT, {
+      requirePrivateMode: true,
+      createMode: 0o600,
+    });
+    if (opened.fd !== undefined) {
+      try {
+        // Only this spawn's output, and only readable by its owner even if the
+        // file predates a stricter umask.
+        ftruncateSync(opened.fd, 0);
+        stderrFd = opened.fd;
+      } catch {
+        closeSync(opened.fd);
+        stderrFd = undefined;
+      }
+    }
+  }
+  try {
+    const child = spawn(process.execPath, [supervisordBin], {
+      detached: true,
+      stdio: ["ignore", "ignore", stderrFd ?? "ignore"],
+      env: {
+        ...process.env,
+        CRABGIC_PROJECT_HASH: options.projectHash,
+        // The daemon drives runs (`run.dispatch`), which means freezing the
+        // repository and creating per-attempt worktrees — both need the
+        // actual checkout path. A project HASH cannot locate a repository, so
+        // the spawning CLI, which is already running inside it, passes it.
+        CRABGIC_PROJECT_DIR: options.projectDir ?? process.cwd(),
+      },
+    });
+    child.unref();
+  } finally {
+    // The child holds its own copy of the descriptor; this one is the
+    // parent's and would otherwise leak once per spawn.
+    if (stderrFd !== undefined) closeSync(stderrFd);
+  }
 }

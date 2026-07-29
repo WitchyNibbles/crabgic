@@ -18,6 +18,7 @@ import type { InstallerDependencies } from "../installer/types.js";
 import type { TrustCommandDependencies } from "@crabgic/detect";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
+import type { ApprovalTerminalVerdict } from "../approval/interactive-terminal.js";
 import type { LearningDependencies } from "../learning/learning-dependencies.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
 
@@ -39,9 +40,25 @@ export interface IntakeDependencies {
   /** Durable contract store — see `../intake/run-intake-command.ts`'s own doc comment on `RunIntakeCommandDeps.intentContracts`. */
   readonly intentContracts: Registry<IntentContract>;
   readonly minter: ApprovalTokenMinter;
+  /**
+   * The project's durable approval-signing key — the SAME material `minter`
+   * signs with, needed separately because `run`/`approve` now complete
+   * verification in-process (`../intake/complete-envelope-approval.ts`)
+   * instead of relaying the token to another process.
+   */
+  readonly secretKey: Buffer;
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
   /** Defaults to `process.stdin`/`process.stdout` (real interactive usage) when omitted — injectable so tests never block on real stdio. */
   readonly io?: ApprovalPromptIo;
+  /**
+   * Whether this process may render the approval prompt at all. Defaults to
+   * `resolveApprovalTerminal` over the real environment — which checks far
+   * more than `isTTY`, because a pty wrapper satisfies `isTTY` from an agent's
+   * own shell. See `../approval/interactive-terminal.ts` for what the gate
+   * does and does not prove. Injectable so tests never depend on the ambient
+   * terminal or environment.
+   */
+  readonly resolveTerminal?: () => ApprovalTerminalVerdict;
 }
 
 export interface CliDependencies {

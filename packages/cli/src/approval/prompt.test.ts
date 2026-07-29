@@ -60,4 +60,107 @@ describe("runApprovalFlow", () => {
     input.write("yes please\n");
     await expect(flow).rejects.toThrow(ApprovalDeclinedError);
   });
+
+  // The `crabgic run < intake.json` shape: an earlier reader (the intake JSON
+  // parse) consumed stdin to EOF, so `end` has ALREADY been emitted by the
+  // time the prompt attaches its listeners — no event will ever fire for
+  // them. The flow must decline, not hang with the prompt on screen.
+  it(
+    "declines immediately on a stream that already ended before the prompt attached",
+    { timeout: 2000 },
+    async () => {
+      const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+      const input = new PassThrough();
+      input.end();
+      // Drain it exactly the way `readIntakeRequestFromStdin` does, so
+      // `readableEnded` is true and `end` has genuinely already fired.
+      for await (const _chunk of input) {
+        void _chunk;
+      }
+      expect(input.readableEnded).toBe(true);
+
+      const output = new PassThrough();
+      const flow = runApprovalFlow(minter, "envelope_hash", "digest-eof", { input, output });
+      await expect(flow).rejects.toThrow(ApprovalDeclinedError);
+    },
+  );
+
+  it(
+    "declines when the stream ends after the prompt with no input (EOF is not consent)",
+    { timeout: 2000 },
+    async () => {
+      const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+      const input = new PassThrough();
+      const output = new PassThrough();
+
+      const flow = runApprovalFlow(minter, "envelope_hash", "digest-eof-2", { input, output });
+      input.end();
+      await expect(flow).rejects.toThrow(ApprovalDeclinedError);
+    },
+  );
+
+  it(
+    "treats EOF as terminating the final line: 'yes' then end-of-input mints",
+    { timeout: 2000 },
+    async () => {
+      const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+      const input = new PassThrough();
+      const output = new PassThrough();
+
+      const flow = runApprovalFlow(minter, "envelope_hash", "digest-eof-3", { input, output });
+      input.end("yes");
+      const minted = await flow;
+      expect(minted.digest).toBe("digest-eof-3");
+    },
+  );
+
+  // An abnormal teardown is not an answer: a buffered "yes" the human never
+  // submitted must not mint (adversarial review, 2026-07-29).
+  it(
+    "declines when the stream is destroyed with an unsubmitted 'yes' buffered",
+    { timeout: 2000 },
+    async () => {
+      const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+      const input = new PassThrough();
+      const output = new PassThrough();
+
+      const flow = runApprovalFlow(minter, "envelope_hash", "digest-unsubmitted", {
+        input,
+        output,
+      });
+      input.write("yes");
+      await new Promise((resolve) => setImmediate(resolve));
+      input.destroy();
+      await expect(flow).rejects.toThrow(ApprovalDeclinedError);
+    },
+  );
+
+  it(
+    "declines (never crashes, never mints) when the input stream errors",
+    { timeout: 2000 },
+    async () => {
+      const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+      const input = new PassThrough();
+      const output = new PassThrough();
+
+      const flow = runApprovalFlow(minter, "envelope_hash", "digest-err", { input, output });
+      input.destroy(new Error("tty went away"));
+      await expect(flow).rejects.toThrow(ApprovalDeclinedError);
+    },
+  );
+
+  it("removes every listener it attached once the flow settles", async () => {
+    const minter = new ApprovalTokenMinter({ secretKey: randomBytes(32) });
+    const input = new PassThrough();
+    const output = new PassThrough();
+
+    const flow = runApprovalFlow(minter, "envelope_hash", "digest-clean", { input, output });
+    input.write("yes\n");
+    await flow;
+
+    expect(input.listenerCount("data")).toBe(0);
+    expect(input.listenerCount("end")).toBe(0);
+    expect(input.listenerCount("close")).toBe(0);
+    expect(input.listenerCount("error")).toBe(0);
+  });
 });

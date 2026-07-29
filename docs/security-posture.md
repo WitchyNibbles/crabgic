@@ -238,6 +238,45 @@ Two things the re-review must establish, stated now so they are not lost:
 One finding the amendment **removes** rather than adds: in `1.3.0` the minted approval token is printed by
 `crabgic run --json` and consumed by `contract.approve` in a different process, so in a manager session the
 model is the courier for a human-approval token. Under Gap 18 in-policy dispatch mints no token at all.
+**Closed in code 2026-07-29:** `run` and `approve` now mint, verify and spend the token inside the one
+process that rendered the prompt, and no result shape or rendered output carries it.
+
+### The escalation prompt cannot prove a human answered it (2026-07-29)
+
+Found by adversarial review of the `crabgic approve` implementation, reproduced live, and disclosed here
+rather than papered over. `process.stdin.isTTY` answers only "is fd 0 a character device", so a pty
+allocated by an agent's own shell satisfies it:
+`script -qec "crabgic approve <digest>" /dev/null <<< yes` drove the prompt to completion where
+`echo yes | crabgic approve <digest>` is correctly refused.
+
+What now ships (`packages/cli/src/approval/interactive-terminal.ts`): the prompt is refused on a
+non-TTY stdin, **and** refused when the process's environment carries agent-runtime or CI provenance
+(`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SSE_PORT`, `CI`, `GITHUB_ACTIONS`, …) — markers that
+survive precisely the pty wrapper that defeats an `isTTY` check, because `spawn` passes the parent
+environment through. The prompt also now renders the authority itself (change set, owned paths, commands,
+network destinations, credential references) instead of an opaque `canonicalHash`, so what the human
+consents to is the grant rather than a hex string a model handed them.
+
+**What that does and does not prove.** It reliably stops an agent or CI job approving _opportunistically_ —
+the realistic case. It does **not** stop a deliberately evasive caller: `env -u CLAUDECODE …` strips a
+marker, and no in-process check can distinguish a typed `yes` from a written one, because the process
+cannot see the keyboard. Closing that needs consent to arrive through a channel the model did not create —
+a human-started watcher the daemon queues approvals to, or an OS-mediated confirmation. **Owed, and a
+product decision for the owner**; until it lands, the standing `EnvelopePolicy` (unwritable from any
+session) is the control that carries the "the model can never satisfy its own gate" property, exactly as
+roadmap/11 states.
+
+Two smaller findings from the same review, recorded for the next pass:
+
+- **`crabgic trust approve` mints without a prompt and prints the token** (`packages/detect/src/trust/
+trust-approve.ts`), so §3's "the terminal prompt is the only mint path" is false as written for the
+  capability-quarantine surface. Not currently exploitable — `capability.approve` verifies through an
+  in-memory minter whose pending table is empty across a process boundary — but that is an accident of
+  wiring, not a control. Either route it through `runApprovalFlow` or stop rendering `minted`.
+- **The spawned daemon's stderr log is an unredacted at-rest channel.** `supervisord.stderr.log` under the
+  project state root now goes through `openOwnedFile` (0600, symlink- and FIFO-refusing, truncated only
+  after the checks pass) and its tail is stripped of terminal control sequences before it reaches an error
+  message, but nothing bounds or redacts what the daemon itself writes there over its lifetime.
 
 ## Residual risk — disclosed, non-blocking
 
