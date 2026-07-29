@@ -1,9 +1,11 @@
+import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   MAX_STALE_MARKER_SWEEP,
   SANDBOX_SHELL_ARGV0,
   SCAN_LIMIT,
   createSandboxSelftestCheck,
+  sweepCursorPath,
   sweepStaleMarkerDirs,
 } from "./sandbox-selftest.js";
 
@@ -1169,14 +1171,22 @@ describe("sandbox-selftest — the sweep window advances once per run", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const dir = await mkdtemp(join(tmpdir(), "eo-r29-cursor-"));
+    // Round 30 moved the cursor out of TMPDIR, so a test that wants a private
+    // cursor must give the run a private state home too.
+    const state = await mkdtemp(join(tmpdir(), "eo-r29-state-"));
     const previous = process.env["TMPDIR"];
+    const previousState = process.env["XDG_STATE_HOME"];
     process.env["TMPDIR"] = dir;
+    process.env["XDG_STATE_HOME"] = state;
     try {
       return await run(dir);
     } finally {
       if (previous === undefined) delete process.env["TMPDIR"];
       else process.env["TMPDIR"] = previous;
+      if (previousState === undefined) delete process.env["XDG_STATE_HOME"];
+      else process.env["XDG_STATE_HOME"] = previousState;
       await rm(dir, { recursive: true, force: true });
+      await rm(state, { recursive: true, force: true });
     }
   }
 
@@ -1214,18 +1224,17 @@ describe("sandbox-selftest — the sweep window advances once per run", () => {
   }, 60_000);
 
   it("persists its cursor between processes, and the cursor is never swept", async () => {
-    const { readdir, readFile } = await import("node:fs/promises");
-    const { join } = await import("node:path");
+    const { readFile } = await import("node:fs/promises");
     await withTmpdir(async (dir) => {
       await seedStale(dir, 10);
       await sweepStaleMarkerDirs();
 
-      // The cursor exists, holds a number, and survives its own sweep.
-      const cursor = join(dir, ".eo-sandbox-selftest-sweep-cursor");
-      const value = Number.parseInt((await readFile(cursor, "utf8")).trim(), 10);
+      // The cursor exists and holds a number. Round 30 moved it OUT of TMPDIR
+      // — see the round-30 block below for why — so it cannot be swept by
+      // construction rather than by being named around the prefix filter.
+      const value = Number.parseInt((await readFile(sweepCursorPath() as string, "utf8")).trim(), 10);
       expect(Number.isSafeInteger(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(SCAN_LIMIT);
-      expect((await readdir(dir)).includes(".eo-sandbox-selftest-sweep-cursor")).toBe(true);
     });
   });
 
@@ -1235,7 +1244,9 @@ describe("sandbox-selftest — the sweep window advances once per run", () => {
     await withTmpdir(async (dir) => {
       await seedStale(dir, 5);
       // A DIRECTORY where the cursor file belongs: every write fails.
-      await mkdir(join(dir, ".eo-sandbox-selftest-sweep-cursor"));
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      await mkdir(cursor);
 
       await sweepStaleMarkerDirs();
 
@@ -1297,4 +1308,194 @@ describe("sandbox-selftest — the sweep window advances once per run", () => {
       });
     },
   );
+});
+
+/**
+ * Roast round 30 — the anti-starvation cursor was a /tmp file, opened as one.
+ *
+ * Round 29 persisted the sweep cursor at
+ * `$TMPDIR/.eo-sandbox-selftest-sweep-cursor`, deliberately NOT marker-prefixed
+ * "so the sweep never deletes its own cursor" — which also means the sweep
+ * never deletes anything an attacker plants there. `TMPDIR` is world-writable
+ * and shared, and both ends of the cursor followed whatever was at that name.
+ * Measured end-to-end through the BUNDLED CLI, not by reading:
+ *
+ *   ln -s ~/victim $TMPDIR/.eo-sandbox-selftest-sweep-cursor
+ *   -> `crabgic doctor` exits 2, victim's contents replaced by "1785303771",
+ *      and it reports `✓ sandbox.selftest: ... correctly denied` while doing it.
+ *
+ *   mkfifo $TMPDIR/.eo-sandbox-selftest-sweep-cursor
+ *   -> `crabgic doctor` HANGS FOREVER: wall=25s, killed by an external timeout,
+ *      0 bytes of output, no diagnosis. The identical staging without the FIFO
+ *      finishes in 1s with 1198 bytes. `readFile` blocks in `open(2)` until a
+ *      writer appears, and it is awaited from `createOwnedMarkerPath` ->
+ *      `resolveMarker`, which runs BEFORE `run()`'s try/finally and carries no
+ *      timeout of its own. That is round 22's property — "doctor must never
+ *      hang" — on the line round 29 added.
+ *
+ * Two layers, and the second is not redundant with the first: the cursor moves
+ * to `$XDG_STATE_HOME/crabgic/`, which no other account can write, AND both
+ * ends open with `O_NOFOLLOW|O_NONBLOCK` and require a regular file this uid
+ * owns — because `XDG_STATE_HOME` is itself environment-controlled and can be
+ * pointed at a shared directory, and homes can be group-writable or on NFS.
+ * The policy store learned this in round 4; the cursor had to learn it again.
+ */
+describe("sandbox-selftest — the sweep cursor is not attacker-plantable", () => {
+  interface Stage {
+    readonly tmp: string;
+    readonly state: string;
+  }
+
+  async function withStage<T>(run: (stage: Stage) => Promise<T>): Promise<T> {
+    const { mkdtemp, rm, mkdir, utimes } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = await mkdtemp(join(tmpdir(), "eo-r30-"));
+    const tmp = join(root, "tmp");
+    const state = join(root, "state");
+    await mkdir(tmp);
+    await mkdir(state);
+
+    // One stale marker, so the sweep gets past its `entries.length === 0` guard
+    // and actually consults the cursor. Without it every assertion below is
+    // vacuous — the sweep returns before reading anything.
+    const stale = join(tmp, "eo-sandbox-selftest-stale");
+    await mkdir(stale);
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await utimes(stale, old, old);
+
+    const previousTmp = process.env["TMPDIR"];
+    const previousState = process.env["XDG_STATE_HOME"];
+    process.env["TMPDIR"] = tmp;
+    process.env["XDG_STATE_HOME"] = state;
+    try {
+      return await run({ tmp, state });
+    } finally {
+      if (previousTmp === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmp;
+      if (previousState === undefined) delete process.env["XDG_STATE_HOME"];
+      else process.env["XDG_STATE_HOME"] = previousState;
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  /** The sweep must still do its job in every degraded case, or "no clobber" is satisfied by a no-op. */
+  async function expectSwept(tmp: string): Promise<void> {
+    const { readdir } = await import("node:fs/promises");
+    expect((await readdir(tmp)).filter((n) => n.startsWith("eo-sandbox-selftest-"))).toEqual([]);
+  }
+
+  it("writes no cursor into TMPDIR at all", async () => {
+    const { readdir } = await import("node:fs/promises");
+    await withStage(async ({ tmp }) => {
+      await sweepStaleMarkerDirs();
+      await expectSwept(tmp);
+
+      // Not "no file named the old cursor" — NOTHING left in TMPDIR. The whole
+      // attack class needs a predictable name in a world-writable directory,
+      // and the fix is to stop creating one rather than to rename it.
+      expect(await readdir(tmp)).toEqual([]);
+    });
+  });
+
+  it("refuses to follow a symlink planted at the cursor path", async () => {
+    const { readFile, writeFile, mkdir, symlink, lstat } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await withStage(async ({ tmp, state }) => {
+      const victim = join(state, "victim");
+      const ORIGINAL = "a file this uid owns and the cursor must never touch\n";
+      await writeFile(victim, ORIGINAL);
+
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      await symlink(victim, cursor);
+
+      await sweepStaleMarkerDirs();
+
+      expect(await readFile(victim, "utf8")).toBe(ORIGINAL);
+      // Refused, not replaced: the check must not "fix" the path by unlinking
+      // an attacker's symlink either, which would be a second write primitive.
+      expect((await lstat(cursor)).isSymbolicLink()).toBe(true);
+      await expectSwept(tmp);
+    });
+  });
+
+  it("does not block on a FIFO at the cursor path", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    const { execFileSync } = await import("node:child_process");
+    await withStage(async ({ tmp }) => {
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      execFileSync("mkfifo", [cursor]);
+
+      // A FIFO with no writer blocks in `open(2)`. Racing a timer is the only
+      // assertion that can fail on a hang — an `await` that never settles just
+      // times the test out with no diagnosis, which is the very symptom.
+      const settled = await Promise.race([
+        sweepStaleMarkerDirs().then(() => true),
+        new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), 5_000);
+        }),
+      ]);
+
+      expect(settled).toBe(true);
+      await expectSwept(tmp);
+    });
+  }, 20_000);
+
+  it("ignores a cursor that is not a regular file, and still sweeps", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    await withStage(async ({ tmp }) => {
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      await mkdir(cursor);
+
+      await sweepStaleMarkerDirs();
+      await expectSwept(tmp);
+    });
+  });
+
+  it("creates its state directory unreadable by other accounts", async () => {
+    const { stat } = await import("node:fs/promises");
+    await withStage(async () => {
+      await sweepStaleMarkerDirs();
+      const cursor = sweepCursorPath() as string;
+      expect((await stat(dirname(cursor))).mode & 0o077).toBe(0);
+      expect((await stat(cursor)).mode & 0o077).toBe(0);
+    });
+  });
+
+  it("falls back to the clock when no state home can be resolved", async () => {
+    const { mkdtemp, mkdir, rm, utimes, readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const tmp = await mkdtemp(join(tmpdir(), "eo-r30-nohome-"));
+    const previousTmp = process.env["TMPDIR"];
+    const previousHome = process.env["HOME"];
+    const previousState = process.env["XDG_STATE_HOME"];
+    try {
+      const stale = join(tmp, "eo-sandbox-selftest-stale");
+      await mkdir(stale);
+      const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      await utimes(stale, old, old);
+
+      process.env["TMPDIR"] = tmp;
+      delete process.env["HOME"];
+      delete process.env["XDG_STATE_HOME"];
+
+      expect(sweepCursorPath()).toBeUndefined();
+      // A sweep failure is never a health verdict, and an unresolvable state
+      // home is not a reason to leave stale markers accumulating forever.
+      await expect(sweepStaleMarkerDirs()).resolves.toBeUndefined();
+      expect((await readdir(tmp)).filter((n) => n.startsWith("eo-sandbox-selftest-"))).toEqual([]);
+    } finally {
+      if (previousTmp === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmp;
+      if (previousHome === undefined) delete process.env["HOME"];
+      else process.env["HOME"] = previousHome;
+      if (previousState === undefined) delete process.env["XDG_STATE_HOME"];
+      else process.env["XDG_STATE_HOME"] = previousState;
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
 });

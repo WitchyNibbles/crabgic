@@ -18,10 +18,21 @@
  * system"/"Permission denied" wording, never bwrap-prefixed) — this is the
  * signal used below to tell the two failure modes apart.
  */
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import {
+  closeSync,
+  constants,
+  existsSync,
+  fstatSync,
+  ftruncateSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  writeSync,
+} from "node:fs";
+import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { CRABGIC_DIR_NAME, readXdgEnvFromProcess, resolveXdgStateHome } from "@crabgic/journal";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 import type { ProcessProbeFn } from "../process-probe.js";
 
@@ -102,8 +113,122 @@ export const MAX_STALE_MARKER_SWEEP = 200;
 /** How many entries a single run may examine. Bounds `stat` calls, which the removal cap does not. */
 export const SCAN_LIMIT = 400;
 
-/** Not marker-prefixed, so the sweep never deletes its own cursor. */
-const SWEEP_CURSOR_FILE = ".eo-sandbox-selftest-sweep-cursor";
+/**
+ * The cursor file name, under `$XDG_STATE_HOME/crabgic/` — NEVER under `TMPDIR`.
+ *
+ * Round 29 put it at `$TMPDIR/.eo-sandbox-selftest-sweep-cursor` and kept it
+ * un-prefixed "so the sweep never deletes its own cursor", which also meant the
+ * sweep never deleted anything an ATTACKER left at that name. `TMPDIR` is
+ * world-writable and shared, the name is a compile-time constant, and both ends
+ * of the cursor followed whatever was found there. Round 30 measured both ends
+ * end-to-end through the bundled CLI:
+ *
+ *   ln -s ~/victim $TMPDIR/.eo-sandbox-selftest-sweep-cursor
+ *     -> `crabgic doctor` replaced the victim's contents with "1785303771" and
+ *        reported `✓ sandbox.selftest: ... correctly denied` in the same run.
+ *        An arbitrary-file-overwrite primitive, as the invoking uid, from a
+ *        health check, silently.
+ *
+ *   mkfifo $TMPDIR/.eo-sandbox-selftest-sweep-cursor
+ *     -> `crabgic doctor` HUNG: wall=25s, killed by an external timeout, ZERO
+ *        bytes of output, no diagnosis. `readFile` blocks in `open(2)` until a
+ *        writer appears, and it is awaited from `createOwnedMarkerPath` ->
+ *        `resolveMarker`, which runs BEFORE `run()`'s try/finally and has no
+ *        ceiling of its own — the two probes below it are bounded, this was
+ *        not. Round 22's "doctor must never hang" property, on round 29's line.
+ *        Control: the identical staging without the FIFO finished in 1s.
+ *
+ * The state root is not world-writable, so the class is gone by construction
+ * rather than by defending each primitive. `openOwnedCursor` below hardens the
+ * opens anyway, and that is NOT redundant: `XDG_STATE_HOME` is itself
+ * environment-controlled and can be pointed at a shared directory, and homes
+ * can be group-writable or on a shared filesystem.
+ */
+const SWEEP_CURSOR_FILE = "sandbox-selftest-sweep-cursor";
+
+/**
+ * Where the cursor lives, or `undefined` when no state home can be resolved.
+ *
+ * Exported so a test can name the file without re-deriving the layout — the
+ * round-18 lesson about a constant living in two places applies to a path just
+ * as well as to a marker string.
+ */
+export function sweepCursorPath(): string | undefined {
+  try {
+    return join(resolveXdgStateHome(readXdgEnvFromProcess()), CRABGIC_DIR_NAME, SWEEP_CURSOR_FILE);
+  } catch {
+    // `readXdgEnvFromProcess` throws when HOME is unset. A rotation hint is
+    // never worth a health verdict; the clock fallback covers it.
+    return undefined;
+  }
+}
+
+/** A cursor is a decimal integer — a handful of bytes. Bounds the read against a device or a huge file. */
+const CURSOR_MAX_BYTES = 32;
+
+/**
+ * Open the cursor and prove it is a regular file THIS account owns.
+ *
+ * `O_NOFOLLOW` refuses a planted symlink at open time rather than detecting one
+ * afterwards (the policy store's round-4 lesson). `O_NONBLOCK` is what stops a
+ * FIFO blocking in `open(2)` — the measured hang. `nlink === 1` refuses a
+ * hardlink to a file we own but did not put here, which `O_NOFOLLOW` does not
+ * cover. `fstat` is taken on the DESCRIPTOR, so the inode checked is the inode
+ * used; and for the write path the truncation happens only after those checks
+ * pass, so a device or FIFO is never truncated on the way to being rejected.
+ */
+function openOwnedCursor(path: string, flags: number): number | undefined {
+  let fd: number;
+  try {
+    fd = openSync(path, flags | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
+  } catch {
+    return undefined; // absent, a symlink (ELOOP), a writerless FIFO (ENXIO), not ours
+  }
+  try {
+    const stats = fstatSync(fd);
+    const uid = process.getuid?.();
+    if (stats.isFile() && stats.nlink === 1 && uid !== undefined && stats.uid === uid) return fd;
+  } catch {
+    // fall through to the close below
+  }
+  closeSync(fd);
+  return undefined;
+}
+
+function readCursor(path: string): number | undefined {
+  const fd = openOwnedCursor(path, constants.O_RDONLY);
+  if (fd === undefined) return undefined;
+  try {
+    const buffer = Buffer.alloc(CURSOR_MAX_BYTES);
+    const read = readSync(fd, buffer, 0, CURSOR_MAX_BYTES, 0);
+    const parsed = Number.parseInt(buffer.subarray(0, read).toString("utf8").trim(), 10);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function writeCursor(path: string, value: number): void {
+  try {
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  } catch {
+    return; // cannot persist; the next run falls back to the clock
+  }
+  // No `O_TRUNC` in the flags: truncation is a WRITE, and it must not happen to
+  // anything `openOwnedCursor` would go on to reject.
+  const fd = openOwnedCursor(path, constants.O_WRONLY | constants.O_CREAT);
+  if (fd === undefined) return;
+  try {
+    ftruncateSync(fd, 0);
+    writeSync(fd, String(value), 0);
+  } catch {
+    // Never a health verdict.
+  } finally {
+    closeSync(fd);
+  }
+}
 
 /**
  * Where this run starts scanning, advanced ONCE PER RUN.
@@ -138,24 +263,13 @@ function rotatingOffset(): number {
   return offset;
 }
 
-async function nextSweepStart(root: string): Promise<number> {
-  const cursorPath = join(root, SWEEP_CURSOR_FILE);
-  let start: number | undefined;
-  try {
-    const parsed = Number.parseInt((await readFile(cursorPath, "utf8")).trim(), 10);
-    if (Number.isSafeInteger(parsed) && parsed >= 0) start = parsed;
-  } catch {
-    // Absent on a fresh TMPDIR, or unreadable. Either falls back below.
-  }
-  const chosen = start ?? rotatingOffset();
-  try {
-    await writeFile(cursorPath, String((chosen + SCAN_LIMIT) % Number.MAX_SAFE_INTEGER), {
-      mode: 0o600,
-    });
-  } catch {
-    // Cannot persist: this run still sweeps, the next one falls back to the
-    // clock. Never a health verdict.
-  }
+function nextSweepStart(): number {
+  const path = sweepCursorPath();
+  // No state home at all: every run takes the clock fallback, which advances
+  // within the process. Not a reason to stop sweeping.
+  if (path === undefined) return rotatingOffset();
+  const chosen = readCursor(path) ?? rotatingOffset();
+  writeCursor(path, (chosen + SCAN_LIMIT) % Number.MAX_SAFE_INTEGER);
   return chosen;
 }
 
@@ -174,7 +288,7 @@ export async function sweepStaleMarkerDirs(startOffset?: number): Promise<void> 
   // OUTSIDE `run()`'s try/finally, so the framework reported "check threw
   // unexpectedly". `sweepStaleMarkerDirs` is on the public API surface, so the
   // argument is normalised rather than trusted.
-  const requested = startOffset ?? (await nextSweepStart(root));
+  const requested = startOffset ?? nextSweepStart();
   const base = Number.isSafeInteger(requested) ? requested : 0;
   const start = ((base % entries.length) + entries.length) % entries.length;
   let examined = 0;
