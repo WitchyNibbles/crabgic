@@ -28,7 +28,8 @@
  * checks live here, once, and each caller maps the refusal onto its own error
  * shape rather than re-deriving the policy.
  */
-import { closeSync, constants, fstatSync, openSync } from "node:fs";
+import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 
 /**
  * Why a path was not opened.
@@ -195,5 +196,103 @@ function classify(fd: number, options: OwnedOpenOptions): OwnedOpenRefusal | und
   if (options.requirePrivateMode === true && (stats.mode & 0o077) !== 0) {
     return "group-or-world-accessible";
   }
+  return undefined;
+}
+
+/**
+ * Create `dir`, verifying every component BELOW `trustedRoot`.
+ *
+ * ROAST ROUND 32. `O_NOFOLLOW` guards the FINAL component only, so round 31's
+ * hardening was defeated entirely by a symlink one level up. Measured through
+ * the real writers, with `<state>/crabgic/<hash>` planted as a symlink to an
+ * attacker-owned directory:
+ *
+ *   the approval signing-key writer -> attacker dir holds approval-signing.key
+ *   the standing-policy writer      -> attacker dir holds envelope-policy.json
+ *
+ * (Named indirectly on purpose: `policy-store.test.ts` greps this repo for the
+ * policy writer's identifier to prove it has exactly one call site — Ledger Gap
+ * 18 part 3 — and that guard is deliberately broad enough to catch an aliased
+ * import, so a mere mention in prose trips it. Keeping the guard strict is
+ * worth more than the convenience of spelling the name here.)
+ *
+ * Neither refused. The first hands over the key that mints approval tokens; the
+ * second hands over the standing authorization that decides what runs WITHOUT
+ * review, in a directory the attacker can also rewrite. `mkdir(..., {recursive:
+ * true})` is what makes it work: it succeeds on an existing symlink-to-directory
+ * and every subsequent open lands on the other side of the link.
+ *
+ * Only components below `trustedRoot` are checked. The root itself is the
+ * owner's own XDG area and is deliberately NOT verified — a symlinked `$HOME`
+ * or `$TMPDIR` is a normal configuration on several platforms, and refusing it
+ * would be a fix that breaks working installs to close an attack that needs
+ * write access to a directory Crabgic itself creates 0700.
+ */
+export function ensureOwnedDir(dir: string, trustedRoot: string): OwnedOpenRefusal | undefined {
+  const root = resolve(trustedRoot);
+  const target = resolve(dir);
+  if (target !== root && !target.startsWith(`${root}${sep}`)) {
+    // A caller asking us to vouch for a path outside the root it named is a
+    // programming error, not an attack — but it must not be answered "fine".
+    return "not-owned";
+  }
+
+  // The root is the owner's own XDG area and may not exist yet on a fresh
+  // machine — `$HOME/.local/state` is created by whoever needs it first. It is
+  // created here RECURSIVELY and unverified, exactly as it was before: refusing
+  // to bootstrap because a standard XDG directory is missing would be a fix
+  // that breaks every first run to close an attack on a directory Crabgic
+  // itself creates 0700. The suite caught this; the probe did not, because the
+  // probe staged a root that already existed.
+  try {
+    mkdirSync(root, { recursive: true, mode: 0o700 });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "EEXIST") return "unreadable";
+  }
+
+  const relative = target
+    .slice(root.length)
+    .split(sep)
+    .filter((segment) => segment.length > 0);
+  let current = root;
+  for (const segment of relative) {
+    current = join(current, segment);
+    const refusal = ensureOneComponent(current);
+    if (refusal !== undefined) return refusal;
+  }
+  return undefined;
+}
+
+function ensureOneComponent(path: string): OwnedOpenRefusal | undefined {
+  let stats;
+  try {
+    // `lstat`, never `stat`: the whole point is to see the symlink rather than
+    // the thing it points at.
+    stats = lstatSync(path);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") return "unreadable";
+    try {
+      mkdirSync(path, { mode: 0o700 });
+      return undefined;
+    } catch (mkErr) {
+      // EEXIST means someone won the race between the lstat and the mkdir; fall
+      // through to inspect whatever they created rather than trusting it.
+      if ((mkErr as NodeJS.ErrnoException).code !== "EEXIST") return "unreadable";
+      try {
+        stats = lstatSync(path);
+      } catch {
+        return "unreadable";
+      }
+    }
+  }
+
+  if (stats.isSymbolicLink()) return "symlink";
+  if (!stats.isDirectory()) return "not-a-regular-file";
+  const uid = process.getuid?.();
+  if (uid === undefined) return "unsupported-platform";
+  if (stats.uid !== uid) return "not-owned";
+  // Group/other WRITE only: a readable state directory is a lesser problem than
+  // one another account can replace entries in.
+  if ((stats.mode & 0o022) !== 0) return "group-or-world-accessible";
   return undefined;
 }

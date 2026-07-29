@@ -24,11 +24,12 @@
  * refused outright if either the mode has been widened or the material is
  * not exactly 32 bytes.
  */
-import { closeSync, constants, fstatSync, mkdirSync, openSync, readSync, writeSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readSync, writeSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import {
   CRABGIC_DIR_NAME,
+  ensureOwnedDir,
   openOwnedFile,
   resolveXdgStateHome,
   type XdgEnv,
@@ -141,11 +142,22 @@ function readExistingKey(path: string): Buffer | undefined {
  * race re-reads the winner's key rather than clobbering it (which would
  * silently invalidate a token another process had already minted).
  */
-export function loadOrCreateApprovalSigningKey(path: string): Buffer {
+export function loadOrCreateApprovalSigningKey(path: string, stateHome: string): Buffer {
   const existing = readExistingKey(path);
   if (existing !== undefined) return existing;
 
-  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  // ROAST ROUND 32: this was `mkdir(..., {recursive: true})`, which SUCCEEDS on
+  // an existing symlink-to-directory — so a symlink planted one level above the
+  // key defeated every bit of round 31's hardening and the generated key landed
+  // in the attacker's directory, measured through this function. `O_NOFOLLOW`
+  // guards the final component only.
+  const dirRefusal = ensureOwnedDir(dirname(path), stateHome);
+  if (dirRefusal !== undefined) {
+    throw new ApprovalSigningKeyError(
+      path,
+      `the directory holding it is ${dirRefusal}; refusing to create a signing key there`,
+    );
+  }
   const key = randomBytes(APPROVAL_SIGNING_KEY_BYTES);
   try {
     const fd = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);

@@ -16,6 +16,7 @@ import {
   readXdgEnvFromProcess,
   resolveJournalDir,
   resolveStateRoot,
+  resolveXdgStateHome,
   type JournalStore,
   type XdgEnv,
 } from "@crabgic/journal";
@@ -210,6 +211,7 @@ export function buildRealCliDependencies(
   // and the fail-closed mode/symlink checks it applies.
   const signingKey = loadOrCreateApprovalSigningKey(
     resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+    resolveXdgStateHome(xdgEnv),
   );
   const minter = new ApprovalTokenMinter({ secretKey: signingKey, journal });
 
@@ -265,7 +267,10 @@ export function buildRealCliDependencies(
               listDirectories: listTopLevelDirectories,
             }),
           confirm: createRealConfirmPolicy({ input: process.stdin, output: process.stdout }),
-          write: writeEnvelopePolicy,
+          // ROAST ROUND 32: the writer verifies every directory component
+          // BELOW the state home, so the state home has to travel with it.
+          write: (target, policy) =>
+            writeEnvelopePolicy(target, policy, resolveXdgStateHome(xdgEnv)),
         },
       }),
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
@@ -355,6 +360,7 @@ export function buildRealGatewayToolRegistry(
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
     approvalSigningKey: loadOrCreateApprovalSigningKey(
       resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+      resolveXdgStateHome(xdgEnv),
     ),
     changeSets: intake.changeSets,
     workUnits: intake.workUnits,

@@ -142,7 +142,7 @@ describe("writeEnvelopePolicy", () => {
     const { writeEnvelopePolicy } = await import("./policy-store.js");
     const target = join(dir, "nested", "envelope-policy.json");
 
-    await writeEnvelopePolicy(target, EnvelopePolicySchema.parse(VALID));
+    await writeEnvelopePolicy(target, EnvelopePolicySchema.parse(VALID), dir);
 
     expect(statSync(target).mode & 0o777).toBe(0o600);
     expect(loadEnvelopePolicy(target).status).toBe("loaded");
@@ -153,7 +153,7 @@ describe("writeEnvelopePolicy", () => {
     const target = join(dir, "envelope-policy.json");
     const policy = EnvelopePolicySchema.parse(VALID);
 
-    await writeEnvelopePolicy(target, policy);
+    await writeEnvelopePolicy(target, policy, dir);
     const loaded = loadEnvelopePolicy(target);
 
     expect(loaded.status).toBe("loaded");
@@ -240,7 +240,7 @@ describe("writeEnvelopePolicy — over an existing file", () => {
     writeFileSync(path, "{}", { mode: 0o666 });
     chmodSync(path, 0o666);
 
-    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID), dir);
 
     expect(statSync(path).mode & 0o777).toBe(0o600);
     expect(loadEnvelopePolicy(path).status).toBe("loaded");
@@ -250,7 +250,7 @@ describe("writeEnvelopePolicy — over an existing file", () => {
     const { writeEnvelopePolicy } = await import("./policy-store.js");
     const { readdirSync } = await import("node:fs");
 
-    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID), dir);
 
     expect(readdirSync(dir).filter((f) => f.endsWith(".tmp"))).toEqual([]);
   });
@@ -295,7 +295,7 @@ describe("writeEnvelopePolicy — the temp file cannot be hijacked", () => {
     // Plant every temp name the old scheme could have produced.
     symlinkSync(victim, `${path}.${process.pid}.tmp`);
 
-    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID), dir);
 
     expect(readFileSync(victim, "utf8")).toBe("do not destroy me");
     expect(loadEnvelopePolicy(path).status).toBe("loaded");
@@ -308,7 +308,7 @@ describe("writeEnvelopePolicy — the temp file cannot be hijacked", () => {
     const { writeEnvelopePolicy } = await import("./policy-store.js");
     const { readdirSync } = await import("node:fs");
 
-    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID));
+    await writeEnvelopePolicy(path, EnvelopePolicySchema.parse(VALID), dir);
 
     // Nothing left behind, and nothing named after the pid.
     expect(readdirSync(dir).filter((f) => f.includes(".tmp"))).toEqual([]);

@@ -1,9 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { closeSync, constants, readFileSync, statSync } from "node:fs";
-import { chmod, mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import {
+  ensureOwnedDir,
   openOwnedFile,
   resolveStateRoot,
   type OwnedOpenResult,
@@ -227,9 +228,23 @@ export function digestPolicy(policy: EnvelopePolicy): string {
  * exists world-readable is a window in which another local account can read
  * what this project will run unattended.
  */
-export async function writeEnvelopePolicy(path: string, policy: EnvelopePolicy): Promise<void> {
+export async function writeEnvelopePolicy(
+  path: string,
+  policy: EnvelopePolicy,
+  stateHome: string,
+): Promise<void> {
   const dir = dirname(path);
-  await mkdir(dir, { recursive: true, mode: 0o700 });
+  // ROAST ROUND 32: `mkdir(..., {recursive: true})` SUCCEEDS on an existing
+  // symlink-to-directory, so a symlink planted one level above the policy sent
+  // the standing authorization — the artifact that decides what runs WITHOUT
+  // review — into an attacker's directory, where they can also rewrite it.
+  // Measured through this writer. `O_NOFOLLOW` guards the final component only.
+  const dirRefusal = ensureOwnedDir(dir, stateHome);
+  if (dirRefusal !== undefined) {
+    throw new Error(
+      `refusing to write the standing policy: the directory holding ${path} is ${dirRefusal}`,
+    );
+  }
   // Recursive mkdir does NOT chmod a directory that already exists, so an
   // XDG state root created earlier (or by something else) keeps its mode. A
   // 0777 directory leaves the policy replaceable by another local account
