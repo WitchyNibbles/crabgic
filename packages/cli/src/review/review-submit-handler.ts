@@ -1,10 +1,12 @@
 import {
+  DEBT_REOPENED_CRITERION,
   PIPELINE_STAGE_IDS,
   REVIEW_ROUND_CEILING,
   ReviewVerdictSchema,
   exitCriteriaFor,
   isStageClosable,
   reclassifyDebtForWriteSet,
+  selectDebtTouchedBy,
   type PipelineStageId,
   type ReviewFinding,
   type ReviewVerdict,
@@ -133,6 +135,37 @@ function mergeFindings(
   return [...byId.values()];
 }
 
+/**
+ * `no-open-debt-in-touched-paths`, from the finding set and the planned writes.
+ *
+ * This was arriving as a caller-supplied string while the answer sat one line
+ * away — the server reopens touched debt from the durable record and the
+ * ChangeSet's own envelope `ownedPaths`, and then counts what it reopened.
+ * Asking the caller was asking a question already answered better.
+ *
+ * TWO CONDITIONS, because reopening CLEARS a finding's disposition. Debt reopened
+ * by an earlier round is no longer `accepted-debt` and so is invisible to the
+ * touched-debt query; it is a blocking finding naming this criterion. Checking
+ * only the query would report the criterion met with a finding on record saying
+ * it is violated.
+ *
+ * The query runs on the PRE-reclassification set on purpose: after
+ * `reclassifyDebtForWriteSet` has done its work there is by construction no
+ * touched `accepted-debt` left to find, so asking afterwards always answers "no
+ * debt" — the derivation would be vacuously true exactly when it matters.
+ */
+function deriveDebtCriterion(
+  beforeReclassification: readonly ReviewFinding[],
+  afterReclassification: readonly ReviewFinding[],
+  plannedWrites: readonly string[],
+): readonly string[] {
+  const touched = selectDebtTouchedBy(beforeReclassification, plannedWrites);
+  const stillOpen = afterReclassification.some(
+    (finding) => finding.violates === DEBT_REOPENED_CRITERION && isUnresolvedBlocking(finding),
+  );
+  return touched.length === 0 && !stillOpen ? [DEBT_REOPENED_CRITERION] : [];
+}
+
 export async function runReviewSubmit(
   input: ReviewSubmitInput,
   deps: ReviewSubmitDeps,
@@ -169,7 +202,14 @@ export async function runReviewSubmit(
   ).length;
 
   const requiredCriteria = exitCriteriaFor(input.stage);
-  const metCriteria = deps.metCriteria();
+  // The debt criterion is DERIVED here and stripped from whatever the caller
+  // claimed, for the same reason the gate criteria are: the server already knows
+  // the answer, so asking is worse than deciding. Everything else in
+  // `metCriteria` is a judgement no tool can settle and passes through.
+  const metCriteria = [
+    ...deps.metCriteria().filter((criterion) => criterion !== DEBT_REOPENED_CRITERION),
+    ...deriveDebtCriterion(merged, afterDebt, writes),
+  ];
   const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
 
   const unmetCriteria = requiredCriteria.filter((criterion) => !metCriteria.includes(criterion));

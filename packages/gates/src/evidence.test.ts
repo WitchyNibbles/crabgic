@@ -52,6 +52,47 @@ describe("emitEvidence", () => {
     expect(entries).toHaveLength(1);
   });
 
+  /**
+   * The verdict has to SURVIVE journaling, and `exitStatus` cannot carry it.
+   *
+   * This gate's own `createTddGate` returns `passed: false` while reporting the
+   * candidate's `exitStatus: 0` whenever no red baseline exists — so a consumer
+   * reconstructing pass/fail from the exit status reads that FAILED firing as a
+   * pass. Recording the handler's own judgement is the only thing that closes
+   * it, since only the handler knows.
+   */
+  it("persists the handler's own pass/fail judgement, not just the exit status", async () => {
+    const context: GateContext = {
+      stage: "verifying",
+      changeSetId: randomUUID(),
+      requirementId: randomUUID(),
+      objectId: "objid-3",
+      journal: tj.store,
+    };
+
+    const failedButZeroExit: GateVerdict = {
+      ...verdict,
+      passed: false,
+      exitStatus: 0,
+      detail: "no red-baseline EvidenceRecord found — TDD gate fails closed",
+    };
+    const record = await emitEvidence(tj.store, context, "tdd", failedButZeroExit);
+
+    expect(record.exitStatus).toBe(0);
+    expect(record.gateVerdict).toBe("failed");
+  });
+
+  it("records a passing firing as passed", async () => {
+    const context: GateContext = {
+      stage: "verifying",
+      changeSetId: randomUUID(),
+      objectId: "objid-4",
+      journal: tj.store,
+    };
+    const record = await emitEvidence(tj.store, context, "coverage", verdict);
+    expect(record.gateVerdict).toBe("passed");
+  });
+
   it("omits requirementId/workUnitId when absent from the context (final_verifying firings carry no single WorkUnit)", async () => {
     const context: GateContext = {
       stage: "final_verifying",

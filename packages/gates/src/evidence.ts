@@ -39,6 +39,13 @@ export async function emitEvidence(
     artifactDigests: verdict.artifactDigests,
     objectId: context.objectId,
     gateTag,
+    // The handler's own judgement, recorded rather than left to be
+    // reconstructed. `exitStatus` cannot stand in for it: `../tdd-gate.ts`
+    // returns `passed: false` with the candidate's `exitStatus: 0` when no red
+    // baseline exists, so a consumer scoring exit status reads that failure as a
+    // pass. Every firing goes through this one function, so every firing carries
+    // its verdict — and anything WITHOUT one is, by construction, not a firing.
+    gateVerdict: verdict.passed ? "passed" : "failed",
   });
 
   await journal.appendEntry({

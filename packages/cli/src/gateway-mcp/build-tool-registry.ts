@@ -66,7 +66,7 @@ import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-defi
 import { REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
-import { GATES_PASS_CRITERION, deriveGateCriteria } from "../review/gate-criteria.js";
+import { GATE_DERIVED_CRITERIA, deriveGateCriteria } from "../review/gate-criteria.js";
 import { scoreCalibration } from "../review/calibration.js";
 import { loadCalibrationSamples } from "../review/calibration-store.js";
 import { queryEvidence } from "../evidence/query.js";
@@ -152,19 +152,28 @@ function buildReviewTools(
         await loadCalibrationSamples(deps.reviewCalibrationPath),
       );
 
-      // The gate-decidable criterion is DERIVED from journaled evidence and
-      // then subtracted from whatever the caller claimed. A caller that asserts
+      // The gate-decidable criteria are DERIVED from journaled evidence and then
+      // subtracted from whatever the caller claimed. A caller that asserts
       // `implement-gates-pass` without gate evidence to back it is not
-      // believed — which is the pipeline's own rule that anything a
-      // deterministic gate decides is decided by the gate, applied to the one
-      // criterion this tool can actually check.
+      // believed — the pipeline's own rule that anything a deterministic gate
+      // decides is decided by the gate, applied to every criterion this tool can
+      // actually check.
+      //
+      // The subtraction reads `GATE_DERIVED_CRITERIA` rather than naming the ids
+      // here, so a criterion that becomes derivable becomes unclaimable in the
+      // same edit. A second list would drift, and the drift would be silent and
+      // in the believing direction.
       const evidence = await queryEvidence({
         journal: deps.journal,
         changeSetId: args.changeSetId,
       });
-      const derived = deriveGateCriteria(evidence.records);
+      const derived = deriveGateCriteria(evidence.records, {
+        ...(args.candidateObjectId !== undefined
+          ? { candidateObjectId: args.candidateObjectId }
+          : {}),
+      });
       const claimed = (args.metCriteria ?? []).filter(
-        (criterion) => criterion !== GATES_PASS_CRITERION,
+        (criterion) => !GATE_DERIVED_CRITERIA.includes(criterion),
       );
       const metCriteria = [...claimed, ...derived];
       const result = await runReviewSubmit(
@@ -221,6 +230,15 @@ const REVIEW_SUBMIT_SHAPE = {
   // disagree the first time either moved.
   verdict: z.unknown(),
   metCriteria: z.array(z.string()).optional(),
+  /**
+   * The object id being merged, for `integrate-final-candidate-gate`.
+   *
+   * A FACT the server then checks, not a criterion the caller asserts: naming an
+   * object id produces no passing gates for it, and the criterion still requires
+   * every gate's latest verdict to be green at that exact id. Omitted, the
+   * criterion simply does not derive and the integrate stage cannot close.
+   */
+  candidateObjectId: z.string().optional(),
 };
 const CAPABILITY_AUDIT_SHAPE = { candidate: z.unknown() };
 const CAPABILITY_APPROVE_SHAPE = { digest: z.string(), token: z.string() };

@@ -65,6 +65,14 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 | `TaskPacket` | 03 (spawn input), 06, 13 (builds) |
 | `WorkerResult` | 06 (schema-enforced via `--json-schema`), 14 |
 | `EvidenceRecord` | 04/14 (emit), 08 (attaches rendered PR/review-comment artifacts), 09 (surfaces via `evidence <change-set-id>`), 21, 23 |
+
+> `EvidenceRecord` carries `gateVerdict: "passed" | "failed"` (optional) — the gate handler's own judgement,
+> which `exitStatus` cannot stand in for: 14's TDD gate returns `passed: false` while reporting the candidate's
+> `exitStatus: 0` when no red baseline exists. **Absent is meaningful**, not unset: a `captureRedBaseline`
+> pre-dispatch capture is not a firing, and neither is Gap 6's rendered-artifact evidence. `isNegativeEvidence`
+> in this package is the one implementation of "was this a genuine negative run" — it prefers the verdict and
+> falls back to `exitStatus`, so records journaled before the field score unchanged. See interface-ledger
+> Gap 20, "Amended 2026-07-29".
 | `ExternalConnection` | 16 (store), 09, 18, 19, 20 |
 | `CapabilitySnapshot` | 16 (cache), 18, 20 |
 | `RemoteMutationPlan` | 16 (pipeline), 18, 20, 21 |

@@ -1,3 +1,4 @@
+import { isNegativeEvidence } from "@crabgic/contracts";
 import { findEvidenceForRequirement } from "@crabgic/gates";
 import type { JournalStore } from "@crabgic/journal";
 import { assertNoContamination } from "./contamination.js";
@@ -21,10 +22,15 @@ export interface EvalSuiteResult {
  * outcome, rather than a second bespoke verification path." When a case
  * carries `groundTruthRequirementId`, the actual judgment is derived
  * from whether ANY `evidence_pointer` entry recorded against that same
- * `requirementId` has `exitStatus === 0` (14's own pass/fail convention —
- * `GateVerdict`/`EvidenceRecord` have no separate boolean "passed" field
- * once journaled, `exitStatus` IS the recorded verdict, `@crabgic/gates`'s own
- * `evidence.ts`). Cases with no ground-truth evidence link fall back to a
+ * `requirementId` is a genuine negative run, per `isNegativeEvidence`
+ * (`@crabgic/contracts`). That used to read `exitStatus === 0` inline, on the
+ * stated grounds that "`GateVerdict`/`EvidenceRecord` have no separate boolean
+ * 'passed' field once journaled". That was accurate when written and no longer
+ * is: `EvidenceRecord.gateVerdict` now carries the handler's own judgement, and
+ * the exit status disagrees with it for a firing that failed while its command
+ * exited zero. The helper prefers the verdict and falls back to the exit status,
+ * so records journaled before the field existed grade exactly as they did.
+ * Cases with no ground-truth evidence link fall back to a
  * pure structural comparison against the case's own `input.actualJudgment`
  * field (fixture-modeled — this phase's own minimal-sufficient choice for
  * cases with no real gate linkage, documented as such in the phase-22
@@ -39,7 +45,7 @@ export async function gradeCase(
       journal as JournalStore,
       evalCase.groundTruthRequirementId,
     );
-    const actualJudgment = records.length > 0 && records.every((r) => r.exitStatus === 0);
+    const actualJudgment = records.length > 0 && !records.some(isNegativeEvidence);
     const passed = actualJudgment === evalCase.expectedJudgment;
     return {
       caseId: evalCase.id,

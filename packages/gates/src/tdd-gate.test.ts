@@ -134,6 +134,30 @@ describe("TDD gate — failing-first: rejects an attempt missing a red-baseline 
     ).rejects.toThrow(RedBaselineNotFailingError);
   });
 
+  /**
+   * A red baseline is a PRE-DISPATCH CAPTURE, not a gate firing, so it reports
+   * no verdict.
+   *
+   * This is what lets a consumer scoring gate results tell the two apart. Before
+   * `gateVerdict` existed, a red baseline was just a `gateTag: "tdd"` record
+   * with a nonzero exit — indistinguishable from a failing firing, and enough to
+   * make "every gate record passed" permanently false for any ChangeSet that
+   * did TDD properly. The `beforeSeq` belt above stays exactly as it is; this
+   * closes the SHAPE half rather than replacing the ordering half.
+   */
+  it("captureRedBaseline reports no gateVerdict — a pre-dispatch capture is not a firing", async () => {
+    const record = await captureRedBaseline(tj.store, {
+      changeSetId: randomUUID(),
+      requirementId: randomUUID(),
+      baseObjectId: "base-obj",
+      command: "npm test",
+      exitStatus: 1,
+      toolchainFingerprint: "node@24",
+    });
+    expect(record.gateTag).toBe("tdd");
+    expect(record.gateVerdict).toBeUndefined();
+  });
+
   it("captureRedBaseline carries workUnitId through to the journal entry when supplied", async () => {
     const requirementId = randomUUID();
     const changeSetId = randomUUID();

@@ -15,7 +15,7 @@ import type { McpToolDefinition } from "../gateway-mcp/registry.js";
 export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
   name: "review.submit",
   description:
-    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, and `approve` submitted over an unresolved blocker.",
+    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Four exit criteria are DERIVED from journaled evidence and cannot be claimed: implement-gates-pass, implement-tests-first, integrate-final-candidate-gate (each from the gates' own recorded verdicts) and no-open-debt-in-touched-paths (from the finding store and this change set's planned writes). Claims to any of them are discarded. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, and `approve` submitted over an unresolved blocker.",
   inputSchema: {
     type: "object",
     properties: {
@@ -23,16 +23,25 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
       changeSetId: { type: "string" },
       verdict: { type: "object" },
       /**
-       * Exit criteria established OUTSIDE the review — gate verdicts, and the
-       * orchestrator's own record of what a stage produced.
+       * Exit criteria established OUTSIDE the review, for the criteria no tool
+       * can decide — "every task states how it will be known done" and the like.
        *
-       * Separate from `verdict` on purpose, and the distinction is the point:
-       * a reviewer submits findings and never asserts which criteria are met.
-       * This is still weaker than deriving them server-side, which needs a
-       * gate-verdict store this does not have yet; the honest description is
-       * that the REVIEWER cannot satisfy its own gate, not that nobody can.
+       * Separate from `verdict` on purpose: a reviewer submits findings and never
+       * asserts which criteria are met. The four gate-decidable and
+       * debt-decidable criteria are STRIPPED from whatever arrives here and
+       * recomputed from evidence, so claiming them has no effect. What remains is
+       * the judged set, which is caller-asserted and named as such rather than
+       * dressed up as measured.
        */
       metCriteria: { type: "array", items: { type: "string" } },
+      /**
+       * The object id being merged, for `integrate-final-candidate-gate`.
+       *
+       * A fact the server checks rather than a criterion the caller asserts:
+       * naming an id produces no passing gates for it. Omitted, that criterion
+       * does not derive and the integrate stage cannot close.
+       */
+      candidateObjectId: { type: "string" },
     },
     required: ["stage", "changeSetId", "verdict"],
   },

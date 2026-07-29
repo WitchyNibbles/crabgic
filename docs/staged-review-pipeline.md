@@ -380,3 +380,37 @@ they are not mistaken for settled:
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
    `Workflow` script are both viable (§5); the choice is unmade and is not
    blocked by anything — it is simply not yet made.
+
+### 8.5 Four criteria are decided by evidence, not by the caller
+
+Added 2026-07-29. §4.3 says anything a deterministic gate decides is decided by
+the gate; `review.submit` now applies that to every criterion it can actually
+check. `implement-gates-pass`, `implement-tests-first` and
+`integrate-final-candidate-gate` come from the gates' own recorded verdicts;
+`no-open-debt-in-touched-paths` comes from the finding store and the ChangeSet's
+planned writes. A claim to any of the four is discarded before the closure rule
+sees it.
+
+**The first version of this was wrong, and the way it was wrong is the point.**
+It scored `exitStatus`, which is not a verdict. `captureRedBaseline` journals a
+`tdd`-tagged record with a NONZERO exit deliberately — that is what a red
+baseline IS — so "every gate-tagged record exited zero" meant **doing TDD
+correctly made the implement stage impossible to close on evidence**. It could
+then close only on the caller's word, which is the exact failure the derivation
+was written to remove. The gate's own judgement is now recorded
+(`EvidenceRecord.gateVerdict`) and the LATEST firing per tag is that tag's
+result, so a repaired failure stops counting against the work that repaired it.
+
+The lesson matches §8.0's. There, "the obvious implementation is forbidden" was
+mistaken for "this is blocked". Here, a derivation that fails CLOSED was mistaken
+for a derivation that works — nothing failed loudly, the criterion simply never
+became derivable, and the caller-supplied fallback quietly carried the stage.
+Fail-closed is the right default and it is not the same thing as correct.
+
+**What is still judged:** `implement-task-done-criteria-met`, and every design,
+plan and research criterion. Those are undecidable *while the artifacts they
+describe are free-form `IntentContract` narrative* — "every risk carries a
+mitigation" is a schema check the moment risks are a list with a mitigation
+field, and `plan-dependencies-acyclic` is a graph algorithm misfiled as a
+judgement. Structuring those artifacts is the work that would move them; it is
+listed as work here rather than claimed as impossible.

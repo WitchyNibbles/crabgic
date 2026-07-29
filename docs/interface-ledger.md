@@ -1261,29 +1261,69 @@ inputs come from the SERVER and never the caller: planned writes from the Change
 `ownedPaths`, so a reviewer cannot understate what it intends to touch and thereby choose which debt it
 faces; and prior findings from the durable store, so a clean round cannot erase somebody else's open blocker.
 
-**The gate-decidable criterion is derived, not believed.** `implement-gates-pass` is computed from the
-`EvidenceRecord`s journaled against the ChangeSet — the same signal the release gate scores on, where a linked
-record with a nonzero `exitStatus` is a genuine negative run — and then SUBTRACTED from whatever the caller
-claimed, so asserting it without gate evidence to back it does not work. Records carrying no `gateTag` are
-skipped rather than counted, since Gap 6's rendered-artifact evidence is not a gate firing. An empty evidence
-set yields nothing: gates that never ran are not gates that passed, and treating absence of proof as proof is
-how a stage closes on work nobody verified.
+**The gate-decidable criteria are derived, not believed.** Four of them, computed server-side and then
+SUBTRACTED from whatever the caller claimed, so asserting one does not work:
+
+| Criterion | Derived from |
+|---|---|
+| `implement-gates-pass` | every gate tag's latest journaled firing reporting `gateVerdict: "passed"` |
+| `implement-tests-first` | the `tdd` tag's latest firing passing — which by that gate's construction means a red baseline before dispatch and a green candidate |
+| `integrate-final-candidate-gate` | every tag's latest firing passing **at the candidate object id**, which the caller names as a fact the server then checks |
+| `no-open-debt-in-touched-paths` | `selectDebtTouchedBy` over the durable finding set and the ChangeSet's own envelope `ownedPaths` |
+
+An empty evidence set yields nothing: gates that never ran are not gates that passed, and treating absence of
+proof as proof is how a stage closes on work nobody verified. `GATE_DERIVED_CRITERIA` is the one list the
+subtraction reads, so a criterion that becomes derivable becomes unclaimable in the same edit.
+
+**Amended 2026-07-29 — `exitStatus` was the wrong signal, in both directions.** The first version of this
+derivation scored "every gate-tagged `EvidenceRecord` reports `exitStatus === 0`". That was wrong twice, and
+the schema had to move for either fix to be possible:
+
+1. **A zero exit is not a pass.** `createTddGate` returns `passed: false` while reporting the candidate's own
+   `exitStatus: 0` when no red baseline exists, so scoring the exit status read a FAILED gate as passing.
+   `EvidenceRecord` **gains `gateVerdict: "passed" | "failed"`, optional**, set by `emitEvidence` for every
+   firing from the handler's own `GateVerdict.passed`. Absent is meaningful rather than unset: a
+   `captureRedBaseline` pre-dispatch capture is not a firing and reports none, Gap 6's rendered-artifact
+   evidence is not a firing either, and a record predating the field has no judgement to read. All three are
+   skipped by a closure derivation, which is the fail-closed direction.
+2. **A gate's history is not its result.** The journal is append-only, so `captureRedBaseline`'s deliberately
+   NONZERO `tdd` record — and every failing firing a later fix repaired — sat beside the passing one forever.
+   Requiring every record to pass therefore made `implement-gates-pass` **permanently underivable for any
+   ChangeSet that did TDD correctly**: the implement stage could close only on the caller's word, which is the
+   exact thing this derivation exists to stop. The **latest firing per tag** is now that tag's result, ordered
+   by `capturedAt` and falling back to position only to break a tie.
+
+`isNegativeEvidence` in `@crabgic/contracts` is the one implementation of "was this a genuine negative run",
+adopted by the release-gate report generator and the learning eval runner, which had each written
+`exitStatus !== 0` inline with a comment stating — accurately at the time — that no recorded verdict existed to
+consult. It prefers the verdict and falls back to the exit status, so records journaled before the field grade
+exactly as they did. A closure derivation deliberately does NOT take that fallback: unproven is not green.
 
 **The limit that remains.** The other criteria are judgements — "every risk carries a mitigation", "every task
 states how it will be known done" — and those still arrive as caller-supplied `metCriteria`. No tool can
-decide them, which is why they are stated as criteria a reviewer checks rather than as gates. What holds is
-that the reviewer cannot satisfy its own gate and that nothing gate-decidable is taken on trust; what does not
-is that a caller misreporting a judged criterion is caught.
+decide them **while the artifacts they describe are free-form narrative**, which is why they are stated as
+criteria a reviewer checks rather than as gates. What holds is that the reviewer cannot satisfy its own gate
+and that nothing gate-decidable or debt-decidable is taken on trust; what does not is that a caller
+misreporting a judged criterion is caught.
 
-**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
-`roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),
-`roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits beside),
-`roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
+One narrow residual is named rather than glossed: `integrate-final-candidate-gate` takes the candidate object
+id from the caller, so a caller may point at an OLDER object that happens to be fully green. Naming an id
+produces no passing gates for it, which makes this much smaller than asserting the criterion — and with no id
+supplied the criterion does not derive at all, so the integrate stage cannot close.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join, including
+`EvidenceRecord.gateVerdict`), `roadmap/14-quality-security-gates.md` (owns `emitEvidence`, the sole emitter
+that sets it), `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates
+through), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits
+beside), `roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
 
 **Where this ruling could be got wrong later:** adding a disposition that means "ignored", which reintroduces
 the disposal route the whole design exists to prevent; relaxing `approve` so it tolerates an open blocker,
 which makes the verdict advisory; giving `exitCriteriaFor` an empty-list fallback, which closes stages
-vacuously; or writing a second path matcher for the debt index instead of importing the canonical one.
+vacuously; writing a second path matcher for the debt index instead of importing the canonical one; treating an
+absent `gateVerdict` as a pass in a closure derivation, which restores exactly the hole the field was added to
+close; or deciding `implement-gates-pass` from `exitStatus` again, which re-poisons every TDD-compliant
+ChangeSet.
 
 ---
 

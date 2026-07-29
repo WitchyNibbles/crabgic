@@ -15,6 +15,7 @@ import { ApprovalTokenMinter } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
+  EvidenceRecord,
   IntentContract,
   WorkUnit,
 } from "@crabgic/contracts";
@@ -327,5 +328,174 @@ describe("buildProductionGatewayToolRegistry — provider dispatch", () => {
     expect(tracker.isError).toBe(true);
     expect(tracker.content[0]!.text).toContain("never registered");
     expect(tracker.content[0]!.text).not.toContain("no client registered for provider");
+  });
+});
+
+/**
+ * The gate-decidable criteria are DERIVED here, and the caller's claim to them is
+ * discarded before it can reach the closure rule.
+ *
+ * This is the half of ledger Gap 20 that was still open: a manager could not
+ * assert that a stage was closable, but it could assert the inputs the closure
+ * rule reads, which is the same thing one level down. These tests drive the real
+ * production registry rather than the pure handler, because the subtraction lives
+ * in the composition root and a unit test of the handler cannot see it.
+ */
+describe("review.submit — server-derived exit criteria", () => {
+  function verdictDoc(stage: string) {
+    return {
+      schemaVersion: 1,
+      id: "22222222-2222-4222-8222-222222222222",
+      createdAt: "2026-07-29T00:00:00.000Z",
+      stage,
+      artifactRef: "changeset:abc",
+      lens: "correctness",
+      verdict: "approve",
+      round: 1,
+      findings: [],
+    };
+  }
+
+  async function submit(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    changeSetId: string,
+    args: Record<string, unknown>,
+  ) {
+    const registry = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+    const result = await registry.get("review.submit")!.handler({
+      stage: "implement",
+      changeSetId,
+      verdict: verdictDoc("implement"),
+      ...args,
+    });
+    return JSON.parse(result.content[0]!.text) as {
+      ok: boolean;
+      unmetCriteria?: string[];
+      stageClosable?: boolean;
+    };
+  }
+
+  /**
+   * `stubDeps` puts the finding store and the state root in two unrelated temp
+   * dirs, which the store's own containment check refuses — correctly, and it is
+   * the check rounds 30-32 added. These tests write findings for real, so they
+   * need a state root that actually contains the store.
+   */
+  function reviewDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-derive-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+    };
+  }
+
+  function registerChangeSet(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+  ): string {
+    const changeSetId = "55555555-5555-4555-8555-555555555555";
+    deps.changeSets.put({ id: changeSetId } as unknown as ChangeSet);
+    return changeSetId;
+  }
+
+  /**
+   * The claim with nothing behind it. Every gate-decidable criterion is asserted
+   * and no gate has ever fired, so all of them must come back unmet — "gates that
+   * never ran are not gates that passed".
+   */
+  it("refuses a claimed implement-gates-pass and implement-tests-first with no gate evidence", async () => {
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+
+    const report = await submit(deps, changeSetId, {
+      metCriteria: [
+        "implement-gates-pass",
+        "implement-tests-first",
+        "implement-task-done-criteria-met",
+      ],
+    });
+
+    expect(report.ok).toBe(true);
+    expect(report.unmetCriteria).toContain("implement-gates-pass");
+    expect(report.unmetCriteria).toContain("implement-tests-first");
+    // The judged criterion still passes through — no tool can decide it, and
+    // pretending otherwise would be the opposite error.
+    expect(report.unmetCriteria).not.toContain("implement-task-done-criteria-met");
+    expect(report.stageClosable).toBe(false);
+  });
+
+  /**
+   * The same submission with real evidence behind it. Nothing about the CALL
+   * changes — the difference is entirely in what the journal holds, which is the
+   * property being asserted.
+   */
+  it("derives both from journaled gate evidence, and closes the stage on it", async () => {
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+
+    let evidenceSeq = 0;
+    const evidence = (gateTag: string, capturedAt: string): EvidenceRecord => ({
+      schemaVersion: 1,
+      id: `44444444-4444-4444-8444-${String(++evidenceSeq).padStart(12, "0")}`,
+      changeSetId,
+      command: `npm run gate:${gateTag}`,
+      exitStatus: 0,
+      toolchainFingerprint: "node24",
+      capturedAt,
+      artifactDigests: [],
+      objectId: "candidate-object",
+      gateTag,
+      gateVerdict: "passed",
+    });
+
+    // A red baseline first — the record that used to make implement-gates-pass
+    // permanently underivable for any ChangeSet that did TDD properly. It carries
+    // NO gateVerdict, because a pre-dispatch capture is not a firing.
+    const redBaseline: EvidenceRecord = {
+      schemaVersion: 1,
+      id: "44444444-4444-4444-8444-000000000099",
+      changeSetId,
+      command: "npm run gate:tdd",
+      exitStatus: 1,
+      toolchainFingerprint: "node24",
+      capturedAt: "2026-07-29T00:00:00.000Z",
+      artifactDigests: [],
+      objectId: "base-object",
+      gateTag: "tdd",
+    };
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: redBaseline,
+    });
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: evidence("tdd", "2026-07-29T01:00:00.000Z"),
+    });
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: evidence("coverage", "2026-07-29T01:00:00.000Z"),
+    });
+
+    const report = await submit(deps, changeSetId, {
+      metCriteria: ["implement-task-done-criteria-met"],
+    });
+
+    expect(report.unmetCriteria).not.toContain("implement-gates-pass");
+    expect(report.unmetCriteria).not.toContain("implement-tests-first");
+    // no-open-debt-in-touched-paths derives clean too (no findings, no writes),
+    // so with the judged criterion supplied the stage genuinely closes.
+    expect(report.unmetCriteria).toEqual([]);
+    expect(report.stageClosable).toBe(true);
   });
 });

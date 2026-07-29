@@ -282,3 +282,108 @@ describe("runReviewSubmit — the classifier's own trustworthiness", () => {
     expect(result.calibration?.samplesNeeded).toBeGreaterThan(0);
   });
 });
+
+/**
+ * `no-open-debt-in-touched-paths`, derived rather than believed.
+ *
+ * This criterion was arriving in `metCriteria` as a caller-supplied string while
+ * the server was ALREADY computing the answer one line away: it reopens touched
+ * debt from the durable finding set and the ChangeSet's own envelope
+ * `ownedPaths`, then counts what it reopened. Asking the caller was asking a
+ * question the server had already answered better.
+ *
+ * The caller's claim is stripped, not merged, so a submission asserting the
+ * criterion over debt it is about to touch does not benefit from asserting it.
+ */
+describe("runReviewSubmit — deriving no-open-debt-in-touched-paths", () => {
+  const DEBT_CRITERION = "no-open-debt-in-touched-paths";
+
+  it("reports the criterion unmet when the change set touches accepted debt, even though the caller claimed it", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorFindings: () => [finding({ paths: ["packages/cli/src/doctor"] })],
+        plannedWrites: () => ["packages/cli/src/doctor/checks.ts"],
+        metCriteria: () => exitCriteriaFor("implement"),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.unmetCriteria).toContain(DEBT_CRITERION);
+    expect(result.stageClosable).toBe(false);
+  });
+
+  it("reports it met when no planned write touches any accepted debt", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorFindings: () => [finding({ paths: ["packages/cli/src/doctor"] })],
+        plannedWrites: () => ["packages/gates/src/flake-gate.ts"],
+      }),
+    );
+    expect(result.unmetCriteria).not.toContain(DEBT_CRITERION);
+  });
+
+  /**
+   * The claim is stripped even when it happens to be RIGHT, so the answer always
+   * comes from the same place. A criterion that is derived on some submissions
+   * and believed on others is not derived.
+   */
+  it("reports it met on the derivation alone, when the caller never claimed it", async () => {
+    const claimedWithoutDebt = exitCriteriaFor("implement").filter((c) => c !== DEBT_CRITERION);
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorFindings: () => [],
+        plannedWrites: () => ["packages/gates/src/flake-gate.ts"],
+        metCriteria: () => claimedWithoutDebt,
+      }),
+    );
+    expect(result.unmetCriteria).not.toContain(DEBT_CRITERION);
+  });
+
+  /**
+   * Debt reopened by an EARLIER round is still open now. `reclassifyDebtForWriteSet`
+   * CLEARS the disposition when it reopens, so such a finding no longer looks like
+   * `accepted-debt` to the touched-debt query — it is a blocking finding naming
+   * this criterion. Reading only the query would report the criterion met while a
+   * finding on record says it is violated.
+   */
+  it("reports it unmet while a previously reopened debt finding is still unresolved", async () => {
+    const reopened = finding({
+      id: "33333333-3333-4333-8333-333333333333",
+      classification: "blocking",
+      violates: DEBT_CRITERION,
+      disposition: undefined,
+      dispositionEvidence: undefined,
+      paths: ["packages/cli/src/doctor"],
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorFindings: () => [reopened],
+        // Nothing touches its paths this time, so the query alone finds nothing.
+        plannedWrites: () => ["packages/gates/src/flake-gate.ts"],
+      }),
+    );
+    expect(result.unmetCriteria).toContain(DEBT_CRITERION);
+  });
+
+  it("stops reporting it unmet once that reopened debt is fixed", async () => {
+    const paid = finding({
+      id: "33333333-3333-4333-8333-333333333333",
+      classification: "blocking",
+      violates: DEBT_CRITERION,
+      disposition: "fixed",
+      dispositionEvidence: "packages/cli/src/doctor/checks.ts now refuses a FIFO",
+      paths: ["packages/cli/src/doctor"],
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorFindings: () => [paid],
+        plannedWrites: () => ["packages/gates/src/flake-gate.ts"],
+      }),
+    );
+    expect(result.unmetCriteria).not.toContain(DEBT_CRITERION);
+  });
+});
