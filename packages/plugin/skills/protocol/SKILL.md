@@ -52,44 +52,90 @@ cannot build a contract until those sections are filled, so a loop that
 terminates on anything else would either stop before intake can proceed or
 keep asking after it could. A second heuristic would drift from the first.
 
-## The roast loops
+## The staged review pipeline
 
-Three artifacts, each roasted until it stops yielding: **the design**, **the
-tests**, **the implementation**. Ledger Gap 19 is the ruling; this is what it
-means in practice.
+Three artifacts, each reviewed against that stage's exit criteria: **the
+design**, **the tests**, **the implementation**. Ledger Gap 19 is the ruling —
+amended 2026-07-29 — and this is what it means in practice.
 
-**A round is adversarial.** The reviewer's job is to refute, not to approve,
-and it must not have authored the artifact or seen the previous round's
-verdict. A reviewer grading its own work is not a second opinion.
+**A round is adversarial, and it can still say yes.** The reviewer attacks the
+artifact, then answers whether it meets the stage's criteria. It must not have
+authored the artifact or seen the previous round's verdict; a reviewer grading
+its own work is not a second opinion.
 
-**Termination is mechanical, because "until it can't find anything" is not.**
-An adversary told to keep going will manufacture findings to look useful —
-inverted sycophancy. So a round only extends the loop if it yields a finding
-that is:
+### Why the previous rule was replaced
 
-- **novel** — not already raised for this artifact, so repetition is free of
-  consequence; and
-- **falsifiable** — carrying a concrete failure scenario, _these_ inputs or
-  state producing _that_ wrong result. Taste, generality and restatement are
-  inadmissible.
+The superseded ruling closed the loop when a round produced no finding that was
+both **novel** and **falsifiable**, with **no severity floor**, and no cap on
+rounds. The reasoning was sound as far as it went: an adversary told to keep
+going will manufacture findings to look useful — inverted sycophancy — and those
+two tests exclude exactly that.
 
-Those two words are what "honestly" denotes in the instruction. Without them
-the loop does not converge; with them it converges on its own, without a cap.
+The ruling also disclosed a residual risk: that termination depended entirely on
+the falsifiability test being applied strictly. Rounds 21–32 in this repository
+are the experiment that risk called for, and the result was **not** the one it
+predicted:
 
-**There is no severity floor.** A real low-severity finding keeps the loop
-open exactly as a critical one does. The premise is that the loop runs until
-the work is right, not until it is acceptable.
+| observation                                  | measurement                                                                      |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| Rounds against one subsystem                 | **12**                                                                           |
+| Findings accepted loosely                    | **none** — every one carried an executed reproduction                            |
+| Findings that were real                      | **all of them**                                                                  |
+| Rounds finding nothing novel and falsifiable | **zero**                                                                         |
+| Severity trend                               | from "no attacker foothold needed" to "attacker already has your 0700 directory" |
+
+The test was applied strictly and the loop still did not converge. Novelty and
+falsifiability bound **manufactured** findings, not **genuine** ones — a real
+codebase holds an effectively inexhaustible supply of true, reproducible defects
+of declining severity. "Until a round finds nothing" measures reviewer
+exhaustion, and only artifact quality is finite.
+
+### What replaced it
+
+**Close a stage on its exit criteria, not on the reviewer running dry.** A stage
+advances when every written criterion is met, nothing is still `blocking`, and
+every finding raised has a disposition.
+
+**Blocking requires naming the criterion violated.** A finding that violates no
+stated criterion is `advisory` — real, recorded, answered, but not holding the
+stage open.
+
+**Advisory is a deferral, never a disposal.** Every finding at any severity gets
+`fixed`, `refuted` or `accepted-debt`, and a stage may not advance holding one
+without. `accepted-debt` is journaled against the paths it concerns, reported to
+the owner, and becomes `blocking` the moment a later change set touches that
+code — the cheapest moment to pay it. This is why there is still no severity
+floor on _raising_ a finding: the floor is only on what **blocks**.
+
+**Loop while you are converging.** Another round is warranted only while each
+one closes at least one blocking finding. The first round that closes none — or
+round five, whichever comes first — is an `irreducible_product_decision`: ask
+the owner rather than looping. The count of blocking findings closed comes from
+dispositions, never from the reviewer's own account of its progress.
+
+**Gates decide first.** Anything a deterministic gate decides — coverage, lint,
+types, conformance — is a `GateVerdict`, not a reviewer's opinion to re-argue in
+prose. Tool-grounded critique beats a judged one, and this repository already
+ships the tools.
 
 **Verify before acting.** A reviewer can be confidently wrong; findings that
 assert code behavior should be checked against the code before they change
 anything. In this repo's own use of the loop, every accepted finding was
 re-verified by hand and several were corrected or dropped.
 
-**A roast round is not a repair attempt.** It is read-only: it produces
+**A review round is not a repair attempt.** It is read-only: it produces
 findings, re-executes nothing, transitions no state, and spends none of the
 three attempts `exhausted_repairs` counts. A session that reads its own third
-roast round as that stop condition will halt work that was never failing.
+review round as that stop condition will halt work that was never failing.
 Acting on a finding may spend an attempt; raising one never does.
+
+### Known limit
+
+The `blocking` versus `advisory` split is a judgement, and an uncalibrated judge
+is decorative. There is **no calibration plan yet** — no sample where the split
+has been checked against the owner's own call. Until there is, treat a
+`blocking` classification as an argument to be read, not a verdict to be trusted
+on sight.
 
 ## The seven stop conditions
 

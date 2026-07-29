@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
 import {
   CONTRACT_SECTIONS,
-  ROAST_ARTIFACTS,
+  FINDING_DISPOSITIONS,
+  REVIEW_ARTIFACTS,
+  REVIEW_ROUND_CEILING,
+  REVIEW_VERDICTS,
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
   QUESTION_TOOL_NAME,
@@ -131,10 +134,24 @@ describe("buildManagerProtocolBlock", () => {
     // the termination rule, why a roast is not a repair attempt) stays in
     // skills/protocol/SKILL.md; what is here is only the instruction itself.
     //
-    // The cost is real and worth stating: ~70 lines is roughly 800 tokens on
+    // Raised 70 -> 78 (2026-07-29) when the roast paragraph was replaced by the
+    // staged review pipeline (ledger Gap 19 as amended). The replacement says
+    // strictly more than what it replaced -- a verdict vocabulary, an exit-
+    // criteria close, the blocking/advisory split with its disposition rule,
+    // debt becoming blocking on touch, and a progress budget -- and every one
+    // of those is an instruction the session must follow rather than rationale
+    // it may look up. The first draft came in at 86 lines and was compressed to
+    // 76 before this cap moved; the eight lines of headroom are for the wording
+    // to breathe, not for new content.
+    //
+    // Everything explanatory still goes to the on-demand skill: WHY novelty and
+    // falsifiability stopped being the termination rule, and what twelve
+    // non-converging rounds measured, live in skills/protocol/SKILL.md.
+    //
+    // The cost is real and worth stating: ~78 lines is roughly 900 tokens on
     // every manager turn.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(70);
+    expect(lines.length).toBeLessThanOrEqual(78);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -240,39 +257,94 @@ describe("buildManagerProtocolBlock — the clarify loop", () => {
   });
 });
 
-describe("buildManagerProtocolBlock — the roast loops", () => {
+describe("buildManagerProtocolBlock — the staged review pipeline", () => {
   const block = buildManagerProtocolBlock();
+  /**
+   * The block is hard-wrapped so the installer's byte-preserving merge stays
+   * deterministic, which means any multi-word phrase can be split across a line
+   * break. Two assertions below were written against the unwrapped text and
+   * failed for that reason alone -- the property held, the regex did not see it.
+   * Phrase assertions therefore run against a whitespace-normalized copy; ones
+   * that care about single tokens keep using `block` directly.
+   */
+  const flat = block.replace(/\s+/g, " ");
 
-  it("names all three artifacts a roast round covers", () => {
-    for (const artifact of ROAST_ARTIFACTS) {
+  it("names every artifact a review round covers", () => {
+    for (const artifact of REVIEW_ARTIFACTS) {
       expect(block.toLowerCase()).toContain(artifact.toLowerCase());
     }
   });
 
   /**
-   * Gap 19's termination rule, and the whole reason the loop converges: an
-   * adversary told to keep going will manufacture findings, so a round only
-   * counts if it produced something NEW and something FALSIFIABLE.
+   * The single change that makes the loop able to terminate at all. The
+   * superseded charter told the reviewer "do not approve it", which left it
+   * with no vocabulary for done -- measured over twelve rounds that never
+   * converged (docs/staged-review-pipeline.md §2).
    */
-  it("states the novel-and-falsifiable termination rule", () => {
-    expect(block).toMatch(/novel/i);
-    expect(block).toMatch(/falsifiable|failure scenario/i);
+  it("makes `approve` a reachable verdict, not just `revise`", () => {
+    for (const verdict of REVIEW_VERDICTS) {
+      expect(block).toContain(verdict);
+    }
+    expect(block).toMatch(/approve/i);
   });
 
-  it("says there is no severity floor, so a minor real finding still counts", () => {
-    expect(block).toMatch(/severity floor/i);
+  it("blocks only on a finding that names the exit criterion it violates", () => {
+    expect(block).toMatch(/blocking/i);
+    expect(block).toMatch(/exit criteri/i);
+  });
+
+  /**
+   * The owner's constraint on the severity floor: it gates the LOOP, never the
+   * LEDGER. A stage may not advance holding an undispositioned finding at any
+   * severity, so "advisory" can never become a disposal route.
+   */
+  it("requires every finding to carry a disposition, whatever its severity", () => {
+    for (const disposition of FINDING_DISPOSITIONS) {
+      expect(block).toContain(disposition);
+    }
+    expect(flat).toMatch(/never advance|cannot advance|may not advance/i);
+  });
+
+  it("states the progress-based budget and its ceiling", () => {
+    expect(flat).toContain(String(REVIEW_ROUND_CEILING));
+    expect(flat).toMatch(/closes at least one|closes no blocking/i);
+  });
+
+  it("makes deferred debt blocking when its code is next touched", () => {
+    expect(block).toMatch(/accepted-debt/);
+    expect(block).toMatch(/touch/i);
+  });
+
+  /**
+   * The tool-grounded half takes precedence over the judged half: anything a
+   * deterministic gate decides is not a reviewer's to re-litigate in prose.
+   */
+  it("forbids a reviewer re-deciding what a gate already decides", () => {
+    expect(block).toMatch(/gate/i);
+  });
+
+  it("keeps novelty and falsifiability as admissibility tests", () => {
+    expect(block).toMatch(/novel/i);
+    expect(block).toMatch(/falsifiable|failure scenario/i);
   });
 
   it("requires a fresh reviewer per round", () => {
     expect(block).toMatch(/fresh/i);
   });
 
-  /**
-   * The distinction Gap 19 exists to draw. A session that reads its own third
-   * roast round as `exhausted_repairs` will halt work that was never failing.
-   */
-  it("separates a roast round from a repair attempt explicitly", () => {
+  it("separates a review round from a repair attempt explicitly", () => {
     expect(block).toMatch(/exhausted_repairs|repair attempt/i);
     expect(block).toMatch(/read-only|reads only/i);
+  });
+
+  /**
+   * Regression guard against the superseded ruling. Ledger Gap 19 part 4 was
+   * amended 2026-07-29 precisely because "no severity floor" plus "keep going
+   * until a round finds nothing" does not terminate; if either phrase comes
+   * back, the block contradicts the ledger that governs it.
+   */
+  it("no longer carries the superseded unbounded-loop language", () => {
+    expect(block).not.toMatch(/no severity floor/i);
+    expect(block).not.toMatch(/until a round finds nothing/i);
   });
 });

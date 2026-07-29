@@ -154,13 +154,44 @@ export const CONTRACT_SECTIONS = [
 ] as const;
 
 /**
- * The three artifacts an adversarial roast round covers (ledger Gap 19).
+ * The three artifacts a review round covers (ledger Gap 19, amended 2026-07-29).
  *
  * Deliberately these three and not "the work": each is reviewable on its own
- * terms and at its own moment, and a roast of the test suite in particular is
+ * terms and at its own moment, and a review of the test suite in particular is
  * not a gate verdict and never substitutes for one.
  */
-export const ROAST_ARTIFACTS = ["the design", "the tests", "the implementation"] as const;
+export const REVIEW_ARTIFACTS = ["the design", "the tests", "the implementation"] as const;
+
+/**
+ * The reviewer's verdict vocabulary.
+ *
+ * `approve` existing at all is the amendment. The superseded charter told the
+ * reviewer "do not approve it", which left it no way to say *done* — and a
+ * reviewer that cannot say done cannot terminate a loop. Measured over twelve
+ * rounds that never converged; see `docs/staged-review-pipeline.md` §2.
+ */
+export const REVIEW_VERDICTS = ["approve", "revise"] as const;
+
+/**
+ * What must happen to every finding before its stage may advance.
+ *
+ * The severity floor gates the LOOP, never the LEDGER (ledger Gap 19 part 4 as
+ * amended). A finding too minor to block is still verified, still answered and
+ * still recorded — `advisory` is a deferral, never a disposal route — so this
+ * list has no "ignored" member by design.
+ */
+export const FINDING_DISPOSITIONS = ["fixed", "refuted", "accepted-debt"] as const;
+
+/**
+ * The hard ceiling on review rounds for one stage.
+ *
+ * The real bound is progress: a stage loops while each round closes at least
+ * one blocking finding and escalates the moment one closes none. This ceiling
+ * exists only so a pathological stage cannot run forever if progress is
+ * mis-measured — the literature's caution that a fixed cap is a "syntactic
+ * kill-switch" is why it is the backstop rather than the rule.
+ */
+export const REVIEW_ROUND_CEILING = 5;
 
 export interface ManagerApprovalGate {
   /** The exact command a human types. */
@@ -246,14 +277,21 @@ contract section (${CONTRACT_SECTIONS.join(", ")}) answerable,
 and every requirement carrying testable acceptance criteria. Then stop asking
 and build.
 
-**Roast your own work three times: ${ROAST_ARTIFACTS.join(", ")}.** Each
-round is adversarial and gets a fresh reviewer. A round counts only if it
-yields a finding that is **novel** and **falsifiable** — a concrete failure
-scenario, these inputs giving that wrong result. Taste does not count. **No
-severity floor.** Keep going until a round finds nothing new; verify before
-acting, since a confident reviewer is still sometimes wrong. A roast round is
-**read-only**, spends none of \`exhausted_repairs\`' three attempts, and a
-third round is therefore not a stop condition.
+**Review your own work adversarially: ${REVIEW_ARTIFACTS.join(", ")}.**
+Read-only, a **fresh** reviewer per round, and never a repair attempt — it spends
+none of \`exhausted_repairs\`' three. A finding is admissible only if **novel**
+and **falsifiable**: these inputs, that wrong result. Taste is not.
+
+**A reviewer returns \`${REVIEW_VERDICTS.join("` or `")}\`.** Close a stage when its
+written **exit criteria** are met and nothing is still \`blocking\` — and only a
+finding that **names the exit criterion it violates** may block. Never re-decide
+what a **gate** decides. Every finding gets a disposition
+(\`${FINDING_DISPOSITIONS.join("`, `")}\`) whatever its severity, and a stage may
+not advance holding one without: \`advisory\` defers, it never disposes. Journal
+\`accepted-debt\` against the paths it concerns; it turns \`blocking\` when a later
+change set **touches** that code. Loop only while each round closes at least one
+blocking finding — the first that closes none, or round ${String(REVIEW_ROUND_CEILING)}, is
+an irreducible product decision: ask.
 
 **Stop for exactly these, and nothing else:**
 
