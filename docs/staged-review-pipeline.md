@@ -5,12 +5,13 @@
 19 parts 3–4, `docs/claude-code-adaptation.md` §0 amendment 4, and the four
 phases the gap names (`roadmap/10, 11, 13, 14`).
 
-**The code has not caught up.** `packages/plugin/src/manager-protocol.ts` and
-`packages/plugin/skills/protocol/SKILL.md` still render the superseded loop —
-"no severity floor", "keep going until a round finds nothing new" — and
-`packages/plugin/agents/eo-roaster.md` still forbids approval. Until those land,
-the shipped protocol text and the ledger disagree, and the ledger is the
-authority. §8 lists what is still unanswered.
+**The code has caught up on the protocol text** (landed 2026-07-29):
+`packages/plugin/src/manager-protocol.ts` and
+`packages/plugin/skills/protocol/SKILL.md` now render the severity floor as
+gating the loop and never the ledger, and `packages/plugin/agents/eo-roaster.md`
+treats `approve` as a real answer. §8 lists what is still unanswered — the
+pipeline driver (§8.4), a research-stage record type, and the calibration
+corpus's owner labels.
 
 Written 2026-07-29 against `feat/conversation-first-orchestration` @ `5d17113`.
 
@@ -474,7 +475,7 @@ a **graph algorithm**, and it spent this entire time filed as a criterion a
 reviewer checks.
 
 `DesignRecord` and `PlanRecord` give both artifacts a shape, and `review.submit`
-takes them as `design` / `plan`. Six criteria now derive:
+takes them as `design` / `plan`. Five criteria now derive:
 
 | Criterion                          | What it is now                                                                         |
 | ---------------------------------- | -------------------------------------------------------------------------------------- |
