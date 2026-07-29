@@ -313,16 +313,54 @@ a cost that compounds.
 
 ## 8. Still open
 
-Not questions for the owner — engineering work this document does not yet
-answer, listed so they are not mistaken for settled:
+### 8.0 BLOCKED — the finding store needs a ruling, not an edit
 
-1. **Exit criteria are sketched, not written.** §4.4's right-hand column is
-   illustrative. Each stage needs its criteria written as a checkable list, the
-   way `CONTRACT_SECTIONS` already is for stage 2.
-2. **Lens definitions.** Each reviewer lens needs a charter as specific as
-   `eo-roaster`'s, minus the never-approve instruction.
-3. **Calibration.** The literature is explicit that an uncalibrated judge is
-   decorative. There is no plan yet for checking that `blocking` versus
-   `advisory` classifications match the owner's own judgement on a sample.
+`review.submit` computes closure from `priorFindings()` and `plannedWrites()`.
+Nothing supplies them from durable storage yet, and the obvious implementation
+is blocked by an explicit constraint rather than by effort.
+
+Findings do not fit `EvidenceRecord`, which is shaped for command evidence
+(`command`, `toolchainFingerprint`, `artifactDigests`, `objectId`). The clean
+home is a new `review_verdict` journal entry kind — and
+`packages/contracts/src/journal/journal-entry-type.ts` says:
+
+> This union is closed at exactly 13. A 14th member requires a new coordinated
+> cross-phase resolution round (interface-ledger header preamble), **never a
+> unilateral addition here**.
+
+It goes on to cite phase 12, which flagged that capability-audit verdicts have
+no clean member and left the tension **open** rather than adding one.
+
+So this is an owner decision with three shapes:
+
+| option                                                                                         | cost                                                                                                                    |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **A.** Coordinated round adding `review_verdict` as a 14th member                              | Follows the documented process; touches every phase the ledger names for Gap 5                                          |
+| **B.** Carry findings as an artifact behind an existing `evidence_pointer`, keyed by `gateTag` | No union change; shoehorns review findings into a record shaped for command evidence, which is how schemas rot          |
+| **C.** Store findings outside the journal, in XDG state beside the policy                      | Cheapest; gives up the journal's durability and audit properties for the one record that says what was reviewed and why |
+
+**A is the honest one and the most expensive.** Nothing should proceed on this
+until it is ruled, because each option makes different things hard to undo.
+
+Until then `review.submit` is reachable by a caller that supplies its own
+`priorFindings`, which is a testable contract and not a gate.
+
+### 8.1-8.4 Engineering work
+
+Not questions for the owner — work this document does not yet answer, listed so
+they are not mistaken for settled:
+
+1. ~~Exit criteria are sketched, not written.~~ **Done** — `PIPELINE_STAGES` in
+   `@crabgic/contracts`, six stages, ids unique across the pipeline because a
+   blocking finding references them by name.
+2. ~~Lens definitions.~~ **Done** — nine lenses in `eo-reviewer`'s charter, and
+   `eo-architect` / `eo-planner` added because the design and plan stages had
+   reviewers and no makers.
+3. **Calibration — still nothing.** The literature is explicit that an
+   uncalibrated judge is decorative, and the `blocking`/`advisory` split is the
+   judgement this whole design rests on. There is no sample where it has been
+   checked against the owner's own call. This one cannot be closed by writing
+   code: it needs the owner to disagree with the classifier on real findings.
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
-   `Workflow` script are both viable (§5); the choice is unmade.
+   `Workflow` script are both viable (§5); the choice is unmade and is not
+   blocked by anything — it is simply not yet made.
