@@ -1232,7 +1232,10 @@ describe("sandbox-selftest — the sweep window advances once per run", () => {
       // The cursor exists and holds a number. Round 30 moved it OUT of TMPDIR
       // — see the round-30 block below for why — so it cannot be swept by
       // construction rather than by being named around the prefix filter.
-      const value = Number.parseInt((await readFile(sweepCursorPath() as string, "utf8")).trim(), 10);
+      const value = Number.parseInt(
+        (await readFile(sweepCursorPath() as string, "utf8")).trim(),
+        10,
+      );
       expect(Number.isSafeInteger(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(SCAN_LIMIT);
     });
@@ -1497,5 +1500,170 @@ describe("sandbox-selftest — the sweep cursor is not attacker-plantable", () =
       else process.env["XDG_STATE_HOME"] = previousState;
       await rm(tmp, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * Roast round 30's own mutation survivors.
+ *
+ * The battery killed the location change and both open flags, and left three
+ * mutants alive — the same shape as round 29's finding 1, where the headline
+ * fix shipped with 100% *executed* coverage and nothing asserting it:
+ *
+ *   M4 drop the regular-file/owner/nlink check   -> 65/65 green
+ *   M7 constant offset when no state home        -> 65/65 green
+ *   M8 add O_TRUNC to the open flags             -> 65/65 green
+ *
+ * M4 and M8 survived because every hostile object the other tests plant is
+ * already refused by a FLAG: a symlink by `O_NOFOLLOW`, a writerless FIFO by
+ * `O_NONBLOCK` (ENXIO), a directory by `EISDIR` on the operation itself. The
+ * descriptor checks only bite on something that opens as a perfectly ordinary
+ * regular file and still is not ours to write — a HARDLINK, which `O_NOFOLLOW`
+ * does not cover. Nothing planted one.
+ *
+ * M7 survived because the no-state-home test asserted only that the sweep still
+ * happened, never that the degraded rotation still rotates — which is round 29's
+ * X2 mutant reappearing at the call site round 30 introduced.
+ */
+describe("sandbox-selftest — the cursor's descriptor checks and its degraded rotation", () => {
+  async function withStage<T>(
+    run: (stage: { tmp: string; state: string }) => Promise<T>,
+  ): Promise<T> {
+    const { mkdtemp, rm, mkdir, utimes } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = await mkdtemp(join(tmpdir(), "eo-r30b-"));
+    const tmp = join(root, "tmp");
+    const state = join(root, "state");
+    await mkdir(tmp);
+    await mkdir(state);
+    const stale = join(tmp, "eo-sandbox-selftest-stale");
+    await mkdir(stale);
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await utimes(stale, old, old);
+
+    const previousTmp = process.env["TMPDIR"];
+    const previousState = process.env["XDG_STATE_HOME"];
+    process.env["TMPDIR"] = tmp;
+    process.env["XDG_STATE_HOME"] = state;
+    try {
+      return await run({ tmp, state });
+    } finally {
+      if (previousTmp === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmp;
+      if (previousState === undefined) delete process.env["XDG_STATE_HOME"];
+      else process.env["XDG_STATE_HOME"] = previousState;
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  it("refuses a HARDLINK at the cursor path, and does not truncate it on the way", async () => {
+    const { link, mkdir, readFile, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    await withStage(async ({ tmp, state }) => {
+      const victim = join(state, "victim");
+      const ORIGINAL = "a file this uid owns but did not put at the cursor path\n";
+      await writeFile(victim, ORIGINAL);
+
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      // A hardlink opens as an ordinary regular file this uid owns, so every
+      // flag on the open accepts it. Only `nlink` tells it apart.
+      await link(victim, cursor);
+
+      await sweepStaleMarkerDirs();
+
+      // Not merely "not overwritten" — not TRUNCATED either. `O_TRUNC` in the
+      // flags would empty it before any check could refuse it, which is a
+      // destructive write dressed up as an open.
+      expect(await readFile(victim, "utf8")).toBe(ORIGINAL);
+
+      const { readdir } = await import("node:fs/promises");
+      expect((await readdir(tmp)).filter((n) => n.startsWith("eo-sandbox-selftest-"))).toEqual([]);
+    });
+  });
+
+  it("keeps rotating when no state home can be resolved at all", async () => {
+    const { mkdtemp, mkdir, rm, utimes, writeFile, chmod, readdir, access } =
+      await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const tmp = await mkdtemp(join(tmpdir(), "eo-r30b-clock-"));
+    const previousTmp = process.env["TMPDIR"];
+    const previousHome = process.env["HOME"];
+    const previousState = process.env["XDG_STATE_HOME"];
+    try {
+      const stale = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      // A wall SEVERAL windows deep, and UNREMOVABLE. Removable entries cannot
+      // separate a constant offset from an advancing one — the window empties
+      // and the next run sees new entries at the same index, which is round
+      // 28's finding about round 27's test, and round 29's about its own.
+      const wall = 3 * SCAN_LIMIT;
+      for (let i = 0; i < wall; i += 1) {
+        const dir = join(tmp, `eo-sandbox-selftest-W${String(i).padStart(5, "0")}`);
+        await mkdir(dir);
+        await writeFile(join(dir, "held"), "");
+        await chmod(dir, 0o500);
+        await utimes(dir, stale, stale);
+      }
+      const victim = join(tmp, "eo-sandbox-selftest-ZZZZZ");
+      await mkdir(victim);
+      await utimes(victim, stale, stale);
+
+      process.env["TMPDIR"] = tmp;
+      delete process.env["HOME"];
+      delete process.env["XDG_STATE_HOME"];
+      expect(sweepCursorPath()).toBeUndefined();
+
+      // Every run takes the clock fallback. A CONSTANT one re-scans one window
+      // forever and never reaches the victim; one that advances a window per
+      // call covers the whole wall within a handful of calls.
+      for (let call = 0; call < 8; call += 1) await sweepStaleMarkerDirs();
+      await expect(access(victim)).rejects.toThrow();
+    } finally {
+      if (previousTmp === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmp;
+      if (previousHome === undefined) delete process.env["HOME"];
+      else process.env["HOME"] = previousHome;
+      if (previousState === undefined) delete process.env["XDG_STATE_HOME"];
+      else process.env["XDG_STATE_HOME"] = previousState;
+      for (const name of await readdir(tmp)) {
+        await chmod(join(tmp, name), 0o700).catch(() => undefined);
+      }
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it("writes nothing into a FIFO that already has a reader attached", async () => {
+    const { mkdir, open } = await import("node:fs/promises");
+    const { constants } = await import("node:fs");
+    const { execFileSync } = await import("node:child_process");
+    await withStage(async () => {
+      const cursor = sweepCursorPath() as string;
+      await mkdir(dirname(cursor), { recursive: true });
+      execFileSync("mkfifo", [cursor]);
+
+      // With a reader attached, `O_WRONLY|O_NONBLOCK` SUCCEEDS — the ENXIO that
+      // refuses a writerless FIFO does not apply, and uid and nlink both look
+      // ordinary. This is the one hostile object that reaches the body of the
+      // write.
+      const reader = await open(cursor, constants.O_RDONLY | constants.O_NONBLOCK);
+      try {
+        await sweepStaleMarkerDirs();
+
+        const buffer = Buffer.alloc(64);
+        // EAGAIN on an empty non-blocking pipe; a byte count if anything was
+        // written into someone else's pipe.
+        let wrote = 0;
+        try {
+          wrote = (await reader.read(buffer, 0, 64, null)).bytesRead;
+        } catch {
+          wrote = 0;
+        }
+        expect(wrote).toBe(0);
+      } finally {
+        await reader.close();
+      }
+    });
   });
 });
