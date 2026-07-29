@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "crabgic-marketplace",
-  "description": "Marketplace listing for the Crabgic Claude Code plugin (roadmap/10-plugin-and-installer.md §In scope, \"Distribution\").",
+  "description": "Marketplace listing for the Crabgic Claude Code plugin (roadmap/10-plugin-and-installer.md \u00a7In scope, \"Distribution\").",
   "owner": {
     "name": "Crabgic",
     "email": "eimimartinezarenas@gmail.com"
@@ -10,8 +10,8 @@
     {
       "name": "crabgic",
       "source": "./",
-      "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
-      "version": "1.3.0",
+      "description": "Autonomous engineering orchestration for Claude Code \u2014 slash commands, review subagents, advisory hooks, gateway MCP registration.",
+      "version": "1.4.0",
       "license": "Apache-2.0",
       "digest": "db5d304d7511704c1759d28602470ae19ed8e3de7903ded767906336a426a2e1",
       "displayName": "Crabgic",

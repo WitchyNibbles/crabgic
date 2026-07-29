@@ -54,6 +54,7 @@ function deps(overrides: Partial<ReviewSubmitDeps> = {}): ReviewSubmitDeps {
     priorFindings: () => [],
     plannedWrites: () => [],
     metCriteria: () => exitCriteriaFor("implement"),
+    calibration: () => ({ calibrated: false, kappa: 0, sampleSize: 0, samplesNeeded: 20 }),
     ...overrides,
     // Exposed for assertions without widening the production interface.
     ...({ _appended: appended } as Partial<ReviewSubmitDeps>),
@@ -264,5 +265,20 @@ describe("runReviewSubmit — what the caller persists", () => {
       deps({ priorFindings: () => [open] }),
     );
     expect(result.findings).toHaveLength(2);
+  });
+});
+
+describe("runReviewSubmit — the classifier's own trustworthiness", () => {
+  it("reports calibration on every successful result, never omits it", async () => {
+    // The split decides what holds a stage open. A consumer acting on it
+    // deserves to know whether anyone has ever checked it, and an absent field
+    // would read as "fine" when the honest answer is "nobody has looked".
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict({ verdict: "approve" }) },
+      deps(),
+    );
+    expect(result.calibration).toBeDefined();
+    expect(result.calibration?.calibrated).toBe(false);
+    expect(result.calibration?.samplesNeeded).toBeGreaterThan(0);
   });
 });
