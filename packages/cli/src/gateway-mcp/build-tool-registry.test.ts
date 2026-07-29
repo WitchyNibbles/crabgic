@@ -745,7 +745,14 @@ describe("review.submit — design and plan records across stages", () => {
       plan: {
         schemaVersion: 1,
         changeSetId: CHANGE_SET,
-        tasks: [{ id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] }],
+        tasks: [
+          {
+            id: "t1",
+            statement: "build the store",
+            doneCriteria: ["its tests pass"],
+            covers: ["e1"],
+          },
+        ],
       },
     });
     expect(partial.unmetCriteria).toContain("plan-covers-every-design-element");
@@ -758,7 +765,12 @@ describe("review.submit — design and plan records across stages", () => {
         schemaVersion: 1,
         changeSetId: CHANGE_SET,
         tasks: [
-          { id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] },
+          {
+            id: "t1",
+            statement: "build the store",
+            doneCriteria: ["its tests pass"],
+            covers: ["e1"],
+          },
           {
             id: "t2",
             statement: "derive from it",

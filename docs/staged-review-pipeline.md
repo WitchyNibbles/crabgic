@@ -433,8 +433,8 @@ became derivable, and the caller-supplied fallback quietly carried the stage.
 Fail-closed is the right default and it is not the same thing as correct.
 
 **What is still judged:** `implement-task-done-criteria-met`, and every design,
-plan and research criterion. Those are undecidable *while the artifacts they
-describe are free-form `IntentContract` narrative* — see §8.6 for what they
+plan and research criterion. Those are undecidable _while the artifacts they
+describe are free-form `IntentContract` narrative_ — see §8.6 for what they
 carry in the meantime, and §8.7 for the work that would decide them.
 
 ### 8.6 A judged criterion closes a stage only on a claim somebody signed
@@ -460,8 +460,8 @@ Two contradictions are caught without deciding anything:
 
 **This is not verification, and must not be presented as any.** A rationale can
 be plausible and wrong; an anchor can point at a section that does not say what
-the claim says. What changes is that the claim can be *checked and found
-wanting*, which an anonymous `true` cannot. The residual is named: a caller
+the claim says. What changes is that the claim can be _checked and found
+wanting_, which an anonymous `true` cannot. The residual is named: a caller
 misreporting a judged criterion is not caught — it is attributable afterwards.
 
 ### 8.7 The judged set was a document-format problem, not a logic problem
@@ -476,13 +476,13 @@ reviewer checks.
 `DesignRecord` and `PlanRecord` give both artifacts a shape, and `review.submit`
 takes them as `design` / `plan`. Six criteria now derive:
 
-| Criterion | What it is now |
-|---|---|
-| `plan-dependencies-acyclic` | iterative DFS over the task graph, plus a dangling-dependency check |
-| `design-risks-have-mitigations` | every `risks[]` entry carries a `mitigation` or an `acceptedBecause` |
-| `design-interfaces-named` | the schema requires an owning `package`, so an unowned interface cannot be represented |
-| `plan-tasks-have-done-criteria` | every task has a non-empty `doneCriteria` list |
-| `plan-covers-every-design-element` | every stored `DesignElement` id appears in some task's `covers` |
+| Criterion                          | What it is now                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| `plan-dependencies-acyclic`        | iterative DFS over the task graph, plus a dangling-dependency check                    |
+| `design-risks-have-mitigations`    | every `risks[]` entry carries a `mitigation` or an `acceptedBecause`                   |
+| `design-interfaces-named`          | the schema requires an owning `package`, so an unowned interface cannot be represented |
+| `plan-tasks-have-done-criteria`    | every task has a non-empty `doneCriteria` list                                         |
+| `plan-covers-every-design-element` | every stored `DesignElement` id appears in some task's `covers`                        |
 
 Submitting the ARTIFACT is not claiming a criterion — the caller supplies the
 thing under review and the server decides what it adds up to.

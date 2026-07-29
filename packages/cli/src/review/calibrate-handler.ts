@@ -202,7 +202,6 @@ export async function runReviewCalibrate(
 /** Same finding, same rubric — a revision, not a second sample. */
 function sameSample(left: CalibrationSample, right: CalibrationSample): boolean {
   return (
-    left.findingId === right.findingId &&
-    (left.rubricVersion ?? 1) === (right.rubricVersion ?? 1)
+    left.findingId === right.findingId && (left.rubricVersion ?? 1) === (right.rubricVersion ?? 1)
   );
 }

@@ -724,7 +724,12 @@ describe("runReviewSubmit — criteria decided by the design and plan records", 
         stage: "plan",
         verdict: verdict({ stage: "plan", lens: "sequencing" }),
         plan: planRecord([
-          { id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] },
+          {
+            id: "t1",
+            statement: "build the store",
+            doneCriteria: ["its tests pass"],
+            covers: ["e1"],
+          },
           {
             id: "t2",
             statement: "wire it up",
@@ -781,7 +786,9 @@ describe("runReviewSubmit — criteria decided by the design and plan records", 
     );
     expect(missing.unmetCriteria).toContain("plan-covers-every-design-element");
 
-    const covering = planRecord([{ id: "t1", statement: "a", doneCriteria: ["x"], covers: ["e1"] }]);
+    const covering = planRecord([
+      { id: "t1", statement: "a", doneCriteria: ["x"], covers: ["e1"] },
+    ]);
     const complete = await runReviewSubmit(
       {
         stage: "plan",

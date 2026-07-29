@@ -41,9 +41,9 @@ describe("isRiskAnswered", () => {
   it("accepts an explicit acceptance, since the criterion's own wording allows it", () => {
     // "or an explicit statement that it is accepted, and why". Forcing a mitigation
     // for every risk would push callers into writing fictional ones.
-    expect(isRiskAnswered({ id: "r", statement: "s", acceptedBecause: "out of threat model" })).toBe(
-      true,
-    );
+    expect(
+      isRiskAnswered({ id: "r", statement: "s", acceptedBecause: "out of threat model" }),
+    ).toBe(true);
   });
 
   it("refuses a risk answered by neither", () => {
@@ -55,7 +55,10 @@ describe("deriveDesignCriteria", () => {
   it("derives the risks criterion when every recorded risk is answered", () => {
     const derived = deriveDesignCriteria(
       record({
-        risks: [risk("r1", { mitigation: "bounded retry" }), risk("r2", { acceptedBecause: "rare" })],
+        risks: [
+          risk("r1", { mitigation: "bounded retry" }),
+          risk("r2", { acceptedBecause: "rare" }),
+        ],
       }),
     );
     expect(derived).toContain(DESIGN_RISKS_CRITERION);

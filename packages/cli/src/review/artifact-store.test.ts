@@ -41,7 +41,15 @@ const design = (changeSetId = CHANGE_SET) => ({
 const plan = (changeSetId = CHANGE_SET) => ({
   schemaVersion: 1 as const,
   changeSetId,
-  tasks: [{ id: "t1", statement: "build it", doneCriteria: ["tests pass"], dependsOn: [], covers: ["e1"] }],
+  tasks: [
+    {
+      id: "t1",
+      statement: "build it",
+      doneCriteria: ["tests pass"],
+      dependsOn: [],
+      covers: ["e1"],
+    },
+  ],
 });
 
 describe("artifact store", () => {
@@ -86,7 +94,10 @@ describe("artifact store", () => {
     const path = resolveArtifactStorePath(env(), "p");
     const state = join(home, "state");
     await saveArtifacts(path, CHANGE_SET, { design: design() }, state);
-    const revised = { ...design(), elements: [{ id: "e2", name: "the other store", addresses: [] }] };
+    const revised = {
+      ...design(),
+      elements: [{ id: "e2", name: "the other store", addresses: [] }],
+    };
     await saveArtifacts(path, CHANGE_SET, { design: revised }, state);
     expect((await loadArtifacts(path, CHANGE_SET)).design).toEqual(revised);
   });

@@ -117,10 +117,7 @@ export function isAcyclic(record: PlanRecord): boolean {
 }
 
 /** `DesignElement` ids no task claims to implement. */
-export function uncoveredDesignElements(
-  plan: PlanRecord,
-  design: DesignRecord,
-): readonly string[] {
+export function uncoveredDesignElements(plan: PlanRecord, design: DesignRecord): readonly string[] {
   const covered = new Set(plan.tasks.flatMap((task) => task.covers));
   return design.elements.filter((element) => !covered.has(element.id)).map((element) => element.id);
 }
@@ -138,10 +135,7 @@ export function uncoveredDesignElements(
  * plan's own `covers` fields would ask the plan whether it covers what it says it
  * covers, which is always yes.
  */
-export function derivePlanCriteria(
-  record: PlanRecord,
-  design?: DesignRecord,
-): readonly string[] {
+export function derivePlanCriteria(record: PlanRecord, design?: DesignRecord): readonly string[] {
   const derived: string[] = [];
   if (record.tasks.length === 0) return derived;
 

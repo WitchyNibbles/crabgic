@@ -93,7 +93,9 @@ export interface GateCriteriaOptions {
  * order — true today, and exactly the kind of coupling `runReviewSubmit` already
  * refuses for finding dispositions.
  */
-function latestFiringByTag(records: readonly EvidenceRecord[]): ReadonlyMap<string, EvidenceRecord> {
+function latestFiringByTag(
+  records: readonly EvidenceRecord[],
+): ReadonlyMap<string, EvidenceRecord> {
   const latest = new Map<string, { readonly record: EvidenceRecord; readonly index: number }>();
   records.forEach((record, index) => {
     if (record.gateTag === undefined) return;

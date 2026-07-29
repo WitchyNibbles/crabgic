@@ -65,9 +65,9 @@ describe("isAcyclic", () => {
   });
 
   it("rejects a two-task cycle", () => {
-    expect(isAcyclic(plan([task("a", { dependsOn: ["b"] }), task("b", { dependsOn: ["a"] })]))).toBe(
-      false,
-    );
+    expect(
+      isAcyclic(plan([task("a", { dependsOn: ["b"] }), task("b", { dependsOn: ["a"] })])),
+    ).toBe(false);
   });
 
   it("rejects a longer cycle", () => {

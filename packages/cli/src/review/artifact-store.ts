@@ -110,8 +110,10 @@ export async function saveArtifacts(
   const file = readFile(path);
   const existing = file[changeSetId] ?? {};
   const merged: StoredArtifacts = {
-    ...(artifacts.design ?? existing.design ? { design: artifacts.design ?? existing.design } : {}),
-    ...(artifacts.plan ?? existing.plan ? { plan: artifacts.plan ?? existing.plan } : {}),
+    ...((artifacts.design ?? existing.design)
+      ? { design: artifacts.design ?? existing.design }
+      : {}),
+    ...((artifacts.plan ?? existing.plan) ? { plan: artifacts.plan ?? existing.plan } : {}),
   };
 
   const dirRefusal = ensureOwnedDir(dirname(path), stateHome);
@@ -129,11 +131,7 @@ export async function saveArtifacts(
   const fd = opened.fd as number;
   try {
     ftruncateSync(fd, 0);
-    writeFileSync(
-      fd,
-      `${JSON.stringify({ ...file, [changeSetId]: merged }, null, 2)}\n`,
-      "utf8",
-    );
+    writeFileSync(fd, `${JSON.stringify({ ...file, [changeSetId]: merged }, null, 2)}\n`, "utf8");
   } finally {
     closeSync(fd);
   }
