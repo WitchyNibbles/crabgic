@@ -19,6 +19,8 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
+  computeIntentContractId,
+  computeRequirementId,
   createAuthorizationEnvelopesRegistry,
   createIntentContractsRegistry,
   createChangeSetsRegistry,
@@ -69,7 +71,25 @@ function e2eRequest(requestKey: string, changeSetId: string): IntakeRequest {
         acceptanceCriteria: ["works"],
       },
     ],
-    workUnits: [],
+    // A real, non-degenerate requirement <-> work-unit mapping (the same
+    // `computeRequirementId` derivation `buildIntakeArtifacts` itself uses):
+    // in-process approval now resolves requirement coverage server-side from
+    // the ChangeSet's OWN contract, so an unmapped requirement would refuse.
+    workUnits: [
+      {
+        id: "aaaaaaaa-1111-4111-8111-111111111111",
+        title: "Implement login form",
+        requirementIds: [
+          computeRequirementId(computeIntentContractId(changeSetId), {
+            section: "scope",
+            title: "Add login form",
+          }),
+        ],
+        dependsOn: [],
+        role: "implementation",
+        ownedPaths: ["packages/example/src/login/"],
+      },
+    ],
     envelopeContent: {
       ownedPaths: ["packages/example/src/login/"],
       commands: ["npm test"],
@@ -114,28 +134,24 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:approve", changeSetId),
     });
     input.write("yes\n");
     const commandResult = await commandPromise;
     if (commandResult.outcome.status === "conflict") throw new Error("unreachable");
+    // The outcome snapshot is from intake time; the REGISTRY carries the
+    // in-process approval's result — ready, with requirement coverage
+    // resolved server-side from the ChangeSet's own contract.
     expect(commandResult.outcome.artifacts.changeSet.state).toBe("awaiting_approval");
-
-    const approveResult = await runContractApprove(
-      {
-        changeSetId,
-        digest: commandResult.outcome.artifacts.envelope.canonicalHash,
-        token: commandResult.approvalToken!.token,
-      },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
-    );
-
-    expect(approveResult.approved).toBe(true);
+    expect(commandResult.approval?.approved).toBe(true);
     expect(changeSets.get(changeSetId)?.state).toBe("ready");
+    // Gap 18's courier fix: no token anywhere in what the command returns.
+    expect(JSON.stringify(commandResult)).not.toContain('"token"');
   });
 
-  it("a replayed OLD token fails closed after the request is re-approved under a fresh key (model self-approval / replay fixture)", async () => {
+  it("an already-ready ChangeSet cannot be approved again, even with a freshly-minted valid token (replay / re-approval fixture)", async () => {
     const secretKey = randomBytes(32);
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
@@ -152,6 +168,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       envelopes,
       intentContracts,
       minter,
+      secretKey,
       io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:replay", changeSetId),
     });
@@ -159,19 +176,23 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const commandResult = await commandPromise;
     if (commandResult.outcome.status === "conflict") throw new Error("unreachable");
     const digest = commandResult.outcome.artifacts.envelope.canonicalHash;
-    const token = commandResult.approvalToken!.token;
+    expect(commandResult.approval?.approved).toBe(true);
+    expect(changeSets.get(changeSetId)?.state).toBe("ready");
 
-    const first = await runContractApprove(
-      { changeSetId, digest, token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
-    );
-    expect(first.approved).toBe(true);
-
+    // A re-approval attempt is refused by the ready-transition pre-check,
+    // which runs BEFORE the token is touched (the L5 ordering) — so this
+    // asserts the lifecycle guard, NOT single-use. Durable single-use has its
+    // own coverage in `./complete-envelope-approval.test.ts` ("a spent token
+    // cannot approve twice") and `../approval/durable-approval-ledger.test.ts`;
+    // naming it here would claim evidence this fixture does not produce.
+    const reissued = await minter.mint("envelope_hash", digest);
     const replay = await runContractApprove(
-      { changeSetId, digest, token },
+      { changeSetId, digest, token: reissued.token },
       { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
     );
     expect(replay.approved).toBe(false);
+    if (replay.approved) throw new Error("unreachable");
+    expect(replay.reason).toMatch(/transition|ready/i);
   });
 
   it.each(STOP_CONDITION_KINDS.map((kind, index) => [kind, index] as const))(

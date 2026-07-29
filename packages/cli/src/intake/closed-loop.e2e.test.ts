@@ -28,6 +28,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import {
+  computeIntentContractId,
+  computeRequirementId,
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createIntentContractsRegistry,
@@ -40,7 +42,6 @@ import {
 import { FakeEngineAdapter, buildFakeEngineScript, buildWorkerResult } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
-import { runContractApprove } from "./contract-approve-handler.js";
 import { createRealRunDispatcher } from "../daemon/run-dispatcher.js";
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
@@ -88,7 +89,15 @@ function intakeRequest(): IntakeRequest {
       {
         id: "22222222-2222-4222-8222-222222222222",
         title: "Add the login form",
-        requirementIds: [],
+        // Mapped for real: in-process approval resolves requirement coverage
+        // server-side from the ChangeSet's own contract, so an unmapped
+        // requirement would (correctly) refuse the ready transition.
+        requirementIds: [
+          computeRequirementId(computeIntentContractId(CHANGE_SET_ID), {
+            section: "scope",
+            title: "Add login form",
+          }),
+        ],
         dependsOn: [],
         role: "implementation",
         ownedPaths: ["src/login"],
@@ -145,22 +154,17 @@ async function intakeAndApprove() {
     envelopes,
     intentContracts,
     minter,
+    secretKey,
     io: { input, output: new PassThrough() },
     readIntakeRequest: () => Promise.resolve(intakeRequest()),
   });
   input.write("yes\n");
   const outcome = await commandPromise;
   if (outcome.outcome.status === "conflict") throw new Error("unreachable");
-
-  const approved = await runContractApprove(
-    {
-      changeSetId: CHANGE_SET_ID,
-      digest: outcome.outcome.artifacts.envelope.canonicalHash,
-      token: outcome.approvalToken!.token,
-    },
-    { secretKey, journal, changeSets, envelopes, requirementIds: [], workUnits: [] },
-  );
-  expect(approved.approved).toBe(true);
+  // Approval completes in-process now (Gap 18's courier fix): the "yes"
+  // above IS the whole flow, and the ChangeSet is ready when it returns.
+  expect(outcome.approval?.approved).toBe(true);
+  expect(changeSets.get(CHANGE_SET_ID)?.state).toBe("ready");
 
   return { changeSets, workUnits, envelopes };
 }

@@ -58,6 +58,20 @@ describe("parseCommand", () => {
     expect(() => parseCommand(["evidence"])).toThrow(CliUsageError);
   });
 
+  it("parses approve, requiring the envelope digest", () => {
+    expect(parseCommand(["approve", "sha256:abc123", "--json"])).toEqual({
+      command: "approve",
+      digest: "sha256:abc123",
+      json: true,
+    });
+    expect(parseCommand(["approve", "sha256:abc123"])).toEqual({
+      command: "approve",
+      digest: "sha256:abc123",
+      json: false,
+    });
+    expect(() => parseCommand(["approve"])).toThrow(CliUsageError);
+  });
+
   it("parses connection add with a valid secret reference, defaulting the redirect origin to the base URL's own origin", () => {
     expect(
       parseCommand([

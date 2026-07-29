@@ -103,7 +103,12 @@ describe("buildRealCliDependencies", () => {
     // No daemon will ever come up (the fake spawner starts nothing), so the
     // call exhausts its budget and rethrows the unavailable error verbatim.
     await expect(deps.connectClient()).rejects.toBeInstanceOf(SupervisorUnavailableError);
-    expect(spawnCalls).toEqual([{ projectHash: "spawn-hash" }]);
+    expect(spawnCalls).toHaveLength(1);
+    expect(spawnCalls[0]!.projectHash).toBe("spawn-hash");
+    // The daemon's stderr is pointed at the project's state-root log so a
+    // startup fatal can be surfaced (2026-07-29 spawn-diagnostics wiring).
+    expect(spawnCalls[0]!.stderrLogPath).toContain("spawn-hash");
+    expect(spawnCalls[0]!.stderrLogPath?.endsWith("supervisord.stderr.log")).toBe(true);
   });
 
   it("defaults to the real detached spawner when no override is supplied", () => {

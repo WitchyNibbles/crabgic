@@ -43,6 +43,11 @@ export const COMMAND_HELP: Readonly<Record<string, CommandHelpEntry>> = {
     usage: `${BINARY_NAME} evidence <change-set-id>`,
     summary: "Show every EvidenceRecord journaled for a ChangeSet.",
   },
+  approve: {
+    usage: `${BINARY_NAME} approve <envelope-digest> [--json]`,
+    summary:
+      "Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work).",
+  },
   connection: {
     usage: `${BINARY_NAME} connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>`,
     summary: "Manage external connector connections.",
