@@ -76,6 +76,11 @@ export * from "./presentation/index.js";
 
 // The 21 contracts (zod schemas + inferred types), alphabetized by contract name.
 export * from "./contracts/authorization-envelope.js";
+// EnvelopePolicy — the standing approval, and a compiler input (ledger Gap 18).
+export * from "./contracts/envelope-policy.js";
+export * from "./contracts/review-verdict.js";
+export * from "./contracts/debt-index.js";
+export * from "./contracts/pipeline-stages.js";
 export * from "./contracts/capability-manifest.js";
 export * from "./contracts/capability-snapshot.js";
 export * from "./contracts/change-set.js";

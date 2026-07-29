@@ -60,23 +60,37 @@ export function createLazyRunDispatcher(
   let pending: Promise<RunDispatcher> | undefined;
   let real: RunDispatcher | undefined;
 
+  /**
+   * Resolves the one real dispatcher, loading the engine on first use.
+   *
+   * Shared by both methods so that `resume` gets the SAME instance
+   * `dispatch` did. Two instances would each keep their own in-flight set,
+   * which is the state that stops a competing driver starting over the same
+   * work units — so a second instance is a correctness bug, not a waste.
+   */
+  async function resolveReal(): Promise<RunDispatcher> {
+    if (real !== undefined) return real;
+    // Memoize the PROMISE, not just the result, so concurrent first
+    // dispatches share one load and one instance instead of racing.
+    pending ??= load().then((module) => module.createRealRunDispatcher(options));
+    try {
+      real = await pending;
+    } catch (err) {
+      // A failed load must not poison the daemon permanently: clear the
+      // memo so a later dispatch can try again. Only load failures reset
+      // it — a rejection from `dispatch` itself belongs to the caller.
+      pending = undefined;
+      throw err;
+    }
+    return real;
+  }
+
   return {
-    async dispatch(runId: string): Promise<RunDispatchOutcome> {
-      if (real === undefined) {
-        // Memoize the PROMISE, not just the result, so concurrent first
-        // dispatches share one load and one instance instead of racing.
-        pending ??= load().then((module) => module.createRealRunDispatcher(options));
-        try {
-          real = await pending;
-        } catch (err) {
-          // A failed load must not poison the daemon permanently: clear the
-          // memo so a later dispatch can try again. Only load failures reset
-          // it — a rejection from `dispatch` itself belongs to the caller.
-          pending = undefined;
-          throw err;
-        }
-      }
-      return real.dispatch(runId);
+    async dispatch(changeSetId: string): Promise<RunDispatchOutcome> {
+      return (await resolveReal()).dispatch(changeSetId);
+    },
+    async resume(runId: string): Promise<RunDispatchOutcome> {
+      return (await resolveReal()).resume(runId);
     },
   };
 }

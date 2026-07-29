@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
 import {
+  CONTRACT_SECTIONS,
+  FINDING_DISPOSITIONS,
+  REVIEW_ARTIFACTS,
+  REVIEW_ROUND_CEILING,
+  REVIEW_VERDICTS,
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
   QUESTION_TOOL_NAME,
@@ -117,8 +122,36 @@ describe("buildManagerProtocolBlock", () => {
     // suite below): the block now carries three mandated behaviors — autonomy,
     // structured questions, and report formatting — not two. The cap exists to
     // force new rationale into the on-demand skill, and it still does.
+    //
+    // Raised 55 -> 70 (2026-07-28) when the clarify loop and the roast loops
+    // landed, taking it to five mandated behaviors. Raising a cap to pass a
+    // test is a thing to be suspicious of, so the reasoning is recorded rather
+    // than assumed: both additions are the PRODUCT — a session that does not
+    // research before asking, or does not roast its own work, is not doing the
+    // thing the owner asked for — and neither can be deferred to an on-demand
+    // skill, because a session only loads that skill if it already knows to.
+    // Everything explanatory about them (why novelty and falsifiability are
+    // the termination rule, why a roast is not a repair attempt) stays in
+    // skills/protocol/SKILL.md; what is here is only the instruction itself.
+    //
+    // Raised 70 -> 78 (2026-07-29) when the roast paragraph was replaced by the
+    // staged review pipeline (ledger Gap 19 as amended). The replacement says
+    // strictly more than what it replaced -- a verdict vocabulary, an exit-
+    // criteria close, the blocking/advisory split with its disposition rule,
+    // debt becoming blocking on touch, and a progress budget -- and every one
+    // of those is an instruction the session must follow rather than rationale
+    // it may look up. The first draft came in at 86 lines and was compressed to
+    // 76 before this cap moved; the eight lines of headroom are for the wording
+    // to breathe, not for new content.
+    //
+    // Everything explanatory still goes to the on-demand skill: WHY novelty and
+    // falsifiability stopped being the termination rule, and what twelve
+    // non-converging rounds measured, live in skills/protocol/SKILL.md.
+    //
+    // The cost is real and worth stating: ~78 lines is roughly 900 tokens on
+    // every manager turn.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(55);
+    expect(lines.length).toBeLessThanOrEqual(78);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -189,5 +222,129 @@ describe("buildManagerProtocolBlock — reporting format", () => {
     // markdown-rendering TUI, so its only weight controls are bold and code.
     expect(block).toMatch(/\*\*bold\*\*|bold/i);
     expect(block).toContain("`code`");
+  });
+});
+
+/**
+ * The two loops the owner's 2026-07-28 direction adds (ledger Gaps 18/19).
+ * They are model behaviour, so they live in the protocol text — and like
+ * everything else in it, they are written here exactly once and rendered
+ * into the managed block and the long-form skill.
+ */
+describe("buildManagerProtocolBlock — the clarify loop", () => {
+  const block = buildManagerProtocolBlock();
+
+  it("tells the session to research BEFORE asking, not instead of asking", () => {
+    expect(block).toMatch(/research/i);
+    expect(block.toLowerCase()).toContain("before");
+  });
+
+  /**
+   * The loop needs a checkable exit condition or it either runs forever or
+   * stops early on a hunch. The IntentContract's own nine sections already
+   * ARE that checklist, which is why the protocol names them rather than
+   * inventing a heuristic.
+   */
+  it("terminates on the IntentContract's nine sections, not on a feeling", () => {
+    for (const section of CONTRACT_SECTIONS) {
+      expect(block).toContain(section);
+    }
+  });
+
+  it("requires acceptance criteria to be testable before the loop may close", () => {
+    expect(block).toMatch(/acceptance criteria/i);
+    expect(block).toMatch(/testable/i);
+  });
+});
+
+describe("buildManagerProtocolBlock — the staged review pipeline", () => {
+  const block = buildManagerProtocolBlock();
+  /**
+   * The block is hard-wrapped so the installer's byte-preserving merge stays
+   * deterministic, which means any multi-word phrase can be split across a line
+   * break. Two assertions below were written against the unwrapped text and
+   * failed for that reason alone -- the property held, the regex did not see it.
+   * Phrase assertions therefore run against a whitespace-normalized copy; ones
+   * that care about single tokens keep using `block` directly.
+   */
+  const flat = block.replace(/\s+/g, " ");
+
+  it("names every artifact a review round covers", () => {
+    for (const artifact of REVIEW_ARTIFACTS) {
+      expect(block.toLowerCase()).toContain(artifact.toLowerCase());
+    }
+  });
+
+  /**
+   * The single change that makes the loop able to terminate at all. The
+   * superseded charter told the reviewer "do not approve it", which left it
+   * with no vocabulary for done -- measured over twelve rounds that never
+   * converged (docs/staged-review-pipeline.md §2).
+   */
+  it("makes `approve` a reachable verdict, not just `revise`", () => {
+    for (const verdict of REVIEW_VERDICTS) {
+      expect(block).toContain(verdict);
+    }
+    expect(block).toMatch(/approve/i);
+  });
+
+  it("blocks only on a finding that names the exit criterion it violates", () => {
+    expect(block).toMatch(/blocking/i);
+    expect(block).toMatch(/exit criteri/i);
+  });
+
+  /**
+   * The owner's constraint on the severity floor: it gates the LOOP, never the
+   * LEDGER. A stage may not advance holding an undispositioned finding at any
+   * severity, so "advisory" can never become a disposal route.
+   */
+  it("requires every finding to carry a disposition, whatever its severity", () => {
+    for (const disposition of FINDING_DISPOSITIONS) {
+      expect(block).toContain(disposition);
+    }
+    expect(flat).toMatch(/never advance|cannot advance|may not advance/i);
+  });
+
+  it("states the progress-based budget and its ceiling", () => {
+    expect(flat).toContain(String(REVIEW_ROUND_CEILING));
+    expect(flat).toMatch(/closes at least one|closes no blocking/i);
+  });
+
+  it("makes deferred debt blocking when its code is next touched", () => {
+    expect(block).toMatch(/accepted-debt/);
+    expect(block).toMatch(/touch/i);
+  });
+
+  /**
+   * The tool-grounded half takes precedence over the judged half: anything a
+   * deterministic gate decides is not a reviewer's to re-litigate in prose.
+   */
+  it("forbids a reviewer re-deciding what a gate already decides", () => {
+    expect(block).toMatch(/gate/i);
+  });
+
+  it("keeps novelty and falsifiability as admissibility tests", () => {
+    expect(block).toMatch(/novel/i);
+    expect(block).toMatch(/falsifiable|failure scenario/i);
+  });
+
+  it("requires a fresh reviewer per round", () => {
+    expect(block).toMatch(/fresh/i);
+  });
+
+  it("separates a review round from a repair attempt explicitly", () => {
+    expect(block).toMatch(/exhausted_repairs|repair attempt/i);
+    expect(block).toMatch(/read-only|reads only/i);
+  });
+
+  /**
+   * Regression guard against the superseded ruling. Ledger Gap 19 part 4 was
+   * amended 2026-07-29 precisely because "no severity floor" plus "keep going
+   * until a round finds nothing" does not terminate; if either phrase comes
+   * back, the block contradicts the ledger that governs it.
+   */
+  it("no longer carries the superseded unbounded-loop language", () => {
+    expect(block).not.toMatch(/no severity floor/i);
+    expect(block).not.toMatch(/until a round finds nothing/i);
   });
 });

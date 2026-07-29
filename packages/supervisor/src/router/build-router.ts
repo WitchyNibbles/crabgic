@@ -23,6 +23,8 @@ import {
   RegistryRunsListParamsSchema,
   RegistryRunsListResultSchema,
   RunDispatchParamsSchema,
+  RunResumeParamsSchema,
+  RunResumeResultSchema,
   RunDispatchResultSchema,
   RegistryWorkUnitGetParamsSchema,
   RegistryWorkUnitGetResultSchema,
@@ -115,7 +117,7 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
     "run.dispatch",
     RunDispatchParamsSchema,
     RunDispatchResultSchema,
-    async ({ runId }) => {
+    async ({ changeSetId }) => {
       // Refusing is a normal answer, not an error: a daemon composed
       // without a dispatcher still serves the whole control plane.
       if (deps.runDispatcher === undefined) {
@@ -125,9 +127,24 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
       // see `./run-dispatcher.ts`. Awaiting the run here would hold the
       // control socket for its full duration, making `status`/`cancel`
       // unanswerable exactly while they matter most.
-      return deps.runDispatcher.dispatch(runId);
+      return deps.runDispatcher.dispatch(changeSetId);
     },
   );
+
+  // Split from `run.dispatch` (2026-07-28): dispatch CREATES a run for an
+  // approved change set, resume re-drives one that already exists. They used
+  // to be the same operation, which is why the one that mattered — starting
+  // an approved change set — had no reachable form.
+  router.register("run.resume", RunResumeParamsSchema, RunResumeResultSchema, async ({ runId }) => {
+    if (deps.runDispatcher === undefined) {
+      return { accepted: false, reason: "no run dispatcher is configured on this daemon" };
+    }
+    const outcome = await deps.runDispatcher.resume(runId);
+    return {
+      accepted: outcome.accepted,
+      ...(outcome.reason !== undefined ? { reason: outcome.reason } : {}),
+    };
+  });
 
   router.register(
     "registry.runs.list",

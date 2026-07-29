@@ -1,4 +1,9 @@
-import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
+import {
+  CONTRACT_SECTIONS,
+  DEFAULT_PRESENTATION_POLICY,
+  PRESENTATION_GLYPH_ROLES,
+  glyph,
+} from "@crabgic/contracts";
 
 /**
  * The manager session's operating protocol — roadmap/10-plugin-and-installer.md
@@ -131,6 +136,64 @@ export const MANAGER_STOP_CONDITIONS: readonly ManagerStopCondition[] = [
   },
 ];
 
+/**
+ * The `IntentContract`'s nine sections, which double as the clarify loop's
+ * exit condition.
+ *
+ * The loop needs a CHECKABLE termination rule or it either interrogates forever
+ * or stops early on a hunch. These sections already are that checklist — the
+ * contract cannot be built until every one of them is answerable.
+ *
+ * RE-EXPORTED, not restated (2026-07-29). This module carried its own
+ * hand-written copy of the nine names, which is a second list that must agree
+ * with the schema's. Rounds 4-7 established what happens to two lists that must
+ * agree: they diverge, and the last attempt to keep them in step made
+ * mismatches six times worse. `@crabgic/contracts` derives the array from
+ * `IntentContractSectionsSchema`'s own keys, so adding a section there adds it
+ * here with no second edit.
+ */
+export { CONTRACT_SECTIONS } from "@crabgic/contracts";
+
+/**
+ * The three artifacts a review round covers (ledger Gap 19, amended 2026-07-29).
+ *
+ * Deliberately these three and not "the work": each is reviewable on its own
+ * terms and at its own moment, and a review of the test suite in particular is
+ * not a gate verdict and never substitutes for one.
+ */
+export const REVIEW_ARTIFACTS = ["the design", "the tests", "the implementation"] as const;
+
+/**
+ * The reviewer's verdict vocabulary.
+ *
+ * `approve` existing at all is the amendment. The superseded charter told the
+ * reviewer "do not approve it", which left it no way to say *done* — and a
+ * reviewer that cannot say done cannot terminate a loop. Measured over twelve
+ * rounds that never converged; see `docs/staged-review-pipeline.md` §2.
+ */
+export const REVIEW_VERDICTS = ["approve", "revise"] as const;
+
+/**
+ * What must happen to every finding before its stage may advance.
+ *
+ * The severity floor gates the LOOP, never the LEDGER (ledger Gap 19 part 4 as
+ * amended). A finding too minor to block is still verified, still answered and
+ * still recorded — `advisory` is a deferral, never a disposal route — so this
+ * list has no "ignored" member by design.
+ */
+export const FINDING_DISPOSITIONS = ["fixed", "refuted", "accepted-debt"] as const;
+
+/**
+ * The hard ceiling on review rounds for one stage.
+ *
+ * The real bound is progress: a stage loops while each round closes at least
+ * one blocking finding and escalates the moment one closes none. This ceiling
+ * exists only so a pathological stage cannot run forever if progress is
+ * mis-measured — the literature's caution that a fixed cap is a "syntactic
+ * kill-switch" is why it is the backstop rather than the rule.
+ */
+export const REVIEW_ROUND_CEILING = 5;
+
 export interface ManagerApprovalGate {
   /** The exact command a human types. */
   readonly trigger: string;
@@ -207,6 +270,29 @@ your own initiative. Progress is the default; stopping is what needs a reason.
 then wait to be told to run it. Do the work, then report what you did — not
 what you are about to do. Being autonomous is the product; a check-in that
 carries no decision is a defect.
+
+**Research before you ask, and keep looping.** Read the code and the prior
+art first; ask only what reading cannot answer; then research the answer and
+ask again. Close the loop on a checkable condition, never a feeling: every
+contract section (${CONTRACT_SECTIONS.join(", ")}) answerable,
+and every requirement carrying testable acceptance criteria. Then stop asking
+and build.
+
+**Review your own work adversarially: ${REVIEW_ARTIFACTS.join(", ")}.**
+Read-only, a **fresh** reviewer per round, and never a repair attempt — it spends
+none of \`exhausted_repairs\`' three. A finding is admissible only if **novel**
+and **falsifiable**: these inputs, that wrong result. Taste is not.
+
+**A reviewer returns \`${REVIEW_VERDICTS.join("` or `")}\`.** Close a stage when its
+written **exit criteria** are met and nothing is still \`blocking\` — and only a
+finding that **names the exit criterion it violates** may block. Never re-decide
+what a **gate** decides. Every finding gets a disposition
+(\`${FINDING_DISPOSITIONS.join("`, `")}\`) whatever its severity, and a stage may
+not advance holding one without: \`advisory\` defers, it never disposes. Journal
+\`accepted-debt\` against the paths it concerns; it turns \`blocking\` when a later
+change set **touches** that code. Loop only while each round closes at least one
+blocking finding — the first that closes none, or round ${String(REVIEW_ROUND_CEILING)}, is
+an irreducible product decision: ask.
 
 **Stop for exactly these, and nothing else:**
 

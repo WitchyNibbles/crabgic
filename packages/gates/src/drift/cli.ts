@@ -1,6 +1,12 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { closeSync, constants, ftruncateSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import {
+  CRABGIC_DIR_NAME,
+  openOwnedFile,
+  readXdgEnvFromProcess,
+  resolveXdgStateHome,
+} from "@crabgic/journal";
 import { runDriftCi, type RunDriftCiDeps } from "./run-drift-ci.js";
 import { buildPinnedFixtureSnapshots } from "./pinned-fixtures.js";
 import type { DriftDebounceState } from "./debounce.js";
@@ -13,30 +19,103 @@ import type { DriftDebounceState } from "./debounce.js";
  * ONLY its own debounce-state file and its own proposals-output file —
  * never any pinned cassette/config path anywhere else in the repo.
  *
- * Default paths deliberately live OUTSIDE the repo tree (`node:os`'s
- * `tmpdir()`), never inside `packages/gates/`, so a local/CI invocation
- * with no explicit `--state-dir` never creates an untracked file inside
- * the repo working tree that would need a `.gitignore` entry (out of this
- * phase's package-boundary to add). The real scheduled CI job
- * (`.github/workflows/drift-ci.yml`) points both paths at `runner.temp`
- * explicitly and uploads the proposals file as a workflow artifact instead
- * of persisting it in-repo.
+ * Default paths deliberately live OUTSIDE the repo tree, never inside
+ * `packages/gates/`, so a local/CI invocation with no explicit `--state-dir`
+ * never creates an untracked file inside the repo working tree that would need
+ * a `.gitignore` entry (out of this phase's package-boundary to add).
+ *
+ * This comment used to claim the scheduled job "points both paths at
+ * `runner.temp` explicitly". It does not, and never did:
+ * `.github/workflows/drift-ci.yml` runs `node packages/gates/dist/drift/cli.js`
+ * with NO arguments and hard-codes the DEFAULT paths in its cache and
+ * artifact-upload steps. The claim read as a mitigation — "CI is not exposed to
+ * whatever the default is" — and there was none, so the defect below applied to
+ * the scheduled job as much as to a developer's laptop. The workflow's three
+ * paths track the default and must move with it.
+ *
+ * ROAST ROUND 30: "outside the repo tree" used to mean `os.tmpdir()`, at two
+ * fixed, predictable names — the same defect class the doctor's sweep cursor
+ * had, found by sweeping the codebase for it. Executed through THIS exported
+ * entry point with no options, so the defaults were what was under test:
+ *
+ *   ln -s $ATTACKER_DIR $TMPDIR/eo-drift-ci
+ *     -> `debounce-state.json` AND `drift-proposals.json` both landed in
+ *        $ATTACKER_DIR, because `mkdir(..., {recursive:true})` succeeds on an
+ *        existing symlink-to-directory and the write follows it.
+ *   ln -s ~/victim.json $TMPDIR/eo-drift-ci/debounce-state.json
+ *     -> the victim's contents were rewritten with the debounce state.
+ *
+ * The XDG state root is not world-writable, so an attacker cannot plant either
+ * component. Hardening the file open is not redundant with that: the caller may
+ * pass any path it likes, and a home directory can be group-writable or on a
+ * shared filesystem. That hardening lives in `openOwnedFile` (round 31), not
+ * here.
  */
-export const DEFAULT_DEBOUNCE_STATE_PATH = join(tmpdir(), "eo-drift-ci", "debounce-state.json");
-export const DEFAULT_PROPOSALS_OUTPUT_PATH = join(tmpdir(), "eo-drift-ci", "drift-proposals.json");
+const DRIFT_STATE_SUBDIR = "drift-ci";
 
-async function loadDebounceStateFromDisk(path: string): Promise<DriftDebounceState> {
+/**
+ * Resolved PER CALL, not pinned at import.
+ *
+ * A module-level constant derived from the environment cannot be corrected by
+ * the environment (a test that sets `XDG_STATE_HOME` after import gets the old
+ * value), and one derived from `readXdgEnvFromProcess` would THROW at import
+ * time wherever `HOME` is unset — breaking every consumer of this package,
+ * including the ones that pass explicit paths and never touch the default.
+ */
+function driftStateDir(): string {
+  return join(resolveXdgStateHome(readXdgEnvFromProcess()), CRABGIC_DIR_NAME, DRIFT_STATE_SUBDIR);
+}
+
+export function defaultDebounceStatePath(): string {
+  return join(driftStateDir(), "debounce-state.json");
+}
+
+export function defaultProposalsOutputPath(): string {
+  return join(driftStateDir(), "drift-proposals.json");
+}
+
+/**
+ * ROAST ROUND 31: round 30 wrote the open flags here by hand, which made this
+ * the FOURTH copy of the same decision in the repo — and a differential across
+ * the other three measured two behaviours, not one. Deciding happens in
+ * `openOwnedFile` now. Anything it refuses is treated as "no state", which is
+ * what an unreadable state file already meant.
+ *
+ * The description that stood here of what the flags do has gone with the flags:
+ * round 30's own finding 4 in this very file was a comment left describing a
+ * mitigation the code did not have.
+ */
+function loadDebounceStateFromDisk(path: string): DriftDebounceState {
+  const opened = openOwnedFile(path, constants.O_RDONLY);
+  if (opened.refused !== undefined) return {};
+  const fd = opened.fd as number;
   try {
-    const raw = await readFile(path, "utf-8");
-    return JSON.parse(raw) as DriftDebounceState;
+    return JSON.parse(readFileSync(fd, "utf-8")) as DriftDebounceState;
   } catch {
     return {};
+  } finally {
+    closeSync(fd);
   }
 }
 
 async function writeJsonFile(path: string, value: unknown): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  // `openOwnedFile` rejects `O_TRUNC` outright — truncation is a write, and it
+  // must not happen to anything the checks would go on to refuse — so the
+  // descriptor is truncated explicitly once it is known to be ours.
+  const opened = openOwnedFile(path, constants.O_WRONLY | constants.O_CREAT);
+  if (opened.refused !== undefined) {
+    throw new Error(
+      `drift-ci: refusing to write to ${path} — it is ${opened.refused} (${opened.kind ?? opened.code ?? "no detail"})`,
+    );
+  }
+  const fd = opened.fd as number;
+  try {
+    ftruncateSync(fd, 0);
+    writeFileSync(fd, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
+  } finally {
+    closeSync(fd);
+  }
 }
 
 export interface DriftCiCliOptions {
@@ -48,11 +127,11 @@ export interface DriftCiCliOptions {
 export async function runDriftCiCli(
   options: DriftCiCliOptions = {},
 ): Promise<{ redCheck: boolean }> {
-  const debounceStatePath = options.debounceStatePath ?? DEFAULT_DEBOUNCE_STATE_PATH;
-  const proposalsOutputPath = options.proposalsOutputPath ?? DEFAULT_PROPOSALS_OUTPUT_PATH;
+  const debounceStatePath = options.debounceStatePath ?? defaultDebounceStatePath();
+  const proposalsOutputPath = options.proposalsOutputPath ?? defaultProposalsOutputPath();
 
   const deps: RunDriftCiDeps = {
-    loadDebounceState: () => loadDebounceStateFromDisk(debounceStatePath),
+    loadDebounceState: () => Promise.resolve(loadDebounceStateFromDisk(debounceStatePath)),
     saveDebounceState: (state) => writeJsonFile(debounceStatePath, state),
     writeProposals: (proposals) => writeJsonFile(proposalsOutputPath, proposals),
   };

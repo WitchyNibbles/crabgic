@@ -70,7 +70,7 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
         "--output-format",
         "json",
         "--allowedTools=Task",
-        "Use the Task tool to launch the eo-explore subagent and ask it to report the number of files in the current directory. Report only the subagent's finding.",
+        "Use the Task tool to launch the eo-explore subagent and ask it to report the number of files in the current directory. In your answer, state which subagent you used by name, then its finding.",
       ],
       { timeout: 120_000 },
     );
@@ -84,6 +84,14 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
     // A structural, non-exact-wording assertion (per this phase's own risk
     // note): the eo-explore subagent name surfaces somewhere in the
     // transcript/result once genuinely invoked via the Task tool.
+    //
+    // FLAKE FIXED 2026-07-28. The prompt used to end "Report only the
+    // subagent's finding", which contradicts this assertion outright: a model
+    // that followed the instruction well answered with the file count alone
+    // and FAILED, while one that padded its answer passed. Observed failing
+    // and then passing on identical code minutes apart. The prompt now asks
+    // for the subagent's name explicitly, so obeying it and satisfying the
+    // assertion are the same act.
     expect(String(result.result ?? stdout)).toMatch(/eo-explore/i);
   });
 });

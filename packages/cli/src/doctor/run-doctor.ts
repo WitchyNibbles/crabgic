@@ -26,6 +26,7 @@ import { createGitPlumbingCheck } from "./checks/git-plumbing.js";
 import { createXdgPermissionsCheck } from "./checks/xdg-permissions.js";
 import { createJournalChainCheck } from "./checks/journal-chain.js";
 import { createWsl2WarningsCheck } from "./checks/wsl2-warnings.js";
+import { buildStandingPolicyCheck } from "./checks/standing-policy.js";
 import { createChecksumDriftCheck } from "./checks/checksum-drift.js";
 import { createPluginTrustPinCheck } from "./checks/plugin-trust-pin.js";
 import { createCapabilityManifestFreshnessCheck } from "./checks/capability-manifest-freshness.js";
@@ -45,6 +46,12 @@ export interface RunDoctorOptions {
    * observing the exact same 8-check default set unchanged.
    */
   readonly installer?: { readonly targetDir: string; readonly pluginSourceDir: string };
+  /**
+   * The standing `EnvelopePolicy`'s path (ledger Gap 18). Optional on the
+   * same terms as `installer`: every pre-existing caller supplies neither and
+   * keeps observing the exact same default check set.
+   */
+  readonly standingPolicyPath?: string;
 }
 
 async function detectWsl2(): Promise<boolean> {
@@ -96,6 +103,12 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
             pluginSourceDir: options.installer.pluginSourceDir,
           }),
         ]
+      : []),
+    // Gap 18's disclosed mitigation: a vacuous policy passes every other
+    // check that can be made of it while refusing every dispatch, so it needs
+    // a check that asserts the policy GRANTS something.
+    ...(options.standingPolicyPath !== undefined
+      ? [buildStandingPolicyCheck({ path: options.standingPolicyPath })]
       : []),
   ];
 }

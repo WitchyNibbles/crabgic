@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Readable, Writable } from "node:stream";
 import type { InstallerDependencies } from "./types.js";
+import type { DerivedPolicy } from "../policy/derive-policy.js";
 
 /**
  * Resolves the directory holding the plugin's distributable assets — the
@@ -73,9 +74,52 @@ export function createRealConfirmGitInit(io: {
   };
 }
 
+/**
+ * Renders a derived `EnvelopePolicy` in full and reads one line of
+ * confirmation — the standing approval's only authoring moment (ledger Gap
+ * 18; roadmap/10's install-time amendment).
+ *
+ * IT RENDERS EVERYTHING IT GRANTS. The prompt this design replaces showed a
+ * bare hex digest and no envelope content whatsoever, which is a large part
+ * of why replacing it is defensible at all. An owner confirming a STANDING
+ * grant — one that covers every future run rather than a single change set —
+ * must be able to read what it covers, so every dimension is printed,
+ * including the ones that are empty. "Nothing" is the most important thing on
+ * the list, and an omitted line reads as an oversight rather than a denial.
+ */
+export function createRealConfirmPolicy(io: {
+  readonly input: Readable;
+  readonly output: Writable;
+}): (derived: DerivedPolicy) => Promise<boolean> {
+  return async (derived) => {
+    const p = derived.policy;
+    const list = (values: readonly string[]): string =>
+      values.length === 0 ? "    (none)" : values.map((v) => `    ${v}`).join("\n");
+
+    io.output.write(
+      "\nThis project's standing authorization policy. Every run whose authority\n" +
+        "fits inside it proceeds without asking you again; anything outside it\n" +
+        "stops and reports.\n\n" +
+        `  writable paths\n${list(p.allowedPathPrefixes)}\n\n` +
+        `  build output it may also write\n${list(p.allowedWriteScratchPaths)}\n\n` +
+        `  commands\n${list(p.allowedCommands)}\n\n` +
+        `  network destinations\n${list(p.allowedNetworkDestinations)}\n\n` +
+        `  credentials\n${list(p.allowedCredentialReferences)}\n\n` +
+        `  external resources (Jira, Grafana)\n${list(p.allowedRemoteResourceReferences)}\n\n` +
+        `  unix sockets: ${p.allowUnixSockets ? "allowed" : "denied"}\n\n` +
+        "You can narrow or widen this later by editing the file directly; nothing\n" +
+        "Crabgic runs can change it.\n" +
+        'Type "yes" to accept this policy, anything else to skip it: ',
+    );
+    return readYesConfirmation(io.input);
+  };
+}
+
 export interface BuildRealInstallerDependenciesOverrides {
   readonly pluginSourceDir?: string;
   readonly confirmGitInit?: () => Promise<boolean>;
+  /** Supplied by `../bootstrap.ts`, which is the only caller that knows the project's XDG paths. */
+  readonly policy?: InstallerDependencies["policy"];
 }
 
 export function buildRealInstallerDependencies(
@@ -88,5 +132,9 @@ export function buildRealInstallerDependencies(
     confirmGitInit:
       overrides.confirmGitInit ??
       createRealConfirmGitInit({ input: process.stdin, output: process.stdout }),
+    // Only wired when the caller supplies it. `install` without a policy bag
+    // still installs; its dispatches then refuse until a policy exists, which
+    // is the correct fail-closed posture.
+    ...(overrides.policy !== undefined ? { policy: overrides.policy } : {}),
   };
 }

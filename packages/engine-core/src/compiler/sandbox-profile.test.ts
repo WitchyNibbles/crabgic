@@ -5,6 +5,7 @@ import {
   WORKER_TMP_WRITE_PLACEHOLDER,
 } from "./sandbox-profile.js";
 import { buildEnvelopeFixture } from "./envelope-fixture.js";
+import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
 import {
   CONTROL_REPO_STATE_ROOT_DENY_PATH,
   CONTROL_REPO_CACHE_ROOT_DENY_PATH,
@@ -204,5 +205,181 @@ describe("emitSandboxProfile — immutability", () => {
     const snapshot = JSON.parse(JSON.stringify(envelope)) as unknown;
     emitSandboxProfile(envelope);
     expect(JSON.parse(JSON.stringify(envelope))).toEqual(snapshot);
+  });
+});
+
+/**
+ * Ledger Gap 18 part 5 — the policy as a COMPILER INPUT.
+ *
+ * Round 1's F1 is the reason this parameter exists. `allowWrite` is the whole
+ * worktree by deliberate design, because the compiler's only inputs are one
+ * envelope's four fields and build-output directories are "project-specific
+ * and unknowable here". Owned-path scoping is left to the permission layer,
+ * which sees TOOL CALLS and cannot see the syscalls of a process it spawned —
+ * so an allow-listed `npm run test` running a test file the worker
+ * legitimately wrote inside its owned path reaches the entire worktree. Under
+ * a human gate that is bounded by someone reading the diff. Under a standing
+ * approval it is not.
+ *
+ * What is unknowable to the compiler IS knowable to a human authoring a
+ * policy once. These tests pin that narrowing.
+ */
+describe("emitSandboxProfile — narrowed by an EnvelopePolicy", () => {
+  function policy(overrides: Partial<EnvelopePolicy> = {}): EnvelopePolicy {
+    return EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "11111111-1111-4111-8111-111111111111",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["src"],
+      ...overrides,
+    });
+  }
+
+  it("narrows allowWrite from the whole worktree to owned paths plus declared scratch", () => {
+    const profile = emitSandboxProfile(
+      buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+      policy({ allowedWriteScratchPaths: ["dist", "coverage"] }),
+    );
+
+    expect(profile.filesystem.allowWrite).toEqual([
+      `${WORKTREE_WRITE_PLACEHOLDER}/src/login`,
+      `${WORKTREE_WRITE_PLACEHOLDER}/dist`,
+      `${WORKTREE_WRITE_PLACEHOLDER}/coverage`,
+      WORKER_TMP_WRITE_PLACEHOLDER,
+    ]);
+  });
+
+  /** The bare worktree root must NOT survive the narrowing — that is the whole point. */
+  it("no longer grants the worktree root itself", () => {
+    const profile = emitSandboxProfile(
+      buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+      policy({ allowedWriteScratchPaths: ["dist"] }),
+    );
+
+    expect(profile.filesystem.allowWrite).not.toContain(WORKTREE_WRITE_PLACEHOLDER);
+  });
+
+  /**
+   * The worker tmp dir stays unconditionally. It is outside the worktree, is
+   * provisioned 0700 per worker, and is where the engine itself writes; taking
+   * it away narrows nothing an attacker cares about and breaks the runtime.
+   */
+  it("keeps the worker tmp dir regardless of the policy", () => {
+    const profile = emitSandboxProfile(buildEnvelopeFixture({ ownedPaths: [] }), policy());
+    expect(profile.filesystem.allowWrite).toEqual([WORKER_TMP_WRITE_PLACEHOLDER]);
+  });
+
+  /**
+   * Round 1's F4: `allowAllUnixSockets: true` was unconditional, so
+   * `allowedNetworkDestinations: []` did not mean "no network" — a reachable
+   * docker socket is host-root write, and SSH_AUTH_SOCK is not covered by the
+   * `~/.ssh` read deny. Under a policy it becomes a declared grant.
+   */
+  it("closes unix sockets unless the policy declares them", () => {
+    expect(emitSandboxProfile(buildEnvelopeFixture({}), policy()).network.allowAllUnixSockets).toBe(
+      false,
+    );
+    expect(
+      emitSandboxProfile(buildEnvelopeFixture({}), policy({ allowUnixSockets: true })).network
+        .allowAllUnixSockets,
+    ).toBe(true);
+  });
+
+  /** A malformed owned path or scratch path must not become a grant. */
+  it.each(["/etc", "~/.ssh", "../escape", "src/*"])(
+    "drops the unusable scratch path %j rather than emitting it",
+    (bad) => {
+      const profile = emitSandboxProfile(
+        buildEnvelopeFixture({ ownedPaths: [] }),
+        policy({ allowedWriteScratchPaths: [bad] }),
+      );
+      expect(profile.filesystem.allowWrite).toEqual([WORKER_TMP_WRITE_PLACEHOLDER]);
+    },
+  );
+
+  it("de-duplicates an owned path that is also declared as scratch", () => {
+    const profile = emitSandboxProfile(
+      buildEnvelopeFixture({ ownedPaths: ["dist"] }),
+      policy({ allowedWriteScratchPaths: ["dist"] }),
+    );
+
+    expect(profile.filesystem.allowWrite).toEqual([
+      `${WORKTREE_WRITE_PLACEHOLDER}/dist`,
+      WORKER_TMP_WRITE_PLACEHOLDER,
+    ]);
+  });
+
+  /**
+   * Omitting the policy keeps the pre-Gap-18 wide grant, deliberately and
+   * visibly. It is the mode where a human reviews the resulting diff; the
+   * standing-approval path must always pass a policy, and refuses to dispatch
+   * without one rather than quietly compiling wide.
+   */
+  it("keeps the whole-worktree grant when NO policy is supplied", () => {
+    const profile = emitSandboxProfile(buildEnvelopeFixture({ ownedPaths: ["src"] }));
+
+    expect(profile.filesystem.allowWrite).toEqual([
+      WORKTREE_WRITE_PLACEHOLDER,
+      WORKER_TMP_WRITE_PLACEHOLDER,
+    ]);
+    expect(profile.network.allowAllUnixSockets).toBe(true);
+  });
+
+  /** The deny lists are mandatory and must survive narrowing untouched. */
+  it("leaves the mandatory deny lists intact", () => {
+    const narrowed = emitSandboxProfile(buildEnvelopeFixture({ ownedPaths: ["src"] }), policy());
+    const wide = emitSandboxProfile(buildEnvelopeFixture({ ownedPaths: ["src"] }));
+
+    expect(narrowed.filesystem.denyWrite).toEqual(wide.filesystem.denyWrite);
+    expect(narrowed.filesystem.denyRead).toEqual(wide.filesystem.denyRead);
+  });
+});
+
+/**
+ * Roast round 10, F3. A scratch entry of `"."` passed `validateOwnedPath` and
+ * was emitted as `<worktree>/.` -- the WHOLE worktree, the unnarrowed
+ * pre-Gap-18 grant -- while the doctor's usability check reported it as
+ * granting nothing. Understating a grant is the unacceptable direction, and
+ * it silently undid the narrowing this function exists to perform.
+ *
+ * 737 of 200,000 corpus entries disagreed, every one this way.
+ */
+describe("emitSandboxProfile — scratch entries that collapse to the worktree root", () => {
+  function policyWith(scratch: readonly string[]): EnvelopePolicy {
+    return EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "11111111-1111-4111-8111-111111111111",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["src"],
+      allowedWriteScratchPaths: scratch,
+    });
+  }
+
+  // `"./ ."` is deliberately ABSENT: it names a directory called `" "`, which
+  // is real and which round 8 established must not be trimmed away. Only
+  // entries that collapse to NO segments are the worktree root.
+  it.each([".", "./", ".//", "././"])(
+    "drops %j instead of granting the whole worktree",
+    (scratch) => {
+      const profile = emitSandboxProfile(
+        buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+        policyWith([scratch]),
+      );
+
+      expect(profile.filesystem.allowWrite).toEqual([
+        `${WORKTREE_WRITE_PLACEHOLDER}/src/login`,
+        WORKER_TMP_WRITE_PLACEHOLDER,
+      ]);
+    },
+  );
+
+  it("still grants a real scratch directory beside it", () => {
+    const profile = emitSandboxProfile(
+      buildEnvelopeFixture({ ownedPaths: ["src/login"] }),
+      policyWith([".", "dist"]),
+    );
+
+    expect(profile.filesystem.allowWrite).toContain(`${WORKTREE_WRITE_PLACEHOLDER}/dist`);
+    expect(profile.filesystem.allowWrite).not.toContain(`${WORKTREE_WRITE_PLACEHOLDER}/.`);
   });
 });

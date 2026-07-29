@@ -37,6 +37,17 @@ describe("attributionNeutralStage", () => {
     expect(findings.some((f) => f.message.match(/engine\/vendor name/i))).toBe(true);
   });
 
+  /**
+   * The harness's OWN name is attribution too. Owner ruling (2026-07-28):
+   * shared artifacts must name neither the engine vendor nor Crabgic — a
+   * reader of the branch, commit or PR learns what changed and why, never
+   * what produced it.
+   */
+  it("blocks the harness's own name", () => {
+    const findings = attributionNeutralStage(stageInput("Produced by Crabgic."));
+    expect(findings.some((f) => f.message.match(/engine\/vendor name/i))).toBe(true);
+  });
+
   it("allows clean neutral text", () => {
     expect(
       attributionNeutralStage(stageInput("Corrects the off-by-one error in the pagination loop.")),

@@ -1,3 +1,4 @@
+import { mkdtempSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -64,6 +65,8 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
     capability: { store },
     approvalTokenVerifier: minter,
     resolveCapabilityStoreKey: () => undefined,
+    reviewFindingsPath: join(mkdtempSync(join(tmpdir(), "eo-reg-review-")), "review-findings.json"),
+    reviewStateHome: mkdtempSync(join(tmpdir(), "eo-reg-state-")),
   };
 }
 
@@ -102,6 +105,11 @@ const EXPECTED_TOOL_NAMES = [
   // 12 (2)
   "capability.audit",
   "capability.approve",
+  // Ledger Gap 20 (1) — the staged review pipeline's only write surface for a
+  // reviewer. Listed here because this assertion is the repository's record of
+  // what the shipped binary exposes, and a tool that reaches production
+  // without appearing in it is a surface nobody decided to ship.
+  "review.submit",
 ];
 
 describe("buildRealGatewayToolRegistry", () => {

@@ -9,12 +9,14 @@
  * always FAILING even on an authenticated host. `buildRealCliDependencies`
  * below always wires a real `createRealAuthStateResolver()` by default.
  */
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   createJournalStore,
   readXdgEnvFromProcess,
   resolveJournalDir,
   resolveStateRoot,
+  resolveXdgStateHome,
   type JournalStore,
   type XdgEnv,
 } from "@crabgic/journal";
@@ -81,7 +83,14 @@ import {
 } from "./uds-client/ensure-supervisor.js";
 import { isPassiveMode } from "./uds-client/passive-mode.js";
 import { deriveProjectHash } from "./project-hash.js";
-import { buildRealInstallerDependencies } from "./installer/real-installer-dependencies.js";
+import { resolveFindingStorePath } from "./review/finding-store.js";
+import {
+  buildRealInstallerDependencies,
+  createRealConfirmPolicy,
+} from "./installer/real-installer-dependencies.js";
+import { derivePolicy } from "./policy/derive-policy.js";
+import { resolveEnvelopePolicyPath, writeEnvelopePolicy } from "./policy/policy-store.js";
+import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
 
@@ -203,6 +212,7 @@ export function buildRealCliDependencies(
   // and the fail-closed mode/symlink checks it applies.
   const signingKey = loadOrCreateApprovalSigningKey(
     resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+    resolveXdgStateHome(xdgEnv),
   );
   const minter = new ApprovalTokenMinter({ secretKey: signingKey, journal });
 
@@ -233,6 +243,7 @@ export function buildRealCliDependencies(
       }),
     journal,
     projectHash,
+    standingPolicyPath: resolveEnvelopePolicyPath(xdgEnv, projectHash),
     // Honors the SAME HOME the rest of this function resolved paths
     // against — both for real-world correctness (the auth probe's
     // `~/.claude/...` lookups match whichever HOME this invocation
@@ -240,7 +251,29 @@ export function buildRealCliDependencies(
     // (overriding `xdgEnv` deterministically controls auth resolution too).
     resolveAuthState:
       overrides.resolveAuthState ?? createRealAuthStateResolver({ homeDir: xdgEnv.HOME }),
-    installer: overrides.installer ?? buildRealInstallerDependencies(process.cwd()),
+    installer:
+      overrides.installer ??
+      buildRealInstallerDependencies(process.cwd(), {
+        // The standing-approval bootstrap (ledger Gap 18). Wired HERE because
+        // this is the only place that knows the project's XDG paths, and the
+        // policy is deliberately not a repo artifact — a standing grant that
+        // could be committed would be a standing grant every clone carried.
+        policy: {
+          path: resolveEnvelopePolicyPath(xdgEnv, projectHash),
+          derive: () =>
+            derivePolicy({
+              projectDir: process.cwd(),
+              id: randomUUID(),
+              createdAt: new Date().toISOString(),
+              listDirectories: listTopLevelDirectories,
+            }),
+          confirm: createRealConfirmPolicy({ input: process.stdin, output: process.stdout }),
+          // ROAST ROUND 32: the writer verifies every directory component
+          // BELOW the state home, so the state home has to travel with it.
+          write: (target, policy) =>
+            writeEnvelopePolicy(target, policy, resolveXdgStateHome(xdgEnv)),
+        },
+      }),
     trust: overrides.trust ?? buildRealTrustDependencies(xdgEnv, projectHash, journal, minter),
     connection: overrides.connection ?? buildRealConnectionDependencies(xdgEnv, projectHash),
     intake: overrides.intake ?? buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter),
@@ -326,8 +359,14 @@ export function buildRealGatewayToolRegistry(
     providers: dispatch.providers,
     mutationApplyClients: dispatch.mutationApplyClients,
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
+    // Resolved HERE, from the same xdgEnv/projectHash everything else in this
+    // composition root uses — a second derivation elsewhere would be a second
+    // answer to "where is this project's state" that could disagree.
+    reviewFindingsPath: resolveFindingStorePath(xdgEnv, projectHash),
+    reviewStateHome: resolveXdgStateHome(xdgEnv),
     approvalSigningKey: loadOrCreateApprovalSigningKey(
       resolveApprovalSigningKeyPath(xdgEnv, projectHash),
+      resolveXdgStateHome(xdgEnv),
     ),
     changeSets: intake.changeSets,
     workUnits: intake.workUnits,

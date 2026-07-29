@@ -53,7 +53,13 @@ export async function runResumeCommand(
 ): Promise<CommandResult> {
   const client = await deps.connectClient();
   try {
-    const result = await client.request<{ accepted: boolean; reason?: string }>("run.dispatch", {
+    // `run.resume`, not `run.dispatch` (2026-07-28, ledger Gap 18). The two
+    // were one operation keyed on a runId, which is why the case that
+    // mattered — starting an approved change set — had no reachable form:
+    // every caller needed an id nothing in the system ever minted. Dispatch
+    // now takes a ChangeSet and RETURNS the id; resume is this, re-driving a
+    // run that already exists.
+    const result = await client.request<{ accepted: boolean; reason?: string }>("run.resume", {
       runId: cmd.runId,
     });
 
@@ -221,6 +227,11 @@ export async function runDoctorCommand(
     // is present — see `../doctor/run-doctor.ts`'s own optionality
     // comment; every pre-existing roadmap/09 test (no `deps.installer`)
     // keeps observing the exact same 8-check default set unchanged.
+    // Gap 18: the standing policy's own check, wired whenever the caller knows
+    // where the policy lives.
+    ...(deps.standingPolicyPath !== undefined
+      ? { standingPolicyPath: deps.standingPolicyPath }
+      : {}),
     ...(deps.installer !== undefined
       ? {
           installer: {

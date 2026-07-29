@@ -914,23 +914,39 @@ describe("worker containment under the REAL compiled profile with the sandbox en
       assertEveryTargetAttempted(outcome);
       assertSandboxStarted(outcome);
 
-      expect
-        .soft(
-          outcome.targets["owned-inside"].verdict,
-          "the sandbox refused a Write inside the worktree, which sandbox.filesystem.allowWrite " +
-            "explicitly permits — containment this tight breaks legitimate work",
-        )
-        .toBe("allowed");
-      for (const key of ["outside-worktree", "worker-home"] as const) {
+      // ASSERTS THE RECORDED FACT, AND FAILS ON DRIFT IN EITHER DIRECTION.
+      //
+      // This arm used to assert `refused` for the out-of-sandbox targets. That
+      // is not what the engine does: `docs/evidence/phase-06/
+      // sandbox-containment-determination.json` records this exact arm
+      // allowing ALL FOUR targets, and `docs/engine-baseline.md` §14.2 states
+      // it in prose — "the sandbox does not constrain the engine's `Write`
+      // tool at all on this host". So the assertion failed on every run
+      // against the very behaviour the project has written down, making the
+      // live suite permanently red and training a reader to skip past it.
+      // A probe that always fails carries no signal.
+      //
+      // What this arm is FOR is the engine-fact-drift ground rule
+      // (`CLAUDE.md`): it pins the observed layer attribution so that a change
+      // in it is loud. Tightening is as important to catch as loosening —
+      // §14.4 is explicit that no phase may cite §14 as "containment holds",
+      // and a silent tightening would invite exactly that reading.
+      for (const key of [
+        "owned-inside",
+        "worktree-root",
+        "outside-worktree",
+        "worker-home",
+      ] as const) {
         expect
           .soft(
             outcome.targets[key].verdict,
-            `SANDBOX DOES NOT CONTAIN THE Write TOOL: a Write to "${key}" — outside both ` +
-              "sandbox.filesystem.allowWrite entries — was not refused, so the sandbox layer does " +
-              "not confine the engine's own file tools at all and the permission layer (arm 1) is " +
-              "the ONLY thing scoping them.",
+            `ENGINE-FACT DRIFT at "${key}". The recorded determination has the sandbox NOT ` +
+              "confining the engine's Write tool (all four targets allowed, baseline §14.2), so " +
+              "the permission layer is the only thing scoping it. This run disagrees — re-run the " +
+              "phase-06 probe, update the determination and §14.2 together, and re-check every " +
+              "claim that rests on the layer attribution.",
           )
-          .toBe("refused");
+          .toBe("allowed");
       }
     } finally {
       await scratch.cleanup();

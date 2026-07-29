@@ -13,6 +13,28 @@ import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+/**
+ * Roast round 23 counted ~15,800 leaked `eo-*` directories in /tmp across the
+ * repo's suites, 339 of them from this file: every `mkdtempSync` here was
+ * created inside an `it` and never removed. Same class round 21 fixed in the
+ * sandbox self-test, and only there.
+ */
+const trackedTempDirs: string[] = [];
+function trackTempDir(dir: string): string {
+  trackedTempDirs.push(dir);
+  return dir;
+}
+afterEach(async () => {
+  const { rm } = await import("node:fs/promises");
+  const { chmod } = await import("node:fs/promises");
+  for (const dir of trackedTempDirs.splice(0)) {
+    // Several of these tests deliberately strip permissions to provoke a
+    // fault, which would make `rm` fail; restore before removing.
+    await chmod(dir, 0o700).catch(() => undefined);
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  }
+});
 import { resolveSupervisorRuntimeDir, resolveSupervisorSocketPath } from "@crabgic/supervisor";
 import { createEngineVersionCheck } from "./checks/engine-version.js";
 import { createSandboxSelftestCheck } from "./checks/sandbox-selftest.js";
@@ -131,6 +153,13 @@ describe("doctor fault-fixture matrix", () => {
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("000001.ndjson");
     expect(finding.repairStep).toContain("repairJournal");
+    // Roast round 15: swapping the two evidence classifications survived the
+    // whole suite, so the check could say "mid-journal corruption" while
+    // offering to TRUNCATE the tail -- an evidence/remedy contradiction
+    // pointing an owner at a destructive repair. Only the repairStep was
+    // pinned; the classification it must agree with was not.
+    expect(finding.evidence).toContain("torn tail");
+    expect(finding.evidence).not.toContain("mid-journal corruption");
   });
 
   it("torn journal segment (mid-journal corruption variant): repair step refuses auto-repair", async () => {
@@ -152,11 +181,241 @@ describe("doctor fault-fixture matrix", () => {
     const finding = await check.run();
     expect(finding.passed).toBe(false);
     expect(finding.repairStep).toContain("NOT a safe auto-repair");
+    // The mirror: mid-journal corruption must NOT be described as a torn
+    // tail, or the evidence invites the truncation the remedy refuses.
+    expect(finding.evidence).toContain("mid-journal corruption");
+    expect(finding.evidence).not.toContain("torn tail");
   });
 
   it("every fixture above would produce NO finding at all before its check is registered (work item 4's own failing-first framing)", async () => {
     const { runDoctorChecks } = await import("./framework.js");
     const report = await runDoctorChecks([]);
     expect(report.findings).toEqual([]);
+  });
+});
+
+/**
+ * Roast round 16, on PRISTINE code -- not a mutant.
+ *
+ * `realStatMode` laundered every `stat` failure into "does not exist", so a
+ * state root at 0777 under an unreadable parent reported passed:true with "no
+ * XDG state/cache paths exist yet". The check asserted the paths did not
+ * exist when all it knew was that it could not look -- reachable via `sudo
+ * crabgic doctor`, ENOTDIR or ELOOP. The sibling hermeticity check states the
+ * violated principle outright: "an assertion of absence is only sound when
+ * the probing command demonstrably ran".
+ */
+describe("xdg-permissions — cannot look is not the same as not there", () => {
+  const paths = [{ path: "/state/crabgic/abc", expectedMode: 0o700, kind: "dir" as const }];
+
+  it("FAILS when a path could not be inspected, rather than reporting absence", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths,
+      statMode: () => Promise.resolve("unknown" as const),
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("could not be inspected");
+    expect(finding.repairStep).toBe(
+      "make the uninspectable paths readable by this account and re-run, rather than assuming they are absent",
+    );
+  });
+
+  it("still treats a genuinely missing path as nothing to check", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths,
+      statMode: () => Promise.resolve(undefined),
+    }).run();
+
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toMatch(/exist yet/);
+  });
+
+  it("reports a real mode violation ahead of an uninspectable path", async () => {
+    const { createXdgPermissionsCheck } = await import("./checks/xdg-permissions.js");
+    const finding = await createXdgPermissionsCheck({
+      paths: [...paths, { path: "/state/other", expectedMode: 0o700, kind: "dir" as const }],
+      statMode: (p) => Promise.resolve(p === "/state/other" ? ("unknown" as const) : 0o777),
+    }).run();
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("has mode 0777, expected 0700");
+    // ROUND 17 CORRECTION: this asserted only the chmod step, which BLESSED
+    // the defect -- whenever a real violation coexists with an uninspectable
+    // path, "do not assume they are absent" was dropped and the owner was
+    // told to chmod a path whose fault is that it cannot be read.
+    // ROUND 18: asserted as ONE complete string. Fragment regexes left the
+    // seam between the two steps unpinned -- changing the joiner survived all
+    // 5260 tests -- which is the losing game an earlier commit in this very
+    // file already named and abandoned.
+    expect(finding.repairStep).toBe(
+      "chmod the paths listed with a wrong mode back to their required mode (0700 dirs / 0600 files); " +
+        "make the uninspectable paths readable by this account and re-run, rather than assuming they are absent",
+    );
+  });
+});
+
+/**
+ * Roast round 16, also pristine code. The check tested `/mnt/c` alone while
+ * its PASS evidence claimed the roots were "on the Linux filesystem" --
+ * measured through the production path computation, `/mnt/d`, `/mnt/C` and a
+ * HOME under `/mnt/e` all passed while being drvfs.
+ */
+describe("wsl2-warnings — every Windows drive mount, not just C", () => {
+  async function check(stateRootPath: string) {
+    const { createWsl2WarningsCheck } = await import("./checks/wsl2-warnings.js");
+    return createWsl2WarningsCheck({
+      isWsl2: () => Promise.resolve(true),
+      stateRootPath,
+      cacheRootPath: "/home/u/.cache/crabgic",
+    }).run();
+  }
+
+  it.each(["/mnt/d/wsl-state", "/mnt/C/Users/me/state", "/mnt/e/wslhome/.local/state"])(
+    "warns for %s",
+    async (path) => {
+      const finding = await check(path);
+      expect(finding.passed).toBe(false);
+      expect(finding.evidence).toMatch(/Windows drive mount/);
+    },
+  );
+
+  it("still passes for a genuinely Linux-side root", async () => {
+    expect((await check("/home/u/.local/state/crabgic")).passed).toBe(true);
+  });
+});
+
+/**
+ * `realStatMode`'s own errno classification -- the line round 16 found
+ * laundering every failure into "does not exist".
+ *
+ * The tests above inject `"unknown"` directly, so they pin the CHECK's
+ * handling of it and not the classification that produces it: reverting
+ * `realStatMode` to return `undefined` for every error survived them. That is
+ * the round-10 lesson repeating -- testing the consumer is not testing the
+ * thing you changed.
+ */
+describe("realStatMode — absence versus inability to look", () => {
+  it("reports a genuinely missing path as absent", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
+    expect(await realStatMode(join(dir, "definitely-not-here"))).toBeUndefined();
+  });
+
+  it("reports an unreadable parent as unknown, NOT as absent", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
+    const parent = join(dir, "locked");
+    mkdirSync(join(parent, "child"), { recursive: true });
+    chmodSync(parent, 0o000);
+    try {
+      // The child EXISTS; the parent simply cannot be traversed.
+      expect(await realStatMode(join(parent, "child"))).toBe("unknown");
+    } finally {
+      chmodSync(parent, 0o700);
+    }
+  });
+
+  it("reports a real mode for a path it can read", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { chmodSync, mkdirSync, mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
+    const target = join(dir, "state");
+    mkdirSync(target);
+    chmodSync(target, 0o700);
+    expect(await realStatMode(target)).toBe(0o700);
+  });
+});
+
+/**
+ * Roast round 15, finding 6 -- the same class as the journal-chain
+ * contradiction, in the check next door. Swapping the missing/invalid
+ * evidence strings survived the whole suite, because the invalid-state test
+ * asserted only `passed === false`.
+ *
+ * Each diagnosis carries a DIFFERENT remedy: "no auth was found" pairs with
+ * `claude setup-token` OR setting the env var, while "present but invalid"
+ * pairs with re-authenticating. An owner told the wrong one either sets a
+ * token they already have, or re-authenticates a credential that was never
+ * there. Both directions are pinned so the evidence cannot drift from the
+ * remedy it must agree with.
+ */
+describe("auth-probe — the diagnosis must match its remedy", () => {
+  async function findingFor(state: "valid" | "missing" | "invalid") {
+    const { createAuthProbeCheck } = await import("./checks/auth-probe.js");
+    return createAuthProbeCheck({ probe: () => Promise.resolve(state) }).run();
+  }
+
+  it("says auth is absent, and offers to obtain one", async () => {
+    const finding = await findingFor("missing");
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toBe("no subscription auth was found");
+    expect(finding.evidence).not.toMatch(/present but invalid/);
+    expect(finding.repairStep).toBe("run `claude setup-token` or set CLAUDE_CODE_OAUTH_TOKEN");
+  });
+
+  it("says auth is present but bad, and offers to re-authenticate", async () => {
+    const finding = await findingFor("invalid");
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toBe("subscription auth is present but invalid");
+    expect(finding.evidence).not.toMatch(/no subscription auth/);
+    expect(finding.repairStep).toBe("re-authenticate via `claude setup-token`");
+  });
+
+  it("reports valid auth without leaking anything about the credential", async () => {
+    const finding = await findingFor("valid");
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toBe("subscription auth is valid");
+    expect(finding.repairStep).toBeUndefined();
+  });
+});
+
+/**
+ * Round 17: `ENOTDIR` and `ENAMETOOLONG` were classified as "could not
+ * inspect", firing the new failure branch where the old code was right to
+ * pass -- with evidence and a remedy that were both false, since the paths
+ * really are absent and chmod cannot help.
+ *
+ * Exercised through `realStatMode` against real filesystem conditions,
+ * because that is where the classification lives: injecting a rejection into
+ * the CHECK tests the check's handling, not the mapping that produces it --
+ * the same mistake this file already made once.
+ */
+describe("realStatMode — errno shapes that mean the path cannot exist", () => {
+  it("treats a non-directory path component as absence", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
+    const file = join(dir, "not-a-dir");
+    writeFileSync(file, "x");
+
+    // ENOTDIR: nothing can live below a regular file.
+    expect(await realStatMode(join(file, "child"))).toBeUndefined();
+  });
+
+  it("treats an unrepresentable name as absence", async () => {
+    const { realStatMode } = await import("./checks/xdg-permissions.js");
+    const { join } = await import("node:path");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+
+    const dir = trackTempDir(mkdtempSync(join(tmpdir(), "eo-xdg-")));
+    expect(await realStatMode(join(dir, "n".repeat(5000)))).toBeUndefined();
   });
 });

@@ -60,6 +60,56 @@ weakens fail-open is outside this amendment.
 
 **Ledger:** Gap 17. **Coordinated with:** `roadmap/11-intake-contract-approval.md`.
 
+## Scope amendment — `install` bootstraps the `EnvelopePolicy` (2026-07-28)
+
+**What changed.** This phase's installer artifact set (§6.1) gains one file: the **`EnvelopePolicy`**, the
+standing approval that replaces per-ChangeSet consent. Schema is 02's; writing it is this phase's.
+
+**Why here.** Owner ruling: the user types no Crabgic command, so a per-run approval prompt has nowhere to
+live. A standing policy needs exactly one authoring moment, and `install` is the only one that already exists,
+is already interactive, and is already understood as a setup act. A policy re-confirmed per run would be the
+prompt it replaced wearing a different interface.
+
+**What the amendment permits, precisely.** `install` derives a candidate policy from what the repo already
+states about itself — write paths, the command set implied by the project's own scripts, **default-deny
+network and credential references** — renders it in full, and writes it only after the owner confirms. It
+lands in the project's XDG **state** root at `0600`, never in the repo, and is covered by this phase's
+existing ownership/checksum/backup/drift machinery. `--dry-run` shows it like any other artifact.
+
+**What it does not permit.** Nothing reachable from a manager session may create or widen the policy — no
+MCP tool, no CLI subcommand a session could invoke, no skill (ledger Gap 18, part 3). `upgrade` may narrow a
+policy or leave it alone; **widening is always an owner edit or a fresh `install`**. `uninstall --keep-state`
+retains it; plain `uninstall` removes it, since a standing grant must not outlive the installation that
+carried it.
+
+**Doctor.** This phase's doctor contribution gains a fourth check: the policy exists, parses, is `0600`, is
+not tracked by git, and is rendered in full so an owner can read what they are standing behind.
+
+**Ledger:** Gap 18. **Coordinated with:** `roadmap/02-contracts-and-schemas.md`,
+`roadmap/03-envelope-compiler-engine-adapter.md`, `roadmap/09-cli-and-doctor.md`,
+`roadmap/11-intake-contract-approval.md`, `roadmap/13-scheduler-packets-context.md`.
+
+## Scope amendment — the manager protocol renders the review/repair distinction (2026-07-28, amended 2026-07-29)
+
+**What changed.** `src/manager-protocol.ts` (Gap 17, part 1) gains one more thing it must say: a **review
+round** is read-only and spends no repair attempt, while a **repair attempt** is capped at initial + 2 by
+`exhausted_repairs`. Same single-source-of-truth rule as the rest of the protocol — the module owns the text,
+the managed block and `skills/protocol/SKILL.md` render it, and no phase restates it.
+
+**Amended 2026-07-29.** The protocol's roast paragraph is replaced by the staged pipeline of
+`docs/staged-review-pipeline.md`: written exit criteria per stage, findings classified `blocking` only by
+naming the criterion they violate, every finding dispositioned, and a progress-based budget that escalates to
+`irreducible_product_decision`. The agent charters change with it — `eo-roaster`'s "do not approve it" is
+what made the previous loop structurally unable to terminate, so `approve` becomes a reachable verdict.
+
+**Why.** The protocol presented `exhausted_repairs` as the only bounded-retry concept a manager session knows
+about. A session running an unbounded design or test review against that text will read its own third round
+as a stop condition and halt work that was never failing. The 2026-07-29 amendment adds the converse hazard,
+measured over twelve rounds: a review loop with no bound of its own does not stop at all.
+
+**Ledger:** Gap 19. **Coordinated with:** `roadmap/11-intake-contract-approval.md`,
+`roadmap/13-scheduler-packets-context.md`, `roadmap/14-quality-security-gates.md`.
+
 
 ## Out of scope
 

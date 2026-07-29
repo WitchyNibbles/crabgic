@@ -38,7 +38,7 @@ describe("resolveApprovalSigningKeyPath", () => {
 describe("loadOrCreateApprovalSigningKey", () => {
   it("creates a 32-byte key at 0600 under a 0700 directory on first use", () => {
     const path = join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME);
-    const key = loadOrCreateApprovalSigningKey(path);
+    const key = loadOrCreateApprovalSigningKey(path, root);
 
     expect(key).toHaveLength(32);
     expect(statSync(path).mode & 0o777).toBe(0o600);
@@ -48,18 +48,18 @@ describe("loadOrCreateApprovalSigningKey", () => {
 
   it("returns the SAME key on a second call — this is what makes a token minted by `run` verifiable by the gateway-mcp process", () => {
     const path = join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME);
-    const first = loadOrCreateApprovalSigningKey(path);
-    const second = loadOrCreateApprovalSigningKey(path);
+    const first = loadOrCreateApprovalSigningKey(path, root);
+    const second = loadOrCreateApprovalSigningKey(path, root);
 
     expect(second).toEqual(first);
   });
 
   it("refuses a key file another user could read (fail-closed on a widened mode)", () => {
     const path = join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME);
-    loadOrCreateApprovalSigningKey(path);
+    loadOrCreateApprovalSigningKey(path, root);
     chmodSync(path, 0o644);
 
-    expect(() => loadOrCreateApprovalSigningKey(path)).toThrow(ApprovalSigningKeyError);
+    expect(() => loadOrCreateApprovalSigningKey(path, root)).toThrow(ApprovalSigningKeyError);
   });
 
   it("refuses a symlinked key file (never follows a link planted at the pinned path)", () => {
@@ -69,7 +69,7 @@ describe("loadOrCreateApprovalSigningKey", () => {
     symlinkSync(decoy, join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME));
 
     expect(() =>
-      loadOrCreateApprovalSigningKey(join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME)),
+      loadOrCreateApprovalSigningKey(join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME), root),
     ).toThrow(ApprovalSigningKeyError);
   });
 
@@ -78,6 +78,6 @@ describe("loadOrCreateApprovalSigningKey", () => {
     const path = join(root, "state", APPROVAL_SIGNING_KEY_FILE_NAME);
     writeFileSync(path, Buffer.alloc(8), { mode: 0o600 });
 
-    expect(() => loadOrCreateApprovalSigningKey(path)).toThrow(ApprovalSigningKeyError);
+    expect(() => loadOrCreateApprovalSigningKey(path, root)).toThrow(ApprovalSigningKeyError);
   });
 });

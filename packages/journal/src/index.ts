@@ -116,6 +116,15 @@ export {
 } from "./layout/xdg-layout.js";
 export type { XdgEnv } from "./layout/xdg-layout.js";
 
+// ---- Hardened open (roast round 31: one opener, because five had diverged) ----
+export { ensureOwnedDir, openOwnedFile } from "./layout/owned-open.js";
+export type {
+  OwnedOpenKind,
+  OwnedOpenOptions,
+  OwnedOpenRefusal,
+  OwnedOpenResult,
+} from "./layout/owned-open.js";
+
 // ---- Lease ----
 export {
   Lease,

@@ -63,6 +63,7 @@ export * from "./registries/recovery.js";
 
 // ---- Run-lifecycle transition surface (shared by 11's stop-condition detectors, 13's dispatch loop) ----
 export * from "./run-lifecycle/run-transition.js";
+export * from "./run-lifecycle/create-run.js";
 
 // ---- Worker lifecycle mechanics (WI4): provisioning, termination ladder, orphan reaping, the manager tying spawn+journal-tee+crash-detection together ----
 export * from "./worker-lifecycle/worker-provisioning.js";

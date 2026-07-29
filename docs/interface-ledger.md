@@ -3,8 +3,20 @@
 This file is the **binding cross-phase interface contract** for the crabgic / Crabgic
 roadmap (`roadmap/00-*.md` through `roadmap/23-*.md`, indexed by `roadmap/README.md`). It records the single
 ruling decision for each of 15 cross-phase interface gaps that were identified against the roadmap and
-independently adjudicated by four parallel resolver passes, plus **Gap 16**, which was identified later,
-during implementation, and carries its own provenance line rather than a four-resolver record.
+independently adjudicated by four parallel resolver passes, plus **Gaps 16-20**, which were identified later
+and each carry their own provenance line rather than a four-resolver record:
+
+| Gap | Origin |
+| --- | --- |
+| 16  | phase-23 implementation |
+| 17  | reported behavior in a consuming repo, 2026-07-27 |
+| 18  | owner ruling 2026-07-28, after a live audit of the shipped `crabgic@1.3.0` binary |
+| 19  | owner ruling 2026-07-28, same session as 18; **amended 2026-07-29** against measured evidence |
+| 20  | raised 2026-07-29 while implementing 19's amendment |
+
+This table exists because the sentence above it said "15 gaps plus Gap 16" for as long as there were twenty,
+which is a small thing that makes a reader trust the rest of the file less. A ledger that miscounts itself
+invites the question of what else it has not kept up with.
 
 **The four resolver passes did not agree with each other** — on several gaps (notably Gap 1, Gap 2, Gap 11,
 and the path-order half of Gap 14) their decisions materially conflict, even though all 15 gaps were stamped
@@ -63,6 +75,8 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [15](#gap-15--minor-engine-live-ci-job-name-and-live-test-tag-never-explicitly-linked) | `engine-live`/`@live` link never stated | Phase 01 states Phase 06 wires it; Phase 06 does |
 | [16](#gap-16--phase-23-ci-produced-evidence-records-have-no-pinned-path-env-or-failure-convention) | Phase-23 CI-produced evidence records unpinned | `docs/evidence/phase-23/<record>.json` + `CRABGIC_<RECORD>` override + `.strict()` schema read through `safeParse`; a malformed record is a FAIL, never a throw |
 | [17](#gap-17--the-manager-session-has-no-operating-protocol-and-manager-hooks-may-not-block) | Manager session has no operating protocol | Protocol owned by `@crabgic/plugin`'s `manager-protocol.ts`, always shipped in the `CLAUDE.md` managed block (additive to the `@AGENTS.md` bridge, never replaced by it); `Stop` may block via the autonomy gate, `PreToolUse` still may not |
+| [18](#gap-18--approval-is-pinned-per-changeset-to-a-command-the-user-must-type) | Approval pinned to a per-ChangeSet terminal prompt | Standing `EnvelopePolicy` (02, written by `install`, owner-only, never in the repo); dispatch does a containment check — inside it runs with no prompt, outside it halts on `expanded_authority`; no session-reachable surface may widen it |
+| [19](#gap-19--adversarial-quality-loops-collide-with-exhausted_repairs) | Adversarial quality loops vs `exhausted_repairs` | Different loops: repairs stay capped at initial + 2; roast rounds are read-only, uncapped, and close when a round yields no **novel + falsifiable** finding — no severity floor, fresh reviewer per round |
 
 ---
 
@@ -949,6 +963,16 @@ unnecessary "continue"; a false positive costs the owner a session they cannot e
 and the hooks — carries the scope amendment), `roadmap/11-intake-contract-approval.md` (owns the seven stop
 conditions and the approval flow the protocol describes).
 
+**Implementation status (2026-07-28).** Gaps 18 and 19 are implemented on
+`feat/conversation-first-orchestration`: `EnvelopePolicy` (02), `isContained` (03), the
+policy-narrowed sandbox profile (03), `createRun` and the ChangeSet-keyed `run.dispatch`
+(05/09), the dispatch gate and journaled digest (13), the install-time bootstrap and the
+`policy.standing` doctor check (10), and the clarify/roast loops in `manager-protocol.ts`
+plus the `eo-roaster` subagent (10). Verified live against the bundled binary
+(`docs/evidence/gap-18/live-verification.md`) and end to end against the fake engine
+(`packages/cli/src/intake/closed-loop.e2e.test.ts`). Roast rounds are recorded in
+`docs/evidence/gap-18/design-roast-round-{1,2}.md`.
+
 **Consumers in source today:** `packages/plugin/src/manager-protocol.ts`,
 `packages/plugin/skills/protocol/SKILL.md`, `packages/plugin/hooks/stop-autonomy-gate.mjs`,
 `packages/plugin/hooks/hooks.json`, `packages/plugin/src/hooks-manifest.ts`,
@@ -958,6 +982,308 @@ conditions and the approval flow the protocol describes).
 bridge "per adaptation §6.2" (part 2 exists because that reading is the live defect); or generalizing part 3
 into "manager hooks may block" and adding a `PreToolUse` hook to the plugin (part 3 is scoped to `Stop`
 alone, and deliberately).
+
+---
+
+## Gap 18 — Approval is pinned per-ChangeSet to a command the user must type
+
+**Origin:** Owner ruling 2026-07-28, from two inputs: a **live audit of the shipped `crabgic@1.3.0` binary**
+(recorded below) and a product-direction decision taken in the same session. Like Gaps 16 and 17 this entry
+carries its own provenance and was never seen by the four resolvers.
+
+**Gap statement:** Three settled artifacts pin approval to a per-ChangeSet interactive terminal prompt —
+adaptation §5.5 ("approval happens in the orchestrator CLI (terminal prompt) or via an explicitly-confirmed
+`/eo:approve`"), roadmap/11 §In scope ("Approval: CLI terminal prompt ... mints one-time token"), and
+`docs/security-posture.md` §3 (the prompt is the only mint path). The owner's product direction is that a
+user **types no Crabgic command at all**: they state a request in an ordinary Claude Code session, answer
+clarifying questions, and receive a finished change set. A per-ChangeSet terminal prompt is, by construction,
+a command they must know and run — once per change set. The two are incompatible.
+
+The audit added a second, independent reason the status quo is not the stronger option it appears to be.
+`crabgic run --json` **prints the minted approval token to stdout**, and `contract.approve` consumes it in a
+different process. In a manager session the only thing standing between those two points is the model — so
+the shipped design already makes the model the courier for a human-approval token, which is precisely the
+property §5.5 exists to prevent.
+
+**Ruling:** Approval moves from *per-envelope, at dispatch time* to *per-envelope-class, ahead of time*.
+Four parts.
+
+1. **New artifact `EnvelopePolicy`**, schema owned by 02 (`@crabgic/contracts`), written by `crabgic install`
+   (10) into the project's XDG **state** root, owner-only (0600), never committed to the repo. It declares
+   the classes of authority a run may assume without asking: **path prefixes** (segment-aware, never globs —
+   see below), allowed commands, network destinations (**default: none**), credential references (**default:
+   none**), and the high-impact connector flags (02's canonical labels) it may auto-grant (**default: none**).
+
+   **Path prefixes, not globs — corrected 2026-07-28 during implementation research, before any code was
+   written.** This part first said "path globs." `validateOwnedPath` (03) already **rejects** every glob
+   metacharacter in an `ownedPath`, because owned paths are literal directory names; a glob-matching policy
+   would have introduced a second, richer matching language on the exact surface phase 03's CRITICAL
+   owned-path confinement escape lived on. Containment is segment-aware prefix containment: `src` contains
+   `src/login`, and does **not** contain `srcfoo`.
+2. **The gate becomes a subset check.** At dispatch the compiled `AuthorizationEnvelope` is tested for
+   containment in the `EnvelopePolicy`. Contained → the standing approval covers it; the run dispatches with
+   no prompt and no token. Not contained → **dispatch is refused before a run is created**, and the
+   ChangeSet stays `ready` so that fixing the policy and re-dispatching simply works. There is no third
+   outcome, and no partial grant of the contained subset. 11's `expanded_authority` remains the halt for
+   authority discovered to be missing **mid-run**, where the run is already `running` and `blocked` is a
+   legal edge — see part 5.
+
+   **Amended 2026-07-28 by design roast round 1** (`docs/evidence/gap-18/design-roast-round-1.md`). The
+   original wording halted the run on the stop condition at dispatch. Two independent reviewers refuted it:
+   `draft → blocked` is not an edge in 02's table and a run at dispatch time has no prior record, so the
+   halt would have thrown `IllegalTransitionError` inside an un-awaited driver **after** `dispatch()` had
+   already answered `accepted: true` — the run neither dispatched, nor blocked, nor reported. And `blocked`
+   is absorbing, so even a working halt stranded the ChangeSet with no recovery path short of a hand-edited
+   policy and a brand-new `requestKey`.
+
+5. **The policy is also a compiler input, not only a gate.** This is what the roast forced, and it is the
+   substantive change. `sandbox-profile.ts` deliberately leaves `filesystem.allowWrite` at the **whole
+   worktree**, for a stated and correct reason: build-output directories are "project-specific and unknowable
+   **here**", the compiler's only inputs being one envelope's four fields. Owned-path scoping is left to the
+   permission layer — which sees *tool calls*, and by construction cannot see the syscalls of a process it
+   spawned. So an allow-listed `npm run test` executing a test file the worker legitimately wrote inside its
+   owned path may write anywhere in the worktree, and the containment evidence has **no child-process arm**
+   to say otherwise. Under a human gate that is bounded by someone reading the diff. Under a standing
+   approval nobody reads it.
+
+   What is unknowable to the compiler is knowable to a human authoring a policy once, at install. The policy
+   therefore carries `allowedWriteScratchPaths`, which narrows `allowWrite` to owned paths plus declared
+   scratch, and `allowUnixSockets` (**default false**), which makes today's unconditional
+   `allowAllUnixSockets: true` a declared grant rather than an ambient one. Standing approval is only sound
+   once the profile's *actual* granted authority is inside what the policy can express.
+
+6. **Unknown or absent means deny, and inert fields are never presented as controls.** A policy field the
+   containment check does not recognise, or one absent from an older on-disk policy, denies — never skips.
+   `remoteResourceAuthorizations` escalate by default: *any* entry is out-of-policy unless the policy names
+   an allowed reference, because the high-impact flag taxonomy is assigned by static per-kind tables rather
+   than by risk (a Grafana `dashboard` and a single-issue Jira update both carry **no** flag) and is in any
+   case never compared against the envelope at apply time. `prohibitedActions`, `dependencies`,
+   `temporaryServices` and `commands`-beyond-the-four-literals are **inert** in the compiled profile; the
+   schema documents them as inert rather than letting a policy author believe they bound anything.
+3. **The model can never widen the policy.** Creating or extending it is out-of-band: `crabgic install`, or a
+   human editing the file. No MCP tool, no session-reachable CLI command, and no skill may write it. The
+   token machinery is **not deleted** — `contract.approve`, `trust review`/`capability.approve` and
+   `learn approve` keep it for the escalation paths, which are exactly the paths a policy cannot cover.
+4. **Every dispatch journals the authorizing policy digest.** Evidence must be able to answer "what was the
+   human standing behind when this ran," which a standing approval otherwise makes unanswerable.
+
+**Rationale:** The property §5.5 protects is *the model cannot manufacture human consent*, and all four parts
+preserve it: the policy is a human-authored artifact, the containment check is deterministic and
+server-side, and anything outside it halts rather than degrading. What is **given up, knowingly**, is
+per-change-set human review of in-policy work — recorded here explicitly so that nobody later "restores" the
+prompt believing this ruling was an oversight.
+
+A policy read once, carefully, at install time — declaring paths and commands with default-deny network and
+credentials — is a stronger artifact than a digest rubber-stamped under time pressure once per change set.
+The engine itself carries the precedent: `.claude/settings.json`'s `allowedTools` is the same shape, and is
+the mechanism the owner's own standing guidance prefers over blanket permission-skipping.
+
+**Disclosed residual risk:** the blast radius becomes whatever the policy got wrong. Four mitigations are
+part of the ruling, not optional hardening: network, credential and remote-resource references default to
+none; `doctor` renders the policy in full **and fails a vacuous one** (all-empty lists otherwise pass every
+existence/parse/mode/untracked check while every run halts); part 4's per-dispatch digest makes every run's
+authorization auditable after the fact; and part 5 brings the compiled profile's real granted authority
+inside what the policy can express, without which the other three describe a boundary that is not the one
+being enforced.
+
+**Owed, and deliberately not resolved by this ruling.** Three gaps the roast surfaced sit outside it and
+must not be read as covered: no dependency provisioning exists for a fresh worktree, so a first live run on
+a Node repo cannot proceed at any policy setting; `RemoteMutationPlan.requiredCapabilityFlags` has no
+consumer at apply time; and `envelope.commands` is inert beyond four literals. The latter two predate this
+ruling — standing approval is what makes them load-bearing, not what caused them.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the schema),
+`roadmap/03-envelope-compiler-engine-adapter.md` (owns the containment check, as the security keystone),
+`roadmap/09-cli-and-doctor.md` (the terminal prompt stops being the sole mint path; `doctor` renders the
+policy), `roadmap/10-plugin-and-installer.md` (the installer writes it — carries the scope amendment),
+`roadmap/11-intake-contract-approval.md` (owns the approval flow and `expanded_authority`),
+`roadmap/13-scheduler-packets-context.md` (applies the check at dispatch).
+
+**Where this ruling could be got wrong later:** reintroducing a per-ChangeSet prompt "because §5.5 says so"
+(§5.5 is amended by this entry, not overridden by it); granting the contained subset of a
+partially-out-of-policy envelope instead of halting (part 2 is deliberately all-or-nothing); or exposing any
+policy-writing surface to a session, in any form, which collapses the whole gate (part 3).
+
+---
+
+## Gap 19 — Adversarial quality loops collide with `exhausted_repairs`
+
+**Origin:** Owner ruling 2026-07-28, same session as Gap 18.
+
+**Gap statement:** The roadmap has exactly one bounded loop for "this work is not good enough":
+`exhausted_repairs`, one of 11's seven stop conditions, spent when the initial attempt plus both
+evidence-driven repair attempts are used on a single WorkUnit. The owner's directive adds three
+**quality-convergence** loops the roadmap never modelled — over the design, over the test suite, and over the
+implementation — each running until an adversarial reviewer can no longer honestly find anything to raise.
+Read together the two are contradictory: one says stop at three, the other says do not stop.
+
+**Ruling:** They are different loops over different subjects. Both stand, unchanged in their own domain.
+
+1. **`exhausted_repairs` is untouched.** It counts *attempts against gates* on one WorkUnit — initial plus
+   two. Nothing below consumes one.
+2. **A roast round is read-only.** It is an adversarial review of an artifact (design, test suite, or diff)
+   that produces findings. It never re-executes work, never transitions the run, and never spends a repair
+   attempt. Acting on its findings may.
+3. **The loop is bounded by progress, not by rounds.** A stage keeps looping while each round closes at
+   least one `blocking` finding. The first round that closes none escalates; a hard ceiling of **five**
+   rounds applies regardless. `blockingClosedThisRound` is derived from finding dispositions and is never
+   self-reported by the reviewer.
+4. **Termination is the artifact against its written exit criteria, never reviewer exhaustion.** Each stage
+   carries a checkable list of exit criteria, as stage 2's clarify loop already does with the nine
+   `CONTRACT_SECTIONS`. A stage advances when every criterion is met, no open finding is classified
+   `blocking`, and **every finding raised has a recorded disposition**.
+   - A finding is `blocking` **only if it names the exit criterion it violates**. One that violates no
+     stated criterion cannot block — and is still recorded, still verified, still answered.
+   - **Novelty and falsifiability still apply**, unchanged, as admissibility tests: restatement, generality
+     and taste remain inadmissible. What they no longer do is decide termination.
+   - Every finding, at any severity, walks `raised → verified → classified → dispositioned → reported`.
+     `verified` is by execution, not second opinion; `refuted` requires the counter-evidence. `disposition`
+     is `fixed` | `refuted` | `accepted-debt` and **can never be empty**. A stage may not advance holding an
+     undispositioned finding of any severity.
+   - `accepted-debt` is journaled as an `EvidenceRecord`, surfaced in the change-set report, and
+     **reclassified `blocking` when a later change set's `PlannedWriteSet` intersects the paths it
+     concerns** — keyed with `normalizePlannedPath` from `@crabgic/git-engine`, so the debt index and the
+     overlap analyzer cannot disagree about what a path names.
+5. **Each round gets a fresh reviewer.** A round is only evidence of convergence if the reviewer did not
+   author the artifact and did not see the previous round's verdict. Rounds differ by **lens** rather than
+   repeating one hostile pass, since diversity of perspective catches failure modes repetition cannot.
+
+**Rationale (amended 2026-07-29):** the original part 4 argued that novelty plus falsifiability are what
+"honestly" denotes, and that argument stands — an adversary told to keep roasting will manufacture findings
+to appear useful, and those two tests exclude exactly that. What the original got wrong is that it treated
+them as a **termination** rule as well as an admissibility rule. They are not the same thing.
+
+Rounds 21–32 are the experiment the original's own residual-risk note called for, and the result refutes the
+hypothesis that note advanced. The falsifiability test was applied **strictly** — every finding across twelve
+rounds carried an executed reproduction, none was manufactured, and every one was real, including two
+arbitrary-file-overwrite primitives and an unkillable hang. Not one round failed to produce something novel
+and falsifiable. Severity fell steadily (round 30 needed no attacker foothold; round 32 needed write access
+to a 0700 directory the victim already owns) and the loop still did not converge.
+
+The conclusion is stronger than "the test was applied loosely": **novelty and falsifiability bound
+manufactured findings but not genuine ones.** A non-trivial codebase holds an effectively inexhaustible
+supply of true, novel, reproducible defects of declining severity, so a criterion phrased as "until a round
+finds nothing" measures reviewer exhaustion rather than artifact quality — and only one of those is finite.
+
+**On the severity floor.** The original rejected one because "a genuine minor defect is still a defect". That
+property is preserved here and is the reason the floor gates the **loop** and never the **ledger**: a minor
+finding is still verified, still classified, still dispositioned, still reported, and still becomes blocking
+the moment anyone touches the code it concerns. What it no longer does is hold the pipeline open forever.
+This is therefore not the "severity floor as an optimization" the original warned against — it is not an
+optimization, and the argument for it is measured non-termination rather than cost.
+
+**Disclosed residual risk:** debt in code nobody ever touches again is never paid. That is accepted
+deliberately — it is also debt nobody is exposed to — but it makes the journal's debt query the only place
+such a finding can be seen, so the change-set report's honesty is load-bearing. Second: the `blocking` versus
+`advisory` split is a judgement, and the literature is explicit that an uncalibrated judge is decorative.
+There is **no calibration plan yet**; until there is, the split is asserted rather than measured, which is
+exactly the posture the original's own residual-risk note refused to accept for falsifiability.
+
+**Phases affected:** `roadmap/11-intake-contract-approval.md` (owns the seven stop conditions and thus the
+boundary being drawn), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt path),
+`roadmap/14-quality-security-gates.md` (owns the gate verdicts a repair attempt answers),
+`roadmap/10-plugin-and-installer.md` (the manager operating protocol renders the distinction).
+
+**Where this ruling could be got wrong later:** treating a review round as a repair attempt (or the reverse),
+which either caps quality convergence or makes gate failures unbounded; letting `advisory` become a disposal
+route rather than a deferral — the disposition field exists precisely so nothing is filed and forgotten, and
+a stage that advances holding an undispositioned finding has broken the ruling regardless of that finding's
+severity; allowing a reviewer to self-report its own progress, which turns part 3's budget into the inverted
+sycophancy part 4 was written to exclude; letting a reviewer raise findings a deterministic gate already
+decides, which re-litigates settled verdicts in prose; or reintroducing an unbounded round count on the
+argument that quality demands it — the measured evidence is that it does not terminate, and an
+unbounded loop that never closes ships nothing at all.
+
+---
+
+## Gap 20 — The amended review loop is stated in prose and enforced nowhere
+
+**Origin:** Follows Gap 19's 2026-07-29 amendment. Raised while implementing it.
+
+**Gap statement:** Gap 19 as amended says a stage closes on its written exit criteria, that a finding blocks
+only by naming the criterion it violates, that every finding carries a disposition, and that debt reopens when
+its code is next touched. All four are **model instructions**. The superseded loop's own defect was a model
+instruction no artifact could contradict — "do not approve it" — which ran twelve rounds without converging.
+Restating the fix in the same medium that failed is not a fix; it is the same bet at longer odds.
+
+**Ruling:** the checkable half is checked, in `@crabgic/contracts`, and the rest is named as unchecked.
+
+1. **`ReviewVerdict` / `ReviewFinding` are schemas, not conventions.** Three properties are
+   **unrepresentable** rather than discouraged: a `blocking` finding with no `violates`; a finding whose
+   `dispositionEvidence` is empty; and `approve` while a blocking finding is neither `fixed` nor `refuted`.
+   Each maps to a way the loop failed or could fail, and each is a `superRefine` that rejects the document.
+2. **`isStageClosable` is the termination rule as code.** All three conditions — every required criterion met,
+   no unresolved blocking finding, no undispositioned finding at any severity. A clean review with an unmet
+   criterion does not close a stage, which is the property the superseded loop lacked.
+3. **`PIPELINE_STAGES` carries the criteria as data.** Ids are stable because `violates` references them; a
+   name that resolves to nothing is not a constraint. `exitCriteriaFor` **throws** on an unknown stage rather
+   than returning `[]`, because an empty criteria list satisfies the closure rule vacuously.
+4. **The clarify stage derives its criteria from `CONTRACT_SECTIONS`, and `CONTRACT_SECTIONS` derives from
+   `IntentContractSectionsSchema`'s own keys.** The plugin's hand-written copy of the nine names is deleted
+   and re-exported. Rounds 4-7 are the precedent: two lists that must agree diverge, and the last attempt to
+   keep them in step made mismatches six times worse.
+5. **`reclassifyDebtForWriteSet` reopens debt by planned writes**, using the repository's one canonical
+   `normalizePathPrefix`. Containment is checked in **both** directions — a write inside a debt's directory,
+   and a write to a directory above a debt's file — because only one of those is prefix matching in the usual
+   sense and checking one would silently miss half the debt. Reopening **clears** the disposition rather than
+   rewriting it, so the finding is open again and its stage cannot advance.
+
+**Rationale:** part 1 is the ruling. Everything the superseded loop got wrong was expressible in a document
+that nothing rejected, so the amendment's own rules are made rejectable wherever a schema can carry them.
+What a schema cannot carry — whether a reviewer classified honestly — is left to prose deliberately and named
+below rather than pretended away.
+
+**Disclosed residual risk:** the schema enforces the SHAPE of a verdict and not its HONESTY. A reviewer can
+still classify a real blocker as `advisory`, or attach a plausible `violates` to a taste preference, and every
+document it produces will validate. The `blocking`/`advisory` split has **no calibration** — no sample where
+it has been checked against the owner's own judgement — so it is asserted, not measured. This is the same
+posture Gap 19's original entry refused to accept for falsifiability, and it is recorded in those terms rather
+than as a footnote.
+
+Second, and **partly closed 2026-07-29**: `review.submit` now calls `isStageClosable` and
+`reclassifyDebtForWriteSet` server-side and returns the closure decision, so a reviewer supplies findings and
+does not supply the verdict on itself — the same shape as `contract.approve`, for the same reason. Three
+inputs are deliberately not taken from the caller: which criteria the stage requires, which are met, and
+whether the stage may close.
+
+The durable store landed too, in XDG state rather than the journal. `JournalEntryType`'s closure at thirteen
+is respected — no fourteenth member was added — and `EvidenceRecord` was rejected on its merits rather than
+bent to fit: its `objectId` is a Git object id, not a payload pointer, and `command`/`toolchainFingerprint`
+are required fields a review has no honest value for. The precedent for XDG state is the `EnvelopePolicy`
+itself, which decides what runs without review and does not live in the journal either; findings are strictly
+less privileged. It sits behind `loadFindings`/`saveFindings`, so a coordinated round adding a `review_verdict`
+kind later is a migration and not a redesign.
+
+Registration landed too. `review.submit` is in the shipped binary's tool surface, verified by driving the real
+MCP server over stdio rather than by reading the registry, and the assertion that pins what the binary exposes
+lists it — a tool reaching production without appearing there is a surface nobody decided to ship. Two of its
+inputs come from the SERVER and never the caller: planned writes from the ChangeSet's own envelope
+`ownedPaths`, so a reviewer cannot understate what it intends to touch and thereby choose which debt it
+faces; and prior findings from the durable store, so a clean round cannot erase somebody else's open blocker.
+
+**The gate-decidable criterion is derived, not believed.** `implement-gates-pass` is computed from the
+`EvidenceRecord`s journaled against the ChangeSet — the same signal the release gate scores on, where a linked
+record with a nonzero `exitStatus` is a genuine negative run — and then SUBTRACTED from whatever the caller
+claimed, so asserting it without gate evidence to back it does not work. Records carrying no `gateTag` are
+skipped rather than counted, since Gap 6's rendered-artifact evidence is not a gate firing. An empty evidence
+set yields nothing: gates that never ran are not gates that passed, and treating absence of proof as proof is
+how a stage closes on work nobody verified.
+
+**The limit that remains.** The other criteria are judgements — "every risk carries a mitigation", "every task
+states how it will be known done" — and those still arrive as caller-supplied `metCriteria`. No tool can
+decide them, which is why they are stated as criteria a reviewer checks rather than as gates. What holds is
+that the reviewer cannot satisfy its own gate and that nothing gate-decidable is taken on trust; what does not
+is that a caller misreporting a judged criterion is caught.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
+`roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),
+`roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits beside),
+`roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
+
+**Where this ruling could be got wrong later:** adding a disposition that means "ignored", which reintroduces
+the disposal route the whole design exists to prevent; relaxing `approve` so it tolerates an open blocker,
+which makes the verdict advisory; giving `exitCriteriaFor` an empty-list fallback, which closes stages
+vacuously; or writing a second path matcher for the debt index instead of importing the canonical one.
 
 ---
 

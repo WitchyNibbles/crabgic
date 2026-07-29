@@ -213,3 +213,79 @@ describe("buildWorkerEnv", () => {
     );
   });
 });
+
+/**
+ * Roast round 31 — the credentials dest against the same corpus every other
+ * hardened opener in the repo is now measured against.
+ *
+ * Driven through `provisionWorkerAuth` itself, one object per process, because
+ * the failure being measured is "does not return". Before the shared opener:
+ *
+ *   absent -> ok | regular -> ok | symlink -> WorkerAuthError
+ *   fifo -> *** BLOCKED ***      | directory -> bare Error (not WorkerAuthError)
+ *
+ * The FIFO never settled, while the function's own docblock claimed "any other
+ * non-regular / unreadable dest" was refused; and a directory produced a plain
+ * `Error`, so the promise of a `WorkerAuthError` for every refusal was not one
+ * the code kept.
+ */
+describe("provisionWorkerAuth — a hostile credentials destination", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "eo-auth-corpus-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  async function provision(plant: (dest: string) => Promise<void>): Promise<unknown> {
+    const sourcePath = join(dir, "source.json");
+    await writeFile(sourcePath, JSON.stringify({ token: "SECRET" }), { mode: 0o600 });
+    const configDir = join(dir, "cfg");
+    await mkdir(configDir, { recursive: true });
+    await plant(join(configDir, ".credentials.json"));
+    return provisionWorkerAuth({ kind: "credentialsFile", sourcePath }, configDir);
+  }
+
+  it("RETURNS on a FIFO at the destination instead of blocking in open(2)", async () => {
+    const { execFileSync } = await import("node:child_process");
+    // Racing a timer is the only assertion that can FAIL on a hang; a bare
+    // `await` on a promise that never settles just times the test out, with no
+    // diagnosis — which is the symptom rather than a report of it.
+    const outcome = await Promise.race([
+      provision(async (dest) => {
+        execFileSync("mkfifo", [dest]);
+      }).then(
+        () => "settled",
+        (err: unknown) => (err instanceof WorkerAuthError ? "refused" : "wrong-error"),
+      ),
+      new Promise<string>((resolve) => {
+        setTimeout(() => resolve("BLOCKED"), 5_000);
+      }),
+    ]);
+    expect(outcome).toBe("refused");
+  }, 20_000);
+
+  it("refuses a DIRECTORY with a WorkerAuthError, which is what its contract promises", async () => {
+    // Not merely "it threw": a bare `Error` here means a caller that catches
+    // `WorkerAuthError` to report an auth problem sees an unhandled crash
+    // instead, and the docblock's promise is doing work the code does not.
+    await expect(
+      provision(async (dest) => {
+        await mkdir(dest);
+      }),
+    ).rejects.toBeInstanceOf(WorkerAuthError);
+  });
+
+  it("still refuses a symlink, and does not read through it", async () => {
+    const victim = join(dir, "victim.json");
+    await writeFile(victim, "DO NOT READ", { mode: 0o600 });
+    await expect(
+      provision(async (dest) => {
+        await symlink(victim, dest);
+      }),
+    ).rejects.toBeInstanceOf(WorkerAuthError);
+    expect(await readFile(victim, "utf-8")).toBe("DO NOT READ");
+  });
+});

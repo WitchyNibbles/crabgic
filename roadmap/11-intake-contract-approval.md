@@ -35,10 +35,17 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
 - **CapabilityManifest:** digest-pinned skills/plugins/hooks/MCP servers/external tools; folds in 12's
   quarantine entries and 10's own plugin manifest entry when present — same graceful-degradation posture as
   `project.inspect`.
-- **Approval:** CLI terminal prompt (or explicitly-confirmed `/eo:approve`) renders contract + plan +
-  provisional perf budgets + connector mutation previews + manifest → mints one-time token via 09's minting
-  mechanism; MCP `contract.approve` only **verifies** — the model can never satisfy its own gate. Amendments
-  create new envelope versions requiring delta re-approval.
+- **Approval (amended 2026-07-28 — ledger Gap 18):** routine approval is **standing, over an envelope
+  class**, not per ChangeSet. 10's `install` writes an `EnvelopePolicy`; at dispatch (13) the compiled
+  `AuthorizationEnvelope` is tested for **containment** in it. Contained → no prompt, no token, the run
+  proceeds. Not contained → `expanded_authority` below halts it, all-or-nothing, never a partial grant of the
+  contained subset. **No session-reachable surface may write or widen the policy** — that, not the prompt, is
+  now what makes "the model can never satisfy its own gate" true. The rendering obligation is unchanged and
+  moves to `install`: contract + plan + provisional perf budgets + connector mutation previews + manifest are
+  still shown in full, once, to the human who confirms the policy. 09's minting mechanism and MCP
+  `contract.approve` (still **verify-only**) are retained for the escalation paths — an out-of-policy
+  envelope, 12's capability quarantine, 22's learning promotion. Amendments still create new envelope
+  versions; a new version is re-checked against the policy, and needs a human only if it leaves it.
 - **Stop conditions enforced:** material amendment, expanded authority, critical security issue, unsafe
   overlap, irreducible product decision, exhausted repairs, blocking verification. New requests → separate
   `ChangeSet` unless explicit amendment. **These seven are also the manager session's complete list of
@@ -48,6 +55,19 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   of the seven — `irreducible_product_decision` — is a QUESTION put to the owner rather than a halt, and
   it is asked with `AskUserQuestion` (`docs/engine-baseline.md` §18), never as a plain-text option list.
   See interface-ledger Gap 17.
+  **Two of the seven carry 2026-07-28 amendments.** `expanded_authority` is now also the halt for an
+  envelope that fails the `EnvelopePolicy` containment check, which makes it the *routine* escalation path
+  rather than a rare one (Gap 18). And `exhausted_repairs` is explicitly **not** the bound on an adversarial
+  review loop: it counts attempts against gates on one WorkUnit (initial + 2, unchanged), while a review
+  round is read-only and spends no attempt — see 13 and Gap 19. Conflating the two either caps quality
+  convergence at three rounds or makes real gate failures unbounded.
+
+  **`irreducible_product_decision` gains a second trigger (2026-07-29, Gap 19 amended).** It is now also
+  where a review stage goes when its progress budget is spent — a round that closes no blocking finding, or
+  the fifth round, whichever comes first. This is deliberate reuse rather than a new stop condition: the
+  situation is already the one this condition describes, since a stage that cannot close its own blocking
+  findings has reached a judgement no amount of further reading decides. It is the only stop condition that
+  asks the human rather than halting, which is the behaviour a stalled stage needs.
 
 ## Out of scope
 

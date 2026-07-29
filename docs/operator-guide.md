@@ -39,6 +39,13 @@ quarantine").
 
 ## 2. Running a change set
 
+> ℹ️ **This section documents the shipped binary, and the approval model it describes is being replaced.**
+> Owner ruling 2026-07-28 (**interface-ledger Gap 18**, adaptation §5.5) moves routine approval to a standing
+> `EnvelopePolicy` written by `crabgic install`, checked for containment at dispatch. The per-ChangeSet
+> terminal prompt below survives only for escalations — an out-of-policy envelope, capability quarantine, and
+> learning promotion. Nothing here is wrong about the current build; it is about to stop being the path an
+> operator takes.
+
 ```
 crabgic run [--json]
 ```
@@ -88,9 +95,12 @@ crabgic status [run-id] [--watch] [--json]
   and prints the run's current state (`changeSetId`, `runState`, `updatedAt`).
 - `--watch`: streams subsequent status-change events until the process is interrupted
   (Ctrl+C) or the run reaches a terminal state.
-- Without a `run-id` (listing every run): **`NOT_IMPLEMENTED`** at this repository's current
-  build — the supervisor's router has no `registry.runs.list` operation wired yet
-  (`packages/cli/src/commands/real-handlers.ts`'s own doc comment).
+- Without a `run-id` (listing every run): **wired** — `registry.runs.list` landed on the supervisor's
+  router 2026-07-25 and `runStatusAllCommand` consumes it, printing one line per run or `no runs`.
+  (This bullet claimed `NOT_IMPLEMENTED` until 2026-07-28; corrected after running the built binary
+  against a live daemon. `--watch` is still deliberately unsupported in this shape — 05 emits per-run
+  events, not a registry-wide stream, so watching everything would be a poll loop wearing a subscription's
+  clothes. Watching a specific run works.)
 
 ```
 crabgic cancel <run-id|task-id>

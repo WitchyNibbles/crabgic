@@ -1,3 +1,6 @@
+import type { EnvelopePolicy } from "@crabgic/contracts";
+import type { DerivedPolicy } from "../policy/derive-policy.js";
+
 /**
  * `install`/`upgrade`/`uninstall`'s own dependency bag — kept OPTIONAL on
  * `CliDependencies` (`../commands/types.ts`) rather than mandatory, so
@@ -16,4 +19,34 @@ export interface InstallerDependencies {
   readonly confirmGitInit: () => Promise<boolean>;
   /** Clock seam — defaults to `() => new Date().toISOString()`. */
   readonly now?: () => string;
+  /**
+   * The standing-approval bootstrap (ledger Gap 18; roadmap/10's 2026-07-28
+   * scope amendment). OPTIONAL for the same reason the whole bag is: every
+   * pre-existing installer test builds an `InstallerDependencies` without it
+   * and must keep observing the exact same artifact set.
+   *
+   * The policy is NOT an ordinary installer artifact. It lands in the
+   * project's XDG **state** root at `0600`, never in the repo — a standing
+   * grant that could be committed would be a standing grant every clone of
+   * the repository carried.
+   */
+  readonly policy?: PolicyInstallDependencies;
+}
+
+export interface PolicyInstallDependencies {
+  /** Absolute path the policy is written to (`resolveEnvelopePolicyPath` in real usage). */
+  readonly path: string;
+  /** Derives the candidate from the repository. Injected so tests need no real tree. */
+  readonly derive: () => DerivedPolicy;
+  /**
+   * Renders the candidate and returns the owner's decision.
+   *
+   * A human act by construction, exactly like `confirmGitInit`. Nothing
+   * reachable from a manager session may reach this — ledger Gap 18 part 3 —
+   * so it is supplied only by the interactive `install` path and is never
+   * defaulted to `true`.
+   */
+  readonly confirm: (policy: DerivedPolicy) => Promise<boolean>;
+  /** Writes the confirmed policy `0600`. Separate from `confirm` so a decline can never reach a writer. */
+  readonly write: (path: string, policy: EnvelopePolicy) => Promise<void>;
 }

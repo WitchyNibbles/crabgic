@@ -150,13 +150,41 @@ function withExtraAllow(profile: CompiledWorkerProfile, rule: string): CompiledW
   };
 }
 
-function packet(objective: string): TaskPacket {
+/**
+ * `maxTurns` defaults to 3 and is raised where an objective needs more.
+ *
+ * Observed 2026-07-28, twice in a row and therefore not a flake: the fork
+ * probe failed with the SDK's "Reached maximum number of turns (3)". Three
+ * turns is not enough for a session that must acknowledge an instruction and
+ * then be forked and answer again, and exhausting them makes the probe report
+ * a fork/transcript failure it never actually observed.
+ */
+function packet(objective: string, maxTurns = 3): TaskPacket {
   return buildTaskPacket({
     objective,
     ownedPaths: [],
-    resourceLimits: { maxTurns: 3 },
+    resourceLimits: { maxTurns },
     resultSchema: { type: "object" },
   });
+}
+
+/**
+ * Re-raises a turn exhaustion as explicitly INCONCLUSIVE.
+ *
+ * Turn exhaustion is not evidence about session forking in either direction.
+ * Left as the SDK's bare error it is indistinguishable, in the output, from
+ * the fork having genuinely misbehaved — so it is relabelled rather than
+ * swallowed. The test still fails; the reader is told what it means.
+ */
+function rethrowInconclusive(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/maximum number of turns/i.test(message)) {
+    throw new Error(
+      `INCONCLUSIVE, not a fork/transcript failure: the session exhausted its turn budget ` +
+        `before the probe completed (${message}). Re-run; if it persists, raise this probe's maxTurns.`,
+    );
+  }
+  throw err;
 }
 
 function textOf(events: readonly EngineEvent[]): string {
@@ -267,18 +295,21 @@ describe("adapter.fork isolates a repair attempt from the original transcript", 
           "Memory-persistence CI test. Remember the word BANANA123. " +
             "If this session is ever continued or resumed, your entire reply must be exactly BANANA123. " +
             "For now reply with exactly: ok",
+          // Acknowledge, then be forked and answer again: three turns is not
+          // enough, and running out reported a fork failure never observed.
+          6,
         ),
         READ_ONLY_PROFILE,
         allowAll,
       );
-      const originalEvents = await collectEngineEvents(original.events);
+      const originalEvents = await collectEngineEvents(original.events).catch(rethrowInconclusive);
       guardEngineEventsRateLimit(originalEvents);
 
       const originalTranscriptPath = transcriptPathForSession(original.sessionRef);
       const originalBytesBefore = readFileSync(originalTranscriptPath, "utf8");
 
       const forked = ctx.adapter.fork(original.sessionRef, allowAll);
-      const forkedEvents = await collectEngineEvents(forked.events);
+      const forkedEvents = await collectEngineEvents(forked.events).catch(rethrowInconclusive);
       guardEngineEventsRateLimit(forkedEvents);
 
       // Distinct id + its own transcript.

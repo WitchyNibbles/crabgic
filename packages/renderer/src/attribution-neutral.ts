@@ -28,8 +28,13 @@ const FIRST_PERSON_PATTERN = /\b(I|I've|I'm|I'll|we|we've|we're|we'll|our|my|min
 const SIGNATURE_DASH_ALONE_PATTERN = /^\s*(—|--)\s*$/gim;
 const SIGNATURE_CLOSING_PATTERN = /^\s*(Regards,|Best,|Cheers,|Thanks,|Sincerely,)\s*.*$/gim;
 
+// `Crabgic` sits in this list alongside the engine vendors by owner ruling
+// (2026-07-28): the harness's own name is attribution too. A shared artifact
+// says what changed and why — never what produced it. This is the ONLY place
+// the harness name is treated as a vendor name; `PresentationPolicy`'s
+// owner-facing output is unaffected, and so is every internal document.
 const ENGINE_NAME_PATTERN =
-  /\b(Claude|Anthropic|ChatGPT|OpenAI|GPT-4|GPT-3|Copilot|Gemini|Bard)\b/gi;
+  /\b(Claude|Anthropic|ChatGPT|OpenAI|GPT-4|GPT-3|Copilot|Gemini|Bard|Crabgic)\b/gi;
 
 function findAllMatches(text: string, pattern: RegExp): RegExpExecArray[] {
   const matches: RegExpExecArray[] = [];

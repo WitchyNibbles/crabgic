@@ -175,3 +175,7 @@ export type {
   IntegrationJournalAppender,
   IntegrationJournalEntryType,
 } from "./integration-journal.js";
+
+// Worktree dependency provisioning (roast round 1, F7) — a fresh worktree has
+// no node_modules, so the only two grantable build commands cannot run in one.
+export * from "./worktree-dependencies.js";
