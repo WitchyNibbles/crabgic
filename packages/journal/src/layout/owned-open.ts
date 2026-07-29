@@ -231,7 +231,21 @@ function classify(fd: number, options: OwnedOpenOptions): OwnedOpenRefusal | und
 export function ensureOwnedDir(dir: string, trustedRoot: string): OwnedOpenRefusal | undefined {
   const root = resolve(trustedRoot);
   const target = resolve(dir);
-  if (target !== root && !target.startsWith(`${root}${sep}`)) {
+  // `${root}${sep}` is WRONG when the root already ends in a separator: for a
+  // root of "/" it builds "//", which no absolute path starts with, so every
+  // path is rejected as "outside the root".
+  //
+  // Found because round 32's foreign-owner test passed against the mutation it
+  // was written to kill: with a root of "/" the containment guard returned
+  // `not-owned` before the ownership check could, so the assertion held for a
+  // reason it was not testing. `resolve` strips trailing separators, so "/" is
+  // the only root that reaches this, and on a non-root account the first
+  // component below it is always foreign-owned — which means this correction is
+  // NOT observable through any assertion and is recorded as such rather than
+  // claimed as covered. It is kept because a containment check that answers
+  // "outside" for every input is wrong regardless of who can see it.
+  const rootPrefix = root.endsWith(sep) ? root : `${root}${sep}`;
+  if (target !== root && !target.startsWith(rootPrefix)) {
     // A caller asking us to vouch for a path outside the root it named is a
     // programming error, not an attack — but it must not be answered "fine".
     return "not-owned";

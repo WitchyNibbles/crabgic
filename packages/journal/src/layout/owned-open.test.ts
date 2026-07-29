@@ -4,6 +4,7 @@ import {
   closeSync,
   constants,
   linkSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -280,5 +281,34 @@ describe("ensureOwnedDir — a machine that has never run this before", () => {
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
+  });
+});
+
+describe("ensureOwnedDir — a component this account does not own", () => {
+  it("refuses a real root-owned directory", () => {
+    // Round 30 recorded the equivalent FILE check as uncoverable: distinguishing
+    // it needs a file owned by another account, and this environment has one uid
+    // and no privilege to chown. That reasoning was too quick. The check is
+    // READ-ONLY, so it does not need a file this account can create — only one
+    // that already exists and belongs to someone else, and every Linux host ships
+    // thousands. `/usr` is root-owned, is a real directory rather than a symlink
+    // on the platforms this project supports, and nothing is written to it: the
+    // walk refuses at the first component and returns.
+    const uid = process.getuid?.();
+    if (uid === undefined || uid === 0) return; // running as root proves nothing here
+
+    // The root must NOT be "/": with a root of "/" every path is rejected by
+    // the containment guard, so the assertion below would pass whether or not
+    // the ownership check exists. That is how this test failed to kill its own
+    // mutant the first time it was written.
+    const probe = lstatSync("/usr/lib");
+    // Guard the guard: on a host where this is a symlink or is owned by us, the
+    // assertion would pass for a reason unrelated to ownership.
+    if (probe.isSymbolicLink() || probe.uid === uid) return;
+
+    expect(ensureOwnedDir("/usr/lib", "/usr")).toBe("not-owned");
+    // And it must refuse WITHOUT creating anything -- a walk that mkdir'd its
+    // way toward a foreign directory before checking would be the defect.
+    expect(lstatSync("/usr/lib").uid).toBe(probe.uid);
   });
 });

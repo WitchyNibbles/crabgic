@@ -121,3 +121,69 @@ after the `mkdir`.
 The other was an import that a `python` rewrite silently failed to apply, which
 surfaced as `ReferenceError` rather than as a wrong result — the harmless
 failure mode, and worth contrasting with the umask one, which was silent.
+
+## Mutation record
+
+| #   | mutation                               | result                                 |
+| --- | -------------------------------------- | -------------------------------------- |
+| P0  | unmutated                              | green control, 67/67                   |
+| P1  | stop refusing a symlinked component    | 2 failed                               |
+| P2  | `stat` instead of `lstat`              | **COMPILE-FAIL** — see below           |
+| P3  | allow a group/world-writable component | 1 failed                               |
+| P4  | allow a foreign-owned component        | **survived** → test written → 1 failed |
+| P5  | allow a non-directory component        | 1 failed                               |
+| P6  | create components world-writable       | 2 failed                               |
+| P7  | vouch for paths outside the given root | 1 failed                               |
+| P8  | stop creating the trusted root         | 12 failed                              |
+
+**P2 is recorded as untested, not as passed.** Replacing the only `lstatSync`
+call leaves the import unused, which this repo compiles as an error, so the
+mutant never reached `dist` and the row would otherwise have read `SURVIVED` for
+a reason unrelated to the tests. The battery reports `COMPILE-FAIL` explicitly
+rather than letting a non-compiling mutation masquerade as a survivor. Its
+behavioural effect is identical to P1 — `stat` makes `isSymbolicLink()` always
+false, which is exactly "stop refusing a symlinked component" — and P1 dies.
+
+**P4 overturns a conclusion round 30 recorded.** Round 30 wrote off the
+equivalent owner check as uncoverable: distinguishing it needs a file owned by
+another account, and this environment has one uid and no privilege to `chown`.
+That reasoning was too quick. The check is **read-only**, so it does not need a
+directory this account can create — only one that already exists and belongs to
+someone else, and every Linux host ships thousands. `/usr/lib` is root-owned, is
+a real directory rather than a symlink on the supported platforms, and the walk
+refuses at the first component without writing anything.
+
+## The test that killed nothing, and what it exposed
+
+The first version of that test asserted `ensureOwnedDir("/usr", "/")` is
+`not-owned` — and passed against the mutant it was written to kill.
+
+With a root of `/`, `` `${root}${sep}` `` builds `"//"`, which no absolute path
+starts with, so the **containment guard** returned `not-owned` before the
+ownership check could run. Both the correct code and the mutant returned the
+same string for different reasons, and the assertion could not tell them apart.
+That is the umask defect from earlier in this round in a second costume: an
+assertion that holds for a cause it is not testing.
+
+Two things came out of it. The test now uses a root of `/usr` and a target of
+`/usr/lib`, where only the ownership check can produce the verdict — and it
+kills P4. And the containment guard's separator handling is corrected, though
+**that correction is not observable by any assertion**: `resolve` strips
+trailing separators, so `/` is the only root that reaches it, and on a non-root
+account the first component below `/` is always foreign-owned. It is recorded as
+an inspection-level fix rather than claimed as covered, on the same footing as
+round 29's X2 and round 30's M4b/M4c.
+
+## Harness rule 5
+
+`git checkout -- <file>` as a mutation-restore **discards uncommitted work in
+that file**. It destroyed a fix three separate times in this session's rounds —
+once wiping round 30's entire fix, and twice silently reverting a one-line
+correction whose absence then looked like the fix "not working".
+
+The battery script is safe because rule 1 (commit before mutating) guarantees
+there is nothing uncommitted to lose. **Ad-hoc mutation probes carry no such
+guarantee**, and the two are easy to confuse because they use the same command.
+
+> **Rule 5: a mutation probe run by hand is only safe under rule 1 too.** Commit
+> first, or restore from a copy rather than from git.
