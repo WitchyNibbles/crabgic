@@ -44,6 +44,24 @@ function verdict(overrides: Record<string, unknown> = {}): Record<string, unknow
   };
 }
 
+/**
+ * The implement stage's one JUDGED criterion, attested.
+ *
+ * A bare `metCriteria` string no longer establishes a judged criterion, so a test
+ * asserting that a stage CLOSES has to say who judged it and why — which is the
+ * point of the change rather than an inconvenience of it.
+ */
+function doneCriteriaAttestation(round = 1): Record<string, unknown> {
+  return {
+    criterion: "implement-task-done-criteria-met",
+    asserter: "eo-reviewer:correctness",
+    rationale: "each stated done-criterion is demonstrated by a named test in this change set",
+    artifactAnchor: "packages/cli/src/review/review-submit-handler.test.ts",
+    assertedAt: "2026-07-29T00:00:00.000Z",
+    round,
+  };
+}
+
 function deps(overrides: Partial<ReviewSubmitDeps> = {}): ReviewSubmitDeps {
   const appended: unknown[] = [];
   return {
@@ -114,7 +132,11 @@ describe("runReviewSubmit — the document must be valid", () => {
 describe("runReviewSubmit — closure is computed, never asserted", () => {
   it("closes a stage when its criteria are met and nothing blocks", async () => {
     const result = await runReviewSubmit(
-      { stage: "implement", verdict: verdict({ verdict: "approve" }) },
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve" }),
+        attestations: [doneCriteriaAttestation()],
+      },
       deps(),
     );
     expect(result.ok).toBe(true);
@@ -177,7 +199,11 @@ describe("runReviewSubmit — debt reopens against planned writes", () => {
 
   it("leaves debt alone when the change set touches other code", async () => {
     const result = await runReviewSubmit(
-      { stage: "implement", verdict: verdict({ verdict: "approve" }) },
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve" }),
+        attestations: [doneCriteriaAttestation()],
+      },
       deps({
         priorFindings: () => [finding()],
         plannedWrites: () => ["packages/gates/src/drift/cli.ts"],
@@ -392,5 +418,187 @@ describe("runReviewSubmit — deriving no-open-debt-in-touched-paths", () => {
       }),
     );
     expect(result.unmetCriteria).not.toContain(DEBT_CRITERION);
+  });
+});
+
+/**
+ * JUDGED CRITERIA NOW NEED AN ATTRIBUTED CLAIM.
+ *
+ * Four criteria are derived from evidence and cannot be claimed. The rest are
+ * judgements no tool can settle — and they were arriving as bare strings in
+ * `metCriteria`, which is the weakest form a claim can take: nobody said it,
+ * nothing points at what it describes, and a misreport leaves no trace.
+ *
+ * The criterion stays undecidable. The CLAIM does not have to stay anonymous, and
+ * making it attributable is the reachable half. A bare string no longer counts,
+ * and it is reported back by name rather than silently ignored — a caller using
+ * the old shape gets told, instead of watching a criterion mysteriously stay unmet.
+ */
+describe("runReviewSubmit — attested judged criteria", () => {
+  const JUDGED = "implement-task-done-criteria-met";
+
+  function attestation(overrides: Record<string, unknown> = {}) {
+    return {
+      criterion: JUDGED,
+      asserter: "eo-reviewer:correctness",
+      rationale: "the task's stated done-criteria are each demonstrated by a named test",
+      artifactAnchor: "packages/cli/src/review/gate-criteria.test.ts",
+      assertedAt: "2026-07-29T00:00:00.000Z",
+      round: 1,
+      ...overrides,
+    };
+  }
+
+  /** Every judged criterion asserted the old way, and none of them count. */
+  it("does not count a bare metCriteria string, and names it back to the caller", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({ metCriteria: () => [JUDGED] }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.unmetCriteria).toContain(JUDGED);
+    expect(result.unattestedCriteria).toContain(JUDGED);
+  });
+
+  it("counts the same criterion once it carries an attributed claim", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict(), attestations: [attestation()] },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.unmetCriteria).not.toContain(JUDGED);
+    expect(result.unattestedCriteria ?? []).not.toContain(JUDGED);
+  });
+
+  it("refuses an attestation that is not a well-formed claim", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict(),
+        attestations: [attestation({ rationale: "" })],
+      },
+      deps(),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/attestation/i);
+  });
+
+  /**
+   * An attestation for a criterion the SERVER derives is discarded rather than
+   * honoured — and reported, because a caller attesting one has misunderstood
+   * something worth telling it about. Silently accepting it would let a judgement
+   * override evidence, which is the derivation running backwards.
+   */
+  it("discards an attestation for a criterion it derives for itself, and says so", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict(),
+        attestations: [attestation({ criterion: "implement-gates-pass" })],
+      },
+      deps({ metCriteria: () => [] }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.unmetCriteria).toContain("implement-gates-pass");
+    expect(result.ignoredAttestations).toContainEqual({
+      criterion: "implement-gates-pass",
+      reason: "derived from evidence server-side; an attestation cannot override it",
+    });
+  });
+
+  it("discards an attestation for a criterion the stage does not require", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict(),
+        attestations: [attestation({ criterion: "design-risks-have-mitigations" })],
+      },
+      deps(),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ignoredAttestations?.[0]?.criterion).toBe("design-risks-have-mitigations");
+    expect(result.ignoredAttestations?.[0]?.reason).toMatch(/implement/);
+  });
+
+  /**
+   * THE TEETH. An attestation is VOID while a finding on record says the criterion
+   * is violated. This is the one contradiction a tool can catch without deciding
+   * the criterion itself: two claims about the same criterion, one of them
+   * falsifiable and unresolved.
+   *
+   * Closure was already blocked by the open blocker, but `unmetCriteria` would
+   * have reported the criterion MET — a report contradicting the record it was
+   * computed from.
+   */
+  it("voids an attestation contradicted by an unresolved blocking finding", async () => {
+    const contradicting = finding({
+      id: "44444444-4444-4444-8444-444444444444",
+      classification: "blocking",
+      violates: JUDGED,
+      disposition: undefined,
+      dispositionEvidence: undefined,
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict(), attestations: [attestation()] },
+      deps({ priorFindings: () => [contradicting] }),
+    );
+
+    expect(result.unmetCriteria).toContain(JUDGED);
+    expect(result.voidedAttestations).toContainEqual({
+      criterion: JUDGED,
+      contradictedBy: "44444444-4444-4444-8444-444444444444",
+    });
+  });
+
+  it("honours the attestation again once that finding is answered", async () => {
+    const answered = finding({
+      id: "44444444-4444-4444-8444-444444444444",
+      classification: "blocking",
+      violates: JUDGED,
+      disposition: "fixed",
+      dispositionEvidence: "the done-criteria are now each covered by a test",
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict(), attestations: [attestation()] },
+      deps({ priorFindings: () => [answered] }),
+    );
+    expect(result.unmetCriteria).not.toContain(JUDGED);
+    expect(result.voidedAttestations ?? []).toEqual([]);
+  });
+
+  /**
+   * Attestations persist, so round 3 does not have to re-argue what round 1
+   * established — and so the record of whose judgement closed a stage outlives the
+   * call that made it.
+   */
+  it("counts an attestation carried over from an earlier round", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict({ round: 2 }) },
+      deps({
+        priorAttestations: () => [{ ...attestation(), stage: "implement" }],
+        metCriteria: () => [],
+      }),
+    );
+    expect(result.unmetCriteria).not.toContain(JUDGED);
+  });
+
+  it("ignores an earlier round's attestation made for a DIFFERENT stage", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        priorAttestations: () => [{ ...attestation(), stage: "design" }],
+        metCriteria: () => [],
+      }),
+    );
+    expect(result.unmetCriteria).toContain(JUDGED);
+  });
+
+  it("returns the attestations of record so the caller can persist what was judged", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict(), attestations: [attestation()] },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.attestations).toEqual([{ ...attestation(), stage: "implement" }]);
   });
 });

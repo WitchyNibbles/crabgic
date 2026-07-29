@@ -72,6 +72,10 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
       mkdtempSync(join(tmpdir(), "eo-reg-calib-")),
       "review-calibration.json",
     ),
+    reviewAttestationsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-attest-")),
+      "review-attestations.json",
+    ),
   };
 }
 
@@ -347,6 +351,22 @@ describe("buildProductionGatewayToolRegistry — provider dispatch", () => {
  * in the composition root and a unit test of the handler cannot see it.
  */
 describe("review.submit — server-derived exit criteria", () => {
+  /**
+   * The implement stage's one JUDGED criterion, attested.
+   *
+   * A bare `metCriteria` string no longer establishes a judged criterion — it is
+   * either derived from evidence, where a claim is irrelevant, or judged, where an
+   * anonymous boolean was the weakest form the claim could take.
+   */
+  const doneCriteriaAttestation = {
+    criterion: "implement-task-done-criteria-met",
+    asserter: "eo-reviewer:correctness",
+    rationale: "each stated done-criterion is demonstrated by a named test",
+    artifactAnchor: "packages/cli/src/review",
+    assertedAt: "2026-07-29T00:00:00.000Z",
+    round: 1,
+  };
+
   function verdictDoc(stage: string) {
     return {
       schemaVersion: 1,
@@ -400,6 +420,7 @@ describe("review.submit — server-derived exit criteria", () => {
       reviewStateHome: stateHome,
       reviewFindingsPath: join(stateHome, "review-findings.json"),
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
     };
   }
 
@@ -421,18 +442,16 @@ describe("review.submit — server-derived exit criteria", () => {
     const changeSetId = registerChangeSet(deps);
 
     const report = await submit(deps, changeSetId, {
-      metCriteria: [
-        "implement-gates-pass",
-        "implement-tests-first",
-        "implement-task-done-criteria-met",
-      ],
+      metCriteria: ["implement-gates-pass", "implement-tests-first"],
+      attestations: [doneCriteriaAttestation],
     });
 
     expect(report.ok).toBe(true);
     expect(report.unmetCriteria).toContain("implement-gates-pass");
     expect(report.unmetCriteria).toContain("implement-tests-first");
-    // The judged criterion still passes through — no tool can decide it, and
-    // pretending otherwise would be the opposite error.
+    // The judged criterion still counts — no tool can decide it, and refusing an
+    // attributed claim for one would be the opposite error. What it needed was an
+    // author, an argument and somewhere to look, which it has.
     expect(report.unmetCriteria).not.toContain("implement-task-done-criteria-met");
     expect(report.stageClosable).toBe(false);
   });
@@ -493,7 +512,7 @@ describe("review.submit — server-derived exit criteria", () => {
     });
 
     const report = await submit(deps, changeSetId, {
-      metCriteria: ["implement-task-done-criteria-met"],
+      attestations: [doneCriteriaAttestation],
     });
 
     expect(report.unmetCriteria).not.toContain("implement-gates-pass");
@@ -535,6 +554,7 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
       reviewStateHome: stateHome,
       reviewFindingsPath: join(stateHome, "review-findings.json"),
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
     };
   }
 

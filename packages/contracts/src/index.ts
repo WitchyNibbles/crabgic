@@ -79,6 +79,7 @@ export * from "./contracts/authorization-envelope.js";
 // EnvelopePolicy — the standing approval, and a compiler input (ledger Gap 18).
 export * from "./contracts/envelope-policy.js";
 export * from "./contracts/review-verdict.js";
+export * from "./contracts/criterion-attestation.js";
 export * from "./contracts/debt-index.js";
 export * from "./contracts/pipeline-stages.js";
 export * from "./contracts/capability-manifest.js";

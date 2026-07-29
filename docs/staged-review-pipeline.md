@@ -434,8 +434,57 @@ Fail-closed is the right default and it is not the same thing as correct.
 
 **What is still judged:** `implement-task-done-criteria-met`, and every design,
 plan and research criterion. Those are undecidable *while the artifacts they
-describe are free-form `IntentContract` narrative* — "every risk carries a
-mitigation" is a schema check the moment risks are a list with a mitigation
-field, and `plan-dependencies-acyclic` is a graph algorithm misfiled as a
-judgement. Structuring those artifacts is the work that would move them; it is
-listed as work here rather than claimed as impossible.
+describe are free-form `IntentContract` narrative* — see §8.6 for what they
+carry in the meantime, and §8.7 for the work that would decide them.
+
+### 8.6 A judged criterion closes a stage only on a claim somebody signed
+
+Added 2026-07-29. The criteria above cannot be decided by a tool. They were also
+arriving as bare strings in a `metCriteria` array, which is a separate problem
+and a fixable one: nobody said it, nothing pointed at what it described, and a
+misreport left no trace.
+
+`review.submit` now takes `attestations`, each naming the criterion, **who**
+asserts it, **why**, and **where in the artifact to look**. All four required
+non-empty, each removing one way a claim can be unfalsifiable. A bare string no
+longer counts and is reported back in `unattestedCriteria` rather than silently
+dropped.
+
+Two contradictions are caught without deciding anything:
+
+- an attestation for a criterion the server DERIVES is discarded — letting a
+  judgement override evidence is the derivation running backwards;
+- an attestation is **void** while an unresolved `blocking` finding names its
+  criterion. Closure was already blocked by that finding; what this fixes is the
+  report saying the criterion was met while the record said it was violated.
+
+**This is not verification, and must not be presented as any.** A rationale can
+be plausible and wrong; an anchor can point at a section that does not say what
+the claim says. What changes is that the claim can be *checked and found
+wanting*, which an anonymous `true` cannot. The residual is named: a caller
+misreporting a judged criterion is not caught — it is attributable afterwards.
+
+### 8.7 The judged set is a document-format problem, not a logic problem
+
+Seven of the judged criteria are undecidable only because the artifacts they
+describe are prose. Give design, plan and research structured records with
+traceability ids and they become mechanical:
+
+| Criterion | What it becomes |
+|---|---|
+| `plan-dependencies-acyclic` | a graph algorithm — it is misfiled as a judgement today |
+| `design-risks-have-mitigations` | every `risks[]` entry has a non-empty `mitigation` or `acceptedBecause` |
+| `design-interfaces-named` | every interface entry names its owning package |
+| `plan-tasks-have-done-criteria` | every task has non-empty done-criteria |
+| `design-addresses-every-acceptance-criterion` | bidirectional id resolution, the pattern `Requirement → EvidenceRecord → objectId` already uses |
+| `plan-covers-every-design-element` | the same, one stage along |
+| `research-questions-answered` / `research-no-silent-assumptions` | coverage of a question list, and a citation on each answer |
+
+⚠️ **The honest boundary.** This decides **claimed** coverage, not **adequate**
+coverage: a `mitigation` field can hold "we'll be careful". Structure removes the
+OMISSION failure, not the QUALITY one — and omission is the one that ran twelve
+rounds. The quality half stays judged, and stays attested per §8.6.
+
+This is real work: new contracts, new stage plumbing, and a coordinated ledger
+amendment. It is listed here as work rather than claimed as impossible, which is
+the distinction §8.0 and §8.3 both got wrong in the other direction.

@@ -15,7 +15,7 @@ import type { McpToolDefinition } from "../gateway-mcp/registry.js";
 export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
   name: "review.submit",
   description:
-    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Four exit criteria are DERIVED from journaled evidence and cannot be claimed: implement-gates-pass, implement-tests-first, integrate-final-candidate-gate (each from the gates' own recorded verdicts) and no-open-debt-in-touched-paths (from the finding store and this change set's planned writes). Claims to any of them are discarded. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, and `approve` submitted over an unresolved blocker.",
+    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Four exit criteria are DERIVED from journaled evidence and cannot be claimed: implement-gates-pass, implement-tests-first, integrate-final-candidate-gate (each from the gates' own recorded verdicts) and no-open-debt-in-touched-paths (from the finding store and this change set's planned writes). Every OTHER criterion is a judgement and needs an entry in `attestations` naming who asserts it, why, and where in the artifact to look — a bare string in `metCriteria` does not count and is reported back in `unattestedCriteria`. An attestation is void while an unresolved blocking finding names its criterion. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, `approve` submitted over an unresolved blocker, and an attestation with no asserter, rationale or anchor.",
   inputSchema: {
     type: "object",
     properties: {
@@ -23,17 +23,43 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
       changeSetId: { type: "string" },
       verdict: { type: "object" },
       /**
-       * Exit criteria established OUTSIDE the review, for the criteria no tool
-       * can decide — "every task states how it will be known done" and the like.
+       * Legacy bare-string criteria. Retained so a caller using the old shape gets
+       * told, not so it works.
        *
-       * Separate from `verdict` on purpose: a reviewer submits findings and never
-       * asserts which criteria are met. The four gate-decidable and
-       * debt-decidable criteria are STRIPPED from whatever arrives here and
-       * recomputed from evidence, so claiming them has no effect. What remains is
-       * the judged set, which is caller-asserted and named as such rather than
-       * dressed up as measured.
+       * The four gate-decidable and debt-decidable criteria are recomputed from
+       * evidence, so claiming them has no effect. Everything else needs an
+       * `attestations` entry and is reported in `unattestedCriteria` when it does
+       * not have one — a criterion that quietly stayed unmet is the failure mode of
+       * every silent strip.
        */
       metCriteria: { type: "array", items: { type: "string" } },
+      /**
+       * Attributed claims that this stage's JUDGED criteria are met.
+       *
+       * Each entry: `criterion`, `asserter` (who), `rationale` (why),
+       * `artifactAnchor` (where to look), `assertedAt`, `round`. All required
+       * non-empty — each removes one way a claim can be unfalsifiable.
+       *
+       * This does not make the criterion decidable and is not presented as
+       * verification. It makes the CLAIM attributable, which is a different
+       * property and a reachable one: a named judgement pointing at a named place
+       * can be checked and found wanting, and an anonymous `true` cannot.
+       */
+      attestations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            criterion: { type: "string" },
+            asserter: { type: "string" },
+            rationale: { type: "string" },
+            artifactAnchor: { type: "string" },
+            assertedAt: { type: "string" },
+            round: { type: "number" },
+          },
+          required: ["criterion", "asserter", "rationale", "artifactAnchor", "assertedAt", "round"],
+        },
+      },
       /**
        * The object id being merged, for `integrate-final-candidate-gate`.
        *

@@ -96,6 +96,30 @@ exhaustion, and only artifact quality is finite.
 advances when every written criterion is met, nothing is still `blocking`, and
 every finding raised has a disposition.
 
+**You do not decide which criteria are met — `review.submit` does.** Criteria
+come in two kinds, and the tool treats them differently:
+
+- **Derived (4).** `implement-gates-pass`, `implement-tests-first`,
+  `integrate-final-candidate-gate` and `no-open-debt-in-touched-paths` are
+  computed from the gates' own recorded verdicts and from the finding store.
+  Claiming one has no effect — pass `candidateObjectId` for the integrate stage
+  and let the evidence speak.
+- **Judged (everything else).** These need an `attestations` entry naming
+  `criterion`, `asserter` (who judged it), `rationale` (why), `artifactAnchor`
+  (where to look), `assertedAt` and `round`. A bare string in `metCriteria` does
+  **not** count and comes back in `unattestedCriteria`.
+
+This does not turn a judgement into a measurement, and do not present it as one.
+It makes the claim **falsifiable**: a named judgement pointing at a named place
+can be checked and found wanting, which an anonymous `true` cannot. Write the
+rationale so a sceptical reader who opens the anchor can disagree with you.
+
+Two ways an attestation still fails to count, both reported back: it names a
+criterion the server derives or one the stage does not require
+(`ignoredAttestations`), or an unresolved `blocking` finding names that same
+criterion (`voidedAttestations`) — you cannot attest a criterion the record says
+is violated.
+
 **Blocking requires naming the criterion violated.** A finding that violates no
 stated criterion is `advisory` — real, recorded, answered, but not holding the
 stage open.

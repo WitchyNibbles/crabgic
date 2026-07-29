@@ -66,6 +66,12 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 | `WorkerResult` | 06 (schema-enforced via `--json-schema`), 14 |
 | `EvidenceRecord` | 04/14 (emit), 08 (attaches rendered PR/review-comment artifacts), 09 (surfaces via `evidence <change-set-id>`), 21, 23 |
 
+> `CriterionAttestation` / `StoredAttestation` join this package (2026-07-29): the attributed claim a JUDGED exit
+> criterion is met — `criterion`, `asserter`, `rationale`, `artifactAnchor`, all required non-empty, each removing
+> one way a claim can be unfalsifiable. Not a new *contract* in the 21-contract sense; it is the enforceable half
+> of a criterion no tool can decide, the same shape `ReviewFinding.violates` already takes. See interface-ledger
+> Gap 20, "Amended 2026-07-29 — judged criteria carry an attributed claim".
+
 > `EvidenceRecord` carries `gateVerdict: "passed" | "failed"` (optional) — the gate handler's own judgement,
 > which `exitStatus` cannot stand in for: 14's TDD gate returns `passed: false` while reporting the candidate's
 > `exitStatus: 0` when no red baseline exists. **Absent is meaningful**, not unset: a `captureRedBaseline`

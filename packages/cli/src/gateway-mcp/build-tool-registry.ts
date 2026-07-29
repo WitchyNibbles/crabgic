@@ -67,6 +67,7 @@ import { REVIEW_CALIBRATE_TOOL, REVIEW_SUBMIT_TOOL } from "../review/tool-defini
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
+import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
 import { GATE_DERIVED_CRITERIA, deriveGateCriteria } from "../review/gate-criteria.js";
 import { scoreCalibration } from "../review/calibration.js";
 import { loadCalibrationSamples, recordCalibrationSample } from "../review/calibration-store.js";
@@ -114,6 +115,8 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly reviewStateHome: string;
   /** Where the owner's calibration judgements about the classifier live. */
   readonly reviewCalibrationPath: string;
+  /** Where the attributed claims about judged exit criteria live. */
+  readonly reviewAttestationsPath: string;
 }
 
 /**
@@ -145,6 +148,7 @@ function buildReviewTools(
         .find((candidate) => candidate.changeSetId === args.changeSetId);
 
       const prior = await loadFindings(deps.reviewFindingsPath);
+      const priorAttestations = await loadAttestations(deps.reviewAttestationsPath);
       // Scored from the owner's own corpus, and reported on the response. A
       // fresh project has none, which is normal — what would not be normal is
       // handing back a blocking/advisory verdict without saying whether anyone
@@ -178,12 +182,17 @@ function buildReviewTools(
       );
       const metCriteria = [...claimed, ...derived];
       const result = await runReviewSubmit(
-        { stage: args.stage, verdict: args.verdict },
+        {
+          stage: args.stage,
+          verdict: args.verdict,
+          ...(args.attestations !== undefined ? { attestations: args.attestations } : {}),
+        },
         {
           appendEvidence: () => Promise.resolve(),
           priorFindings: () => prior,
           plannedWrites: () => envelope?.ownedPaths ?? [],
           metCriteria: () => metCriteria,
+          priorAttestations: () => priorAttestations,
           calibration: () => ({
             calibrated: calibration.calibrated,
             kappa: calibration.kappa,
@@ -199,6 +208,16 @@ function buildReviewTools(
       // decision was computed from rather than as the set that was submitted.
       if (result.ok && result.findings !== undefined) {
         await saveFindings(deps.reviewFindingsPath, result.findings, deps.reviewStateHome);
+      }
+      // Persisted per stage, and only the stage that was submitted — a submission
+      // for `implement` knows nothing about what the design stage established.
+      if (result.ok && result.attestations !== undefined) {
+        await saveAttestationsForStage(
+          deps.reviewAttestationsPath,
+          args.stage,
+          result.attestations,
+          deps.reviewStateHome,
+        );
       }
       return jsonResult(result);
     },
@@ -272,6 +291,15 @@ const REVIEW_SUBMIT_SHAPE = {
   // disagree the first time either moved.
   verdict: z.unknown(),
   metCriteria: z.array(z.string()).optional(),
+  /**
+   * Attributed claims that this stage's JUDGED criteria are met — each naming who
+   * asserts it, why, and where in the artifact to look.
+   *
+   * `unknown` for the same reason `verdict` is: `CriterionAttestationSchema`
+   * validates them inside the handler, where a rejection carries the reason, and a
+   * second shape declared here would disagree with it the first time either moved.
+   */
+  attestations: z.array(z.unknown()).optional(),
   /**
    * The object id being merged, for `integrate-final-candidate-gate`.
    *

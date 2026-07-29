@@ -1335,12 +1335,50 @@ adopted by the release-gate report generator and the learning eval runner, which
 consult. It prefers the verdict and falls back to the exit status, so records journaled before the field grade
 exactly as they did. A closure derivation deliberately does NOT take that fallback: unproven is not green.
 
-**The limit that remains.** The other criteria are judgements — "every risk carries a mitigation", "every task
-states how it will be known done" — and those still arrive as caller-supplied `metCriteria`. No tool can
-decide them **while the artifacts they describe are free-form narrative**, which is why they are stated as
-criteria a reviewer checks rather than as gates. What holds is that the reviewer cannot satisfy its own gate
-and that nothing gate-decidable or debt-decidable is taken on trust; what does not is that a caller
-misreporting a judged criterion is caught.
+**The limit that remains — and the half of it that was reachable.** The other criteria are judgements: "every
+risk carries a mitigation", "every task states how it will be known done". No tool can decide them **while the
+artifacts they describe are free-form narrative**, which is why they are stated as criteria a reviewer checks
+rather than as gates. That much stands.
+
+What did NOT have to stand is the FORM the claim took. Those criteria arrived as bare strings in a
+`metCriteria` array — the weakest possible shape for a claim: nobody said it, nothing pointed at what it
+described, and a misreport left no trace. The criterion being undecidable and the claim being anonymous are two
+different properties, and only the first is forced.
+
+**Amended 2026-07-29 — judged criteria carry an attributed claim or they do not count.** `CriterionAttestation`
+(`@crabgic/contracts`) requires four things non-empty, each removing one way a claim can be unfalsifiable:
+`criterion`, `asserter` (who judged it), `rationale` (why), and `artifactAnchor` (where in the artifact to
+look). This is the same move part 1 made for findings — a `blocking` finding must name the criterion it
+violates — applied one level out.
+
+1. **A bare `metCriteria` string no longer establishes anything.** It is either a criterion the server derives,
+   where the claim is irrelevant, or a judged one, where it needs an attestation. It is reported back in
+   `unattestedCriteria` rather than silently stripped: a caller watching a criterion it "supplied" stay unmet
+   with no explanation is the failure mode of every silent discard.
+2. **An attestation for a derived criterion is discarded and reported**, never honoured. Letting a judgement
+   override evidence is the derivation running backwards.
+3. **An attestation is VOID while an unresolved `blocking` finding names its criterion in `violates`.** This is
+   the one contradiction a tool can catch without deciding the criterion itself: two claims about the same
+   criterion, and the falsifiable one is unanswered. Closure was already blocked by that finding — what this
+   fixes is `unmetCriteria` reporting the criterion MET, a report contradicting the record it was computed from.
+4. **Attestations are durable**, in XDG state beside the findings and the calibration corpus, scoped per stage
+   so a submission for `implement` cannot overwrite what the design stage established. Without persistence an
+   attestation lives for one tool call, round 2 re-argues what round 1 settled, and the record of whose
+   judgement closed a stage vanishes with the response — an attributed claim nobody can look up later is barely
+   better than the boolean it replaced.
+
+**This is not verification and is not presented as any.** A rationale can be plausible and wrong; an anchor can
+point at a section that does not say what the attestation claims. The gain is falsifiability: a named judgement
+pointing at a named place can be checked and found wanting. What holds now is that the reviewer cannot satisfy
+its own gate, that nothing gate-decidable or debt-decidable is taken on trust, and that a judged criterion
+closes a stage only on a claim somebody signed. What still does not hold is that a caller misreporting a judged
+criterion is CAUGHT — only that the misreport is attributable after the fact.
+
+**The real fix for the judged set is structural, and is named as work rather than as impossibility.** Seven of
+these criteria are undecidable only because design, plan and research artifacts are free-form `IntentContract`
+narrative. "Every risk carries a mitigation" is a `superRefine` the moment risks are a list with a mitigation
+field, and `plan-dependencies-acyclic` is a graph algorithm currently filed as a judgement. See
+`docs/staged-review-pipeline.md` §8.6.
 
 One narrow residual is named rather than glossed: `integrate-final-candidate-gate` takes the candidate object
 id from the caller, so a caller may point at an OLDER object that happens to be fully green. Naming an id

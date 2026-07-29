@@ -1,4 +1,5 @@
 import {
+  CriterionAttestationSchema,
   DEBT_REOPENED_CRITERION,
   PIPELINE_STAGE_IDS,
   REVIEW_ROUND_CEILING,
@@ -10,7 +11,10 @@ import {
   type PipelineStageId,
   type ReviewFinding,
   type ReviewVerdict,
+  type CriterionAttestation,
+  type StoredAttestation,
 } from "@crabgic/contracts";
+import { GATE_DERIVED_CRITERIA } from "./gate-criteria.js";
 
 /**
  * `review.submit` — the wiring ledger Gap 20 recorded as missing.
@@ -40,8 +44,18 @@ export interface ReviewSubmitDeps {
   readonly priorFindings: () => readonly ReviewFinding[];
   /** The paths this change set intends to write, for reopening debt. */
   readonly plannedWrites: () => readonly string[];
-  /** Exit criteria this stage has satisfied, established outside the review. */
+  /**
+   * Exit criteria the caller claims as bare strings.
+   *
+   * Kept, and no longer BELIEVED. Every criterion here is either derived by the
+   * server — in which case the claim is irrelevant — or judged, in which case it
+   * needs an attestation. A bare string is reported back in `unattestedCriteria`
+   * rather than dropped in silence, so a caller using the old shape is told why
+   * its criterion stayed unmet instead of having to guess.
+   */
   readonly metCriteria: () => readonly string[];
+  /** Attestations already on record for this stage, from earlier rounds. */
+  readonly priorAttestations?: () => readonly StoredAttestation[];
   /**
    * How well the blocking/advisory classifier agrees with the owner, if anyone
    * has checked.
@@ -88,6 +102,27 @@ export interface ReviewEvidence {
 export interface ReviewSubmitInput {
   readonly stage: string;
   readonly verdict: unknown;
+  /**
+   * Attributed claims that the stage's JUDGED criteria are met.
+   *
+   * Validated by `CriterionAttestationSchema`, so an anonymous or unanchored claim
+   * is rejected rather than counted. Unvalidated here because the shape belongs to
+   * the schema and a second copy of it would drift.
+   */
+  readonly attestations?: readonly unknown[];
+}
+
+/** A claim that could not be honoured, and the reason, returned rather than dropped. */
+export interface IgnoredAttestation {
+  readonly criterion: string;
+  readonly reason: string;
+}
+
+/** A well-formed claim that a finding on record contradicts. */
+export interface VoidedAttestation {
+  readonly criterion: string;
+  /** The unresolved blocking finding that names this criterion in `violates`. */
+  readonly contradictedBy: string;
 }
 
 export interface ReviewSubmitResult {
@@ -114,6 +149,25 @@ export interface ReviewSubmitResult {
    * "fine", and the honest default here is "nobody has looked".
    */
   readonly calibration?: CalibrationStatus;
+  /**
+   * Criteria the caller claimed as bare strings, which therefore did not count.
+   *
+   * Reported by name because the alternative is a caller watching a criterion it
+   * "supplied" stay unmet with no explanation — the failure mode of every silent
+   * strip.
+   */
+  readonly unattestedCriteria?: readonly string[];
+  /** Attestations that could not be honoured, each with its reason. */
+  readonly ignoredAttestations?: readonly IgnoredAttestation[];
+  /** Attestations a finding on record contradicts. */
+  readonly voidedAttestations?: readonly VoidedAttestation[];
+  /**
+   * The attestations of record for this stage after merging this round's.
+   *
+   * Returned for the same reason `findings` is: the caller persists exactly what
+   * the closure decision was computed from, not its own idea of it.
+   */
+  readonly attestations?: readonly StoredAttestation[];
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -179,6 +233,87 @@ function deriveDebtCriterion(
   return touched.length === 0 && !stillOpen ? [DEBT_REOPENED_CRITERION] : [];
 }
 
+interface AttestationResolution {
+  readonly met: readonly string[];
+  readonly ignored: readonly IgnoredAttestation[];
+  readonly voided: readonly VoidedAttestation[];
+  readonly ofRecord: readonly StoredAttestation[];
+}
+
+/**
+ * Which judged criteria an attributed claim actually establishes.
+ *
+ * Three ways a well-formed claim still fails to count, in the order they are
+ * checked:
+ *
+ *   1. **The server derives this criterion.** Discarded, never honoured: letting a
+ *      judgement override evidence is the derivation running backwards. Reported,
+ *      because a caller attesting one has misunderstood something worth being
+ *      told.
+ *   2. **The stage does not require it.** An attestation for another stage's
+ *      criterion is a judgement about a different artifact.
+ *   3. **A finding on record contradicts it.** This is the one contradiction a tool
+ *      can catch without deciding the criterion itself: an unresolved blocking
+ *      finding names the criterion in `violates`, so there are two claims about it
+ *      and the falsifiable one is unanswered. Closure was already blocked by that
+ *      finding — what this fixes is `unmetCriteria` reporting the criterion MET,
+ *      which is a report contradicting the record it was computed from.
+ */
+function resolveAttestations(input: {
+  readonly stage: string;
+  readonly submitted: readonly StoredAttestation[];
+  readonly prior: readonly StoredAttestation[];
+  readonly requiredCriteria: readonly string[];
+  readonly findings: readonly ReviewFinding[];
+}): AttestationResolution {
+  const ignored: IgnoredAttestation[] = [];
+  const voided: VoidedAttestation[] = [];
+
+  // This round's claim supersedes an earlier round's for the same criterion — a
+  // re-assertion is a revision, not a second voice.
+  const byCriterion = new Map<string, StoredAttestation>();
+  for (const attestation of input.prior) {
+    if (attestation.stage !== input.stage) continue;
+    byCriterion.set(attestation.criterion, attestation);
+  }
+  for (const attestation of input.submitted) {
+    if (GATE_DERIVED_CRITERIA.includes(attestation.criterion)) {
+      ignored.push({
+        criterion: attestation.criterion,
+        reason: "derived from evidence server-side; an attestation cannot override it",
+      });
+      continue;
+    }
+    if (!input.requiredCriteria.includes(attestation.criterion)) {
+      ignored.push({
+        criterion: attestation.criterion,
+        reason: `not an exit criterion of the "${input.stage}" stage`,
+      });
+      continue;
+    }
+    byCriterion.set(attestation.criterion, attestation);
+  }
+
+  const contradiction = new Map<string, string>();
+  for (const finding of input.findings) {
+    if (finding.violates === undefined) continue;
+    if (!isUnresolvedBlocking(finding)) continue;
+    if (!contradiction.has(finding.violates)) contradiction.set(finding.violates, finding.id);
+  }
+
+  const met: string[] = [];
+  for (const [criterion] of byCriterion) {
+    const contradictedBy = contradiction.get(criterion);
+    if (contradictedBy !== undefined) {
+      voided.push({ criterion, contradictedBy });
+      continue;
+    }
+    met.push(criterion);
+  }
+
+  return { met, ignored, voided, ofRecord: [...byCriterion.values()] };
+}
+
 export async function runReviewSubmit(
   input: ReviewSubmitInput,
   deps: ReviewSubmitDeps,
@@ -201,6 +336,24 @@ export async function runReviewSubmit(
   }
   const verdict: ReviewVerdict = parsed.data;
 
+  // Validated before anything is journaled or persisted, and REJECTED rather than
+  // dropped: an anonymous or unanchored claim is a caller bug, and accepting the
+  // submission while quietly ignoring it would leave the caller believing a
+  // criterion was established by something the server threw away.
+  const parsedAttestations: CriterionAttestation[] = [];
+  for (const candidate of input.attestations ?? []) {
+    const result = CriterionAttestationSchema.safeParse(candidate);
+    if (!result.success) {
+      return {
+        ok: false,
+        error: `invalid criterion attestation: ${result.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    parsedAttestations.push(result.data);
+  }
+
   const prior = deps.priorFindings();
   const merged = mergeFindings(prior, verdict.findings);
   const writes = deps.plannedWrites();
@@ -215,13 +368,40 @@ export async function runReviewSubmit(
   ).length;
 
   const requiredCriteria = exitCriteriaFor(input.stage);
-  // The debt criterion is DERIVED here and stripped from whatever the caller
-  // claimed, for the same reason the gate criteria are: the server already knows
-  // the answer, so asking is worse than deciding. Everything else in
-  // `metCriteria` is a judgement no tool can settle and passes through.
+
+  const attested = resolveAttestations({
+    stage: input.stage,
+    submitted: parsedAttestations.map((attestation) => ({ ...attestation, stage: input.stage })),
+    prior: deps.priorAttestations?.() ?? [],
+    requiredCriteria,
+    findings: afterDebt,
+  });
+
+  /**
+   * What a criterion being "met" now rests on, and nothing else:
+   *
+   *   - the gate criteria, derived by the composition root from journaled evidence
+   *     and passed in through `metCriteria` — which is why only the ids in
+   *     `GATE_DERIVED_CRITERIA` are taken from there;
+   *   - the debt criterion, derived HERE from the finding set and planned writes;
+   *   - the judged criteria, each carrying an attributed claim no finding
+   *     contradicts.
+   *
+   * Anything else arriving in `metCriteria` is a judged criterion claimed as a bare
+   * string, and an anonymous boolean is the weakest form a claim can take. It
+   * counts for nothing and is reported back by name rather than silently dropped.
+   */
+  const injectedFromEvidence = deps
+    .metCriteria()
+    .filter((criterion) => GATE_DERIVED_CRITERIA.includes(criterion));
+  const unattestedCriteria = deps
+    .metCriteria()
+    .filter((criterion) => !GATE_DERIVED_CRITERIA.includes(criterion))
+    .filter((criterion) => !attested.met.includes(criterion));
   const metCriteria = [
-    ...deps.metCriteria().filter((criterion) => criterion !== DEBT_REOPENED_CRITERION),
+    ...injectedFromEvidence,
     ...deriveDebtCriterion(merged, afterDebt, writes),
+    ...attested.met,
   ];
   const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
 
@@ -260,6 +440,10 @@ export async function runReviewSubmit(
     ok: true,
     findings: afterDebt,
     calibration: deps.calibration(),
+    attestations: attested.ofRecord,
+    unattestedCriteria,
+    ignoredAttestations: attested.ignored,
+    voidedAttestations: attested.voided,
     stageClosable,
     unmetCriteria,
     openBlocking,
