@@ -316,8 +316,16 @@ function resolveAttestations(input: {
   // This round's claim supersedes an earlier round's for the same criterion — a
   // re-assertion is a revision, not a second voice.
   const byCriterion = new Map<string, StoredAttestation>();
+  const admissible = (criterion: string): boolean =>
+    !GATE_DERIVED_CRITERIA.includes(criterion) && input.requiredCriteria.includes(criterion);
   for (const attestation of input.prior) {
     if (attestation.stage !== input.stage) continue;
+    // A stored attestation faces the SAME two filters as a fresh one. The record
+    // outlives the rules it was written under: a criterion that has since become
+    // server-derived, or been removed from the stage, would otherwise have an old
+    // claim quietly overriding a new derivation. Not reported in
+    // `ignoredAttestations` — that field is about what THIS call sent.
+    if (!admissible(attestation.criterion)) continue;
     byCriterion.set(attestation.criterion, attestation);
   }
   for (const attestation of input.submitted) {
@@ -328,7 +336,7 @@ function resolveAttestations(input: {
       });
       continue;
     }
-    if (!input.requiredCriteria.includes(attestation.criterion)) {
+    if (!admissible(attestation.criterion)) {
       ignored.push({
         criterion: attestation.criterion,
         reason: `not an exit criterion of the "${input.stage}" stage`,
@@ -499,16 +507,26 @@ export async function runReviewSubmit(
   const injectedFromEvidence = deps
     .metCriteria()
     .filter((criterion) => GATE_DERIVED_CRITERIA.includes(criterion));
-  const unattestedCriteria = deps
-    .metCriteria()
-    .filter((criterion) => !GATE_DERIVED_CRITERIA.includes(criterion))
-    .filter((criterion) => !attested.met.includes(criterion));
   const metCriteria = [
     ...injectedFromEvidence,
     ...deriveDebtCriterion(merged, afterDebt, writes),
     ...artifactDerived,
     ...attested.met,
   ];
+  /**
+   * Claimed as a bare string, not decided by the server, and not met. One meaning
+   * exactly, because the field's whole job is to tell the caller what to do next.
+   *
+   * Server-derived ids are excluded because attesting one is not the fix — the tool
+   * documents that they cannot be claimed, and listing them here would send a
+   * caller to write an attestation that could never establish them. Criteria that
+   * ended up met are excluded because there is nothing left to report.
+   */
+  const serverDecided = [...GATE_DERIVED_CRITERIA, DEBT_REOPENED_CRITERION];
+  const unattestedCriteria = deps
+    .metCriteria()
+    .filter((criterion) => !serverDecided.includes(criterion))
+    .filter((criterion) => !metCriteria.includes(criterion));
   const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
 
   const unmetCriteria = requiredCriteria.filter((criterion) => !metCriteria.includes(criterion));

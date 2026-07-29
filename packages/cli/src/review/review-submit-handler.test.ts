@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DesignRecordSchema, exitCriteriaFor, type ReviewFinding } from "@crabgic/contracts";
+import {
+  DesignRecordSchema,
+  exitCriteriaFor,
+  type CriterionAttestation,
+  type ReviewFinding,
+} from "@crabgic/contracts";
 import { runReviewSubmit, type ReviewSubmitDeps } from "./review-submit-handler.js";
 
 /**
@@ -51,7 +56,7 @@ function verdict(overrides: Record<string, unknown> = {}): Record<string, unknow
  * asserting that a stage CLOSES has to say who judged it and why — which is the
  * point of the change rather than an inconvenience of it.
  */
-function doneCriteriaAttestation(round = 1): Record<string, unknown> {
+function doneCriteriaAttestation(round = 1): CriterionAttestation {
   return {
     criterion: "implement-task-done-criteria-met",
     asserter: "eo-reviewer:correctness",
@@ -808,5 +813,82 @@ describe("runReviewSubmit — criteria decided by the design and plan records", 
       deps({ metCriteria: () => [] }),
     );
     expect(result.planOfRecord?.tasks).toHaveLength(1);
+  });
+});
+
+/**
+ * Self-review of the reporting itself.
+ *
+ * `unattestedCriteria` exists to tell a caller WHY a criterion it supplied did not
+ * count, so the field has to mean one thing. A criterion that is server-derived was
+ * never going to count from a bare string and the tool documents that; a criterion
+ * that did end up met must not appear at all.
+ */
+describe("runReviewSubmit — unattestedCriteria means exactly one thing", () => {
+  it("does not name a server-derived criterion the caller claimed", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        metCriteria: () => ["implement-gates-pass", "no-open-debt-in-touched-paths"],
+      }),
+    );
+    // Both are decided by the server. Listing them as "unattested" would tell the
+    // caller to go and attest something no attestation can establish.
+    expect(result.unattestedCriteria).toEqual([]);
+  });
+
+  it("does not name a criterion that ended up met after all", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict(),
+        attestations: [doneCriteriaAttestation()],
+      },
+      deps({ metCriteria: () => ["implement-task-done-criteria-met"] }),
+    );
+    expect(result.unattestedCriteria).toEqual([]);
+    expect(result.unmetCriteria).not.toContain("implement-task-done-criteria-met");
+  });
+
+  /**
+   * A stored attestation for a criterion that has SINCE become server-derived must
+   * stop counting. The record outlives the rules it was written under, and an old
+   * claim silently overriding a new derivation is the derivation running backwards
+   * with a delay.
+   */
+  it("stops honouring a stored attestation once its criterion became server-derived", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        metCriteria: () => [],
+        priorAttestations: () => [
+          {
+            ...doneCriteriaAttestation(),
+            criterion: "implement-gates-pass",
+            stage: "implement",
+          },
+        ],
+      }),
+    );
+    expect(result.unmetCriteria).toContain("implement-gates-pass");
+  });
+
+  it("stops honouring a stored attestation for a criterion the stage no longer requires", async () => {
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict() },
+      deps({
+        metCriteria: () => [],
+        priorAttestations: () => [
+          {
+            ...doneCriteriaAttestation(),
+            criterion: "design-risks-have-mitigations",
+            stage: "implement",
+          },
+        ],
+      }),
+    );
+    expect(result.attestations?.map((entry) => entry.criterion)).not.toContain(
+      "design-risks-have-mitigations",
+    );
   });
 });
