@@ -1112,40 +1112,75 @@ Read together the two are contradictory: one says stop at three, the other says 
 2. **A roast round is read-only.** It is an adversarial review of an artifact (design, test suite, or diff)
    that produces findings. It never re-executes work, never transitions the run, and never spends a repair
    attempt. Acting on its findings may.
-3. **The loop is unbounded in rounds.** There is no cap. This is the owner's explicit choice over a
-   three-round or two-clean-round alternative, made with the token cost stated.
-4. **"Honestly" is the termination criterion, and it is mechanical.** A round extends the loop only if it
-   yields at least one finding that is both **novel** — deduplicated against every finding already raised for
-   this artifact — and **falsifiable**, carrying a concrete failure scenario (inputs or state → wrong output
-   or crash). Restatement, generality and taste do not extend it. **There is no severity floor:** a real
-   low-severity finding extends the loop exactly as a critical one does. A round that yields nothing novel
-   and falsifiable closes the loop.
+3. **The loop is bounded by progress, not by rounds.** A stage keeps looping while each round closes at
+   least one `blocking` finding. The first round that closes none escalates; a hard ceiling of **five**
+   rounds applies regardless. `blockingClosedThisRound` is derived from finding dispositions and is never
+   self-reported by the reviewer.
+4. **Termination is the artifact against its written exit criteria, never reviewer exhaustion.** Each stage
+   carries a checkable list of exit criteria, as stage 2's clarify loop already does with the nine
+   `CONTRACT_SECTIONS`. A stage advances when every criterion is met, no open finding is classified
+   `blocking`, and **every finding raised has a recorded disposition**.
+   - A finding is `blocking` **only if it names the exit criterion it violates**. One that violates no
+     stated criterion cannot block — and is still recorded, still verified, still answered.
+   - **Novelty and falsifiability still apply**, unchanged, as admissibility tests: restatement, generality
+     and taste remain inadmissible. What they no longer do is decide termination.
+   - Every finding, at any severity, walks `raised → verified → classified → dispositioned → reported`.
+     `verified` is by execution, not second opinion; `refuted` requires the counter-evidence. `disposition`
+     is `fixed` | `refuted` | `accepted-debt` and **can never be empty**. A stage may not advance holding an
+     undispositioned finding of any severity.
+   - `accepted-debt` is journaled as an `EvidenceRecord`, surfaced in the change-set report, and
+     **reclassified `blocking` when a later change set's `PlannedWriteSet` intersects the paths it
+     concerns** — keyed with `normalizePlannedPath` from `@crabgic/git-engine`, so the debt index and the
+     overlap analyzer cannot disagree about what a path names.
 5. **Each round gets a fresh reviewer.** A round is only evidence of convergence if the reviewer did not
-   author the artifact and did not see the previous round's verdict.
+   author the artifact and did not see the previous round's verdict. Rounds differ by **lens** rather than
+   repeating one hostile pass, since diversity of perspective catches failure modes repetition cannot.
 
-**Rationale:** Part 4 is the whole ruling. An adversary instructed to "keep roasting until nothing remains"
-will manufacture findings to appear useful — inverted sycophancy — and an unbounded loop with no honesty
-test does not terminate. Requiring novelty makes repetition free of consequence; requiring a falsifiable
-failure scenario makes taste inadmissible. Together they are what the word "honestly" in the directive
-actually denotes, so implementing them is fidelity to the instruction rather than a weakening of it.
+**Rationale (amended 2026-07-29):** the original part 4 argued that novelty plus falsifiability are what
+"honestly" denotes, and that argument stands — an adversary told to keep roasting will manufacture findings
+to appear useful, and those two tests exclude exactly that. What the original got wrong is that it treated
+them as a **termination** rule as well as an admissibility rule. They are not the same thing.
 
-Dropping the severity floor is deliberate and is the difference from the alternative the owner rejected: a
-genuine minor defect is still a defect, and the product's premise is that the loop runs until the work is
-right rather than until it is acceptable.
+Rounds 21–32 are the experiment the original's own residual-risk note called for, and the result refutes the
+hypothesis that note advanced. The falsifiability test was applied **strictly** — every finding across twelve
+rounds carried an executed reproduction, none was manufactured, and every one was real, including two
+arbitrary-file-overwrite primitives and an unkillable hang. Not one round failed to produce something novel
+and falsifiable. Severity fell steadily (round 30 needed no attacker foothold; round 32 needed write access
+to a 0700 directory the victim already owns) and the loop still did not converge.
 
-**Disclosed residual risk:** termination rests entirely on the falsifiability test being applied strictly. If
-a reviewer's "concrete failure scenario" is accepted loosely, every round produces a novel-looking finding
-and the loop does not converge. This is the load-bearing mechanism and must be tested as one, not asserted.
+The conclusion is stronger than "the test was applied loosely": **novelty and falsifiability bound
+manufactured findings but not genuine ones.** A non-trivial codebase holds an effectively inexhaustible
+supply of true, novel, reproducible defects of declining severity, so a criterion phrased as "until a round
+finds nothing" measures reviewer exhaustion rather than artifact quality — and only one of those is finite.
+
+**On the severity floor.** The original rejected one because "a genuine minor defect is still a defect". That
+property is preserved here and is the reason the floor gates the **loop** and never the **ledger**: a minor
+finding is still verified, still classified, still dispositioned, still reported, and still becomes blocking
+the moment anyone touches the code it concerns. What it no longer does is hold the pipeline open forever.
+This is therefore not the "severity floor as an optimization" the original warned against — it is not an
+optimization, and the argument for it is measured non-termination rather than cost.
+
+**Disclosed residual risk:** debt in code nobody ever touches again is never paid. That is accepted
+deliberately — it is also debt nobody is exposed to — but it makes the journal's debt query the only place
+such a finding can be seen, so the change-set report's honesty is load-bearing. Second: the `blocking` versus
+`advisory` split is a judgement, and the literature is explicit that an uncalibrated judge is decorative.
+There is **no calibration plan yet**; until there is, the split is asserted rather than measured, which is
+exactly the posture the original's own residual-risk note refused to accept for falsifiability.
 
 **Phases affected:** `roadmap/11-intake-contract-approval.md` (owns the seven stop conditions and thus the
 boundary being drawn), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt path),
 `roadmap/14-quality-security-gates.md` (owns the gate verdicts a repair attempt answers),
 `roadmap/10-plugin-and-installer.md` (the manager operating protocol renders the distinction).
 
-**Where this ruling could be got wrong later:** treating a roast round as a repair attempt (or the reverse),
-which either caps quality convergence at three or makes gate failures unbounded; reintroducing a severity
-floor as an optimization; or relaxing the falsifiability test, which silently converts an unbounded loop into
-a non-terminating one.
+**Where this ruling could be got wrong later:** treating a review round as a repair attempt (or the reverse),
+which either caps quality convergence or makes gate failures unbounded; letting `advisory` become a disposal
+route rather than a deferral — the disposition field exists precisely so nothing is filed and forgotten, and
+a stage that advances holding an undispositioned finding has broken the ruling regardless of that finding's
+severity; allowing a reviewer to self-report its own progress, which turns part 3's budget into the inverted
+sycophancy part 4 was written to exclude; letting a reviewer raise findings a deterministic gate already
+decides, which re-litigates settled verdicts in prose; or reintroducing an unbounded round count on the
+argument that quality demands it — the measured evidence is that it does not terminate, and an
+unbounded loop that never closes ships nothing at all.
 
 ---
 

@@ -58,9 +58,16 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   **Two of the seven carry 2026-07-28 amendments.** `expanded_authority` is now also the halt for an
   envelope that fails the `EnvelopePolicy` containment check, which makes it the *routine* escalation path
   rather than a rare one (Gap 18). And `exhausted_repairs` is explicitly **not** the bound on an adversarial
-  roast loop: it counts attempts against gates on one WorkUnit (initial + 2, unchanged), while a roast round
-  is read-only, spends no attempt, and is uncapped — see 13 and Gap 19. Conflating the two either caps
-  quality convergence at three rounds or makes real gate failures unbounded.
+  review loop: it counts attempts against gates on one WorkUnit (initial + 2, unchanged), while a review
+  round is read-only and spends no attempt — see 13 and Gap 19. Conflating the two either caps quality
+  convergence at three rounds or makes real gate failures unbounded.
+
+  **`irreducible_product_decision` gains a second trigger (2026-07-29, Gap 19 amended).** It is now also
+  where a review stage goes when its progress budget is spent — a round that closes no blocking finding, or
+  the fifth round, whichever comes first. This is deliberate reuse rather than a new stop condition: the
+  situation is already the one this condition describes, since a stage that cannot close its own blocking
+  findings has reached a judgement no amount of further reading decides. It is the only stop condition that
+  asks the human rather than halting, which is the behaviour a stalled stage needs.
 
 ## Out of scope
 

@@ -89,16 +89,23 @@ not tracked by git, and is rendered in full so an owner can read what they are s
 `roadmap/03-envelope-compiler-engine-adapter.md`, `roadmap/09-cli-and-doctor.md`,
 `roadmap/11-intake-contract-approval.md`, `roadmap/13-scheduler-packets-context.md`.
 
-## Scope amendment — the manager protocol renders the roast/repair distinction (2026-07-28)
+## Scope amendment — the manager protocol renders the review/repair distinction (2026-07-28, amended 2026-07-29)
 
-**What changed.** `src/manager-protocol.ts` (Gap 17, part 1) gains one more thing it must say: a **roast
-round** is read-only and unbounded, while a **repair attempt** is capped at initial + 2 by
+**What changed.** `src/manager-protocol.ts` (Gap 17, part 1) gains one more thing it must say: a **review
+round** is read-only and spends no repair attempt, while a **repair attempt** is capped at initial + 2 by
 `exhausted_repairs`. Same single-source-of-truth rule as the rest of the protocol — the module owns the text,
 the managed block and `skills/protocol/SKILL.md` render it, and no phase restates it.
 
-**Why.** The protocol currently presents `exhausted_repairs` as the only bounded-retry concept a manager
-session knows about. A session running an unbounded design or test roast against that text will read its own
-third round as a stop condition and halt work that was never failing.
+**Amended 2026-07-29.** The protocol's roast paragraph is replaced by the staged pipeline of
+`docs/staged-review-pipeline.md`: written exit criteria per stage, findings classified `blocking` only by
+naming the criterion they violate, every finding dispositioned, and a progress-based budget that escalates to
+`irreducible_product_decision`. The agent charters change with it — `eo-roaster`'s "do not approve it" is
+what made the previous loop structurally unable to terminate, so `approve` becomes a reachable verdict.
+
+**Why.** The protocol presented `exhausted_repairs` as the only bounded-retry concept a manager session knows
+about. A session running an unbounded design or test review against that text will read its own third round
+as a stop condition and halt work that was never failing. The 2026-07-29 amendment adds the converse hazard,
+measured over twelve rounds: a review loop with no bound of its own does not stop at all.
 
 **Ledger:** Gap 19. **Coordinated with:** `roadmap/11-intake-contract-approval.md`,
 `roadmap/13-scheduler-packets-context.md`, `roadmap/14-quality-security-gates.md`.

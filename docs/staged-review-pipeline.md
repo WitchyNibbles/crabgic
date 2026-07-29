@@ -1,9 +1,16 @@
 # Staged review pipeline — design
 
-**Status:** design accepted in outline; §7's four questions ruled by the owner
-2026-07-29. The amendment to §0 and to ledger Gap 19 that §6 requires is **not
-yet made** — this document requests it and does not perform it. §8 lists what is
-still unanswered.
+**Status:** ruled and amended. §7's four questions were answered by the owner
+2026-07-29, and the coordinated amendment §6 called for is **made**: ledger Gap
+19 parts 3–4, `docs/claude-code-adaptation.md` §0 amendment 4, and the four
+phases the gap names (`roadmap/10, 11, 13, 14`).
+
+**The code has not caught up.** `packages/plugin/src/manager-protocol.ts` and
+`packages/plugin/skills/protocol/SKILL.md` still render the superseded loop —
+"no severity floor", "keep going until a round finds nothing new" — and
+`packages/plugin/agents/eo-roaster.md` still forbids approval. Until those land,
+the shipped protocol text and the ledger disagree, and the ledger is the
+authority. §8 lists what is still unanswered.
 
 Written 2026-07-29 against `feat/conversation-first-orchestration` @ `5d17113`.
 
