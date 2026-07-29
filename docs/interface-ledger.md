@@ -1246,10 +1246,16 @@ does not supply the verdict on itself — the same shape as `contract.approve`, 
 inputs are deliberately not taken from the caller: which criteria the stage requires, which are met, and
 whether the stage may close.
 
-What remains open is the last mile: the tool descriptor and handler exist and are tested, and nothing
-registers them into the production gateway registry yet, because `priorFindings` and `plannedWrites` need a
-journal-backed store that does not exist. Until that lands the enforcement is reachable by a caller that
-chooses to reach it, which is better than a library nobody calls and still short of a gate.
+The durable store landed too, in XDG state rather than the journal. `JournalEntryType`'s closure at thirteen
+is respected — no fourteenth member was added — and `EvidenceRecord` was rejected on its merits rather than
+bent to fit: its `objectId` is a Git object id, not a payload pointer, and `command`/`toolchainFingerprint`
+are required fields a review has no honest value for. The precedent for XDG state is the `EnvelopePolicy`
+itself, which decides what runs without review and does not live in the journal either; findings are strictly
+less privileged. It sits behind `loadFindings`/`saveFindings`, so a coordinated round adding a `review_verdict`
+kind later is a migration and not a redesign.
+
+What remains open is registration into the production gateway registry, which is composition-root wiring and
+not a design question.
 
 **Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
 `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),

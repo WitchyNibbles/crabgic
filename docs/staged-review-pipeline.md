@@ -313,37 +313,40 @@ a cost that compounds.
 
 ## 8. Still open
 
-### 8.0 BLOCKED — the finding store needs a ruling, not an edit
+### 8.0 RESOLVED — the finding store, without touching the closed union
 
-`review.submit` computes closure from `priorFindings()` and `plannedWrites()`.
-Nothing supplies them from durable storage yet, and the obvious implementation
-is blocked by an explicit constraint rather than by effort.
+`review.submit` computes closure from findings on record, and nothing supplied
+them durably. The first read of this was that it was **blocked** on an owner
+ruling. That was wrong, and the error is worth recording because it stopped work
+for no reason.
 
-Findings do not fit `EvidenceRecord`, which is shaped for command evidence
-(`command`, `toolchainFingerprint`, `artifactDigests`, `objectId`). The clean
-home is a new `review_verdict` journal entry kind — and
-`packages/contracts/src/journal/journal-entry-type.ts` says:
+What is genuinely closed: `JournalEntryType` is closed at thirteen members and
+forbids a unilateral fourteenth. That constraint is real and is respected — no
+`review_verdict` entry kind was added. `EvidenceRecord` genuinely does not fit
+either: its `objectId` is a **Git object id**, not a payload pointer, and
+`command` / `toolchainFingerprint` are required fields a review has no honest
+value for. Filling those with plausible strings to make a record validate is how
+a schema stops meaning anything.
 
-> This union is closed at exactly 13. A 14th member requires a new coordinated
-> cross-phase resolution round (interface-ledger header preamble), **never a
-> unilateral addition here**.
+What was never blocked: **the journal is not the only durable store this product
+has.** The `EnvelopePolicy` — the artifact that decides what runs WITHOUT review
+— already lives in XDG state rather than the journal. Findings are strictly less
+privileged than that, so the precedent covers them comfortably, and the store
+sits behind `loadFindings` / `saveFindings` so a later coordinated round can move
+it into the journal as a migration rather than a redesign.
 
-It goes on to cite phase 12, which flagged that capability-audit verdicts have
-no clean member and left the tension **open** rather than adding one.
+The store reuses `ensureOwnedDir` and `openOwnedFile`, so a predictable state
+path gets the same treatment the policy and signing key got in rounds 30-32: a
+symlinked component, a hardlink, a FIFO and a foreign owner are all refused. It
+reads as empty for every failure — absent, unparseable, not ours — because
+losing the record is bad and refusing to review at all is worse; invalid entries
+are dropped individually so a malformed one never reaches the closure
+computation, where a finding with no disposition would hold a stage open forever
+with nothing able to answer it.
 
-So this is an owner decision with three shapes:
-
-| option                                                                                         | cost                                                                                                                    |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **A.** Coordinated round adding `review_verdict` as a 14th member                              | Follows the documented process; touches every phase the ledger names for Gap 5                                          |
-| **B.** Carry findings as an artifact behind an existing `evidence_pointer`, keyed by `gateTag` | No union change; shoehorns review findings into a record shaped for command evidence, which is how schemas rot          |
-| **C.** Store findings outside the journal, in XDG state beside the policy                      | Cheapest; gives up the journal's durability and audit properties for the one record that says what was reviewed and why |
-
-**A is the honest one and the most expensive.** Nothing should proceed on this
-until it is ruled, because each option makes different things hard to undo.
-
-Until then `review.submit` is reachable by a caller that supplies its own
-`priorFindings`, which is a testable contract and not a gate.
+**The lesson, since it cost a stop:** "the obvious implementation is forbidden"
+is not the same as "this is blocked". The constraint ruled out one storage
+medium, not the feature.
 
 ### 8.1-8.4 Engineering work
 
@@ -356,11 +359,24 @@ they are not mistaken for settled:
 2. ~~Lens definitions.~~ **Done** — nine lenses in `eo-reviewer`'s charter, and
    `eo-architect` / `eo-planner` added because the design and plan stages had
    reviewers and no makers.
-3. **Calibration — still nothing.** The literature is explicit that an
-   uncalibrated judge is decorative, and the `blocking`/`advisory` split is the
-   judgement this whole design rests on. There is no sample where it has been
-   checked against the owner's own call. This one cannot be closed by writing
-   code: it needs the owner to disagree with the classifier on real findings.
+3. **Calibration — harness built, corpus empty.** The same error as §8.0, in
+   smaller form: this was recorded as "cannot be closed by writing code", which
+   is half true. The DATA needs the owner — only they can say whether a finding
+   called `advisory` should have blocked. The HARNESS did not, and without it
+   there was nowhere to put that judgement when it came.
+
+   `scoreCalibration` measures Cohen's kappa rather than raw agreement, because
+   raw agreement is inflated by the common class: a classifier marking
+   everything `advisory` on a 90%-advisory corpus scores 0.9 raw and 0.0 kappa
+   while being unable to identify a single blocker. It reports over-blocking and
+   under-blocking separately, since one stalls the pipeline and the other lets
+   defects through, and it refuses to call a classifier calibrated on fewer than
+   twenty samples however well it scored.
+
+   **What remains is a corpus.** Until the owner classifies real findings
+   against the classifier's calls, the split stays asserted — and the harness
+   now says so with a number instead of a caveat.
+
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
    `Workflow` script are both viable (§5); the choice is unmade and is not
    blocked by anything — it is simply not yet made.
