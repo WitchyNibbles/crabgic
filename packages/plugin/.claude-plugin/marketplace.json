@@ -13,7 +13,7 @@
       "description": "Autonomous engineering orchestration for Claude Code \u2014 slash commands, review subagents, advisory hooks, gateway MCP registration.",
       "version": "1.4.0",
       "license": "Apache-2.0",
-      "digest": "db5d304d7511704c1759d28602470ae19ed8e3de7903ded767906336a426a2e1",
+      "digest": "77e6cebe4adcde7d546c79489f4a1a3c57779856ebf3e53b7841a370f2d22dd3",
       "displayName": "Crabgic",
       "author": {
         "name": "Crabgic",

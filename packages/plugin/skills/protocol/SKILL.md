@@ -129,13 +129,38 @@ three attempts `exhausted_repairs` counts. A session that reads its own third
 review round as that stop condition will halt work that was never failing.
 Acting on a finding may spend an attempt; raising one never does.
 
-### Known limit
+### Known limit — and what to do about it
 
 The `blocking` versus `advisory` split is a judgement, and an uncalibrated judge
-is decorative. There is **no calibration plan yet** — no sample where the split
-has been checked against the owner's own call. Until there is, treat a
-`blocking` classification as an argument to be read, not a verdict to be trusted
-on sight.
+is decorative. Until the split has been checked against the owner's own calls,
+treat a `blocking` classification as an argument to be read, not a verdict to be
+trusted on sight.
+
+**`review.submit` tells you which state you are in.** Every result carries a
+`calibration` block — Cohen's kappa, its 95% lower bound, the sample size, and a
+one-line `verdictReason`. A fresh project reads "nobody has classified a finding
+against this classifier yet", which is normal; presenting its verdicts as
+measured anyway is not.
+
+**`review.calibrate` is how that changes.** Call it with no arguments to get the
+corpus's state plus the findings worth putting to the owner — it prefers the two
+shapes a misclassification leaves behind: an `advisory` finding that got fixed
+anyway, and a `blocking` finding that got refuted. Put those to the owner in
+their own words ("this one was called advisory and fixed anyway — should it have
+blocked?"), then record each answer with `findingId` and
+`ownerClassification`.
+
+Three things worth knowing before you use it:
+
+- **You cannot supply the classifier's call.** It is read from the finding on
+  record. Twenty samples of manufactured agreement is the failure this design
+  exists to exclude.
+- **A dispositioned finding is a suggestion, never a label.** Only the owner's
+  own words become a sample. Do not infer their call from what got fixed.
+- **Twenty samples is the floor, not the target,** and eight in each class are
+  needed too — kappa's variance is dominated by the rarer call, which here is
+  the one that matters. A strong-looking kappa on twenty samples is refused
+  because its confidence interval still reaches into "unusable".
 
 ## The seven stop conditions
 

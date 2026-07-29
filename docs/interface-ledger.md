@@ -1235,10 +1235,46 @@ below rather than pretended away.
 
 **Disclosed residual risk:** the schema enforces the SHAPE of a verdict and not its HONESTY. A reviewer can
 still classify a real blocker as `advisory`, or attach a plausible `violates` to a taste preference, and every
-document it produces will validate. The `blocking`/`advisory` split has **no calibration** — no sample where
-it has been checked against the owner's own judgement — so it is asserted, not measured. This is the same
-posture Gap 19's original entry refused to accept for falsifiability, and it is recorded in those terms rather
-than as a footnote.
+document it produces will validate. The `blocking`/`advisory` split is **measurable but not yet measured** —
+until a project's owner has ruled on real findings it is asserted, and every `review.submit` result says so in
+those terms rather than presenting its verdicts as measured. This is the same posture Gap 19's original entry
+refused to accept for falsifiability, and it is recorded here rather than as a footnote.
+
+**Amended 2026-07-29 — the corpus was unfillable, which is not the same as empty.** `scoreCalibration` and
+`recordCalibrationSample` both shipped, both tested, and the store was called from **nothing but its own test**.
+So `sampleSize: 0` was a property of the product rather than a project's starting state, and the honest caveat
+attached to every result described a number that could never move. `docs/staged-review-pipeline.md` §8.3
+recorded "what remains is a corpus" as though it were waiting on the owner; it was waiting on a tool.
+
+1. **`review.calibrate` is that tool**, on the shipped gateway surface and listed in the assertion that pins
+   what the binary exposes. An MCP tool and not a CLI command, per the 2026-07-28 ruling: the owner's call
+   arrives in conversation, so it is recorded from conversation. Called with no arguments it reports the
+   corpus's state and which findings to put to the owner next.
+2. **The classifier's own call is NOT an input.** It is read from the finding on record. Accepting it would let
+   a caller record twenty samples of manufactured agreement and certify the classifier itself — the
+   reviewer-supplying-its-own-verdict failure one level further out. The owner's call is the only argument,
+   because it is the only thing the server cannot derive.
+3. **The verdict is taken on the confidence interval's lower bound, not the point estimate.** The external
+   record is specific: ~50 stratified samples pin kappa to roughly ±0.10–0.15 at 95%, and a published
+   measurement of κ = 0.633 carried an interval of [0.433, 0.814] — one number spanning "the rubric is
+   ambiguous" to "the judge is strong". Deciding on the estimate at twenty samples would have MOVED the
+   decorative judge rather than removed it. A minority-class floor (`CALIBRATION_MINIMUM_PER_CLASS`, on the
+   OWNER's labels) joins the absolute sample floor, because kappa's variance is dominated by the rarer class and
+   `blocking` is both the rare call and the only one the pipeline depends on.
+4. **Samples carry the rubric they judged.** Kappa pooled across a rubric rewrite measures two different
+   classifiers, and a rubric rewrite is exactly what a kappa below 0.4 is meant to prompt. Scoring covers the
+   rubric in force only; the reset is visible in `sampleSize` rather than hidden in a score that quietly stopped
+   describing the shipped classifier. An absent version reads as rubric 1, since the corpus predating the field
+   was gathered under the only rubric there was.
+5. **Dispositions suggest, they never label.** `review.calibrate` surfaces the two shapes a misclassification
+   leaves behind — an `advisory` finding that was fixed anyway, a `blocking` finding that was refuted — because
+   that is where a scarce labelling budget belongs. They are candidates for the owner to rule on. Promoting one
+   to a sample would grade the classifier by its own downstream consequences.
+
+**What this still does not close:** the owner speaks through the orchestrator, so a manager could relay a
+judgement the owner never made. No surface here can prevent that. What holds is that fabricating agreement
+requires fabricating the OWNER's label specifically — the classifier's half is read from the store — and the
+corpus is a plain file in the owner's own state directory that they can read.
 
 Second, and **partly closed 2026-07-29**: `review.submit` now calls `isStageClosable` and
 `reclassifyDebtForWriteSet` server-side and returns the closure decision, so a reviewer supplies findings and

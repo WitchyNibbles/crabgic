@@ -63,12 +63,13 @@ import type {
   WorkUnit,
 } from "@crabgic/contracts";
 import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
-import { REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
+import { REVIEW_CALIBRATE_TOOL, REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
+import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { GATE_DERIVED_CRITERIA, deriveGateCriteria } from "../review/gate-criteria.js";
 import { scoreCalibration } from "../review/calibration.js";
-import { loadCalibrationSamples } from "../review/calibration-store.js";
+import { loadCalibrationSamples, recordCalibrationSample } from "../review/calibration-store.js";
 import { queryEvidence } from "../evidence/query.js";
 import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
 import { runContractApprove } from "../intake/contract-approve-handler.js";
@@ -186,8 +187,10 @@ function buildReviewTools(
           calibration: () => ({
             calibrated: calibration.calibrated,
             kappa: calibration.kappa,
+            kappaLowerBound: calibration.kappaLowerBound,
             sampleSize: calibration.sampleSize,
             samplesNeeded: calibration.samplesNeeded,
+            verdictReason: calibration.verdictReason,
           }),
         },
       );
@@ -200,7 +203,46 @@ function buildReviewTools(
       return jsonResult(result);
     },
   };
-  return [reviewSubmit];
+
+  /**
+   * `review.calibrate` — where the owner's judgement about the classifier goes.
+   *
+   * `recordCalibrationSample` shipped tested and unreachable: nothing called it,
+   * so `sampleSize: 0` was a permanent property of the product rather than a
+   * project's starting state. This is the surface that changes that, and it is an
+   * MCP tool rather than a CLI command per the 2026-07-28 ruling — the owner's
+   * call arrives in conversation, so it is recorded from conversation.
+   *
+   * The classifier's own call is NOT an argument. It is read from the finding
+   * store, which is what stops a caller recording twenty flattering samples and
+   * certifying the classifier itself.
+   */
+  const reviewCalibrate: GatewayToolDefinition<typeof REVIEW_CALIBRATE_SHAPE> = {
+    name: REVIEW_CALIBRATE_TOOL.name,
+    description: REVIEW_CALIBRATE_TOOL.description,
+    inputSchema: REVIEW_CALIBRATE_SHAPE,
+    handler: async (args) => {
+      const samples = await loadCalibrationSamples(deps.reviewCalibrationPath);
+      const findings = await loadFindings(deps.reviewFindingsPath);
+      const result = await runReviewCalibrate(
+        {
+          ...(args.findingId !== undefined ? { findingId: args.findingId } : {}),
+          ...(args.ownerClassification !== undefined
+            ? { ownerClassification: args.ownerClassification }
+            : {}),
+        },
+        {
+          findings: () => findings,
+          samples: () => samples,
+          record: (sample) =>
+            recordCalibrationSample(deps.reviewCalibrationPath, sample, deps.reviewStateHome),
+        },
+      );
+      return result.ok ? jsonResult(result) : errorResult(result.error ?? "calibration refused");
+    },
+  };
+
+  return [reviewSubmit, reviewCalibrate];
 }
 
 /** JSON-serialized tool output — every one of these tools answers with a single structured text block, matching 16's native families. */
@@ -239,6 +281,16 @@ const REVIEW_SUBMIT_SHAPE = {
    * criterion simply does not derive and the integrate stage cannot close.
    */
   candidateObjectId: z.string().optional(),
+};
+const REVIEW_CALIBRATE_SHAPE = {
+  /** Omit both to ask where the corpus stands and what to ask the owner next. */
+  findingId: z.string().optional(),
+  /**
+   * The OWNER's call, and the only thing this tool takes. The classifier's own
+   * call is read from the finding store — accepting it here would let a caller
+   * record manufactured agreement and certify the classifier itself.
+   */
+  ownerClassification: z.enum(["blocking", "advisory"]).optional(),
 };
 const CAPABILITY_AUDIT_SHAPE = { candidate: z.unknown() };
 const CAPABILITY_APPROVE_SHAPE = { digest: z.string(), token: z.string() };

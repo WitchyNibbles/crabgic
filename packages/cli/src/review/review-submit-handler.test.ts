@@ -54,7 +54,14 @@ function deps(overrides: Partial<ReviewSubmitDeps> = {}): ReviewSubmitDeps {
     priorFindings: () => [],
     plannedWrites: () => [],
     metCriteria: () => exitCriteriaFor("implement"),
-    calibration: () => ({ calibrated: false, kappa: 0, sampleSize: 0, samplesNeeded: 20 }),
+    calibration: () => ({
+      calibrated: false,
+      kappa: 0,
+      kappaLowerBound: 0,
+      sampleSize: 0,
+      samplesNeeded: 20,
+      verdictReason: "nobody has classified a finding against this classifier yet",
+    }),
     ...overrides,
     // Exposed for assertions without widening the production interface.
     ...({ _appended: appended } as Partial<ReviewSubmitDeps>),

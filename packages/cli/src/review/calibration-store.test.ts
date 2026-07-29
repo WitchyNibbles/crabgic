@@ -7,6 +7,7 @@ import {
   recordCalibrationSample,
   resolveCalibrationStorePath,
 } from "./calibration-store.js";
+import { CLASSIFICATION_RUBRIC_VERSION, scoreCalibration } from "./calibration.js";
 
 /**
  * Where the owner's judgements go.
@@ -94,5 +95,70 @@ describe("recordCalibrationSample", () => {
       { mode: 0o600 },
     );
     expect(await loadCalibrationSamples(path)).toHaveLength(1);
+  });
+});
+
+describe("recordCalibrationSample — rubric scoping", () => {
+  it("stamps the current rubric on a sample that arrives without one", async () => {
+    const path = resolveCalibrationStorePath(env(), "rubric");
+    await recordCalibrationSample(
+      path,
+      { findingId: "f1", owner: "blocking", classifier: "advisory" },
+      join(home, "state"),
+    );
+    const samples = await loadCalibrationSamples(path);
+    expect(samples[0]?.rubricVersion).toBe(CLASSIFICATION_RUBRIC_VERSION);
+  });
+
+  /**
+   * Keyed by finding AND rubric. Revising a call under the same rubric still
+   * supersedes it — one revised judgement must not weight that finding twice —
+   * but a judgement made under a DIFFERENT rubric is a different measurement and
+   * is kept, since `scoreCalibration` filters it out rather than needing it gone.
+   *
+   * The other rubric here is expressed as an offset from the one in force rather
+   * than as a literal, so this keeps testing the filter after the constant moves.
+   */
+  it("keeps the same finding's judgement from another rubric alongside the current one", async () => {
+    const path = resolveCalibrationStorePath(env(), "rubric");
+    const state = join(home, "state");
+    await recordCalibrationSample(
+      path,
+      {
+        findingId: "f1",
+        owner: "blocking",
+        classifier: "advisory",
+        rubricVersion: CLASSIFICATION_RUBRIC_VERSION + 1,
+      },
+      state,
+    );
+    await recordCalibrationSample(
+      path,
+      { findingId: "f1", owner: "advisory", classifier: "advisory" },
+      state,
+    );
+    const samples = await loadCalibrationSamples(path);
+    expect(samples).toHaveLength(2);
+    expect(scoreCalibration(samples).sampleSize).toBe(1);
+  });
+
+  it("still supersedes a revision made under the same rubric", async () => {
+    const path = resolveCalibrationStorePath(env(), "rubric");
+    const state = join(home, "state");
+    for (const owner of ["blocking", "advisory"] as const) {
+      await recordCalibrationSample(
+        path,
+        {
+          findingId: "f1",
+          owner,
+          classifier: "advisory",
+          rubricVersion: CLASSIFICATION_RUBRIC_VERSION,
+        },
+        state,
+      );
+    }
+    const samples = await loadCalibrationSamples(path);
+    expect(samples).toHaveLength(1);
+    expect(samples[0]?.owner).toBe("advisory");
   });
 });

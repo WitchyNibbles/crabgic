@@ -46,3 +46,34 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
     required: ["stage", "changeSetId", "verdict"],
   },
 };
+
+/**
+ * `review.calibrate` — the calibration corpus's write surface.
+ *
+ * Wire name `mcp__${GATEWAY_MCP_SERVER_NAME}__review.calibrate`. An MCP tool and
+ * not a CLI command, per the 2026-07-28 ruling: the owner's judgement arrives in
+ * conversation, so it is recorded from conversation.
+ *
+ * Ledger Gap 20's disclosed residual said the `blocking`/`advisory` split had no
+ * calibration. The scorer and the store both shipped; nothing ever called the
+ * store, so `sampleSize: 0` was a property of the product rather than a project's
+ * starting state. This is what makes the number able to move.
+ */
+export const REVIEW_CALIBRATE_TOOL: McpToolDefinition = {
+  name: "review.calibrate",
+  description:
+    "Records the owner's own call on how a finding SHOULD have been classified, building the corpus that decides whether the blocking/advisory classifier can be trusted. Called with no arguments, reports where the corpus stands — Cohen's kappa with its 95% lower bound, the two error directions separately, what is still missing — and which findings are worth putting to the owner next, preferring the two shapes a misclassification leaves behind (an advisory finding that got fixed anyway, a blocking finding that got refuted). The classifier's own call is NOT an input: it is read from the finding on record, so manufactured agreement cannot be recorded.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      /** Omit both fields to ask for status and suggestions instead of recording. */
+      findingId: { type: "string" },
+      /**
+       * The owner's call — `blocking` or `advisory`. The only thing this tool
+       * takes, because it is the only thing the server cannot derive.
+       */
+      ownerClassification: { type: "string", enum: ["blocking", "advisory"] },
+    },
+    required: [],
+  },
+};

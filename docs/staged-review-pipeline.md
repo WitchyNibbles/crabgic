@@ -373,9 +373,34 @@ they are not mistaken for settled:
    defects through, and it refuses to call a classifier calibrated on fewer than
    twenty samples however well it scored.
 
-   **What remains is a corpus.** Until the owner classifies real findings
-   against the classifier's calls, the split stays asserted — and the harness
-   now says so with a number instead of a caveat.
+   **Corrected 2026-07-29 — "what remains is a corpus" was still the wrong
+   diagnosis.** What remained was a TOOL. `recordCalibrationSample` was called
+   from nothing but its own test, so the corpus could not be filled by any means
+   the product offered: `sampleSize: 0` was a property of the shipped harness,
+   not a project's starting state, and the honest caveat attached to every result
+   described a number nobody could move. This is §8.0's mistake for the third
+   time — "the owner has to supply the data" was read as "there is nothing to
+   build", exactly as "the obvious storage is forbidden" was read as "blocked"
+   and as a fail-closed derivation was read as a working one.
+
+   `review.calibrate` is on the gateway surface now. Called bare it reports where
+   the corpus stands and which findings to put to the owner; called with a
+   finding and the owner's call it records one sample. The classifier's own call
+   is read from the finding store and is not an argument — otherwise a caller
+   could record manufactured agreement and certify the classifier itself.
+
+   Two rigour changes came with it. The verdict is taken on kappa's 95% LOWER
+   BOUND rather than the estimate, because the external record puts a 20-sample
+   interval at roughly ±0.15 and a published κ = 0.633 carried [0.433, 0.814] —
+   deciding on the estimate at twenty samples would have moved the decorative
+   judge rather than removed it. And samples carry the rubric they were judged
+   under, because kappa pooled across a rubric rewrite measures two different
+   classifiers.
+
+   **What still needs the owner is the owner's own calls** — twenty of them, with
+   at least eight in each class. That is real labour, so the tool spends it well:
+   it asks first about the findings where a misclassification already left a
+   trace, an `advisory` that got fixed anyway or a `blocking` that got refuted.
 
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
    `Workflow` script are both viable (§5); the choice is unmade and is not

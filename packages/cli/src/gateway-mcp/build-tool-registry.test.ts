@@ -115,6 +115,11 @@ const EXPECTED_TOOL_NAMES = [
   // what the shipped binary exposes, and a tool that reaches production
   // without appearing in it is a surface nobody decided to ship.
   "review.submit",
+  // Ledger Gap 20's disclosed residual (1) — where the owner's judgement about
+  // the blocking/advisory classifier goes. `recordCalibrationSample` shipped
+  // tested and unreachable, so an empty corpus was a property of the product
+  // rather than a project's starting state.
+  "review.calibrate",
 ];
 
 describe("buildRealGatewayToolRegistry", () => {
@@ -497,5 +502,132 @@ describe("review.submit — server-derived exit criteria", () => {
     // so with the judged criterion supplied the stage genuinely closes.
     expect(report.unmetCriteria).toEqual([]);
     expect(report.stageClosable).toBe(true);
+  });
+});
+
+/**
+ * `review.calibrate`, driven through the real production registry.
+ *
+ * The point of asserting this HERE rather than only against the pure handler is
+ * that the defect was never in the logic. `scoreCalibration` and
+ * `recordCalibrationSample` were both correct and both tested; nothing called the
+ * latter, so the corpus could not be filled by any means the product offered.
+ * A unit test of the handler would have passed throughout that entire period.
+ */
+describe("review.calibrate — the corpus is fillable through the shipped surface", () => {
+  function registry(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+  ) {
+    return buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+  }
+
+  function calibrationDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-calibrate-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+    };
+  }
+
+  async function call(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    args: Record<string, unknown>,
+  ) {
+    const result = await registry(deps).get("review.calibrate")!.handler(args);
+    return {
+      isError: result.isError === true,
+      body: JSON.parse(result.content[0]!.text) as {
+        ok?: boolean;
+        error?: string;
+        calibration?: { sampleSize: number; verdictReason: string };
+        candidates?: { findingId: string }[];
+        candidatesTotal?: number;
+      },
+    };
+  }
+
+  /** A fresh project: the honest empty state, reported with a reason rather than a bare zero. */
+  it("reports an empty corpus and nothing to ask about before any review has happened", async () => {
+    const { isError, body } = await call(calibrationDeps(), {});
+    expect(isError).toBe(false);
+    expect(body.calibration?.sampleSize).toBe(0);
+    expect(body.calibration?.verdictReason).toMatch(/nobody has classified/i);
+    expect(body.candidatesTotal).toBe(0);
+  });
+
+  /**
+   * The whole loop, end to end and through the real stores: a reviewer submits a
+   * finding, the owner disagrees with how it was classified, and the corpus moves
+   * off zero for the first time.
+   */
+  it("records the owner's call against a finding the reviewer actually submitted", async () => {
+    const deps = calibrationDeps();
+    const changeSetId = "66666666-6666-4666-8666-666666666666";
+    deps.changeSets.put({ id: changeSetId } as unknown as ChangeSet);
+
+    const submitted = await registry(deps)
+      .get("review.submit")!
+      .handler({
+        stage: "implement",
+        changeSetId,
+        verdict: {
+          schemaVersion: 1,
+          id: "77777777-7777-4777-8777-777777777777",
+          createdAt: "2026-07-29T00:00:00.000Z",
+          stage: "implement",
+          artifactRef: "changeset:abc",
+          lens: "security",
+          verdict: "revise",
+          round: 1,
+          findings: [
+            {
+              id: "88888888-8888-4888-8888-888888888888",
+              claim: "the state path is not checked for a symlinked component",
+              evidence: {
+                reproduction: "ln -s /etc ~/.local/state/crabgic/x",
+                observed: "followed",
+                expected: "refused",
+              },
+              verification: "confirmed",
+              classification: "advisory",
+              paths: ["packages/cli/src/doctor"],
+            },
+          ],
+        },
+      });
+    expect(submitted.isError).toBeUndefined();
+
+    // The reviewer called it advisory. The owner says it should have blocked —
+    // and the classifier's half of that comparison is read from the store, never
+    // taken from this call.
+    const { body } = await call(deps, {
+      findingId: "88888888-8888-4888-8888-888888888888",
+      ownerClassification: "blocking",
+    });
+
+    expect(body.ok).toBe(true);
+    expect(body.calibration?.sampleSize).toBe(1);
+    // Still uncalibrated, and now for the right reason: not "nobody has looked"
+    // but "one sample is not a measurement".
+    expect(body.calibration?.verdictReason).toMatch(/more classified findings/i);
+    expect(body.candidatesTotal).toBe(0);
+  });
+
+  it("refuses a judgement about a finding no reviewer ever submitted", async () => {
+    const { isError, body } = await call(calibrationDeps(), {
+      findingId: "99999999-9999-4999-8999-999999999999",
+      ownerClassification: "blocking",
+    });
+    expect(isError).toBe(true);
+    expect(body.error).toMatch(/unknown finding/);
   });
 });

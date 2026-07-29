@@ -58,8 +58,21 @@ export interface ReviewSubmitDeps {
 export interface CalibrationStatus {
   readonly calibrated: boolean;
   readonly kappa: number;
+  /**
+   * The 95% interval's lower bound — the number `calibrated` is actually decided
+   * on. Reported beside the estimate rather than instead of it, because the gap
+   * between the two IS the state of the corpus: a wide gap means "not enough
+   * evidence yet", a narrow one means "this is what the classifier is".
+   */
+  readonly kappaLowerBound: number;
   readonly sampleSize: number;
   readonly samplesNeeded: number;
+  /**
+   * One sentence naming what is missing. Present even when calibrated, because a
+   * consumer reading `calibrated: false` with no reason is back to the caveat
+   * this whole mechanism replaced.
+   */
+  readonly verdictReason: string;
 }
 
 export interface ReviewEvidence {
