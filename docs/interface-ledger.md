@@ -1261,12 +1261,19 @@ inputs come from the SERVER and never the caller: planned writes from the Change
 `ownedPaths`, so a reviewer cannot understate what it intends to touch and thereby choose which debt it
 faces; and prior findings from the durable store, so a clean round cannot erase somebody else's open blocker.
 
-**One honest limit on the wiring.** `metCriteria` is a tool INPUT rather than something derived server-side,
-because there is no gate-verdict store to derive it from yet. The property that holds is that the REVIEWER
-cannot satisfy its own gate — findings and met-criteria arrive as separate inputs, and the verdict document
-carries no claim about which criteria are met. The property that does NOT hold is that nobody can: an
-orchestrator that lies about its gate results is believed. Deriving `implement-gates-pass` from real
-`GateVerdict`s is the next thing that would tighten this, and it is not done.
+**The gate-decidable criterion is derived, not believed.** `implement-gates-pass` is computed from the
+`EvidenceRecord`s journaled against the ChangeSet — the same signal the release gate scores on, where a linked
+record with a nonzero `exitStatus` is a genuine negative run — and then SUBTRACTED from whatever the caller
+claimed, so asserting it without gate evidence to back it does not work. Records carrying no `gateTag` are
+skipped rather than counted, since Gap 6's rendered-artifact evidence is not a gate firing. An empty evidence
+set yields nothing: gates that never ran are not gates that passed, and treating absence of proof as proof is
+how a stage closes on work nobody verified.
+
+**The limit that remains.** The other criteria are judgements — "every risk carries a mitigation", "every task
+states how it will be known done" — and those still arrive as caller-supplied `metCriteria`. No tool can
+decide them, which is why they are stated as criteria a reviewer checks rather than as gates. What holds is
+that the reviewer cannot satisfy its own gate and that nothing gate-decidable is taken on trust; what does not
+is that a caller misreporting a judged criterion is caught.
 
 **Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
 `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),

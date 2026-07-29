@@ -66,6 +66,8 @@ import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-defi
 import { REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
+import { GATES_PASS_CRITERION, deriveGateCriteria } from "../review/gate-criteria.js";
+import { queryEvidence } from "../evidence/query.js";
 import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
 import { runContractApprove } from "../intake/contract-approve-handler.js";
 
@@ -138,13 +140,29 @@ function buildReviewTools(
         .find((candidate) => candidate.changeSetId === args.changeSetId);
 
       const prior = await loadFindings(deps.reviewFindingsPath);
+
+      // The gate-decidable criterion is DERIVED from journaled evidence and
+      // then subtracted from whatever the caller claimed. A caller that asserts
+      // `implement-gates-pass` without gate evidence to back it is not
+      // believed — which is the pipeline's own rule that anything a
+      // deterministic gate decides is decided by the gate, applied to the one
+      // criterion this tool can actually check.
+      const evidence = await queryEvidence({
+        journal: deps.journal,
+        changeSetId: args.changeSetId,
+      });
+      const derived = deriveGateCriteria(evidence.records);
+      const claimed = (args.metCriteria ?? []).filter(
+        (criterion) => criterion !== GATES_PASS_CRITERION,
+      );
+      const metCriteria = [...claimed, ...derived];
       const result = await runReviewSubmit(
         { stage: args.stage, verdict: args.verdict },
         {
           appendEvidence: () => Promise.resolve(),
           priorFindings: () => prior,
           plannedWrites: () => envelope?.ownedPaths ?? [],
-          metCriteria: () => args.metCriteria ?? [],
+          metCriteria: () => metCriteria,
         },
       );
 
