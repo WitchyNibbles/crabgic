@@ -1,6 +1,6 @@
 # Known host-load timing flakes (2026-07-28)
 
-Five tests in the default gate fail intermittently under parallel load and pass in
+Four tests in the default gate fail intermittently under parallel load and pass in
 isolation on re-run. All four are **pre-existing** — none was introduced by the
 standing-approval work — and all four are timing-sensitive rather than logically wrong.
 Catalogued here because an uncatalogued flake is indistinguishable from a regression, and
@@ -28,3 +28,12 @@ which is work for whoever owns those phases.
 **Not deferred silently:** during this branch a flaky test really was mistaken for a
 regression it had caused, on one sample from each of two branches. That is the concrete
 cost of leaving these unlabelled.
+
+Round 32 note: this file said "Five tests" above a table of four and then referred to
+"all four" twice. A catalogue of flakes exists so a reader can tell a known flake from a
+regression at a glance, and one that cannot count its own rows invites the reader to
+assume a fifth is missing and re-run rather than investigate — the exact habit the section
+above argues against. Corrected to four; the table was always the authority.
+
+Round 32 re-confirmed row 3 (`HIGH H2`) directly: it failed once in a full-suite run and
+passed 3/3 in isolation immediately afterwards.
