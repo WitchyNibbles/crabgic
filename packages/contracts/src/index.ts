@@ -80,6 +80,8 @@ export * from "./contracts/authorization-envelope.js";
 export * from "./contracts/envelope-policy.js";
 export * from "./contracts/review-verdict.js";
 export * from "./contracts/criterion-attestation.js";
+export * from "./contracts/design-record.js";
+export * from "./contracts/plan-record.js";
 export * from "./contracts/debt-index.js";
 export * from "./contracts/pipeline-stages.js";
 export * from "./contracts/capability-manifest.js";

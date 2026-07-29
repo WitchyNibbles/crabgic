@@ -27,6 +27,7 @@ import {
   buildProductionGatewayToolRegistry,
   type ProductionGatewayToolRegistryDeps,
 } from "./build-tool-registry.js";
+import { loadArtifacts } from "../review/artifact-store.js";
 
 let home: string;
 
@@ -75,6 +76,10 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
     reviewAttestationsPath: join(
       mkdtempSync(join(tmpdir(), "eo-reg-attest-")),
       "review-attestations.json",
+    ),
+    reviewArtifactsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-artifacts-")),
+      "review-artifacts.json",
     ),
   };
 }
@@ -421,6 +426,7 @@ describe("review.submit — server-derived exit criteria", () => {
       reviewFindingsPath: join(stateHome, "review-findings.json"),
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
     };
   }
 
@@ -555,6 +561,7 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
       reviewFindingsPath: join(stateHome, "review-findings.json"),
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
     };
   }
 
@@ -649,5 +656,136 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
     });
     expect(isError).toBe(true);
     expect(body.error).toMatch(/unknown finding/);
+  });
+});
+
+/**
+ * The design→plan handoff, through the real store.
+ *
+ * `plan-covers-every-design-element` is the one artifact criterion that spans two
+ * stages, and it is the reason the records have to be durable. Asserted here rather
+ * than only against the pure handler because the property being tested IS the
+ * persistence: the plan stage must be scored against the design the DESIGN stage
+ * left behind, supplied by the server, never by the plan being checked.
+ */
+describe("review.submit — design and plan records across stages", () => {
+  function artifactDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-artifacts-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+    };
+  }
+
+  const CHANGE_SET = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+  async function submitStage(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    stage: string,
+    lens: string,
+    extra: Record<string, unknown>,
+  ) {
+    const registry = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+    const result = await registry.get("review.submit")!.handler({
+      stage,
+      changeSetId: CHANGE_SET,
+      verdict: {
+        schemaVersion: 1,
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        createdAt: "2026-07-29T00:00:00.000Z",
+        stage,
+        artifactRef: `changeset:${CHANGE_SET}`,
+        lens,
+        verdict: "revise",
+        round: 1,
+        findings: [],
+      },
+      ...extra,
+    });
+    return JSON.parse(result.content[0]!.text) as {
+      ok?: boolean;
+      unmetCriteria?: string[];
+      voidedAttestations?: { criterion: string; contradictedBy: string }[];
+    };
+  }
+
+  const design = {
+    schemaVersion: 1,
+    changeSetId: CHANGE_SET,
+    elements: [
+      { id: "e1", name: "the artifact store" },
+      { id: "e2", name: "the derivation" },
+    ],
+    interfaces: [{ name: "StoredArtifacts", package: "@crabgic/cli" }],
+    risks: [{ id: "r1", statement: "a stale design record", mitigation: "keyed by ChangeSet" }],
+  };
+
+  it("scores the plan against the design the design stage stored, one call earlier", async () => {
+    const deps = artifactDeps();
+    deps.changeSets.put({ id: CHANGE_SET } as unknown as ChangeSet);
+
+    const designed = await submitStage(deps, "design", "contract-fit", { design });
+    expect(designed.unmetCriteria).not.toContain("design-risks-have-mitigations");
+    expect(designed.unmetCriteria).not.toContain("design-interfaces-named");
+
+    // A plan covering only ONE of the two stored elements. Nothing in this call
+    // mentions the design — the reference set comes from the store.
+    const partial = await submitStage(deps, "plan", "coverage-of-design", {
+      plan: {
+        schemaVersion: 1,
+        changeSetId: CHANGE_SET,
+        tasks: [{ id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] }],
+      },
+    });
+    expect(partial.unmetCriteria).toContain("plan-covers-every-design-element");
+    // The other two plan criteria are decidable from the plan alone, and pass.
+    expect(partial.unmetCriteria).not.toContain("plan-tasks-have-done-criteria");
+    expect(partial.unmetCriteria).not.toContain("plan-dependencies-acyclic");
+
+    const complete = await submitStage(deps, "plan", "coverage-of-design", {
+      plan: {
+        schemaVersion: 1,
+        changeSetId: CHANGE_SET,
+        tasks: [
+          { id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] },
+          {
+            id: "t2",
+            statement: "derive from it",
+            doneCriteria: ["the derivation test passes"],
+            dependsOn: ["t1"],
+            covers: ["e2"],
+          },
+        ],
+      },
+    });
+    expect(complete.unmetCriteria).toEqual([]);
+  });
+
+  /**
+   * The plan submission must not erase the design it is scored against — otherwise
+   * the coverage criterion would pass on the second plan submission for the wrong
+   * reason, having lost its reference set.
+   */
+  it("keeps the stored design after a plan submission that does not carry one", async () => {
+    const deps = artifactDeps();
+    deps.changeSets.put({ id: CHANGE_SET } as unknown as ChangeSet);
+    await submitStage(deps, "design", "contract-fit", { design });
+    await submitStage(deps, "plan", "sequencing", {
+      plan: { schemaVersion: 1, changeSetId: CHANGE_SET, tasks: [] },
+    });
+
+    const stored = await loadArtifacts(deps.reviewArtifactsPath, CHANGE_SET);
+    expect(stored.design?.elements.map((element) => element.id)).toEqual(["e1", "e2"]);
   });
 });

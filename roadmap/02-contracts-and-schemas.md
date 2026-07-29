@@ -66,6 +66,15 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 | `WorkerResult` | 06 (schema-enforced via `--json-schema`), 14 |
 | `EvidenceRecord` | 04/14 (emit), 08 (attaches rendered PR/review-comment artifacts), 09 (surfaces via `evidence <change-set-id>`), 21, 23 |
 
+> `DesignRecord` / `PlanRecord` join this package (2026-07-29): the design and plan stages' artifacts as DATA,
+> with `deriveDesignCriteria` / `derivePlanCriteria` and their `*Contradictions` counterparts beside the schemas
+> (same placement as `isStageClosable` and `reclassifyDebtForWriteSet` — closure logic lives with the contract it
+> closes over). Six previously-judged exit criteria derive from them, including `plan-dependencies-acyclic`, which
+> is a graph algorithm that was filed as a judgement only because the plan was prose. A record can prove a
+> criterion, contradict it, or be silent on it, and the three are kept distinct: `[].every(...)` is `true`, so
+> collapsing silence into proof would let an empty artifact close a stage. See interface-ledger Gap 20, "Amended
+> 2026-07-29 (second time)".
+
 > `CriterionAttestation` / `StoredAttestation` join this package (2026-07-29): the attributed claim a JUDGED exit
 > criterion is met — `criterion`, `asserter`, `rationale`, `artifactAnchor`, all required non-empty, each removing
 > one way a claim can be unfalsifiable. Not a new *contract* in the 21-contract sense; it is the enforceable half

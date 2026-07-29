@@ -1,6 +1,12 @@
 import {
   CriterionAttestationSchema,
   DEBT_REOPENED_CRITERION,
+  DesignRecordSchema,
+  PlanRecordSchema,
+  deriveDesignCriteria,
+  derivePlanCriteria,
+  designContradictions,
+  planContradictions,
   PIPELINE_STAGE_IDS,
   REVIEW_ROUND_CEILING,
   ReviewVerdictSchema,
@@ -12,6 +18,8 @@ import {
   type ReviewFinding,
   type ReviewVerdict,
   type CriterionAttestation,
+  type DesignRecord,
+  type PlanRecord,
   type StoredAttestation,
 } from "@crabgic/contracts";
 import { GATE_DERIVED_CRITERIA } from "./gate-criteria.js";
@@ -56,6 +64,15 @@ export interface ReviewSubmitDeps {
   readonly metCriteria: () => readonly string[];
   /** Attestations already on record for this stage, from earlier rounds. */
   readonly priorAttestations?: () => readonly StoredAttestation[];
+  /**
+   * The design record the design stage left behind.
+   *
+   * The plan stage needs it: `plan-covers-every-design-element` scores the plan
+   * against the DESIGN's elements, and asking the plan whether it covers what it
+   * says it covers always answers yes.
+   */
+  readonly priorDesign?: () => DesignRecord | undefined;
+  readonly priorPlan?: () => PlanRecord | undefined;
   /**
    * How well the blocking/advisory classifier agrees with the owner, if anyone
    * has checked.
@@ -110,6 +127,17 @@ export interface ReviewSubmitInput {
    * the schema and a second copy of it would drift.
    */
   readonly attestations?: readonly unknown[];
+  /**
+   * The design and plan artifacts, as data rather than prose.
+   *
+   * These are what turn six of the "judged" criteria into checks — a risk table is
+   * walkable, a task graph is testable for cycles. Submitting the ARTIFACT is not
+   * the same as claiming a criterion: the caller supplies the thing under review
+   * and the server decides what it adds up to, which is the same division
+   * `review.submit` already draws for findings.
+   */
+  readonly design?: unknown;
+  readonly plan?: unknown;
 }
 
 /** A claim that could not be honoured, and the reason, returned rather than dropped. */
@@ -118,10 +146,17 @@ export interface IgnoredAttestation {
   readonly reason: string;
 }
 
-/** A well-formed claim that a finding on record contradicts. */
+/** A well-formed claim that the record contradicts. */
 export interface VoidedAttestation {
   readonly criterion: string;
-  /** The unresolved blocking finding that names this criterion in `violates`. */
+  /**
+   * What contradicts it: the id of an unresolved blocking finding naming this
+   * criterion, or `"design-record"` / `"plan-record"` when the artifact itself does.
+   *
+   * One field rather than two because the caller's next move is the same either
+   * way — go and look at the thing named — and a discriminated union here would be
+   * shape for its own sake.
+   */
   readonly contradictedBy: string;
 }
 
@@ -168,6 +203,13 @@ export interface ReviewSubmitResult {
    * the closure decision was computed from, not its own idea of it.
    */
   readonly attestations?: readonly StoredAttestation[];
+  /**
+   * The artifacts the closure decision was computed from, returned for the same
+   * reason `findings` is: the caller persists what was judged, not its own idea of
+   * it. Present only when this submission carried one.
+   */
+  readonly designOfRecord?: DesignRecord;
+  readonly planOfRecord?: PlanRecord;
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -265,6 +307,8 @@ function resolveAttestations(input: {
   readonly prior: readonly StoredAttestation[];
   readonly requiredCriteria: readonly string[];
   readonly findings: readonly ReviewFinding[];
+  /** Criteria the design or plan record refutes, mapped to which record refutes them. */
+  readonly artifactContradictions: ReadonlyMap<string, string>;
 }): AttestationResolution {
   const ignored: IgnoredAttestation[] = [];
   const voided: VoidedAttestation[] = [];
@@ -294,7 +338,7 @@ function resolveAttestations(input: {
     byCriterion.set(attestation.criterion, attestation);
   }
 
-  const contradiction = new Map<string, string>();
+  const contradiction = new Map<string, string>(input.artifactContradictions);
   for (const finding of input.findings) {
     if (finding.violates === undefined) continue;
     if (!isUnresolvedBlocking(finding)) continue;
@@ -354,6 +398,36 @@ export async function runReviewSubmit(
     parsedAttestations.push(result.data);
   }
 
+  // Refused rather than ignored, and refused BEFORE anything is journaled. A record
+  // the server could not read is not a record it may derive from, and silently
+  // dropping it would leave the caller believing its artifact had been checked.
+  let submittedDesign: DesignRecord | undefined;
+  if (input.design !== undefined) {
+    const designParse = DesignRecordSchema.safeParse(input.design);
+    if (!designParse.success) {
+      return {
+        ok: false,
+        error: `invalid design record: ${designParse.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    submittedDesign = designParse.data;
+  }
+  let submittedPlan: PlanRecord | undefined;
+  if (input.plan !== undefined) {
+    const planParse = PlanRecordSchema.safeParse(input.plan);
+    if (!planParse.success) {
+      return {
+        ok: false,
+        error: `invalid plan record: ${planParse.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    submittedPlan = planParse.data;
+  }
+
   const prior = deps.priorFindings();
   const merged = mergeFindings(prior, verdict.findings);
   const writes = deps.plannedWrites();
@@ -369,12 +443,43 @@ export async function runReviewSubmit(
 
   const requiredCriteria = exitCriteriaFor(input.stage);
 
+  // This round's artifact supersedes the stored one; the stored one is what a later
+  // stage compares against.
+  const design = submittedDesign ?? deps.priorDesign?.();
+  const plan = submittedPlan ?? deps.priorPlan?.();
+  const artifactDerived = [
+    ...(design !== undefined ? deriveDesignCriteria(design) : []),
+    ...(plan !== undefined ? derivePlanCriteria(plan, design) : []),
+  ];
+  /**
+   * Criteria the ARTIFACT refutes, as distinct from ones it merely does not
+   * establish.
+   *
+   * An empty risk list proves nothing and refutes nothing — "this design records no
+   * risks" is a legitimate claim for someone to sign. A risk nobody answered is
+   * evidence AGAINST the criterion, and an attestation claiming otherwise is
+   * contradicted by the artifact it describes. Flattening the two states is what
+   * lets an absent artifact read as a compliant one.
+   */
+  const artifactContradictions = new Map<string, string>();
+  if (design !== undefined) {
+    for (const criterion of designContradictions(design)) {
+      artifactContradictions.set(criterion, "design-record");
+    }
+  }
+  if (plan !== undefined) {
+    for (const criterion of planContradictions(plan, design)) {
+      artifactContradictions.set(criterion, "plan-record");
+    }
+  }
+
   const attested = resolveAttestations({
     stage: input.stage,
     submitted: parsedAttestations.map((attestation) => ({ ...attestation, stage: input.stage })),
     prior: deps.priorAttestations?.() ?? [],
     requiredCriteria,
     findings: afterDebt,
+    artifactContradictions,
   });
 
   /**
@@ -401,6 +506,7 @@ export async function runReviewSubmit(
   const metCriteria = [
     ...injectedFromEvidence,
     ...deriveDebtCriterion(merged, afterDebt, writes),
+    ...artifactDerived,
     ...attested.met,
   ];
   const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
@@ -441,6 +547,8 @@ export async function runReviewSubmit(
     findings: afterDebt,
     calibration: deps.calibration(),
     attestations: attested.ofRecord,
+    ...(submittedDesign !== undefined ? { designOfRecord: submittedDesign } : {}),
+    ...(submittedPlan !== undefined ? { planOfRecord: submittedPlan } : {}),
     unattestedCriteria,
     ignoredAttestations: attested.ignored,
     voidedAttestations: attested.voided,

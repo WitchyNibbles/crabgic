@@ -1374,11 +1374,48 @@ its own gate, that nothing gate-decidable or debt-decidable is taken on trust, a
 closes a stage only on a claim somebody signed. What still does not hold is that a caller misreporting a judged
 criterion is CAUGHT — only that the misreport is attributable after the fact.
 
-**The real fix for the judged set is structural, and is named as work rather than as impossibility.** Seven of
-these criteria are undecidable only because design, plan and research artifacts are free-form `IntentContract`
-narrative. "Every risk carries a mitigation" is a `superRefine` the moment risks are a list with a mitigation
-field, and `plan-dependencies-acyclic` is a graph algorithm currently filed as a judgement. See
-`docs/staged-review-pipeline.md` §8.6.
+**Amended 2026-07-29 (second time) — six of the judged criteria were a document-format problem.** They were
+undecidable because design and plan artifacts were free-form `IntentContract` narrative, so there was nothing
+to check against. Not because the questions are subjective: `plan-dependencies-acyclic` — "task dependencies
+form a directed acyclic graph, so the plan can actually be executed in some order" — is a graph algorithm, and
+spent this entire time filed as a criterion a reviewer checks.
+
+`DesignRecord` and `PlanRecord` (`@crabgic/contracts`) give both artifacts a shape, and `review.submit` accepts
+them as `design` / `plan`. Submitting the ARTIFACT is not claiming a criterion: the caller supplies the thing
+under review and the server decides what it adds up to, the same division already drawn for findings. Six
+criteria now derive: `design-risks-have-mitigations`, `design-interfaces-named`,
+`plan-tasks-have-done-criteria`, `plan-dependencies-acyclic`, `plan-covers-every-design-element`, and — through
+the plan's `covers` mapping — the traceability half of the coverage question.
+
+Four rulings the shape depends on:
+
+1. **THREE states, not two.** A record can PROVE a criterion, CONTRADICT it, or be SILENT on it, and flattening
+   the last two is what makes an absent artifact read as a compliant one. `[].every(...)` is `true`, so an
+   empty risk list would satisfy "every risk carries a mitigation" vacuously — the same vacuous closure
+   `exitCriteriaFor` refuses for an unknown stage. Silence therefore derives nothing AND contradicts nothing:
+   "this design records no risks" is a legitimate claim, so it is left to an attestation. A risk nobody
+   answered is evidence AGAINST, and an attestation claiming otherwise is VOID — a claim cannot outvote the
+   artifact it describes.
+2. **An incomplete design still parses.** The temptation was to copy Gap 20 part 1 and make an unanswered risk
+   unrepresentable. Those verdict properties were about a document's HONESTY — a reviewer approving over its
+   own open blocker is never legitimate. A design with an unanswered risk IS legitimate: it is what a design
+   looks like halfway through. The criterion goes unmet; the document is not rejected, because a rejected
+   document cannot be reviewed and the stage would have nothing to converge on.
+3. **The plan's reference set is the DESIGN's elements, from the store.** `plan-covers-every-design-element`
+   reads the design record the design stage left behind, keyed by ChangeSet in XDG state. Handing the plan
+   stage its own reference set would ask the party being checked to supply what it is checked against, and that
+   answer is always yes.
+4. **`design-addresses-every-acceptance-criterion` deliberately does NOT derive.** The set to cover lives on
+   the `Requirement`s, not in the design, and a design supplying its own list of what it must satisfy could
+   omit the awkward ones. It stays judged until a requirements source is wired into the gateway's deps — named
+   as the reason rather than left as an omission. `design-reconciled-with-ledger` stays judged permanently: it
+   asks whether a reconciliation is GENUINE, which is quality, not shape.
+
+⚠️ **What structure does not do.** It decides CLAIMED coverage, never ADEQUATE coverage. A `mitigation` field
+can hold "we'll be careful" and every check passes. Structure removes the OMISSION failure — a risk nobody
+answered, an interface nobody assigned an owner, a task with no done-criteria — and omission is the failure
+that ran twelve rounds. The quality half stays judged and stays attested. See
+`docs/staged-review-pipeline.md` §8.6 and §8.7.
 
 One narrow residual is named rather than glossed: `integrate-final-candidate-gate` takes the candidate object
 id from the caller, so a caller may point at an OLDER object that happens to be fully green. Naming an id

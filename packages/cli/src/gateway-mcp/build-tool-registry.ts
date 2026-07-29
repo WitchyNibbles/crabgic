@@ -68,6 +68,7 @@ import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
+import { loadArtifacts, saveArtifacts } from "../review/artifact-store.js";
 import { GATE_DERIVED_CRITERIA, deriveGateCriteria } from "../review/gate-criteria.js";
 import { scoreCalibration } from "../review/calibration.js";
 import { loadCalibrationSamples, recordCalibrationSample } from "../review/calibration-store.js";
@@ -117,6 +118,8 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly reviewCalibrationPath: string;
   /** Where the attributed claims about judged exit criteria live. */
   readonly reviewAttestationsPath: string;
+  /** Where the structured design and plan records live, per ChangeSet. */
+  readonly reviewArtifactsPath: string;
 }
 
 /**
@@ -149,6 +152,10 @@ function buildReviewTools(
 
       const prior = await loadFindings(deps.reviewFindingsPath);
       const priorAttestations = await loadAttestations(deps.reviewAttestationsPath);
+      // The design record the design stage left behind is what the plan stage's
+      // coverage criterion is scored against — supplied by the SERVER, never by the
+      // plan being checked.
+      const priorArtifacts = await loadArtifacts(deps.reviewArtifactsPath, args.changeSetId);
       // Scored from the owner's own corpus, and reported on the response. A
       // fresh project has none, which is normal — what would not be normal is
       // handing back a blocking/advisory verdict without saying whether anyone
@@ -186,6 +193,8 @@ function buildReviewTools(
           stage: args.stage,
           verdict: args.verdict,
           ...(args.attestations !== undefined ? { attestations: args.attestations } : {}),
+          ...(args.design !== undefined ? { design: args.design } : {}),
+          ...(args.plan !== undefined ? { plan: args.plan } : {}),
         },
         {
           appendEvidence: () => Promise.resolve(),
@@ -193,6 +202,8 @@ function buildReviewTools(
           plannedWrites: () => envelope?.ownedPaths ?? [],
           metCriteria: () => metCriteria,
           priorAttestations: () => priorAttestations,
+          priorDesign: () => priorArtifacts.design,
+          priorPlan: () => priorArtifacts.plan,
           calibration: () => ({
             calibrated: calibration.calibrated,
             kappa: calibration.kappa,
@@ -216,6 +227,20 @@ function buildReviewTools(
           deps.reviewAttestationsPath,
           args.stage,
           result.attestations,
+          deps.reviewStateHome,
+        );
+      }
+      // Persisted as the record the decision was computed from, and only what this
+      // submission carried — a plan submission must not erase the design it was
+      // scored against.
+      if (result.ok && (result.designOfRecord !== undefined || result.planOfRecord !== undefined)) {
+        await saveArtifacts(
+          deps.reviewArtifactsPath,
+          args.changeSetId,
+          {
+            ...(result.designOfRecord !== undefined ? { design: result.designOfRecord } : {}),
+            ...(result.planOfRecord !== undefined ? { plan: result.planOfRecord } : {}),
+          },
           deps.reviewStateHome,
         );
       }
@@ -300,6 +325,16 @@ const REVIEW_SUBMIT_SHAPE = {
    * second shape declared here would disagree with it the first time either moved.
    */
   attestations: z.array(z.unknown()).optional(),
+  /**
+   * The design and plan artifacts as data, validated inside the handler by
+   * `DesignRecordSchema` / `PlanRecordSchema`.
+   *
+   * `unknown` here for the same reason `verdict` is: one schema per document, and a
+   * second shape declared at the wire boundary would disagree with it the first time
+   * either moved.
+   */
+  design: z.unknown(),
+  plan: z.unknown(),
   /**
    * The object id being merged, for `integrate-final-candidate-gate`.
    *

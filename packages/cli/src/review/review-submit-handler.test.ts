@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exitCriteriaFor, type ReviewFinding } from "@crabgic/contracts";
+import { DesignRecordSchema, exitCriteriaFor, type ReviewFinding } from "@crabgic/contracts";
 import { runReviewSubmit, type ReviewSubmitDeps } from "./review-submit-handler.js";
 
 /**
@@ -600,5 +600,213 @@ describe("runReviewSubmit — attested judged criteria", () => {
       deps({ metCriteria: () => [] }),
     );
     expect(result.attestations).toEqual([{ ...attestation(), stage: "implement" }]);
+  });
+});
+
+/**
+ * DESIGN AND PLAN CRITERIA, DECIDED BY THE ARTIFACT.
+ *
+ * Seven criteria were undecidable for one reason: the artifacts they describe were
+ * free-form narrative, so there was nothing to check against. `plan-dependencies-
+ * acyclic` is a graph algorithm that spent this whole time filed as a judgement.
+ *
+ * Three states, deliberately distinguished — flattening them into "derived or not"
+ * is what makes an absent artifact look compliant:
+ *
+ *   - the record PROVES the criterion → derived, and no claim is needed;
+ *   - the record CONTRADICTS it → not derived, and an attestation claiming it is
+ *     void, because a claim cannot outvote the artifact it describes;
+ *   - the record is SILENT (an empty list) → neither. "This design records no
+ *     risks" is a legitimate thing to assert, so it is left to an attestation.
+ */
+describe("runReviewSubmit — criteria decided by the design and plan records", () => {
+  const designRecord = (risks: Record<string, unknown>[]) => ({
+    schemaVersion: 1,
+    changeSetId: "22222222-2222-4222-8222-222222222222",
+    elements: [{ id: "e1", name: "the store", addresses: [] }],
+    interfaces: [{ name: "AttestationStore", package: "@crabgic/cli" }],
+    risks,
+  });
+
+  const planRecord = (tasks: Record<string, unknown>[]) => ({
+    schemaVersion: 1,
+    changeSetId: "22222222-2222-4222-8222-222222222222",
+    tasks,
+  });
+
+  function designAttestation(criterion: string) {
+    return {
+      criterion,
+      asserter: "eo-architect",
+      rationale: "checked against the risk table",
+      artifactAnchor: "docs/design/store.md#risks",
+      assertedAt: "2026-07-29T00:00:00.000Z",
+      round: 1,
+    };
+  }
+
+  it("derives the risks and interfaces criteria from a complete design record", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "design",
+        verdict: verdict({ stage: "design", lens: "contract-fit" }),
+        design: designRecord([{ id: "r1", statement: "load spike", mitigation: "bounded retry" }]),
+      },
+      deps({ metCriteria: () => [] }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.unmetCriteria).not.toContain("design-risks-have-mitigations");
+    expect(result.unmetCriteria).not.toContain("design-interfaces-named");
+    // Still open, and correctly so: the acceptance-criteria mapping and the ledger
+    // reconciliation are judgements, and nothing has claimed them.
+    expect(result.unmetCriteria).toContain("design-addresses-every-acceptance-criterion");
+    expect(result.unmetCriteria).toContain("design-reconciled-with-ledger");
+  });
+
+  it("withholds the risks criterion when a recorded risk carries no answer", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "design",
+        verdict: verdict({ stage: "design", lens: "security" }),
+        design: designRecord([{ id: "r1", statement: "load spike" }]),
+      },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.unmetCriteria).toContain("design-risks-have-mitigations");
+  });
+
+  /** THE TEETH FOR ARTIFACTS: a claim cannot outvote the record it describes. */
+  it("voids an attestation the design record contradicts", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "design",
+        verdict: verdict({ stage: "design", lens: "security" }),
+        design: designRecord([{ id: "r1", statement: "load spike" }]),
+        attestations: [designAttestation("design-risks-have-mitigations")],
+      },
+      deps({ metCriteria: () => [] }),
+    );
+
+    expect(result.unmetCriteria).toContain("design-risks-have-mitigations");
+    expect(result.voidedAttestations).toContainEqual({
+      criterion: "design-risks-have-mitigations",
+      contradictedBy: "design-record",
+    });
+  });
+
+  /**
+   * ...but a claim about what the record is SILENT on stands. A design that records
+   * no risks has not violated the criterion, and someone has to be able to say so.
+   */
+  it("honours an attestation about a section the record leaves empty", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "design",
+        verdict: verdict({ stage: "design", lens: "security" }),
+        design: designRecord([]),
+        attestations: [designAttestation("design-risks-have-mitigations")],
+      },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.unmetCriteria).not.toContain("design-risks-have-mitigations");
+    expect(result.voidedAttestations ?? []).toEqual([]);
+  });
+
+  it("derives done-criteria and acyclicity from a plan record", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "plan",
+        verdict: verdict({ stage: "plan", lens: "sequencing" }),
+        plan: planRecord([
+          { id: "t1", statement: "build the store", doneCriteria: ["its tests pass"], covers: ["e1"] },
+          {
+            id: "t2",
+            statement: "wire it up",
+            doneCriteria: ["the registry test passes"],
+            dependsOn: ["t1"],
+            covers: ["e1"],
+          },
+        ]),
+      },
+      deps({ metCriteria: () => [] }),
+    );
+
+    expect(result.unmetCriteria).not.toContain("plan-tasks-have-done-criteria");
+    expect(result.unmetCriteria).not.toContain("plan-dependencies-acyclic");
+  });
+
+  it("withholds acyclicity for a cyclic plan — a graph algorithm, not a judgement", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "plan",
+        verdict: verdict({ stage: "plan", lens: "sequencing" }),
+        plan: planRecord([
+          { id: "t1", statement: "a", doneCriteria: ["x"], dependsOn: ["t2"] },
+          { id: "t2", statement: "b", doneCriteria: ["y"], dependsOn: ["t1"] },
+        ]),
+      },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.unmetCriteria).toContain("plan-dependencies-acyclic");
+  });
+
+  /**
+   * Coverage is scored against the DESIGN's elements, which come from the record the
+   * design stage left behind. Asking the plan whether it covers what it says it
+   * covers always answers yes.
+   */
+  it("scores plan coverage against the stored design record, not the plan's own claims", async () => {
+    // Parsed rather than hand-built: `priorDesign` returns what the STORE holds, and
+    // the store only ever holds records that validated.
+    const stored = DesignRecordSchema.parse(
+      designRecord([{ id: "r1", statement: "s", mitigation: "m" }]),
+    );
+    const uncovering = planRecord([
+      { id: "t1", statement: "a", doneCriteria: ["x"], covers: ["something-else"] },
+    ]);
+
+    const missing = await runReviewSubmit(
+      {
+        stage: "plan",
+        verdict: verdict({ stage: "plan", lens: "coverage-of-design" }),
+        plan: uncovering,
+      },
+      deps({ metCriteria: () => [], priorDesign: () => stored }),
+    );
+    expect(missing.unmetCriteria).toContain("plan-covers-every-design-element");
+
+    const covering = planRecord([{ id: "t1", statement: "a", doneCriteria: ["x"], covers: ["e1"] }]);
+    const complete = await runReviewSubmit(
+      {
+        stage: "plan",
+        verdict: verdict({ stage: "plan", lens: "coverage-of-design" }),
+        plan: covering,
+      },
+      deps({ metCriteria: () => [], priorDesign: () => stored }),
+    );
+    expect(complete.unmetCriteria).not.toContain("plan-covers-every-design-element");
+  });
+
+  it("refuses a malformed artifact rather than deriving from a document it could not read", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "plan",
+        verdict: verdict({ stage: "plan", lens: "sequencing" }),
+        plan: { schemaVersion: 1, changeSetId: "not-a-uuid", tasks: [] },
+      },
+      deps(),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/plan record/i);
+  });
+
+  it("returns the artifacts of record so the caller persists what was judged", async () => {
+    const submitted = planRecord([{ id: "t1", statement: "a", doneCriteria: ["x"] }]);
+    const result = await runReviewSubmit(
+      { stage: "plan", verdict: verdict({ stage: "plan", lens: "sequencing" }), plan: submitted },
+      deps({ metCriteria: () => [] }),
+    );
+    expect(result.planOfRecord?.tasks).toHaveLength(1);
   });
 });

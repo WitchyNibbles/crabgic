@@ -464,27 +464,64 @@ the claim says. What changes is that the claim can be *checked and found
 wanting*, which an anonymous `true` cannot. The residual is named: a caller
 misreporting a judged criterion is not caught — it is attributable afterwards.
 
-### 8.7 The judged set is a document-format problem, not a logic problem
+### 8.7 The judged set was a document-format problem, not a logic problem
 
-Seven of the judged criteria are undecidable only because the artifacts they
-describe are prose. Give design, plan and research structured records with
-traceability ids and they become mechanical:
+Most of the "judged" criteria were undecidable for one reason: the artifacts they
+describe were prose, so there was nothing to run against. Not because the
+questions are subjective. `plan-dependencies-acyclic` — "task dependencies form a
+directed acyclic graph, so the plan can actually be executed in some order" — is
+a **graph algorithm**, and it spent this entire time filed as a criterion a
+reviewer checks.
 
-| Criterion | What it becomes |
+`DesignRecord` and `PlanRecord` give both artifacts a shape, and `review.submit`
+takes them as `design` / `plan`. Six criteria now derive:
+
+| Criterion | What it is now |
 |---|---|
-| `plan-dependencies-acyclic` | a graph algorithm — it is misfiled as a judgement today |
-| `design-risks-have-mitigations` | every `risks[]` entry has a non-empty `mitigation` or `acceptedBecause` |
-| `design-interfaces-named` | every interface entry names its owning package |
-| `plan-tasks-have-done-criteria` | every task has non-empty done-criteria |
-| `design-addresses-every-acceptance-criterion` | bidirectional id resolution, the pattern `Requirement → EvidenceRecord → objectId` already uses |
-| `plan-covers-every-design-element` | the same, one stage along |
-| `research-questions-answered` / `research-no-silent-assumptions` | coverage of a question list, and a citation on each answer |
+| `plan-dependencies-acyclic` | iterative DFS over the task graph, plus a dangling-dependency check |
+| `design-risks-have-mitigations` | every `risks[]` entry carries a `mitigation` or an `acceptedBecause` |
+| `design-interfaces-named` | the schema requires an owning `package`, so an unowned interface cannot be represented |
+| `plan-tasks-have-done-criteria` | every task has a non-empty `doneCriteria` list |
+| `plan-covers-every-design-element` | every stored `DesignElement` id appears in some task's `covers` |
+
+Submitting the ARTIFACT is not claiming a criterion — the caller supplies the
+thing under review and the server decides what it adds up to.
+
+**Three states, not two.** A record can prove a criterion, contradict it, or be
+silent on it, and flattening the last two is what makes an absent artifact read
+as a compliant one:
+
+- **proves it** → derived, no claim needed;
+- **contradicts it** → not derived, and an attestation claiming it is **void**.
+  A claim cannot outvote the artifact it describes;
+- **silent** (an empty list) → neither. `[].every(...)` is `true`, so an empty
+  risk list would satisfy "every risk carries a mitigation" vacuously. "This
+  design records no risks" is a legitimate thing to assert, so it is left to an
+  attestation.
+
+**An incomplete design still parses**, unlike the three verdict properties Gap 20
+part 1 made unrepresentable. Those were about a document's honesty — approving
+over your own open blocker is never legitimate. A design with an unanswered risk
+IS legitimate; it is what a design looks like halfway through. The criterion goes
+unmet, the document is not rejected, because a rejected document cannot be
+reviewed and the stage would have nothing to converge on.
+
+**Two design criteria stay judged, for stated reasons.**
+`design-addresses-every-acceptance-criterion` needs the acceptance-criteria set,
+which lives on the `Requirement`s — a design supplying its own list of what it
+must satisfy could omit the awkward ones, so this waits on a requirements source
+in the gateway's deps. `design-reconciled-with-ledger` asks whether a
+reconciliation is GENUINE, which is quality and not shape; it stays judged
+permanently.
+
+**The research stage is not done.** `research-questions-answered`,
+`research-no-silent-assumptions` and `research-prior-art-checked` are the same
+shape of problem — coverage of a question list, a citation on each answer — and
+have no record yet. Named as remaining rather than implied by the pattern.
 
 ⚠️ **The honest boundary.** This decides **claimed** coverage, not **adequate**
-coverage: a `mitigation` field can hold "we'll be careful". Structure removes the
-OMISSION failure, not the QUALITY one — and omission is the one that ran twelve
-rounds. The quality half stays judged, and stays attested per §8.6.
-
-This is real work: new contracts, new stage plumbing, and a coordinated ledger
-amendment. It is listed here as work rather than claimed as impossible, which is
-the distinction §8.0 and §8.3 both got wrong in the other direction.
+coverage: a `mitigation` field can hold "we'll be careful" and every check above
+passes. Structure removes the OMISSION failure — a risk nobody answered, an
+interface nobody owns, a task with no done-criteria — and omission is the one
+that ran twelve rounds. The quality half stays judged, and stays attested per
+§8.6.

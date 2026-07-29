@@ -15,7 +15,7 @@ import type { McpToolDefinition } from "../gateway-mcp/registry.js";
 export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
   name: "review.submit",
   description:
-    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Four exit criteria are DERIVED from journaled evidence and cannot be claimed: implement-gates-pass, implement-tests-first, integrate-final-candidate-gate (each from the gates' own recorded verdicts) and no-open-debt-in-touched-paths (from the finding store and this change set's planned writes). Every OTHER criterion is a judgement and needs an entry in `attestations` naming who asserts it, why, and where in the artifact to look — a bare string in `metCriteria` does not count and is reported back in `unattestedCriteria`. An attestation is void while an unresolved blocking finding names its criterion. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, `approve` submitted over an unresolved blocker, and an attestation with no asserter, rationale or anchor.",
+    "Submits one reviewer's verdict for a pipeline stage and returns whether that stage may now close. Closure is computed server-side from every finding on record — required exit criteria, unresolved blocking findings, undispositioned findings at any severity, and debt reopened by this change set's planned writes — never taken from the caller. Four exit criteria are DERIVED from journaled evidence and cannot be claimed: implement-gates-pass, implement-tests-first, integrate-final-candidate-gate (each from the gates' own recorded verdicts) and no-open-debt-in-touched-paths (from the finding store and this change set's planned writes). Six more are decided by the ARTIFACT when one is supplied as `design` / `plan`: risks each carrying a mitigation or a stated acceptance, interfaces naming their owning package, tasks stating done-criteria, a dependency graph that is genuinely acyclic, and the plan covering every element of the design the design stage stored. Every REMAINING criterion is a judgement and needs an entry in `attestations` naming who asserts it, why, and where in the artifact to look — a bare string in `metCriteria` does not count and is reported back in `unattestedCriteria`. An attestation is void while an unresolved blocking finding, or the artifact itself, contradicts its criterion. Rejects a blocking finding that names no exit criterion, a disposition with no evidence, `approve` submitted over an unresolved blocker, and an attestation with no asserter, rationale or anchor.",
   inputSchema: {
     type: "object",
     properties: {
@@ -33,6 +33,22 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
        * every silent strip.
        */
       metCriteria: { type: "array", items: { type: "string" } },
+      /**
+       * The design artifact as data: `elements` (id, name, addresses), `interfaces`
+       * (name, package), `risks` (id, statement, mitigation? / acceptedBecause?).
+       *
+       * Submitting the ARTIFACT is not claiming a criterion — the caller supplies
+       * the thing under review and the server decides what it adds up to. An empty
+       * list decides nothing in either direction: it neither proves the criterion
+       * nor refutes it, so "this design records no risks" is left to an attestation.
+       */
+      design: { type: "object" },
+      /**
+       * The plan artifact as data: `tasks` (id, statement, doneCriteria, dependsOn,
+       * covers). `covers` names `DesignElement` ids, and coverage is scored against
+       * the design record on file — not against this plan's own claims.
+       */
+      plan: { type: "object" },
       /**
        * Attributed claims that this stage's JUDGED criteria are met.
        *

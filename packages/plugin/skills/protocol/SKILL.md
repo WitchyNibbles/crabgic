@@ -104,6 +104,20 @@ come in two kinds, and the tool treats them differently:
   computed from the gates' own recorded verdicts and from the finding store.
   Claiming one has no effect — pass `candidateObjectId` for the integrate stage
   and let the evidence speak.
+- **Decided by the artifact (6).** Submit the design or plan as DATA — `design`
+  with `elements`/`interfaces`/`risks`, `plan` with `tasks` carrying
+  `doneCriteria`/`dependsOn`/`covers` — and six criteria stop being judgements:
+  risks each answered, interfaces owned, tasks with done-criteria, an acyclic
+  dependency graph, and the plan covering every element of the stored design.
+  `plan-dependencies-acyclic` is a graph algorithm; it only ever looked
+  subjective because the plan was prose.
+
+  An **empty** list decides nothing either way. A design recording no risks has
+  not proven the criterion and has not violated it, so say so with an
+  attestation. A design with a risk nobody answered HAS violated it, and an
+  attestation claiming otherwise is voided — a claim cannot outvote the artifact
+  it describes.
+
 - **Judged (everything else).** These need an `attestations` entry naming
   `criterion`, `asserter` (who judged it), `rationale` (why), `artifactAnchor`
   (where to look), `assertedAt` and `round`. A bare string in `metCriteria` does
@@ -114,11 +128,12 @@ It makes the claim **falsifiable**: a named judgement pointing at a named place
 can be checked and found wanting, which an anonymous `true` cannot. Write the
 rationale so a sceptical reader who opens the anchor can disagree with you.
 
-Two ways an attestation still fails to count, both reported back: it names a
+Three ways an attestation still fails to count, all reported back: it names a
 criterion the server derives or one the stage does not require
-(`ignoredAttestations`), or an unresolved `blocking` finding names that same
-criterion (`voidedAttestations`) — you cannot attest a criterion the record says
-is violated.
+(`ignoredAttestations`); an unresolved `blocking` finding names that same
+criterion; or the design or plan record itself contradicts it (both
+`voidedAttestations`, the second naming `design-record` or `plan-record`). You
+cannot attest a criterion the record says is violated.
 
 **Blocking requires naming the criterion violated.** A finding that violates no
 stated criterion is `advisory` — real, recorded, answered, but not holding the
