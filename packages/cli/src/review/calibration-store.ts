@@ -8,7 +8,7 @@ import {
   resolveXdgStateHome,
   type XdgEnv,
 } from "@crabgic/journal";
-import type { CalibrationSample } from "./calibration.js";
+import { CLASSIFICATION_RUBRIC_VERSION, type CalibrationSample } from "./calibration.js";
 
 /**
  * The owner's judgements about the classifier — the corpus `scoreCalibration`
@@ -28,6 +28,12 @@ const CalibrationSampleSchema = z.object({
   findingId: z.string().min(1),
   owner: z.enum(["blocking", "advisory"]),
   classifier: z.enum(["blocking", "advisory"]),
+  /**
+   * Optional on READ, always written. The corpus predating the field was gathered
+   * under rubric 1 by definition — there was only one — so `scoreCalibration`
+   * reads an absent version as 1 rather than dropping real owner judgements.
+   */
+  rubricVersion: z.number().int().positive().optional(),
 });
 
 export const CALIBRATION_FILE_NAME = "review-calibration.json";
@@ -59,7 +65,13 @@ export async function loadCalibrationSamples(path: string): Promise<readonly Cal
   const samples: CalibrationSample[] = [];
   for (const entry of parsed) {
     const result = CalibrationSampleSchema.safeParse(entry);
-    if (result.success) samples.push(result.data);
+    if (!result.success) continue;
+    // `rubricVersion` is omitted rather than set to `undefined`: the repository
+    // builds with `exactOptionalPropertyTypes`, where "absent" and "present and
+    // undefined" are different types, and only the first is what an unversioned
+    // legacy sample means.
+    const { rubricVersion, ...rest } = result.data;
+    samples.push(rubricVersion === undefined ? rest : { ...rest, rubricVersion });
   }
   return samples;
 }
@@ -67,18 +79,32 @@ export async function loadCalibrationSamples(path: string): Promise<readonly Cal
 /**
  * Record one judgement.
  *
- * Keyed by finding, so revising a call SUPERSEDES it rather than adding a second
- * sample. A corpus that counts one revised judgement twice is measuring the
- * revision rather than the classifier.
+ * Keyed by finding AND rubric. Revising a call under the same rubric SUPERSEDES
+ * it rather than adding a second sample — a corpus that counts one revised
+ * judgement twice is measuring the revision rather than the classifier. A
+ * judgement made under a SUPERSEDED rubric is a different measurement and is
+ * kept: `scoreCalibration` excludes it from the score, so nothing is gained by
+ * destroying it, and keeping it leaves a record of what the corpus was before a
+ * rubric rewrite reset it.
+ *
+ * The current rubric is stamped on any sample that arrives without one, so an
+ * unversioned sample can never enter the store and later be misread as belonging
+ * to rubric 1.
  */
 export async function recordCalibrationSample(
   path: string,
   sample: CalibrationSample,
   stateHome: string,
 ): Promise<void> {
+  const stamped: CalibrationSample = {
+    ...sample,
+    rubricVersion: sample.rubricVersion ?? CLASSIFICATION_RUBRIC_VERSION,
+  };
+  const key = (entry: CalibrationSample): string =>
+    `${entry.findingId}@${String(entry.rubricVersion ?? 1)}`;
   const existing = await loadCalibrationSamples(path);
-  const byFinding = new Map(existing.map((entry) => [entry.findingId, entry]));
-  byFinding.set(sample.findingId, sample);
+  const byFinding = new Map(existing.map((entry) => [key(entry), entry]));
+  byFinding.set(key(stamped), stamped);
 
   const dirRefusal = ensureOwnedDir(dirname(path), stateHome);
   if (dirRefusal !== undefined) {

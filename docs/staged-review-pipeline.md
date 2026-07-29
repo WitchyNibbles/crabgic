@@ -5,12 +5,13 @@
 19 parts 3–4, `docs/claude-code-adaptation.md` §0 amendment 4, and the four
 phases the gap names (`roadmap/10, 11, 13, 14`).
 
-**The code has not caught up.** `packages/plugin/src/manager-protocol.ts` and
-`packages/plugin/skills/protocol/SKILL.md` still render the superseded loop —
-"no severity floor", "keep going until a round finds nothing new" — and
-`packages/plugin/agents/eo-roaster.md` still forbids approval. Until those land,
-the shipped protocol text and the ledger disagree, and the ledger is the
-authority. §8 lists what is still unanswered.
+**The code has caught up on the protocol text** (landed 2026-07-29):
+`packages/plugin/src/manager-protocol.ts` and
+`packages/plugin/skills/protocol/SKILL.md` now render the severity floor as
+gating the loop and never the ledger, and `packages/plugin/agents/eo-roaster.md`
+treats `approve` as a real answer. §8 lists what is still unanswered — the
+pipeline driver (§8.4), a research-stage record type, and the calibration
+corpus's owner labels.
 
 Written 2026-07-29 against `feat/conversation-first-orchestration` @ `5d17113`.
 
@@ -373,10 +374,155 @@ they are not mistaken for settled:
    defects through, and it refuses to call a classifier calibrated on fewer than
    twenty samples however well it scored.
 
-   **What remains is a corpus.** Until the owner classifies real findings
-   against the classifier's calls, the split stays asserted — and the harness
-   now says so with a number instead of a caveat.
+   **Corrected 2026-07-29 — "what remains is a corpus" was still the wrong
+   diagnosis.** What remained was a TOOL. `recordCalibrationSample` was called
+   from nothing but its own test, so the corpus could not be filled by any means
+   the product offered: `sampleSize: 0` was a property of the shipped harness,
+   not a project's starting state, and the honest caveat attached to every result
+   described a number nobody could move. This is §8.0's mistake for the third
+   time — "the owner has to supply the data" was read as "there is nothing to
+   build", exactly as "the obvious storage is forbidden" was read as "blocked"
+   and as a fail-closed derivation was read as a working one.
+
+   `review.calibrate` is on the gateway surface now. Called bare it reports where
+   the corpus stands and which findings to put to the owner; called with a
+   finding and the owner's call it records one sample. The classifier's own call
+   is read from the finding store and is not an argument — otherwise a caller
+   could record manufactured agreement and certify the classifier itself.
+
+   Two rigour changes came with it. The verdict is taken on kappa's 95% LOWER
+   BOUND rather than the estimate, because the external record puts a 20-sample
+   interval at roughly ±0.15 and a published κ = 0.633 carried [0.433, 0.814] —
+   deciding on the estimate at twenty samples would have moved the decorative
+   judge rather than removed it. And samples carry the rubric they were judged
+   under, because kappa pooled across a rubric rewrite measures two different
+   classifiers.
+
+   **What still needs the owner is the owner's own calls** — twenty of them, with
+   at least eight in each class. That is real labour, so the tool spends it well:
+   it asks first about the findings where a misclassification already left a
+   trace, an `advisory` that got fixed anyway or a `blocking` that got refuted.
 
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
    `Workflow` script are both viable (§5); the choice is unmade and is not
    blocked by anything — it is simply not yet made.
+
+### 8.5 Four criteria are decided by evidence, not by the caller
+
+Added 2026-07-29. §4.3 says anything a deterministic gate decides is decided by
+the gate; `review.submit` now applies that to every criterion it can actually
+check. `implement-gates-pass`, `implement-tests-first` and
+`integrate-final-candidate-gate` come from the gates' own recorded verdicts;
+`no-open-debt-in-touched-paths` comes from the finding store and the ChangeSet's
+planned writes. A claim to any of the four is discarded before the closure rule
+sees it.
+
+**The first version of this was wrong, and the way it was wrong is the point.**
+It scored `exitStatus`, which is not a verdict. `captureRedBaseline` journals a
+`tdd`-tagged record with a NONZERO exit deliberately — that is what a red
+baseline IS — so "every gate-tagged record exited zero" meant **doing TDD
+correctly made the implement stage impossible to close on evidence**. It could
+then close only on the caller's word, which is the exact failure the derivation
+was written to remove. The gate's own judgement is now recorded
+(`EvidenceRecord.gateVerdict`) and the LATEST firing per tag is that tag's
+result, so a repaired failure stops counting against the work that repaired it.
+
+The lesson matches §8.0's. There, "the obvious implementation is forbidden" was
+mistaken for "this is blocked". Here, a derivation that fails CLOSED was mistaken
+for a derivation that works — nothing failed loudly, the criterion simply never
+became derivable, and the caller-supplied fallback quietly carried the stage.
+Fail-closed is the right default and it is not the same thing as correct.
+
+**What is still judged:** `implement-task-done-criteria-met`, and every design,
+plan and research criterion. Those are undecidable _while the artifacts they
+describe are free-form `IntentContract` narrative_ — see §8.6 for what they
+carry in the meantime, and §8.7 for the work that would decide them.
+
+### 8.6 A judged criterion closes a stage only on a claim somebody signed
+
+Added 2026-07-29. The criteria above cannot be decided by a tool. They were also
+arriving as bare strings in a `metCriteria` array, which is a separate problem
+and a fixable one: nobody said it, nothing pointed at what it described, and a
+misreport left no trace.
+
+`review.submit` now takes `attestations`, each naming the criterion, **who**
+asserts it, **why**, and **where in the artifact to look**. All four required
+non-empty, each removing one way a claim can be unfalsifiable. A bare string no
+longer counts and is reported back in `unattestedCriteria` rather than silently
+dropped.
+
+Two contradictions are caught without deciding anything:
+
+- an attestation for a criterion the server DERIVES is discarded — letting a
+  judgement override evidence is the derivation running backwards;
+- an attestation is **void** while an unresolved `blocking` finding names its
+  criterion. Closure was already blocked by that finding; what this fixes is the
+  report saying the criterion was met while the record said it was violated.
+
+**This is not verification, and must not be presented as any.** A rationale can
+be plausible and wrong; an anchor can point at a section that does not say what
+the claim says. What changes is that the claim can be _checked and found
+wanting_, which an anonymous `true` cannot. The residual is named: a caller
+misreporting a judged criterion is not caught — it is attributable afterwards.
+
+### 8.7 The judged set was a document-format problem, not a logic problem
+
+Most of the "judged" criteria were undecidable for one reason: the artifacts they
+describe were prose, so there was nothing to run against. Not because the
+questions are subjective. `plan-dependencies-acyclic` — "task dependencies form a
+directed acyclic graph, so the plan can actually be executed in some order" — is
+a **graph algorithm**, and it spent this entire time filed as a criterion a
+reviewer checks.
+
+`DesignRecord` and `PlanRecord` give both artifacts a shape, and `review.submit`
+takes them as `design` / `plan`. Five criteria now derive:
+
+| Criterion                          | What it is now                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| `plan-dependencies-acyclic`        | iterative DFS over the task graph, plus a dangling-dependency check                    |
+| `design-risks-have-mitigations`    | every `risks[]` entry carries a `mitigation` or an `acceptedBecause`                   |
+| `design-interfaces-named`          | the schema requires an owning `package`, so an unowned interface cannot be represented |
+| `plan-tasks-have-done-criteria`    | every task has a non-empty `doneCriteria` list                                         |
+| `plan-covers-every-design-element` | every stored `DesignElement` id appears in some task's `covers`                        |
+
+Submitting the ARTIFACT is not claiming a criterion — the caller supplies the
+thing under review and the server decides what it adds up to.
+
+**Three states, not two.** A record can prove a criterion, contradict it, or be
+silent on it, and flattening the last two is what makes an absent artifact read
+as a compliant one:
+
+- **proves it** → derived, no claim needed;
+- **contradicts it** → not derived, and an attestation claiming it is **void**.
+  A claim cannot outvote the artifact it describes;
+- **silent** (an empty list) → neither. `[].every(...)` is `true`, so an empty
+  risk list would satisfy "every risk carries a mitigation" vacuously. "This
+  design records no risks" is a legitimate thing to assert, so it is left to an
+  attestation.
+
+**An incomplete design still parses**, unlike the three verdict properties Gap 20
+part 1 made unrepresentable. Those were about a document's honesty — approving
+over your own open blocker is never legitimate. A design with an unanswered risk
+IS legitimate; it is what a design looks like halfway through. The criterion goes
+unmet, the document is not rejected, because a rejected document cannot be
+reviewed and the stage would have nothing to converge on.
+
+**Two design criteria stay judged, for stated reasons.**
+`design-addresses-every-acceptance-criterion` needs the acceptance-criteria set,
+which lives on the `Requirement`s — a design supplying its own list of what it
+must satisfy could omit the awkward ones, so this waits on a requirements source
+in the gateway's deps. `design-reconciled-with-ledger` asks whether a
+reconciliation is GENUINE, which is quality and not shape; it stays judged
+permanently.
+
+**The research stage is not done.** `research-questions-answered`,
+`research-no-silent-assumptions` and `research-prior-art-checked` are the same
+shape of problem — coverage of a question list, a citation on each answer — and
+have no record yet. Named as remaining rather than implied by the pattern.
+
+⚠️ **The honest boundary.** This decides **claimed** coverage, not **adequate**
+coverage: a `mitigation` field can hold "we'll be careful" and every check above
+passes. Structure removes the OMISSION failure — a risk nobody answered, an
+interface nobody owns, a task with no done-criteria — and omission is the one
+that ran twelve rounds. The quality half stays judged, and stays attested per
+§8.6.

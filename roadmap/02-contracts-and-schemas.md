@@ -65,6 +65,29 @@ Every cross-cutting type in the system exists exactly once — a zod schema with
 | `TaskPacket` | 03 (spawn input), 06, 13 (builds) |
 | `WorkerResult` | 06 (schema-enforced via `--json-schema`), 14 |
 | `EvidenceRecord` | 04/14 (emit), 08 (attaches rendered PR/review-comment artifacts), 09 (surfaces via `evidence <change-set-id>`), 21, 23 |
+
+> `DesignRecord` / `PlanRecord` join this package (2026-07-29): the design and plan stages' artifacts as DATA,
+> with `deriveDesignCriteria` / `derivePlanCriteria` and their `*Contradictions` counterparts beside the schemas
+> (same placement as `isStageClosable` and `reclassifyDebtForWriteSet` — closure logic lives with the contract it
+> closes over). Six previously-judged exit criteria derive from them, including `plan-dependencies-acyclic`, which
+> is a graph algorithm that was filed as a judgement only because the plan was prose. A record can prove a
+> criterion, contradict it, or be silent on it, and the three are kept distinct: `[].every(...)` is `true`, so
+> collapsing silence into proof would let an empty artifact close a stage. See interface-ledger Gap 20, "Amended
+> 2026-07-29 (second time)".
+
+> `CriterionAttestation` / `StoredAttestation` join this package (2026-07-29): the attributed claim a JUDGED exit
+> criterion is met — `criterion`, `asserter`, `rationale`, `artifactAnchor`, all required non-empty, each removing
+> one way a claim can be unfalsifiable. Not a new *contract* in the 21-contract sense; it is the enforceable half
+> of a criterion no tool can decide, the same shape `ReviewFinding.violates` already takes. See interface-ledger
+> Gap 20, "Amended 2026-07-29 — judged criteria carry an attributed claim".
+
+> `EvidenceRecord` carries `gateVerdict: "passed" | "failed"` (optional) — the gate handler's own judgement,
+> which `exitStatus` cannot stand in for: 14's TDD gate returns `passed: false` while reporting the candidate's
+> `exitStatus: 0` when no red baseline exists. **Absent is meaningful**, not unset: a `captureRedBaseline`
+> pre-dispatch capture is not a firing, and neither is Gap 6's rendered-artifact evidence. `isNegativeEvidence`
+> in this package is the one implementation of "was this a genuine negative run" — it prefers the verdict and
+> falls back to `exitStatus`, so records journaled before the field score unchanged. See interface-ledger
+> Gap 20, "Amended 2026-07-29".
 | `ExternalConnection` | 16 (store), 09, 18, 19, 20 |
 | `CapabilitySnapshot` | 16 (cache), 18, 20 |
 | `RemoteMutationPlan` | 16 (pipeline), 18, 20, 21 |

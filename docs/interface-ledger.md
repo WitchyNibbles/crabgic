@@ -1235,10 +1235,46 @@ below rather than pretended away.
 
 **Disclosed residual risk:** the schema enforces the SHAPE of a verdict and not its HONESTY. A reviewer can
 still classify a real blocker as `advisory`, or attach a plausible `violates` to a taste preference, and every
-document it produces will validate. The `blocking`/`advisory` split has **no calibration** — no sample where
-it has been checked against the owner's own judgement — so it is asserted, not measured. This is the same
-posture Gap 19's original entry refused to accept for falsifiability, and it is recorded in those terms rather
-than as a footnote.
+document it produces will validate. The `blocking`/`advisory` split is **measurable but not yet measured** —
+until a project's owner has ruled on real findings it is asserted, and every `review.submit` result says so in
+those terms rather than presenting its verdicts as measured. This is the same posture Gap 19's original entry
+refused to accept for falsifiability, and it is recorded here rather than as a footnote.
+
+**Amended 2026-07-29 — the corpus was unfillable, which is not the same as empty.** `scoreCalibration` and
+`recordCalibrationSample` both shipped, both tested, and the store was called from **nothing but its own test**.
+So `sampleSize: 0` was a property of the product rather than a project's starting state, and the honest caveat
+attached to every result described a number that could never move. `docs/staged-review-pipeline.md` §8.3
+recorded "what remains is a corpus" as though it were waiting on the owner; it was waiting on a tool.
+
+1. **`review.calibrate` is that tool**, on the shipped gateway surface and listed in the assertion that pins
+   what the binary exposes. An MCP tool and not a CLI command, per the 2026-07-28 ruling: the owner's call
+   arrives in conversation, so it is recorded from conversation. Called with no arguments it reports the
+   corpus's state and which findings to put to the owner next.
+2. **The classifier's own call is NOT an input.** It is read from the finding on record. Accepting it would let
+   a caller record twenty samples of manufactured agreement and certify the classifier itself — the
+   reviewer-supplying-its-own-verdict failure one level further out. The owner's call is the only argument,
+   because it is the only thing the server cannot derive.
+3. **The verdict is taken on the confidence interval's lower bound, not the point estimate.** The external
+   record is specific: ~50 stratified samples pin kappa to roughly ±0.10–0.15 at 95%, and a published
+   measurement of κ = 0.633 carried an interval of [0.433, 0.814] — one number spanning "the rubric is
+   ambiguous" to "the judge is strong". Deciding on the estimate at twenty samples would have MOVED the
+   decorative judge rather than removed it. A minority-class floor (`CALIBRATION_MINIMUM_PER_CLASS`, on the
+   OWNER's labels) joins the absolute sample floor, because kappa's variance is dominated by the rarer class and
+   `blocking` is both the rare call and the only one the pipeline depends on.
+4. **Samples carry the rubric they judged.** Kappa pooled across a rubric rewrite measures two different
+   classifiers, and a rubric rewrite is exactly what a kappa below 0.4 is meant to prompt. Scoring covers the
+   rubric in force only; the reset is visible in `sampleSize` rather than hidden in a score that quietly stopped
+   describing the shipped classifier. An absent version reads as rubric 1, since the corpus predating the field
+   was gathered under the only rubric there was.
+5. **Dispositions suggest, they never label.** `review.calibrate` surfaces the two shapes a misclassification
+   leaves behind — an `advisory` finding that was fixed anyway, a `blocking` finding that was refuted — because
+   that is where a scarce labelling budget belongs. They are candidates for the owner to rule on. Promoting one
+   to a sample would grade the classifier by its own downstream consequences.
+
+**What this still does not close:** the owner speaks through the orchestrator, so a manager could relay a
+judgement the owner never made. No surface here can prevent that. What holds is that fabricating agreement
+requires fabricating the OWNER's label specifically — the classifier's half is read from the store — and the
+corpus is a plain file in the owner's own state directory that they can read.
 
 Second, and **partly closed 2026-07-29**: `review.submit` now calls `isStageClosable` and
 `reclassifyDebtForWriteSet` server-side and returns the closure decision, so a reviewer supplies findings and
@@ -1261,29 +1297,144 @@ inputs come from the SERVER and never the caller: planned writes from the Change
 `ownedPaths`, so a reviewer cannot understate what it intends to touch and thereby choose which debt it
 faces; and prior findings from the durable store, so a clean round cannot erase somebody else's open blocker.
 
-**The gate-decidable criterion is derived, not believed.** `implement-gates-pass` is computed from the
-`EvidenceRecord`s journaled against the ChangeSet — the same signal the release gate scores on, where a linked
-record with a nonzero `exitStatus` is a genuine negative run — and then SUBTRACTED from whatever the caller
-claimed, so asserting it without gate evidence to back it does not work. Records carrying no `gateTag` are
-skipped rather than counted, since Gap 6's rendered-artifact evidence is not a gate firing. An empty evidence
-set yields nothing: gates that never ran are not gates that passed, and treating absence of proof as proof is
-how a stage closes on work nobody verified.
+**The gate-decidable criteria are derived, not believed.** Four of them, computed server-side and then
+SUBTRACTED from whatever the caller claimed, so asserting one does not work:
 
-**The limit that remains.** The other criteria are judgements — "every risk carries a mitigation", "every task
-states how it will be known done" — and those still arrive as caller-supplied `metCriteria`. No tool can
-decide them, which is why they are stated as criteria a reviewer checks rather than as gates. What holds is
-that the reviewer cannot satisfy its own gate and that nothing gate-decidable is taken on trust; what does not
-is that a caller misreporting a judged criterion is caught.
+| Criterion | Derived from |
+|---|---|
+| `implement-gates-pass` | every gate tag's latest journaled firing reporting `gateVerdict: "passed"` |
+| `implement-tests-first` | the `tdd` tag's latest firing passing — which by that gate's construction means a red baseline before dispatch and a green candidate |
+| `integrate-final-candidate-gate` | every tag's latest firing passing **at the candidate object id**, which the caller names as a fact the server then checks |
+| `no-open-debt-in-touched-paths` | `selectDebtTouchedBy` over the durable finding set and the ChangeSet's own envelope `ownedPaths` |
 
-**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
-`roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),
-`roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits beside),
-`roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
+An empty evidence set yields nothing: gates that never ran are not gates that passed, and treating absence of
+proof as proof is how a stage closes on work nobody verified. `GATE_DERIVED_CRITERIA` is the one list the
+subtraction reads, so a criterion that becomes derivable becomes unclaimable in the same edit.
+
+**Amended 2026-07-29 — `exitStatus` was the wrong signal, in both directions.** The first version of this
+derivation scored "every gate-tagged `EvidenceRecord` reports `exitStatus === 0`". That was wrong twice, and
+the schema had to move for either fix to be possible:
+
+1. **A zero exit is not a pass.** `createTddGate` returns `passed: false` while reporting the candidate's own
+   `exitStatus: 0` when no red baseline exists, so scoring the exit status read a FAILED gate as passing.
+   `EvidenceRecord` **gains `gateVerdict: "passed" | "failed"`, optional**, set by `emitEvidence` for every
+   firing from the handler's own `GateVerdict.passed`. Absent is meaningful rather than unset: a
+   `captureRedBaseline` pre-dispatch capture is not a firing and reports none, Gap 6's rendered-artifact
+   evidence is not a firing either, and a record predating the field has no judgement to read. All three are
+   skipped by a closure derivation, which is the fail-closed direction.
+2. **A gate's history is not its result.** The journal is append-only, so `captureRedBaseline`'s deliberately
+   NONZERO `tdd` record — and every failing firing a later fix repaired — sat beside the passing one forever.
+   Requiring every record to pass therefore made `implement-gates-pass` **permanently underivable for any
+   ChangeSet that did TDD correctly**: the implement stage could close only on the caller's word, which is the
+   exact thing this derivation exists to stop. The **latest firing per tag** is now that tag's result, ordered
+   by `capturedAt` and falling back to position only to break a tie.
+
+`isNegativeEvidence` in `@crabgic/contracts` is the one implementation of "was this a genuine negative run",
+adopted by the release-gate report generator and the learning eval runner, which had each written
+`exitStatus !== 0` inline with a comment stating — accurately at the time — that no recorded verdict existed to
+consult. It prefers the verdict and falls back to the exit status, so records journaled before the field grade
+exactly as they did. A closure derivation deliberately does NOT take that fallback: unproven is not green.
+
+**The limit that remains — and the half of it that was reachable.** The other criteria are judgements: "every
+risk carries a mitigation", "every task states how it will be known done". No tool can decide them **while the
+artifacts they describe are free-form narrative**, which is why they are stated as criteria a reviewer checks
+rather than as gates. That much stands.
+
+What did NOT have to stand is the FORM the claim took. Those criteria arrived as bare strings in a
+`metCriteria` array — the weakest possible shape for a claim: nobody said it, nothing pointed at what it
+described, and a misreport left no trace. The criterion being undecidable and the claim being anonymous are two
+different properties, and only the first is forced.
+
+**Amended 2026-07-29 — judged criteria carry an attributed claim or they do not count.** `CriterionAttestation`
+(`@crabgic/contracts`) requires four things non-empty, each removing one way a claim can be unfalsifiable:
+`criterion`, `asserter` (who judged it), `rationale` (why), and `artifactAnchor` (where in the artifact to
+look). This is the same move part 1 made for findings — a `blocking` finding must name the criterion it
+violates — applied one level out.
+
+1. **A bare `metCriteria` string no longer establishes anything.** It is either a criterion the server derives,
+   where the claim is irrelevant, or a judged one, where it needs an attestation. It is reported back in
+   `unattestedCriteria` rather than silently stripped: a caller watching a criterion it "supplied" stay unmet
+   with no explanation is the failure mode of every silent discard.
+2. **An attestation for a derived criterion is discarded and reported**, never honoured. Letting a judgement
+   override evidence is the derivation running backwards.
+3. **An attestation is VOID while an unresolved `blocking` finding names its criterion in `violates`.** This is
+   the one contradiction a tool can catch without deciding the criterion itself: two claims about the same
+   criterion, and the falsifiable one is unanswered. Closure was already blocked by that finding — what this
+   fixes is `unmetCriteria` reporting the criterion MET, a report contradicting the record it was computed from.
+4. **Attestations are durable**, in XDG state beside the findings and the calibration corpus, scoped per stage
+   so a submission for `implement` cannot overwrite what the design stage established. Without persistence an
+   attestation lives for one tool call, round 2 re-argues what round 1 settled, and the record of whose
+   judgement closed a stage vanishes with the response — an attributed claim nobody can look up later is barely
+   better than the boolean it replaced.
+
+**This is not verification and is not presented as any.** A rationale can be plausible and wrong; an anchor can
+point at a section that does not say what the attestation claims. The gain is falsifiability: a named judgement
+pointing at a named place can be checked and found wanting. What holds now is that the reviewer cannot satisfy
+its own gate, that nothing gate-decidable or debt-decidable is taken on trust, and that a judged criterion
+closes a stage only on a claim somebody signed. What still does not hold is that a caller misreporting a judged
+criterion is CAUGHT — only that the misreport is attributable after the fact.
+
+**Amended 2026-07-29 (second time) — six of the judged criteria were a document-format problem.** They were
+undecidable because design and plan artifacts were free-form `IntentContract` narrative, so there was nothing
+to check against. Not because the questions are subjective: `plan-dependencies-acyclic` — "task dependencies
+form a directed acyclic graph, so the plan can actually be executed in some order" — is a graph algorithm, and
+spent this entire time filed as a criterion a reviewer checks.
+
+`DesignRecord` and `PlanRecord` (`@crabgic/contracts`) give both artifacts a shape, and `review.submit` accepts
+them as `design` / `plan`. Submitting the ARTIFACT is not claiming a criterion: the caller supplies the thing
+under review and the server decides what it adds up to, the same division already drawn for findings. Six
+criteria now derive: `design-risks-have-mitigations`, `design-interfaces-named`,
+`plan-tasks-have-done-criteria`, `plan-dependencies-acyclic`, `plan-covers-every-design-element`, and — through
+the plan's `covers` mapping — the traceability half of the coverage question.
+
+Four rulings the shape depends on:
+
+1. **THREE states, not two.** A record can PROVE a criterion, CONTRADICT it, or be SILENT on it, and flattening
+   the last two is what makes an absent artifact read as a compliant one. `[].every(...)` is `true`, so an
+   empty risk list would satisfy "every risk carries a mitigation" vacuously — the same vacuous closure
+   `exitCriteriaFor` refuses for an unknown stage. Silence therefore derives nothing AND contradicts nothing:
+   "this design records no risks" is a legitimate claim, so it is left to an attestation. A risk nobody
+   answered is evidence AGAINST, and an attestation claiming otherwise is VOID — a claim cannot outvote the
+   artifact it describes.
+2. **An incomplete design still parses.** The temptation was to copy Gap 20 part 1 and make an unanswered risk
+   unrepresentable. Those verdict properties were about a document's HONESTY — a reviewer approving over its
+   own open blocker is never legitimate. A design with an unanswered risk IS legitimate: it is what a design
+   looks like halfway through. The criterion goes unmet; the document is not rejected, because a rejected
+   document cannot be reviewed and the stage would have nothing to converge on.
+3. **The plan's reference set is the DESIGN's elements, from the store.** `plan-covers-every-design-element`
+   reads the design record the design stage left behind, keyed by ChangeSet in XDG state. Handing the plan
+   stage its own reference set would ask the party being checked to supply what it is checked against, and that
+   answer is always yes.
+4. **`design-addresses-every-acceptance-criterion` deliberately does NOT derive.** The set to cover lives on
+   the `Requirement`s, not in the design, and a design supplying its own list of what it must satisfy could
+   omit the awkward ones. It stays judged until a requirements source is wired into the gateway's deps — named
+   as the reason rather than left as an omission. `design-reconciled-with-ledger` stays judged permanently: it
+   asks whether a reconciliation is GENUINE, which is quality, not shape.
+
+⚠️ **What structure does not do.** It decides CLAIMED coverage, never ADEQUATE coverage. A `mitigation` field
+can hold "we'll be careful" and every check passes. Structure removes the OMISSION failure — a risk nobody
+answered, an interface nobody assigned an owner, a task with no done-criteria — and omission is the failure
+that ran twelve rounds. The quality half stays judged and stays attested. See
+`docs/staged-review-pipeline.md` §8.6 and §8.7.
+
+One narrow residual is named rather than glossed: `integrate-final-candidate-gate` takes the candidate object
+id from the caller, so a caller may point at an OLDER object that happens to be fully green. Naming an id
+produces no passing gates for it, which makes this much smaller than asserting the criterion — and with no id
+supplied the criterion does not derive at all, so the integrate stage cannot close.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join, including
+`EvidenceRecord.gateVerdict`), `roadmap/14-quality-security-gates.md` (owns `emitEvidence`, the sole emitter
+that sets it), `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates
+through), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits
+beside), `roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
 
 **Where this ruling could be got wrong later:** adding a disposition that means "ignored", which reintroduces
 the disposal route the whole design exists to prevent; relaxing `approve` so it tolerates an open blocker,
 which makes the verdict advisory; giving `exitCriteriaFor` an empty-list fallback, which closes stages
-vacuously; or writing a second path matcher for the debt index instead of importing the canonical one.
+vacuously; writing a second path matcher for the debt index instead of importing the canonical one; treating an
+absent `gateVerdict` as a pass in a closure derivation, which restores exactly the hole the field was added to
+close; or deciding `implement-gates-pass` from `exitStatus` again, which re-poisons every TDD-compliant
+ChangeSet.
 
 ---
 

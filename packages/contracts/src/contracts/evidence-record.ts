@@ -86,7 +86,57 @@ export const EvidenceRecordSchema = z
      * pins.
      */
     gateTag: NonEmptyStringSchema.optional(),
+
+    /**
+     * The gate handler's OWN pass/fail judgement for this firing.
+     *
+     * WHY THIS IS NOT `exitStatus`. `exitStatus` was serving as the proxy, and
+     * for a shipped gate the two genuinely disagree: `@crabgic/gates`'
+     * `createTddGate` returns `passed: false` while reporting the candidate's
+     * own `exitStatus: 0` whenever no red-baseline record exists. A consumer
+     * reconstructing pass/fail from the exit status therefore reads that FAILED
+     * firing as a pass — wrong in the one direction that matters for a field the
+     * release gate and the review pipeline both score on. Only the handler knows
+     * its own verdict, so the handler records it.
+     *
+     * Optional, and absent is MEANINGFUL rather than unset: it means "this
+     * record is not a gate firing and has no verdict to report". Two real
+     * sources of that — a `captureRedBaseline` pre-dispatch capture, which
+     * deliberately carries `gateTag: "tdd"` with a nonzero exit and is not a
+     * firing; and Gap 6's rendered-artifact evidence (08), which carries no
+     * `gateTag` either. A consumer scoring gate results skips both rather than
+     * guessing, which is also what stops a correctly-captured red baseline from
+     * disqualifying its own ChangeSet forever.
+     *
+     * Records journaled before this field existed carry no verdict and so are
+     * skipped too. That fails closed: the tag has no scoreable result until it
+     * fires again, which is the safe direction.
+     */
+    gateVerdict: z.enum(["passed", "failed"]).optional(),
   })
   .strict();
 
 export type EvidenceRecord = z.infer<typeof EvidenceRecordSchema>;
+
+/**
+ * Was this record a genuine negative run?
+ *
+ * The recorded verdict wins where there is one, and `exitStatus` answers where
+ * there is not. That fallback is what makes this safe to adopt: every record
+ * journaled before `gateVerdict` existed scores exactly as it did before, and a
+ * record with no verdict may not be a firing at all — the exit status is then
+ * the only thing there is to read.
+ *
+ * Lives here, beside the schema, because three consumers had each written
+ * `exitStatus !== 0` inline with a comment explaining that no recorded verdict
+ * existed to consult. That was true when they were written and is not now, and
+ * one implementation of the question beats three that have to agree.
+ *
+ * NOT the same question as "may a stage close on this". `deriveGateCriteria` in
+ * `@crabgic/cli` deliberately refuses the fallback: for a closure decision, a
+ * gate-tagged record with no verdict is unproven rather than presumed green.
+ */
+export function isNegativeEvidence(record: EvidenceRecord): boolean {
+  if (record.gateVerdict !== undefined) return record.gateVerdict === "failed";
+  return record.exitStatus !== 0;
+}

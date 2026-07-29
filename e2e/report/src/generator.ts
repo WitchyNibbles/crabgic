@@ -1,4 +1,4 @@
-import type { EvidenceRecord } from "@crabgic/contracts";
+import { isNegativeEvidence, type EvidenceRecord } from "@crabgic/contracts";
 import type { JournalEntry, JournalEntryFilter } from "@crabgic/journal";
 import {
   RELEASE_GATE_SCHEMA_VERSION,
@@ -70,8 +70,9 @@ function toEvidenceLink(record: EvidenceRecord): ReleaseGateEvidenceLink {
  * matched evidence is either `"FAIL"` (`"final"` mode — a required item
  * with no evidence blocks the release) or `"EVIDENCE-PENDING"` (`"interim"`
  * mode — no run attempted yet, distinct from a genuine negative result).
- * A `"PASS"` requires >=1 matched record AND every matched record's
- * `exitStatus === 0` — a single nonzero-`exitStatus` record among the
+ * A `"PASS"` requires >=1 matched record AND that no matched record is a
+ * genuine negative run per `isNegativeEvidence` (`@crabgic/contracts`) — a
+ * single negative record among the
  * matches forces `"FAIL"` regardless of how many green records also exist,
  * since all matches share the one exact, immutable release-candidate
  * object ID (a genuine re-run after a fix necessarily lands on a NEW
@@ -102,7 +103,7 @@ export function scoreChecklistItem(
     };
   }
 
-  const negative = matchedEvidence.filter((r) => r.exitStatus !== 0);
+  const negative = matchedEvidence.filter(isNegativeEvidence);
   const verdict: ReleaseGateVerdict = negative.length > 0 ? "FAIL" : "PASS";
   return {
     id: item.id,
@@ -113,8 +114,9 @@ export function scoreChecklistItem(
     reason:
       verdict === "FAIL"
         ? `${String(negative.length)} of ${String(matchedEvidence.length)} linked ` +
-          "EvidenceRecord(s) report a nonzero exitStatus (a genuine negative run)."
-        : `${String(matchedEvidence.length)} linked EvidenceRecord(s), all exitStatus === 0, ` +
+          "EvidenceRecord(s) report a genuine negative run (a failed gate verdict, or a " +
+          "nonzero exitStatus where no verdict was recorded)."
+        : `${String(matchedEvidence.length)} linked EvidenceRecord(s), none a negative run, ` +
           "for the release candidate object ID.",
   };
 }

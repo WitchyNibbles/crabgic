@@ -1,14 +1,28 @@
 import {
+  CriterionAttestationSchema,
+  DEBT_REOPENED_CRITERION,
+  DesignRecordSchema,
+  PlanRecordSchema,
+  deriveDesignCriteria,
+  derivePlanCriteria,
+  designContradictions,
+  planContradictions,
   PIPELINE_STAGE_IDS,
   REVIEW_ROUND_CEILING,
   ReviewVerdictSchema,
   exitCriteriaFor,
   isStageClosable,
   reclassifyDebtForWriteSet,
+  selectDebtTouchedBy,
   type PipelineStageId,
   type ReviewFinding,
   type ReviewVerdict,
+  type CriterionAttestation,
+  type DesignRecord,
+  type PlanRecord,
+  type StoredAttestation,
 } from "@crabgic/contracts";
+import { GATE_DERIVED_CRITERIA } from "./gate-criteria.js";
 
 /**
  * `review.submit` — the wiring ledger Gap 20 recorded as missing.
@@ -38,8 +52,27 @@ export interface ReviewSubmitDeps {
   readonly priorFindings: () => readonly ReviewFinding[];
   /** The paths this change set intends to write, for reopening debt. */
   readonly plannedWrites: () => readonly string[];
-  /** Exit criteria this stage has satisfied, established outside the review. */
+  /**
+   * Exit criteria the caller claims as bare strings.
+   *
+   * Kept, and no longer BELIEVED. Every criterion here is either derived by the
+   * server — in which case the claim is irrelevant — or judged, in which case it
+   * needs an attestation. A bare string is reported back in `unattestedCriteria`
+   * rather than dropped in silence, so a caller using the old shape is told why
+   * its criterion stayed unmet instead of having to guess.
+   */
   readonly metCriteria: () => readonly string[];
+  /** Attestations already on record for this stage, from earlier rounds. */
+  readonly priorAttestations?: () => readonly StoredAttestation[];
+  /**
+   * The design record the design stage left behind.
+   *
+   * The plan stage needs it: `plan-covers-every-design-element` scores the plan
+   * against the DESIGN's elements, and asking the plan whether it covers what it
+   * says it covers always answers yes.
+   */
+  readonly priorDesign?: () => DesignRecord | undefined;
+  readonly priorPlan?: () => PlanRecord | undefined;
   /**
    * How well the blocking/advisory classifier agrees with the owner, if anyone
    * has checked.
@@ -56,8 +89,21 @@ export interface ReviewSubmitDeps {
 export interface CalibrationStatus {
   readonly calibrated: boolean;
   readonly kappa: number;
+  /**
+   * The 95% interval's lower bound — the number `calibrated` is actually decided
+   * on. Reported beside the estimate rather than instead of it, because the gap
+   * between the two IS the state of the corpus: a wide gap means "not enough
+   * evidence yet", a narrow one means "this is what the classifier is".
+   */
+  readonly kappaLowerBound: number;
   readonly sampleSize: number;
   readonly samplesNeeded: number;
+  /**
+   * One sentence naming what is missing. Present even when calibrated, because a
+   * consumer reading `calibrated: false` with no reason is back to the caveat
+   * this whole mechanism replaced.
+   */
+  readonly verdictReason: string;
 }
 
 export interface ReviewEvidence {
@@ -73,6 +119,45 @@ export interface ReviewEvidence {
 export interface ReviewSubmitInput {
   readonly stage: string;
   readonly verdict: unknown;
+  /**
+   * Attributed claims that the stage's JUDGED criteria are met.
+   *
+   * Validated by `CriterionAttestationSchema`, so an anonymous or unanchored claim
+   * is rejected rather than counted. Unvalidated here because the shape belongs to
+   * the schema and a second copy of it would drift.
+   */
+  readonly attestations?: readonly unknown[];
+  /**
+   * The design and plan artifacts, as data rather than prose.
+   *
+   * These are what turn six of the "judged" criteria into checks — a risk table is
+   * walkable, a task graph is testable for cycles. Submitting the ARTIFACT is not
+   * the same as claiming a criterion: the caller supplies the thing under review
+   * and the server decides what it adds up to, which is the same division
+   * `review.submit` already draws for findings.
+   */
+  readonly design?: unknown;
+  readonly plan?: unknown;
+}
+
+/** A claim that could not be honoured, and the reason, returned rather than dropped. */
+export interface IgnoredAttestation {
+  readonly criterion: string;
+  readonly reason: string;
+}
+
+/** A well-formed claim that the record contradicts. */
+export interface VoidedAttestation {
+  readonly criterion: string;
+  /**
+   * What contradicts it: the id of an unresolved blocking finding naming this
+   * criterion, or `"design-record"` / `"plan-record"` when the artifact itself does.
+   *
+   * One field rather than two because the caller's next move is the same either
+   * way — go and look at the thing named — and a discriminated union here would be
+   * shape for its own sake.
+   */
+  readonly contradictedBy: string;
 }
 
 export interface ReviewSubmitResult {
@@ -99,6 +184,32 @@ export interface ReviewSubmitResult {
    * "fine", and the honest default here is "nobody has looked".
    */
   readonly calibration?: CalibrationStatus;
+  /**
+   * Criteria the caller claimed as bare strings, which therefore did not count.
+   *
+   * Reported by name because the alternative is a caller watching a criterion it
+   * "supplied" stay unmet with no explanation — the failure mode of every silent
+   * strip.
+   */
+  readonly unattestedCriteria?: readonly string[];
+  /** Attestations that could not be honoured, each with its reason. */
+  readonly ignoredAttestations?: readonly IgnoredAttestation[];
+  /** Attestations a finding on record contradicts. */
+  readonly voidedAttestations?: readonly VoidedAttestation[];
+  /**
+   * The attestations of record for this stage after merging this round's.
+   *
+   * Returned for the same reason `findings` is: the caller persists exactly what
+   * the closure decision was computed from, not its own idea of it.
+   */
+  readonly attestations?: readonly StoredAttestation[];
+  /**
+   * The artifacts the closure decision was computed from, returned for the same
+   * reason `findings` is: the caller persists what was judged, not its own idea of
+   * it. Present only when this submission carried one.
+   */
+  readonly designOfRecord?: DesignRecord;
+  readonly planOfRecord?: PlanRecord;
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -133,6 +244,128 @@ function mergeFindings(
   return [...byId.values()];
 }
 
+/**
+ * `no-open-debt-in-touched-paths`, from the finding set and the planned writes.
+ *
+ * This was arriving as a caller-supplied string while the answer sat one line
+ * away — the server reopens touched debt from the durable record and the
+ * ChangeSet's own envelope `ownedPaths`, and then counts what it reopened.
+ * Asking the caller was asking a question already answered better.
+ *
+ * TWO CONDITIONS, because reopening CLEARS a finding's disposition. Debt reopened
+ * by an earlier round is no longer `accepted-debt` and so is invisible to the
+ * touched-debt query; it is a blocking finding naming this criterion. Checking
+ * only the query would report the criterion met with a finding on record saying
+ * it is violated.
+ *
+ * The query runs on the PRE-reclassification set on purpose: after
+ * `reclassifyDebtForWriteSet` has done its work there is by construction no
+ * touched `accepted-debt` left to find, so asking afterwards always answers "no
+ * debt" — the derivation would be vacuously true exactly when it matters.
+ */
+function deriveDebtCriterion(
+  beforeReclassification: readonly ReviewFinding[],
+  afterReclassification: readonly ReviewFinding[],
+  plannedWrites: readonly string[],
+): readonly string[] {
+  const touched = selectDebtTouchedBy(beforeReclassification, plannedWrites);
+  const stillOpen = afterReclassification.some(
+    (finding) => finding.violates === DEBT_REOPENED_CRITERION && isUnresolvedBlocking(finding),
+  );
+  return touched.length === 0 && !stillOpen ? [DEBT_REOPENED_CRITERION] : [];
+}
+
+interface AttestationResolution {
+  readonly met: readonly string[];
+  readonly ignored: readonly IgnoredAttestation[];
+  readonly voided: readonly VoidedAttestation[];
+  readonly ofRecord: readonly StoredAttestation[];
+}
+
+/**
+ * Which judged criteria an attributed claim actually establishes.
+ *
+ * Three ways a well-formed claim still fails to count, in the order they are
+ * checked:
+ *
+ *   1. **The server derives this criterion.** Discarded, never honoured: letting a
+ *      judgement override evidence is the derivation running backwards. Reported,
+ *      because a caller attesting one has misunderstood something worth being
+ *      told.
+ *   2. **The stage does not require it.** An attestation for another stage's
+ *      criterion is a judgement about a different artifact.
+ *   3. **A finding on record contradicts it.** This is the one contradiction a tool
+ *      can catch without deciding the criterion itself: an unresolved blocking
+ *      finding names the criterion in `violates`, so there are two claims about it
+ *      and the falsifiable one is unanswered. Closure was already blocked by that
+ *      finding — what this fixes is `unmetCriteria` reporting the criterion MET,
+ *      which is a report contradicting the record it was computed from.
+ */
+function resolveAttestations(input: {
+  readonly stage: string;
+  readonly submitted: readonly StoredAttestation[];
+  readonly prior: readonly StoredAttestation[];
+  readonly requiredCriteria: readonly string[];
+  readonly findings: readonly ReviewFinding[];
+  /** Criteria the design or plan record refutes, mapped to which record refutes them. */
+  readonly artifactContradictions: ReadonlyMap<string, string>;
+}): AttestationResolution {
+  const ignored: IgnoredAttestation[] = [];
+  const voided: VoidedAttestation[] = [];
+
+  // This round's claim supersedes an earlier round's for the same criterion — a
+  // re-assertion is a revision, not a second voice.
+  const byCriterion = new Map<string, StoredAttestation>();
+  const admissible = (criterion: string): boolean =>
+    !GATE_DERIVED_CRITERIA.includes(criterion) && input.requiredCriteria.includes(criterion);
+  for (const attestation of input.prior) {
+    if (attestation.stage !== input.stage) continue;
+    // A stored attestation faces the SAME two filters as a fresh one. The record
+    // outlives the rules it was written under: a criterion that has since become
+    // server-derived, or been removed from the stage, would otherwise have an old
+    // claim quietly overriding a new derivation. Not reported in
+    // `ignoredAttestations` — that field is about what THIS call sent.
+    if (!admissible(attestation.criterion)) continue;
+    byCriterion.set(attestation.criterion, attestation);
+  }
+  for (const attestation of input.submitted) {
+    if (GATE_DERIVED_CRITERIA.includes(attestation.criterion)) {
+      ignored.push({
+        criterion: attestation.criterion,
+        reason: "derived from evidence server-side; an attestation cannot override it",
+      });
+      continue;
+    }
+    if (!admissible(attestation.criterion)) {
+      ignored.push({
+        criterion: attestation.criterion,
+        reason: `not an exit criterion of the "${input.stage}" stage`,
+      });
+      continue;
+    }
+    byCriterion.set(attestation.criterion, attestation);
+  }
+
+  const contradiction = new Map<string, string>(input.artifactContradictions);
+  for (const finding of input.findings) {
+    if (finding.violates === undefined) continue;
+    if (!isUnresolvedBlocking(finding)) continue;
+    if (!contradiction.has(finding.violates)) contradiction.set(finding.violates, finding.id);
+  }
+
+  const met: string[] = [];
+  for (const [criterion] of byCriterion) {
+    const contradictedBy = contradiction.get(criterion);
+    if (contradictedBy !== undefined) {
+      voided.push({ criterion, contradictedBy });
+      continue;
+    }
+    met.push(criterion);
+  }
+
+  return { met, ignored, voided, ofRecord: [...byCriterion.values()] };
+}
+
 export async function runReviewSubmit(
   input: ReviewSubmitInput,
   deps: ReviewSubmitDeps,
@@ -155,6 +388,54 @@ export async function runReviewSubmit(
   }
   const verdict: ReviewVerdict = parsed.data;
 
+  // Validated before anything is journaled or persisted, and REJECTED rather than
+  // dropped: an anonymous or unanchored claim is a caller bug, and accepting the
+  // submission while quietly ignoring it would leave the caller believing a
+  // criterion was established by something the server threw away.
+  const parsedAttestations: CriterionAttestation[] = [];
+  for (const candidate of input.attestations ?? []) {
+    const result = CriterionAttestationSchema.safeParse(candidate);
+    if (!result.success) {
+      return {
+        ok: false,
+        error: `invalid criterion attestation: ${result.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    parsedAttestations.push(result.data);
+  }
+
+  // Refused rather than ignored, and refused BEFORE anything is journaled. A record
+  // the server could not read is not a record it may derive from, and silently
+  // dropping it would leave the caller believing its artifact had been checked.
+  let submittedDesign: DesignRecord | undefined;
+  if (input.design !== undefined) {
+    const designParse = DesignRecordSchema.safeParse(input.design);
+    if (!designParse.success) {
+      return {
+        ok: false,
+        error: `invalid design record: ${designParse.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    submittedDesign = designParse.data;
+  }
+  let submittedPlan: PlanRecord | undefined;
+  if (input.plan !== undefined) {
+    const planParse = PlanRecordSchema.safeParse(input.plan);
+    if (!planParse.success) {
+      return {
+        ok: false,
+        error: `invalid plan record: ${planParse.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    submittedPlan = planParse.data;
+  }
+
   const prior = deps.priorFindings();
   const merged = mergeFindings(prior, verdict.findings);
   const writes = deps.plannedWrites();
@@ -169,7 +450,83 @@ export async function runReviewSubmit(
   ).length;
 
   const requiredCriteria = exitCriteriaFor(input.stage);
-  const metCriteria = deps.metCriteria();
+
+  // This round's artifact supersedes the stored one; the stored one is what a later
+  // stage compares against.
+  const design = submittedDesign ?? deps.priorDesign?.();
+  const plan = submittedPlan ?? deps.priorPlan?.();
+  const artifactDerived = [
+    ...(design !== undefined ? deriveDesignCriteria(design) : []),
+    ...(plan !== undefined ? derivePlanCriteria(plan, design) : []),
+  ];
+  /**
+   * Criteria the ARTIFACT refutes, as distinct from ones it merely does not
+   * establish.
+   *
+   * An empty risk list proves nothing and refutes nothing — "this design records no
+   * risks" is a legitimate claim for someone to sign. A risk nobody answered is
+   * evidence AGAINST the criterion, and an attestation claiming otherwise is
+   * contradicted by the artifact it describes. Flattening the two states is what
+   * lets an absent artifact read as a compliant one.
+   */
+  const artifactContradictions = new Map<string, string>();
+  if (design !== undefined) {
+    for (const criterion of designContradictions(design)) {
+      artifactContradictions.set(criterion, "design-record");
+    }
+  }
+  if (plan !== undefined) {
+    for (const criterion of planContradictions(plan, design)) {
+      artifactContradictions.set(criterion, "plan-record");
+    }
+  }
+
+  const attested = resolveAttestations({
+    stage: input.stage,
+    submitted: parsedAttestations.map((attestation) => ({ ...attestation, stage: input.stage })),
+    prior: deps.priorAttestations?.() ?? [],
+    requiredCriteria,
+    findings: afterDebt,
+    artifactContradictions,
+  });
+
+  /**
+   * What a criterion being "met" now rests on, and nothing else:
+   *
+   *   - the gate criteria, derived by the composition root from journaled evidence
+   *     and passed in through `metCriteria` — which is why only the ids in
+   *     `GATE_DERIVED_CRITERIA` are taken from there;
+   *   - the debt criterion, derived HERE from the finding set and planned writes;
+   *   - the judged criteria, each carrying an attributed claim no finding
+   *     contradicts.
+   *
+   * Anything else arriving in `metCriteria` is a judged criterion claimed as a bare
+   * string, and an anonymous boolean is the weakest form a claim can take. It
+   * counts for nothing and is reported back by name rather than silently dropped.
+   */
+  const injectedFromEvidence = deps
+    .metCriteria()
+    .filter((criterion) => GATE_DERIVED_CRITERIA.includes(criterion));
+  const metCriteria = [
+    ...injectedFromEvidence,
+    ...deriveDebtCriterion(merged, afterDebt, writes),
+    ...artifactDerived,
+    ...attested.met,
+  ];
+  /**
+   * Claimed as a bare string, not decided by the server, and not met. One meaning
+   * exactly, because the field's whole job is to tell the caller what to do next.
+   *
+   * Server-derived ids are excluded because attesting one is not the fix — the tool
+   * documents that they cannot be claimed, and listing them here would send a
+   * caller to write an attestation that could never establish them. Criteria that
+   * ended up met are excluded because there is nothing left to report.
+   */
+  const serverDecided = [...GATE_DERIVED_CRITERIA, DEBT_REOPENED_CRITERION];
+  const unattestedCriteria = deps
+    .metCriteria()
+    .filter((criterion) => !serverDecided.includes(criterion))
+    .filter((criterion) => !metCriteria.includes(criterion));
   const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
 
   const unmetCriteria = requiredCriteria.filter((criterion) => !metCriteria.includes(criterion));
@@ -207,6 +564,12 @@ export async function runReviewSubmit(
     ok: true,
     findings: afterDebt,
     calibration: deps.calibration(),
+    attestations: attested.ofRecord,
+    ...(submittedDesign !== undefined ? { designOfRecord: submittedDesign } : {}),
+    ...(submittedPlan !== undefined ? { planOfRecord: submittedPlan } : {}),
+    unattestedCriteria,
+    ignoredAttestations: attested.ignored,
+    voidedAttestations: attested.voided,
     stageClosable,
     unmetCriteria,
     openBlocking,

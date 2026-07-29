@@ -96,6 +96,45 @@ exhaustion, and only artifact quality is finite.
 advances when every written criterion is met, nothing is still `blocking`, and
 every finding raised has a disposition.
 
+**You do not decide which criteria are met — `review.submit` does.** Criteria
+come in two kinds, and the tool treats them differently:
+
+- **Derived (4).** `implement-gates-pass`, `implement-tests-first`,
+  `integrate-final-candidate-gate` and `no-open-debt-in-touched-paths` are
+  computed from the gates' own recorded verdicts and from the finding store.
+  Claiming one has no effect — pass `candidateObjectId` for the integrate stage
+  and let the evidence speak.
+- **Decided by the artifact (6).** Submit the design or plan as DATA — `design`
+  with `elements`/`interfaces`/`risks`, `plan` with `tasks` carrying
+  `doneCriteria`/`dependsOn`/`covers` — and six criteria stop being judgements:
+  risks each answered, interfaces owned, tasks with done-criteria, an acyclic
+  dependency graph, and the plan covering every element of the stored design.
+  `plan-dependencies-acyclic` is a graph algorithm; it only ever looked
+  subjective because the plan was prose.
+
+  An **empty** list decides nothing either way. A design recording no risks has
+  not proven the criterion and has not violated it, so say so with an
+  attestation. A design with a risk nobody answered HAS violated it, and an
+  attestation claiming otherwise is voided — a claim cannot outvote the artifact
+  it describes.
+
+- **Judged (everything else).** These need an `attestations` entry naming
+  `criterion`, `asserter` (who judged it), `rationale` (why), `artifactAnchor`
+  (where to look), `assertedAt` and `round`. A bare string in `metCriteria` does
+  **not** count and comes back in `unattestedCriteria`.
+
+This does not turn a judgement into a measurement, and do not present it as one.
+It makes the claim **falsifiable**: a named judgement pointing at a named place
+can be checked and found wanting, which an anonymous `true` cannot. Write the
+rationale so a sceptical reader who opens the anchor can disagree with you.
+
+Three ways an attestation still fails to count, all reported back: it names a
+criterion the server derives or one the stage does not require
+(`ignoredAttestations`); an unresolved `blocking` finding names that same
+criterion; or the design or plan record itself contradicts it (both
+`voidedAttestations`, the second naming `design-record` or `plan-record`). You
+cannot attest a criterion the record says is violated.
+
 **Blocking requires naming the criterion violated.** A finding that violates no
 stated criterion is `advisory` — real, recorded, answered, but not holding the
 stage open.
@@ -129,13 +168,38 @@ three attempts `exhausted_repairs` counts. A session that reads its own third
 review round as that stop condition will halt work that was never failing.
 Acting on a finding may spend an attempt; raising one never does.
 
-### Known limit
+### Known limit — and what to do about it
 
 The `blocking` versus `advisory` split is a judgement, and an uncalibrated judge
-is decorative. There is **no calibration plan yet** — no sample where the split
-has been checked against the owner's own call. Until there is, treat a
-`blocking` classification as an argument to be read, not a verdict to be trusted
-on sight.
+is decorative. Until the split has been checked against the owner's own calls,
+treat a `blocking` classification as an argument to be read, not a verdict to be
+trusted on sight.
+
+**`review.submit` tells you which state you are in.** Every result carries a
+`calibration` block — Cohen's kappa, its 95% lower bound, the sample size, and a
+one-line `verdictReason`. A fresh project reads "nobody has classified a finding
+against this classifier yet", which is normal; presenting its verdicts as
+measured anyway is not.
+
+**`review.calibrate` is how that changes.** Call it with no arguments to get the
+corpus's state plus the findings worth putting to the owner — it prefers the two
+shapes a misclassification leaves behind: an `advisory` finding that got fixed
+anyway, and a `blocking` finding that got refuted. Put those to the owner in
+their own words ("this one was called advisory and fixed anyway — should it have
+blocked?"), then record each answer with `findingId` and
+`ownerClassification`.
+
+Three things worth knowing before you use it:
+
+- **You cannot supply the classifier's call.** It is read from the finding on
+  record. Twenty samples of manufactured agreement is the failure this design
+  exists to exclude.
+- **A dispositioned finding is a suggestion, never a label.** Only the owner's
+  own words become a sample. Do not infer their call from what got fixed.
+- **Twenty samples is the floor, not the target,** and eight in each class are
+  needed too — kappa's variance is dominated by the rarer call, which here is
+  the one that matters. A strong-looking kappa on twenty samples is refused
+  because its confidence interval still reaches into "unusable".
 
 ## The seven stop conditions
 

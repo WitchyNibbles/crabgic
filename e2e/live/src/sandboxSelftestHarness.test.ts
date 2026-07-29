@@ -45,7 +45,40 @@ describe("runSandboxSelftest — unit (fake probe, no real bwrap needed)", () =>
     expect(finding.evidence).toContain("unexpectedly succeeded");
   });
 
+  /**
+   * The `WROTE:` marker is load-bearing, and this fixture was stale without it.
+   *
+   * The check's own hardening rounds added an executed-call guard: a refusal
+   * proves confinement only if the sandboxed shell demonstrably RAN, because a
+   * signal-kill, an OOM or a fork failure all look like "the write was denied"
+   * from the outside. The shell therefore echoes `WROTE:$?`, and a probe result
+   * with empty stdout means the write was never attempted — `UNVERIFIED`, not
+   * confirmed.
+   *
+   * This fake predated that guard and still returned empty stdout, so the check
+   * correctly refused to pass and this test had been failing on `main`. It was
+   * asserting the old contract, not a real defect: `packages/cli`'s own unit
+   * test for the same check has used `WROTE:1\n` throughout. A non-zero suffix
+   * is the passing shape — the write was attempted and failed.
+   */
   it("passes when bwrap is present and correctly denies the confined write", async () => {
+    let call = 0;
+    const probe: ProcessProbeFn = async () => {
+      call += 1;
+      if (call === 1) return { stdout: "bubblewrap 0.9.0", stderr: "", exitCode: 0 };
+      return { stdout: "WROTE:1\n", stderr: "sh: Read-only file system", exitCode: 1 };
+    };
+    const finding = await runSandboxSelftest(probe);
+    expect(finding.passed).toBe(true);
+    expect(finding.evidence).toContain("correctly denied");
+  });
+
+  /**
+   * The guard the fixture above had drifted past, asserted directly so this file
+   * cannot silently fall behind the check again: a refusal with no marker is not
+   * a pass.
+   */
+  it("fails when the refusal carries no evidence that the write was ever attempted", async () => {
     let call = 0;
     const probe: ProcessProbeFn = async () => {
       call += 1;
@@ -53,7 +86,8 @@ describe("runSandboxSelftest — unit (fake probe, no real bwrap needed)", () =>
       return { stdout: "", stderr: "sh: Read-only file system", exitCode: 1 };
     };
     const finding = await runSandboxSelftest(probe);
-    expect(finding.passed).toBe(true);
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("UNVERIFIED");
   });
 });
 

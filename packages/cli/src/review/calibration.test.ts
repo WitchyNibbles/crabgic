@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FindingClassification } from "@crabgic/contracts";
 import {
+  CALIBRATION_MINIMUM_PER_CLASS,
   CALIBRATION_MINIMUM_SAMPLE,
   CALIBRATION_THRESHOLD,
+  CLASSIFICATION_RUBRIC_VERSION,
   scoreCalibration,
   type CalibrationSample,
 } from "./calibration.js";
@@ -117,5 +119,122 @@ describe("scoreCalibration — agreement that cannot be faked by the common clas
     expect(Number.isNaN(result.kappa)).toBe(false);
     expect(result.calibrated).toBe(false);
     expect(result.degenerate).toBe(true);
+  });
+});
+
+/**
+ * A POINT ESTIMATE IS NOT A MEASUREMENT.
+ *
+ * The external record on calibrating a judge against human labels is specific
+ * about this: roughly 50 stratified samples pin Cohen's kappa to about ±0.10-0.15
+ * at 95%, and the variance is dominated by the count of MINORITY-class examples
+ * rather than the total. A published example measured κ = 0.633 with a 95%
+ * bootstrap CI of [0.433, 0.814] — one number, spanning "the rubric is ambiguous"
+ * to "the judge is strong".
+ *
+ * So the same kappa that clears the threshold on 100 samples must not clear it on
+ * 20, and `calibrated` is decided on the CI's LOWER BOUND. Anything else reports
+ * a coin flip wearing a number, which is the exact failure this module was built
+ * to stop rather than to relocate.
+ */
+describe("scoreCalibration — the interval, not the point estimate", () => {
+  it("refuses a strong-looking kappa whose interval reaches below the threshold", () => {
+    // 18 of 20 agreed, evenly split by class: kappa 0.8, conventionally "strong".
+    const result = scoreCalibration(corpus({ bb: 9, ba: 1, ab: 1, aa: 9 }));
+    expect(result.kappa).toBeCloseTo(0.8, 5);
+    expect(result.kappaLowerBound).toBeLessThan(CALIBRATION_THRESHOLD);
+    expect(result.calibrated).toBe(false);
+  });
+
+  it("accepts the SAME agreement rate once there is enough of it", () => {
+    // Identical 90% agreement and identical marginals, five times the evidence.
+    const result = scoreCalibration(corpus({ bb: 45, ba: 5, ab: 5, aa: 45 }));
+    expect(result.kappa).toBeCloseTo(0.8, 5);
+    expect(result.kappaLowerBound).toBeGreaterThanOrEqual(CALIBRATION_THRESHOLD);
+    expect(result.calibrated).toBe(true);
+  });
+
+  it("never reports a lower bound above the estimate itself", () => {
+    const result = scoreCalibration(corpus({ bb: 20, ba: 3, ab: 2, aa: 25 }));
+    expect(result.kappaLowerBound).toBeLessThanOrEqual(result.kappa);
+  });
+
+  /**
+   * The minority-class floor. A corpus can be large, unanimous, and still say
+   * nothing about the judgement that matters: `blocking` is the rare call and the
+   * only one the pipeline depends on being right.
+   */
+  it("refuses a large corpus that barely contains the minority class", () => {
+    const result = scoreCalibration(corpus({ bb: 5, ba: 0, ab: 0, aa: 55 }));
+    expect(result.kappa).toBeCloseTo(1, 5);
+    expect(result.insufficientSample).toBe(false);
+    expect(result.insufficientMinorityClass).toBe(true);
+    expect(result.calibrated).toBe(false);
+    expect(result.minorityClassNeeded).toBe(CALIBRATION_MINIMUM_PER_CLASS - 5);
+  });
+
+  it("says why it withheld the verdict, so the gap is actionable rather than mysterious", () => {
+    expect(scoreCalibration([]).verdictReason).toMatch(/no.*sample|nobody/i);
+    expect(scoreCalibration(corpus({ bb: 5, ba: 0, ab: 0, aa: 55 })).verdictReason).toMatch(
+      /blocking/i,
+    );
+    expect(scoreCalibration(corpus({ bb: 9, ba: 1, ab: 1, aa: 9 })).verdictReason).toMatch(
+      /interval|confidence/i,
+    );
+    expect(scoreCalibration(corpus({ bb: 45, ba: 5, ab: 5, aa: 45 })).verdictReason).toMatch(
+      /calibrated/i,
+    );
+  });
+});
+
+/**
+ * KAPPA ACROSS A RUBRIC CHANGE MEASURES TWO DIFFERENT CLASSIFIERS.
+ *
+ * The rubric is the definition of `blocking` versus `advisory`. Rewrite it — which
+ * is exactly what a kappa below 0.4 is supposed to prompt — and every sample
+ * gathered under the old wording is a judgement about a classifier that no longer
+ * exists. Pooling them produces a number for something nobody shipped.
+ *
+ * So samples carry the rubric they were judged under, and scoring covers the
+ * current one only. The cost is real and is the right cost: rewriting the rubric
+ * resets the corpus, which is visible in `sampleSize` rather than hidden in a
+ * score that quietly stopped meaning anything.
+ */
+describe("scoreCalibration — samples are scoped to the rubric they judged", () => {
+  function underRubric(
+    samples: readonly CalibrationSample[],
+    rubricVersion: number,
+  ): readonly CalibrationSample[] {
+    return samples.map((entry) => ({ ...entry, rubricVersion }));
+  }
+
+  it("ignores samples judged under a rubric other than the one in force", () => {
+    const stale = underRubric(
+      corpus({ bb: 45, ba: 5, ab: 5, aa: 45 }),
+      CLASSIFICATION_RUBRIC_VERSION + 1,
+    );
+    const result = scoreCalibration(stale);
+    expect(result.sampleSize).toBe(0);
+    expect(result.calibrated).toBe(false);
+  });
+
+  it("scores only the current rubric's samples when both are present", () => {
+    const current = corpus({ bb: 10, ba: 0, ab: 0, aa: 10 });
+    const stale = underRubric(
+      corpus({ bb: 0, ba: 50, ab: 50, aa: 0 }),
+      CLASSIFICATION_RUBRIC_VERSION + 1,
+    );
+    const result = scoreCalibration([...current, ...stale]);
+    expect(result.sampleSize).toBe(20);
+    // The stale half is total disagreement; pooling would have buried the signal.
+    expect(result.kappa).toBeCloseTo(1, 5);
+  });
+
+  it("treats a sample with no recorded rubric as belonging to the first one", () => {
+    // The corpus predating the field was gathered under rubric 1 by definition —
+    // there was only one. Dropping those samples would discard real owner
+    // judgements to avoid an ambiguity that does not exist.
+    const result = scoreCalibration(corpus({ bb: 10, ba: 0, ab: 0, aa: 10 }));
+    expect(result.sampleSize).toBe(20);
   });
 });

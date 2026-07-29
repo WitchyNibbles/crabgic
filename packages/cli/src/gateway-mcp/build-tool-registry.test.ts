@@ -15,6 +15,7 @@ import { ApprovalTokenMinter } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
+  EvidenceRecord,
   IntentContract,
   WorkUnit,
 } from "@crabgic/contracts";
@@ -26,6 +27,7 @@ import {
   buildProductionGatewayToolRegistry,
   type ProductionGatewayToolRegistryDeps,
 } from "./build-tool-registry.js";
+import { loadArtifacts } from "../review/artifact-store.js";
 
 let home: string;
 
@@ -71,6 +73,14 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
       mkdtempSync(join(tmpdir(), "eo-reg-calib-")),
       "review-calibration.json",
     ),
+    reviewAttestationsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-attest-")),
+      "review-attestations.json",
+    ),
+    reviewArtifactsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-artifacts-")),
+      "review-artifacts.json",
+    ),
   };
 }
 
@@ -114,6 +124,11 @@ const EXPECTED_TOOL_NAMES = [
   // what the shipped binary exposes, and a tool that reaches production
   // without appearing in it is a surface nobody decided to ship.
   "review.submit",
+  // Ledger Gap 20's disclosed residual (1) — where the owner's judgement about
+  // the blocking/advisory classifier goes. `recordCalibrationSample` shipped
+  // tested and unreachable, so an empty corpus was a property of the product
+  // rather than a project's starting state.
+  "review.calibrate",
 ];
 
 describe("buildRealGatewayToolRegistry", () => {
@@ -327,5 +342,462 @@ describe("buildProductionGatewayToolRegistry — provider dispatch", () => {
     expect(tracker.isError).toBe(true);
     expect(tracker.content[0]!.text).toContain("never registered");
     expect(tracker.content[0]!.text).not.toContain("no client registered for provider");
+  });
+});
+
+/**
+ * The gate-decidable criteria are DERIVED here, and the caller's claim to them is
+ * discarded before it can reach the closure rule.
+ *
+ * This is the half of ledger Gap 20 that was still open: a manager could not
+ * assert that a stage was closable, but it could assert the inputs the closure
+ * rule reads, which is the same thing one level down. These tests drive the real
+ * production registry rather than the pure handler, because the subtraction lives
+ * in the composition root and a unit test of the handler cannot see it.
+ */
+describe("review.submit — server-derived exit criteria", () => {
+  /**
+   * The implement stage's one JUDGED criterion, attested.
+   *
+   * A bare `metCriteria` string no longer establishes a judged criterion — it is
+   * either derived from evidence, where a claim is irrelevant, or judged, where an
+   * anonymous boolean was the weakest form the claim could take.
+   */
+  const doneCriteriaAttestation = {
+    criterion: "implement-task-done-criteria-met",
+    asserter: "eo-reviewer:correctness",
+    rationale: "each stated done-criterion is demonstrated by a named test",
+    artifactAnchor: "packages/cli/src/review",
+    assertedAt: "2026-07-29T00:00:00.000Z",
+    round: 1,
+  };
+
+  function verdictDoc(stage: string) {
+    return {
+      schemaVersion: 1,
+      id: "22222222-2222-4222-8222-222222222222",
+      createdAt: "2026-07-29T00:00:00.000Z",
+      stage,
+      artifactRef: "changeset:abc",
+      lens: "correctness",
+      verdict: "approve",
+      round: 1,
+      findings: [],
+    };
+  }
+
+  async function submit(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    changeSetId: string,
+    args: Record<string, unknown>,
+  ) {
+    const registry = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+    const result = await registry.get("review.submit")!.handler({
+      stage: "implement",
+      changeSetId,
+      verdict: verdictDoc("implement"),
+      ...args,
+    });
+    return JSON.parse(result.content[0]!.text) as {
+      ok: boolean;
+      unmetCriteria?: string[];
+      stageClosable?: boolean;
+    };
+  }
+
+  /**
+   * `stubDeps` puts the finding store and the state root in two unrelated temp
+   * dirs, which the store's own containment check refuses — correctly, and it is
+   * the check rounds 30-32 added. These tests write findings for real, so they
+   * need a state root that actually contains the store.
+   */
+  function reviewDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-derive-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+    };
+  }
+
+  function registerChangeSet(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+  ): string {
+    const changeSetId = "55555555-5555-4555-8555-555555555555";
+    deps.changeSets.put({ id: changeSetId } as unknown as ChangeSet);
+    return changeSetId;
+  }
+
+  /**
+   * The claim with nothing behind it. Every gate-decidable criterion is asserted
+   * and no gate has ever fired, so all of them must come back unmet — "gates that
+   * never ran are not gates that passed".
+   */
+  it("refuses a claimed implement-gates-pass and implement-tests-first with no gate evidence", async () => {
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+
+    const report = await submit(deps, changeSetId, {
+      metCriteria: ["implement-gates-pass", "implement-tests-first"],
+      attestations: [doneCriteriaAttestation],
+    });
+
+    expect(report.ok).toBe(true);
+    expect(report.unmetCriteria).toContain("implement-gates-pass");
+    expect(report.unmetCriteria).toContain("implement-tests-first");
+    // The judged criterion still counts — no tool can decide it, and refusing an
+    // attributed claim for one would be the opposite error. What it needed was an
+    // author, an argument and somewhere to look, which it has.
+    expect(report.unmetCriteria).not.toContain("implement-task-done-criteria-met");
+    expect(report.stageClosable).toBe(false);
+  });
+
+  /**
+   * The same submission with real evidence behind it. Nothing about the CALL
+   * changes — the difference is entirely in what the journal holds, which is the
+   * property being asserted.
+   */
+  it("derives both from journaled gate evidence, and closes the stage on it", async () => {
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+
+    let evidenceSeq = 0;
+    const evidence = (gateTag: string, capturedAt: string): EvidenceRecord => ({
+      schemaVersion: 1,
+      id: `44444444-4444-4444-8444-${String(++evidenceSeq).padStart(12, "0")}`,
+      changeSetId,
+      command: `npm run gate:${gateTag}`,
+      exitStatus: 0,
+      toolchainFingerprint: "node24",
+      capturedAt,
+      artifactDigests: [],
+      objectId: "candidate-object",
+      gateTag,
+      gateVerdict: "passed",
+    });
+
+    // A red baseline first — the record that used to make implement-gates-pass
+    // permanently underivable for any ChangeSet that did TDD properly. It carries
+    // NO gateVerdict, because a pre-dispatch capture is not a firing.
+    const redBaseline: EvidenceRecord = {
+      schemaVersion: 1,
+      id: "44444444-4444-4444-8444-000000000099",
+      changeSetId,
+      command: "npm run gate:tdd",
+      exitStatus: 1,
+      toolchainFingerprint: "node24",
+      capturedAt: "2026-07-29T00:00:00.000Z",
+      artifactDigests: [],
+      objectId: "base-object",
+      gateTag: "tdd",
+    };
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: redBaseline,
+    });
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: evidence("tdd", "2026-07-29T01:00:00.000Z"),
+    });
+    await deps.journal.appendEntry({
+      type: "evidence_pointer",
+      changeSetId,
+      payload: evidence("coverage", "2026-07-29T01:00:00.000Z"),
+    });
+
+    const report = await submit(deps, changeSetId, {
+      attestations: [doneCriteriaAttestation],
+    });
+
+    expect(report.unmetCriteria).not.toContain("implement-gates-pass");
+    expect(report.unmetCriteria).not.toContain("implement-tests-first");
+    // no-open-debt-in-touched-paths derives clean too (no findings, no writes),
+    // so with the judged criterion supplied the stage genuinely closes.
+    expect(report.unmetCriteria).toEqual([]);
+    expect(report.stageClosable).toBe(true);
+  });
+});
+
+/**
+ * `review.calibrate`, driven through the real production registry.
+ *
+ * The point of asserting this HERE rather than only against the pure handler is
+ * that the defect was never in the logic. `scoreCalibration` and
+ * `recordCalibrationSample` were both correct and both tested; nothing called the
+ * latter, so the corpus could not be filled by any means the product offered.
+ * A unit test of the handler would have passed throughout that entire period.
+ */
+describe("review.calibrate — the corpus is fillable through the shipped surface", () => {
+  function registry(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+  ) {
+    return buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+  }
+
+  function calibrationDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-calibrate-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+    };
+  }
+
+  async function call(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    args: Record<string, unknown>,
+  ) {
+    const result = await registry(deps).get("review.calibrate")!.handler(args);
+    return {
+      isError: result.isError === true,
+      body: JSON.parse(result.content[0]!.text) as {
+        ok?: boolean;
+        error?: string;
+        calibration?: { sampleSize: number; verdictReason: string };
+        candidates?: { findingId: string }[];
+        candidatesTotal?: number;
+      },
+    };
+  }
+
+  /** A fresh project: the honest empty state, reported with a reason rather than a bare zero. */
+  it("reports an empty corpus and nothing to ask about before any review has happened", async () => {
+    const { isError, body } = await call(calibrationDeps(), {});
+    expect(isError).toBe(false);
+    expect(body.calibration?.sampleSize).toBe(0);
+    expect(body.calibration?.verdictReason).toMatch(/nobody has classified/i);
+    expect(body.candidatesTotal).toBe(0);
+  });
+
+  /**
+   * The whole loop, end to end and through the real stores: a reviewer submits a
+   * finding, the owner disagrees with how it was classified, and the corpus moves
+   * off zero for the first time.
+   */
+  it("records the owner's call against a finding the reviewer actually submitted", async () => {
+    const deps = calibrationDeps();
+    const changeSetId = "66666666-6666-4666-8666-666666666666";
+    deps.changeSets.put({ id: changeSetId } as unknown as ChangeSet);
+
+    const submitted = await registry(deps)
+      .get("review.submit")!
+      .handler({
+        stage: "implement",
+        changeSetId,
+        verdict: {
+          schemaVersion: 1,
+          id: "77777777-7777-4777-8777-777777777777",
+          createdAt: "2026-07-29T00:00:00.000Z",
+          stage: "implement",
+          artifactRef: "changeset:abc",
+          lens: "security",
+          verdict: "revise",
+          round: 1,
+          findings: [
+            {
+              id: "88888888-8888-4888-8888-888888888888",
+              claim: "the state path is not checked for a symlinked component",
+              evidence: {
+                reproduction: "ln -s /etc ~/.local/state/crabgic/x",
+                observed: "followed",
+                expected: "refused",
+              },
+              verification: "confirmed",
+              classification: "advisory",
+              paths: ["packages/cli/src/doctor"],
+            },
+          ],
+        },
+      });
+    expect(submitted.isError).toBeUndefined();
+
+    // The reviewer called it advisory. The owner says it should have blocked —
+    // and the classifier's half of that comparison is read from the store, never
+    // taken from this call.
+    const { body } = await call(deps, {
+      findingId: "88888888-8888-4888-8888-888888888888",
+      ownerClassification: "blocking",
+    });
+
+    expect(body.ok).toBe(true);
+    expect(body.calibration?.sampleSize).toBe(1);
+    // Still uncalibrated, and now for the right reason: not "nobody has looked"
+    // but "one sample is not a measurement".
+    expect(body.calibration?.verdictReason).toMatch(/more classified findings/i);
+    expect(body.candidatesTotal).toBe(0);
+  });
+
+  it("refuses a judgement about a finding no reviewer ever submitted", async () => {
+    const { isError, body } = await call(calibrationDeps(), {
+      findingId: "99999999-9999-4999-8999-999999999999",
+      ownerClassification: "blocking",
+    });
+    expect(isError).toBe(true);
+    expect(body.error).toMatch(/unknown finding/);
+  });
+});
+
+/**
+ * The design→plan handoff, through the real store.
+ *
+ * `plan-covers-every-design-element` is the one artifact criterion that spans two
+ * stages, and it is the reason the records have to be durable. Asserted here rather
+ * than only against the pure handler because the property being tested IS the
+ * persistence: the plan stage must be scored against the design the DESIGN stage
+ * left behind, supplied by the server, never by the plan being checked.
+ */
+describe("review.submit — design and plan records across stages", () => {
+  function artifactDeps(): Omit<
+    ProductionGatewayToolRegistryDeps,
+    "providers" | "mutationApplyClients"
+  > {
+    const stateHome = mkdtempSync(join(tmpdir(), "eo-reg-artifacts-"));
+    return {
+      ...stubDeps(),
+      reviewStateHome: stateHome,
+      reviewFindingsPath: join(stateHome, "review-findings.json"),
+      reviewCalibrationPath: join(stateHome, "review-calibration.json"),
+      reviewAttestationsPath: join(stateHome, "review-attestations.json"),
+      reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+    };
+  }
+
+  const CHANGE_SET = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+  async function submitStage(
+    deps: Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients">,
+    stage: string,
+    lens: string,
+    extra: Record<string, unknown>,
+  ) {
+    const registry = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+    const result = await registry.get("review.submit")!.handler({
+      stage,
+      changeSetId: CHANGE_SET,
+      verdict: {
+        schemaVersion: 1,
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        createdAt: "2026-07-29T00:00:00.000Z",
+        stage,
+        artifactRef: `changeset:${CHANGE_SET}`,
+        lens,
+        verdict: "revise",
+        round: 1,
+        findings: [],
+      },
+      ...extra,
+    });
+    return JSON.parse(result.content[0]!.text) as {
+      ok?: boolean;
+      unmetCriteria?: string[];
+      voidedAttestations?: { criterion: string; contradictedBy: string }[];
+    };
+  }
+
+  const design = {
+    schemaVersion: 1,
+    changeSetId: CHANGE_SET,
+    elements: [
+      { id: "e1", name: "the artifact store" },
+      { id: "e2", name: "the derivation" },
+    ],
+    interfaces: [{ name: "StoredArtifacts", package: "@crabgic/cli" }],
+    risks: [{ id: "r1", statement: "a stale design record", mitigation: "keyed by ChangeSet" }],
+  };
+
+  it("scores the plan against the design the design stage stored, one call earlier", async () => {
+    const deps = artifactDeps();
+    deps.changeSets.put({ id: CHANGE_SET } as unknown as ChangeSet);
+
+    const designed = await submitStage(deps, "design", "contract-fit", { design });
+    expect(designed.unmetCriteria).not.toContain("design-risks-have-mitigations");
+    expect(designed.unmetCriteria).not.toContain("design-interfaces-named");
+
+    // A plan covering only ONE of the two stored elements. Nothing in this call
+    // mentions the design — the reference set comes from the store.
+    const partial = await submitStage(deps, "plan", "coverage-of-design", {
+      plan: {
+        schemaVersion: 1,
+        changeSetId: CHANGE_SET,
+        tasks: [
+          {
+            id: "t1",
+            statement: "build the store",
+            doneCriteria: ["its tests pass"],
+            covers: ["e1"],
+          },
+        ],
+      },
+    });
+    expect(partial.unmetCriteria).toContain("plan-covers-every-design-element");
+    // The other two plan criteria are decidable from the plan alone, and pass.
+    expect(partial.unmetCriteria).not.toContain("plan-tasks-have-done-criteria");
+    expect(partial.unmetCriteria).not.toContain("plan-dependencies-acyclic");
+
+    const complete = await submitStage(deps, "plan", "coverage-of-design", {
+      plan: {
+        schemaVersion: 1,
+        changeSetId: CHANGE_SET,
+        tasks: [
+          {
+            id: "t1",
+            statement: "build the store",
+            doneCriteria: ["its tests pass"],
+            covers: ["e1"],
+          },
+          {
+            id: "t2",
+            statement: "derive from it",
+            doneCriteria: ["the derivation test passes"],
+            dependsOn: ["t1"],
+            covers: ["e2"],
+          },
+        ],
+      },
+    });
+    expect(complete.unmetCriteria).toEqual([]);
+  });
+
+  /**
+   * The plan submission must not erase the design it is scored against — otherwise
+   * the coverage criterion would pass on the second plan submission for the wrong
+   * reason, having lost its reference set.
+   */
+  it("keeps the stored design after a plan submission that does not carry one", async () => {
+    const deps = artifactDeps();
+    deps.changeSets.put({ id: CHANGE_SET } as unknown as ChangeSet);
+    await submitStage(deps, "design", "contract-fit", { design });
+    await submitStage(deps, "plan", "sequencing", {
+      plan: { schemaVersion: 1, changeSetId: CHANGE_SET, tasks: [] },
+    });
+
+    const stored = await loadArtifacts(deps.reviewArtifactsPath, CHANGE_SET);
+    expect(stored.design?.elements.map((element) => element.id)).toEqual(["e1", "e2"]);
   });
 });
