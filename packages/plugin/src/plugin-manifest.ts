@@ -27,8 +27,28 @@ export const REQUIRED_SKILL_NAMES = [
   "protocol",
 ] as const;
 
-/** The two manager-side subagents roadmap/10 §Interfaces produced names verbatim. */
-export const REQUIRED_SUBAGENT_NAMES = ["eo-explore", "eo-reviewer", "eo-roaster"] as const;
+/**
+ * Every manager-side subagent the installer copies into a consuming repo.
+ *
+ * This list and `agents/` must agree, and a test asserts they do. They did not,
+ * once: `eo-architect` and `eo-planner` were added as files on 2026-07-29 and
+ * not added here, so a real `crabgic install` copied three of five and the other
+ * two were unreachable from any consuming repo. Nothing caught it — the content
+ * digest enumerates the DIRECTORY, this list is enumerated by the manifest
+ * validator and the installer, and the two disagreed in silence.
+ *
+ * The first three are roadmap/10 §Interfaces' own names, verbatim. The last two
+ * are the staged review pipeline's producers (`docs/staged-review-pipeline.md`
+ * §4.4): a design stage and a plan stage need an agent that makes the artifact,
+ * not only agents that review it.
+ */
+export const REQUIRED_SUBAGENT_NAMES = [
+  "eo-explore",
+  "eo-reviewer",
+  "eo-roaster",
+  "eo-architect",
+  "eo-planner",
+] as const;
 
 /** Adaptation §5.5: "the model must not be able to satisfy its own approval gate" — `/eo:approve` MUST set this. */
 const SKILLS_REQUIRING_DISABLED_MODEL_INVOCATION: ReadonlySet<string> = new Set(["approve"]);

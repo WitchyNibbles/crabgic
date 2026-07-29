@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { EnvelopePolicySchema, GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
-import { ENABLED_PLUGIN_KEY } from "@crabgic/plugin";
+import { ENABLED_PLUGIN_KEY, REQUIRED_SUBAGENT_NAMES } from "@crabgic/plugin";
 import { runInstall } from "./install.js";
 import { readInstallState } from "./state-store.js";
 import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
@@ -105,11 +105,16 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const state = await readInstallState(dir);
     expect(state?.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
-    // CLAUDE.md, .claude/settings.json, .mcp.json, THREE eo-* subagents
-    // (eo-roaster joined them with the roast loops, ledger Gap 19), and the
+    // CLAUDE.md, .claude/settings.json, .mcp.json, FIVE eo-* subagents, and the
     // status-line script. The standing policy is deliberately NOT among them:
     // it lands in XDG state, never the repo.
-    expect(state?.artifacts).toHaveLength(7);
+    //
+    // Three subagents became five on 2026-07-29 when the staged review pipeline
+    // gained producers for its design and plan stages (eo-architect, eo-planner).
+    // The count is derived rather than restated so this assertion cannot drift
+    // from the list the installer actually copies -- a hand-typed 7 is what let
+    // two agents ship uninstallable in the first place.
+    expect(state?.artifacts).toHaveLength(REQUIRED_SUBAGENT_NAMES.length + 4);
   });
 
   it("writes enabledPlugins keyed by the LIVE-VERIFIED <plugin-name>@<marketplace-name> format, not the bare plugin name", async () => {

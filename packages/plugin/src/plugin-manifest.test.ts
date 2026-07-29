@@ -186,3 +186,29 @@ describe("validatePluginManifest — rejects an incomplete manifest (work item 1
     expect(run?.problems.length).toBeGreaterThan(0);
   });
 });
+
+describe("REQUIRED_SUBAGENT_NAMES matches what is actually on disk", () => {
+  /**
+   * A list and a directory that must agree, with nothing checking that they do.
+   *
+   * Found the expensive way on 2026-07-29: two new agent files were added and
+   * the list was not, so a real `crabgic install` copied three of five and the
+   * other two could never be reached from a consuming repo. Nothing failed —
+   * the content digest changed (it enumerates the directory), the manifest
+   * validator passed (it enumerates the list), and the two disagreed silently.
+   *
+   * This is the class rounds 4-7 kept finding on path prefixes, in a new place:
+   * two answers to "what agents does this plugin have" will diverge unless
+   * something compares them.
+   */
+  it("has exactly the agents the plugin directory contains", async () => {
+    const { readdirSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const agentsDir = fileURLToPath(new URL("../agents", import.meta.url));
+    const onDisk = readdirSync(agentsDir)
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => name.replace(/\.md$/, ""))
+      .sort();
+    expect([...REQUIRED_SUBAGENT_NAMES].sort()).toEqual(onDisk);
+  });
+});
