@@ -63,6 +63,9 @@ import type {
   WorkUnit,
 } from "@crabgic/contracts";
 import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
+import { REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
+import { runReviewSubmit } from "../review/review-submit-handler.js";
+import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
 import { runContractApprove } from "../intake/contract-approve-handler.js";
 
@@ -93,6 +96,67 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly approvalTokenVerifier: CapabilityApproveDeps["minter"];
   /** Resolves the capability-store key a digest belongs to — 12's `capability.approve` needs it and deliberately does not guess. */
   readonly resolveCapabilityStoreKey: (digest: string) => string | undefined;
+  /**
+   * Where this project's review findings live, and the XDG state root the
+   * store's directory chain is verified below.
+   *
+   * Supplied rather than derived here for the same reason the provider
+   * registries are: `../bootstrap.ts` already resolves the XDG env and the
+   * project hash, and a second derivation is a second answer to "where is this
+   * project's state" that can disagree with the first.
+   */
+  readonly reviewFindingsPath: string;
+  readonly reviewStateHome: string;
+}
+
+/**
+ * `review.submit` — the staged review pipeline's write surface (ledger Gap 20).
+ *
+ * The two inputs the SERVER supplies, never the caller:
+ *
+ *   - `plannedWrites` comes from the ChangeSet's own AuthorizationEnvelope
+ *     `ownedPaths`, which is what the run is actually allowed to write. Taking
+ *     it from the caller would let a reviewer decide which debt it has to face
+ *     by understating what it intends to touch.
+ *   - `priorFindings` comes from the durable store, so a clean round cannot
+ *     erase an open blocker somebody else raised.
+ */
+function buildReviewTools(
+  deps: ProductionGatewayToolRegistryDeps,
+): readonly AnyGatewayToolDefinition[] {
+  const reviewSubmit: GatewayToolDefinition<typeof REVIEW_SUBMIT_SHAPE> = {
+    name: REVIEW_SUBMIT_TOOL.name,
+    description: REVIEW_SUBMIT_TOOL.description,
+    inputSchema: REVIEW_SUBMIT_SHAPE,
+    handler: async (args) => {
+      const changeSet = deps.changeSets.get(args.changeSetId);
+      if (changeSet === undefined) {
+        return errorResult(`unknown ChangeSet "${args.changeSetId}"`);
+      }
+      const envelope = deps.envelopes
+        .list()
+        .find((candidate) => candidate.changeSetId === args.changeSetId);
+
+      const prior = await loadFindings(deps.reviewFindingsPath);
+      const result = await runReviewSubmit(
+        { stage: args.stage, verdict: args.verdict },
+        {
+          appendEvidence: () => Promise.resolve(),
+          priorFindings: () => prior,
+          plannedWrites: () => envelope?.ownedPaths ?? [],
+          metCriteria: () => args.metCriteria ?? [],
+        },
+      );
+
+      // Persisted only on a valid submission, and persisted as the set the
+      // decision was computed from rather than as the set that was submitted.
+      if (result.ok && result.findings !== undefined) {
+        await saveFindings(deps.reviewFindingsPath, result.findings, deps.reviewStateHome);
+      }
+      return jsonResult(result);
+    },
+  };
+  return [reviewSubmit];
 }
 
 /** JSON-serialized tool output — every one of these tools answers with a single structured text block, matching 16's native families. */
@@ -112,6 +176,16 @@ const CONTRACT_APPROVE_SHAPE = {
   changeSetId: z.string(),
   digest: z.string(),
   token: z.string(),
+};
+const REVIEW_SUBMIT_SHAPE = {
+  stage: z.string(),
+  changeSetId: z.string(),
+  // `unknown`, deliberately: the verdict is validated by `ReviewVerdictSchema`
+  // inside the handler, where a rejection carries the reason. Re-declaring its
+  // shape here would be a second schema for one document, and the two would
+  // disagree the first time either moved.
+  verdict: z.unknown(),
+  metCriteria: z.array(z.string()).optional(),
 };
 const CAPABILITY_AUDIT_SHAPE = { candidate: z.unknown() };
 const CAPABILITY_APPROVE_SHAPE = { digest: z.string(), token: z.string() };
@@ -225,6 +299,7 @@ export function buildProductionGatewayToolRegistry(
 
   for (const tool of buildIntakeTools(deps)) registry.register(tool);
   for (const tool of buildCapabilityTools(deps)) registry.register(tool);
+  for (const tool of buildReviewTools(deps)) registry.register(tool);
 
   return registry;
 }

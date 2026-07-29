@@ -83,6 +83,7 @@ import {
 } from "./uds-client/ensure-supervisor.js";
 import { isPassiveMode } from "./uds-client/passive-mode.js";
 import { deriveProjectHash } from "./project-hash.js";
+import { resolveFindingStorePath } from "./review/finding-store.js";
 import {
   buildRealInstallerDependencies,
   createRealConfirmPolicy,
@@ -358,6 +359,11 @@ export function buildRealGatewayToolRegistry(
     providers: dispatch.providers,
     mutationApplyClients: dispatch.mutationApplyClients,
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
+    // Resolved HERE, from the same xdgEnv/projectHash everything else in this
+    // composition root uses — a second derivation elsewhere would be a second
+    // answer to "where is this project's state" that could disagree.
+    reviewFindingsPath: resolveFindingStorePath(xdgEnv, projectHash),
+    reviewStateHome: resolveXdgStateHome(xdgEnv),
     approvalSigningKey: loadOrCreateApprovalSigningKey(
       resolveApprovalSigningKeyPath(xdgEnv, projectHash),
       resolveXdgStateHome(xdgEnv),

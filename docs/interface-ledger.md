@@ -1254,8 +1254,19 @@ itself, which decides what runs without review and does not live in the journal 
 less privileged. It sits behind `loadFindings`/`saveFindings`, so a coordinated round adding a `review_verdict`
 kind later is a migration and not a redesign.
 
-What remains open is registration into the production gateway registry, which is composition-root wiring and
-not a design question.
+Registration landed too. `review.submit` is in the shipped binary's tool surface, verified by driving the real
+MCP server over stdio rather than by reading the registry, and the assertion that pins what the binary exposes
+lists it — a tool reaching production without appearing there is a surface nobody decided to ship. Two of its
+inputs come from the SERVER and never the caller: planned writes from the ChangeSet's own envelope
+`ownedPaths`, so a reviewer cannot understate what it intends to touch and thereby choose which debt it
+faces; and prior findings from the durable store, so a clean round cannot erase somebody else's open blocker.
+
+**One honest limit on the wiring.** `metCriteria` is a tool INPUT rather than something derived server-side,
+because there is no gate-verdict store to derive it from yet. The property that holds is that the REVIEWER
+cannot satisfy its own gate — findings and met-criteria arrive as separate inputs, and the verdict document
+carries no claim about which criteria are met. The property that does NOT hold is that nobody can: an
+orchestrator that lies about its gate results is believed. Deriving `implement-gates-pass` from real
+`GateVerdict`s is the next thing that would tighten this, and it is not done.
 
 **Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
 `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),

@@ -20,8 +20,20 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
     type: "object",
     properties: {
       stage: { type: "string" },
+      changeSetId: { type: "string" },
       verdict: { type: "object" },
+      /**
+       * Exit criteria established OUTSIDE the review — gate verdicts, and the
+       * orchestrator's own record of what a stage produced.
+       *
+       * Separate from `verdict` on purpose, and the distinction is the point:
+       * a reviewer submits findings and never asserts which criteria are met.
+       * This is still weaker than deriving them server-side, which needs a
+       * gate-verdict store this does not have yet; the honest description is
+       * that the REVIEWER cannot satisfy its own gate, not that nobody can.
+       */
+      metCriteria: { type: "array", items: { type: "string" } },
     },
-    required: ["stage", "verdict"],
+    required: ["stage", "changeSetId", "verdict"],
   },
 };

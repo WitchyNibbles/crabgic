@@ -67,6 +67,14 @@ export interface ReviewSubmitResult {
   readonly reopenedDebt?: number;
   readonly escalate?: boolean;
   readonly escalationReason?: string;
+  /**
+   * The full finding set after merging this round and reopening touched debt.
+   *
+   * Returned so the caller can persist exactly what the closure decision was
+   * computed from. A caller that saved its own idea of the finding set would be
+   * storing something other than what was judged.
+   */
+  readonly findings?: readonly ReviewFinding[];
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -173,6 +181,7 @@ export async function runReviewSubmit(
 
   return {
     ok: true,
+    findings: afterDebt,
     stageClosable,
     unmetCriteria,
     openBlocking,

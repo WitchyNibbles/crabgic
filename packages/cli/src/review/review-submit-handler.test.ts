@@ -246,3 +246,23 @@ describe("runReviewSubmit — every verdict is journaled", () => {
     expect(appended).toEqual([]);
   });
 });
+
+describe("runReviewSubmit — what the caller persists", () => {
+  it("returns the finding set the decision was computed from", async () => {
+    // Not the submitted set: the merged one, after prior findings and reopened
+    // debt. A caller that persisted its own idea of the findings would be
+    // storing something other than what was judged.
+    const open = finding({
+      id: "33333333-3333-4333-8333-333333333333",
+      classification: "blocking",
+      violates: "implement-gates-pass",
+      disposition: undefined,
+      dispositionEvidence: undefined,
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict({ findings: [finding()] }) },
+      deps({ priorFindings: () => [open] }),
+    );
+    expect(result.findings).toHaveLength(2);
+  });
+});
