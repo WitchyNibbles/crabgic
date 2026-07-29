@@ -1,7 +1,11 @@
 # Staged review pipeline — design
 
-**Status:** proposal, awaiting owner sign-off. Written 2026-07-29 against
-`feat/conversation-first-orchestration` @ `5d17113`.
+**Status:** design accepted in outline; §7's four questions ruled by the owner
+2026-07-29. The amendment to §0 and to ledger Gap 19 that §6 requires is **not
+yet made** — this document requests it and does not perform it. §8 lists what is
+still unanswered.
+
+Written 2026-07-29 against `feat/conversation-first-orchestration` @ `5d17113`.
 
 **Supersedes:** nothing yet. Proposes an amendment to interface-ledger **Gap 19**
 part 4 and to `docs/claude-code-adaptation.md` §0's 2026-07-28 amendment 4. Both
@@ -228,13 +232,90 @@ against measured evidence that the current criterion does not terminate, and it
 preserves the property the floor was rejected to protect — every genuine defect
 is still verified, answered and surfaced.
 
-## 7. Open questions for the owner
+## 7. Owner rulings (2026-07-29)
 
-1. **Revise budget per stage** — 2, 3, or lens-count-dependent? Escalation is
-   defined; the number is not.
-2. **`accepted-debt` visibility** — report at change-set close only, or also
-   accumulate into a standing backlog artifact?
-3. **Who owns advisory findings that are never fixed?** They must not silently
-   accumulate; a periodic review gate is one option.
-4. **Stage 1 lens set** — is "source-quality" worth a separate reviewer, or is
-   it part of completeness?
+The four questions this section opened are answered. Each ruling is recorded
+with the mechanism it obliges, because a decision whose implementation is left
+implicit is how §0's amendments came to need this document in the first place.
+
+### 7.1 Revise budget — progress-based, ceiling 5
+
+A stage keeps looping **while each round closes at least one `blocking`
+finding**. The first round that closes none escalates immediately. A hard
+ceiling of **5 rounds** applies regardless.
+
+This is the literature's semantic early-stopping rather than a syntactic cap: a
+stage that was finished after one round costs one round, and a stalling stage
+surfaces the moment it stalls instead of burning a fixed budget first.
+
+**Obliges:** each round records `blockingClosedThisRound`. The value is derived
+from finding dispositions, never self-reported by the reviewer — a reviewer that
+scores its own progress is the sycophancy failure Gap 19 was written to avoid,
+inverted.
+
+### 7.2 `accepted-debt` lives in the journal
+
+Debt is written as an `EvidenceRecord` and surfaced in the change-set report at
+approval time. It is queryable through the existing `crabgic evidence
+<change-set-id>` path.
+
+Chosen over a standing backlog file precisely because this repository already
+has the flake catalogue as a worked example of what an unmanaged standing list
+becomes. The journal is durable, already audited, and needs no new artifact.
+
+**Obliges:** a finding→`EvidenceRecord` mapping, and a `ReviewVerdict` field
+that carries the record id so the two are linkable after the fact.
+
+### 7.3 Debt becomes blocking when its code is next touched
+
+An advisory finding is **indexed by the paths it concerns**. When a later change
+set's `PlannedWriteSet` intersects that index, the finding is **reclassified
+`blocking` for that stage**.
+
+Debt is therefore paid at the cheapest possible moment — when the context is
+already loaded — and nothing accumulates silently.
+
+**Obliges:**
+
+- Findings carry a normalized path set, keyed with `normalizePlannedPath` from
+  `@crabgic/git-engine` so the index and the overlap analyzer cannot disagree
+  about what a path names. (Round 31's lesson: two functions answering the same
+  question diverge.)
+- The implement stage queries open debt against its `PlannedWriteSet` **before**
+  the first review round, so inherited debt is visible from the start rather
+  than appearing mid-loop.
+- Inherited debt is subject to §7.1's budget like any other blocking finding. A
+  change set that inherits more debt than it can absorb therefore **escalates to
+  the owner** rather than looping — the "surprise mid-task" cost of this option
+  is bounded by the same escalation path as everything else.
+
+**Residual risk, disclosed:** debt in code nobody touches again is never paid.
+That is accepted deliberately — it is also debt nobody is exposed to — but it
+means the journal's debt query is the only place it can ever be seen, which is
+an argument for keeping §7.2's report honest.
+
+### 7.4 Research stage gets three lenses
+
+`completeness`, `source-quality`, and `assumption-audit`.
+
+Chosen over the two-lens recommendation in this document's first draft. The
+reasoning that carried it: research runs first and its output is what every
+later stage commits to, so a stale-but-well-cited source is more expensive here
+than anywhere else in the pipeline. The extra lens is paid once, early, against
+a cost that compounds.
+
+## 8. Still open
+
+Not questions for the owner — engineering work this document does not yet
+answer, listed so they are not mistaken for settled:
+
+1. **Exit criteria are sketched, not written.** §4.4's right-hand column is
+   illustrative. Each stage needs its criteria written as a checkable list, the
+   way `CONTRACT_SECTIONS` already is for stage 2.
+2. **Lens definitions.** Each reviewer lens needs a charter as specific as
+   `eo-roaster`'s, minus the never-approve instruction.
+3. **Calibration.** The literature is explicit that an uncalibrated judge is
+   decorative. There is no plan yet for checking that `blocking` versus
+   `advisory` classifications match the owner's own judgement on a sample.
+4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
+   `Workflow` script are both viable (§5); the choice is unmade.
