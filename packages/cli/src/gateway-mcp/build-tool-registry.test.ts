@@ -67,6 +67,10 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
     resolveCapabilityStoreKey: () => undefined,
     reviewFindingsPath: join(mkdtempSync(join(tmpdir(), "eo-reg-review-")), "review-findings.json"),
     reviewStateHome: mkdtempSync(join(tmpdir(), "eo-reg-state-")),
+    reviewCalibrationPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-calib-")),
+      "review-calibration.json",
+    ),
   };
 }
 

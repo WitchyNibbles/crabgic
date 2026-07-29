@@ -67,6 +67,8 @@ import { REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { GATES_PASS_CRITERION, deriveGateCriteria } from "../review/gate-criteria.js";
+import { scoreCalibration } from "../review/calibration.js";
+import { loadCalibrationSamples } from "../review/calibration-store.js";
 import { queryEvidence } from "../evidence/query.js";
 import { runProjectInspectTool } from "../intake/project-inspect-handler.js";
 import { runContractApprove } from "../intake/contract-approve-handler.js";
@@ -109,6 +111,8 @@ export interface ProductionGatewayToolRegistryDeps {
    */
   readonly reviewFindingsPath: string;
   readonly reviewStateHome: string;
+  /** Where the owner's calibration judgements about the classifier live. */
+  readonly reviewCalibrationPath: string;
 }
 
 /**
@@ -140,6 +144,13 @@ function buildReviewTools(
         .find((candidate) => candidate.changeSetId === args.changeSetId);
 
       const prior = await loadFindings(deps.reviewFindingsPath);
+      // Scored from the owner's own corpus, and reported on the response. A
+      // fresh project has none, which is normal — what would not be normal is
+      // handing back a blocking/advisory verdict without saying whether anyone
+      // has ever checked that classifier.
+      const calibration = scoreCalibration(
+        await loadCalibrationSamples(deps.reviewCalibrationPath),
+      );
 
       // The gate-decidable criterion is DERIVED from journaled evidence and
       // then subtracted from whatever the caller claimed. A caller that asserts
@@ -163,6 +174,12 @@ function buildReviewTools(
           priorFindings: () => prior,
           plannedWrites: () => envelope?.ownedPaths ?? [],
           metCriteria: () => metCriteria,
+          calibration: () => ({
+            calibrated: calibration.calibrated,
+            kappa: calibration.kappa,
+            sampleSize: calibration.sampleSize,
+            samplesNeeded: calibration.samplesNeeded,
+          }),
         },
       );
 

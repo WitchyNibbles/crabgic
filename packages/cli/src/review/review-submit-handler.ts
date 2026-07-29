@@ -40,6 +40,24 @@ export interface ReviewSubmitDeps {
   readonly plannedWrites: () => readonly string[];
   /** Exit criteria this stage has satisfied, established outside the review. */
   readonly metCriteria: () => readonly string[];
+  /**
+   * How well the blocking/advisory classifier agrees with the owner, if anyone
+   * has checked.
+   *
+   * Reported on every response rather than logged somewhere, because the split
+   * decides what holds a stage open and a consumer acting on it deserves to
+   * know whether it has ever been validated. An unvalidated classifier is not
+   * an error — it is the normal state of a fresh project — but silently
+   * presenting its verdicts as though they were measured is.
+   */
+  readonly calibration: () => CalibrationStatus;
+}
+
+export interface CalibrationStatus {
+  readonly calibrated: boolean;
+  readonly kappa: number;
+  readonly sampleSize: number;
+  readonly samplesNeeded: number;
 }
 
 export interface ReviewEvidence {
@@ -75,6 +93,12 @@ export interface ReviewSubmitResult {
    * storing something other than what was judged.
    */
   readonly findings?: readonly ReviewFinding[];
+  /**
+   * Whether the classification this result rests on has ever been checked
+   * against the owner's judgement. Never omitted — an absent field reads as
+   * "fine", and the honest default here is "nobody has looked".
+   */
+  readonly calibration?: CalibrationStatus;
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -182,6 +206,7 @@ export async function runReviewSubmit(
   return {
     ok: true,
     findings: afterDebt,
+    calibration: deps.calibration(),
     stageClosable,
     unmetCriteria,
     openBlocking,
