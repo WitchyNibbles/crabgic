@@ -184,8 +184,8 @@ export {
 } from "./drift/pinned-fixtures.js";
 export type { ObservedOverride } from "./drift/pinned-fixtures.js";
 export {
-  DEFAULT_DEBOUNCE_STATE_PATH,
-  DEFAULT_PROPOSALS_OUTPUT_PATH,
+  defaultDebounceStatePath,
+  defaultProposalsOutputPath,
   runDriftCiCli,
 } from "./drift/cli.js";
 export type { DriftCiCliOptions } from "./drift/cli.js";

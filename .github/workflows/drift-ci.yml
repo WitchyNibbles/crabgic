@@ -79,14 +79,21 @@ jobs:
       # Debounce state persists ACROSS scheduled runs (never reset per-run) —
       # this IS the mitigation against a single transient failing sample
       # masquerading as drift. `packages/gates/src/drift/cli.ts`'s own
-      # default paths live under `os.tmpdir()` (`/tmp/eo-drift-ci/...` on
-      # every GitHub-hosted Linux runner) — never inside the repo tree, so
-      # this cache step is the only thing that makes the state outlive one
-      # job run.
+      # default paths live under the XDG state root
+      # (`~/.local/state/crabgic/drift-ci/...` on every GitHub-hosted Linux
+      # runner) — never inside the repo tree, so this cache step is the only
+      # thing that makes the state outlive one job run.
+      #
+      # Roast round 30 moved them off `os.tmpdir()`: `/tmp/eo-drift-ci` was a
+      # fixed name in a world-writable directory, and a symlink planted there
+      # redirected both output files (measured through `runDriftCiCli()`
+      # itself). These three paths must move WITH the default — a cache step
+      # pointed at a path the job no longer writes fails silently, and the
+      # debounce this comment describes would be quietly disabled.
       - name: Restore drift debounce state
         uses: actions/cache/restore@v4
         with:
-          path: /tmp/eo-drift-ci/debounce-state.json
+          path: ~/.local/state/crabgic/drift-ci/debounce-state.json
           # A run-id-suffixed key never hits on restore (each run's own key
           # is brand new) — `restore-keys`' prefix match against the MOST
           # RECENT previous run's key is what actually recovers persisted
@@ -111,7 +118,7 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: /tmp/eo-drift-ci/debounce-state.json
+          path: ~/.local/state/crabgic/drift-ci/debounce-state.json
           key: drift-ci-debounce-state-${{ github.run_id }}
 
       # For HUMAN review only — this job never applies the proposal itself;
@@ -121,5 +128,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: drift-proposals
-          path: /tmp/eo-drift-ci/drift-proposals.json
+          path: ~/.local/state/crabgic/drift-ci/drift-proposals.json
           if-no-files-found: ignore
