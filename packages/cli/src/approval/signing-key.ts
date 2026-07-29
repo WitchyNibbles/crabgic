@@ -27,7 +27,12 @@
 import { closeSync, constants, fstatSync, mkdirSync, openSync, readSync, writeSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
-import { CRABGIC_DIR_NAME, resolveXdgStateHome, type XdgEnv } from "@crabgic/journal";
+import {
+  CRABGIC_DIR_NAME,
+  openOwnedFile,
+  resolveXdgStateHome,
+  type XdgEnv,
+} from "@crabgic/journal";
 
 /** The pinned file name, under the project's XDG **state** root — a signing key is durable state, not a regenerable cache artifact. */
 export const APPROVAL_SIGNING_KEY_FILE_NAME = "approval-signing.key";
@@ -55,32 +60,64 @@ export function resolveApprovalSigningKeyPath(env: XdgEnv, projectHash: string):
   );
 }
 
-function readExistingKey(path: string): Buffer {
-  // O_NOFOLLOW: a symlink planted at the pinned path must be REFUSED, never
-  // followed — otherwise an attacker who can create one file in the state
-  // directory chooses the signing key (and therefore forges tokens).
-  let fd: number;
-  try {
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ELOOP") {
+/**
+ * Reads the key, or `undefined` when there is none yet.
+ *
+ * ROAST ROUND 31: the flags and descriptor checks used to live here, and a
+ * differential against one corpus proved this copy had drifted — it BLOCKED
+ * outright on a FIFO (synchronously, so no timer or signal could rescue it)
+ * and ACCEPTED a hardlink, which round 30's opener refuses. Absence is a
+ * RETURN VALUE now rather than an `ENOENT` this function's own caller had to
+ * sniff out of a thrown error: "no key yet, mint one" is a normal first run,
+ * not an exception.
+ */
+function readExistingKey(path: string): Buffer | undefined {
+  const opened = openOwnedFile(path, constants.O_RDONLY, { requirePrivateMode: true });
+  switch (opened.refused) {
+    case undefined:
+      break;
+    case "absent":
+      return undefined;
+    case "symlink":
       throw new ApprovalSigningKeyError(path, "it is a symlink — refusing to follow it");
-    }
-    throw err;
-  }
-
-  try {
-    const stat = fstatSync(fd);
-    if (!stat.isFile()) {
+    case "not-a-regular-file":
       throw new ApprovalSigningKeyError(path, "it is not a regular file");
-    }
-    if ((stat.mode & 0o077) !== 0) {
+    case "hardlinked":
+      // An attacker who can hardlink a file they control into the state
+      // directory chooses the signing key, and therefore forges tokens --
+      // exactly the outcome `O_NOFOLLOW` is here to prevent, by an object
+      // `O_NOFOLLOW` does not cover.
       throw new ApprovalSigningKeyError(
         path,
-        `mode ${(stat.mode & 0o777).toString(8)} grants group/other access — expected 0600`,
+        "it has more than one hard link — refusing to use it as a signing key",
       );
+    case "not-owned":
+      throw new ApprovalSigningKeyError(
+        path,
+        `it is owned by uid ${String(opened.observedUid)} — expected the account running Crabgic`,
+      );
+    case "unsupported-platform":
+      throw new ApprovalSigningKeyError(
+        path,
+        "ownership cannot be established on this platform; Crabgic supports Linux (x64, arm64) and WSL2",
+      );
+    case "group-or-world-accessible":
+      throw new ApprovalSigningKeyError(
+        path,
+        `mode ${((opened.observedMode ?? 0) & 0o777).toString(8)} grants group/other access — expected 0600`,
+      );
+    case "unreadable": {
+      const error: NodeJS.ErrnoException = new Error(
+        `approval signing key at "${path}" could not be opened (${opened.code ?? "unknown error"})`,
+      );
+      if (opened.code !== undefined) error.code = opened.code;
+      throw error;
     }
+  }
+
+  const fd = opened.fd as number;
+  try {
+    const stat = fstatSync(fd);
     if (stat.size !== APPROVAL_SIGNING_KEY_BYTES) {
       throw new ApprovalSigningKeyError(
         path,
@@ -105,12 +142,8 @@ function readExistingKey(path: string): Buffer {
  * silently invalidate a token another process had already minted).
  */
 export function loadOrCreateApprovalSigningKey(path: string): Buffer {
-  try {
-    return readExistingKey(path);
-  } catch (err) {
-    if (err instanceof ApprovalSigningKeyError) throw err;
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-  }
+  const existing = readExistingKey(path);
+  if (existing !== undefined) return existing;
 
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const key = randomBytes(APPROVAL_SIGNING_KEY_BYTES);
@@ -126,7 +159,14 @@ export function loadOrCreateApprovalSigningKey(path: string): Buffer {
     if ((err as NodeJS.ErrnoException).code === "EEXIST") {
       // Another process created it between our read and our create — its
       // key is the one of record.
-      return readExistingKey(path);
+      const raced = readExistingKey(path);
+      if (raced === undefined) {
+        // EEXIST and then absent: the winner's key was removed between the two
+        // syscalls. Reporting it as a signing-key fault is honest; silently
+        // minting a second key would invalidate a token already issued.
+        throw new ApprovalSigningKeyError(path, "it vanished between creation and read");
+      }
+      return raced;
     }
     throw err;
   }

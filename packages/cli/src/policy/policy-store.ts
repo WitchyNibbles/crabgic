@@ -1,9 +1,14 @@
 import { createHash, randomBytes } from "node:crypto";
-import { closeSync, constants, fstatSync, openSync, readFileSync, statSync } from "node:fs";
+import { closeSync, constants, readFileSync, statSync } from "node:fs";
 import { chmod, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
-import { resolveStateRoot, type XdgEnv } from "@crabgic/journal";
+import {
+  openOwnedFile,
+  resolveStateRoot,
+  type OwnedOpenResult,
+  type XdgEnv,
+} from "@crabgic/journal";
 
 /**
  * Reading the standing `EnvelopePolicy` from disk (ledger Gap 18).
@@ -64,52 +69,73 @@ export type LoadPolicyResult =
  * Every check is against the descriptor (`fstatSync`), never the path, so
  * nothing can be swapped between checking and reading.
  */
-function validateOpenPolicyFile(fd: number, path: string): LoadPolicyResult | undefined {
-  const stats = fstatSync(fd);
-
-  // Checked BEFORE the mode, or a directory is refused for the wrong reason.
-  // Roast round 6: `mkdir` under a default umask gives 0755, so the mode test
-  // fired first and reported "accessible to other accounts (mode 655)" — a
-  // mode the directory does not even have — leaving the specific message
-  // reachable only for a 0700 directory nobody creates by accident.
-  if (stats.isDirectory()) {
-    return {
-      status: "invalid",
-      reason: `${path} is a directory, not a policy file; remove it and re-run \`crabgic install\``,
-    };
+/**
+ * Maps `openOwnedFile`'s refusal onto this module's owner-facing wording.
+ *
+ * ROAST ROUND 31: the flags and the descriptor checks used to live here, and a
+ * differential against one corpus proved they had drifted from the other two
+ * copies in the repo — this one BLOCKED on a FIFO (36s, SIGTERM ignored, zero
+ * output, through the real CLI) and ACCEPTED a hardlink, which round 30's
+ * opener refuses. Deciding is now done in one place; only the sentences are
+ * decided here.
+ */
+function refusalToResult(result: OwnedOpenResult, path: string): LoadPolicyResult | undefined {
+  switch (result.refused) {
+    case undefined:
+      return undefined;
+    case "absent":
+      // ONLY a genuinely missing path is `absent`.
+      return { status: "absent" };
+    case "symlink":
+      return {
+        status: "invalid",
+        reason: `policy file ${path} is a symbolic link; the standing approval must be a real file this account owns`,
+      };
+    case "not-a-regular-file":
+      // Roast round 6: the directory message must not be reached through the
+      // mode test, which reported a mode the directory does not even have.
+      return {
+        status: "invalid",
+        reason:
+          result.kind === "directory"
+            ? `${path} is a directory, not a policy file; remove it and re-run \`crabgic install\``
+            : `${path} is not a regular file (${result.kind ?? "unknown"}); the standing approval must be a real file this account owns`,
+      };
+    case "hardlinked":
+      return {
+        status: "invalid",
+        reason: `policy file ${path} has more than one hard link; the standing approval must be a file only this path names`,
+      };
+    case "unsupported-platform":
+      return {
+        status: "invalid",
+        reason: `cannot establish ownership of ${path} on this platform; Crabgic supports Linux (x64, arm64) and WSL2`,
+      };
+    case "not-owned":
+      return {
+        status: "invalid",
+        reason:
+          `policy file ${path} is owned by uid ${String(result.observedUid)}, not the account running Crabgic (uid ${String(process.getuid?.())}); ` +
+          `if you are running under sudo, run without it rather than changing the file's owner`,
+      };
+    case "group-or-world-accessible":
+      return {
+        status: "invalid",
+        reason: `policy file ${path} is accessible to other accounts (mode ${(((result.observedMode ?? 0) & 0o077) | 0o600).toString(8)}); it decides what runs without review and must be 0600`,
+      };
+    case "unreadable":
+      return classifyOpenFailure(result.code, path);
   }
+}
 
-  // Ownership, not just mode. A 0600 file owned by someone else is a policy
-  // this account cannot edit and did not write — the opposite of a standing
-  // approval given by the owner.
-  //
-  // `getuid` is absent on platforms this project does not support (README
-  // pins Linux x64/arm64/WSL2). Refusing there is deliberate and explicit
-  // rather than an accident of `0 !== undefined`: an unsupported platform
-  // must not silently accept a policy whose ownership cannot be established.
+/**
+ * Validates the OPEN policy file's SURROUNDINGS — the directory it can be
+ * replaced in. The file itself is decided by `openOwnedFile`.
+ */
+function validatePolicyDirectory(path: string): LoadPolicyResult | undefined {
+  // `openOwnedFile` has already established that the FILE is ours; this is the
+  // uid every directory check compares against.
   const uid = process.getuid?.();
-  if (uid === undefined) {
-    return {
-      status: "invalid",
-      reason: `cannot establish ownership of ${path} on this platform; Crabgic supports Linux (x64, arm64) and WSL2`,
-    };
-  }
-  if (stats.uid !== uid) {
-    return {
-      status: "invalid",
-      reason:
-        `policy file ${path} is owned by uid ${stats.uid}, not the account running Crabgic (uid ${uid}); ` +
-        `if you are running under sudo, run without it rather than changing the file's owner`,
-    };
-  }
-
-  const mode = stats.mode & 0o077;
-  if (mode !== 0) {
-    return {
-      status: "invalid",
-      reason: `policy file ${path} is accessible to other accounts (mode ${(mode | 0o600).toString(8)}); it decides what runs without review and must be 0600`,
-    };
-  }
 
   // The containing directory too: a policy is only as protected as the
   // directory it can be replaced in. Owner AND mode — a foreign-owned 0755
@@ -265,16 +291,14 @@ export function loadEnvelopePolicy(path: string): LoadPolicyResult {
   // with directory write could swap their own file in, let it be read, and
   // restore the owner's real 0600 file before the checks ran. `O_NOFOLLOW`
   // refuses a symlink at open time rather than detecting one afterwards.
-  let fd: number;
-  try {
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-  } catch (err) {
-    return classifyOpenFailure((err as NodeJS.ErrnoException).code, path);
-  }
+  const opened = openOwnedFile(path, constants.O_RDONLY, { requirePrivateMode: true });
+  const refusal = refusalToResult(opened, path);
+  if (refusal !== undefined) return refusal;
+  const fd = opened.fd as number;
 
   let raw: string;
   try {
-    const check = validateOpenPolicyFile(fd, path);
+    const check = validatePolicyDirectory(path);
     if (check !== undefined) return check;
     raw = readFileSync(fd, "utf8");
   } catch (err) {

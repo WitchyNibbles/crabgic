@@ -22,17 +22,20 @@ import {
   closeSync,
   constants,
   existsSync,
-  fstatSync,
   ftruncateSync,
   mkdirSync,
-  openSync,
   readSync,
   writeSync,
 } from "node:fs";
 import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CRABGIC_DIR_NAME, readXdgEnvFromProcess, resolveXdgStateHome } from "@crabgic/journal";
+import {
+  CRABGIC_DIR_NAME,
+  openOwnedFile,
+  readXdgEnvFromProcess,
+  resolveXdgStateHome,
+} from "@crabgic/journal";
 import type { DoctorCheck, DoctorFinding } from "../framework.js";
 import type { ProcessProbeFn } from "../process-probe.js";
 
@@ -169,30 +172,18 @@ const CURSOR_MAX_BYTES = 32;
 /**
  * Open the cursor and prove it is a regular file THIS account owns.
  *
- * `O_NOFOLLOW` refuses a planted symlink at open time rather than detecting one
- * afterwards (the policy store's round-4 lesson). `O_NONBLOCK` is what stops a
- * FIFO blocking in `open(2)` — the measured hang. `nlink === 1` refuses a
- * hardlink to a file we own but did not put here, which `O_NOFOLLOW` does not
- * cover. `fstat` is taken on the DESCRIPTOR, so the inode checked is the inode
- * used; and for the write path the truncation happens only after those checks
- * pass, so a device or FIFO is never truncated on the way to being rejected.
+ * ROAST ROUND 31: round 30 wrote this check here, and a differential across the
+ * repo's other hardened openers found three implementations and two behaviours
+ * — this one refused a hardlink, the policy store and the signing key accepted
+ * one, and both of those BLOCKED on a FIFO. It is decided in `openOwnedFile`
+ * now, once, so the three cannot disagree again.
+ *
+ * No `requirePrivateMode`: the cursor is a rotation HINT, and refusing it over
+ * its mode would turn a cosmetic difference into a lost health check. A sweep
+ * failure is never a health verdict.
  */
 function openOwnedCursor(path: string, flags: number): number | undefined {
-  let fd: number;
-  try {
-    fd = openSync(path, flags | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
-  } catch {
-    return undefined; // absent, a symlink (ELOOP), a writerless FIFO (ENXIO), not ours
-  }
-  try {
-    const stats = fstatSync(fd);
-    const uid = process.getuid?.();
-    if (stats.isFile() && stats.nlink === 1 && uid !== undefined && stats.uid === uid) return fd;
-  } catch {
-    // fall through to the close below
-  }
-  closeSync(fd);
-  return undefined;
+  return openOwnedFile(path, flags).fd;
 }
 
 function readCursor(path: string): number | undefined {
