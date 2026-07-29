@@ -53,6 +53,22 @@ export const IntentContractSectionsSchema = z
 export type IntentContractSections = z.infer<typeof IntentContractSectionsSchema>;
 
 /**
+ * The nine section names, DERIVED from the schema rather than restated.
+ *
+ * The manager protocol needs this list to render the clarify loop's exit
+ * condition, and until 2026-07-29 it carried its own hand-written copy. Two
+ * lists that must agree will not — this repository has paid for that lesson
+ * four times over on path prefixes (roast rounds 4-7). Deriving the array from
+ * the schema's own keys makes the drift unexpressible: adding a section to the
+ * schema adds it here, and to every consumer, with no second edit.
+ *
+ * Order is the schema's declaration order, which is roadmap/11's own order.
+ */
+export const CONTRACT_SECTIONS = Object.keys(
+  IntentContractSectionsSchema.shape,
+) as readonly (keyof IntentContractSections)[];
+
+/**
  * `IntentContract` (roadmap/02-contracts-and-schemas.md §Interfaces
  * produced, row "IntentContract | 11 (assembles instance), 18, 21"):
  * assembled by 11 for a `ChangeSet` (`changeSetId` — cross-contract

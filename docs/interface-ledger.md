@@ -3,8 +3,20 @@
 This file is the **binding cross-phase interface contract** for the crabgic / Crabgic
 roadmap (`roadmap/00-*.md` through `roadmap/23-*.md`, indexed by `roadmap/README.md`). It records the single
 ruling decision for each of 15 cross-phase interface gaps that were identified against the roadmap and
-independently adjudicated by four parallel resolver passes, plus **Gap 16**, which was identified later,
-during implementation, and carries its own provenance line rather than a four-resolver record.
+independently adjudicated by four parallel resolver passes, plus **Gaps 16-20**, which were identified later
+and each carry their own provenance line rather than a four-resolver record:
+
+| Gap | Origin |
+| --- | --- |
+| 16  | phase-23 implementation |
+| 17  | reported behavior in a consuming repo, 2026-07-27 |
+| 18  | owner ruling 2026-07-28, after a live audit of the shipped `crabgic@1.3.0` binary |
+| 19  | owner ruling 2026-07-28, same session as 18; **amended 2026-07-29** against measured evidence |
+| 20  | raised 2026-07-29 while implementing 19's amendment |
+
+This table exists because the sentence above it said "15 gaps plus Gap 16" for as long as there were twenty,
+which is a small thing that makes a reader trust the rest of the file less. A ledger that miscounts itself
+invites the question of what else it has not kept up with.
 
 **The four resolver passes did not agree with each other** — on several gaps (notably Gap 1, Gap 2, Gap 11,
 and the path-order half of Gap 14) their decisions materially conflict, even though all 15 gaps were stamped
@@ -1181,6 +1193,65 @@ sycophancy part 4 was written to exclude; letting a reviewer raise findings a de
 decides, which re-litigates settled verdicts in prose; or reintroducing an unbounded round count on the
 argument that quality demands it — the measured evidence is that it does not terminate, and an
 unbounded loop that never closes ships nothing at all.
+
+---
+
+## Gap 20 — The amended review loop is stated in prose and enforced nowhere
+
+**Origin:** Follows Gap 19's 2026-07-29 amendment. Raised while implementing it.
+
+**Gap statement:** Gap 19 as amended says a stage closes on its written exit criteria, that a finding blocks
+only by naming the criterion it violates, that every finding carries a disposition, and that debt reopens when
+its code is next touched. All four are **model instructions**. The superseded loop's own defect was a model
+instruction no artifact could contradict — "do not approve it" — which ran twelve rounds without converging.
+Restating the fix in the same medium that failed is not a fix; it is the same bet at longer odds.
+
+**Ruling:** the checkable half is checked, in `@crabgic/contracts`, and the rest is named as unchecked.
+
+1. **`ReviewVerdict` / `ReviewFinding` are schemas, not conventions.** Three properties are
+   **unrepresentable** rather than discouraged: a `blocking` finding with no `violates`; a finding whose
+   `dispositionEvidence` is empty; and `approve` while a blocking finding is neither `fixed` nor `refuted`.
+   Each maps to a way the loop failed or could fail, and each is a `superRefine` that rejects the document.
+2. **`isStageClosable` is the termination rule as code.** All three conditions — every required criterion met,
+   no unresolved blocking finding, no undispositioned finding at any severity. A clean review with an unmet
+   criterion does not close a stage, which is the property the superseded loop lacked.
+3. **`PIPELINE_STAGES` carries the criteria as data.** Ids are stable because `violates` references them; a
+   name that resolves to nothing is not a constraint. `exitCriteriaFor` **throws** on an unknown stage rather
+   than returning `[]`, because an empty criteria list satisfies the closure rule vacuously.
+4. **The clarify stage derives its criteria from `CONTRACT_SECTIONS`, and `CONTRACT_SECTIONS` derives from
+   `IntentContractSectionsSchema`'s own keys.** The plugin's hand-written copy of the nine names is deleted
+   and re-exported. Rounds 4-7 are the precedent: two lists that must agree diverge, and the last attempt to
+   keep them in step made mismatches six times worse.
+5. **`reclassifyDebtForWriteSet` reopens debt by planned writes**, using the repository's one canonical
+   `normalizePathPrefix`. Containment is checked in **both** directions — a write inside a debt's directory,
+   and a write to a directory above a debt's file — because only one of those is prefix matching in the usual
+   sense and checking one would silently miss half the debt. Reopening **clears** the disposition rather than
+   rewriting it, so the finding is open again and its stage cannot advance.
+
+**Rationale:** part 1 is the ruling. Everything the superseded loop got wrong was expressible in a document
+that nothing rejected, so the amendment's own rules are made rejectable wherever a schema can carry them.
+What a schema cannot carry — whether a reviewer classified honestly — is left to prose deliberately and named
+below rather than pretended away.
+
+**Disclosed residual risk:** the schema enforces the SHAPE of a verdict and not its HONESTY. A reviewer can
+still classify a real blocker as `advisory`, or attach a plausible `violates` to a taste preference, and every
+document it produces will validate. The `blocking`/`advisory` split has **no calibration** — no sample where
+it has been checked against the owner's own judgement — so it is asserted, not measured. This is the same
+posture Gap 19's original entry refused to accept for falsifiability, and it is recorded in those terms rather
+than as a footnote.
+
+Second: nothing yet CALLS `isStageClosable` or `reclassifyDebtForWriteSet` on a real run. They are correct and
+tested and unwired, which makes them a contract the manager may follow rather than one it must.
+
+**Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
+`roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),
+`roadmap/13-scheduler-packets-context.md` (owns the repair-attempt boundary a review round sits beside),
+`roadmap/10-plugin-and-installer.md` (renders the protocol these enforce).
+
+**Where this ruling could be got wrong later:** adding a disposition that means "ignored", which reintroduces
+the disposal route the whole design exists to prevent; relaxing `approve` so it tolerates an open blocker,
+which makes the verdict advisory; giving `exitCriteriaFor` an empty-list fallback, which closes stages
+vacuously; or writing a second path matcher for the debt index instead of importing the canonical one.
 
 ---
 

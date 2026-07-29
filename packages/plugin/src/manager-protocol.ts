@@ -1,4 +1,9 @@
-import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
+import {
+  CONTRACT_SECTIONS,
+  DEFAULT_PRESENTATION_POLICY,
+  PRESENTATION_GLYPH_ROLES,
+  glyph,
+} from "@crabgic/contracts";
 
 /**
  * The manager session's operating protocol — roadmap/10-plugin-and-installer.md
@@ -132,26 +137,22 @@ export const MANAGER_STOP_CONDITIONS: readonly ManagerStopCondition[] = [
 ];
 
 /**
- * The `IntentContract`'s nine sections (roadmap/11 §In scope, "Contract
- * assembly"), which double as the clarify loop's exit condition.
+ * The `IntentContract`'s nine sections, which double as the clarify loop's
+ * exit condition.
  *
- * The loop needs a CHECKABLE termination rule or it either interrogates
- * forever or stops early on a hunch. These sections already are that
- * checklist — the contract cannot be built until every one of them is
- * answerable — so the protocol names them rather than inventing a heuristic
- * that would drift from what intake actually requires.
+ * The loop needs a CHECKABLE termination rule or it either interrogates forever
+ * or stops early on a hunch. These sections already are that checklist — the
+ * contract cannot be built until every one of them is answerable.
+ *
+ * RE-EXPORTED, not restated (2026-07-29). This module carried its own
+ * hand-written copy of the nine names, which is a second list that must agree
+ * with the schema's. Rounds 4-7 established what happens to two lists that must
+ * agree: they diverge, and the last attempt to keep them in step made
+ * mismatches six times worse. `@crabgic/contracts` derives the array from
+ * `IntentContractSectionsSchema`'s own keys, so adding a section there adds it
+ * here with no second edit.
  */
-export const CONTRACT_SECTIONS = [
-  "scope",
-  "non-goals",
-  "audience",
-  "compatibility",
-  "security",
-  "performance",
-  "observability",
-  "rollout",
-  "acceptance",
-] as const;
+export { CONTRACT_SECTIONS } from "@crabgic/contracts";
 
 /**
  * The three artifacts a review round covers (ledger Gap 19, amended 2026-07-29).
