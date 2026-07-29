@@ -16,15 +16,15 @@ pipes. The gate skipped the kill and the survivor lived on.
 Same grandchild, same 400 ms ceiling; the only difference is whether `sh` had
 already exited:
 
-| trial | before | after |
-| --- | --- | --- |
+| trial                             | before                                   | after  |
+| --------------------------------- | ---------------------------------------- | ------ |
 | child reaped, grandchild in group | **survivor wrote its witness 2 s later** | killed |
-| child alive, grandchild in group | killed | killed |
+| child alive, grandchild in group  | killed                                   | killed |
 
 That is round 22's finding 1 verbatim, while the file's own comment still
 claimed the protection. **The suite actively enforced the defect**: turning the
 gate off failed exactly three tests, all of them round 23's fake-child unit
-tests asserting the group form was *not* used, and nothing anywhere asserted the
+tests asserting the group form was _not_ used, and nothing anywhere asserted the
 absence of the orphan.
 
 The hazard traded away needs a full pid wrap inside the ceiling (~40 s of churn,
@@ -40,7 +40,7 @@ command.
 ## Finding 2 (MEDIUM) — the CI guard checked presence, not confinement
 
 `bwrap --version` asserts bubblewrap exists; the test needs confinement to
-*work*. They differ exactly where it matters — Ubuntu 24.04's
+_work_. They differ exactly where it matters — Ubuntu 24.04's
 `apparmor_restrict_unprivileged_userns`, containers, hardened kernels. bwrap
 would install, `--version` would exit 0, `CRABGIC_REQUIRE_BWRAP=1` would be set,
 and the test would fail with `expected false to be true` on a required
@@ -119,14 +119,14 @@ deliberately-backgrounded drive then recreates the tree. Recorded, not fixed.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| Q1 | reinstate round 23's reaped gate | 4 failed |
-| Q2 | `removeAllListeners` + unconditional re-raise | run aborted (the mutant kills the test worker) |
-| Q3 | drop SIGQUIT | 1 failed |
-| Q4 | drop the `$0` source filter | 2 failed |
-| Q5 | match `bwrap:` anywhere in the line | **survived** → test added, then 1 failed |
-| Q6 | change `SHELL_ARGV0`, breaking attribution | 2 failed |
+| #   | mutation                                      | result                                         |
+| --- | --------------------------------------------- | ---------------------------------------------- |
+| Q1  | reinstate round 23's reaped gate              | 4 failed                                       |
+| Q2  | `removeAllListeners` + unconditional re-raise | run aborted (the mutant kills the test worker) |
+| Q3  | drop SIGQUIT                                  | 1 failed                                       |
+| Q4  | drop the `$0` source filter                   | 2 failed                                       |
+| Q5  | match `bwrap:` anywhere in the line           | **survived** → test added, then 1 failed       |
+| Q6  | change `SHELL_ARGV0`, breaking attribution    | 2 failed                                       |
 
 Q5 survived because every existing case was already excluded by the `$0` filter,
 so `startsWith` versus `includes` made no difference to any of them. The added

@@ -51,7 +51,7 @@ return was unreachable and the flag never consulted:
 ```
 
 Verbatim the failure round 24 said it was eliminating. It changed the failure
-*message*, not whether it failed. `ubuntu-latest` is Ubuntu 24.04, which
+_message_, not whether it failed. `ubuntu-latest` is Ubuntu 24.04, which
 restricts unprivileged userns by default, so this is the likely case.
 
 Fixed: a setup-failure verdict now skips unless `CRABGIC_REQUIRE_BWRAP=1`, in
@@ -62,7 +62,7 @@ naming the sysctl.
 ## Finding 3 (MEDIUM-HIGH) — the signal sweep was one-shot
 
 `process.off` ran unconditionally and `signalHandlersInstalled` is sticky, so a
-process that *survives* the signal — which round 24's `listenerCount` guard
+process that _survives_ the signal — which round 24's `listenerCount` guard
 exists to allow — lost the sweep forever. Measured with a daemon whose SIGHUP
 handler reloads: probe #1's child swept, probe #2 (started after the first
 SIGHUP) survived the second. The handler is now removed only on the path that
@@ -126,14 +126,14 @@ Renamed and rewritten.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| R1 | argv0 back to `"sh"` (the committed mutant) | 2 failed |
-| R2 | do not strip the marker path before classifying | 1 failed |
-| R3 | unconditional `process.off` (one-shot sweep) | 1 failed |
-| R4 | never re-raise | 1 failed *(after the helper was fixed — see finding 4)* |
-| R5 | skip the group-existence probe | **survived, by design** — see finding 5 |
-| R6 | the sweep does nothing | 1 failed |
+| #   | mutation                                        | result                                                  |
+| --- | ----------------------------------------------- | ------------------------------------------------------- |
+| R1  | argv0 back to `"sh"` (the committed mutant)     | 2 failed                                                |
+| R2  | do not strip the marker path before classifying | 1 failed                                                |
+| R3  | unconditional `process.off` (one-shot sweep)    | 1 failed                                                |
+| R4  | never re-raise                                  | 1 failed _(after the helper was fixed — see finding 4)_ |
+| R5  | skip the group-existence probe                  | **survived, by design** — see finding 5                 |
+| R6  | the sweep does nothing                          | 1 failed                                                |
 
 ## Attacked and could not break
 

@@ -6,16 +6,16 @@ Non-degeneracy control executed first, discriminating four ways.
 
 Round 24's fix — "the signal is re-raised only when nobody else is handling it"
 — is **inert for `boot-supervisor.ts`**, the file its own comment names.
-`runShutdown`'s *first* synchronous statement de-registers its own listener, and
+`runShutdown`'s _first_ synchronous statement de-registers its own listener, and
 it registered at boot, before any probe, so it runs first. By the time our
 handler ran the count was back to 1, so we terminated the process inside their
 in-flight teardown:
 
-| run | rc | graceful shutdown completed |
-| --- | --- | --- |
-| no bounded probe (control) | 0 | 1 |
-| one bounded probe | **143** | **0** |
-| probe handler registered first (control) | 0 | 1 |
+| run                                      | rc      | graceful shutdown completed |
+| ---------------------------------------- | ------- | --------------------------- |
+| no bounded probe (control)               | 0       | 1                           |
+| one bounded probe                        | **143** | **0**                       |
+| probe handler registered first (control) | 0       | 1                           |
 
 Lease held, socket open — round 24's own defect, reached another way. The test
 could not catch it because its stand-in listener never de-registers itself,
@@ -78,18 +78,18 @@ a no-op shim's write succeeds and fails the job.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| S1 | decide ownership at handler time again | ~~1 failed~~ **CORRECTED — see below** |
-| S2 | never sweep stale markers | 1 failed |
-| S3 | sweep ignores the age cutoff | 1 failed |
-| S4 | sweep ignores the prefix | 1 failed |
+| #   | mutation                               | result                                 |
+| --- | -------------------------------------- | -------------------------------------- |
+| S1  | decide ownership at handler time again | ~~1 failed~~ **CORRECTED — see below** |
+| S2  | never sweep stale markers              | 1 failed                               |
+| S3  | sweep ignores the age cutoff           | 1 failed                               |
+| S4  | sweep ignores the prefix               | 1 failed                               |
 
 ## A process failure, recorded because it recurred
 
 Round 25 prescribed `trap ... EXIT INT TERM` after a leftover mutation was
-committed. This round the trap fired correctly but the *backup it restored from
-did not exist*: another process cleaned the scratchpad directory between the
+committed. This round the trap fired correctly but the _backup it restored from
+did not exist_: another process cleaned the scratchpad directory between the
 `cp` and the restore, and two mutations were left in the working tree — one of
 which would have made the sweep delete arbitrary `/tmp` directories. Caught by
 inspecting the source rather than by any test.
@@ -108,7 +108,7 @@ that check passing.
   the marker path always contains `/eo-sandbox-selftest-<random>` which bwrap's
   diagnostics never quote. 8/8 correct.
 - **`$0` across shells.** dash and bash both prefix with `$0` and both classify
-  correctly. *Honestly untested: busybox ash*, which uses `applet_name`.
+  correctly. _Honestly untested: busybox ash_, which uses `applet_name`.
 - **The real CLI under signals**, with a SIGKILL control proving the counter
   non-degenerate: SIGINT 130, SIGTERM 143, SIGHUP 129, SIGQUIT 131, all with 0
   survivors; SIGKILL 137 with 1 (the control).
@@ -127,13 +127,12 @@ that check passing.
 - `--reporter=basic` is invalid in this vitest version and prints nothing to a
   grep pipeline, which looks exactly like "0 failures".
 
-
 ## CORRECTION (round 27)
 
 The S1 row above is **wrong**, and the error matters more than the row.
 
 S1 was written as `ownsTermination = true`, which the test does catch. The
-mutation that matters is the *literal* pre-round-26 predicate — restoring
+mutation that matters is the _literal_ pre-round-26 predicate — restoring
 `if (process.listenerCount(signal) === 1)` — and round 27 measured that as
 **73/73 green**, widening to 197/197 across the whole doctor directory. Built to
 `dist` and run in a `boot-supervisor`-shaped process it reproduces this round's

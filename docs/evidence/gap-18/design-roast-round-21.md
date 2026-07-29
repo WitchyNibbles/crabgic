@@ -20,17 +20,17 @@ truncated the redirect target. This project explicitly targets WSL2, where
 
 Measured with `TMPDIR="/tmp/.../John Smith"` and a sibling `John` present:
 
-| sandbox | before | after |
-| --- | --- | --- |
-| real bwrap | PASS | PASS |
+| sandbox                                           | before   | after                             |
+| ------------------------------------------------- | -------- | --------------------------------- |
+| real bwrap                                        | PASS     | PASS                              |
 | **no-op `bwrap` shim** (strips every flag, execs) | **PASS** | **FAIL** "unexpectedly succeeded" |
-| no bwrap on PATH | — | FAIL `spawn bwrap ENOENT` |
+| no bwrap on PATH                                  | —        | FAIL `spawn bwrap ENOENT`         |
 
 The round-20 defect reproduced verbatim: the write landed somewhere ordinary
 permissions refuse, so the refusal proved nothing. Reproduced again after the
 fix by unquoting the built output — the shim PASSED — and killed by the fix.
 
-Secondary, true for *every* whitespace `TMPDIR` with no collision needed: the
+Secondary, true for _every_ whitespace `TMPDIR` with no collision needed: the
 probe wrote **outside its own owned directory**, making this function's central
 claim false.
 
@@ -74,7 +74,7 @@ not demonstrated confinement.**
 - **`--ro-bind / /` genuinely covers the mkdtemp path.** bwrap 0.9.0 recursively
   remounts submounts read-only; direct writes to `/dev/shm` (tmpfs) and
   `/mnt/c/temp` (9p DrvFs) inside the bind both returned `Read-only file
-  system`. Full check under `TMPDIR` = `/dev/shm`, `/run/user/1000`,
+system`. Full check under `TMPDIR` = `/dev/shm`, `/run/user/1000`,
   `/mnt/c/temp/...` and unset: PASS under real bwrap, FAIL under the shim in
   every case. The denial is attributable to the bind, not to a mount-coverage
   accident.
@@ -82,7 +82,7 @@ not demonstrated confinement.**
   `passed:false, "check threw unexpectedly: EACCES ... mkdtemp"`; nonexistent →
   same with `ENOENT`. No false PASS, no hang.
 - **SIGKILL matrix, real argv, N=20 per delay, instrumented on the actual
-  termination signal: zero false PASSes.** The 2 ms/3 ms passes are *true*
+  termination signal: zero false PASSes.** The 2 ms/3 ms passes are _true_
   passes — every one carried `WROTE:<nonzero>`, so the write was genuinely
   attempted and refused before the kill landed. Because the marker follows the
   write in the same shell, a PASS structurally cannot occur without the write
@@ -96,20 +96,20 @@ not demonstrated confinement.**
 
 Eight mutants, all killed:
 
-| # | mutation | result |
-| --- | --- | --- |
-| M1 | unquote the marker path | 4 failed |
-| M2 | drop cleanup entirely | 2 failed |
-| M3 | cleanup, but not in a `finally` | 2 failed |
-| M4 | cleanup deletes an injected caller path too | 1 failed |
-| M5 | no timer at all (pre-round-21 behaviour) | 2 hung to timeout |
-| M6 | timeout resolves `exitCode: 0` (a false PASS) | 2 failed |
-| M7 | the check stops passing `timeoutMs` | 1 failed |
-| M8 | the child is not killed on expiry | **survived** → test added, then killed |
+| #   | mutation                                      | result                                 |
+| --- | --------------------------------------------- | -------------------------------------- |
+| M1  | unquote the marker path                       | 4 failed                               |
+| M2  | drop cleanup entirely                         | 2 failed                               |
+| M3  | cleanup, but not in a `finally`               | 2 failed                               |
+| M4  | cleanup deletes an injected caller path too   | 1 failed                               |
+| M5  | no timer at all (pre-round-21 behaviour)      | 2 hung to timeout                      |
+| M6  | timeout resolves `exitCode: 0` (a false PASS) | 2 failed                               |
+| M7  | the check stops passing `timeoutMs`           | 1 failed                               |
+| M8  | the child is not killed on expiry             | **survived** → test added, then killed |
 
 M8 is the round's own lesson: resolving the promise while leaving the process
 running is exactly the failure being fixed, and nothing detected it. The added
-test observes a side effect the process performs *after* the ceiling, because
+test observes a side effect the process performs _after_ the ceiling, because
 the probe deliberately does not expose the pid.
 
 ## Note on the reviewer's own instrumentation

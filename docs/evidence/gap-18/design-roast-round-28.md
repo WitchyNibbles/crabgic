@@ -9,13 +9,13 @@ harness itself.
 removed never advanced the cap: every `doctor` run re-`stat`ed and re-`rm`ed
 every prefix entry in `TMPDIR`, forever, outside the confinement ceiling.
 
-| `TMPDIR` contents | round 27 | the code it replaced | factor |
-| --- | --- | --- | --- |
-| 20,000 unremovable stale | **7,282–7,600 ms** | 104 ms | **70×** |
-| 100,000 fresh prefix entries | **5,183–5,402 ms** | 99 ms | **53×** |
+| `TMPDIR` contents            | round 27           | the code it replaced | factor  |
+| ---------------------------- | ------------------ | -------------------- | ------- |
+| 20,000 unremovable stale     | **7,282–7,600 ms** | 104 ms               | **70×** |
+| 100,000 fresh prefix entries | **5,183–5,402 ms** | 99 ms                | **53×** |
 
 `entriesLeft` was constant across runs, so the cost was permanent rather than
-amortised. The unremovable case is *exactly* the scenario round 27 named as its
+amortised. The unremovable case is _exactly_ the scenario round 27 named as its
 motivation — it made that scenario reachable and made its cost unbounded in one
 edit — while the docblock went on promising that "a directory with thousands of
 entries cannot turn a health check into a filesystem scan".
@@ -33,7 +33,7 @@ faster, and the residual is the `readdir` itself.
 
 The literal round-27-vs-round-26 mutation left `sandbox-selftest.test.ts` at
 50/50 and the whole doctor directory at **204/204**. Its test seeded only
-*removable* stale directories, where both loops behave identically; starvation
+_removable_ stale directories, where both loops behave identically; starvation
 needs unremovable entries in front, and nothing seeded any. Round 27's rows `U3`
 and `U5` were paraphrases, not the prior code.
 
@@ -67,12 +67,12 @@ it as bounding the value.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| V1 | the **literal** round-27 loop (unbounded scan) | 1 failed, exit 1 |
-| M3 | literal removal of the structural parent check | 1 failed |
-| M4 | drop `isUnattributableRefusal` | 3 failed |
-| M6 | literal pre-round-27 reset | 1 failed |
+| #   | mutation                                       | result           |
+| --- | ---------------------------------------------- | ---------------- |
+| V1  | the **literal** round-27 loop (unbounded scan) | 1 failed, exit 1 |
+| M3  | literal removal of the structural parent check | 1 failed         |
+| M4  | drop `isUnattributableRefusal`                 | 3 failed         |
+| M6  | literal pre-round-27 reset                     | 1 failed         |
 
 12 mutations across the round, each with a verified-non-empty durable backup, an
 anchor asserted to occur exactly once, `trap ... EXIT INT TERM`, and a post-restore

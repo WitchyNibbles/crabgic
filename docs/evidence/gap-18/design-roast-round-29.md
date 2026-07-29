@@ -8,8 +8,8 @@ are gated on the `Tests` line **and** the exit code).
 ## Finding 1 (HIGH) — the anti-starvation mechanism survived being deleted
 
 `rotatingOffset()` → `return 0` left the whole doctor directory at **206/206**.
-Coverage reported the function at 100% because it was *executed* by 17 tests and
-*asserted by none*: every test passed an explicit offset, so nothing exercised
+Coverage reported the function at 100% because it was _executed_ by 17 tests and
+_asserted by none_: every test passed an explicit offset, so nothing exercised
 the default. Confirmed against a mutated `dist` with 600 prefix entries — the
 victim at index 500 survived 15 real runs.
 
@@ -47,7 +47,7 @@ run takes the fallback and a constant one is round 27's starvation restored.
 
 `sweepStaleMarkerDirs(1.5)` made `entries[i]` `undefined`, `join` threw, and the
 throw escaped through `createOwnedMarkerPath` → `resolveMarker`, which runs
-*before* `run()`'s try/finally — so the framework reported `check threw
+_before_ `run()`'s try/finally — so the framework reported `check threw
 unexpectedly`. Round 22's defect class, on the one line round 22 did not cover.
 `join` is inside the try now, and the offset is normalised rather than trusted.
 
@@ -58,12 +58,12 @@ distinguish from working. The test asserts the sweep still removes.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| W2/X4 | the **literal** round-28 source (clock, no cursor) | 1 failed, exit 1 |
-| X1 | `rotatingOffset()` → `return 0` | survived → test rewritten → 1 failed |
-| X3 | trust the offset argument | 4 failed, exit 1 |
-| X2 | the fallback stops advancing (`+= 0`) | **survived** — recorded, not papered over |
+| #     | mutation                                           | result                                    |
+| ----- | -------------------------------------------------- | ----------------------------------------- |
+| W2/X4 | the **literal** round-28 source (clock, no cursor) | 1 failed, exit 1                          |
+| X1    | `rotatingOffset()` → `return 0`                    | survived → test rewritten → 1 failed      |
+| X3    | trust the offset argument                          | 4 failed, exit 1                          |
+| X2    | the fallback stops advancing (`+= 0`)              | **survived** — recorded, not papered over |
 
 X1 survived its first replacement test because that test seeded only
 **removable** entries, where a constant offset still converges — the window

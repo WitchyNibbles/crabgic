@@ -21,7 +21,7 @@ The cause: the stand-in listener `const other = (): void => undefined` never
 de-registers itself, so the count stays at 2 and `=== 1` is false. **Round 26
 diagnosed exactly this flaw in round 24's test and then reproduced it in the
 replacement.** The stand-in now `process.off`s itself first — what
-`boot-supervisor.ts` really does — and asserts that the *other* party's handler
+`boot-supervisor.ts` really does — and asserts that the _other_ party's handler
 ran and re-armed. The literal mutation now kills the test worker outright (0%
 coverage, red build). Round 26's record is corrected in place rather than
 quietly amended.
@@ -41,12 +41,12 @@ hypothesis into a path.
 
 Measured with a no-op `bwrap` shim, i.e. **no sandbox at all**:
 
-| condition | before | after |
-| --- | --- | --- |
-| shim, marker intact | `passed:false` unexpectedly succeeded | unchanged |
-| shim, parent directory deleted | **`passed:true` "correctly denied"** | `passed:false` "not by the sandbox" |
-| real bwrap (control) | `passed:true` | `passed:true` |
-| real bwrap, parent deleted | — | `passed:false` |
+| condition                      | before                                | after                               |
+| ------------------------------ | ------------------------------------- | ----------------------------------- |
+| shim, marker intact            | `passed:false` unexpectedly succeeded | unchanged                           |
+| shim, parent directory deleted | **`passed:true` "correctly denied"**  | `passed:false` "not by the sandbox" |
+| real bwrap (control)           | `passed:true`                         | `passed:true`                       |
+| real bwrap, parent deleted     | —                                     | `passed:false`                      |
 
 Two guards, because either alone is escapable: the shell's stated reason
 (`Directory nonexistent` / `No such file or directory` / `Not a directory`,
@@ -72,14 +72,14 @@ the removals, not the search.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| T1 | the literal pre-round-26 predicate | run aborted — the mutant kills the test worker |
-| U1 | drop the structural parent check | 1 failed |
-| U2 | drop the stderr reason check | 3 failed |
-| U3 | remove the sweep cap | **survived** → test added, then 1 failed |
-| U4 | reset leaves the `exit` listener | 1 failed |
-| U5 | sweep ignores staleness | 1 failed |
+| #   | mutation                           | result                                         |
+| --- | ---------------------------------- | ---------------------------------------------- |
+| T1  | the literal pre-round-26 predicate | run aborted — the mutant kills the test worker |
+| U1  | drop the structural parent check   | 1 failed                                       |
+| U2  | drop the stderr reason check       | 3 failed                                       |
+| U3  | remove the sweep cap               | **survived** → test added, then 1 failed       |
+| U4  | reset leaves the `exit` listener   | 1 failed                                       |
+| U5  | sweep ignores staleness            | 1 failed                                       |
 
 Every mutation ran with a **verified-non-empty backup**, under
 `trap ... EXIT INT TERM`, and ended with `diff -q backup source` — all reported
@@ -89,7 +89,7 @@ mutations when its backup had been deleted between the `cp` and the restore.
 ## A test defect found by another test
 
 The corrected ownership test re-armed its stand-in via `setImmediate`, which
-fired *after* the cleanup removed it — leaving one SIGHUP listener behind for
+fired _after_ the cleanup removed it — leaving one SIGHUP listener behind for
 every later test in the file. Caught by the new exit-listener test, not by
 review. The re-arm is now gated and drained before cleanup.
 

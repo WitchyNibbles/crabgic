@@ -33,15 +33,15 @@ hung, which is the proof rather than an inconvenience. Content is schema-valid
 per site, so a refusal is attributable to the OBJECT rather than to its bytes;
 without that every row read `invalid` and the table discriminated nothing.
 
-| object | policy-store | signing-key | round 30's opener |
-| --- | --- | --- | --- |
-| regular (valid) | loaded | ok | accepted |
-| symlink | invalid | threw | refused |
-| dangling symlink | invalid | threw | refused |
-| directory | invalid | threw | refused |
-| mode 644 | invalid | threw | (not checked) |
-| **fifo** | **BLOCKED** | **BLOCKED** | refused |
-| **hardlink** | **LOADED** | **OK** | **REFUSED** |
+| object           | policy-store | signing-key | round 30's opener |
+| ---------------- | ------------ | ----------- | ----------------- |
+| regular (valid)  | loaded       | ok          | accepted          |
+| symlink          | invalid      | threw       | refused           |
+| dangling symlink | invalid      | threw       | refused           |
+| directory        | invalid      | threw       | refused           |
+| mode 644         | invalid      | threw       | (not checked)     |
+| **fifo**         | **BLOCKED**  | **BLOCKED** | refused           |
+| **hardlink**     | **LOADED**   | **OK**      | **REFUSED**       |
 
 Three implementations, two behaviours, in both rows that matter. The hardlink
 row is the one `O_NOFOLLOW` does not cover **at all**: a hardlink opens as a
@@ -57,12 +57,12 @@ agreement each diverged somewhere new".
 `provisionWorkerAuth`'s credentials destination, driven through the real
 exported entry point, one object per process:
 
-| dest object | before |
-| --- | --- |
-| absent / regular | ok |
-| symlink | `WorkerAuthError` |
-| **fifo** | **BLOCKED** |
-| directory | **bare `Error`**, not `WorkerAuthError` |
+| dest object      | before                                  |
+| ---------------- | --------------------------------------- |
+| absent / regular | ok                                      |
+| symlink          | `WorkerAuthError`                       |
+| **fifo**         | **BLOCKED**                             |
+| directory        | **bare `Error`**, not `WorkerAuthError` |
 
 Its docblock says it "Throws `WorkerAuthError` for a symlink (`ELOOP`) or **any
 other non-regular / unreadable dest**". A FIFO is non-regular and was not
@@ -100,18 +100,18 @@ naming it — against 36s / rc=137 / zero bytes before.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| N0 | unmutated | green control, 111/111 |
-| N1 | drop `O_NONBLOCK` | **hangs the worker**, exit 124 |
-| N2 | drop `O_NOFOLLOW` | **hangs the worker**, exit 124 |
-| N3 | drop the `nlink` check | 7 failed |
-| N4 | drop the `isFile` check | 7 failed |
-| N5 | drop the owner check | 4 failed |
-| N6 | allow `O_TRUNC` through | 4 failed |
-| N7 | ignore `requirePrivateMode` | 5 failed |
-| N8 | collapse `absent` into `unreadable` | 5 failed |
-| N9 | stop naming a directory a directory | 5 failed |
+| #   | mutation                            | result                         |
+| --- | ----------------------------------- | ------------------------------ |
+| N0  | unmutated                           | green control, 111/111         |
+| N1  | drop `O_NONBLOCK`                   | **hangs the worker**, exit 124 |
+| N2  | drop `O_NOFOLLOW`                   | **hangs the worker**, exit 124 |
+| N3  | drop the `nlink` check              | 7 failed                       |
+| N4  | drop the `isFile` check             | 7 failed                       |
+| N5  | drop the owner check                | 4 failed                       |
+| N6  | allow `O_TRUNC` through             | 4 failed                       |
+| N7  | ignore `requirePrivateMode`         | 5 failed                       |
+| N8  | collapse `absent` into `unreadable` | 5 failed                       |
+| N9  | stop naming a directory a directory | 5 failed                       |
 
 **Zero survivors** — the first round since 26 with none. The battery runs the
 primitive's own tests **plus all three callers'**, because the claim under test
@@ -137,7 +137,7 @@ bound every case and reap workers) all held. A **fourth** was found the
 expensive way.
 
 While the battery was running, `npm run typecheck` was run in the same
-worktree. `tsc -b` **emits**, so it compiled the *mutated* `owned-open.ts` into
+worktree. `tsc -b` **emits**, so it compiled the _mutated_ `owned-open.ts` into
 `packages/journal/dist` — and the mutant **outlived the battery**, because the
 battery restores source, not build output. The next test run then failed with a
 victim file overwritten through a symlink, which read exactly like a real
@@ -168,6 +168,6 @@ from source and from `dist`, gave opposite answers.
   holding. One child process per case is the only harness that works, and its
   exit code is the measurement.
 - `pkill -f <pattern>` and a battery's `reap()` are indiscriminate: reaping
-  every `forks.js` killed a *different* vitest run started alongside it, whose
+  every `forks.js` killed a _different_ vitest run started alongside it, whose
   "Worker exited unexpectedly" was mistaken for a failure until the collision
   was noticed. Never run the suite beside its own battery.

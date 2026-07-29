@@ -15,10 +15,10 @@ running, reparented to init.
 Measured end-to-end against the real bundle with a `bwrap` whose `--version`
 hangs, SIGINT delivered to the CLI:
 
-| build | probe alive pre-SIGINT | survivors post-SIGINT |
-| --- | --- | --- |
-| handler install removed (the defect) | 1 | **1** |
-| fixed | 1 | **0** (twice) |
+| build                                | probe alive pre-SIGINT | survivors post-SIGINT |
+| ------------------------------------ | ---------------------- | --------------------- |
+| handler install removed (the defect) | 1                      | **1**                 |
+| fixed                                | 1                      | **0** (twice)         |
 
 Real bwrap's `--die-with-parent` masks this for the confinement probe, but the
 **presence** probe carries no such flag — that is the orphan in the trace — and
@@ -91,16 +91,16 @@ host.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| P1 | drop the signal-handler install | 1 failed |
-| P2 | never release a settled child | 2 failed |
-| P3 | drop the reaped gate | 3 failed |
-| P4 | drop the stream-destroy backstop | 1 failed |
-| P5 | `detached` unconditional (round 23's surviving M7) | 2 failed |
-| P6 | signal handler does not kill children | **survived** |
-| P7 | handlers installed per call | 1 failed |
-| P8 | children never registered | 2 failed |
+| #   | mutation                                           | result       |
+| --- | -------------------------------------------------- | ------------ |
+| P1  | drop the signal-handler install                    | 1 failed     |
+| P2  | never release a settled child                      | 2 failed     |
+| P3  | drop the reaped gate                               | 3 failed     |
+| P4  | drop the stream-destroy backstop                   | 1 failed     |
+| P5  | `detached` unconditional (round 23's surviving M7) | 2 failed     |
+| P6  | signal handler does not kill children              | **survived** |
+| P7  | handlers installed per call                        | 1 failed     |
+| P8  | children never registered                          | 2 failed     |
 
 P6 is the round's own lesson repeating for the third time: the registry was
 maintained, the handler was installed, and nothing checked that it did the one

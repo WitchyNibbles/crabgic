@@ -15,14 +15,14 @@ escape for a string that may contain a single quote. `os.tmpdir()` honours
 End-to-end through the real CLI bundle, against a no-op shim — **a host with no
 sandbox at all**:
 
-| `TMPDIR` | before | after |
-| --- | --- | --- |
-| benign, real bwrap | ✓ correctly denied | ✓ correctly denied |
-| benign, no-op shim | ✗ unexpectedly succeeded | ✗ unexpectedly succeeded |
-| `x'; echo WROTE:2; exit 2; '`, no-op shim | **✓ correctly denied** (false PASS) | ✗ unexpectedly succeeded |
-| `x'; echo WROTE:2; exit 2; '`, real bwrap | ✓ | ✓ |
-| `O'Brien`, real bwrap | **✗ Unterminated quoted string** (false FAIL) | ✓ correctly denied |
-| `y'; : > INJECTED; exit 2; '`, no-op shim | **INJECTED created** | ✗, no injection |
+| `TMPDIR`                                  | before                                        | after                    |
+| ----------------------------------------- | --------------------------------------------- | ------------------------ |
+| benign, real bwrap                        | ✓ correctly denied                            | ✓ correctly denied       |
+| benign, no-op shim                        | ✗ unexpectedly succeeded                      | ✗ unexpectedly succeeded |
+| `x'; echo WROTE:2; exit 2; '`, no-op shim | **✓ correctly denied** (false PASS)           | ✗ unexpectedly succeeded |
+| `x'; echo WROTE:2; exit 2; '`, real bwrap | ✓                                             | ✓                        |
+| `O'Brien`, real bwrap                     | **✗ Unterminated quoted string** (false FAIL) | ✓ correctly denied       |
+| `y'; : > INJECTED; exit 2; '`, no-op shim | **INJECTED created**                          | ✗, no injection          |
 
 So: an **even** number of quotes gave a false PASS, an **odd** number gave a
 permanent false FAIL on a healthy host, and `id -u > FILE` inside a payload
@@ -83,13 +83,13 @@ about the sandbox. Now swallowed deliberately.
 
 ## Mutation record
 
-| # | mutation | result |
-| --- | --- | --- |
-| N1 | interpolate the path back into the script | 10 failed |
-| N2 | kill only the direct child | 2 failed |
-| N3 | drop `detached` (the group never exists) | 1 failed |
-| N4 | presence probe loses its ceiling | 1 failed |
-| N5 | cleanup throw again replaces the verdict | **survived** |
+| #   | mutation                                  | result       |
+| --- | ----------------------------------------- | ------------ |
+| N1  | interpolate the path back into the script | 10 failed    |
+| N2  | kill only the direct child                | 2 failed     |
+| N3  | drop `detached` (the group never exists)  | 1 failed     |
+| N4  | presence probe loses its ceiling          | 1 failed     |
+| N5  | cleanup throw again replaces the verdict  | **survived** |
 
 N5 survived because the test injected `markerPath` — and that branch
 deliberately never calls `rm`, so it could not fire. Rewritten to point `TMPDIR`
