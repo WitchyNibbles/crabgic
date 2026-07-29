@@ -1,5 +1,7 @@
+import { closeSync, readFileSync } from "node:fs";
 import { access, open, readFile, constants as fsConstants } from "node:fs/promises";
 import { join } from "node:path";
+import { openOwnedFile } from "@crabgic/journal";
 import type { WorkerAuthMaterial } from "./adapter-config.js";
 
 /**
@@ -45,23 +47,26 @@ const CREDENTIALS_DEST_READ_FLAGS = fsConstants.O_RDONLY | fsConstants.O_NOFOLLO
  * unreadable dest — refused, never followed (Finding 5 preserved on resume).
  */
 async function readExistingCredentialsDest(destPath: string): Promise<Buffer | undefined> {
-  let handle;
-  try {
-    handle = await open(destPath, CREDENTIALS_DEST_READ_FLAGS);
-  } catch (cause) {
-    if ((cause as NodeJS.ErrnoException).code === "ENOENT") {
-      return undefined;
-    }
+  // ROAST ROUND 31: this used `O_RDONLY|O_NOFOLLOW` with no `O_NONBLOCK`, and a
+  // per-object probe through `provisionWorkerAuth` itself measured what that
+  // cost — a FIFO at the dest BLOCKED in `open(2)` and the provisioning never
+  // settled, while the docblock above claimed "any other non-regular ... dest"
+  // was refused. It also promised a `WorkerAuthError` for every refusal and a
+  // directory produced a bare `Error` instead. One opener decides now, and the
+  // promise the docblock makes is the behaviour the code has.
+  const opened = openOwnedFile(destPath, CREDENTIALS_DEST_READ_FLAGS);
+  if (opened.refused === "absent") return undefined;
+  if (opened.refused !== undefined) {
     throw new WorkerAuthError(
       "worker auth credentials destination is not a fresh regular file " +
         "(a symlink or otherwise non-openable path is refused, never followed)",
-      { cause },
     );
   }
+  const fd = opened.fd as number;
   try {
-    return await handle.readFile();
+    return readFileSync(fd);
   } finally {
-    await handle.close();
+    closeSync(fd);
   }
 }
 

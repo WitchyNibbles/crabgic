@@ -1,7 +1,12 @@
-import { constants } from "node:fs";
-import { mkdir, open } from "node:fs/promises";
+import { closeSync, constants, ftruncateSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { CRABGIC_DIR_NAME, readXdgEnvFromProcess, resolveXdgStateHome } from "@crabgic/journal";
+import {
+  CRABGIC_DIR_NAME,
+  openOwnedFile,
+  readXdgEnvFromProcess,
+  resolveXdgStateHome,
+} from "@crabgic/journal";
 import { runDriftCi, type RunDriftCiDeps } from "./run-drift-ci.js";
 import { buildPinnedFixtureSnapshots } from "./pinned-fixtures.js";
 import type { DriftDebounceState } from "./debounce.js";
@@ -41,9 +46,10 @@ import type { DriftDebounceState } from "./debounce.js";
  *     -> the victim's contents were rewritten with the debounce state.
  *
  * The XDG state root is not world-writable, so an attacker cannot plant either
- * component. `O_NOFOLLOW` on the file itself is not redundant with that: the
- * caller may pass any path it likes, and a home directory can be group-writable
- * or on a shared filesystem.
+ * component. Hardening the file open is not redundant with that: the caller may
+ * pass any path it likes, and a home directory can be group-writable or on a
+ * shared filesystem. That hardening lives in `openOwnedFile` (round 31), not
+ * here.
  */
 const DRIFT_STATE_SUBDIR = "drift-ci";
 
@@ -69,46 +75,46 @@ export function defaultProposalsOutputPath(): string {
 }
 
 /**
- * `O_NOFOLLOW` refuses a symlink at open time; `O_NONBLOCK` is what stops a
- * FIFO blocking in `open(2)` — this CLI has no timeout of its own, so a
- * writerless FIFO at the state path hung the whole drift job. Anything that is
- * not a regular file is treated as "no state", which is what an unreadable
- * state file already meant.
+ * ROAST ROUND 31: round 30 wrote the open flags here by hand, which made this
+ * the FOURTH copy of the same decision in the repo — and a differential across
+ * the other three measured two behaviours, not one. Deciding happens in
+ * `openOwnedFile` now. Anything it refuses is treated as "no state", which is
+ * what an unreadable state file already meant.
+ *
+ * The description that stood here of what the flags do has gone with the flags:
+ * round 30's own finding 4 in this very file was a comment left describing a
+ * mitigation the code did not have.
  */
-async function loadDebounceStateFromDisk(path: string): Promise<DriftDebounceState> {
+function loadDebounceStateFromDisk(path: string): DriftDebounceState {
+  const opened = openOwnedFile(path, constants.O_RDONLY);
+  if (opened.refused !== undefined) return {};
+  const fd = opened.fd as number;
   try {
-    const handle = await open(
-      path,
-      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-    );
-    try {
-      if (!(await handle.stat()).isFile()) return {};
-      return JSON.parse(await handle.readFile("utf-8")) as DriftDebounceState;
-    } finally {
-      await handle.close();
-    }
+    return JSON.parse(readFileSync(fd, "utf-8")) as DriftDebounceState;
   } catch {
     return {};
+  } finally {
+    closeSync(fd);
   }
 }
 
 async function writeJsonFile(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  // No `O_TRUNC` in the flags: truncation is a write, and it must not happen to
-  // anything the `isFile` check below would go on to reject.
-  const handle = await open(
-    path,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-    0o600,
-  );
+  // `openOwnedFile` rejects `O_TRUNC` outright — truncation is a write, and it
+  // must not happen to anything the checks would go on to refuse — so the
+  // descriptor is truncated explicitly once it is known to be ours.
+  const opened = openOwnedFile(path, constants.O_WRONLY | constants.O_CREAT);
+  if (opened.refused !== undefined) {
+    throw new Error(
+      `drift-ci: refusing to write to ${path} — it is ${opened.refused} (${opened.kind ?? opened.code ?? "no detail"})`,
+    );
+  }
+  const fd = opened.fd as number;
   try {
-    if (!(await handle.stat()).isFile()) {
-      throw new Error(`drift-ci: refusing to write to ${path} — it is not a regular file`);
-    }
-    await handle.truncate(0);
-    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`, "utf-8");
+    ftruncateSync(fd, 0);
+    writeFileSync(fd, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
   } finally {
-    await handle.close();
+    closeSync(fd);
   }
 }
 
@@ -125,7 +131,7 @@ export async function runDriftCiCli(
   const proposalsOutputPath = options.proposalsOutputPath ?? defaultProposalsOutputPath();
 
   const deps: RunDriftCiDeps = {
-    loadDebounceState: () => loadDebounceStateFromDisk(debounceStatePath),
+    loadDebounceState: () => Promise.resolve(loadDebounceStateFromDisk(debounceStatePath)),
     saveDebounceState: (state) => writeJsonFile(debounceStatePath, state),
     writeProposals: (proposals) => writeJsonFile(proposalsOutputPath, proposals),
   };
