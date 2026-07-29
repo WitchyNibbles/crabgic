@@ -1240,8 +1240,16 @@ it has been checked against the owner's own judgement — so it is asserted, not
 posture Gap 19's original entry refused to accept for falsifiability, and it is recorded in those terms rather
 than as a footnote.
 
-Second: nothing yet CALLS `isStageClosable` or `reclassifyDebtForWriteSet` on a real run. They are correct and
-tested and unwired, which makes them a contract the manager may follow rather than one it must.
+Second, and **partly closed 2026-07-29**: `review.submit` now calls `isStageClosable` and
+`reclassifyDebtForWriteSet` server-side and returns the closure decision, so a reviewer supplies findings and
+does not supply the verdict on itself — the same shape as `contract.approve`, for the same reason. Three
+inputs are deliberately not taken from the caller: which criteria the stage requires, which are met, and
+whether the stage may close.
+
+What remains open is the last mile: the tool descriptor and handler exist and are tested, and nothing
+registers them into the production gateway registry yet, because `priorFindings` and `plannedWrites` need a
+journal-backed store that does not exist. Until that lands the enforcement is reachable by a caller that
+chooses to reach it, which is better than a library nobody calls and still short of a gate.
 
 **Phases affected:** `roadmap/02-contracts-and-schemas.md` (owns the contracts these join),
 `roadmap/11-intake-contract-approval.md` (owns the stop condition a spent budget escalates through),
