@@ -159,6 +159,21 @@ direction to the assumption.** The prior record asked only whether `canUseTool`
 fires under `permissionMode: "dontAsk"`; the real variable was the allow entry,
 and no permission mode changes it.
 
+**Independently reproduced in this repository's own harness, 2026-07-30.**
+`packages/engine-claude/src/live/mcp-adjudication-shadowing.live.test.ts` wires
+the stub gateway with one callable tool and grants it by name; every run emits
+`CLAUDE_SDK_CAN_USE_TOOL_SHADOWED` naming the stub gateway's own
+`probe.echo` tool specifically. The SDK emits that only for a tool it has registered and whose
+permission it has evaluated, so this is not an inference from a generic warning.
+
+**The remedy is NOT yet a baseline fact.** Whether a `PreToolUse` hook actually
+fires for an MCP tool call is asserted by the same probe and is **still open**: on
+no run so far has the model invoked the stub tool (it reached for `ToolSearch` and
+`Bash`, then made no call at all under a more directive prompt), so the hook never
+had an MCP call to see. An empty hook list under those conditions says nothing.
+Anything building on the hook remedy must wait for that probe to go green — the
+engine's suggestion is a suggestion until this suite measures it.
+
 ## 5. Structured-output probe (work item 6)
 
 Transport: SDK `query()` — `Options.outputFormat: {type: 'json_schema', schema}` is the confirmed SDK field name (the CLI `--json-schema` flag's SDK equivalent; adaptation §4.4 only said "SDK equivalent" without naming it — there is no field literally called `jsonSchema` on `Options`).

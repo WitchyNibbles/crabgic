@@ -394,6 +394,26 @@ export interface DirectQuerySpec {
    */
   readonly disallowedTools?: readonly string[];
   readonly settings?: Record<string, unknown>;
+  /**
+   * MCP servers to wire, and the strict flag that goes with them.
+   *
+   * Added 2026-07-30 for the adjudication-shadowing probe. Whether a gate fires
+   * for an MCP tool is a fact about MCP tools, and no probe could ask it while
+   * this helper could only wire `Bash`-shaped tools.
+   */
+  readonly mcpServers?: Options["mcpServers"];
+  readonly strictMcpConfig?: boolean;
+  /**
+   * `PreToolUse`/`PostToolUse` hook wiring, passed through verbatim.
+   *
+   * The engine's own answer to the shadowing above is "use a PreToolUse hook",
+   * because hooks run BEFORE permission evaluation while `canUseTool` runs
+   * after and an allow entry short-circuits it. That claim is an engine fact
+   * this suite has never checked, which is what the probe using this exists to
+   * fix.
+   */
+  readonly hooks?: Options["hooks"];
+  readonly canUseTool?: Options["canUseTool"];
   readonly sandbox?: Options["sandbox"];
   readonly maxTurns?: number;
   readonly extraEnv?: Readonly<Record<string, string>>;
@@ -448,6 +468,10 @@ export async function runDirectQuery(
           ? { allowedTools: [...spec.allow] }
           : {}),
       ...(spec.disallowedTools !== undefined ? { disallowedTools: [...spec.disallowedTools] } : {}),
+      ...(spec.mcpServers !== undefined ? { mcpServers: spec.mcpServers } : {}),
+      ...(spec.strictMcpConfig !== undefined ? { strictMcpConfig: spec.strictMcpConfig } : {}),
+      ...(spec.hooks !== undefined ? { hooks: spec.hooks } : {}),
+      ...(spec.canUseTool !== undefined ? { canUseTool: spec.canUseTool } : {}),
       ...(spec.sandbox !== undefined ? { sandbox: spec.sandbox } : {}),
     };
     for await (const message of query({ prompt: spec.prompt, options })) {

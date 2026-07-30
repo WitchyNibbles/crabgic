@@ -12,11 +12,22 @@
  * gateway server that actually completes the MCP `initialize` handshake and
  * advertises zero tools, instead of a command that fails to spawn.
  *
- * The suite never exercises a gateway TOOL (that is 16's surface); it only
- * needs the worker to START cleanly with the real assembled `Options`
+ * Most of the suite never exercises a gateway TOOL (that is 16's surface); it
+ * only needs the worker to START cleanly with the real assembled `Options`
  * (mcpServers keyed off the constant, `strictMcpConfig: true`). Newline-
  * delimited JSON-RPC 2.0 is the MCP stdio framing; a request whose method we
  * do not special-case gets an empty `result`, and notifications get no reply.
+ *
+ * ONE TOOL, ADDED 2026-07-30, for the adjudication-shadowing probe. The SDK
+ * warns that a bare `allowedTools` entry auto-approves a tool BEFORE
+ * `canUseTool` is consulted — observed live against `mcp__crabgic_gateway__*`,
+ * which is exactly how the compiled profile grants the gateway family, so phase
+ * 06's journal-first adjudication bridge never fires for a connector call. The
+ * engine names a `PreToolUse` hook as the remedy. Both halves of that are
+ * engine facts about MCP tools specifically, and this suite could not probe
+ * either while the stub advertised none. `probe.echo` exists to be called: it
+ * is pure, takes one string, needs no network and no filesystem, so a probe can
+ * assert WHICH gate fired without the call itself being able to do harm.
  */
 import { createInterface } from "node:readline";
 
@@ -51,7 +62,37 @@ rl.on("line", (line) => {
     return;
   }
   if (method === "tools/list") {
-    send({ jsonrpc: "2.0", id, result: { tools: [] } });
+    send({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        tools: [
+          {
+            name: "probe.echo",
+            description:
+              "Returns its own argument. Exists so a live probe can drive one real MCP tool call and observe which permission gate fired.",
+            inputSchema: {
+              type: "object",
+              properties: { text: { type: "string" } },
+              required: ["text"],
+              additionalProperties: false,
+            },
+          },
+        ],
+      },
+    });
+    return;
+  }
+  if (method === "tools/call") {
+    const text = message.params?.arguments?.text;
+    send({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        content: [{ type: "text", text: typeof text === "string" ? text : "" }],
+        isError: false,
+      },
+    });
     return;
   }
   if (method === "resources/list") {
