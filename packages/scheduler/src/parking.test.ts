@@ -338,7 +338,7 @@ describe("getParkStatus — restart-safe journal-derived read-back", () => {
     });
   });
 
-  it("run-scopes the parked-determination AND the session id when a runId is given (F2)", async () => {
+  it("run-scopes the resumable SESSION id when a runId is given (F2)", async () => {
     // Work-unit ids are stable across runs of the same change set, so two runs
     // can leave park records for the SAME unit. Run R1 parked it under its own
     // session; a later run R2 parked the same unit under a DIFFERENT session,
@@ -377,5 +377,51 @@ describe("getParkStatus — restart-safe journal-derived read-back", () => {
     // runId argument is what makes the read run-specific, not incidental.
     const unscoped = await getParkStatus(store, WORK_UNIT_ID, 7000);
     expect(unscoped.sessionId).toBe(SESSION_R2);
+  });
+
+  it("run-scopes the parked DETERMINATION when a runId is given (F2)", async () => {
+    // Run R1 parked the unit, then MOVED PAST its park (re-dispatched). A later
+    // run R2 parked the SAME unit and its park is the global-latest record.
+    const RUN_R1 = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const RUN_R2 = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const SESSION_R1 = SESSION_ID;
+    const SESSION_R2 = "44444444-4444-4444-8444-444444444444";
+
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_R1, "dispatched", RUN_R1);
+    await parkWorkUnit({
+      journal: store,
+      workUnitId: WORK_UNIT_ID,
+      sessionId: SESSION_R1,
+      resetsAt: 5000,
+      runId: RUN_R1,
+    });
+    // R1 resumed and dispatched again — its OWN latest attempt is no longer parked.
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_R1, "dispatched", RUN_R1);
+    // R2 parks the same unit and becomes the global-latest attempt + timer.
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_R2, "dispatched", RUN_R2);
+    await parkWorkUnit({
+      journal: store,
+      workUnitId: WORK_UNIT_ID,
+      sessionId: SESSION_R2,
+      resetsAt: 6000,
+      runId: RUN_R2,
+    });
+
+    // Scoped to R1: R1's own latest attempt is `dispatched`, so R1 is NOT
+    // parked — even though the global-latest (and R2) is. An unscoped read
+    // would wrongly report R1's unit as parked-and-resumable.
+    const scopedR1 = await getParkStatus(store, WORK_UNIT_ID, 7000, RUN_R1);
+    expect(scopedR1.parked).toBe(false);
+    expect(scopedR1.readyToResume).toBe(false);
+
+    // Scoped to R2: R2 IS parked, with R2's session.
+    const scopedR2 = await getParkStatus(store, WORK_UNIT_ID, 7000, RUN_R2);
+    expect(scopedR2.parked).toBe(true);
+    expect(scopedR2.sessionId).toBe(SESSION_R2);
+
+    // Unscoped reflects the global latest — R2's park — confirming the runId
+    // is what flips R1's read to not-parked.
+    const unscoped = await getParkStatus(store, WORK_UNIT_ID, 7000);
+    expect(unscoped.parked).toBe(true);
   });
 });

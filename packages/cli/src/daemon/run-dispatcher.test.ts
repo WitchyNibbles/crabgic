@@ -32,6 +32,7 @@ import {
   createFileRegistry,
   createRunsRegistry,
   createWorkersRegistry,
+  transitionRun,
   type SupervisorDependencies,
   type TerminableWorker,
 } from "@crabgic/supervisor";
@@ -455,6 +456,80 @@ describe("createRealRunDispatcher — dispatch", () => {
     // reused it ACROSS drives rather than creating a fresh one — the whole
     // point of dispatcher-level retention.
     expect(adaptersCreated).toBe(1);
+  });
+
+  /**
+   * Retention must not become a leak: hoisting the map to run scope means a
+   * PARKED run's adapters outlive its drive, so a run cancelled out-of-band
+   * (via the supervisor's `run.cancel`, which never touches this dispatcher)
+   * would otherwise pin its session context until a daemon restart.
+   * `sweepStaleRetention` — run on every `dispatch`/`resume` — drops adapters
+   * for runs that are absorbing (or gone). We observe it via the run-store:
+   * a single `resume` queries the run TWICE — once from the sweep iterating
+   * the retained map, once from `resume` itself — where a no-sweep build would
+   * query it only once.
+   */
+  it("sweeps a cancelled parked run's retained adapter — no leak past cancel (F1 follow-up)", async () => {
+    const SESSION = "99999999-9999-4999-8999-999999999999";
+    const worktreePath = join(dir, "worktree");
+    let clock = 1000; // before the reset window → the first drive parks and ends
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+              },
+            }),
+          ),
+        ),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    // Barrier: the first drive has settled (the run is live and parked) —
+    // proven by a probing dispatch refusing with the live-run reason.
+    await vi.waitFor(
+      async () => {
+        const probe = await dispatcher.dispatch(CHANGE_SET_ID);
+        expect(probe.accepted).toBe(false);
+        expect(probe.reason).toMatch(/already has run .* in flight/i);
+      },
+      { timeout: 10_000 },
+    );
+
+    // Cancel the parked run out-of-band, exactly as the supervisor router does
+    // (`running → cancelled`), bypassing the dispatcher entirely.
+    await transitionRun({
+      journal: deps.journal,
+      runs: deps.runs,
+      runId,
+      changeSetId: CHANGE_SET_ID,
+      to: "cancelled",
+    });
+
+    // A resume now sweeps the retained map (querying the run once) and then
+    // refuses the cancelled run (querying it again).
+    const getSpy = vi.spyOn(deps.runs, "get");
+    const outcome = await dispatcher.resume(runId);
+    expect(outcome.accepted).toBe(false);
+    expect(outcome.reason).toMatch(/cancelled and cannot be resumed/i);
+    const getsForRun = getSpy.mock.calls.filter(([id]) => id === runId).length;
+    // Two queries: the sweep found the retained (now-cancelled) run and
+    // evicted it; a build without the sweep would query only once.
+    expect(getsForRun).toBe(2);
+    getSpy.mockRestore();
   });
 
   /**

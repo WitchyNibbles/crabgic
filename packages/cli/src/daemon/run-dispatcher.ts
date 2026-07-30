@@ -254,6 +254,26 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   };
 
   /**
+   * Evicts retained adapters for runs that can no longer resume. The settle
+   * path (`beginDriving`) drops a run's adapters when its OWN drive ends
+   * non-parked, but a `run.cancel` transitions a PARKED run to `cancelled`
+   * through the supervisor router — never touching this dispatcher — so its
+   * adapters would otherwise stay pinned until a daemon restart. Sweeping on
+   * every `dispatch`/`resume` bounds that: a cancelled (or otherwise
+   * absorbing, or vanished) run's session context is freed at the next
+   * dispatcher activity. A parked run that is simply never resumed keeps its
+   * adapters by design — that is the retention this feature exists for.
+   */
+  const sweepStaleRetention = (): void => {
+    for (const runId of [...retainedByRun.keys()]) {
+      const run = deps.runs.get(runId);
+      if (run === undefined || isRunLifecycleAbsorbing(run.runState)) {
+        retainedByRun.delete(runId);
+      }
+    }
+  };
+
+  /**
    * The standing-approval gate: load the policy, then test the envelope for
    * containment in it.
    *
@@ -638,6 +658,9 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         return { accepted: false, reason: "change set is already being dispatched" };
       }
       inFlight.add(changeSetId);
+      // Free adapters pinned by runs that were cancelled (or otherwise ended)
+      // out-of-band while parked — see `sweepStaleRetention`.
+      sweepStaleRetention();
 
       let released = false;
       const release = (): void => {
@@ -728,11 +751,15 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 
     /** Re-drives a run that already exists — crash recovery and limit-park re-dispatch. */
     resume(runId: string): Promise<RunDispatchOutcome> {
+      // Free adapters pinned by runs that ended out-of-band while parked.
+      sweepStaleRetention();
       const run = deps.runs.get(runId);
       if (run === undefined) {
         return Promise.resolve({ accepted: false, reason: `unknown run "${runId}"` });
       }
       if (isRunLifecycleAbsorbing(run.runState)) {
+        // The sweep above already dropped this run's adapters (it is
+        // absorbing); refuse the resume itself.
         return Promise.resolve({
           accepted: false,
           reason: `run "${runId}" is ${run.runState} and cannot be resumed`,
