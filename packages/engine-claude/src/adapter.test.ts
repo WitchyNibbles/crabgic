@@ -16,7 +16,7 @@ import {
 } from "@crabgic/journal";
 import { compileEnvelope, READ_ONLY_ENVELOPE } from "@crabgic/engine-core";
 import { buildTaskPacket } from "@crabgic/testkit";
-import type { TaskPacket } from "@crabgic/contracts";
+import { GATEWAY_MCP_SERVER_NAME, type TaskPacket } from "@crabgic/contracts";
 import type {
   Options,
   PostToolUseHookInput,
@@ -343,6 +343,61 @@ describe("ClaudeEngineAdapter — capabilities()", () => {
 });
 
 // ---------------------------------------------------------------------------
+/**
+ * The gateway adjudication bridge must actually be WIRED.
+ *
+ * Adversarial review found nothing asserted `PreToolUse` existed at all — the
+ * suite pinned `PostToolUse` and `SessionEnd` only — so a refactor that dropped
+ * the bridge would have failed no test while silently restoring the hole it was
+ * added to close.
+ */
+describe("ClaudeEngineAdapter — the gateway adjudication hook is wired", () => {
+  async function capturedPreToolUseHook() {
+    const { sdkQuery, calls } = createScriptedSdkQuery([[initMessage("s", "/fixture/worktree")]]);
+    const adapter = new ClaudeEngineAdapter(buildConfig({ sdkQuery }));
+    const handle = adapter.spawn(buildPacket(), READ_ONLY_PROFILE, allowAdjudicate);
+    await handle.events[Symbol.asyncIterator]().next();
+    const hook = calls[calls.length - 1]?.options?.hooks?.PreToolUse?.[0]?.hooks[0];
+    if (hook === undefined) {
+      throw new Error("test setup failure: the PreToolUse hook was not wired");
+    }
+    return hook;
+  }
+
+  it("installs a PreToolUse hook that adjudicates a gateway call", async () => {
+    const hook = await capturedPreToolUseHook();
+    const output = (await hook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: `mcp__${GATEWAY_MCP_SERVER_NAME}__probe_echo`,
+        tool_input: {},
+        tool_use_id: "tu-1",
+      } as never,
+      "tu-1",
+      { signal: new AbortController().signal } as never,
+    )) as { hookSpecificOutput?: { permissionDecision?: string } };
+
+    // `allowAdjudicate` allows, and the bridge deliberately returns NO OPINION
+    // on allow — an "allow" would bypass the profile's own deny rules.
+    expect(output.hookSpecificOutput?.permissionDecision).toBeUndefined();
+  });
+
+  it("leaves a non-gateway tool to the engine's own evaluation", async () => {
+    const hook = await capturedPreToolUseHook();
+    const output = await hook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Read",
+        tool_input: { file_path: "/x" },
+        tool_use_id: "tu-2",
+      } as never,
+      "tu-2",
+      { signal: new AbortController().signal } as never,
+    );
+    expect(output).toEqual({});
+  });
+});
+
 // PostToolUse audit violation -> abort + typed error.
 // ---------------------------------------------------------------------------
 

@@ -303,42 +303,93 @@ describe("Lease.acquire — INTEGRATION: two real child processes contending for
     await runtime.cleanup();
   });
 
-  function spawnAttempt(pid: number): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const child = spawn(
-        process.execPath,
-        [runtime.entryPath, dir, "proj-real-contention", String(pid)],
-        {
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      );
-      let stdout = "";
-      let stderr = "";
-      child.stdout.on("data", (chunk: Buffer) => {
-        stdout += chunk.toString("utf8");
-      });
-      child.stderr.on("data", (chunk: Buffer) => {
-        stderr += chunk.toString("utf8");
+  /**
+   * A spawned contender that ANNOUNCES its outcome and then waits.
+   *
+   * `announced` resolves as soon as the child has printed its decision;
+   * `release()` closes its stdin so it can finish. Splitting those two is what
+   * lets the test hold BOTH children alive until both have decided.
+   */
+  interface Contender {
+    readonly announced: Promise<string>;
+    release(): void;
+    readonly finished: Promise<void>;
+  }
+
+  function spawnAttempt(pid: number): Contender {
+    const child = spawn(
+      process.execPath,
+      [runtime.entryPath, dir, "proj-real-contention", String(pid)],
+      // stdin is a PIPE now, not `ignore`: closing it is the release signal.
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+
+    const announced = new Promise<string>((resolve, reject) => {
+      child.stdout.on("data", () => {
+        if (stdout.includes("\n")) resolve(stdout);
       });
       child.on("error", reject);
       child.on("exit", (code) => {
-        if (code !== 0) {
-          reject(new Error(`fixture child exited ${String(code)}, stderr: ${stderr}`));
-          return;
-        }
-        resolve(stdout);
+        if (stdout.includes("\n")) return; // already announced; the exit is the release
+        reject(
+          new Error(`fixture child exited ${String(code)} before announcing, stderr: ${stderr}`),
+        );
       });
     });
+
+    const finished = new Promise<void>((resolve, reject) => {
+      child.on("exit", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`fixture child exited ${String(code)}, stderr: ${stderr}`));
+      });
+    });
+
+    return {
+      announced,
+      finished,
+      release: () => {
+        child.stdin.end();
+      },
+    };
   }
 
+  /**
+   * THE EXIT-CRITERION TEST, and it now enforces the race it measures.
+   *
+   * It used to spawn two children that each held for a fixed 300ms and exited.
+   * On a loaded machine the second child's cold Node start could land entirely
+   * after the first had released, so both legitimately acquired and the test
+   * went red with `["ACQUIRED", "ACQUIRED"]` — which means "no contention
+   * happened", not "mutual exclusion failed". It was carried as a known flake
+   * for weeks, and a test that reports a red for the absence of a race cannot
+   * certify the presence of mutual exclusion.
+   *
+   * Both children now hold their decision until this test releases them, so the
+   * overlap is a fact: neither is allowed to finish until both have decided.
+   */
   it("exactly one of two real, concurrently-spawned child processes acquires the lease", async () => {
-    const [outputA, outputB] = await Promise.all([
-      spawnAttempt(1_000_001),
-      spawnAttempt(1_000_002),
-    ]);
+    const a = spawnAttempt(1_000_001);
+    const b = spawnAttempt(1_000_002);
+
+    // Both have DECIDED, and neither has released — this is the contended
+    // window, and it is now guaranteed rather than hoped for.
+    const [outputA, outputB] = await Promise.all([a.announced, b.announced]);
 
     const outcomes = [outputA, outputB].map((output) => output.trim().split(":")[1]);
     expect(outcomes.sort()).toEqual(["ACQUIRED", "DENIED"]);
+
+    a.release();
+    b.release();
+    await Promise.all([a.finished, b.finished]);
   }, 20_000);
 });
 
