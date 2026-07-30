@@ -31,7 +31,8 @@
  */
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { isRunLifecycleAbsorbing } from "@crabgic/contracts";
+import { isRunLifecycleAbsorbing, IllegalTransitionError } from "@crabgic/contracts";
+import type { RunLifecycleState } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
@@ -45,6 +46,7 @@ import {
   findLiveRunForChangeSet,
   findPublishedRunForChangeSet,
   provisionWorkerDirs,
+  transitionRun,
   type RunDispatcher,
   type RunDispatchOutcome,
   type SupervisorDependencies,
@@ -64,7 +66,12 @@ import {
 import { compileEnvelope, isContained } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
 import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
-import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@crabgic/scheduler";
+import {
+  buildTaskPacket,
+  driveRun,
+  type DriveRunResult,
+  type WorkerDispatchContext,
+} from "@crabgic/scheduler";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
@@ -299,7 +306,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     workUnits: readonly WorkUnit[],
     envelope: AuthorizationEnvelope,
     policy: EnvelopePolicy,
-  ): Promise<void> {
+  ): Promise<DriveRunResult> {
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
 
@@ -333,7 +340,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     // every worker in this run runs under the same authorization.
     const profile = compileEnvelope(envelope, policy);
 
-    await driveRun(
+    return await driveRun(
       { runId, changeSetId: changeSet.id, workUnits },
       {
         journal: deps.journal,
@@ -402,6 +409,67 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   }
 
   /**
+   * The run-lifecycle state a settled drive moves the run to, or `undefined`
+   * to leave it `running` (ledger run-lifecycle: `running →
+   * verifying|failed|blocked|cancelled`).
+   *
+   * Only the FAILURE outcomes transition, and this is deliberate: a run that
+   * ended `blocked` or errored used to stay `running` forever, and
+   * `findLiveRunForChangeSet` treats `running` as in-flight — so the change
+   * set could never be re-dispatched, the exact retry-blocking harm this
+   * fixes (review F5). `completed` and `parked` stay `running`: a completed
+   * DAG's successor is `verifying`, owned by the verification pipeline (not
+   * yet wired) rather than invented here, and a completed run must not be
+   * retried anyway; a parked run is resumable and must stay in-flight for
+   * `resume` to reach it.
+   */
+  function terminalStateFor(stopped: DriveRunResult["stopped"]): RunLifecycleState | undefined {
+    switch (stopped) {
+      case "blocked":
+        return "blocked";
+      case "roundLimit":
+        // The round backstop tripped — a bug, not a normal outcome; fail it
+        // so the change set can be retried rather than wedged `running`.
+        return "failed";
+      case "completed":
+      case "parked":
+        return undefined;
+      default: {
+        // Exhaustiveness guard: a new `DriveRunStopReason` must be classified
+        // here deliberately, not silently left `running`.
+        const _exhaustive: never = stopped;
+        return _exhaustive;
+      }
+    }
+  }
+
+  /**
+   * Moves a settled/errored run to its terminal state. NEVER rejects — this
+   * runs on the not-awaited drive chain, so an error escaping here would be
+   * an unhandled rejection, the exact daemon-crash this whole path is
+   * structured to prevent.
+   *
+   * Two failure modes, both handled: an `IllegalTransitionError` means the
+   * run already reached an absorbing state independently — a `run.cancel`
+   * racing the drive leaves it `cancelled`, so `running → failed` is an
+   * illegal edge — which is EXPECTED and silently ignored. Any other error
+   * (a journal-write failure) is a genuine but background problem: report it
+   * through `onDriveError` rather than let it propagate.
+   */
+  async function settleRunState(
+    runId: string,
+    changeSetId: string,
+    to: RunLifecycleState,
+  ): Promise<void> {
+    try {
+      await transitionRun({ journal: deps.journal, runs: deps.runs, runId, changeSetId, to });
+    } catch (err) {
+      if (err instanceof IllegalTransitionError) return;
+      onDriveError(runId, err);
+    }
+  }
+
+  /**
    * Hands the resolved DAG to the driver in the background and reports
    * ownership immediately. Shared by `dispatch` and `resume` so the
    * not-awaited discipline, the error routing and the in-flight bookkeeping
@@ -414,12 +482,22 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     /** Releases the caller's in-flight claim. Called exactly once, when the drive settles. */
     release: () => void,
   ): void {
+    const changeSetId = resolved.changeSet.id;
     // Deliberately NOT awaited — see the file-level doc comment. Errors
     // are reported through `onDriveError`, never left as an unhandled
     // rejection that could take the whole daemon down.
     void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
-      .catch((err: unknown) => {
+      .then(async (result) => {
+        // The run's lifecycle state must reflect how its drive ended, or a
+        // failed/blocked run stays `running` and blocks every retry (F5).
+        const to = terminalStateFor(result.stopped);
+        if (to !== undefined) await settleRunState(runId, changeSetId, to);
+      })
+      .catch(async (err: unknown) => {
         onDriveError(runId, err);
+        // A drive that threw did not complete — fail the run so the change
+        // set is retryable rather than wedged `running`.
+        await settleRunState(runId, changeSetId, "failed");
       })
       .finally(release);
   }

@@ -353,7 +353,7 @@ describe("createRealRunDispatcher — dispatch", () => {
    * unhandled rejection — one bad run must not be able to take the whole
    * daemon (and every other run it is driving) down.
    */
-  it("reports a failing background drive instead of crashing the daemon", async () => {
+  it("reports a failing background drive instead of crashing the daemon, and marks the run failed", async () => {
     const deps = buildDeps({ ...fullySeeded(), run: false });
     const errors: unknown[] = [];
     const dispatcher = newDispatcher(deps, {
@@ -361,11 +361,207 @@ describe("createRealRunDispatcher — dispatch", () => {
       onDriveError: (_runId: string, err: unknown) => errors.push(err),
     });
 
-    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
     await vi.waitFor(() => {
       expect(errors).toHaveLength(1);
     });
     expect((errors[0] as Error).message).toContain("worktree exploded");
+    // F5: an errored drive must not leave the run `running` — that would make
+    // `findLiveRunForChangeSet` treat it as in-flight and block every retry.
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("failed");
+    });
+  });
+
+  /**
+   * F5, the settle path: a drive that ends `blocked` (a unit failed and its
+   * dependents can never become ready) must move the run to `blocked`, an
+   * absorbing state, so the change set can be retried. Left `running` it
+   * would be wedged forever.
+   */
+  it("marks a run blocked when its drive ends blocked, so the change set is retryable", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      // A → B chain; A fails, so B can never become ready → the drive blocks.
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("blocked");
+    });
+  });
+
+  /**
+   * The settle transition must tolerate the run having reached an absorbing
+   * state independently — a `run.cancel` racing the drive. The drive's own
+   * `blocked` transition is then an illegal edge from `cancelled`, which is
+   * expected: swallow it and leave the run cancelled.
+   *
+   * The topology is deliberate: an A→B chain where A fails ends the drive
+   * `blocked` (a single failed unit ends `completed`, which transitions
+   * nothing — the swallow would never be reached). A gated adapter holds the
+   * drive until the test has cancelled the run, so the settle's transition
+   * genuinely fires against a `cancelled` run.
+   */
+  it("swallows the illegal transition when the run is cancelled before a blocked drive settles", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    let releaseAdapter!: () => void;
+    const adapterGate = new Promise<void>((resolve) => {
+      releaseAdapter = resolve;
+    });
+    const unhandled: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      onDriveError: (_runId: string, err: unknown) => unhandled.push(err),
+      createAdapter: async () => {
+        await adapterGate; // hold the drive until the test cancels the run
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    const runId = result.runId!;
+    // Cancel the run while the drive is parked in createAdapter, so the
+    // subsequent `blocked` settle transitions from `cancelled` — illegal.
+    deps.runs.upsert({
+      runId,
+      changeSetId: CHANGE_SET_ID,
+      runState: "cancelled",
+      updatedAt: "2026-07-30T00:00:00.000Z",
+    });
+
+    // A DETERMINISTIC signal that the settle actually attempted its
+    // transition: `transitionRun` reads `runs.get(runId)` to find its `from`
+    // state, so a `get` for this run AFTER the cancel is the settle firing.
+    // Without this the test would assert before the settle ran (the run is
+    // already `cancelled`), never exercising the swallow — the vacuity a
+    // prior review caught.
+    let settleAttempted = false;
+    const realGet = deps.runs.get.bind(deps.runs);
+    deps.runs.get = (id: string) => {
+      if (id === runId) settleAttempted = true;
+      return realGet(id);
+    };
+    releaseAdapter();
+
+    await vi.waitFor(() => {
+      expect(settleAttempted).toBe(true);
+    });
+    // The illegal `cancelled → blocked` edge was swallowed: the run stays
+    // cancelled and nothing was surfaced as a drive error.
+    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
+    expect(unhandled).toHaveLength(0);
+  });
+
+  /**
+   * The settle transition runs on the not-awaited drive chain, so it must
+   * NEVER reject — an escaping error would be an unhandled rejection, the
+   * daemon crash the whole background-drive discipline exists to prevent. A
+   * genuine (non-illegal) transition failure is reported through
+   * `onDriveError`, not propagated.
+   */
+  it("reports a settle-transition failure through onDriveError rather than crashing", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      // A→B chain, A fails → the drive ends `blocked` → a settle transition
+      // is attempted (the only path that reaches settleRunState here).
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    // Fail only the settle's `run_transition` write, forcing settleRunState
+    // down its non-illegal error path. Armed once the drive is under way
+    // (createRun's own transitions have already been written by then).
+    const realAppend = deps.journal.appendEntry.bind(deps.journal);
+    let failTransitionWrites = false;
+    deps.journal.appendEntry = (entry: Parameters<typeof realAppend>[0]) => {
+      if (failTransitionWrites && (entry as { type?: string }).type === "run_transition") {
+        return Promise.reject(new Error("journal is on fire"));
+      }
+      return realAppend(entry);
+    };
+
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+      createAdapter: () => {
+        failTransitionWrites = true;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+          ),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    // The blocked-transition write fails; it is REPORTED, not thrown as an
+    // unhandled rejection.
+    await vi.waitFor(() => {
+      expect(errors.some((e) => (e as Error).message === "journal is on fire")).toBe(true);
+    });
   });
 });
 
