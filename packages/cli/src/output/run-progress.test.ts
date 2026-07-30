@@ -15,8 +15,16 @@ function journalOf(entries: readonly unknown[]): ProgressJournal & { readonly fi
   };
 }
 
-function transition(workUnitId: string, status: string): unknown {
-  return { type: "work_unit_transition", workUnitId, payload: { status } };
+function transition(
+  workUnitId: string,
+  status: string,
+  usage?: { turnsUsed: number; totalCostUsd?: number },
+): unknown {
+  return {
+    type: "work_unit_transition",
+    workUnitId,
+    payload: { status, ...(usage !== undefined ? { usage } : {}) },
+  };
 }
 
 describe("summarizeRunProgress", () => {
@@ -115,5 +123,85 @@ describe("renderRunProgress", () => {
     const rendered = renderRunProgress(progress);
     expect(rendered).toContain("1 succeeded");
     expect(rendered).toContain("1 quarantined");
+  });
+});
+
+/**
+ * What the run SPENT, summed from the usage each terminal transition carries.
+ *
+ * The engine reports usage on every result and nothing wrote it down, so a
+ * finished run could never answer "what did that cost me" — for a product
+ * spending the owner's own subscription, the number they actually feel.
+ */
+describe("summarizeRunProgress — spend", () => {
+  it("sums usage across EVERY attempt, not just the latest status per unit", async () => {
+    // A unit that failed twice and then succeeded cost all three attempts. A
+    // figure that forgot the failures would understate the thing being watched.
+    const progress = await summarizeRunProgress(
+      journalOf([
+        transition("wu-1", "failed", { turnsUsed: 3, totalCostUsd: 0.1 }),
+        transition("wu-1", "failed", { turnsUsed: 2, totalCostUsd: 0.05 }),
+        transition("wu-1", "succeeded", { turnsUsed: 4, totalCostUsd: 0.2 }),
+      ]),
+      "run-1",
+    );
+
+    expect(progress.seen).toBe(1);
+    expect(progress.counts.get("succeeded")).toBe(1);
+    expect(progress.turnsUsed).toBe(9);
+    expect(progress.costUsd).toBeCloseTo(0.35, 10);
+  });
+
+  it("reports NO cost rather than zero when the engine never reported one", async () => {
+    // `undefined` and `0` mean different things: one is "nobody measured it",
+    // the other claims the run was free.
+    const progress = await summarizeRunProgress(
+      journalOf([transition("wu-1", "succeeded", { turnsUsed: 5 })]),
+      "run-1",
+    );
+    expect(progress.turnsUsed).toBe(5);
+    expect(progress.costUsd).toBeUndefined();
+    expect(renderRunProgress(progress)).toContain("5 turns");
+    expect(renderRunProgress(progress)).not.toContain("$");
+  });
+
+  it("ignores malformed usage instead of poisoning the total with NaN", async () => {
+    const progress = await summarizeRunProgress(
+      journalOf([
+        transition("wu-1", "succeeded", { turnsUsed: 2, totalCostUsd: 0.5 }),
+        {
+          type: "work_unit_transition",
+          workUnitId: "wu-2",
+          payload: { status: "succeeded", usage: "nope" },
+        },
+        {
+          type: "work_unit_transition",
+          workUnitId: "wu-3",
+          payload: { status: "succeeded", usage: { turnsUsed: "many" } },
+        },
+      ]),
+      "run-1",
+    );
+    expect(progress.turnsUsed).toBe(2);
+    expect(progress.costUsd).toBeCloseTo(0.5, 10);
+    expect(Number.isNaN(progress.turnsUsed)).toBe(false);
+  });
+
+  it("renders spend under the progress line, and omits it entirely when nothing was measured", async () => {
+    const withSpend = await summarizeRunProgress(
+      journalOf([transition("wu-1", "succeeded", { turnsUsed: 7, totalCostUsd: 1.234 })]),
+      "run-1",
+    );
+    const rendered = renderRunProgress(withSpend);
+    expect(rendered).toContain("work units seen:");
+    expect(rendered).toContain("spent so far:");
+    expect(rendered).toContain("7 turns");
+    expect(rendered).toContain("$1.23");
+
+    const withoutSpend = await summarizeRunProgress(
+      journalOf([transition("wu-1", "succeeded")]),
+      "run-1",
+    );
+    expect(renderRunProgress(withoutSpend)).not.toContain("spent so far");
   });
 });

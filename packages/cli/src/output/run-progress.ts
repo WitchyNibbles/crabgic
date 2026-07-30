@@ -35,6 +35,17 @@ export interface RunProgress {
   readonly counts: ReadonlyMap<WorkUnitAttemptStatus, number>;
   /** How many work units the journal has seen at all. */
   readonly seen: number;
+  /**
+   * What the run has spent, summed from the usage each terminal transition
+   * carries.
+   *
+   * `costUsd` is `undefined` when NO attempt reported a cost — distinct from
+   * `0`, which would claim the run was free. The engine does not always report
+   * one, and inventing a zero would be the kind of confident wrong number this
+   * whole view exists to avoid.
+   */
+  readonly turnsUsed: number;
+  readonly costUsd: number | undefined;
 }
 
 /** Reads `payload.status` off an entry, or `undefined` if the entry is not shaped like a transition. */
@@ -42,6 +53,21 @@ function statusOf(entry: unknown): WorkUnitAttemptStatus | undefined {
   const candidate = entry as { readonly payload?: { readonly status?: unknown } };
   const status = candidate.payload?.status;
   return typeof status === "string" ? (status as WorkUnitAttemptStatus) : undefined;
+}
+
+/** Reads `payload.usage`, tolerating an entry that carries none or carries it malformed. */
+function usageOf(entry: unknown): { turnsUsed: number; totalCostUsd?: number } | undefined {
+  const usage = (entry as { readonly payload?: { readonly usage?: unknown } }).payload?.usage;
+  if (typeof usage !== "object" || usage === null) return undefined;
+  const { turnsUsed, totalCostUsd } = usage as {
+    turnsUsed?: unknown;
+    totalCostUsd?: unknown;
+  };
+  if (typeof turnsUsed !== "number" || !Number.isFinite(turnsUsed)) return undefined;
+  return {
+    turnsUsed,
+    ...(typeof totalCostUsd === "number" && Number.isFinite(totalCostUsd) ? { totalCostUsd } : {}),
+  };
 }
 
 function workUnitIdOf(entry: unknown): string | undefined {
@@ -60,18 +86,29 @@ export async function summarizeRunProgress(
   runId: string,
 ): Promise<RunProgress> {
   const byWorkUnit = new Map<string, WorkUnitAttemptStatus>();
+  // Usage is summed over EVERY transition that carried it, not over the latest
+  // status per unit: a unit that failed twice and then succeeded cost all three
+  // attempts, and a spend figure that forgot the failures would understate the
+  // one thing an owner is watching.
+  let turnsUsed = 0;
+  let costUsd: number | undefined;
   for await (const entry of journal.queryEntries({ type: "work_unit_transition", runId })) {
     const workUnitId = workUnitIdOf(entry);
     const status = statusOf(entry);
     if (workUnitId === undefined || status === undefined) continue;
     byWorkUnit.set(workUnitId, status);
+
+    const usage = usageOf(entry);
+    if (usage === undefined) continue;
+    turnsUsed += usage.turnsUsed;
+    if (usage.totalCostUsd !== undefined) costUsd = (costUsd ?? 0) + usage.totalCostUsd;
   }
 
   const counts = new Map<WorkUnitAttemptStatus, number>();
   for (const status of byWorkUnit.values()) {
     counts.set(status, (counts.get(status) ?? 0) + 1);
   }
-  return { byWorkUnit, counts, seen: byWorkUnit.size };
+  return { byWorkUnit, counts, seen: byWorkUnit.size, turnsUsed, costUsd };
 }
 
 /**
@@ -114,5 +151,14 @@ export function renderRunProgress(progress: RunProgress): string | undefined {
     if (!STATUS_ORDER.includes(status)) parts.push(`${String(count)} ${status}`);
   }
 
-  return `  work units seen: ${parts.join(" · ")}\n`;
+  const spend: string[] = [];
+  if (progress.turnsUsed > 0) spend.push(`${String(progress.turnsUsed)} turns`);
+  // `undefined` cost is not zero: the engine did not report one, and printing
+  // "$0.00" would claim the run was free.
+  if (progress.costUsd !== undefined) spend.push(`$${progress.costUsd.toFixed(2)}`);
+
+  return (
+    `  work units seen: ${parts.join(" · ")}\n` +
+    (spend.length > 0 ? `  spent so far:    ${spend.join(" · ")}\n` : "")
+  );
 }

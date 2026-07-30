@@ -75,12 +75,36 @@ export function toAttemptRecord(entry: JournalEntry): WorkUnitAttemptRecord {
  * `worker-lifecycle-manager.ts`, both of which now thread their own
  * already-in-scope `runId` through to every call here.
  */
+/**
+ * What an attempt cost, carried on its terminal transition.
+ *
+ * WHY IT LIVES HERE (2026-07-30). The engine reports usage on every result —
+ * `WorkerResult.usage` carries `totalCostUsd` and token counts, normalized from
+ * the SDK's own `total_cost_usd` — and NOTHING was writing it down. So the
+ * system knew what each attempt cost for exactly as long as the attempt was in
+ * memory, and no run could ever answer "what did that cost me". For a product
+ * that spends the owner's own subscription, that is the number they feel.
+ *
+ * Carried on the existing `work_unit_transition` payload rather than in a new
+ * entry type, because `JournalEntryType` is a CLOSED union and ledger Gap 5's
+ * ruling is to reuse it. Optional, so every pre-existing call site and every
+ * already-written entry stays valid — an attempt that reports no usage is not
+ * an error, it is an attempt the engine told us nothing about.
+ */
+export interface WorkerAttemptUsage {
+  /** Turns spent. The load-bearing cap under subscription auth, and always present on a real result. */
+  readonly turnsUsed: number;
+  /** Optional on `WorkerResult.usage` itself — the engine does not always report a cost. Explicitly admits `undefined` so a result carrying the key with no value threads through unchanged, rather than forcing every caller to strip it. */
+  readonly totalCostUsd?: number | undefined;
+}
+
 export async function recordAttempt(
   store: JournalStore,
   workUnitId: string,
   sessionId: string,
   status: WorkUnitAttemptStatus,
   runId?: string,
+  usage?: WorkerAttemptUsage,
 ): Promise<WorkUnitAttemptRecord> {
   const previous = await getLatestAttempt(store, workUnitId);
 
@@ -92,6 +116,7 @@ export async function recordAttempt(
       status,
       sessionId,
       ...(previous !== undefined ? { previousStatus: previous.status } : {}),
+      ...(usage !== undefined ? { usage } : {}),
     },
   });
 
