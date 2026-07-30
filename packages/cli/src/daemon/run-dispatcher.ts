@@ -423,7 +423,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    * retried anyway; a parked run is resumable and must stay in-flight for
    * `resume` to reach it.
    */
-  function settledRunState(stopped: DriveRunResult["stopped"]): RunLifecycleState | undefined {
+  function terminalStateFor(stopped: DriveRunResult["stopped"]): RunLifecycleState | undefined {
     switch (stopped) {
       case "blocked":
         return "blocked";
@@ -438,12 +438,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   }
 
   /**
-   * Moves a settled/errored run to its terminal state, tolerating the run
-   * having already reached an absorbing state independently — a
-   * `run.cancel` racing the drive leaves the run `cancelled`, so a
-   * `running → failed` here would be an illegal edge. That is expected, not
-   * an error: the run already settled, so swallow `IllegalTransitionError`
-   * and leave it be.
+   * Moves a settled/errored run to its terminal state. NEVER rejects — this
+   * runs on the not-awaited drive chain, so an error escaping here would be
+   * an unhandled rejection, the exact daemon-crash this whole path is
+   * structured to prevent.
+   *
+   * Two failure modes, both handled: an `IllegalTransitionError` means the
+   * run already reached an absorbing state independently — a `run.cancel`
+   * racing the drive leaves it `cancelled`, so `running → failed` is an
+   * illegal edge — which is EXPECTED and silently ignored. Any other error
+   * (a journal-write failure) is a genuine but background problem: report it
+   * through `onDriveError` rather than let it propagate.
    */
   async function settleRunState(
     runId: string,
@@ -453,7 +458,8 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     try {
       await transitionRun({ journal: deps.journal, runs: deps.runs, runId, changeSetId, to });
     } catch (err) {
-      if (!(err instanceof IllegalTransitionError)) throw err;
+      if (err instanceof IllegalTransitionError) return;
+      onDriveError(runId, err);
     }
   }
 
@@ -478,7 +484,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
       .then(async (result) => {
         // The run's lifecycle state must reflect how its drive ended, or a
         // failed/blocked run stays `running` and blocks every retry (F5).
-        const to = settledRunState(result.stopped);
+        const to = terminalStateFor(result.stopped);
         if (to !== undefined) await settleRunState(runId, changeSetId, to);
       })
       .catch(async (err: unknown) => {

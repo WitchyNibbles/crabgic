@@ -453,6 +453,70 @@ describe("createRealRunDispatcher — dispatch", () => {
     // error — cancellation racing a settle is expected, not a failure.
     expect(unhandled).toHaveLength(0);
   });
+
+  /**
+   * The settle transition runs on the not-awaited drive chain, so it must
+   * NEVER reject — an escaping error would be an unhandled rejection, the
+   * daemon crash the whole background-drive discipline exists to prevent. A
+   * genuine (non-illegal) transition failure is reported through
+   * `onDriveError`, not propagated.
+   */
+  it("reports a settle-transition failure through onDriveError rather than crashing", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      // A→B chain, A fails → the drive ends `blocked` → a settle transition
+      // is attempted (the only path that reaches settleRunState here).
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    // Fail only the settle's `run_transition` write, forcing settleRunState
+    // down its non-illegal error path. Armed once the drive is under way
+    // (createRun's own transitions have already been written by then).
+    const realAppend = deps.journal.appendEntry.bind(deps.journal);
+    let failTransitionWrites = false;
+    deps.journal.appendEntry = (entry: Parameters<typeof realAppend>[0]) => {
+      if (failTransitionWrites && (entry as { type?: string }).type === "run_transition") {
+        return Promise.reject(new Error("journal is on fire"));
+      }
+      return realAppend(entry);
+    };
+
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+      createAdapter: () => {
+        failTransitionWrites = true;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+          ),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    // The blocked-transition write fails; it is REPORTED, not thrown as an
+    // unhandled rejection.
+    await vi.waitFor(() => {
+      expect(errors.some((e) => (e as Error).message === "journal is on fire")).toBe(true);
+    });
+  });
 });
 
 /**
