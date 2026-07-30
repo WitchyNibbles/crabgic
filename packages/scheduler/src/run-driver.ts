@@ -153,7 +153,7 @@ async function runOneAttempt(
   return runDispatch(adapter, packet, profile, ctx, deps);
 }
 
-/** The dispatch half of an attempt, shared by the cached and uncached paths. */
+/** The dispatch half of an attempt (the seams resolved, now run it). */
 async function runDispatch(
   adapter: EngineAdapter,
   packet: TaskPacket,
