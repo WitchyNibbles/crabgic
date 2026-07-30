@@ -345,11 +345,16 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   the only route to a connector. What is lost is the per-call _audit record_, not the
   boundary.
 
-  **Owed:** a `PreToolUse` hook covering `mcp__crabgic_gateway__*` that performs the
-  journal-first adjudication — the remedy the engine itself names, and the only one that
-  gates every call. Recording this in `docs/engine-baseline.md` against the pinned version
-  range is owed with it, per the engine-fact-drift rule. Until both land, treat gateway
-  calls as permission-gated but not adjudication-journaled.
+  **Owed:** a `PreToolUse` hook covering the gateway family that performs the journal-first
+  adjudication — the remedy the engine itself names, and the only one that gates every call.
+  Both engine facts it depends on are now MEASURED rather than assumed
+  (`docs/engine-baseline.md` §4.5–4.6): a hook does fire for an MCP tool call, and **the
+  engine normalizes a dot in an MCP tool name to an underscore**, so the matcher must be
+  written against `..._contract_approve`, not `..._contract.approve`. A matcher using the
+  advertised, dotted name matches nothing — a control that looks installed and is not,
+  which is the same shape of defect as the shadowing it would be fixing.
+
+  Until that lands, treat gateway calls as permission-gated but not adjudication-journaled.
 
 - **Worktree-anchor (`//<worktree>/…/**`) matching semantics are unprobed on the live engine
   (§3).** `docs/engine-baseline.md` has no path-anchor probe covering this exact substituted

@@ -32,27 +32,41 @@
  *       rests on. If this fails, the hook is not the remedy and the fix has to
  *       change, which is exactly what a probe is for.
  *
- * WHAT THIS PROBE HAS ESTABLISHED SO FAR (three live runs, engine 2.1.218):
+ * WHAT THIS PROBE ESTABLISHED (live, engine 2.1.218):
  *
- * - **(a) is confirmed, from the engine's own mouth.** Every run emits
- *   `CLAUDE_SDK_CAN_USE_TOOL_SHADOWED` naming `mcp__<gateway>__probe.echo`
- *   specifically. The SDK only emits that for a tool it has registered and whose
- *   permission it has evaluated, so the stub server connected, the tool existed,
- *   and the callback was ruled out for it. That is independent of whether the
- *   model chose to call it.
- * - **(b) is still OPEN, and this probe does not yet settle it.** On no run so
- *   far has the model actually invoked the stub tool: it reached for
- *   `ToolSearch` and `Bash` instead, then on a more directive prompt made no
- *   tool call at all. So the hook never had an MCP call to see. `hookCalls`
- *   being empty is NOT evidence that hooks miss MCP tools, and the assertions
- *   below are written so that distinction cannot be mistaken for a result.
+ * - **(a) `canUseTool` is shadowed — CONFIRMED.** Every run emits
+ *   `CLAUDE_SDK_CAN_USE_TOOL_SHADOWED` naming the stub tool, and the callback is
+ *   never invoked for it under either name it goes by. The SDK emits that
+ *   warning only for a tool it has registered and whose permission it has
+ *   evaluated, so this is measurement rather than inference.
+ * - **(b) a `PreToolUse` hook DOES fire for that same MCP call — CONFIRMED.**
+ *   The remedy the engine names is real, so the adjudication bridge can be
+ *   rebuilt on it.
+ * - **A third fact fell out, and it is the one most likely to bite:** the engine
+ *   normalizes a dot in an MCP tool name to an underscore. The server advertises
+ *   `probe.echo`, the SDK's warning quotes `probe.echo`, and the hook observes
+ *   `probe_echo`. Every real gateway tool is dotted, so a hook matcher written
+ *   against the advertised name matches NOTHING — a control that looks installed
+ *   and is not, which is exactly the failure this probe exists because of.
  *
- * What it needs to close (b): a reliable way to make a `haiku` worker invoke a
- * stub MCP tool — likely a prompt with no alternative route, and the tool as the
- * ONLY enabled one so `ToolSearch`/`Bash` are not available to reach for. Until
- * then the fix in `docs/security-posture.md` stays owed rather than attempted,
- * because building a control on an unprobed engine claim is the thing this
- * repository's engine-fact-drift rule exists to prevent.
+ * KNOWN FLAKY, AND THE FLAKE IS THE MODEL. Across eight live runs a `haiku`
+ * worker invoked the stub tool roughly one time in eight, on identical options —
+ * it answers in prose instead. `untilToolInvoked` retries the PRECONDITION up to
+ * five times, which helps and does not fix it. A run that ends INCONCLUSIVE has
+ * measured nothing; it is not a regression, and the assertions are worded so that
+ * cannot be misread.
+ *
+ * Both facts above are nonetheless SETTLED, because each rests on a positive
+ * observation and non-reproduction does not weaken one: (a) passed on a run where
+ * the tool was genuinely invoked and `canUseTool` was still never consulted, and
+ * (b) was observed directly — `hookCalls` contained the underscored wire name on
+ * a run where the model did call the tool. What is unreliable is re-demonstrating
+ * them on demand, not the facts.
+ *
+ * Getting here took eight live runs. The model kept reaching for
+ * `ToolSearch`/`Bash` until those were denied (deny is catalog-removal, baseline
+ * §4.2), and then the assertions spent three runs looking for a tool name the
+ * engine never emits.
  *
  * Like every `*.live.test.ts` here it fails RED (never skips) without
  * `CRABGIC_LIVE=1`, so the `engine-live` job goes red rather than vacuously
@@ -69,8 +83,43 @@ import {
   runDirectQuery,
 } from "./live-harness.js";
 
-/** The stub gateway's one callable tool, under the wire name the engine gives it. */
-const PROBE_TOOL = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe.echo`;
+/**
+ * The tools the model reached for instead of the one under test, denied so the
+ * probe measures what it means to measure.
+ *
+ * Deny is catalog-removal rather than call-time refusal (`docs/engine-baseline.md`
+ * §4.2), so these vanish from the model's list entirely and the stub tool is the
+ * only way to answer the prompt. `Agent` is included because it aliases `Task`
+ * (§4.1) and a subagent would be another escape route.
+ */
+const ALTERNATIVE_TOOLS: readonly string[] = [
+  "ToolSearch",
+  "Bash",
+  "Agent",
+  "Read",
+  "Glob",
+  "Grep",
+  "WebFetch",
+  "WebSearch",
+];
+
+/**
+ * The stub gateway's one callable tool, in BOTH the names it goes by.
+ *
+ * ENGINE FACT, measured here 2026-07-30: the engine NORMALIZES a dot in an MCP
+ * tool name to an underscore when it builds the wire name. The server advertises
+ * `probe.echo`; the model invokes, and hooks observe, `..._probe_echo`. The
+ * SDK's own shadowing warning, confusingly, quotes the DOTTED form.
+ *
+ * This is not a curiosity about the stub. Every real gateway tool is dotted —
+ * `contract.approve`, `run.status`, `tracker.apply` — so anything matching tool
+ * names at the hook layer must match the UNDERSCORED form or it will silently
+ * match nothing. That is precisely the shape of bug this whole probe exists
+ * because of, and it cost three inconclusive runs here: the assertions were
+ * looking for a name the engine never emits.
+ */
+const PROBE_TOOL_ADVERTISED = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe.echo`;
+const PROBE_TOOL = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe_echo`;
 
 /**
  * Whether the model genuinely INVOKED `toolName` — a real `tool_use` content
@@ -82,6 +131,31 @@ const PROBE_TOOL = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe.echo`;
  * a single tool call. That made a "the tool was reached" precondition vacuous,
  * which is the one thing a precondition must not be.
  */
+/**
+ * Runs `attempt` until the model actually invokes `PROBE_TOOL`, up to `tries`.
+ *
+ * The model is the one part of this probe nobody can make deterministic: across
+ * six live runs a `haiku` worker called the stub tool once and, on identical
+ * options, declined to five times — it answers in prose instead. A hook cannot
+ * observe a call that was never made, so without this the probe reports
+ * INCONCLUSIVE far more often than it reports anything.
+ *
+ * This retries the PRECONDITION only. Every assertion about which gate fired
+ * still runs exactly once, against a run where the tool genuinely was invoked;
+ * nothing here makes a failing gate look like a passing one.
+ */
+async function untilToolInvoked(
+  tries: number,
+  attempt: () => Promise<{ readonly messages: readonly SDKMessage[] }>,
+): Promise<{ readonly messages: readonly SDKMessage[]; readonly attempts: number }> {
+  let last: { readonly messages: readonly SDKMessage[] } = { messages: [] };
+  for (let index = 1; index <= tries; index += 1) {
+    last = await attempt();
+    if (invokedTool(last.messages, PROBE_TOOL)) return { ...last, attempts: index };
+  }
+  return { ...last, attempts: tries };
+}
+
 function invokedToolNames(messages: readonly SDKMessage[]): readonly string[] {
   const names: string[] = [];
   for (const message of messages) {
@@ -123,23 +197,30 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
       const scratch = await createLiveScratch();
       try {
         const canUseToolCalls: string[] = [];
-        const result = await runDirectQuery(resolveWorkerAuthMaterial(), {
-          prompt: `Use the ${PROBE_TOOL} tool now, with text set to "shadow-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
-          cwd: scratch.worktreePath,
-          configDir: scratch.configDir,
-          homeDir: scratch.homeDir,
-          tmpDir: scratch.tmpDir,
-          // Granted the way the compiled profile grants it: by name.
-          allowedTools: [PROBE_TOOL],
-          allow: [PROBE_TOOL],
-          mcpServers: { [GATEWAY_MCP_SERVER_NAME]: LIVE_GATEWAY_OVERRIDE },
-          strictMcpConfig: true,
-          canUseTool: (toolName) => {
-            canUseToolCalls.push(toolName);
-            return Promise.resolve({ behavior: "allow" as const, updatedInput: {} });
-          },
-          maxTurns: 6,
-        });
+        const result = await untilToolInvoked(5, () =>
+          runDirectQuery(resolveWorkerAuthMaterial(), {
+            prompt: `Use the ${PROBE_TOOL_ADVERTISED} tool now, with text set to "shadow-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
+            cwd: scratch.worktreePath,
+            configDir: scratch.configDir,
+            homeDir: scratch.homeDir,
+            tmpDir: scratch.tmpDir,
+            // Granted the way the compiled profile grants it: by name.
+            allowedTools: [PROBE_TOOL, PROBE_TOOL_ADVERTISED],
+            allow: [PROBE_TOOL, PROBE_TOOL_ADVERTISED],
+            // Deny is catalog-REMOVAL (baseline §4.2), so this takes the escape
+            // routes out of the model's tool list entirely. Earlier runs left them
+            // in and the model reached for `ToolSearch`/`Bash` instead of the tool
+            // under test, which made every run inconclusive.
+            disallowedTools: [...ALTERNATIVE_TOOLS],
+            mcpServers: { [GATEWAY_MCP_SERVER_NAME]: LIVE_GATEWAY_OVERRIDE },
+            strictMcpConfig: true,
+            canUseTool: (toolName) => {
+              canUseToolCalls.push(toolName);
+              return Promise.resolve({ behavior: "allow" as const, updatedInput: {} });
+            },
+            maxTurns: 6,
+          }),
+        );
 
         // INCONCLUSIVE, NOT FAILED, when the model never called the tool. The
         // difference matters: "the gate did not fire" and "nothing was gated"
@@ -152,8 +233,10 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
             `raise maxTurns; do NOT relax the assertion below.`,
         ).toBe(true);
 
-        // THE FINDING. The callback is never consulted for this tool.
+        // THE FINDING. The callback is never consulted for this tool, under
+        // either name it goes by.
         expect(canUseToolCalls).not.toContain(PROBE_TOOL);
+        expect(canUseToolCalls).not.toContain(PROBE_TOOL_ADVERTISED);
       } finally {
         await scratch.cleanup();
       }
@@ -167,36 +250,39 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
       const scratch = await createLiveScratch();
       try {
         const hookCalls: string[] = [];
-        const result = await runDirectQuery(resolveWorkerAuthMaterial(), {
-          prompt: `Use the ${PROBE_TOOL} tool now, with text set to "hook-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
-          cwd: scratch.worktreePath,
-          configDir: scratch.configDir,
-          homeDir: scratch.homeDir,
-          tmpDir: scratch.tmpDir,
-          allowedTools: [PROBE_TOOL],
-          allow: [PROBE_TOOL],
-          mcpServers: { [GATEWAY_MCP_SERVER_NAME]: LIVE_GATEWAY_OVERRIDE },
-          strictMcpConfig: true,
-          hooks: {
-            PreToolUse: [
-              {
-                // Every tool, so the probe measures whether MCP tools reach
-                // hooks at all rather than whether one matcher syntax works.
-                hooks: [
-                  (input) => {
-                    hookCalls.push(
-                      typeof (input as { tool_name?: unknown }).tool_name === "string"
-                        ? (input as { tool_name: string }).tool_name
-                        : "(unnamed)",
-                    );
-                    return Promise.resolve({ continue: true });
-                  },
-                ],
-              },
-            ],
-          },
-          maxTurns: 6,
-        });
+        const result = await untilToolInvoked(5, () =>
+          runDirectQuery(resolveWorkerAuthMaterial(), {
+            prompt: `Use the ${PROBE_TOOL_ADVERTISED} tool now, with text set to "hook-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
+            cwd: scratch.worktreePath,
+            configDir: scratch.configDir,
+            homeDir: scratch.homeDir,
+            tmpDir: scratch.tmpDir,
+            allowedTools: [PROBE_TOOL, PROBE_TOOL_ADVERTISED],
+            allow: [PROBE_TOOL, PROBE_TOOL_ADVERTISED],
+            disallowedTools: [...ALTERNATIVE_TOOLS],
+            mcpServers: { [GATEWAY_MCP_SERVER_NAME]: LIVE_GATEWAY_OVERRIDE },
+            strictMcpConfig: true,
+            hooks: {
+              PreToolUse: [
+                {
+                  // Every tool, so the probe measures whether MCP tools reach
+                  // hooks at all rather than whether one matcher syntax works.
+                  hooks: [
+                    (input) => {
+                      hookCalls.push(
+                        typeof (input as { tool_name?: unknown }).tool_name === "string"
+                          ? (input as { tool_name: string }).tool_name
+                          : "(unnamed)",
+                      );
+                      return Promise.resolve({ continue: true });
+                    },
+                  ],
+                },
+              ],
+            },
+            maxTurns: 6,
+          }),
+        );
 
         // Inconclusive unless the tool was genuinely invoked. The first run of
         // this probe recorded hook calls for `ToolSearch` and `Bash` and none
@@ -210,9 +296,9 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
             `gated, NOT that hooks miss MCP tools.`,
         ).toBe(true);
 
-        // THE FACT THE FIX NEEDS. If this is empty on a run where the tool WAS
-        // invoked, a PreToolUse hook does not see MCP tool calls at the pinned
-        // version, and the adjudication bridge needs a different remedy.
+        // THE FACT THE FIX NEEDS, and it holds: a PreToolUse hook DOES see an
+        // MCP tool call. It observes the underscored wire name, which is the
+        // form any matcher must use.
         expect(hookCalls).toContain(PROBE_TOOL);
       } finally {
         await scratch.cleanup();

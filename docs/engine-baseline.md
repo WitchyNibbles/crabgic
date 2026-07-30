@@ -166,13 +166,30 @@ the stub gateway with one callable tool and grants it by name; every run emits
 `probe.echo` tool specifically. The SDK emits that only for a tool it has registered and whose
 permission it has evaluated, so this is not an inference from a generic warning.
 
-**The remedy is NOT yet a baseline fact.** Whether a `PreToolUse` hook actually
-fires for an MCP tool call is asserted by the same probe and is **still open**: on
-no run so far has the model invoked the stub tool (it reached for `ToolSearch` and
-`Bash`, then made no call at all under a more directive prompt), so the hook never
-had an MCP call to see. An empty hook list under those conditions says nothing.
-Anything building on the hook remedy must wait for that probe to go green — the
-engine's suggestion is a suggestion until this suite measures it.
+**The remedy IS a baseline fact now — a `PreToolUse` hook fires for an MCP tool
+call.** Observed directly: on a run where the model genuinely invoked the stub
+tool, the hook's recorded `tool_name` list contained it. So the adjudication
+bridge can be rebuilt on a hook, which is the remedy the SDK's own warning names.
+
+### 4.6 The engine normalizes a dot in an MCP tool name to an underscore
+
+Measured alongside the above, and the most actionable of the three facts here.
+The stub server advertises `probe.echo`. The SDK's shadowing warning quotes the
+**dotted** form. The model's `tool_use` block, and the `tool_name` a `PreToolUse`
+hook observes, both carry the **underscored** form — `mcp__<server>__probe_echo`.
+
+Every real gateway tool is dotted (`contract.approve`, `run.status`,
+`tracker.apply`, `capability.audit`), so **a hook matcher written against the
+advertised name matches nothing**: a control that looks installed and is not.
+That is the same shape of defect as the shadowing itself, and it cost three
+inconclusive probe runs to notice, because the probe was asserting on a name the
+engine never emits.
+
+**Probe reliability, stated so nobody reads a red run as a regression:** the
+`haiku` worker invoked the stub tool roughly one run in eight across eight live
+runs, on identical options. The probe retries the precondition and still ends
+INCONCLUSIVE most of the time. Both facts rest on positive observations, which
+non-reproduction does not weaken.
 
 ## 5. Structured-output probe (work item 6)
 
