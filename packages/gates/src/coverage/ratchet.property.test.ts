@@ -51,7 +51,12 @@ describe("coverage ratchet — property: final floor is order-independent (compo
       ),
       { numRuns: 40 },
     );
-  });
+    // Each fast-check run builds histories on a REAL on-disk journal, so this
+    // is I/O-bound, not CPU-bound: under host load the 40 runs can exceed the
+    // global 20s testTimeout while remaining perfectly correct. An explicit
+    // 60s here (numRuns unchanged — coverage is not weakened) matches the fix
+    // already applied to engine-claude's own journal-backed property flake.
+  }, 60_000);
 
   it("the floor never decreases across a monotonically-applied random sequence (also checked incrementally)", async () => {
     await fc.assert(
@@ -76,7 +81,8 @@ describe("coverage ratchet — property: final floor is order-independent (compo
       ),
       { numRuns: 30 },
     );
-  });
+    // I/O-bound property test — see the 60s-timeout rationale on the first.
+  }, 60_000);
 
   it("property (MINOR-3): two projects' interleaved histories on the SAME journal never contaminate each other's final floor", async () => {
     await fc.assert(
@@ -123,5 +129,6 @@ describe("coverage ratchet — property: final floor is order-independent (compo
       ),
       { numRuns: 25 },
     );
-  });
+    // I/O-bound property test — see the 60s-timeout rationale on the first.
+  }, 60_000);
 });
