@@ -183,6 +183,7 @@ describe("runInstall — the standing policy", () => {
   function policyBag(dir: string, overrides: Record<string, unknown> = {}) {
     return {
       path: join(dir, "policy.json"),
+      loadExisting: () => ({ status: "absent" as const }),
       derive: () => ({ policy: POLICY, vacuous: false }),
       confirm: () => Promise.resolve(true),
       write: () => Promise.resolve(),
@@ -232,6 +233,85 @@ describe("runInstall — the standing policy", () => {
     expect(written).toEqual([]);
     // A decline is not an install failure: the plugin works, dispatches refuse.
     expect(result.status).toBe("installed");
+  });
+
+  /**
+   * Review 2026-07-30 (PR #16's round, F5): `bootstrapPolicy` had no
+   * existing-file guard and `writeEnvelopePolicy` renames over the existing
+   * path, so an owner re-running `install` — e.g. to acquire a newly added
+   * policy field — silently wiped every hand-added grant (network,
+   * credential and remote grants are never derived, so they exist ONLY by
+   * hand). An existing policy is the owner's file: install must keep it.
+   */
+  it("KEEPS an existing valid policy untouched: no derive, no prompt, no write", async () => {
+    const dir = await makeTmpDir();
+    const touched: string[] = [];
+    const result = await runInstall(
+      {
+        ...deps(dir),
+        policy: policyBag(dir, {
+          loadExisting: () => ({ status: "loaded" as const, policy: POLICY, digest: "sha256:x" }),
+          derive: () => {
+            touched.push("derive");
+            return { policy: POLICY, vacuous: false };
+          },
+          confirm: () => {
+            touched.push("confirm");
+            return Promise.resolve(true);
+          },
+          write: () => {
+            touched.push("write");
+            return Promise.resolve();
+          },
+        }),
+      },
+      { dryRun: false },
+    );
+
+    expect(result.policy).toEqual({ status: "kept-existing" });
+    expect(touched).toEqual([]);
+    expect(result.status).toBe("installed");
+  });
+
+  it("refuses to overwrite an INVALID existing policy, surfacing its own reason", async () => {
+    const dir = await makeTmpDir();
+    const written: unknown[] = [];
+    const result = await runInstall(
+      {
+        ...deps(dir),
+        policy: policyBag(dir, {
+          loadExisting: () => ({
+            status: "invalid" as const,
+            reason: "policy file X is not valid JSON",
+          }),
+          write: (_p: string, p: unknown) => {
+            written.push(p);
+            return Promise.resolve();
+          },
+        }),
+      },
+      { dryRun: false },
+    );
+
+    expect(result.policy).toEqual({
+      status: "existing-invalid",
+      reason: "policy file X is not valid JSON",
+    });
+    expect(written).toEqual([]);
+  });
+
+  it("reports kept-existing on a dry run too, before any confirmation machinery", async () => {
+    const dir = await makeTmpDir();
+    const result = await runInstall(
+      {
+        ...deps(dir),
+        policy: policyBag(dir, {
+          loadExisting: () => ({ status: "loaded" as const, policy: POLICY, digest: "sha256:x" }),
+        }),
+      },
+      { dryRun: true },
+    );
+    expect(result.policy).toEqual({ status: "kept-existing" });
   });
 
   /**

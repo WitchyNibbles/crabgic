@@ -65,6 +65,17 @@ function renderPolicyOutcome(outcome: InstallResult["policy"]): string {
         "  ! standing policy not written: nothing in this repository could be granted, " +
         "so it would have refused every run while looking healthy\n"
       );
+    case "kept-existing":
+      return (
+        "  = standing policy already exists and was kept untouched (hand-added grants are " +
+        "never derived, so re-authoring would have wiped them); edit the file directly, or " +
+        "delete it and re-run `crabgic install` to re-author\n"
+      );
+    case "existing-invalid":
+      return (
+        `  ! standing policy exists but cannot be loaded (${outcome.reason}); kept untouched ` +
+        "rather than overwritten — fix it, or delete it and re-run `crabgic install`\n"
+      );
   }
 }
 

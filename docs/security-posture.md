@@ -392,6 +392,15 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   false-denied. Confirmed by trace to fail only in the safe direction (over-denial, never a
   merge that would hide a real separator) — a reliability defect, not a privilege-escalation
   bypass (`docs/evidence/phase-06/wi7-adversarial-validation.md`, carry-forward 1).
+- **`FALLBACK_MAX_TURNS = 20` is the one turn number no policy governs (§3, adapter).** A
+  cross-process `resume`/`fork` of a session this adapter instance never spawned falls back
+  to a minimal read-only profile with a hardcoded 20-turn cap
+  (`packages/engine-claude/src/adapter.ts`) — since the turn budget became an authority
+  dimension (2026-07-30), this is the sole turn constant outside the containment gate.
+  Latent today: `resumeAttempt` has no production caller and the daemon's `resume` rebuilds
+  packets from the envelope; the fallback profile is read-only, so exposure is bounded.
+  Noted so the cross-process durable-cache reconciliation (phase 06's carry-forward) closes
+  it rather than rediscovers it.
 - **Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member (§7).**
   Only the subsequent approval-token mint is centrally journaled; the audit pass/fail verdict
   itself lives only in the capability store's own artifact. `JournalEntryType` is deliberately
