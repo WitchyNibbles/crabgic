@@ -89,11 +89,13 @@ export interface RunIntakeCommandResult {
  * end; and a human who did answer it got a token spent, a `ready` ChangeSet,
  * and no dispatch, reported at exit 0.
  *
- * `crabgic approve <digest>` is that path done properly — it gates on who is
- * answering, renders the authority rather than a hash, and dispatches on
- * success — so escalation now says so and stops. One consequence worth naming:
- * the CLI's only remaining envelope-token mint is `approve`, which is what
- * `docs/operator-guide.md` always claimed.
+ * For an AUTHORITY escalation the remedy is the standing policy, not a token:
+ * the daemon's dispatch gate is containment-only and reads no token
+ * (`docs/interface-ledger.md` Gap 18 part 2), so `crabgic approve` — which
+ * gates only the `awaiting_approval → ready` transition, i.e. consent to the
+ * plan — cannot grant missing authority. The escalation message therefore
+ * names the policy file to edit, and this module leaves the ChangeSet
+ * `awaiting_approval` for a re-run once the policy grants the authority.
  */
 export async function runIntakeCommand(
   deps: RunIntakeCommandDeps,
@@ -116,7 +118,9 @@ export async function runIntakeCommand(
 
   // THE APPROVAL DECISION (ledger Gap 18). Contained in the standing policy →
   // the ChangeSet is ready and nobody was asked. Anything else stops here and
-  // is reported; `crabgic approve <digest>` is the escalation.
+  // is reported, naming the policy file to widen — the dispatch gate is
+  // containment-only, so editing the policy (not `crabgic approve`) is the
+  // remedy for an authority escalation.
   const standing = await applyStandingApproval(
     outcome.artifacts.changeSet,
     outcome.artifacts.envelope,

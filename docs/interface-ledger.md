@@ -1064,6 +1064,12 @@ Four parts.
    human editing the file. No MCP tool, no session-reachable CLI command, and no skill may write it. The
    token machinery is **not deleted** — `contract.approve`, `trust review`/`capability.approve` and
    `learn approve` keep it for the escalation paths, which are exactly the paths a policy cannot cover.
+   (Clarification, 2026-07-30, consistent with part 2 — not a ruling change: for the ENVELOPE subject
+   this means `contract.approve` gates only the `awaiting_approval → ready` plan-consent transition
+   — e.g. a material amendment. It does NOT grant authority: part 2's dispatch gate is
+   containment-only and reads no token, so an out-of-policy envelope is cured by widening the standing
+   policy, never by approving. The token's "a policy cannot cover" escalation role is load-bearing for
+   the capability and learning subjects, which have no policy dimension at all.)
 4. **Every dispatch journals the authorizing policy digest.** Evidence must be able to answer "what was the
    human standing behind when this ran," which a standing approval otherwise makes unanswerable.
 

@@ -1,12 +1,21 @@
 /**
- * `approve <digest>` — the terminal half of the escalation path ledger
- * Gap 18 kept the token machinery for. A ChangeSet parked in
- * `awaiting_approval` (its envelope outside the standing policy, or its
- * intake run non-interactively where the prompt correctly declined at EOF)
- * is approved by a human HERE: resolve the digest to the pending ChangeSet,
- * render `runApprovalFlow`'s prompt, and complete verification in-process
+ * `approve <digest>` — the human consent ceremony for a ChangeSet parked in
+ * `awaiting_approval`: resolve the digest to the pending ChangeSet, render
+ * `runApprovalFlow`'s prompt, and complete verification in-process
  * (`../intake/complete-envelope-approval.ts`) — the token never leaves this
  * process. This is the command the `/eo:approve` skill delegates to.
+ *
+ * WHAT THIS CAN AND CANNOT DO (corrected 2026-07-30 — the header used to
+ * claim this was the remedy for "an envelope outside the standing policy",
+ * which review traced to be impossible). The token gates exactly ONE thing:
+ * the `awaiting_approval → ready` ChangeSet transition — owner consent to
+ * the PLAN (e.g. after a material amendment, or an intake whose prompt
+ * declined at EOF). It grants NO authority: the daemon's dispatch gate is
+ * containment-only by the ledger's own ruling ("no prompt and no token …
+ * there is no third outcome") and reads no token, so an envelope outside the
+ * standing policy is refused again at dispatch no matter how many approvals
+ * were minted. The remedy for an out-of-policy envelope is editing the
+ * standing policy — the refusal names the file — and re-running the intake.
  *
  * Who may answer lives in `../approval/interactive-terminal.ts` — a TTY check
  * alone was defeated by a pty wrapper in adversarial review, and that module
@@ -204,8 +213,16 @@ export async function runApproveCommand(
         stdout: `ChangeSet ${safeId} approved and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
       }
     : {
-        // Approved and durably `ready`; only the start failed.
+        // Approved and durably `ready`; only the start failed. Said plainly:
+        // approval records consent to the PLAN and cannot grant authority —
+        // if the refusal below is a containment refusal, no re-approval will
+        // ever change it, only a policy edit will.
         exitCode: EXIT_GENERAL_ERROR,
-        stderr: `ChangeSet ${safeId} is approved and ready, but dispatch was refused: ${sanitizeForTerminal(dispatch.reason ?? "no reason given")}\n`,
+        stderr:
+          `ChangeSet ${safeId} is approved and ready, but dispatch was refused: ` +
+          `${sanitizeForTerminal(dispatch.reason ?? "no reason given")}\n` +
+          `Approval records consent to the plan; it cannot grant authority beyond the ` +
+          `standing policy. If the refusal names an escaping dimension, edit the standing ` +
+          `policy it names, then run \`crabgic run\` again.\n`,
       };
 }

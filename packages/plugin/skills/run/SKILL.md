@@ -37,9 +37,12 @@ the owner, not generated behind their back.
      to ask; the run is dispatched and the output names its id. Proceed.
    - **Escalation** — the envelope reaches outside the standing policy. The output
      names every dimension that escapes, and the policy file's path. Show the owner
-     what it needs and why, then tell them to run `crabgic approve <envelope-digest>`
-     in **their own terminal**. You cannot do this for them: the command refuses a
-     piped stdin and refuses a process carrying agent-runtime provenance.
+     what it needs and why, then tell them to **widen the standing policy at that
+     path** and re-run `crabgic run` — an in-policy envelope then goes straight
+     through. Do **not** tell them to run `crabgic approve`: the dispatch gate is
+     containment-only and reads no token, so approval records consent to the plan but
+     cannot grant the missing authority — only the policy edit can. (Editing the
+     policy is the owner's own act, at their own terminal; you cannot do it for them.)
    - **Not ready** — a requirement no work unit owns. That is a planning gap, not an
      approval question: fix the DAG and run intake again.
 

@@ -57,9 +57,11 @@ crabgic run [--json]
    - **Contained** → the `ChangeSet` goes to `ready` with **no prompt and no token**, and the
      authorizing policy digest is journaled so "what was the human standing behind this" stays
      answerable afterwards.
-   - **Not contained, or no readable policy** → nothing is approved. The refusal names _every_
-     dimension that escapes at once, because fixing it means editing a file this process cannot
-     reach. Approve it yourself with `crabgic approve <envelope-digest>` (§2.1).
+   - **Not contained, or no readable policy** → nothing is dispatched. The refusal names _every_
+     dimension that escapes at once, and the standing policy file to add it to, because that
+     edit is the only remedy: the dispatch gate is containment-only and reads no token, so
+     `crabgic approve` cannot grant the missing authority (§2.1). Widen the policy, then run
+     `crabgic run` again.
    - **A requirement no `WorkUnit` owns** → a planning gap, not an authority question. No
      approval route fixes it; fix the DAG and run intake again
      (`docs/evidence/phase-11/README.md` exit criterion 4).
@@ -70,23 +72,31 @@ crabgic run [--json]
    If the supervisor cannot be reached, the approval is not lost — it is durable, and the
    `ChangeSet` stays `ready`. Retry the start; do not re-author the request.
 
-### 2.1 Approving out-of-policy work
+### 2.1 Recording consent to a plan (and why it is not the out-of-policy remedy)
 
 ```
 crabgic approve <envelope-digest>
 ```
 
-The escalation path, and the only place a human-approval token is ever minted. It renders the
-**authority itself** — change set, owned paths, commands, network destinations, credential
-references, prohibited actions — and then the digest, because a bare hash is not something a
-human can evaluate. It waits for an exact (case-insensitive, trimmed) `yes`; anything else
-aborts with nothing minted.
+The only place a human-approval token is ever minted — but read what it does and does not
+do. It gates exactly one thing: the `awaiting_approval → ready` transition, i.e. a human's
+consent to the **plan** (a material amendment, or an intake whose prompt declined). It
+grants **no authority**. The daemon's dispatch gate re-checks containment against the policy
+and reads no token, so an envelope outside the standing policy is refused again at dispatch
+no matter how many approvals are minted. **The remedy for out-of-policy work is editing the
+standing policy the refusal names, then re-running `crabgic run`** — not this command.
+
+When it is the right tool, it renders the **authority itself** — change set, owned paths,
+commands, network destinations, credential references, prohibited actions — and then the
+digest, because a bare hash is not something a human can evaluate. It waits for an exact
+(case-insensitive, trimmed) `yes`; anything else aborts with nothing minted.
 
 The token is single-use, HMAC-signed, verified server-side against that `ChangeSet`'s own
 stored envelope digest (never a caller-supplied one — the confused-deputy fix in
 `docs/security-posture.md`), and spent in the same process before the command returns. It is
-never printed, so nothing can carry it anywhere. On success the change set is dispatched, same
-as the in-policy path.
+never printed, so nothing can carry it anywhere. On success the change set is dispatched — and
+if the envelope is within the standing policy it runs, while if it is not, dispatch refuses
+exactly as §2 describes (approval moved the plan to `ready`; it did not widen the policy).
 
 **Run it in a terminal you opened yourself.** The command refuses a piped stdin, and refuses a
 process whose environment carries agent-runtime or CI provenance. `docs/security-posture.md`

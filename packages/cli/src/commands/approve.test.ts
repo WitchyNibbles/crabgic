@@ -257,6 +257,44 @@ describe("dispatchCommand — approve", () => {
     expect(result.stdout).not.toContain('"token"');
   });
 
+  it("on a dispatch REFUSAL, says consent grants no authority and points at the policy edit", async () => {
+    // Review S5 (2026-07-30): approve completes the awaiting_approval → ready
+    // consent, but the daemon's containment-only gate can still refuse an
+    // out-of-policy envelope at dispatch. The refusal output must not leave
+    // the owner thinking a re-approval would help — it must name the working
+    // remedy (edit the policy) and say approval grants no authority.
+    const digest = "sha256:approve-refused";
+    const seeded = seededIntake(digest);
+    const refusingClient: CliDependencies["connectClient"] = () =>
+      Promise.resolve({
+        request: () =>
+          Promise.resolve({
+            accepted: false,
+            reason:
+              "this change set needs authority the standing policy does not grant: " +
+              'owned path "infra/secrets" is not at or below any allowed path prefix',
+          }),
+        close: () => Promise.resolve(),
+      } as never);
+
+    const resultPromise = dispatchCommand({ command: "approve", digest, json: false }, {
+      ...baseDeps(),
+      connectClient: refusingClient,
+      intake: seeded.intake,
+    } as CliDependencies);
+    seeded.input.write("yes\n");
+    const result = await resultPromise;
+
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toContain("approved and ready, but dispatch was refused");
+    expect(result.stderr).toContain("infra/secrets");
+    // The load-bearing correction: consent ≠ authority, edit the policy.
+    expect(result.stderr).toContain("cannot grant authority");
+    expect(result.stderr).toMatch(/edit the standing policy/i);
+    // Consent still landed: the ChangeSet is durably `ready`, not lost.
+    expect(seeded.intake.changeSets.get(seeded.changeSetId)?.state).toBe("ready");
+  });
+
   // MAJOR (adversarial review, 2026-07-29): `canonicalHash` identifies envelope
   // CONTENT and excludes the ChangeSet id, so a bare digest is an opaque string
   // the human cannot evaluate — they would be consenting to whatever a model
