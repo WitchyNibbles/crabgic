@@ -6,6 +6,7 @@
  * because its real backend belongs to a phase that hasn't landed yet.
  */
 import { EXIT_DOCTOR_FINDINGS, EXIT_OK, EXIT_GENERAL_ERROR } from "../exit-codes.js";
+import { toErrorMessage } from "../errors.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
@@ -289,7 +290,55 @@ export async function runRunCommand(
     secretKey: deps.intake.secretKey,
     io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
     readIntakeRequest: deps.intake.readIntakeRequest,
+    ...(deps.intake.loadPolicy !== undefined ? { loadPolicy: deps.intake.loadPolicy } : {}),
   });
+
+  if (result.outcome.status === "conflict") {
+    const conflict = {
+      exitCode: EXIT_GENERAL_ERROR,
+      stderr: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+    };
+    return cmd.json ? { ...conflict, stdout: formatJson(result) } : conflict;
+  }
+  const changeSetId = result.outcome.artifacts.changeSet.id;
+  const digest = result.outcome.artifacts.envelope.canonicalHash;
+
+  // Approved by either route -> DISPATCH. `run` means run: an approved change
+  // set that sits in `ready` waiting for a second command is the shape ledger
+  // Gap 18's product direction exists to remove ("the user types no Crabgic
+  // command"). The daemon re-checks containment itself before spawning
+  // anything, so this is a request to start work, never a grant of authority.
+  const approved =
+    result.standing?.status === "approved" ||
+    (result.standing === undefined &&
+      result.declined !== true &&
+      result.approval?.approved === true);
+
+  if (approved) {
+    const dispatch = await dispatchReadyChangeSet(changeSetId, deps);
+    if (cmd.json) {
+      return {
+        exitCode: dispatch.accepted ? EXIT_OK : EXIT_GENERAL_ERROR,
+        stdout: formatJson({ ...result, dispatch }),
+      };
+    }
+    const authority =
+      result.standing?.status === "approved"
+        ? ` (covered by the standing approval policy ${result.standing.policyDigest}; no prompt, no token)`
+        : "";
+    return dispatch.accepted
+      ? {
+          exitCode: EXIT_OK,
+          stdout: `ChangeSet ${changeSetId} approved${authority} and dispatched as run ${dispatch.runId}\n`,
+        }
+      : {
+          // The ChangeSet IS approved and stays `ready`; only the start
+          // failed. Say exactly that, so the operator retries the dispatch
+          // rather than re-authoring an intake request.
+          exitCode: EXIT_GENERAL_ERROR,
+          stderr: `ChangeSet ${changeSetId} is approved and ready, but dispatch was refused: ${dispatch.reason}\n`,
+        };
+  }
 
   if (cmd.json) {
     // `result` carries no token by construction (`RunIntakeCommandResult`'s
@@ -299,14 +348,15 @@ export async function runRunCommand(
     return { exitCode: EXIT_OK, stdout: formatJson(result) };
   }
 
-  if (result.outcome.status === "conflict") {
+  if (result.standing?.status === "not_ready") {
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      stderr: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+      stderr:
+        `this change set cannot be approved by any route yet: ${result.standing.reason}\n` +
+        "Fix the plan so every requirement has an owning work unit, then run intake again.\n",
     };
   }
   if (result.declined === true) {
-    const digest = result.outcome.artifacts.envelope.canonicalHash;
     return {
       exitCode: EXIT_OK,
       stdout:
@@ -322,6 +372,41 @@ export async function runRunCommand(
   }
   return {
     exitCode: EXIT_OK,
-    stdout: `ChangeSet ${result.outcome.artifacts.changeSet.id} approved — now ready\n`,
+    stdout: `ChangeSet ${changeSetId} approved — now ready\n`,
   };
+}
+
+export interface DispatchAttempt {
+  readonly accepted: boolean;
+  readonly runId?: string;
+  readonly reason?: string;
+}
+
+/**
+ * Asks the supervisor to start an approved ChangeSet — the `run.dispatch`
+ * operation that, until now, no shipped surface ever sent. The daemon mints
+ * the run id (nothing else can) and re-runs the containment check against the
+ * policy IT can see before spawning a worker.
+ *
+ * A supervisor that cannot be reached is reported, never thrown past: the
+ * approval already happened and the ChangeSet is durably `ready`, so this is a
+ * retryable start failure rather than a lost approval.
+ */
+export async function dispatchReadyChangeSet(
+  changeSetId: string,
+  deps: CliDependencies,
+): Promise<DispatchAttempt> {
+  let client: Awaited<ReturnType<CliDependencies["connectClient"]>>;
+  try {
+    client = await deps.connectClient();
+  } catch (err) {
+    return { accepted: false, reason: toErrorMessage(err) };
+  }
+  try {
+    return await client.request<DispatchAttempt>("run.dispatch", { changeSetId });
+  } catch (err) {
+    return { accepted: false, reason: toErrorMessage(err) };
+  } finally {
+    await client.close();
+  }
 }

@@ -39,51 +39,58 @@ quarantine").
 
 ## 2. Running a change set
 
-> ℹ️ **This section documents the shipped binary, and the approval model it describes is being replaced.**
-> Owner ruling 2026-07-28 (**interface-ledger Gap 18**, adaptation §5.5) moves routine approval to a standing
-> `EnvelopePolicy` written by `crabgic install`, checked for containment at dispatch. The per-ChangeSet
-> terminal prompt below survives only for escalations — an out-of-policy envelope, capability quarantine, and
-> learning promotion. Nothing here is wrong about the current build; it is about to stop being the path an
-> operator takes.
-
 ```
 crabgic run [--json]
 ```
 
-`run` drives the full intake → contract → approval sequence before a `ChangeSet` is handed to
-the scheduler:
+`run` drives the full intake → contract → approval → dispatch sequence:
 
 1. It resolves a drafted intake request (the manager-session-authored request content — this
-   command does not draft it itself).
+   command does not draft it itself; `/eo:run` is what drafts it from your conversation).
 2. It builds the `IntentContract`, DAG, and `AuthorizationEnvelope`, creating a `ChangeSet` (or
    reusing an existing one — re-running `run` against an unchanged repo never creates a second
    `ChangeSet`, `docs/evidence/phase-11/README.md` exit criterion 7).
-3. If the `ChangeSet` is not already resolved as a conflict, it renders a **terminal approval
-   prompt** naming the exact envelope digest about to be approved and waits for an explicit
-   `yes`:
+3. **The standing approval decides** (interface-ledger **Gap 18**, adaptation §5.5). The built
+   envelope is tested for containment in the `EnvelopePolicy` `crabgic install` wrote — the one
+   you read once, carefully, at install time. Three outcomes:
 
-   ```
-   About to approve the following authorization envelope digest:
+   - **Contained** → the `ChangeSet` goes to `ready` with **no prompt and no token**, and the
+     authorizing policy digest is journaled so "what was the human standing behind this" stays
+     answerable afterwards.
+   - **Not contained, or no readable policy** → nothing is approved. The refusal names _every_
+     dimension that escapes at once, because fixing it means editing a file this process cannot
+     reach. Approve it yourself with `crabgic approve <envelope-digest>` (§2.1).
+   - **A requirement no `WorkUnit` owns** → a planning gap, not an authority question. No
+     approval route fixes it; fix the DAG and run intake again
+     (`docs/evidence/phase-11/README.md` exit criterion 4).
 
-     <sha256 digest>
+4. An approved `ChangeSet` is **dispatched**: the daemon mints the run id, re-checks containment
+   against the policy _it_ can see, and starts driving the DAG. `run` reports the run id.
 
-   Type "yes" to approve, anything else to abort:
-   ```
+   If the supervisor cannot be reached, the approval is not lost — it is durable, and the
+   `ChangeSet` stays `ready`. Retry the start; do not re-author the request.
 
-   Typing anything other than an exact (case-insensitive, trimmed) `yes` aborts — no token is
-   minted, nothing is approved (`packages/cli/src/approval/prompt.ts`). This terminal prompt
-   is the **only** place in the entire system a human-approval token is minted — no scripted,
-   non-interactive, or model-driven path can reach it (`docs/security-posture.md`, "3. Envelope
-   compiler").
+### 2.1 Approving out-of-policy work
 
-4. On `yes`, a single-use, HMAC-signed token is minted and durably verified server-side against
-   this exact `ChangeSet`'s own envelope digest (never a caller-supplied one — the confused-
-   deputy fix recorded in `docs/security-posture.md`), and the `ChangeSet` transitions to
-   `ready` for dispatch.
+```
+crabgic approve <envelope-digest>
+```
 
-An unmapped requirement (a DAG node with no owning `WorkUnit`) blocks the `ready` transition
-before the approval prompt is even reached — no token is spent on an incomplete DAG
-(`docs/evidence/phase-11/README.md` exit criterion 4).
+The escalation path, and the only place a human-approval token is ever minted. It renders the
+**authority itself** — change set, owned paths, commands, network destinations, credential
+references, prohibited actions — and then the digest, because a bare hash is not something a
+human can evaluate. It waits for an exact (case-insensitive, trimmed) `yes`; anything else
+aborts with nothing minted.
+
+The token is single-use, HMAC-signed, verified server-side against that `ChangeSet`'s own
+stored envelope digest (never a caller-supplied one — the confused-deputy fix in
+`docs/security-posture.md`), and spent in the same process before the command returns. It is
+never printed, so nothing can carry it anywhere. On success the change set is dispatched, same
+as the in-policy path.
+
+**Run it in a terminal you opened yourself.** The command refuses a piped stdin, and refuses a
+process whose environment carries agent-runtime or CI provenance. `docs/security-posture.md`
+records exactly what that does and does not prove.
 
 ## 3. Checking status
 

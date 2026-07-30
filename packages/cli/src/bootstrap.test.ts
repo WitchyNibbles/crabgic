@@ -24,6 +24,7 @@ import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@crabgic/supervisor";
 import { buildChangeSet } from "@crabgic/testkit";
 import { buildProviderDispatchWiring, buildRealCliDependencies } from "./bootstrap.js";
 import { SupervisorUnavailableError } from "./errors.js";
+import { resolveEnvelopePolicyPath } from "./policy/policy-store.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
 
 let home: string;
@@ -262,6 +263,23 @@ describe("buildRealCliDependencies", () => {
       schema: ChangeSetSchema,
     });
     expect(daemonView.get(changeSet.id)).toEqual(changeSet);
+  });
+
+  /**
+   * Ledger Gap 18's routine path only exists in the SHIPPED binary if the real
+   * wiring supplies a policy loader — without it `run` silently falls back to
+   * prompting for everything, which is the pre-Gap-18 behaviour wearing the
+   * new design's name. Asserted through the real builder, and against the same
+   * path `doctor` and the daemon resolve, so a rename cannot split them.
+   */
+  it("wires the standing-policy loader into run, reading the same path doctor and the daemon use", () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "policy-hash" });
+    expect(deps.intake?.loadPolicy).toBeDefined();
+    expect(deps.standingPolicyPath).toBe(resolveEnvelopePolicyPath({ HOME: home }, "policy-hash"));
+
+    // No policy authored yet: the loader must report `absent`, which
+    // `applyStandingApproval` turns into an escalation rather than a grant.
+    expect(deps.intake!.loadPolicy!().status).toBe("absent");
   });
 
   it("shares ONE approval-token minter between trust and run, so both subject kinds verify in-process", async () => {

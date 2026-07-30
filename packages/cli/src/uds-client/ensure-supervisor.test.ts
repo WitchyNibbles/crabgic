@@ -10,15 +10,17 @@
  * the budget is exhausted. Both seams (`connect`, `spawnDaemon`) are
  * injected, so these tests never touch a real socket or process.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { SupervisorUnavailableError } from "../errors.js";
 import type { UdsClient } from "./client.js";
 import {
   ensureSupervisorConnection,
   readSupervisordStderrTail,
+  resolveSupervisordBin,
   retryDelay,
 } from "./ensure-supervisor.js";
 
@@ -345,3 +347,58 @@ describe("readSupervisordStderrTail", () => {
     expect(tail).toContain("THE END");
   });
 });
+
+/**
+ * The daemon entry point must resolve in BOTH layouts this package ships in.
+ *
+ * Found 2026-07-30 by running the built binary: the bundled (published) layout
+ * put this module at the dist root, so the single `../bin/supervisord.js`
+ * candidate resolved to `packages/cli/bin/supervisord.js` — a path that never
+ * existed — and every daemon spawn in the published package died with
+ * MODULE_NOT_FOUND behind a generic "unreachable socket".
+ */
+describe("resolveSupervisordBin", () => {
+  let dir: string;
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("resolves the bundled layout, where this module sits at the dist root beside bin/", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-bin-bundled-"));
+    mkdirSync(join(dir, "bin"), { recursive: true });
+    writeFileSync(join(dir, "bin", "supervisord.js"), "// daemon\n");
+
+    const resolved = resolveSupervisordBin(pathToFileURL(join(dir, "chunk-ABC123.js")).href);
+    expect(resolved).toBe(join(dir, "bin", "supervisord.js"));
+  });
+
+  it("resolves the tsc layout, where this module sits one directory below bin/", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-bin-tsc-"));
+    mkdirSync(join(dir, "bin"), { recursive: true });
+    mkdirSync(join(dir, "uds-client"), { recursive: true });
+    writeFileSync(join(dir, "bin", "supervisord.js"), "// daemon\n");
+
+    const resolved = resolveSupervisordBin(
+      pathToFileURL(join(dir, "uds-client", "ensure-supervisor.js")).href,
+    );
+    expect(resolved).toBe(join(dir, "bin", "supervisord.js"));
+  });
+
+  it("throws naming EVERY candidate when the daemon entry is genuinely absent, rather than returning a path that cannot run", () => {
+    dir = mkdtempSync(join(tmpdir(), "eo-bin-absent-"));
+    const moduleUrl = pathToFileURL(join(dir, "chunk-ABC123.js")).href;
+    expect(() => resolveSupervisordBin(moduleUrl)).toThrow(/was not found/);
+    expect(() => resolveSupervisordBin(moduleUrl)).toThrow(/packaging fault/);
+  });
+});
+
+/*
+ * NOTE deliberately NOT asserted here: "the daemon resolves in this build's
+ * own layout". Vitest runs from `src/`, where the daemon is still
+ * `supervisord.ts`, so no candidate can exist and the assertion would be
+ * vacuous or wrong depending on which way it was written. The claim that
+ * matters — the PUBLISHED layout resolves — is only meaningful against a real
+ * packed tarball, and `scripts/check-install-smoke.mjs` asserts it there. That
+ * split is the lesson this bug taught twice: the bundled layout is not the
+ * source layout, and only the real artifact can prove it works.
+ */

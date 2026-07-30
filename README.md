@@ -57,6 +57,14 @@ crabgic doctor
 crabgic run < intake.json
 ```
 
+Work covered by the standing policy you approved at install time goes straight to a
+dispatched run — no prompt, no token, nothing to confirm. Work that reaches outside it
+stops and tells you exactly which authority it needs; you approve that at your own
+terminal with `crabgic approve <envelope-digest>`, and it starts.
+
+> 🦀 **Crab tip:** from inside a Claude Code session you don't write the JSON yourself —
+> `/eo:run` drafts the intake request from the conversation and hands it to the CLI.
+
 Then watch it go:
 
 ```bash

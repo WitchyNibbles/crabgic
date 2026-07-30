@@ -19,6 +19,7 @@ import type { TrustCommandDependencies } from "@crabgic/detect";
 import type { ApprovalTokenMinter } from "../approval/token.js";
 import type { ApprovalPromptIo } from "../approval/prompt.js";
 import type { ApprovalTerminalVerdict } from "../approval/interactive-terminal.js";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
 import type { LearningDependencies } from "../learning/learning-dependencies.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
 
@@ -48,6 +49,8 @@ export interface IntakeDependencies {
    */
   readonly secretKey: Buffer;
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
+  /** Reads the project's standing `EnvelopePolicy` (ledger Gap 18) — supplied, `run` decides routine approval by containment instead of prompting. */
+  readonly loadPolicy?: () => LoadPolicyResult;
   /** Defaults to `process.stdin`/`process.stdout` (real interactive usage) when omitted — injectable so tests never block on real stdio. */
   readonly io?: ApprovalPromptIo;
   /**

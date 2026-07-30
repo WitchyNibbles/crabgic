@@ -42,6 +42,7 @@ import {
 import { FakeEngineAdapter, buildFakeEngineScript, buildWorkerResult } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
+import { dispatchCommand } from "../commands/dispatch.js";
 import { createRealRunDispatcher } from "../daemon/run-dispatcher.js";
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
@@ -205,6 +206,121 @@ function buildDispatcher(
 
   return { dispatcher, runs };
 }
+
+/**
+ * THE WHOLE CHAIN, entered where a user actually enters it.
+ *
+ * Every other test in this file calls `dispatcher.dispatch(...)` directly,
+ * which is what let the chain look healthy while being unreachable: from
+ * 1.0.0 through 1.4.0 the ONLY caller of `run.dispatch` in the repository was
+ * a test exactly like that one. This test starts at `dispatchCommand`, the
+ * function `bin.ts` calls, and fakes nothing but the socket transport — the
+ * router hop is replaced by a direct call into the same real dispatcher the
+ * daemon builds.
+ */
+describe("closed loop — entered through the shipped `run` command", () => {
+  it("takes an intake request all the way to a driven run with no human asked", async () => {
+    const secretKey = randomBytes(32);
+    const changeSets = createChangeSetsRegistry();
+    const workUnits = createWorkUnitsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    const intentContracts = createIntentContractsRegistry();
+    const runs = createRunsRegistry();
+    const standingPolicy = policy();
+
+    const dispatcher = createRealRunDispatcher({
+      deps: {
+        journal,
+        runs,
+        changeSets,
+        workUnits,
+        envelopes,
+        workers: createWorkersRegistry(),
+        artifactIndex: createArtifactIndexRegistry(),
+        liveWorkers: new Map(),
+      } as never,
+      projectDir: dir,
+      xdgEnv: { HOME: dir },
+      projectHash: "closed-loop-cli",
+      auth: { kind: "oauthToken", token: PLACEHOLDER_CREDENTIAL },
+      loadPolicy: () => ({ status: "loaded", policy: standingPolicy, digest: "sha256:e2e" }),
+      prepareRun: () => Promise.resolve("a".repeat(40)),
+      createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    // The ONLY fake: the UDS hop. `run.dispatch` lands on the same real
+    // dispatcher `bin/supervisord.ts` injects into the router.
+    const output = new PassThrough();
+    let prompted = false;
+    output.on("data", () => {
+      prompted = true;
+    });
+    const deps = {
+      connectClient: () =>
+        Promise.resolve({
+          request: (op: string, params: Record<string, unknown>) =>
+            op === "run.dispatch"
+              ? dispatcher.dispatch(params.changeSetId as string)
+              : Promise.reject(new Error(`unexpected op ${op}`)),
+          close: () => Promise.resolve(),
+        } as never),
+      journal,
+      projectHash: "closed-loop-cli",
+      intake: {
+        journal,
+        changeSets,
+        workUnits,
+        envelopes,
+        intentContracts,
+        minter: new ApprovalTokenMinter({ secretKey }),
+        secretKey,
+        readIntakeRequest: () => Promise.resolve(intakeRequest()),
+        io: { input: new PassThrough(), output },
+        loadPolicy: () => ({
+          status: "loaded" as const,
+          policy: standingPolicy,
+          digest: "sha256:e2e",
+        }),
+      },
+    };
+
+    // No keystroke is ever written: an in-policy request must need none.
+    const result = await dispatchCommand({ command: "run", json: true }, deps as never);
+
+    expect(result.exitCode).toBe(0);
+    expect(prompted).toBe(false);
+    const parsed = JSON.parse(result.stdout!) as {
+      standing: { status: string; policyDigest?: string };
+      dispatch: { accepted: boolean; runId?: string };
+    };
+    expect(parsed.standing.status).toBe("approved");
+    expect(parsed.standing.policyDigest).toBe("sha256:e2e");
+    expect(parsed.dispatch.accepted).toBe(true);
+    expect(parsed.dispatch.runId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(JSON.stringify(parsed)).not.toContain('"token"');
+
+    // A real run exists, and real work actually ran under it.
+    expect(runs.get(parsed.dispatch.runId!)?.runState).toBe("running");
+    await vi.waitFor(
+      async () => {
+        const transitions: unknown[] = [];
+        for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
+          transitions.push(entry);
+        }
+        expect(transitions.length).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+  });
+});
 
 describe("closed loop — request -> contract -> approval -> a driven run", () => {
   it("drives an approved change set through to a journaled work-unit transition", async () => {

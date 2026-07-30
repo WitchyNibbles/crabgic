@@ -43,8 +43,10 @@ import {
   type ApprovalPromptIo,
 } from "../approval/prompt.js";
 import type { ApprovalTokenMinter } from "../approval/token.js";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { completeEnvelopeApproval } from "./complete-envelope-approval.js";
 import type { ContractApproveResult } from "./contract-approve-handler.js";
+import { applyStandingApproval, type StandingApprovalOutcome } from "./standing-approval.js";
 
 export interface RunIntakeCommandDeps {
   readonly journal: JournalStore;
@@ -60,6 +62,14 @@ export interface RunIntakeCommandDeps {
   readonly io: ApprovalPromptIo;
   /** Resolves the drafted intake request content (e.g. a manager-session-authored JSON file) — this module never drafts it itself. */
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
+  /**
+   * Reads the project's standing `EnvelopePolicy` (ledger Gap 18). Supplied,
+   * routine approval is decided by containment and the prompt is reached only
+   * on escalation. Omitted, every ChangeSet goes to the prompt — the
+   * pre-Gap-18 behaviour, kept so a caller without a policy path is not
+   * silently denied a way to approve at all.
+   */
+  readonly loadPolicy?: () => LoadPolicyResult;
 }
 
 /**
@@ -75,6 +85,12 @@ export interface RunIntakeCommandResult {
   readonly approval?: ContractApproveResult;
   /** True when the human explicitly declined the approval prompt (never a token minted). */
   readonly declined?: true;
+  /**
+   * The standing-policy decision (ledger Gap 18), when a policy loader was
+   * supplied. `approved` means the run needed no human at all; anything else
+   * is why the prompt was reached.
+   */
+  readonly standing?: StandingApprovalOutcome;
 }
 
 /**
@@ -105,6 +121,32 @@ export async function runIntakeCommand(
     return { outcome };
   }
 
+  // THE ROUTINE PATH (ledger Gap 18). Contained in the standing policy → the
+  // ChangeSet is ready and nobody was asked. The prompt below is the
+  // escalation, reached only when this declines to decide.
+  let standing: StandingApprovalOutcome | undefined;
+  if (deps.loadPolicy !== undefined) {
+    standing = await applyStandingApproval(
+      outcome.artifacts.changeSet,
+      outcome.artifacts.envelope,
+      {
+        journal: deps.journal,
+        changeSets: deps.changeSets,
+        workUnits: deps.workUnits,
+        intentContracts: deps.intentContracts,
+        loadPolicy: deps.loadPolicy,
+      },
+    );
+    if (standing.status === "approved") {
+      return { outcome, standing };
+    }
+    // A planning gap is not an approval question: prompting for it would ask
+    // the human to authorize something that would then refuse anyway.
+    if (standing.status === "not_ready") {
+      return { outcome, standing };
+    }
+  }
+
   const digest = outcome.artifacts.envelope.canonicalHash;
   let token: string;
   try {
@@ -112,7 +154,7 @@ export async function runIntakeCommand(
     token = minted.token;
   } catch (err) {
     if (err instanceof ApprovalDeclinedError) {
-      return { outcome, declined: true };
+      return { outcome, declined: true, ...(standing !== undefined ? { standing } : {}) };
     }
     throw err;
   }
@@ -125,5 +167,5 @@ export async function runIntakeCommand(
     intentContracts: deps.intentContracts,
     workUnits: deps.workUnits,
   });
-  return { outcome, approval };
+  return { outcome, approval, ...(standing !== undefined ? { standing } : {}) };
 }
