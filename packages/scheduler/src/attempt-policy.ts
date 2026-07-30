@@ -74,9 +74,21 @@ export const MAX_TOTAL_DISPATCHES = 3;
 export async function countPriorDispatches(
   store: JournalStore,
   workUnitId: string,
+  runId?: string,
 ): Promise<number> {
+  // Scoped to `runId` when given. Work-unit ids are stable across runs of
+  // the same change set, so a workUnitId-only count made a retry as a
+  // genuinely new run inherit the prior run's exhausted repair budget. The
+  // budget stops a REPAIR LOOP within a run; a fresh run is a new,
+  // containment-gated, journaled attempt sequence and gets its own budget.
+  // Absent `runId`, the count is unchanged (across all runs) — the
+  // evidence/traceability default direct callers already want.
   let count = 0;
-  for await (const entry of store.queryEntries({ type: "work_unit_transition", workUnitId })) {
+  for await (const entry of store.queryEntries({
+    type: "work_unit_transition",
+    workUnitId,
+    ...(runId !== undefined ? { runId } : {}),
+  })) {
     if (
       entry.type === "work_unit_transition" &&
       entry.payload.status === "dispatched" &&
@@ -189,8 +201,13 @@ export async function assertRepairAllowed(
   workUnitId: string,
   evidenceKind: AttemptEvidenceKind,
   evidenceDetail?: string,
+  runId?: string,
 ): Promise<void> {
-  const priorDispatches = await countPriorDispatches(store, workUnitId);
+  // Run-scoped budget — see `countPriorDispatches`. The evidence-distinctness
+  // check below is intentionally NOT run-scoped: distinct diagnostic evidence
+  // is a property of the WORK, and re-attempting an identical failure adds no
+  // information regardless of which run does it.
+  const priorDispatches = await countPriorDispatches(store, workUnitId, runId);
 
   if (priorDispatches >= MAX_TOTAL_DISPATCHES) {
     throw new RepairEvidenceRequiredError(workUnitId, "attemptsExhausted", priorDispatches);

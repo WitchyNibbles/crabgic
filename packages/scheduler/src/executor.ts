@@ -239,6 +239,9 @@ export async function dispatchAttempt(
     options.packet.workUnitId,
     options.evidenceKind,
     options.evidenceDetail,
+    // Run-scoped: this run's own repair budget, so a retry as a new run
+    // does not inherit a prior run's exhausted count (`attempt-policy.ts`).
+    options.runId,
   );
 
   const handle = options.adapter.spawn(options.packet, options.profile, options.adjudicate);
@@ -324,6 +327,7 @@ export async function resumeAttempt(
       options.workUnitId,
       options.trigger.evidenceKind,
       options.trigger.evidenceDetail,
+      options.runId,
     );
   }
   // trigger.kind === "parkResume": deliberately NO gate call at all — a
