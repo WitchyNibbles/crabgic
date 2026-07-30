@@ -434,6 +434,12 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
       case "completed":
       case "parked":
         return undefined;
+      default: {
+        // Exhaustiveness guard: a new `DriveRunStopReason` must be classified
+        // here deliberately, not silently left `running`.
+        const _exhaustive: never = stopped;
+        return _exhaustive;
+      }
     }
   }
 

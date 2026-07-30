@@ -421,36 +421,82 @@ describe("createRealRunDispatcher — dispatch", () => {
   /**
    * The settle transition must tolerate the run having reached an absorbing
    * state independently — a `run.cancel` racing the drive. The drive's own
-   * `blocked`/`failed` transition is then an illegal edge from `cancelled`,
-   * which is expected: swallow it and leave the run cancelled.
+   * `blocked` transition is then an illegal edge from `cancelled`, which is
+   * expected: swallow it and leave the run cancelled.
+   *
+   * The topology is deliberate: an A→B chain where A fails ends the drive
+   * `blocked` (a single failed unit ends `completed`, which transitions
+   * nothing — the swallow would never be reached). A gated adapter holds the
+   * drive until the test has cancelled the run, so the settle's transition
+   * genuinely fires against a `cancelled` run.
    */
-  it("does not throw when the run was cancelled out from under a settling drive", async () => {
-    const deps = buildDeps({ ...fullySeeded(), run: false });
+  it("swallows the illegal transition when the run is cancelled before a blocked drive settles", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    let releaseAdapter!: () => void;
+    const adapterGate = new Promise<void>((resolve) => {
+      releaseAdapter = resolve;
+    });
     const unhandled: unknown[] = [];
     const dispatcher = newDispatcher(deps, {
-      createAdapter: () =>
-        Promise.resolve(
-          new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
-          ),
-        ),
       onDriveError: (_runId: string, err: unknown) => unhandled.push(err),
+      createAdapter: async () => {
+        await adapterGate; // hold the drive until the test cancels the run
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+        );
+      },
     });
 
     const result = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(result.accepted).toBe(true);
-    // Cancel the run before/while the drive settles.
+    const runId = result.runId!;
+    // Cancel the run while the drive is parked in createAdapter, so the
+    // subsequent `blocked` settle transitions from `cancelled` — illegal.
     deps.runs.upsert({
-      runId: result.runId!,
+      runId,
       changeSetId: CHANGE_SET_ID,
       runState: "cancelled",
       updatedAt: "2026-07-30T00:00:00.000Z",
     });
+
+    // A DETERMINISTIC signal that the settle actually attempted its
+    // transition: `transitionRun` reads `runs.get(runId)` to find its `from`
+    // state, so a `get` for this run AFTER the cancel is the settle firing.
+    // Without this the test would assert before the settle ran (the run is
+    // already `cancelled`), never exercising the swallow — the vacuity a
+    // prior review caught.
+    let settleAttempted = false;
+    const realGet = deps.runs.get.bind(deps.runs);
+    deps.runs.get = (id: string) => {
+      if (id === runId) settleAttempted = true;
+      return realGet(id);
+    };
+    releaseAdapter();
+
     await vi.waitFor(() => {
-      expect(deps.runs.get(result.runId!)?.runState).toBe("cancelled");
+      expect(settleAttempted).toBe(true);
     });
-    // The settle must not have surfaced an IllegalTransitionError as a drive
-    // error — cancellation racing a settle is expected, not a failure.
+    // The illegal `cancelled → blocked` edge was swallowed: the run stays
+    // cancelled and nothing was surfaced as a drive error.
+    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
     expect(unhandled).toHaveLength(0);
   });
 
