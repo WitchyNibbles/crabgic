@@ -32,6 +32,7 @@ import {
   createFileRegistry,
   createRunsRegistry,
   createWorkersRegistry,
+  transitionRun,
   type SupervisorDependencies,
   type TerminableWorker,
 } from "@crabgic/supervisor";
@@ -286,6 +287,250 @@ describe("createRealRunDispatcher — dispatch", () => {
       },
       { timeout: 10_000 },
     );
+  });
+
+  /**
+   * Active park resume (task #8): a rate-limit-parked unit whose reset window
+   * has passed is RESUMED via the RETAINED adapter — the same instance that
+   * spawned the session, so `adapter.resume` continues with full authority.
+   * The fake proves this by construction: its `resume` throws for an unknown
+   * session, so a resume driven through a fresh adapter would crash. Success
+   * (the unit reaching `succeeded`) with `createAdapter` called exactly once
+   * is the retained-adapter reuse.
+   */
+  it("resumes a parked-ready unit via the retained adapter and completes it", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    const worktreePath = join(dir, "worktree"); // the default createAttemptWorktree
+    let adaptersCreated = 0;
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              // Scope MUST match what the dispatcher reconstructs:
+              // createSessionRef sets projectDirectory := worktreePath.
+              projectDirectory: worktreePath,
+              worktreePath,
+              // Park on the first run: reset window in the deep past → the
+              // driver finds it ready-to-resume immediately.
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 1, rateLimitType: "five_hour" },
+              },
+              // The continuation the retained adapter runs on resume.
+              onResume: buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+              }),
+            }),
+          ),
+        );
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    // The unit parks, then the driver resumes it to success — observable as a
+    // `succeeded` work-unit transition in the journal.
+    await vi.waitFor(
+      async () => {
+        const statuses: string[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          const s = (entry.payload as { status?: string }).status;
+          if (typeof s === "string") statuses.push(s);
+        }
+        expect(statuses).toContain("parked:rate_limit");
+        expect(statuses).toContain("succeeded");
+      },
+      { timeout: 10_000 },
+    );
+    // Resume reused the RETAINED adapter — it never asked for a fresh one.
+    expect(adaptersCreated).toBe(1);
+  });
+
+  /**
+   * F1 (the load-bearing scope claim): retention must survive ACROSS drives,
+   * not just within one. A unit parked while its reset window is still in the
+   * future ends its drive PARKED; a LATER `resume(runId)` — the `crabgic
+   * resume <runId>` path, once the window passes — must reuse the adapter
+   * retained from the first drive. With a per-`drive()` map that second drive
+   * finds nothing, declines, and the unit never completes; this test fails
+   * against that mutation and passes only when retention is keyed per-run at
+   * the dispatcher level.
+   *
+   * The clock is advanced only AFTER a barrier proves the first drive has left
+   * flight, so the first drive (which always reads `clock === 1000`) cannot
+   * self-resume and mask the bug.
+   */
+  it("retains a parked unit's adapter ACROSS drives — a later resume completes it (F1)", async () => {
+    const SESSION = "88888888-8888-4888-8888-888888888888";
+    const worktreePath = join(dir, "worktree");
+    let clock = 1000; // strictly before the reset window
+    let adaptersCreated = 0;
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              // Reset window in the FUTURE relative to `clock`: the first drive
+              // parks and ENDS without resuming. The resume must come from a
+              // separate, later drive.
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+              },
+              onResume: buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+              }),
+            }),
+          ),
+        );
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    // Barrier: wait until the first drive has SETTLED — released its in-flight
+    // claim — while the run persists as a live, parked-and-`running` run. A
+    // probing dispatch refuses with the LIVE-RUN reason only once the drive is
+    // out of flight; until then it refuses with "already being dispatched".
+    // The probe starts no drive (a live run exists) and never mutates the
+    // clock, so advancing it afterwards cannot race the first drive.
+    await vi.waitFor(
+      async () => {
+        const probe = await dispatcher.dispatch(CHANGE_SET_ID);
+        expect(probe.accepted).toBe(false);
+        expect(probe.reason).toMatch(/already has run .* in flight/i);
+      },
+      { timeout: 10_000 },
+    );
+
+    // The first drive parked the unit and never resumed it.
+    {
+      const statuses: string[] = [];
+      for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+        const s = (entry.payload as { status?: string }).status;
+        if (typeof s === "string") statuses.push(s);
+      }
+      expect(statuses).toContain("parked:rate_limit");
+      expect(statuses).not.toContain("succeeded");
+    }
+
+    // The reset window has now passed. A SEPARATE drive must reuse the adapter
+    // retained from the first drive.
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        const statuses: string[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          const s = (entry.payload as { status?: string }).status;
+          if (typeof s === "string") statuses.push(s);
+        }
+        expect(statuses).toContain("succeeded");
+      },
+      { timeout: 10_000 },
+    );
+
+    // Exactly one adapter ever existed (the first drive's spawn). The resume
+    // reused it ACROSS drives rather than creating a fresh one — the whole
+    // point of dispatcher-level retention.
+    expect(adaptersCreated).toBe(1);
+  });
+
+  /**
+   * Retention must not become a leak: hoisting the map to run scope means a
+   * PARKED run's adapters outlive its drive, so a run cancelled out-of-band
+   * (via the supervisor's `run.cancel`, which never touches this dispatcher)
+   * would otherwise pin its session context until a daemon restart.
+   * `sweepStaleRetention` — run on every `dispatch`/`resume` — drops adapters
+   * for runs that are absorbing (or gone). We observe it via the run-store:
+   * a single `resume` queries the run TWICE — once from the sweep iterating
+   * the retained map, once from `resume` itself — where a no-sweep build would
+   * query it only once.
+   */
+  it("sweeps a cancelled parked run's retained adapter — no leak past cancel (F1 follow-up)", async () => {
+    const SESSION = "99999999-9999-4999-8999-999999999999";
+    const worktreePath = join(dir, "worktree");
+    // Never advanced: this run stays parked and is cancelled, never resumed.
+    const clock = 1000; // before the reset window → the first drive parks and ends
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+              },
+            }),
+          ),
+        ),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    // Barrier: the first drive has settled (the run is live and parked) —
+    // proven by a probing dispatch refusing with the live-run reason.
+    await vi.waitFor(
+      async () => {
+        const probe = await dispatcher.dispatch(CHANGE_SET_ID);
+        expect(probe.accepted).toBe(false);
+        expect(probe.reason).toMatch(/already has run .* in flight/i);
+      },
+      { timeout: 10_000 },
+    );
+
+    // Cancel the parked run out-of-band, exactly as the supervisor router does
+    // (`running → cancelled`), bypassing the dispatcher entirely.
+    await transitionRun({
+      journal: deps.journal,
+      runs: deps.runs,
+      runId,
+      changeSetId: CHANGE_SET_ID,
+      to: "cancelled",
+    });
+
+    // A resume now sweeps the retained map (querying the run once) and then
+    // refuses the cancelled run (querying it again).
+    const getSpy = vi.spyOn(deps.runs, "get");
+    const outcome = await dispatcher.resume(runId);
+    expect(outcome.accepted).toBe(false);
+    expect(outcome.reason).toMatch(/cancelled and cannot be resumed/i);
+    const getsForRun = getSpy.mock.calls.filter(([id]) => id === runId).length;
+    // Two queries: the sweep found the retained (now-cancelled) run and
+    // evicted it; a build without the sweep would query only once.
+    expect(getsForRun).toBe(2);
+    getSpy.mockRestore();
   });
 
   /**

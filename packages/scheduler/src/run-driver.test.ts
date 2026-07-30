@@ -234,6 +234,211 @@ describe("driveRun — the DAG dispatch loop", () => {
     expect(result.stopped).toBe("parked");
   });
 
+  it("resumes a parked-ready unit via the resume seam and completes, instead of sitting parked", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    // Park A in THIS run with a reset window already in the past.
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
+
+    const observed = newObserved();
+    const resumed: { readonly unitId: string; readonly sessionId: string }[] = [];
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), observed, new Map()),
+      nowSeconds: () => 1000, // past the park's resetsAt → readyToResume
+      resumeParkedUnit: (ctx, sessionId) => {
+        resumed.push({ unitId: ctx.workUnit.id, sessionId });
+        return Promise.resolve({
+          kind: "succeeded",
+          sessionId,
+          result: buildWorkerResult({ outcome: "succeeded" }),
+        });
+      },
+    };
+
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      deps,
+    );
+
+    // The parked-ready unit was RESUMED (its retained session id), never
+    // freshly dispatched, and the run then completes.
+    expect(resumed).toEqual([{ unitId: A, sessionId: SESSION }]);
+    expect(observed.dispatchOrder).toEqual([]);
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(result.stopped).toBe("completed");
+  });
+
+  it("completes a chain where each unit parks on dispatch then resumes — no false roundLimit", async () => {
+    // A→B chain: A parks on dispatch, resumes → succeeds → B becomes ready, B
+    // parks on dispatch, resumes → succeeds. That is FOUR rounds (dispatch A,
+    // resume A, dispatch B, resume B) — one more than the old `length + 1`
+    // backstop allowed, which would have tripped a false `roundLimit`.
+    const observed = newObserved();
+    const resumedOrder: string[] = [];
+    const deps: RunDriverDependencies = {
+      // Both units hit a rate limit on their first dispatch.
+      ...buildDeps(
+        new Map([
+          [A, "limit" as const],
+          [B, "limit" as const],
+        ]),
+        observed,
+        new Map(),
+      ),
+      // Past the fixture park's resetsAt (1784135400) → ready to resume.
+      nowSeconds: () => 2_000_000_000,
+      resumeParkedUnit: (ctx, sessionId) => {
+        resumedOrder.push(ctx.workUnit.id);
+        return Promise.resolve({
+          kind: "succeeded",
+          sessionId,
+          result: buildWorkerResult({ outcome: "succeeded" }),
+        });
+      },
+    };
+
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain(), concurrencyCap: 1 },
+      deps,
+    );
+
+    expect(result.stopped).toBe("completed");
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(result.statusById.get(B)).toBe("succeeded");
+    // Each was dispatched (parking) then resumed, A's chain fully before B's.
+    expect(observed.dispatchOrder).toEqual([A, B]);
+    expect(resumedOrder).toEqual([A, B]);
+    // Four rounds — would have been a false roundLimit under the old N+1 cap.
+    expect(result.rounds).toBe(4);
+  });
+
+  it("leaves a parked unit whose reset window has NOT passed parked, never resuming it", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    // Reset window is in the FUTURE relative to nowSeconds → not ready.
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 5000,
+      runId: RUN_ID,
+    });
+
+    const observed = newObserved();
+    const resumed: string[] = [];
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), observed, new Map()),
+      nowSeconds: () => 1000, // BEFORE resetsAt
+      resumeParkedUnit: (ctx) => {
+        resumed.push(ctx.workUnit.id);
+        return Promise.resolve({
+          kind: "succeeded",
+          sessionId: SESSION,
+          result: buildWorkerResult({ outcome: "succeeded" }),
+        });
+      },
+    };
+
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      deps,
+    );
+
+    expect(resumed).toEqual([]); // reset window not passed → not resumed
+    expect(result.statusById.get(A)).toBe("parked:rate_limit");
+    expect(result.stopped).toBe("parked");
+  });
+
+  it("leaves a parked-ready unit parked when the seam declines (undefined) — the daemon-restart case", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      {
+        ...buildDeps(new Map(), observed, new Map()),
+        nowSeconds: () => 1000,
+        // The dispatcher has no retained adapter for this unit (restart) →
+        // declines rather than resume into a read-only session.
+        resumeParkedUnit: () => Promise.resolve(undefined),
+      },
+    );
+    expect(result.statusById.get(A)).toBe("parked:rate_limit");
+    expect(result.stopped).toBe("parked");
+  });
+
+  it("without a resume seam, a parked-ready unit stays parked (pre-feature behaviour unchanged)", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      { ...buildDeps(new Map(), observed, new Map()), nowSeconds: () => 1000 }, // no resumeParkedUnit
+    );
+    expect(result.statusById.get(A)).toBe("parked:rate_limit");
+    expect(result.stopped).toBe("parked");
+  });
+
   it("stops gracefully when an account-wide pause is already in force, dispatching nothing", async () => {
     // Established the way `executor.test.ts` does — via parkWorkUnit's own
     // accountWide flag on an unrelated unit, never by inventing an

@@ -47,7 +47,7 @@ import {
 } from "./fanout.js";
 import { dispatchAttempt, type DispatchAttemptOutcome } from "./executor.js";
 import { GlobalPauseActiveError } from "./errors.js";
-import { isGloballyPaused } from "./parking.js";
+import { getParkStatus, isGloballyPaused } from "./parking.js";
 import { resolveModelForRole } from "./router.js";
 // NOTE: this driver briefly also carried an in-memory `AttemptCacheSeam`
 // (phase 13's `SchedulerCache`, wired 2026-07-30). The journal-seeding
@@ -87,6 +87,27 @@ export interface RunDriverDependencies {
   readonly resolveModel?: (role: string) => string;
   /** Epoch-SECONDS clock (matching `EngineLimitSignalEvent.resetsAt`, docs/engine-baseline.md §8) used for the global-pause window check. Defaults to the real wall clock. */
   readonly nowSeconds?: () => number;
+  /**
+   * Resumes a rate-limit-parked unit whose reset window has passed, via 13's
+   * `resumeAttempt({kind:"parkResume"})` path — the ONLY way to continue a
+   * parked unit, since re-dispatching it fresh would count its original
+   * dispatch toward the repair budget and be refused. The caller (the
+   * daemon dispatcher) reconstructs the `SessionRef` from the RETAINED
+   * per-unit adapter that spawned the session, so the resumed session keeps
+   * full authority rather than the read-only fallback a stranger adapter
+   * gets. `sessionId` comes from the park record; the outcome folds back
+   * exactly like a fresh dispatch.
+   *
+   * ABSENT means parked units are left parked (the run stops `parked`) — the
+   * behaviour before this seam existed. Returning `undefined` means the same
+   * for THIS unit: the caller could not resume it (no retained adapter — a
+   * re-drive after a daemon restart) and declined rather than resume into a
+   * read-only session, so the driver leaves it parked. Same-daemon only.
+   */
+  readonly resumeParkedUnit?: (
+    ctx: WorkerDispatchContext,
+    sessionId: string,
+  ) => Promise<DispatchAttemptOutcome | undefined>;
 }
 
 export interface DriveRunOptions {
@@ -205,7 +226,14 @@ export async function driveRun(
 ): Promise<DriveRunResult> {
   const overlapVerdicts = options.overlapVerdicts ?? [];
   const concurrencyCap = options.concurrencyCap ?? DEFAULT_CONCURRENCY_CAP;
-  const maxRounds = options.maxRounds ?? options.workUnits.length + 1;
+  // Each unit can consume up to TWO rounds now: one to dispatch it, and one to
+  // RESUME it after a rate-limit park. (A resume that re-parks sets a FUTURE
+  // reset, so it is not ready-to-resume again this drive and the drive stops
+  // `parked` — the resume path cannot spin within a drive, so a unit is
+  // resumed at most once per drive.) Before active park resume this was
+  // `length + 1`; a run where more than one unit parked would then have
+  // tripped this backstop into a false `roundLimit`.
+  const maxRounds = options.maxRounds ?? options.workUnits.length * 2 + 1;
   const resolveModel = deps.resolveModel ?? resolveModelForRole;
   const nowSeconds = deps.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
@@ -270,9 +298,61 @@ export async function driveRun(
     return "completed";
   };
 
+  /**
+   * Resumes every rate-limit-parked unit whose reset window has passed, via
+   * the injected seam, folding each outcome back into `statusById`. Returns
+   * the ids it resumed this round. A `parkResume` never consumes repair
+   * budget (`attempt-policy.ts`'s `previousStatus` exclusion), so a unit that
+   * parks again is simply parked again — the `maxRounds` backstop bounds a
+   * pathological park→resume→park cycle.
+   */
+  const resumeReadyParkedUnits = async (): Promise<readonly string[]> => {
+    if (deps.resumeParkedUnit === undefined) return [];
+    const resumed: string[] = [];
+    for (const unit of options.workUnits) {
+      if (statusById.get(unit.id) !== "parked:rate_limit") continue;
+      const park = await getParkStatus(deps.journal, unit.id, nowSeconds(), options.runId);
+      if (!park.parked || !park.readyToResume || park.sessionId === undefined) continue;
+      try {
+        const outcome = await deps.resumeParkedUnit(
+          {
+            workUnit: unit,
+            model: resolveModel(unit.role),
+            runId: options.runId,
+            changeSetId: options.changeSetId,
+          },
+          park.sessionId,
+        );
+        // `undefined` = the caller could not resume it (no retained adapter,
+        // e.g. after a daemon restart) and declined rather than resume into a
+        // read-only session — leave it parked.
+        if (outcome === undefined) continue;
+        statusById.set(unit.id, statusForOutcome(outcome));
+        outcomes.push({ workUnitId: unit.id, outcome });
+        resumed.push(unit.id);
+      } catch (err) {
+        // An account-wide pause re-established while resuming refuses at the
+        // executor's own gate — leave the unit parked, exactly as the fresh
+        // dispatch path does, rather than crash the drive.
+        if (err instanceof GlobalPauseActiveError) continue;
+        throw err;
+      }
+    }
+    return resumed;
+  };
+
   for (;;) {
     const ready = computeReadyUnits({ workUnits: options.workUnits, statusById, overlapVerdicts });
-    if (ready.length === 0) return finish(classifyIdleRun());
+    if (ready.length === 0) {
+      // No FRESH unit is ready — but a parked unit's reset window may have
+      // passed. Resuming it is the difference between a run that continues
+      // once the rate limit clears and one that sits parked forever.
+      const resumed = await resumeReadyParkedUnits();
+      if (resumed.length === 0) return finish(classifyIdleRun());
+      rounds += 1;
+      if (rounds >= maxRounds) return finish("roundLimit");
+      continue;
+    }
 
     if (rounds >= maxRounds) return finish("roundLimit");
 
