@@ -64,11 +64,17 @@ import {
   type GitPlumbing,
 } from "@crabgic/git-engine";
 import { compileEnvelope, isContained } from "@crabgic/engine-core";
-import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
-import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
+import type { AdjudicationCallback, EngineAdapter, SessionRef } from "@crabgic/engine-core";
+import {
+  ClaudeEngineAdapter,
+  createSessionRef,
+  type WorkerAuthMaterial,
+} from "@crabgic/engine-claude";
 import {
   buildTaskPacket,
   driveRun,
+  resumeAttempt,
+  type DispatchAttemptOutcome,
   type DriveRunResult,
   type WorkerDispatchContext,
 } from "@crabgic/scheduler";
@@ -310,6 +316,21 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
 
+    // Per-unit adapters RETAINED for this drive's lifetime, so a
+    // rate-limit-parked unit can be RESUMED (not re-dispatched — that would
+    // count its original dispatch toward the repair budget and be refused).
+    // A resume needs the SAME adapter instance that spawned the session: only
+    // it holds that session's `{packet, profile}` context, so `adapter.resume`
+    // continues with full authority instead of the read-only fallback a fresh
+    // adapter gets (`docs/…` engine-baseline; adapter.ts's spawn-context
+    // cache). The map lives only for this `drive()` call — a re-drive after a
+    // daemon restart finds it empty and declines to resume (leaves the unit
+    // parked), which is the ledger's separate restart-safe carry-forward.
+    const retainedWorkers = new Map<
+      string,
+      { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
+    >();
+
     // ONE freeze per run: every attempt is based on the same object id,
     // which is what makes a run's results comparable and its worktrees
     // mergeable against a single known base.
@@ -388,19 +409,54 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
                   });
                   return created.worktreePath;
                 })();
-          if (options.createAdapter !== undefined) {
-            return options.createAdapter(ctx, worktreePath, deps.journal);
-          }
+          // Provisioned uniformly (both the real and the test-injected adapter
+          // path) so `configDir` is always known for a later resume's
+          // SessionRef reconstruction — a `parkResume` scope-matches on the
+          // worktree, and the config dir isolates the session's transcript.
           const provisioning = await provisionWorkerDirs(
             join(worktreesRootDir, "workers"),
             ctx.workUnit.id,
           );
-          return new ClaudeEngineAdapter({
+          const adapter =
+            options.createAdapter !== undefined
+              ? await options.createAdapter(ctx, worktreePath, deps.journal)
+              : new ClaudeEngineAdapter({
+                  worktreePath,
+                  provisioning,
+                  auth: options.auth,
+                  journal: deps.journal,
+                  model: ctx.model,
+                  runId,
+                });
+          retainedWorkers.set(ctx.workUnit.id, {
+            adapter,
             worktreePath,
-            provisioning,
-            auth: options.auth,
+            configDir: provisioning.CLAUDE_CONFIG_DIR,
+          });
+          return adapter;
+        },
+        resumeParkedUnit: async (ctx, sessionId): Promise<DispatchAttemptOutcome | undefined> => {
+          const retained = retainedWorkers.get(ctx.workUnit.id);
+          // No retained adapter — a re-drive after a daemon restart lost it.
+          // Decline rather than resume into a read-only fallback session that
+          // could not complete the work; the driver leaves the unit parked.
+          if (retained === undefined) return undefined;
+          // Reconstruct the SessionRef the adapter spawned this session with:
+          // `createSessionRef` sets `projectDirectory` to the worktree path,
+          // and the resume scope-check compares exactly those two — so the
+          // retained worktree + the journaled sessionId identify the session.
+          const sessionRef: SessionRef = createSessionRef({
+            sessionId,
+            worktreePath: retained.worktreePath,
+            configDir: retained.configDir,
+          });
+          return resumeAttempt({
+            adapter: retained.adapter,
             journal: deps.journal,
-            model: ctx.model,
+            sessionRef,
+            workUnitId: ctx.workUnit.id,
+            adjudicate,
+            trigger: { kind: "parkResume" },
             runId,
           });
         },

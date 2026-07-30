@@ -289,6 +289,71 @@ describe("createRealRunDispatcher — dispatch", () => {
   });
 
   /**
+   * Active park resume (task #8): a rate-limit-parked unit whose reset window
+   * has passed is RESUMED via the RETAINED adapter — the same instance that
+   * spawned the session, so `adapter.resume` continues with full authority.
+   * The fake proves this by construction: its `resume` throws for an unknown
+   * session, so a resume driven through a fresh adapter would crash. Success
+   * (the unit reaching `succeeded`) with `createAdapter` called exactly once
+   * is the retained-adapter reuse.
+   */
+  it("resumes a parked-ready unit via the retained adapter and completes it", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    const worktreePath = join(dir, "worktree"); // the default createAttemptWorktree
+    let adaptersCreated = 0;
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              // Scope MUST match what the dispatcher reconstructs:
+              // createSessionRef sets projectDirectory := worktreePath.
+              projectDirectory: worktreePath,
+              worktreePath,
+              // Park on the first run: reset window in the deep past → the
+              // driver finds it ready-to-resume immediately.
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 1, rateLimitType: "five_hour" },
+              },
+              // The continuation the retained adapter runs on resume.
+              onResume: buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+              }),
+            }),
+          ),
+        );
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    // The unit parks, then the driver resumes it to success — observable as a
+    // `succeeded` work-unit transition in the journal.
+    await vi.waitFor(
+      async () => {
+        const statuses: string[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          const s = (entry.payload as { status?: string }).status;
+          if (typeof s === "string") statuses.push(s);
+        }
+        expect(statuses).toContain("parked:rate_limit");
+        expect(statuses).toContain("succeeded");
+      },
+      { timeout: 10_000 },
+    );
+    // Resume reused the RETAINED adapter — it never asked for a fresh one.
+    expect(adaptersCreated).toBe(1);
+  });
+
+  /**
    * The turn cap is AUTHORIZED authority, not a dispatcher constant: the
    * envelope's `maxTurnsPerAttempt` (already tested for containment in the
    * standing policy by the time a dispatch reaches packet compilation) is
