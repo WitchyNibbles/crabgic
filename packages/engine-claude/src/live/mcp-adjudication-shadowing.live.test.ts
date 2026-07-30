@@ -49,12 +49,20 @@
  *   against the advertised name matches NOTHING — a control that looks installed
  *   and is not, which is exactly the failure this probe exists because of.
  *
- * KNOWN FLAKY, AND THE FLAKE IS THE MODEL. Across eight live runs a `haiku`
- * worker invoked the stub tool roughly one time in eight, on identical options —
- * it answers in prose instead. `untilToolInvoked` retries the PRECONDITION up to
- * five times, which helps and does not fix it. A run that ends INCONCLUSIVE has
- * measured nothing; it is not a regression, and the assertions are worded so that
- * cannot be misread.
+ * THE FLAKE WAS THE MODEL, AND IT IS NOW FIXED AT THE SOURCE. Across eight live
+ * runs a `haiku` worker invoked the stub tool roughly one time in eight, on
+ * identical options — it answers in prose instead. Since each prose answer is
+ * fast, the five-retry loop burned all five attempts in ~40s at ~1/8 each, so
+ * the tool-invoked precondition still MISSED about half the time ((7/8)^5 ≈
+ * 0.51) — the failure a full-suite run hit on 2026-07-30. Because BOTH facts
+ * this probe measures are SDK permission-layer properties independent of which
+ * model emits the `tool_use`, the model is a free variable: this probe now
+ * drives a `sonnet` worker (`RELIABLE_TOOL_CALLER_MODEL`) with a maximally
+ * directive prompt (`callToolPrompt`), which follows "call this tool" on the
+ * first turn. `untilToolInvoked` is kept as a guard against a rare refusal, not
+ * as the load-bearing mechanism. A run that still ends INCONCLUSIVE has measured
+ * nothing; it is not a regression, and the assertions are worded so that cannot
+ * be misread.
  *
  * Both facts above are nonetheless SETTLED, because each rests on a positive
  * observation and non-reproduction does not weaken one: (a) passed on a run where
@@ -120,6 +128,36 @@ const ALTERNATIVE_TOOLS: readonly string[] = [
  */
 const PROBE_TOOL_ADVERTISED = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe.echo`;
 const PROBE_TOOL = `mcp__${GATEWAY_MCP_SERVER_NAME}__probe_echo`;
+
+/**
+ * The model this probe drives — NOT the suite's default `haiku`.
+ *
+ * The two facts under test (canUseTool shadowed; PreToolUse hook fires) are
+ * SDK permission-layer properties, independent of which model emits the
+ * `tool_use`. Haiku emitted the stub call only ~1 run in 8 — answering in
+ * prose — so the tool-invoked PRECONDITION flaked ~half the time even with
+ * five retries (each prose answer is fast, so the loop burned all five in
+ * ~40s at ~1/8 each: (7/8)^5 ≈ 0.51 miss). A model that reliably follows
+ * "call this tool" makes the precondition dependable while measuring the exact
+ * same model-independent engine fact. `runDirectQuery` defaults to haiku; only
+ * this probe overrides it.
+ */
+const RELIABLE_TOOL_CALLER_MODEL = "sonnet";
+
+/**
+ * Maximally directive: sonnet follows this on the first turn, so `untilToolInvoked`
+ * almost never needs a second attempt — the retry stays only as a guard against
+ * a rare refusal. Framed so the tool call is the sole permitted action (no prose,
+ * no planning), and naming the advertised (dotted) form the model is given.
+ */
+function callToolPrompt(text: string): string {
+  return (
+    `You have exactly one tool available: ${PROBE_TOOL_ADVERTISED}. ` +
+    `Your ONLY task is to invoke it exactly once with the argument text set to "${text}". ` +
+    `Do not answer in prose, do not explain, do not plan, do not search for other tools — ` +
+    `issue that single tool call immediately as your first and only action, then stop.`
+  );
+}
 
 /**
  * Whether the model genuinely INVOKED `toolName` — a real `tool_use` content
@@ -199,7 +237,8 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
         const canUseToolCalls: string[] = [];
         const result = await untilToolInvoked(5, () =>
           runDirectQuery(resolveWorkerAuthMaterial(), {
-            prompt: `Use the ${PROBE_TOOL_ADVERTISED} tool now, with text set to "shadow-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
+            prompt: callToolPrompt("shadow-probe"),
+            model: RELIABLE_TOOL_CALLER_MODEL,
             cwd: scratch.worktreePath,
             configDir: scratch.configDir,
             homeDir: scratch.homeDir,
@@ -252,7 +291,8 @@ describe("MCP adjudication shadowing (engine fact, live)", () => {
         const hookCalls: string[] = [];
         const result = await untilToolInvoked(5, () =>
           runDirectQuery(resolveWorkerAuthMaterial(), {
-            prompt: `Use the ${PROBE_TOOL_ADVERTISED} tool now, with text set to "hook-probe". Do not search for tools and do not use Bash; the tool is already available to you. Call it, then stop.`,
+            prompt: callToolPrompt("hook-probe"),
+            model: RELIABLE_TOOL_CALLER_MODEL,
             cwd: scratch.worktreePath,
             configDir: scratch.configDir,
             homeDir: scratch.homeDir,
