@@ -188,6 +188,24 @@ describe("checkPublication — `publishable` (pre-publish) expectation", () => {
     expect(result.manifestPrivate).toBe(true);
     expect(result.reasons.some((r) => r.includes('"private": true'))).toBe(true);
   });
+
+  it("KNOWN ASYMMETRY: an uninterpretable zero-exit payload reads as zero-versions ⇒ publishable", async () => {
+    // A valid-JSON, zero-exit payload that is neither an array nor a string
+    // (`{}`, `42`) is read as zero known versions (interpretRegistryAnswer),
+    // so publishable mode PASSES where published mode would block. This is
+    // deliberately pinned, not fixed: `npm view … versions --json` never emits
+    // that shape (it returns an array, a bare string, or E404), and even if it
+    // did, a pre-publish PASS only lets the pipeline reach the REAL publish,
+    // which the strengthened exact-version post-publish re-check backstops.
+    const result = await checkPublishable(
+      await seedManifest(PUBLISHED_MANIFEST),
+      output({ stdout: "{}\n" }),
+    );
+    expect(result.registryAnswered).toBe(true);
+    expect(result.publishedVersions).toEqual([]);
+    expect(result.published).toBe(false);
+    expect(result.reasons).toEqual([]);
+  });
 });
 
 describe("RealNpmViewRunner — genuine `npm view` child process", () => {
