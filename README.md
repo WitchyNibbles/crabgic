@@ -59,8 +59,11 @@ crabgic run < intake.json
 
 Work covered by the standing policy you approved at install time goes straight to a
 dispatched run — no prompt, no token, nothing to confirm. Work that reaches outside it
-stops and tells you exactly which authority it needs; you approve that at your own
-terminal with `crabgic approve <envelope-digest>`, and it starts.
+stops and tells you exactly which authority it needs and which policy file to add it to;
+you widen the standing policy at your own terminal, then run `crabgic run` again and it
+goes straight through. (Approval grants no authority — the dispatch gate is
+containment-only — so the fix for out-of-policy work is always the policy, never a
+token.)
 
 > 🦀 **Crab tip:** from inside a Claude Code session you don't write the JSON yourself —
 > `/eo:run` drafts the intake request from the conversation and hands it to the CLI.
@@ -140,7 +143,7 @@ The full command surface, straight from `crabgic --help`:
 | `crabgic install [--dry-run] [--json]` | 📦 Install the plugin / managed config into this project |
 | `crabgic doctor [--repair-plan] [--json]` | 🩺 Validate the host end-to-end against seeded fault checks |
 | `crabgic run [--json]` | 🚀 Dispatch a new run |
-| `crabgic approve <envelope-digest>` | 🤝 Approve a pending envelope at your terminal (human-only escalation path) |
+| `crabgic approve <envelope-digest>` | 🤝 Record human consent to a pending plan at your terminal (grants no authority — widen the policy for that) |
 | `crabgic status [run-id] [--watch] [--json]` | 👀 Show (or stream) a run's status |
 | `crabgic resume <run-id>` | ▶️ Resume a parked or interrupted run |
 | `crabgic cancel <run-id\|task-id>` | 🛑 Cancel a run or a task within it |
@@ -178,10 +181,13 @@ with real options and a notes field — never a plain-text "1 / 2 / 3 / 4" list.
 Two blocking gates — plus one more if you turn on learning. All of them live in your
 terminal, and none can be reached by a model, a script, or a CI job.
 
-- **🤝 Envelope approval** — before out-of-policy work runs, `crabgic approve <digest>`
-  prints what the envelope actually grants (change set, owned paths, commands, network
-  destinations, credential references) and waits for you to type `yes`. Exactly `yes`.
-  The token it mints is single-use (durable ledger), HMAC-signed, verified against that
+- **🤝 Plan consent** — `crabgic approve <digest>` records a human's consent to a
+  pending plan (the `awaiting_approval → ready` transition, e.g. after a material
+  amendment). It prints what the envelope actually grants (change set, owned paths,
+  commands, network destinations, credential references) and waits for you to type
+  `yes`. Exactly `yes`. It does NOT grant authority: the dispatch gate is
+  containment-only, so out-of-policy work is cured by widening the standing policy, not
+  by approving. The token it mints is single-use (durable ledger), HMAC-signed, verified against that
   change set's own *stored* digest, and spent in the same process before the command
   returns — it is never printed, so nothing can courier it. The prompt is refused
   outright on a piped stdin, and refused when the process carries agent-runtime or CI

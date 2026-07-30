@@ -6,8 +6,11 @@
  * `crabgic install` writes an `EnvelopePolicy`, and a freshly-built envelope
  * contained in it needs no prompt and no token. Not contained → the run does
  * not silently proceed with less authority and does not half-approve; it stops
- * and the human decides, which is `expanded_authority`'s routine form and what
- * `crabgic approve <digest>` exists to answer.
+ * and the human decides. The decision is a POLICY edit, not a token: the
+ * dispatch gate is containment-only (Gap 18 part 2), so `crabgic approve`
+ * cannot grant the missing authority — it gates only the plan-consent
+ * transition. The escalation the caller renders therefore names the policy
+ * file to widen, then re-run.
  *
  * WHY THIS IS THE GATE, and the prompt is not. Gap 18 part 3: "The model can
  * never widen the policy. Creating or extending it is out-of-band." That —
