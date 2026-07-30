@@ -398,10 +398,61 @@ they are not mistaken for settled:
    under, because kappa pooled across a rubric rewrite measures two different
    classifiers.
 
-   **What still needs the owner is the owner's own calls** — twenty of them, with
-   at least eight in each class. That is real labour, so the tool spends it well:
-   it asks first about the findings where a misclassification already left a
-   trace, an `advisory` that got fixed anyway or a `blocking` that got refuted.
+   **Amended 2026-07-30 — one threshold was doing two incompatible jobs, and
+   kappa was the wrong number to certify with.** Two findings forced this, both
+   arithmetic rather than opinion.
+
+   An exhaustive enumeration of the gate as built — n = 20, κ lower bound ≥ 0.6 —
+   found that exactly **three of 117 reachable tables pass**, all at 19/20
+   agreement or better. It was "at least 95% raw agreement" wearing a confidence
+   interval's clothes: a genuinely good classifier (true κ ≈ 0.79) passed 39% of
+   the time and a mediocre one 7%, so the verdict mostly measured sampling luck.
+   Published sample-size tables want n ≈ 93–119 to separate κ 0.4 from 0.6 at 80%
+   power — an order of magnitude more than the gate asked for.
+
+   And **kappa does not transfer across prevalence.** The same classifier scores
+   κ 0.79 on a 40%-blocking corpus and 0.59 at a 10% production blocking rate,
+   with nothing about the classifier changed, because the corpus is deliberately
+   stratified and kappa is prevalence-dependent. Certifying on it means
+   certifying a number that stops holding the moment it is used.
+
+   So the verdict is now **four tiers**, each floor set where it can actually be
+   met by a classifier that deserves to meet it:
+
+   | tier                  | needs                                                                                               |
+   | --------------------- | --------------------------------------------------------------------------------------------------- |
+   | `provisional`         | n ≥ 20 random samples, ≥ 8 per class, κ̂ ≥ 0.6, κ lower bound ≥ 0.4                                  |
+   | `calibrated`          | n ≥ 50, ≥ 20 blocking labels, **per-class recall lower bound ≥ 0.7 both ways**, κ lower bound ≥ 0.4 |
+   | `strongly-calibrated` | n ≥ 100, recall bounds ≥ 0.75, κ lower bound ≥ 0.6                                                  |
+
+   `provisional` is a screen and closes no stage: it says "not a decorative
+   judge", which is the job the original threshold could not do while also
+   certifying. Certification rests on **per-class recall**, bounded exactly
+   (Clopper–Pearson, `packages/cli/src/review/binomial-bounds.ts`) rather than by
+   a normal approximation that is optimistic exactly where optimism is least
+   warranted. Sensitivity and specificity are prevalence-invariant, so a bound
+   measured on the corpus still means something in production; kappa is kept as
+   the secondary drift diagnostic it is genuinely good at, detecting the
+   classifier's positive rate drifting from the owner's. The report also projects
+   production precision at a supplied blocking rate, because that is the number
+   an owner feels and the corpus cannot state on its own.
+
+   **Only uniformly-drawn samples score.** The tool asks first about findings
+   where a misclassification already left a trace — an `advisory` fixed anyway, a
+   `blocking` refuted — which is excellent triage and a biased sample: kappa over
+   an error-enriched pool is biased _down_, so a diligent owner would have made
+   an already-unpassable gate harder. Targeted samples are still recorded and
+   still earn their keep as rubric diagnostics; they simply do not decide the
+   verdict, and the report says how many it held out so "twenty labels and still
+   uncalibrated" reads as an explanation rather than a puzzle.
+
+   **What still needs the owner is the owner's own calls** — and more of them than
+   before: fifty, with twenty blocking, for a verdict that closes a stage. At
+   10–20 labels a week that is roughly `provisional` in week two and `calibrated`
+   in month two. The floors are higher because the old ones could not support the
+   claim the pipeline depends on: a _perfect_ eight-of-eight blocking corpus
+   bounds recall at 0.688, so "catches at least 70% of blockers" was unprovable
+   at the old minority-class floor no matter how well the classifier did.
 
 4. **Where the pipeline is driven from.** Orchestrator-mediated turns and a
    `Workflow` script are both viable (§5); the choice is unmade and is not

@@ -90,6 +90,14 @@ export async function loadCalibrationSamples(path: string): Promise<readonly Cal
  * The current rubric is stamped on any sample that arrives without one, so an
  * unversioned sample can never enter the store and later be misread as belonging
  * to rubric 1.
+ *
+ * The sampling source is stamped for the same reason and defaults the same
+ * conservative way (2026-07-30). Only the uniformly-drawn slice scores the gate,
+ * so a sample that arrives without provenance is recorded as `disposition` — the
+ * path it almost certainly came from — rather than being allowed to look random
+ * later. The default is the fail-closed one: over-admitting a biased sample to
+ * the gate is the failure that matters, and under-admitting one costs only a
+ * label.
  */
 export async function recordCalibrationSample(
   path: string,
@@ -99,6 +107,7 @@ export async function recordCalibrationSample(
   const stamped: CalibrationSample = {
     ...sample,
     rubricVersion: sample.rubricVersion ?? CLASSIFICATION_RUBRIC_VERSION,
+    samplingSource: sample.samplingSource ?? "disposition",
   };
   const key = (entry: CalibrationSample): string =>
     `${entry.findingId}@${String(entry.rubricVersion ?? 1)}`;
