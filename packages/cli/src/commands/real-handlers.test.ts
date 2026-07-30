@@ -129,3 +129,89 @@ describe("runDoctorCommand", () => {
     expect(Array.isArray(parsed.repairPlan)).toBe(true);
   });
 });
+
+/**
+ * `status <run-id>` reports PROGRESS, not just the run's lifecycle state.
+ *
+ * The state answers "is it going?"; an operator watching a multi-minute run
+ * needs "how far has it got?", and the journal already held that. Wired here
+ * rather than asserted only on the fold, because a pure function nothing calls
+ * is the failure mode this repository has paid for before.
+ */
+describe("runStatusCommand — work-unit progress", () => {
+  function depsWith(entries: readonly unknown[]): CliDependencies {
+    return {
+      projectHash: "test-hash",
+      connectClient: () =>
+        Promise.resolve({
+          request: () =>
+            Promise.resolve({
+              run: {
+                runId: "run-1",
+                changeSetId: "cs-1",
+                runState: "running",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+              },
+            }),
+          close: () => Promise.resolve(),
+          onEvent: () => () => undefined,
+        } as never),
+      journal: {
+        queryEntries: (() =>
+          (async function* () {
+            for (const entry of entries) yield entry;
+          })()) as never,
+        verifyJournal: (() => Promise.resolve({ ok: true, entries: 0 })) as never,
+      },
+    } as CliDependencies;
+  }
+
+  const transition = (workUnitId: string, status: string): unknown => ({
+    type: "work_unit_transition",
+    workUnitId,
+    payload: { status },
+  });
+
+  it("renders a progress line under the run line", async () => {
+    const result = await runStatusCommand(
+      { command: "status", runId: "run-1", watch: false, json: false },
+      depsWith([
+        transition("wu-1", "succeeded"),
+        transition("wu-2", "dispatched"),
+        transition("wu-3", "failed"),
+      ]),
+    );
+
+    expect(result.stdout).toContain("run run-1: running");
+    expect(result.stdout).toContain("work units seen:");
+    expect(result.stdout).toContain("1 succeeded");
+    expect(result.stdout).toContain("1 running");
+    expect(result.stdout).toContain("1 failed");
+  });
+
+  it("says nothing extra when the journal has seen no work units", async () => {
+    const result = await runStatusCommand(
+      { command: "status", runId: "run-1", watch: false, json: false },
+      depsWith([]),
+    );
+    expect(result.stdout).toContain("run run-1: running");
+    // "0 of 0" implies a denominator this cannot know; silence is honest.
+    expect(result.stdout).not.toContain("work units seen");
+  });
+
+  it("leaves --json exactly as 05 published it, because that shape is a contract", async () => {
+    // `./cli.commands.schema.test.ts` validates this output against the REAL
+    // `RunStatusResultSchema`, which is `.strict()`: the CLI's status JSON "IS
+    // literally 05's own published result, never re-shaped". Widening it is a
+    // cross-phase interface decision the ledger governs, so a rendering
+    // improvement must not smuggle a key in — and this pins that.
+    const result = await runStatusCommand(
+      { command: "status", runId: "run-1", watch: false, json: true },
+      depsWith([transition("wu-1", "succeeded"), transition("wu-2", "failed")]),
+    );
+
+    const parsed = JSON.parse(result.stdout!) as Record<string, unknown>;
+    expect(Object.keys(parsed)).toEqual(["run"]);
+    expect(parsed).not.toHaveProperty("progress");
+  });
+});

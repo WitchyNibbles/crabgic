@@ -9,6 +9,7 @@ import { EXIT_DOCTOR_FINDINGS, EXIT_OK, EXIT_GENERAL_ERROR } from "../exit-codes
 import { toErrorMessage } from "../errors.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
+import { renderRunProgress, summarizeRunProgress } from "../output/run-progress.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
 import { buildDefaultDoctorChecks } from "../doctor/run-doctor.js";
 import { queryEvidence } from "../evidence/query.js";
@@ -134,9 +135,25 @@ export async function runStatusCommand(
     });
 
     if (!cmd.watch) {
+      // Progress comes from the JOURNAL, not from the supervisor's reply: the
+      // run record carries a lifecycle state ("running"), which answers "is it
+      // going?" and not "how far has it got?". For a run spanning several work
+      // units those are different questions, and only the second one tells an
+      // operator whether to keep waiting.
+      // `--json` is NOT widened, deliberately. This suite's own contract note
+      // says `status`/`cancel` JSON output "IS literally 05's own published
+      // `RunStatusResultSchema` (the raw UDS result, never re-shaped)", and that
+      // schema is `.strict()`. Adding a CLI-side key here is a cross-phase
+      // interface change the ledger governs, not something a rendering
+      // improvement gets to smuggle in — so progress is human-rendered only, and
+      // a JSON consumer that needs it should get a ruling first.
+      if (cmd.json) {
+        return { exitCode: EXIT_OK, stdout: formatJson(result) };
+      }
+      const progress = await summarizeRunProgress(deps.journal, cmd.runId);
       return {
         exitCode: EXIT_OK,
-        stdout: cmd.json ? formatJson(result) : renderRunRecord(result.run, cmd.runId),
+        stdout: renderRunRecord(result.run, cmd.runId) + (renderRunProgress(progress) ?? ""),
       };
     }
 
