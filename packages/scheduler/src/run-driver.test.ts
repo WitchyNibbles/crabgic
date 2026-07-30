@@ -284,6 +284,50 @@ describe("driveRun — the DAG dispatch loop", () => {
     expect(result.stopped).toBe("completed");
   });
 
+  it("completes a chain where each unit parks on dispatch then resumes — no false roundLimit", async () => {
+    // A→B chain: A parks on dispatch, resumes → succeeds → B becomes ready, B
+    // parks on dispatch, resumes → succeeds. That is FOUR rounds (dispatch A,
+    // resume A, dispatch B, resume B) — one more than the old `length + 1`
+    // backstop allowed, which would have tripped a false `roundLimit`.
+    const observed = newObserved();
+    const resumedOrder: string[] = [];
+    const deps: RunDriverDependencies = {
+      // Both units hit a rate limit on their first dispatch.
+      ...buildDeps(
+        new Map([
+          [A, "limit" as const],
+          [B, "limit" as const],
+        ]),
+        observed,
+        new Map(),
+      ),
+      // Past the fixture park's resetsAt (1784135400) → ready to resume.
+      nowSeconds: () => 2_000_000_000,
+      resumeParkedUnit: (ctx, sessionId) => {
+        resumedOrder.push(ctx.workUnit.id);
+        return Promise.resolve({
+          kind: "succeeded",
+          sessionId,
+          result: buildWorkerResult({ outcome: "succeeded" }),
+        });
+      },
+    };
+
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain(), concurrencyCap: 1 },
+      deps,
+    );
+
+    expect(result.stopped).toBe("completed");
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(result.statusById.get(B)).toBe("succeeded");
+    // Each was dispatched (parking) then resumed, A's chain fully before B's.
+    expect(observed.dispatchOrder).toEqual([A, B]);
+    expect(resumedOrder).toEqual([A, B]);
+    // Four rounds — would have been a false roundLimit under the old N+1 cap.
+    expect(result.rounds).toBe(4);
+  });
+
   it("leaves a parked unit whose reset window has NOT passed parked, never resuming it", async () => {
     const SESSION = "77777777-7777-4777-8777-777777777777";
     // Reset window is in the FUTURE relative to nowSeconds → not ready.

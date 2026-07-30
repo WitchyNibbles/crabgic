@@ -226,7 +226,14 @@ export async function driveRun(
 ): Promise<DriveRunResult> {
   const overlapVerdicts = options.overlapVerdicts ?? [];
   const concurrencyCap = options.concurrencyCap ?? DEFAULT_CONCURRENCY_CAP;
-  const maxRounds = options.maxRounds ?? options.workUnits.length + 1;
+  // Each unit can consume up to TWO rounds now: one to dispatch it, and one to
+  // RESUME it after a rate-limit park. (A resume that re-parks sets a FUTURE
+  // reset, so it is not ready-to-resume again this drive and the drive stops
+  // `parked` — the resume path cannot spin within a drive, so a unit is
+  // resumed at most once per drive.) Before active park resume this was
+  // `length + 1`; a run where more than one unit parked would then have
+  // tripped this backstop into a false `roundLimit`.
+  const maxRounds = options.maxRounds ?? options.workUnits.length * 2 + 1;
   const resolveModel = deps.resolveModel ?? resolveModelForRole;
   const nowSeconds = deps.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
