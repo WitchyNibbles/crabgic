@@ -513,6 +513,90 @@ describe("createRealRunDispatcher — a published change set", () => {
       expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
     },
   );
+
+  /**
+   * The attempt-cache wiring, observed end to end (scheduler-level semantics
+   * are pinned in `run-driver.test.ts`; this pins that the dispatcher
+   * actually PASSES the seam). One daemon, two units: A succeeds, B fails,
+   * the run ends failed, the owner retries on the same daemon. The retry
+   * must not stand up a second engine for A — its result is reused — while
+   * B's re-dispatch is refused by the repair-evidence gate (no new evidence),
+   * exactly as 13's repair policy demands.
+   */
+  it("a same-daemon retry reuses the succeeded unit's work: no second adapter for it", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      workUnits: [
+        ...(seeded.workUnits ?? []),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const adaptersCreatedFor: string[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: (ctx: { workUnit: { id: string } }) => {
+        adaptersCreatedFor.push(ctx.workUnit.id);
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({
+                outcome: ctx.workUnit.id === UNIT_B ? "failed" : "succeeded",
+              }),
+            }),
+          ),
+        );
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    // Drive 1 has run its round once both units' terminal transitions are
+    // journaled (A succeeded, B failed).
+    await vi.waitFor(
+      async () => {
+        const transitions: unknown[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          transitions.push(entry);
+        }
+        expect(transitions.length).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 10_000 },
+    );
+    expect([...adaptersCreatedFor].sort()).toEqual([UNIT_ID, UNIT_B].sort());
+
+    // Mirror the control plane marking the run failed (this harness wires no
+    // router), then retry until the dispatcher's in-flight claim has been
+    // released and the retry is accepted.
+    const firstRunId = deps.runs.list()[0]!.runId;
+    await vi.waitFor(
+      async () => {
+        deps.runs.upsert({
+          runId: firstRunId,
+          changeSetId: CHANGE_SET_ID,
+          runState: "failed",
+          updatedAt: "2026-07-30T00:00:00.000Z",
+        });
+        expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+      },
+      { timeout: 10_000 },
+    );
+    // B genuinely re-dispatches (cache holds only successes) — its SECOND
+    // adapter creation is the signal the retry's drive has run its round.
+    await vi.waitFor(
+      () => {
+        expect(adaptersCreatedFor.filter((id) => id === UNIT_B).length).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 10_000 },
+    );
+    // THE WIRING FACT: the succeeded unit never got a second engine.
+    expect(adaptersCreatedFor.filter((id) => id === UNIT_ID)).toHaveLength(1);
+  });
 });
 
 /**

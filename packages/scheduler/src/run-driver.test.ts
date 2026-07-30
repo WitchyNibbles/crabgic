@@ -36,6 +36,8 @@ import {
   buildMinimalCompiledProfile,
 } from "./test-support/minimal-compiled-profile.js";
 import { parkWorkUnit } from "./parking.js";
+import { SchedulerCache } from "./cache.js";
+import type { DispatchAttemptOutcome } from "./executor.js";
 import { driveRun, type RunDriverDependencies } from "./run-driver.js";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -258,5 +260,93 @@ describe("driveRun — the DAG dispatch loop", () => {
     expect(result.stopped).toBe("parked");
     expect(observed.dispatchOrder).toEqual([]);
     expect(result.statusById.get(A)).toBe("pending");
+  });
+});
+
+describe("driveRun — attempt cache (phase 13's cache, finally with a production caller)", () => {
+  /**
+   * The measured gap this closes: nothing updates a stored WorkUnit's
+   * `attemptStatus` after intake, so `resume` (crash recovery, limit-park
+   * re-dispatch) re-seeds every unit `pending` and a second drive re-executes
+   * units that already SUCCEEDED — real engine spend and a fresh worktree for
+   * work whose result already exists. With the seam wired, the second drive
+   * must reuse the first drive's outcome: same statuses, no second adapter
+   * (and therefore no worktree, no engine process).
+   */
+  it("a second drive reuses a succeeded attempt: no adapter is created and the unit still succeeds", async () => {
+    const cacheSeam = {
+      cache: new SchedulerCache<DispatchAttemptOutcome>(),
+      toolchainFingerprint: "engine:test",
+    };
+    const first = newObserved();
+    const firstDeps = { ...buildDeps(new Map(), first, new Map()), attemptCache: cacheSeam };
+    const firstResult = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      firstDeps,
+    );
+    expect(firstResult.stopped).toBe("completed");
+    expect(first.dispatchOrder).toEqual([A, B]);
+
+    const second = newObserved();
+    const secondDeps = { ...buildDeps(new Map(), second, new Map()), attemptCache: cacheSeam };
+    const secondResult = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      secondDeps,
+    );
+    expect(secondResult.stopped).toBe("completed");
+    expect(secondResult.statusById.get(A)).toBe("succeeded");
+    expect(secondResult.statusById.get(B)).toBe("succeeded");
+    // THE point: the re-drive stood up zero engines.
+    expect(second.dispatchOrder).toEqual([]);
+  });
+
+  it("does NOT cache a failed attempt — only succeeded work product is reusable", async () => {
+    const cacheSeam = {
+      cache: new SchedulerCache<DispatchAttemptOutcome>(),
+      toolchainFingerprint: "engine:test",
+    };
+    const units = [
+      buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID, dependsOn: [], attemptStatus: "pending" }),
+    ];
+    const first = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: units },
+      { ...buildDeps(new Map([[A, "failed"]]), first, new Map()), attemptCache: cacheSeam },
+    );
+    expect(first.dispatchOrder).toEqual([A]);
+    expect(result.statusById.get(A)).toBe("failed");
+    // Nothing was cached: a later retry (13's evidence-gated repair path)
+    // must genuinely re-execute, never reuse a failure.
+    expect(cacheSeam.cache.size).toBe(0);
+  });
+
+  // Key sensitivity (a different base object id, owned path, turn budget or
+  // result schema is different work and never reuses) is pinned at the key
+  // level in `attempt-cache.test.ts` — a second live drive of the same unit
+  // in the same journal is refused by the repair-evidence gate below, so it
+  // cannot be exercised end-to-end here.
+
+  /**
+   * THE PRE-EXISTING RESUME BEHAVIOR THE SEAM FIXES, pinned so nobody
+   * mistakes it for a regression: without the cache, a re-drive of an
+   * already-succeeded unit reaches `dispatchAttempt`, whose repair-evidence
+   * gate counts the prior dispatch in the journal and REFUSES to repeat it
+   * with `evidenceKind: "none"` — the whole resume crashes. With the seam
+   * (test above), the succeeded unit never reaches the gate at all: its
+   * result is reused and only genuinely-pending work dispatches.
+   */
+  it("without the seam, a re-drive of a succeeded unit is REFUSED by the repair-evidence gate", async () => {
+    const first = newObserved();
+    await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      buildDeps(new Map(), first, new Map()),
+    );
+    const second = newObserved();
+    await expect(
+      driveRun(
+        { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+        buildDeps(new Map(), second, new Map()),
+      ),
+    ).rejects.toThrow(/repair attempt refused/);
   });
 });
