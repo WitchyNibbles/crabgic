@@ -255,12 +255,27 @@ jobs:
           DEST="$RUNNER_TEMP/arm64-evidence"
           mkdir -p "$DEST"
           QUERY="head_sha=$OBJECT_ID&event=push&status=success&per_page=1"
-          if ! RUN_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?$QUERY" --jq '.workflow_runs[0].id // empty')"; then
-            echo "::warning::could not query ci.yml runs for $OBJECT_ID"
-            RUN_ID=""
-          fi
+          # POLL, don't single-shot. `publish.yml` is tag-triggered and does
+          # NOT wait for the release-candidate commit's own `ci.yml` main-push
+          # run — the run that produces the arm64 record — to finish, so a
+          # single query races it and (aggravated by ci.yml's
+          # cancel-in-progress on main) usually loses. Wait up to ~15 min for a
+          # SUCCESS run at this exact object id to appear; that also absorbs a
+          # manual re-run of an unrelated flaked leg. A miss still fails soft
+          # (the record is simply absent and arm64-verification FAILs in
+          # scoring) rather than erroring the whole gate here.
+          RUN_ID=""
+          for attempt in $(seq 1 30); do
+            RUN_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?$QUERY" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)"
+            if [ -n "$RUN_ID" ]; then
+              echo "found successful ci.yml run $RUN_ID for $OBJECT_ID on attempt $attempt/30"
+              break
+            fi
+            echo "no successful ci.yml run for $OBJECT_ID yet (attempt $attempt/30); waiting 30s"
+            sleep 30
+          done
           if [ -z "$RUN_ID" ]; then
-            echo "::warning::no successful push-triggered ci.yml run for $OBJECT_ID -- arm64-verification will FAIL for want of a run record"
+            echo "::warning::no successful push-triggered ci.yml run for $OBJECT_ID within ~15 min -- arm64-verification will FAIL for want of a run record"
             exit 0
           fi
           if ! gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n arm64-run-record -D "$DEST"; then

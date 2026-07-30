@@ -20,8 +20,8 @@ const SECTION = [
   "## Exit criteria",
   "",
   "- [ ] Performance contracts satisfied rather than skipped, measured on a quiet host (15).",
-  "- [x] ARM64 build+test verified on real hardware/CI, or a substitute recorded.",
-  "  not a bullet",
+  "- [x] ARM64 build+test verified on real hardware/CI,",
+  "      or an explicitly documented substitute recorded.",
   "",
   "## Risks",
   "",
@@ -34,6 +34,17 @@ describe("parseExitCriteria", () => {
     expect(criteria).toHaveLength(2);
     expect(criteria[0]).toContain("Performance contracts satisfied");
     expect(criteria.join(" ")).not.toContain("should not be picked up");
+  });
+
+  it("JOINS a multi-line bullet's indented continuation into one criterion text", () => {
+    // A line-based parser silently truncated the sole multi-line exit
+    // criterion (the 8-family gateway bullet), losing the phrase its tag rule
+    // matches AND changing its derived id. A multi-line criterion must read as
+    // ONE space-joined text so its `deriveRequirementId` is stable.
+    const criteria = parseExitCriteria(SECTION);
+    expect(criteria[1]).toBe(
+      "ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded.",
+    );
   });
 
   it("returns nothing when the section is absent rather than guessing", () => {

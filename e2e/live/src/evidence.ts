@@ -61,7 +61,7 @@ export const GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG = "release-gate:gateway-cli-s
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
   "release-gate:live-conformance": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
   "release-gate:not-implemented-sweep": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
-  "release-gate:gateway-cli-surface-complete": "9acc0813-1b9a-57ab-b756-99cf57e42800",
+  "release-gate:gateway-cli-surface-complete": "ac0f822f-32b9-5471-bf1b-6a94fa658c6d",
 } as const);
 
 /** The requirement a given emitted tag evidences, or `undefined` for a tag this harness does not map. */
