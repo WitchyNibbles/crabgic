@@ -472,7 +472,8 @@ describe("createRealRunDispatcher — dispatch", () => {
   it("sweeps a cancelled parked run's retained adapter — no leak past cancel (F1 follow-up)", async () => {
     const SESSION = "99999999-9999-4999-8999-999999999999";
     const worktreePath = join(dir, "worktree");
-    let clock = 1000; // before the reset window → the first drive parks and ends
+    // Never advanced: this run stays parked and is cancelled, never resumed.
+    const clock = 1000; // before the reset window → the first drive parks and ends
     const deps = buildDeps({ ...fullySeeded(), run: false });
     const dispatcher = newDispatcher(deps, {
       nowSeconds: () => clock,
