@@ -37,11 +37,26 @@ function deepSorted(value: unknown): unknown {
   return value;
 }
 
-/** Content hash of everything on the packet that IS work, excluding the per-attempt `id`. */
-export function hashPacketContent(packet: TaskPacket): string {
+/**
+ * Content hash of one attempt's work: the RUN it belongs to plus everything
+ * on the packet except the per-attempt `id`.
+ *
+ * THE RUN ID IS PART OF THE KEY, DELIBERATELY (adversarial review,
+ * 2026-07-30). Without it, a retry run of the same change set on an
+ * untouched repo hashes identically to the cancelled/failed run before it,
+ * and silently absorbs that run's attempt — a unit `status <new-run>` can
+ * never show (transitions live under the old runId), whose work product
+ * lives in the old run's worktree namespace, and which an owner who
+ * cancelled the old run precisely because the work was wrong cannot force
+ * to re-execute (the cache has no invalidation API). Scoped to the run, a
+ * hit can only ever return work the SAME run already did — the worktree
+ * namespace and the journal's runId both match by construction — and a new
+ * run always re-executes.
+ */
+export function hashAttemptContent(runId: string, packet: TaskPacket): string {
   const { id: _id, ...content } = packet;
   const digest = createHash("sha256")
-    .update(JSON.stringify(deepSorted(content)))
+    .update(JSON.stringify([runId, deepSorted(content)]))
     .digest("hex");
   return `sha256:${digest}`;
 }

@@ -117,7 +117,7 @@ export type {
   UnitAttemptOutcome,
   WorkerDispatchContext,
 } from "./run-driver.js";
-export { hashPacketContent } from "./attempt-cache.js";
+export { hashAttemptContent } from "./attempt-cache.js";
 
 // ---- Executor: dispatch/resume + evidence seam (work item 1) ----
 export { dispatchAttempt, resumeAttempt } from "./executor.js";

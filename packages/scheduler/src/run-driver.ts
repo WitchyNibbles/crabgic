@@ -49,7 +49,7 @@ import { dispatchAttempt, type DispatchAttemptOutcome } from "./executor.js";
 import { GlobalPauseActiveError } from "./errors.js";
 import { isGloballyPaused } from "./parking.js";
 import { resolveModelForRole } from "./router.js";
-import { hashPacketContent } from "./attempt-cache.js";
+import { hashAttemptContent } from "./attempt-cache.js";
 import type { SchedulerCache } from "./cache.js";
 
 /** The per-attempt context every injected seam receives — enough to construct a worktree-scoped adapter, a packet, and a compiled profile without the driver knowing how any of them are built. */
@@ -83,14 +83,26 @@ export interface DriverTerminableWorker {
  * under (packet content hash, toolchain fingerprint) and a same-daemon
  * re-drive reuses it: no adapter, no worktree, no engine process.
  *
- * SCOPE, stated honestly: the cache is in-memory (phase 13 deferred
- * persistence), so this covers exactly the same-daemon resume scenarios —
- * a re-drive after a daemon RESTART still re-executes; restart-safe
- * re-dispatch remains the ledger's separate carry-forward. Only SUCCEEDED
- * outcomes are cached: a failed/crashed/parked/cancelled attempt must
- * genuinely re-execute. A hit journals nothing — the first attempt's
- * `work_unit_transition` is already the durable record, and a duplicate
- * entry would double-count usage in `status`'s spend line.
+ * SCOPE, stated honestly (tightened by adversarial review, 2026-07-30):
+ *
+ * - SAME RUN only: the key includes the runId (`hashAttemptContent`), so a
+ *   hit can only return work this run already did — same worktree
+ *   namespace, same journal runId — and a retry RUN of the same change set
+ *   always re-executes. Cross-run reuse would silently absorb a cancelled
+ *   run's work with no journal linkage and no invalidation escape.
+ * - SAME DAEMON only: the cache is in-memory (phase 13 deferred
+ *   persistence); a re-drive after a daemon restart finds nothing.
+ *   Restart-safe re-dispatch remains the ledger's separate carry-forward.
+ * - SUCCEEDED outcomes only: everything else must genuinely re-execute —
+ *   and today a re-driven unit with a journaled prior dispatch is REFUSED
+ *   by 13's repair-evidence gate rather than re-executed, because the
+ *   `parkResume`/repair triggers live on `resumeAttempt`, which has no
+ *   production caller yet (tracked follow-up). So what this seam covers in
+ *   practice is the re-drive of units that already succeeded; it does not
+ *   unwedge the gate for the rest.
+ * - A hit journals nothing — the first attempt's `work_unit_transition`
+ *   (same runId) is already the durable record, and a duplicate entry
+ *   would double-count usage in `status`'s spend line.
  */
 export interface AttemptCacheSeam {
   readonly cache: SchedulerCache<DispatchAttemptOutcome>;
@@ -177,7 +189,10 @@ async function runOneAttempt(
   if (deps.attemptCache !== undefined) {
     const packet = await deps.buildPacket(ctx);
     const key = {
-      contentHash: hashPacketContent(packet),
+      // Run-scoped: a hit can only return work THIS run already did (same
+      // worktree namespace, same journal runId); a retry run always
+      // re-executes. See `hashAttemptContent`'s doc comment.
+      contentHash: hashAttemptContent(ctx.runId, packet),
       toolchainFingerprint: deps.attemptCache.toolchainFingerprint,
     };
     const cached = deps.attemptCache.cache.get(key);
