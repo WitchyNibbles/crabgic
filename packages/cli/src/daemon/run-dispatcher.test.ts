@@ -513,6 +513,69 @@ describe("createRealRunDispatcher — a published change set", () => {
       expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
     },
   );
+
+  /**
+   * The attempt-cache wiring, observed end to end (scheduler-level semantics
+   * are pinned in `run-driver.test.ts`; this pins that the dispatcher
+   * actually PASSES the seam). Same daemon, SAME RUN: dispatch a unit to
+   * success, then `resume` the run — the exact re-drive crash recovery and
+   * limit-park re-dispatch perform. Because nothing updates the stored
+   * WorkUnit's `attemptStatus`, the re-drive re-selects the unit; the cache
+   * must reuse its result rather than stand up a second engine. The key is
+   * RUN-scoped (adversarial review), so this test resumes the same run —
+   * a retry run of the same change set misses by design.
+   */
+  it("a same-daemon, same-run resume reuses the succeeded unit's work: no second adapter", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const adaptersCreatedFor: string[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: (ctx: { workUnit: { id: string } }) => {
+        adaptersCreatedFor.push(ctx.workUnit.id);
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        );
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    // Drive 1 has run once the unit's terminal transition is journaled.
+    await vi.waitFor(
+      async () => {
+        const transitions: unknown[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          transitions.push(entry);
+        }
+        expect(transitions.length).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 10_000 },
+    );
+    expect(adaptersCreatedFor).toEqual([UNIT_ID]);
+
+    // Resume the SAME run once the in-flight claim is released.
+    const runId = (first as { runId?: string }).runId!;
+    await vi.waitFor(
+      async () => {
+        expect((await dispatcher.resume(runId)).accepted).toBe(true);
+      },
+      { timeout: 10_000 },
+    );
+    // Drive 2 settled once the claim is free again (a third resume is
+    // accepted). A hit journals nothing, so the claim is the only signal.
+    await vi.waitFor(
+      async () => {
+        expect((await dispatcher.resume(runId)).accepted).toBe(true);
+      },
+      { timeout: 10_000 },
+    );
+    // THE WIRING FACT: the succeeded unit never got a second engine across
+    // either resume — its cached result was reused.
+    expect(adaptersCreatedFor).toEqual([UNIT_ID]);
+  });
 });
 
 /**

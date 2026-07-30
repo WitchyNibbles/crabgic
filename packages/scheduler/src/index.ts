@@ -108,6 +108,7 @@ export type { RunShadowAttemptOptions, ShadowRunResult } from "./shadow-run.js";
 // ---- DAG run driver: the dispatch LOOP composing readiness/fan-out/executor (work item 1) ----
 export { driveRun } from "./run-driver.js";
 export type {
+  AttemptCacheSeam,
   DriveRunOptions,
   DriveRunResult,
   DriveRunStopReason,
@@ -116,6 +117,7 @@ export type {
   UnitAttemptOutcome,
   WorkerDispatchContext,
 } from "./run-driver.js";
+export { hashAttemptContent } from "./attempt-cache.js";
 
 // ---- Executor: dispatch/resume + evidence seam (work item 1) ----
 export { dispatchAttempt, resumeAttempt } from "./executor.js";

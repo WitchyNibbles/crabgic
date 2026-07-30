@@ -63,8 +63,18 @@ import {
 } from "@crabgic/git-engine";
 import { compileEnvelope, isContained } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
-import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
-import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@crabgic/scheduler";
+import {
+  ACCEPTED_ENGINE_VERSION_RANGE,
+  ClaudeEngineAdapter,
+  type WorkerAuthMaterial,
+} from "@crabgic/engine-claude";
+import {
+  buildTaskPacket,
+  driveRun,
+  SchedulerCache,
+  type AttemptCacheSeam,
+  type WorkerDispatchContext,
+} from "@crabgic/scheduler";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
@@ -194,6 +204,23 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    * existed.
    */
   const inFlight = new Set<string>();
+
+  /**
+   * Succeeded-attempt reuse for same-daemon re-drives (`AttemptCacheSeam`,
+   * scheduler). One cache per dispatcher = per daemon lifetime: `resume`
+   * (crash recovery, limit-park re-dispatch) re-seeds every unit `pending`
+   * because nothing updates a stored WorkUnit's `attemptStatus` after
+   * intake, so without this a re-drive re-executed — or, once the unit had
+   * a journaled dispatch, was refused by the repair-evidence gate — work
+   * whose result already existed. Salted with the accepted engine range per
+   * the cache's key contract; the cache dies with the daemon, so a re-drive
+   * after a restart still re-executes (the ledger's separate restart-safe
+   * re-dispatch carry-forward).
+   */
+  const attemptCache: AttemptCacheSeam = {
+    cache: new SchedulerCache(),
+    toolchainFingerprint: `engine:${ACCEPTED_ENGINE_VERSION_RANGE.min}-${ACCEPTED_ENGINE_VERSION_RANGE.max}`,
+  };
 
   /**
    * The standing-approval gate: load the policy, then test the envelope for
@@ -330,6 +357,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,
         adjudicate,
+        attemptCache,
         compileProfile: () => Promise.resolve(profile),
         buildPacket: (ctx) =>
           Promise.resolve(
