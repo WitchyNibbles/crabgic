@@ -64,6 +64,7 @@ function fixtureRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
 const STANDING_POLICY: LoadPolicyResult = {
   status: "loaded",
   policy: EnvelopePolicySchema.parse({
+    maxWorkerTurnsPerAttempt: 40,
     schemaVersion: 1,
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -111,6 +112,7 @@ describe("runIntakeCommand", () => {
         () => ({
           status: "loaded",
           policy: EnvelopePolicySchema.parse({
+            maxWorkerTurnsPerAttempt: 40,
             schemaVersion: 1,
             id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             createdAt: "2026-01-01T00:00:00.000Z",

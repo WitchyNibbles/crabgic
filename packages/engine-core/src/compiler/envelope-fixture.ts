@@ -1,6 +1,7 @@
 import {
   AuthorizationEnvelopeSchema,
   CURRENT_SCHEMA_VERSION,
+  DEFAULT_MAX_TURNS_PER_ATTEMPT,
   type AuthorizationEnvelope,
 } from "@crabgic/contracts";
 
@@ -34,6 +35,7 @@ export function buildEnvelopeFixture(
     remoteResourceAuthorizations: [],
     temporaryServices: [],
     prohibitedActions: [],
+    maxTurnsPerAttempt: DEFAULT_MAX_TURNS_PER_ATTEMPT,
   };
   return AuthorizationEnvelopeSchema.parse({ ...defaults, ...overrides });
 }

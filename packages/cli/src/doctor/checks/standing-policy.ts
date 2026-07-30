@@ -160,6 +160,27 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
         });
       }
 
+      // The turn-budget sibling of the vacuous case (same F9 shape: a green
+      // doctor on an installation where every dispatch is refused). Every
+      // envelope requests a positive turn budget, so a ceiling of 0 —
+      // including every policy authored before the dimension existed, which
+      // parses to the fail-closed default — escalates 100% of dispatches
+      // while passing every structural check. That fail-closed parse is the
+      // DESIGNED upgrade behavior; the doctor's job is to be the thing that
+      // says so before the first refusal does.
+      if (loaded.policy.maxWorkerTurnsPerAttempt === 0) {
+        return Promise.resolve({
+          id: CHECK_ID,
+          severity: "error",
+          passed: false,
+          evidence:
+            `the standing policy at ${options.path} grants zero worker turns per attempt, so every ` +
+            "dispatch will be refused (a policy written before this dimension existed parses this " +
+            "way deliberately — an absent authority axis fails closed)",
+          repairStep: `set \`maxWorkerTurnsPerAttempt\` in ${options.path} (40 matches the previous built-in cap)`,
+        });
+      }
+
       return Promise.resolve({
         id: CHECK_ID,
         severity: "error",
@@ -182,6 +203,7 @@ function renderGrant(policy: EnvelopePolicy, digest: string): string {
     `network [${or(policy.allowedNetworkDestinations)}]; ` +
     `credentials [${or(policy.allowedCredentialReferences)}]; ` +
     `remote resources [${or(policy.allowedRemoteResourceReferences)}]; ` +
-    `unix sockets ${policy.allowUnixSockets ? "allowed" : "denied"}`
+    `unix sockets ${policy.allowUnixSockets ? "allowed" : "denied"}; ` +
+    `worker turns per attempt ≤ ${String(policy.maxWorkerTurnsPerAttempt)}`
   );
 }

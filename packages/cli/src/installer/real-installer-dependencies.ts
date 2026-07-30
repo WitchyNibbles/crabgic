@@ -175,6 +175,7 @@ export function createRealConfirmPolicy(io: {
         `  credentials\n${list(p.allowedCredentialReferences)}\n\n` +
         `  external resources (Jira, Grafana)\n${list(p.allowedRemoteResourceReferences)}\n\n` +
         `  unix sockets: ${p.allowUnixSockets ? "allowed" : "denied"}\n\n` +
+        `  worker turns per attempt: up to ${String(p.maxWorkerTurnsPerAttempt)}\n\n` +
         "You can narrow or widen this later by editing the file directly. No worker\n" +
         "Crabgic runs can reach it — the sandbox keeps them out of this directory.\n" +
         "It is your own file at your own account, though, so treat it like your SSH\n" +

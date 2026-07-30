@@ -73,8 +73,11 @@ const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
 /** The ref a run is based on when the caller names none. */
 const DEFAULT_TARGET_REF = "HEAD";
 
-/** Per-attempt engine turn cap — not a retry count; 13's `dispatchAttempt` owns repair policy. */
-const DEFAULT_MAX_TURNS = 40;
+// The per-attempt engine turn cap comes from the AUTHORIZED envelope's own
+// `maxTurnsPerAttempt` (tested for policy containment like every other
+// authority dimension) — this module deliberately has no turn constant of its
+// own. The hardcoded 40 that used to live here was an authority nothing
+// governed.
 
 /**
  * The result shape every worker must return. Deliberately minimal and
@@ -150,6 +153,16 @@ export interface RealRunDispatcherOptions {
    * express, which is the exact inversion this ruling exists to prevent.
    */
   readonly loadPolicy?: () => LoadPolicyResult;
+  /**
+   * Where the standing policy lives on disk, included in a containment
+   * refusal so the remedy that WORKS is named at every gate. Review
+   * (2026-07-30) traced the alternative: the intake escalation names the
+   * path but the daemon refusal did not, and `crabgic approve` — the other
+   * offered remedy — mints a token this gate never reads, so an owner
+   * following the daemon's message had no path to edit and a ceremony that
+   * cannot succeed.
+   */
+  readonly standingPolicyPath?: string;
 }
 
 type ResolvedRun =
@@ -228,10 +241,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     if (!containment.contained) {
       // Every escaping dimension, not the first: the owner has to edit a file
       // this process cannot reach, so one refusal must tell them the whole
-      // gap rather than making recovery an iterative guessing game.
+      // gap rather than making recovery an iterative guessing game — and
+      // name the file, because editing it is the only remedy that works
+      // (`crabgic approve` mints a token this gate never reads).
+      const wherePolicy =
+        options.standingPolicyPath === undefined
+          ? ""
+          : ` (the standing policy is at ${options.standingPolicyPath})`;
       return {
         ok: false,
-        reason: `this change set needs authority the standing policy does not grant: ${containment.reasons.join("; ")}`,
+        reason:
+          `this change set needs authority the standing policy does not grant: ` +
+          `${containment.reasons.join("; ")}${wherePolicy}`,
       };
     }
 
@@ -319,7 +340,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
               objective: ctx.workUnit.title,
               baseObjectId,
               ownedPaths: [...ctx.workUnit.ownedPaths],
-              resourceLimits: { maxTurns: DEFAULT_MAX_TURNS },
+              resourceLimits: { maxTurns: envelope.maxTurnsPerAttempt },
               resultSchema: WORKER_RESULT_SCHEMA,
               envelope,
             }).packet,

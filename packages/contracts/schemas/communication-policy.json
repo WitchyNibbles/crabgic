@@ -1,4 +1,5 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -13,7 +14,8 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -26,7 +28,8 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "format": {
               "type": "string",
@@ -44,7 +47,8 @@
           "properties": {
             "maxLines": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -57,7 +61,8 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "format": {
               "type": "string",
@@ -75,16 +80,17 @@
           "properties": {
             "maxLines": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "sections": {
+              "minItems": 4,
+              "maxItems": 4,
               "type": "array",
               "items": {
                 "type": "string",
                 "minLength": 1
-              },
-              "minItems": 4,
-              "maxItems": 4
+              }
             }
           },
           "required": [
@@ -98,7 +104,8 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -111,19 +118,21 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "maxLines": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "milestoneTemplate": {
+              "minItems": 1,
               "type": "array",
               "items": {
                 "type": "string",
                 "minLength": 1
-              },
-              "minItems": 1
+              }
             }
           },
           "required": [
@@ -138,7 +147,8 @@
           "properties": {
             "maxChars": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -151,16 +161,17 @@
           "properties": {
             "maxLines": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             },
             "shape": {
+              "minItems": 3,
+              "maxItems": 3,
               "type": "array",
               "items": {
                 "type": "string",
                 "minLength": 1
-              },
-              "minItems": 3,
-              "maxItems": 3
+              }
             }
           },
           "required": [
@@ -184,6 +195,7 @@
       "additionalProperties": false
     },
     "prohibitedContentCategories": {
+      "minItems": 1,
       "type": "array",
       "items": {
         "type": "string",
@@ -195,8 +207,7 @@
           "secrets",
           "unsafe_links"
         ]
-      },
-      "minItems": 1
+      }
     }
   },
   "required": [
@@ -204,6 +215,5 @@
     "limits",
     "prohibitedContentCategories"
   ],
-  "additionalProperties": false,
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "additionalProperties": false
 }

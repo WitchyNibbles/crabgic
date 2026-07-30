@@ -1,4 +1,5 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -7,7 +8,8 @@
     },
     "id": {
       "type": "string",
-      "format": "uuid"
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "provider": {
       "type": "string",
@@ -22,6 +24,7 @@
       "format": "uri"
     },
     "allowedRedirectOrigins": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -29,6 +32,7 @@
       }
     },
     "tenantAllowlist": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -36,6 +40,7 @@
       }
     },
     "orgAllowlist": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -43,6 +48,7 @@
       }
     },
     "projectAllowlist": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -50,6 +56,7 @@
       }
     },
     "folderAllowlist": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -70,6 +77,7 @@
       "additionalProperties": false
     },
     "allowedResources": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -77,6 +85,7 @@
       }
     },
     "allowedActions": {
+      "readOnly": true,
       "type": "array",
       "items": {
         "type": "string",
@@ -85,10 +94,11 @@
     },
     "discoveryTtlSeconds": {
       "type": "integer",
-      "exclusiveMinimum": 0
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
     },
     "secretRef": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "properties": {
@@ -137,6 +147,7 @@
               "minLength": 1
             },
             "args": {
+              "readOnly": true,
               "type": "array",
               "items": {
                 "type": "string",
@@ -164,6 +175,5 @@
     "discoveryTtlSeconds",
     "secretRef"
   ],
-  "additionalProperties": false,
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "additionalProperties": false
 }

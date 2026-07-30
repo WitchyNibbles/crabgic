@@ -25,6 +25,9 @@ function policy(overrides: Partial<EnvelopePolicy> = {}): EnvelopePolicy {
     id: "11111111-1111-4111-8111-111111111111",
     createdAt: "2026-01-01T00:00:00.000Z",
     allowedPathPrefixes: ["src"],
+    // Granted in the base fixture so the turn-budget dimension stays out of
+    // every OTHER dimension's test; its own describe below overrides this.
+    maxWorkerTurnsPerAttempt: 40,
     ...overrides,
   });
 }
@@ -45,6 +48,7 @@ function envelope(overrides: Partial<AuthorizationEnvelope> = {}): Authorization
     remoteResourceAuthorizations: [],
     temporaryServices: [],
     prohibitedActions: [],
+    maxTurnsPerAttempt: 40,
     ...overrides,
   };
 }
@@ -247,6 +251,73 @@ describe("isContained — exact-set dimensions", () => {
         policy({ allowedRemoteResourceReferences: ["ENG-1"] }),
       ).contained,
     ).toBe(true);
+  });
+});
+
+describe("isContained — worker turn budget", () => {
+  it("contains a request at or below the policy ceiling", () => {
+    expect(
+      isContained(envelope({ maxTurnsPerAttempt: 40 }), policy({ maxWorkerTurnsPerAttempt: 40 }))
+        .contained,
+    ).toBe(true);
+    expect(
+      isContained(envelope({ maxTurnsPerAttempt: 1 }), policy({ maxWorkerTurnsPerAttempt: 40 }))
+        .contained,
+    ).toBe(true);
+  });
+
+  it("escapes when the envelope requests more turns than the policy grants, naming both numbers", () => {
+    const result = isContained(
+      envelope({ maxTurnsPerAttempt: 41 }),
+      policy({ maxWorkerTurnsPerAttempt: 40 }),
+    );
+    expect(result.contained).toBe(false);
+    expect(result.reasons).toHaveLength(1);
+    expect(result.reasons[0]).toMatch(/41/);
+    expect(result.reasons[0]).toMatch(/40/);
+    expect(result.reasons[0]).toMatch(/maxWorkerTurnsPerAttempt/);
+  });
+
+  /**
+   * THE F10 SHAPE for a numeric axis: a policy on disk from before this
+   * dimension existed parses with the ceiling defaulted to 0 and denies every
+   * envelope, escalating until its author states a grant. An absent field
+   * must never mean "unconstrained".
+   */
+  it("escapes against a pre-existing policy that never stated a ceiling (schema default 0)", () => {
+    const preExisting = EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "11111111-1111-4111-8111-111111111111",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["src"],
+    });
+    const result = isContained(envelope({ maxTurnsPerAttempt: 1 }), preExisting);
+    expect(result.contained).toBe(false);
+    expect(result.reasons.some((reason) => reason.includes("maxWorkerTurnsPerAttempt"))).toBe(true);
+  });
+
+  /**
+   * Fail closed on malformed numbers that BYPASS the schema (hostile caller) —
+   * built by spreading past the parser, since the schema itself rejects them
+   * and the whole point is what happens when it was never consulted.
+   */
+  it("fails closed on a malformed request or ceiling", () => {
+    for (const [requested, granted] of [
+      [Number.NaN, 40],
+      [0, 40],
+      [-5, 40],
+      [1.5, 40],
+      [40, Number.NaN],
+      [40, -1],
+    ] as const) {
+      const hostileEnvelope = { ...envelope(), maxTurnsPerAttempt: requested };
+      const hostilePolicy = { ...policy(), maxWorkerTurnsPerAttempt: granted };
+      const result = isContained(hostileEnvelope, hostilePolicy);
+      expect(
+        result.contained,
+        `requested=${String(requested)} granted=${String(granted)} must not be contained`,
+      ).toBe(false);
+    }
   });
 });
 

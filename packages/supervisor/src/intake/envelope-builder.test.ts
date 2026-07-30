@@ -71,6 +71,43 @@ describe("buildAuthorizationEnvelope", () => {
     expect(mutated.canonicalHash).not.toBe(original.canonicalHash);
   });
 
+  it("an ABSENT turn budget and the explicit default are the SAME authorization content", () => {
+    // The builder resolves absence to `DEFAULT_MAX_TURNS_PER_ATTEMPT` before
+    // hashing, so "asked for nothing" and "asked for 40 explicitly" cannot
+    // land on different hashes and spuriously invalidate an approval token.
+    const absent = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: baseContent(),
+    });
+    const explicit = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: { ...baseContent(), maxTurnsPerAttempt: 40 },
+    });
+    expect(absent.maxTurnsPerAttempt).toBe(40);
+    expect(explicit.canonicalHash).toBe(absent.canonicalHash);
+  });
+
+  it("a DIFFERENT turn budget is a material change: new hash, prior token naturally invalid", () => {
+    const forty = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: baseContent(),
+    });
+    const eighty = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: { ...baseContent(), maxTurnsPerAttempt: 80 },
+    });
+    expect(eighty.maxTurnsPerAttempt).toBe(80);
+    expect(eighty.canonicalHash).not.toBe(forty.canonicalHash);
+  });
+
   it("the hash is independent of id/createdAt — identifies content, not record identity", () => {
     const first = buildAuthorizationEnvelope({
       id: ID,

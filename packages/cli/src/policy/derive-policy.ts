@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  DEFAULT_MAX_TURNS_PER_ATTEMPT,
   EnvelopePolicySchema,
   GRANTABLE_COMMAND_PREFIXES,
   isUsablePathPrefix,
@@ -244,6 +245,10 @@ export function derivePolicy(options: DerivePolicyOptions): DerivedPolicy {
     allowedCredentialReferences: [],
     allowedRemoteResourceReferences: [],
     allowUnixSockets: false,
+    // Grant the same per-attempt turn ceiling the dispatcher used to hardcode
+    // un-governed. An envelope may still request LESS; asking for more
+    // escalates like any other dimension.
+    maxWorkerTurnsPerAttempt: DEFAULT_MAX_TURNS_PER_ATTEMPT,
   });
 
   return { policy, vacuous: isVacuousPolicy(policy) };

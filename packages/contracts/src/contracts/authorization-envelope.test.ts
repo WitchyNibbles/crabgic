@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { AuthorizationEnvelopeSchema } from "./authorization-envelope.js";
+import {
+  AuthorizationEnvelopeSchema,
+  DEFAULT_MAX_TURNS_PER_ATTEMPT,
+} from "./authorization-envelope.js";
 
 const validEnvelope = {
   schemaVersion: 1,
@@ -77,6 +80,31 @@ describe("AuthorizationEnvelopeSchema — unknown-key rejection (.strict())", ()
       ],
     };
     expect(AuthorizationEnvelopeSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("AuthorizationEnvelopeSchema — maxTurnsPerAttempt (the worker turn budget)", () => {
+  it("defaults an ABSENT field to the bounded default, so every pre-existing envelope stays valid and bounded", () => {
+    // Absent-with-default is a definite bounded request, not "unconstrained" —
+    // the F10 absent-means-deny ruling binds POLICY fields, where absence
+    // widening authority is the hazard. Here absence narrows to the default.
+    const parsed = AuthorizationEnvelopeSchema.parse(validEnvelope);
+    expect(parsed.maxTurnsPerAttempt).toBe(DEFAULT_MAX_TURNS_PER_ATTEMPT);
+  });
+
+  it("accepts an explicit positive integer", () => {
+    const parsed = AuthorizationEnvelopeSchema.parse({ ...validEnvelope, maxTurnsPerAttempt: 12 });
+    expect(parsed.maxTurnsPerAttempt).toBe(12);
+  });
+
+  it("rejects zero, negatives, non-integers and non-numbers — a turnless or fractional budget is meaningless", () => {
+    for (const invalid of [0, -1, 1.5, "40", null, Number.NaN]) {
+      expect(
+        AuthorizationEnvelopeSchema.safeParse({ ...validEnvelope, maxTurnsPerAttempt: invalid })
+          .success,
+        `maxTurnsPerAttempt ${JSON.stringify(invalid)} must be rejected`,
+      ).toBe(false);
+    }
   });
 });
 

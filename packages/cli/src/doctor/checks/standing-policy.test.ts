@@ -15,6 +15,7 @@ const PATH = "/state/envelope-policy.json";
 
 function policy(overrides: Record<string, unknown> = {}) {
   return EnvelopePolicySchema.parse({
+    maxWorkerTurnsPerAttempt: 40,
     schemaVersion: 1,
     id: "11111111-1111-4111-8111-111111111111",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -69,6 +70,25 @@ describe("policy.standing", () => {
 
     expect(finding.passed).toBe(false);
     expect(finding.repairStep).toMatch(/crabgic install/);
+  });
+
+  /**
+   * The turn-budget sibling of the vacuous case (review 2026-07-30). Every
+   * policy authored before the dimension existed parses to a ceiling of 0 —
+   * the designed fail-closed upgrade behavior — and then refuses 100% of
+   * dispatches while passing every structural check. A green doctor on that
+   * installation is the exact F9 shape this check exists to prevent.
+   */
+  it("FAILS a policy granting zero worker turns, naming the field to set", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ maxWorkerTurnsPerAttempt: 0 }),
+      digest: "sha256:turnless",
+    }));
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/zero worker turns/);
+    expect(finding.repairStep).toMatch(/maxWorkerTurnsPerAttempt/);
   });
 
   /** Invalid is a different owner problem from absent and must not be repaired by re-installing blindly. */
@@ -560,7 +580,7 @@ describe("policy.standing — every owner-facing string, in full", () => {
       "standing policy sha256:abc grants paths [src, packages]; " +
         "scratch [dist, packages/cli/dist]; commands [git status, git diff]; " +
         "network [registry.npmjs.org]; credentials [JIRA_TOKEN]; " +
-        "remote resources [ENG-1]; unix sockets allowed",
+        "remote resources [ENG-1]; unix sockets allowed; worker turns per attempt ≤ 40",
     );
   });
 
@@ -573,7 +593,8 @@ describe("policy.standing — every owner-facing string, in full", () => {
 
     expect(finding.evidence).toBe(
       "standing policy sha256:abc grants paths [src]; scratch [none]; commands [none]; " +
-        "network [none]; credentials [none]; remote resources [none]; unix sockets denied",
+        "network [none]; credentials [none]; remote resources [none]; unix sockets denied; " +
+        "worker turns per attempt ≤ 40",
     );
   });
 
