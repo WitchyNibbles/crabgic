@@ -24,6 +24,7 @@ import { configureGitIdentity } from "./git-identity.js";
 import { buildWorktreeRef, resolveWorktreePath } from "./worktree-ref.js";
 import type { JournalAppender } from "./journal-appender.js";
 import type { GitPlumbing } from "./plumbing.js";
+import { serializeWorktreeAdd } from "./worktree-add-serializer.js";
 
 export interface CreateWorktreeOptions {
   readonly repoDir: string;
@@ -99,13 +100,20 @@ export async function createWorktree(
 
   options.onStep?.("before-worktree-add");
   await mkdir(dirname(worktreePath), { recursive: true });
-  await plumbing.run(
-    ["worktree", "add", "-b", ref, OPTION_TERMINATOR, worktreePath, options.baseObjectId],
-    // MAJOR 2 fix: `repoDir` is the control clone in production use —
-    // ambient global/system git config neutralized so an ambient
-    // `core.hooksPath`/`filter.<x>.smudge` cannot fire during this
-    // worktree's own checkout.
-    { cwd: options.repoDir, env: CONTROL_CONTEXT_ENV },
+  // Serialized per repository (`./worktree-add-serializer.ts`): git gives no
+  // concurrency guarantee for `worktree add` against one repository, and the
+  // scheduler runs up to four attempts per round against the same control
+  // clone. Only the `add` itself is inside the queue — the identity config and
+  // marker writes below touch only this worktree, so they need no ordering.
+  await serializeWorktreeAdd(options.repoDir, () =>
+    plumbing.run(
+      ["worktree", "add", "-b", ref, OPTION_TERMINATOR, worktreePath, options.baseObjectId],
+      // MAJOR 2 fix: `repoDir` is the control clone in production use —
+      // ambient global/system git config neutralized so an ambient
+      // `core.hooksPath`/`filter.<x>.smudge` cannot fire during this
+      // worktree's own checkout.
+      { cwd: options.repoDir, env: CONTROL_CONTEXT_ENV },
+    ),
   );
 
   options.onStep?.("after-worktree-add-before-identity");

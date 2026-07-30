@@ -269,3 +269,70 @@ describe("release-e2e.yml provisions the host capabilities the offline leg asser
     expect(cmp(TESTED_ENGINE_VERSION, ACCEPTED_ENGINE_VERSION_RANGE.max)).toBeLessThanOrEqual(0);
   });
 });
+
+/**
+ * The gate must gate something.
+ *
+ * `release-e2e.yml` was `workflow_dispatch`-only, so it ran only when somebody
+ * remembered to ask — and between 2026-07-27 and 2026-07-30 nobody did:
+ * v1.1.2, v1.2.0, v1.3.0 and v1.4.0 all published while the single PASS on
+ * record had been scored against the v1.0.0 candidate. Every release after the
+ * first shipped unscored, and nothing in the repository noticed, because a
+ * report nobody is required to produce cannot fail.
+ *
+ * These read the REAL workflow files, so the binding between "the gate exists"
+ * and "the publish waits for it" cannot drift back apart silently.
+ */
+describe("publish.yml cannot publish without a fresh release-gate PASS", () => {
+  let publishWorkflow: string;
+  let releaseE2eWorkflow: string;
+
+  beforeAll(async () => {
+    // Resolved here rather than reusing the outer `repoRoot`: that one is
+    // assigned in an async `beforeAll`, and a nested suite's hooks are not
+    // ordered against it.
+    const root = (
+      await execFileAsync("git", ["rev-parse", "--show-toplevel"], { cwd: import.meta.dirname })
+    ).stdout.trim();
+    publishWorkflow = readFileSync(join(root, ".github", "workflows", "publish.yml"), "utf8");
+    releaseE2eWorkflow = readFileSync(
+      join(root, ".github", "workflows", "release-e2e.yml"),
+      "utf8",
+    );
+  });
+
+  it("calls the release-e2e workflow rather than duplicating it", () => {
+    expect(publishWorkflow).toContain("uses: ./.github/workflows/release-e2e.yml");
+  });
+
+  it("scores in `final` mode, so missing evidence FAILS instead of pending", () => {
+    // `interim` resolves missing evidence to EVIDENCE-PENDING, which is the
+    // right answer mid-development and exactly the wrong one at a release cut.
+    const callBlock = publishWorkflow.slice(
+      publishWorkflow.indexOf("uses: ./.github/workflows/release-e2e.yml"),
+      publishWorkflow.indexOf("publish:", publishWorkflow.indexOf("release-gate:")),
+    );
+    expect(callBlock).toContain("scoring_mode: final");
+    expect(callBlock).not.toContain("scoring_mode: interim");
+  });
+
+  it("makes the publish job WAIT for the gate — the difference between blocked and permanent", () => {
+    // npm refuses to republish a version that has ever existed, so a publish
+    // that races the gate cannot be undone.
+    expect(publishWorkflow).toMatch(/needs:\s*\[release-gate\]/);
+  });
+
+  it("release-e2e accepts being called, and its callable inputs avoid dispatch-only types", () => {
+    expect(releaseE2eWorkflow).toContain("workflow_call:");
+    // `type: choice` is valid under `workflow_dispatch` and rejected under
+    // `workflow_call` — the whole file is refused, not just the input.
+    const callSection = releaseE2eWorkflow.slice(releaseE2eWorkflow.indexOf("workflow_call:"));
+    const callInputs = callSection.slice(0, callSection.indexOf("permissions:"));
+    expect(callInputs).not.toContain("type: choice");
+    expect(callInputs).toContain("scoring_mode");
+  });
+
+  it("keeps the manual dispatch entry point, so the gate can still be scored on demand", () => {
+    expect(releaseE2eWorkflow).toContain("workflow_dispatch:");
+  });
+});

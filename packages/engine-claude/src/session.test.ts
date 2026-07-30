@@ -138,61 +138,84 @@ async function allowAdjudicate(
 }
 
 describe("PROPERTY: resume(sessionRef, adjudicate) reconnects the exact (sessionId, worktree, configDir) triple", () => {
-  it("never substitutes a different sessionId/cwd/configDir than the ones sessionRef itself names", async () => {
-    // The adapter's OWN construction-time config deliberately names a
-    // DIFFERENT worktree/configDir than any generated pair below — proving
-    // resume() uses `sessionRef`'s own fields, never falling back to
-    // `this.config`.
-    const DECOY_CONFIG: ClaudeEngineAdapterConfig = {
-      // >= 2 non-empty segments so `workerTmp`/`worktreePath` pass the
-      // Finding 4 minimum-depth validation (these decoy values still differ
-      // from every generated pair, which is all this property needs).
-      worktreePath: "/decoy/adapter-worktree",
-      provisioning: {
-        HOME: "/decoy/home",
-        TMP: "/decoy/tmp",
-        CLAUDE_CONFIG_DIR: "/decoy/config-dir",
-      },
-      auth: { kind: "oauthToken", token: "test-token" },
-      journal: store,
-      engineVersionResolver: () => "2.1.210",
-    };
-
-    await fc.assert(
-      fc.asyncProperty(
-        fc.uuid(),
-        absoluteWorktreeArb,
-        absoluteWorktreeArb,
-        async (sessionId, worktreePath, configDir) => {
-          const calls: Array<{
-            readonly cwd: string | undefined;
-            readonly resume: string | undefined;
-            readonly env: Record<string, string | undefined> | undefined;
-          }> = [];
-          const sdkQuery: SdkQueryFunction = (params) => {
-            calls.push({
-              cwd: params.options?.cwd,
-              resume: params.options?.resume,
-              env: params.options?.env,
-            });
-            return (async function* (): AsyncGenerator<SDKMessage, void, unknown> {
-              yield initMessage(sessionId, worktreePath);
-            })();
-          };
-
-          const adapter = new ClaudeEngineAdapter({ ...DECOY_CONFIG, sdkQuery });
-          const sessionRef = { sessionId, projectDirectory: worktreePath, worktreePath, configDir };
-
-          const handle = adapter.resume(sessionRef, allowAdjudicate);
-          await handle.events[Symbol.asyncIterator]().next();
-
-          const call = calls[0];
-          expect(call?.resume).toBe(sessionId);
-          expect(call?.cwd).toBe(worktreePath);
-          expect(call?.env?.CLAUDE_CONFIG_DIR).toBe(configDir);
+  /*
+   * EXPLICIT TIMEOUT, not the global one (2026-07-30).
+   *
+   * This is a 1000-run fast-check property. It costs ~4s of test time in
+   * isolation, and the repository's global `testTimeout` is 20s — comfortable
+   * alone, and not comfortable inside a 595-file parallel run, where it
+   * intermittently exceeded 20s and was written off as a host-load flake for
+   * weeks. Nothing about it was racy: it was a budget, borrowed from a global
+   * default that knows nothing about this test's cost.
+   *
+   * 60s is ~15x the isolated cost, so the assertion is decided by the property
+   * and not by how busy the machine is. `numRuns` is deliberately unchanged:
+   * the flake was never a reason to test less.
+   */
+  it(
+    "never substitutes a different sessionId/cwd/configDir than the ones sessionRef itself names",
+    { timeout: 60_000 },
+    async () => {
+      // The adapter's OWN construction-time config deliberately names a
+      // DIFFERENT worktree/configDir than any generated pair below — proving
+      // resume() uses `sessionRef`'s own fields, never falling back to
+      // `this.config`.
+      const DECOY_CONFIG: ClaudeEngineAdapterConfig = {
+        // >= 2 non-empty segments so `workerTmp`/`worktreePath` pass the
+        // Finding 4 minimum-depth validation (these decoy values still differ
+        // from every generated pair, which is all this property needs).
+        worktreePath: "/decoy/adapter-worktree",
+        provisioning: {
+          HOME: "/decoy/home",
+          TMP: "/decoy/tmp",
+          CLAUDE_CONFIG_DIR: "/decoy/config-dir",
         },
-      ),
-      { numRuns: 1000 },
-    );
-  });
+        auth: { kind: "oauthToken", token: "test-token" },
+        journal: store,
+        engineVersionResolver: () => "2.1.210",
+      };
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.uuid(),
+          absoluteWorktreeArb,
+          absoluteWorktreeArb,
+          async (sessionId, worktreePath, configDir) => {
+            const calls: Array<{
+              readonly cwd: string | undefined;
+              readonly resume: string | undefined;
+              readonly env: Record<string, string | undefined> | undefined;
+            }> = [];
+            const sdkQuery: SdkQueryFunction = (params) => {
+              calls.push({
+                cwd: params.options?.cwd,
+                resume: params.options?.resume,
+                env: params.options?.env,
+              });
+              return (async function* (): AsyncGenerator<SDKMessage, void, unknown> {
+                yield initMessage(sessionId, worktreePath);
+              })();
+            };
+
+            const adapter = new ClaudeEngineAdapter({ ...DECOY_CONFIG, sdkQuery });
+            const sessionRef = {
+              sessionId,
+              projectDirectory: worktreePath,
+              worktreePath,
+              configDir,
+            };
+
+            const handle = adapter.resume(sessionRef, allowAdjudicate);
+            await handle.events[Symbol.asyncIterator]().next();
+
+            const call = calls[0];
+            expect(call?.resume).toBe(sessionId);
+            expect(call?.cwd).toBe(worktreePath);
+            expect(call?.env?.CLAUDE_CONFIG_DIR).toBe(configDir);
+          },
+        ),
+        { numRuns: 1000 },
+      );
+    },
+  );
 });

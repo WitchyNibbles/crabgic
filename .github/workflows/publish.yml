@@ -38,10 +38,42 @@ permissions:
   id-token: write
 
 jobs:
+  # THE RELEASE GATE, SCORED AGAINST THE TAGGED COMMIT (2026-07-30).
+  #
+  # This job is why a release cannot ship unscored again. `release-e2e` was
+  # `workflow_dispatch`-only, so it ran when somebody remembered to ask — and
+  # between 2026-07-27 and 2026-07-30 nobody did: v1.1.2, v1.2.0, v1.3.0 and
+  # v1.4.0 all published while the only PASS on record belonged to the v1.0.0
+  # candidate. For a product whose entire claim is that it reports honestly,
+  # the gate being the one artifact nobody re-checks was the worst possible
+  # place to carry that debt.
+  #
+  # `final` scoring, not `interim`: at a release cut, missing evidence must FAIL
+  # rather than resolve to EVIDENCE-PENDING. The generator exits non-zero on an
+  # overall-FAIL verdict, so `needs:` below turns the report into a gate.
+  #
+  # No object ID is passed: the called workflow defaults to `git rev-parse HEAD`
+  # of the ref it checks out, which for a tag push IS the tagged commit — the
+  # exact candidate about to be published. Naming it again here would create a
+  # second source of truth that could disagree.
+  release-gate:
+    name: release gate (must PASS before anything is published)
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/release-e2e.yml
+    with:
+      scoring_mode: final
+
   publish:
     name: publish crabgic to npm (provenance-attested)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Nothing irreversible happens until the gate has passed on this exact
+    # commit. npm refuses to republish a version that has ever existed, so the
+    # ordering here is the difference between a bad release being blocked and
+    # a bad release being permanent.
+    needs: [release-gate]
     steps:
       - uses: actions/checkout@v4
         with:
