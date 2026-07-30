@@ -119,6 +119,46 @@ The default catalog on this host — `Task, Bash, CronCreate, CronDelete, CronLi
 
 ---
 
+### 4.5 A bare `allowedTools` entry SHADOWS `canUseTool` for that tool (live-observed 2026-07-30)
+
+Observed on the SDK transport during the first real end-to-end run, at engine
+`2.1.218` (inside the accepted range `2.1.207`–`2.1.220`,
+`ACCEPTED_ENGINE_VERSION_RANGE`). The SDK emitted it unprompted, on the worker's
+stderr:
+
+```
+(node:765861) [CLAUDE_SDK_CAN_USE_TOOL_SHADOWED] Warning: canUseTool will not be
+invoked for: mcp__crabgic_gateway__*. Bare allowedTools entries auto-approve the
+whole tool before the callback is consulted. To gate every tool call, use a
+PreToolUse hook; or remove the bare names from allowedTools so they fall through
+to canUseTool. Allow rules from settings files can also shadow the callback but
+are not visible here.
+```
+
+Three facts, in decreasing order of load-bearing-ness:
+
+- **A tool named outright in `allowedTools` is auto-approved BEFORE `canUseTool`
+  runs.** The callback is not consulted for it at all. This is not conditional on
+  `permissionMode`: the shadowing comes from the allow entry, not the mode.
+- **Allow rules in settings files shadow it the same way**, and the SDK says it
+  cannot enumerate those in the warning — so the absence of a warning is not
+  evidence that the callback is reached.
+- **A `PreToolUse` hook is the engine's own named remedy** for gating every call,
+  because hooks run before permission evaluation rather than after it.
+
+**Why this matters here:** `compileEnvelope` grants the gateway family by naming
+`mcp__${GATEWAY_MCP_SERVER_NAME}__*` tools in `allowedTools`, so phase 06's
+journal-first fail-closed `AdjudicationCallback` never fires for any connector,
+evidence or review call. The static allow/deny catalog and the OS sandbox are
+unaffected — what is lost is the per-call audit record, not the boundary. See
+`docs/security-posture.md` §Residual risk, which previously presented that bridge
+as covering these calls.
+
+**This resolves a previously-UNPROBED fact and answers it in the opposite
+direction to the assumption.** The prior record asked only whether `canUseTool`
+fires under `permissionMode: "dontAsk"`; the real variable was the allow entry,
+and no permission mode changes it.
+
 ## 5. Structured-output probe (work item 6)
 
 Transport: SDK `query()` — `Options.outputFormat: {type: 'json_schema', schema}` is the confirmed SDK field name (the CLI `--json-schema` flag's SDK equivalent; adaptation §4.4 only said "SDK equivalent" without naming it — there is no field literally called `jsonSchema` on `Options`).

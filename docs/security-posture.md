@@ -320,14 +320,37 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   every same-uid process identically; there is no in-protocol distinction between the CLI and
   the gateway's forwarded calls. Stated design choice (`docs/threat-model.md` §1, §Cross-
   surface themes); unchanged by implementation.
-- **`canUseTool`-under-`dontAsk` is an unprobed engine fact (§2).** 06's per-call
-  adjudication-**journaling** backstop is live-unverified because whether the SDK invokes
-  `canUseTool` at all under `permissionMode: "dontAsk"` was never directly probed by
-  `docs/engine-baseline.md`. The **load-bearing, verified** enforcement layer — the static
-  allow/deny + OS sandbox — is unaffected and holds regardless
-  (`docs/evidence/phase-06/wi6-security-hardening.md`, "Finding 2"). A live probe
-  (`src/live/adjudication-bridge.live.test.ts`) exists and converts this into a live-gated
-  assertion whenever the `@live` suite runs.
+- **`canUseTool` is SHADOWED for every gateway tool — the adjudication bridge does not
+  fire for them (§2). RESOLVED FROM "UNPROBED" TO "MEASURED", 2026-07-30, and the answer is
+  worse than the question.** This entry used to say the fact was unprobed: "whether the SDK
+  invokes `canUseTool` at all under `permissionMode: 'dontAsk'` was never directly probed."
+  Running a real worker probed it. The Agent SDK emitted, unprompted:
+
+  > `[CLAUDE_SDK_CAN_USE_TOOL_SHADOWED] Warning: canUseTool will not be invoked for:`
+  > `mcp__crabgic_gateway__*. Bare allowedTools entries auto-approve the whole tool before`
+  > `the callback is consulted. To gate every tool call, use a PreToolUse hook; or remove`
+  > `the bare names from allowedTools so they fall through to canUseTool.`
+
+  The compiled permission profile grants the gateway family by naming those tools outright
+  in `allowedTools`, so **the shadowing applies to all of them, regardless of permission
+  mode** — the mode was never the variable. Consequence: 06's journal-first fail-closed
+  `AdjudicationCallback` never runs for a connector, evidence or review call, and the
+  per-call adjudication journal has no entries for them. This document previously presented
+  that bridge as covering these calls; it does not, and saying so is the point of this
+  entry.
+
+  The **load-bearing, verified** enforcement layer — the static allow/deny catalog plus the
+  OS sandbox — is unaffected and holds regardless
+  (`docs/evidence/phase-06/wi6-security-hardening.md`, "Finding 2"), and the gateway remains
+  the only route to a connector. What is lost is the per-call _audit record_, not the
+  boundary.
+
+  **Owed:** a `PreToolUse` hook covering `mcp__crabgic_gateway__*` that performs the
+  journal-first adjudication — the remedy the engine itself names, and the only one that
+  gates every call. Recording this in `docs/engine-baseline.md` against the pinned version
+  range is owed with it, per the engine-fact-drift rule. Until both land, treat gateway
+  calls as permission-gated but not adjudication-journaled.
+
 - **Worktree-anchor (`//<worktree>/…/**`) matching semantics are unprobed on the live engine
   (§3).** `docs/engine-baseline.md` has no path-anchor probe covering this exact substituted
   form; 03's own compiler commits to it as its confinement mechanism, but its real-engine
