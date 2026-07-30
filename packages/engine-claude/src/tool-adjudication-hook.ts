@@ -34,23 +34,35 @@
  * rule — `Bash(<prefix>:*)`, `Edit(//<worktree>/…/**)`, `Write(...)`. A
  * rule-shaped allow entry shadows `canUseTool` exactly like a bare name does
  * (baseline §4.7, measured live 2026-07-30 by
- * `./live/builtin-allow-rule-shadowing.live.test.ts`), so before this hook
- * covered them, `Bash`/`Edit`/`Write` executed with no adjudication record and
- * sat outside the PostToolUse audit's scope. Everything ELSE — `Read`, `Glob`,
- * `Grep`, `TodoWrite`, other servers' MCP tools — is left alone, and NOT
- * because `canUseTool` covers it (that premise was measured false for
- * rule-granted tools): because `createEnvelopeAdjudicationPolicy` default-
- * denies any unlisted tool while the engine grants read-only tools without a
- * rule, so a deny-only opinion here would black-hole every read a worker
- * makes. The covered set is exactly the set where the policy's verdict mirrors
- * the engine's own rule evaluation.
+ * `./live/builtin-allow-rule-shadowing.live.test.ts` for the Bash-prefix
+ * shape; the SDK's own warning generalizes the mechanism to every settings
+ * allow rule), so before this hook covered them, `Bash`/`Edit`/`Write`
+ * executed with no adjudication record and sat outside the PostToolUse
+ * audit's scope. Everything ELSE — `Read`, `Glob`, `Grep`, `TodoWrite`, other
+ * servers' MCP tools — is left alone: the envelope policy default-denies any
+ * unlisted tool while the engine grants read-only tools without a rule, so
+ * covering them would journal a meaningless deny verdict for every read and
+ * black-hole them all whenever adjudication is unavailable.
  *
- * MONOTONICALLY RESTRICTIVE. It can deny a call the engine would have allowed;
- * it can never allow one the engine would have denied. A `PreToolUse` hook
- * returning `permissionDecision: "allow"` bypasses the permission system for
- * that call, so an "allow" here could override the compiled profile's own deny
- * entries — a control added to close a hole opening a wider one. The allow path
- * therefore returns NO OPINION and lets the engine decide as it always did.
+ * TWO ENFORCEMENT POSTURES, BECAUSE THE POLICY'S FIDELITY DIFFERS BY TOOL.
+ * For GATEWAY tools the policy matches on name — the same axis the engine's
+ * own rule grants them on — so its deny is enforced. For BUILT-INS the policy
+ * is measurably STRICTER than the engine inside a matched rule (baseline
+ * §4.8: the engine allows `git status 2>&1` under `Bash(git status:*)`; the
+ * policy's unproven-metacharacter fail-closed denies it), and its verdict is
+ * argument-level commentary the engine does not share. Acting on it would
+ * refuse calls the engine grants — so a built-in's verdict is RECORDED
+ * (journal, via the bus; audit, via `recordAllowedDecision` on BOTH verdicts)
+ * and never acted on, except: adjudication UNAVAILABLE denies (no unrecorded
+ * mutation call may proceed), and an explicit `interrupt` halt is honored.
+ * The journal entry is the alarm; the engine's own rule evaluation plus the
+ * OS sandbox remain the boundary. "What it restores is the RECORD, not a
+ * refusal" (`docs/security-posture.md`) — for built-ins, literally.
+ *
+ * NEVER WIDENS. On no path does this bridge emit `permissionDecision:
+ * "allow"` — a `PreToolUse` allow bypasses the permission system and could
+ * override the compiled profile's own deny entries. The allow path returns NO
+ * OPINION and lets the engine decide as it always did.
  */
 import type {
   HookCallbackMatcher,
@@ -92,9 +104,9 @@ export function isGatewayTool(toolName: string): boolean {
 /**
  * The built-ins this bridge adjudicates: exactly the mutation-capable tools
  * `emitPermissionProfile` grants BY RULE, whose matched allow entries shadow
- * `canUseTool` (baseline §4.7) and whose envelope-policy verdict mirrors the
- * engine's own rule evaluation. Widening this set is NOT safe by default —
- * see the file-level scope note before adding a member.
+ * `canUseTool` (baseline §4.7). Their verdicts are recorded, never enforced —
+ * see the file-level "two enforcement postures" note. Widening this set is
+ * NOT safe by default — read that note before adding a member.
  */
 export const ADJUDICATED_BUILTIN_TOOLS: ReadonlySet<string> = new Set(["Bash", "Edit", "Write"]);
 
@@ -148,21 +160,27 @@ export function createToolAdjudicationHook(params: {
           // it, which the engine then turns into a whole-turn stop rather than
           // one denied call — fail-closed, but with no audit or journal record
           // and a dead worker.
-          let decision: AdjudicationDecision;
+          let decision: AdjudicationDecision | undefined;
           try {
             const resolved = await params.adjudicate(toolName, toolInput, {
               signal: options.signal,
             });
             decision =
-              resolved.behavior === "allow" || resolved.behavior === "deny"
-                ? resolved
-                : { behavior: "deny", message: GENERIC_ADJUDICATION_FAILURE_MESSAGE };
+              resolved.behavior === "allow" || resolved.behavior === "deny" ? resolved : undefined;
           } catch {
-            decision = { behavior: "deny", message: GENERIC_ADJUDICATION_FAILURE_MESSAGE };
+            decision = undefined;
+          }
+
+          // Adjudication UNAVAILABLE (threw, rejected, absent, malformed): deny,
+          // for every covered tool. Record-not-refuse presumes a record exists;
+          // a call with neither a trustworthy journal entry nor an audit record
+          // must not proceed.
+          if (decision === undefined) {
+            return denyOutput(GENERIC_ADJUDICATION_FAILURE_MESSAGE);
           }
 
           if (decision.behavior === "allow") {
-            // NO OPINION ON ALLOW — this bridge can only ever DENY.
+            // NO OPINION ON ALLOW — this bridge never widens.
             //
             // A `PreToolUse` hook returning `permissionDecision: "allow"`
             // BYPASSES the permission system for that call, which would let this
@@ -183,10 +201,37 @@ export function createToolAdjudicationHook(params: {
             params.audit.recordAllowedDecision(toolName, toolInput);
             return {};
           }
-          // `interrupt` is carried through, matching the `canUseTool` bridge: a
-          // policy that wants to halt the worker rather than refuse one call
-          // must be able to say so here too.
-          return denyOutput(decision.message, decision.interrupt);
+
+          // `interrupt: true` is a policy explicitly demanding the worker halt —
+          // a different statement from a routine verdict, carried through for
+          // every covered tool, matching the `canUseTool` bridge.
+          if (decision.interrupt === true) {
+            return denyOutput(decision.message, true);
+          }
+
+          if (ADJUDICATED_BUILTIN_TOOLS.has(toolName)) {
+            // RECORD-NOT-REFUSE for a built-in's policy deny. The envelope
+            // policy is measurably STRICTER than the engine inside a matched
+            // rule (baseline §4.8: the engine allows `git status 2>&1` under
+            // `Bash(git status:*)`; the policy's unproven-metacharacter
+            // fail-closed denies it), so acting on the verdict would refuse
+            // calls the engine grants — a worker-reliability regression on the
+            // primary toolset. And returning no opinion WITHOUT recording would
+            // false-abort the PostToolUse audit whenever the engine executes a
+            // policy-denied call. So the verdict stays journaled (the bus wrote
+            // it before resolving), the input is recorded for the audit's
+            // executed-vs-adjudicated check, and the ENGINE keeps deciding
+            // exactly as it did before this bridge existed. The journal entry
+            // is the alarm; the engine's own rule evaluation plus the OS
+            // sandbox remain the boundary.
+            params.audit.recordAllowedDecision(toolName, toolInput);
+            return {};
+          }
+
+          // Gateway tools act on the deny: the policy matches them on NAME, the
+          // same axis the engine's own rule grants them on, so no §4.8-style
+          // divergence is possible and the deny is safe to enforce.
+          return denyOutput(decision.message);
         },
       ],
     },

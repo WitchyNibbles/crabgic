@@ -213,8 +213,14 @@ a real `git status` to completion, both probes conclusive on the first run:
   so this is "auto-approved before the callback", not "denied before the
   callback".
 - **A `PreToolUse` hook DOES fire for that same matched call** — the same
-  remedy as §4.5, so one deny-only hook can cover the gateway family and the
-  rule-granted built-ins alike.
+  remedy as §4.5, so one hook can cover the gateway family and the rule-granted
+  built-ins alike.
+
+**Measured scope, stated precisely:** the probe measured the `Bash(<prefix>:*)`
+shape. The `Edit`/`Write` path-rule shapes are NOT separately probed; the SDK's
+own warning generalizes the mechanism to every settings allow rule, and the
+bridge covers them regardless — if a shape turns out not to shadow, `canUseTool`
+double-covers it, which double-journals and nothing worse.
 
 **Why this matters here:** with §4.5 + §4.7 together, _no_ production tool
 grant — bare gateway names or rule-shaped built-ins — reaches `canUseTool`.
@@ -222,6 +228,31 @@ The per-call adjudication record therefore lives entirely on the `PreToolUse`
 bridge (`packages/engine-claude/src/tool-adjudication-hook.ts`); `canUseTool`
 remains installed as a backstop for any grant shape not yet measured, and no
 document should claim it adjudicates the compiled profile's own grants.
+
+### 4.8 The engine ALLOWS metacharacter-bearing commands inside a matched `Bash(<prefix>:*)` rule (live-measured 2026-07-30)
+
+§3 probed compound operators (`&&`/`||`/`;`/`|`) and process wrappers; it never
+probed redirects, quoting, or the other shell metacharacters the envelope
+adjudication policy fails closed on (`adjudication-policy.ts`,
+`UNPROVEN_SHELL_METACHARACTER_PATTERN` — `& $ \` < > \r \n`). Measured at
+engine `2.1.218`, under an `allowedTools`/`allow`grant of exactly`Bash(git status:*)`:
+
+- **`git status 2>&1` EXECUTES** — real `git status` output returned, zero
+  `permission_denials`. The redirect characters (`>`, `&`) do not defeat the
+  prefix match. In-repo probe:
+  `builtin-allow-rule-shadowing.live.test.ts` ("the ENGINE allows a
+  metacharacter-bearing command…").
+- **`git status --porcelain "a|b"` EXECUTES** — a QUOTED `|` does not make the
+  engine treat the command as a compound with an unmatched segment (one-off
+  measurement, same session; the policy's quote-unaware splitter denies it).
+
+**Consequence:** the envelope adjudication policy is measurably STRICTER than
+the engine inside a matched prefix rule. A control that turns the policy's
+verdict into a refusal for built-in calls refuses commands the engine grants —
+`npm run test 2>&1` is the everyday casualty — which is why the
+tool-adjudication bridge records built-in verdicts without acting on them
+(record-not-refuse; the enforced boundary remains the engine's own rule
+evaluation plus the OS sandbox).
 
 ## 5. Structured-output probe (work item 6)
 

@@ -67,6 +67,16 @@ export interface AdjudicationAuditFailure {
  * the bridge never fires, `recordAllowedDecision` is never called and every
  * pre-approved tool would otherwise read as a spurious violation.
  *
+ * WHAT A RECORD MEANS (widened 2026-07-30 with the tool-adjudication
+ * PreToolUse bridge): "this exact input was SEEN BY ADJUDICATION at
+ * PreToolUse time", not "the policy said allow". For the built-ins the bridge
+ * records on BOTH verdicts, deliberately: the envelope policy is measurably
+ * stricter than the engine inside a matched rule (baseline §4.8), so a
+ * policy-denied built-in call can still be executed by the engine — recording
+ * only allows would make every such execution a false MISMATCH and abort a
+ * legitimate worker. The audit's question is unchanged and still sound:
+ * did the executed input match what adjudication saw?
+ *
  * KEYING LIMITATION (documented): `hasMatchingAllowedDecision` does a
  * deep-equality scan over every allowed decision recorded for a given tool
  * name so far in this session — it has no notion of WHICH specific

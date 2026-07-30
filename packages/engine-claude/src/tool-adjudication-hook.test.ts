@@ -74,9 +74,8 @@ describe("isGatewayTool", () => {
 describe("isAdjudicatedTool", () => {
   it("covers exactly the tools the compiled profile grants BY RULE: the gateway family and Bash/Edit/Write", () => {
     // These are the tools whose allow entries shadow `canUseTool` (baseline
-    // §4.5 for bare names, §4.7 for rule-shaped entries) AND whose envelope
-    // policy verdict mirrors the engine's own rule evaluation — the two
-    // properties that make a deny-only hook opinion safe.
+    // §4.5 for bare names, §4.7 for rule-shaped entries) — the tools that
+    // would otherwise execute with no adjudication record at all.
     expect(isAdjudicatedTool(`${GATEWAY_TOOL_WIRE_PREFIX}contract_approve`)).toBe(true);
     expect(isAdjudicatedTool("Bash")).toBe(true);
     expect(isAdjudicatedTool("Edit")).toBe(true);
@@ -86,9 +85,10 @@ describe("isAdjudicatedTool", () => {
 
   it("EXCLUDES tools the profile grants no rule for — the policy would default-deny them all", () => {
     // `createEnvelopeAdjudicationPolicy` denies any unlisted tool. The engine
-    // grants read-only tools WITHOUT a rule, so a deny-only hook consulting
-    // that policy for them would black-hole every `Read`/`Glob`/`Grep` call —
-    // a control added to close a hole must not break the worker it guards.
+    // grants read-only tools WITHOUT a rule, so covering them would journal a
+    // meaningless deny verdict for every `Read`/`Glob`/`Grep` call and
+    // black-hole them all whenever adjudication is unavailable — a control
+    // added to close a hole must not break the worker it guards.
     expect(isAdjudicatedTool("Read")).toBe(false);
     expect(isAdjudicatedTool("Glob")).toBe(false);
     expect(isAdjudicatedTool("Grep")).toBe(false);
@@ -218,23 +218,70 @@ describe("createToolAdjudicationHook", () => {
     expect(audit.hasMatchingAllowedDecision("Bash", { command: "git status" })).toBe(true);
   });
 
-  it("denies a built-in call the policy denies, for each of Bash/Edit/Write", async () => {
+  it("RECORDS but does NOT act on a policy deny for a built-in — record-not-refuse, for each of Bash/Edit/Write", async () => {
+    // The measured reason (baseline §4.8): the envelope policy is STRICTER
+    // than the engine inside a matched rule — the engine allows
+    // `git status 2>&1` under `Bash(git status:*)` while the policy's
+    // unproven-metacharacter fail-closed denies it. Turning the policy's
+    // verdict into a hook deny would refuse calls the engine grants (a live
+    // worker-reliability regression, review F1), and returning no opinion
+    // WITHOUT recording would false-abort the PostToolUse audit when the
+    // engine then executes the call. So for built-ins the verdict is
+    // journaled (by the bus, inside `adjudicate`) and the input is recorded
+    // for the audit, and the ENGINE keeps deciding — behavior is byte-
+    // identical to the pre-bridge engine evaluation.
     for (const [toolName, toolInput] of [
-      ["Bash", { command: "curl http://evil" }],
+      ["Bash", { command: "npm run test 2>&1" }],
       ["Edit", { file_path: "/outside/owned/paths.ts" }],
       ["Write", { file_path: "/outside/owned/paths.ts" }],
     ] as const) {
       const adjudicate = vi.fn(async () =>
         Promise.resolve({ behavior: "deny" as const, message: "outside the envelope" }),
       );
-      const output = (await invoke(
+      const { run, audit } = invoke(
         adjudicate,
         toolName,
         toolInput as unknown as Record<string, unknown>,
-      ).run()) as { hookSpecificOutput?: { permissionDecision?: string } };
+      );
+      const output = await run();
       expect(adjudicate).toHaveBeenCalledOnce();
+      expect(output).toEqual({});
+      expect(audit.hasMatchingAllowedDecision(toolName, toolInput as Record<string, unknown>)).toBe(
+        true,
+      );
+    }
+  });
+
+  it("still DENIES a built-in when adjudication itself is unavailable — no unrecorded mutation call may proceed", async () => {
+    // Record-not-refuse presumes a record EXISTS. A throwing/rejecting/absent/
+    // malformed adjudication produces neither a journal entry the caller can
+    // trust nor an audit record, so the fail-closed posture holds: deny.
+    for (const broken of [
+      () => {
+        throw new Error("bus down");
+      },
+      () => Promise.reject(new Error("nope")),
+      undefined,
+      () => Promise.resolve({ behavior: "maybe" }),
+    ]) {
+      const output = (await invoke(broken as unknown as AdjudicationCallback, "Bash", {
+        command: "git status",
+      }).run()) as { hookSpecificOutput?: { permissionDecision?: string } };
       expect(output.hookSpecificOutput?.permissionDecision).toBe("deny");
     }
+  });
+
+  it("honors an explicit `interrupt` halt from the policy even for a built-in", async () => {
+    // A routine deny verdict is divergence-prone (§4.8) and is not acted on;
+    // `interrupt: true` is a policy explicitly demanding the worker halt,
+    // which is a different statement and is carried through.
+    const output = (await invoke(
+      async () => Promise.resolve({ behavior: "deny" as const, message: "halt", interrupt: true }),
+      "Bash",
+      { command: "git status" },
+    ).run()) as { continue?: boolean; stopReason?: string };
+    expect(output.continue).toBe(false);
+    expect(output.stopReason).toBe("halt");
   });
 
   it("leaves NON-adjudicated tools entirely alone — an opinion would black-hole them", async () => {

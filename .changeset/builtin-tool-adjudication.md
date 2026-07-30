@@ -16,19 +16,26 @@ hole the gateway family had, on the tools that mutate things.
 
 The gateway's `PreToolUse` bridge is now the tool-adjudication bridge
 (`tool-adjudication-hook.ts`): it covers the gateway wire prefix plus exactly
-`{Bash, Edit, Write}`, the set the profile grants by rule, where the envelope
-policy's verdict mirrors the engine's own rule evaluation. Still deny-only —
-the allow path records the decision (journal + audit) and returns no opinion,
-so the bridge can narrow but never widen what the profile grants.
+`{Bash, Edit, Write}`, the set the profile grants by rule. Gateway denies are
+enforced as before. Built-in verdicts are **recorded, not enforced** — a
+second live measurement (§4.8, also review-triggered) showed the envelope
+policy is STRICTER than the engine inside a matched rule (the engine executes
+`git status 2>&1`; the policy's metacharacter fail-closed denies it), so
+acting on the verdict would refuse everyday commands like `npm run test 2>&1`
+that the engine grants. The journal entry is the alarm; the engine's own rule
+evaluation plus the OS sandbox remain the boundary. Two exceptions enforce
+even for built-ins: adjudication unavailable denies (no unrecorded mutation
+call proceeds), and an explicit `interrupt` halt is honored.
 
 Deliberately NOT extended to `Read`/`Glob`/`Grep`: the envelope policy
-default-denies any unlisted tool while the engine grants read-only tools
-without a rule, so a deny-only opinion there would black-hole every read a
-worker makes.
+default-denies unlisted tools the engine grants without rules — covering them
+would journal meaningless deny verdicts and black-hole reads when the bus is
+down.
 
-Verified live end-to-end: a real adapter-spawned worker's `git status` call
-produced a journaled allow decision via the bridge, put real records in the
-PostToolUse audit's scope for the first time, and did not spuriously abort.
-`adjudication-bridge.live.test.ts` now ASSERTS that record exists — the
+Verified live end-to-end for both `Bash` and `Write`: real adapter-spawned
+workers produced journaled decisions via the bridge, put real records in the
+PostToolUse audit's scope for the first time (Pre→Post `tool_input` measured
+stable for both), and did not spuriously abort.
+`adjudication-bridge.live.test.ts` now ASSERTS those records exist — the
 original version only recorded whether `canUseTool` fired, which is how this
 went unnoticed.

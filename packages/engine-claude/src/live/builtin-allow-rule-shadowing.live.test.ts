@@ -78,27 +78,28 @@ function initGitRepo(worktreePath: string): void {
 
 /**
  * Whether the driven call genuinely EXECUTED: a real `Bash` `tool_use` block
- * whose command is `git status`, AND real `git status` output in a
+ * whose command contains `expectedCommand`, AND real `git status` output in a
  * `tool_result`. The second half is what distinguishes "auto-approved before
  * the callback" (the shadowing under probe) from "denied before the callback"
  * (which would also leave `canUseTool` uninvoked and would prove nothing).
  */
-function gitStatusExecuted(messages: readonly SDKMessage[]): boolean {
+function commandExecuted(messages: readonly SDKMessage[], expectedCommand: string): boolean {
   const attempted = bashCommandsAttempted(messages).some((command) =>
-    command.includes("git status"),
+    command.includes(expectedCommand),
   );
   const resultText = toolResultText(messages);
   return attempted && (resultText.includes("No commits yet") || resultText.includes("On branch"));
 }
 
-async function untilGitStatusExecuted(
+async function untilCommandExecuted(
   tries: number,
+  expectedCommand: string,
   attempt: () => Promise<{ readonly messages: readonly SDKMessage[] }>,
 ): Promise<{ readonly messages: readonly SDKMessage[] }> {
   let last: { readonly messages: readonly SDKMessage[] } = { messages: [] };
   for (let index = 1; index <= tries; index += 1) {
     last = await attempt();
-    if (gitStatusExecuted(last.messages)) return last;
+    if (commandExecuted(last.messages, expectedCommand)) return last;
   }
   return last;
 }
@@ -116,7 +117,7 @@ describe("built-in allow-RULE shadowing (engine fact, live)", () => {
       try {
         initGitRepo(scratch.worktreePath);
         const canUseToolCalls: string[] = [];
-        const result = await untilGitStatusExecuted(3, () =>
+        const result = await untilCommandExecuted(3, "git status", () =>
           runDirectQuery(resolveWorkerAuthMaterial(), {
             prompt: PROMPT,
             cwd: scratch.worktreePath,
@@ -140,7 +141,7 @@ describe("built-in allow-RULE shadowing (engine fact, live)", () => {
         // a denied call also never reaches canUseTool, and measures nothing
         // about shadowing.
         expect(
-          gitStatusExecuted(result.messages),
+          commandExecuted(result.messages, "git status"),
           `INCONCLUSIVE: the model did not EXECUTE "git status" on this run (attempted ` +
             `commands: ${JSON.stringify(bashCommandsAttempted(result.messages))}), so this ` +
             `says nothing about which gate fires. Steer the prompt or raise maxTurns; ` +
@@ -164,7 +165,7 @@ describe("built-in allow-RULE shadowing (engine fact, live)", () => {
       try {
         initGitRepo(scratch.worktreePath);
         const hookCalls: string[] = [];
-        const result = await untilGitStatusExecuted(3, () =>
+        const result = await untilCommandExecuted(3, "git status", () =>
           runDirectQuery(resolveWorkerAuthMaterial(), {
             prompt: PROMPT,
             cwd: scratch.worktreePath,
@@ -197,7 +198,7 @@ describe("built-in allow-RULE shadowing (engine fact, live)", () => {
         );
 
         expect(
-          gitStatusExecuted(result.messages),
+          commandExecuted(result.messages, "git status"),
           `INCONCLUSIVE: the model did not EXECUTE "git status" on this run. Hook calls ` +
             `observed: ${JSON.stringify(hookCalls)}. An empty list here means nothing was ` +
             `gated, NOT that hooks miss rule-matched built-ins.`,
@@ -206,6 +207,60 @@ describe("built-in allow-RULE shadowing (engine fact, live)", () => {
         // THE FACT THE FIX NEEDS: a PreToolUse hook sees the rule-matched
         // Bash call, before the permission evaluation that shadows canUseTool.
         expect(hookCalls).toContain("Bash");
+      } finally {
+        await scratch.cleanup();
+      }
+    },
+  );
+
+  it(
+    "the ENGINE allows a metacharacter-bearing command matched by a prefix rule — the measured divergence that keeps the bridge opinion-less for built-ins",
+    { timeout: 240_000 },
+    async () => {
+      // Adversarial review (F1) caught that wiring the envelope policy into a
+      // deny-capable PreToolUse hook would have activated the policy's
+      // documented fail-closed-on-unproven metacharacter denial on every
+      // production Bash call. Whether that diverged from the engine was
+      // UNPROVEN in either direction (baseline §3 probed only compound
+      // operators and wrappers). This measures it: `git status 2>&1` carries
+      // `>` and `&` — both in the policy's unproven-metacharacter deny set —
+      // and the engine's own `Bash(git status:*)` rule ALLOWS it (executed,
+      // zero permission denials). So the policy is measurably STRICTER than
+      // the engine inside a matched prefix, and a hook that turned the
+      // policy's verdict into a deny would refuse calls the engine grants —
+      // which is why the bridge records built-in verdicts without acting on
+      // them (`tool-adjudication-hook.ts`, record-not-refuse).
+      const scratch = await createLiveScratch();
+      try {
+        initGitRepo(scratch.worktreePath);
+        const result = await untilCommandExecuted(3, "git status 2>&1", () =>
+          runDirectQuery(resolveWorkerAuthMaterial(), {
+            prompt:
+              "CI permissions diagnostic. Use the Bash tool exactly once to run precisely this " +
+              "command, byte for byte, without simplifying it: git status 2>&1\n" +
+              "Then reply with exactly: done.",
+            cwd: scratch.worktreePath,
+            configDir: scratch.configDir,
+            homeDir: scratch.homeDir,
+            tmpDir: scratch.tmpDir,
+            allow: [RULE_UNDER_TEST],
+            allowedTools: [RULE_UNDER_TEST],
+            maxTurns: 4,
+          }),
+        );
+
+        // The measured fact IS the execution: the redirect-bearing command ran
+        // to completion under the prefix rule. A permission denial here would
+        // leave no real git-status output, so the executed guard is the
+        // assertion.
+        expect(
+          commandExecuted(result.messages, "git status 2>&1"),
+          `INCONCLUSIVE OR DENIED: "git status 2>&1" did not execute (attempted: ` +
+            `${JSON.stringify(bashCommandsAttempted(result.messages))}). If the model attempted ` +
+            `it and it did not run, the engine may now DENY metacharacters inside a matched ` +
+            `prefix — re-measure before trusting §4.8, and revisit the bridge's ` +
+            `record-not-refuse posture for built-ins.`,
+        ).toBe(true);
       } finally {
         await scratch.cleanup();
       }
