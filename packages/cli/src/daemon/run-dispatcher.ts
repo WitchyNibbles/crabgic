@@ -63,18 +63,8 @@ import {
 } from "@crabgic/git-engine";
 import { compileEnvelope, isContained } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineAdapter } from "@crabgic/engine-core";
-import {
-  ACCEPTED_ENGINE_VERSION_RANGE,
-  ClaudeEngineAdapter,
-  type WorkerAuthMaterial,
-} from "@crabgic/engine-claude";
-import {
-  buildTaskPacket,
-  driveRun,
-  SchedulerCache,
-  type AttemptCacheSeam,
-  type WorkerDispatchContext,
-} from "@crabgic/scheduler";
+import { ClaudeEngineAdapter, type WorkerAuthMaterial } from "@crabgic/engine-claude";
+import { buildTaskPacket, driveRun, type WorkerDispatchContext } from "@crabgic/scheduler";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
@@ -205,40 +195,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    */
   const inFlight = new Set<string>();
 
-  /**
-   * Succeeded-attempt reuse for same-daemon re-drives (`AttemptCacheSeam`,
-   * scheduler). One CACHE per dispatcher = per daemon lifetime: `resume`
-   * (crash recovery, limit-park re-dispatch) re-seeds every unit `pending`
-   * because nothing updates a stored WorkUnit's `attemptStatus` after
-   * intake, so without this a re-drive re-executed — or, once the unit had
-   * a journaled dispatch, was refused by the repair-evidence gate — work
-   * whose result already existed. The cache dies with the daemon, so a
-   * re-drive after a restart still re-executes (the ledger's separate
-   * restart-safe re-dispatch carry-forward).
-   */
-  const attemptCacheStore: AttemptCacheSeam["cache"] = new SchedulerCache();
-
-  /**
-   * The per-DRIVE seam: the fingerprint carries the authorizing policy
-   * digest alongside the engine range. Review (2026-07-30, F3 of the cache
-   * round) caught why the digest must be in the key: `allowedWriteScratchPaths`
-   * and `allowUnixSockets` narrow the compiled SANDBOX but appear in neither
-   * `isContained`'s dimensions nor the packet — the only two
-   * authority-relevant policy fields the containment gate cannot see. An
-   * owner narrowing them between dispatch and resume changes the digest,
-   * so the cached attempt produced under the wider sandbox misses and the
-   * unit re-executes under the newly compiled one. Any policy edit
-   * invalidates reuse — coarse, and deliberately so: reuse under stale
-   * authority is the failure mode, a spurious re-execution is just cost.
-   */
-  function attemptCacheFor(policyDigest: string): AttemptCacheSeam {
-    return {
-      cache: attemptCacheStore,
-      toolchainFingerprint:
-        `engine:${ACCEPTED_ENGINE_VERSION_RANGE.min}-${ACCEPTED_ENGINE_VERSION_RANGE.max};` +
-        `policy:${policyDigest}`,
-    };
-  }
+  // NOTE: this dispatcher briefly constructed an in-memory attempt cache
+  // (`AttemptCacheSeam`) so a same-daemon re-drive would reuse succeeded
+  // attempts. `driveRun` now seeds each unit's status from the DURABLE
+  // journal instead — a succeeded unit is never re-selected — which does the
+  // same job restart-safely and without a second mechanism keyed on the
+  // authorizing policy digest. The cache was removed rather than kept as
+  // unreachable dead code (its review's F2). See `@crabgic/scheduler`'s
+  // `driveRun` journal-seed.
 
   /**
    * The standing-approval gate: load the policy, then test the envelope for
@@ -334,9 +298,8 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     changeSet: ChangeSet,
     workUnits: readonly WorkUnit[],
     envelope: AuthorizationEnvelope,
-    gate: Extract<PolicyGate, { ok: true }>,
+    policy: EnvelopePolicy,
   ): Promise<void> {
-    const policy = gate.policy;
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
 
@@ -376,7 +339,6 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,
         adjudicate,
-        attemptCache: attemptCacheFor(gate.digest),
         compileProfile: () => Promise.resolve(profile),
         buildPacket: (ctx) =>
           Promise.resolve(
@@ -448,14 +410,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   function beginDriving(
     runId: string,
     resolved: Extract<ResolvedRun, { ok: true }>,
-    gate: Extract<PolicyGate, { ok: true }>,
+    policy: EnvelopePolicy,
     /** Releases the caller's in-flight claim. Called exactly once, when the drive settles. */
     release: () => void,
   ): void {
     // Deliberately NOT awaited — see the file-level doc comment. Errors
     // are reported through `onDriveError`, never left as an unhandled
     // rejection that could take the whole daemon down.
-    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, gate)
+    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
       .catch((err: unknown) => {
         onDriveError(runId, err);
       })
@@ -572,7 +534,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         }
 
         // Hands the claim over to the drive, which releases it when it settles.
-        beginDriving(runId, resolved, gate, release);
+        beginDriving(runId, resolved, gate.policy, release);
         return { accepted: true, runId };
       } catch (err) {
         release();
@@ -612,7 +574,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 
       inFlight.add(run.changeSetId);
       let released = false;
-      beginDriving(runId, resolved, gate, () => {
+      beginDriving(runId, resolved, gate.policy, () => {
         if (!released) {
           released = true;
           inFlight.delete(run.changeSetId);

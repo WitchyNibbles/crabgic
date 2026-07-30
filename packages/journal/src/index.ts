@@ -156,5 +156,5 @@ export { IdempotencyRegistry } from "./idempotency.js";
 export type { IdempotencyStatus, IdempotencyOutcome } from "./idempotency.js";
 
 // ---- Work-unit attempt tracking ----
-export { recordAttempt, getLatestAttempt } from "./attempts.js";
+export { recordAttempt, getLatestAttempt, getLatestAttemptForRun } from "./attempts.js";
 export type { WorkUnitAttemptRecord } from "./attempts.js";

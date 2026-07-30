@@ -515,17 +515,16 @@ describe("createRealRunDispatcher — a published change set", () => {
   );
 
   /**
-   * The attempt-cache wiring, observed end to end (scheduler-level semantics
-   * are pinned in `run-driver.test.ts`; this pins that the dispatcher
-   * actually PASSES the seam). Same daemon, SAME RUN: dispatch a unit to
-   * success, then `resume` the run — the exact re-drive crash recovery and
-   * limit-park re-dispatch perform. Because nothing updates the stored
-   * WorkUnit's `attemptStatus`, the re-drive re-selects the unit; the cache
-   * must reuse its result rather than stand up a second engine. The key is
-   * RUN-scoped (adversarial review), so this test resumes the same run —
-   * a retry run of the same change set misses by design.
+   * Same-run resume, observed end to end (scheduler-level seeding is pinned
+   * in `run-driver.test.ts`; this pins the dispatcher path). Same daemon,
+   * SAME RUN: dispatch a unit to success, then `resume` the run — the exact
+   * re-drive crash recovery and limit-park re-dispatch perform. Nothing
+   * updates the stored WorkUnit's `attemptStatus`, but `driveRun` seeds from
+   * the journal, so the already-succeeded unit is not re-selected and no
+   * second engine is stood up. (This is what the now-removed in-memory
+   * attempt cache used to provide; journal-seeding does it restart-safely.)
    */
-  it("a same-daemon, same-run resume reuses the succeeded unit's work: no second adapter", async () => {
+  it("a same-daemon, same-run resume does not re-run the succeeded unit: no second adapter", async () => {
     const deps = buildDeps({ ...fullySeeded(), run: false });
     const adaptersCreatedFor: string[] = [];
     const dispatcher = newDispatcher(deps, {
@@ -572,72 +571,9 @@ describe("createRealRunDispatcher — a published change set", () => {
       },
       { timeout: 10_000 },
     );
-    // THE WIRING FACT: the succeeded unit never got a second engine across
-    // either resume — its cached result was reused.
+    // THE FACT: the succeeded unit never got a second engine across either
+    // resume — it was journal-seeded `succeeded` and not re-selected.
     expect(adaptersCreatedFor).toEqual([UNIT_ID]);
-  });
-
-  /**
-   * Review F3 of the cache round: `allowedWriteScratchPaths` and
-   * `allowUnixSockets` narrow the compiled SANDBOX but appear in neither
-   * `isContained`'s dimensions nor the packet — the only two
-   * authority-relevant policy fields the containment gate cannot see. The
-   * cache key therefore carries the authorizing policy DIGEST: any policy
-   * edit between drive and resume is a different fingerprint, the cached
-   * attempt misses, and the unit re-executes under the newly compiled
-   * sandbox instead of being reused under stale authority.
-   */
-  it("a resume under an EDITED policy (new digest) re-executes rather than reusing stale authority", async () => {
-    let digest = "sha256:fixture";
-    const deps = buildDeps({ ...fullySeeded(), run: false });
-    const adaptersCreatedFor: string[] = [];
-    const dispatcher = newDispatcher(deps, {
-      loadPolicy: () => ({ status: "loaded" as const, policy: FIXTURE_POLICY, digest }),
-      createAdapter: (ctx: { workUnit: { id: string } }) => {
-        adaptersCreatedFor.push(ctx.workUnit.id);
-        return Promise.resolve(
-          new FakeEngineAdapter(
-            buildFakeEngineScript({
-              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
-            }),
-          ),
-        );
-      },
-    });
-
-    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
-    await vi.waitFor(
-      async () => {
-        const transitions: unknown[] = [];
-        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
-          transitions.push(entry);
-        }
-        expect(transitions.length).toBeGreaterThanOrEqual(1);
-      },
-      { timeout: 10_000 },
-    );
-    expect(adaptersCreatedFor).toEqual([UNIT_ID]);
-
-    // The owner edits the policy (any dimension — scratch paths and unix
-    // sockets are the ones nothing else would catch): new digest.
-    digest = "sha256:fixture-edited";
-    const runId = deps.runs.list()[0]!.runId;
-    await vi.waitFor(
-      async () => {
-        expect((await dispatcher.resume(runId)).accepted).toBe(true);
-      },
-      { timeout: 10_000 },
-    );
-    // The miss stands up a genuine second engine for the unit. (The
-    // re-dispatch then meets the repair-evidence gate — the drive settles
-    // via onDriveError — but the fact under test is that no stale-authority
-    // reuse happened, and the second adapter IS that fact.)
-    await vi.waitFor(
-      () => {
-        expect(adaptersCreatedFor.length).toBeGreaterThanOrEqual(2);
-      },
-      { timeout: 10_000 },
-    );
   });
 });
 
