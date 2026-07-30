@@ -76,8 +76,15 @@ export type PolicyInstallOutcome =
   | { readonly status: "written"; readonly policy: EnvelopePolicy }
   /** A valid policy already exists — it is the owner's file (hand-added grants are never derived) and install keeps it untouched. */
   | { readonly status: "kept-existing" }
-  /** A policy exists but does not load; overwriting it would wipe whatever the owner hand-wrote, so install refuses and surfaces the loader's own reason. */
-  | { readonly status: "existing-invalid"; readonly reason: string };
+  /**
+   * A policy exists but does not load; overwriting it would wipe whatever the
+   * owner hand-wrote, so install refuses and surfaces the loader's own
+   * reason. `transient` travels from the loader (round 9's rule: the
+   * classification is carried, never re-derived from prose): true means the
+   * FILE is probably fine and only this process's state prevented reading it
+   * — the remedy is retrying, never fixing or deleting a healthy file.
+   */
+  | { readonly status: "existing-invalid"; readonly reason: string; readonly transient: boolean };
 
 export interface InstallResult {
   readonly status: InstallStatus;
@@ -322,7 +329,11 @@ async function bootstrapPolicy(
     return { status: "kept-existing" };
   }
   if (existing.status === "invalid") {
-    return { status: "existing-invalid", reason: existing.reason };
+    return {
+      status: "existing-invalid",
+      reason: existing.reason,
+      transient: existing.transient === true,
+    };
   }
 
   const derived = deps.policy.derive();

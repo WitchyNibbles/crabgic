@@ -296,8 +296,38 @@ describe("runInstall — the standing policy", () => {
     expect(result.policy).toEqual({
       status: "existing-invalid",
       reason: "policy file X is not valid JSON",
+      transient: false,
     });
     expect(written).toEqual([]);
+  });
+
+  /**
+   * Review S1: a TRANSIENT load failure (EMFILE — "the policy itself is
+   * probably fine") must carry the flag through, because the renderer's
+   * remedy has to agree with the evidence: "retry", never "fix or delete a
+   * healthy file". Round 9's rule — the classification travels with the
+   * result — applied to the one consumer that had dropped it.
+   */
+  it("carries the loader's transient flag through, so the remedy can agree with the evidence", async () => {
+    const dir = await makeTmpDir();
+    const result = await runInstall(
+      {
+        ...deps(dir),
+        policy: policyBag(dir, {
+          loadExisting: () => ({
+            status: "invalid" as const,
+            reason: "too many open files while reading the policy",
+            transient: true,
+          }),
+        }),
+      },
+      { dryRun: false },
+    );
+    expect(result.policy).toEqual({
+      status: "existing-invalid",
+      reason: "too many open files while reading the policy",
+      transient: true,
+    });
   });
 
   it("reports kept-existing on a dry run too, before any confirmation machinery", async () => {

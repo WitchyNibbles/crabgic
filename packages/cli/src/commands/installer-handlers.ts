@@ -72,10 +72,17 @@ function renderPolicyOutcome(outcome: InstallResult["policy"]): string {
         "delete it and re-run `crabgic install` to re-author\n"
       );
     case "existing-invalid":
-      return (
-        `  ! standing policy exists but cannot be loaded (${outcome.reason}); kept untouched ` +
-        "rather than overwritten — fix it, or delete it and re-run `crabgic install`\n"
-      );
+      // The remedy must agree with the evidence (round 9's rule, applied
+      // here by review): a TRANSIENT load failure means the file is probably
+      // fine and only this process's state prevented reading it — telling
+      // the owner to "fix or delete" it would invite destroying the
+      // hand-added grants this guard exists to protect.
+      return outcome.transient
+        ? `  ! standing policy exists but could not be read right now (${outcome.reason}); ` +
+            "kept untouched — the file is probably fine, retry once resources free up; " +
+            "do NOT delete it\n"
+        : `  ! standing policy exists but cannot be loaded (${outcome.reason}); kept untouched ` +
+            "rather than overwritten — fix it by hand, or delete it and re-run `crabgic install`\n";
   }
 }
 
