@@ -191,6 +191,69 @@ runs, on identical options. The probe retries the precondition and still ends
 INCONCLUSIVE most of the time. Both facts rest on positive observations, which
 non-reproduction does not weaken.
 
+### 4.7 A matched RULE-SHAPED allow entry shadows `canUseTool` exactly like a bare name (live-measured 2026-07-30)
+
+§4.5 established shadowing for a tool named **outright** in `allowedTools`; its
+warning added, unquantified, that settings-file allow **rules** "can also shadow
+the callback but are not visible here". The compiled profile grants
+`Bash`/`Edit`/`Write` only ever by rule (`Bash(<prefix>:*)`,
+`Edit(//<worktree>/…/**)` — `emitPermissionProfile` emits no bare built-in
+name), so whether a _matched rule_ short-circuits before `canUseTool` decided
+whether the mutation-capable tools execute with any adjudication record at all.
+Adversarial review (2026-07-30) found this unverified in either direction.
+
+Measured at engine `2.1.218` (inside `2.1.207`–`2.1.220`) by
+`packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts`,
+which grants exactly the production-shaped `Bash(git status:*)` rule down both
+production channels (`settings.permissions.allow` + `allowedTools`) and drives
+a real `git status` to completion, both probes conclusive on the first run:
+
+- **`canUseTool` is NOT invoked for a `Bash` call a rule-shaped allow entry
+  matched.** The executed-call guard held (real `git status` output came back),
+  so this is "auto-approved before the callback", not "denied before the
+  callback".
+- **A `PreToolUse` hook DOES fire for that same matched call** — the same
+  remedy as §4.5, so one hook can cover the gateway family and the rule-granted
+  built-ins alike.
+
+**Measured scope, stated precisely:** the probe measured the `Bash(<prefix>:*)`
+shape. The `Edit`/`Write` path-rule shapes are NOT separately probed; the SDK's
+own warning generalizes the mechanism to every settings allow rule, and the
+bridge covers them regardless — if a shape turns out not to shadow, `canUseTool`
+double-covers it, which double-journals and nothing worse.
+
+**Why this matters here:** with §4.5 + §4.7 together, _no_ production tool
+grant — bare gateway names or rule-shaped built-ins — reaches `canUseTool`.
+The per-call adjudication record therefore lives entirely on the `PreToolUse`
+bridge (`packages/engine-claude/src/tool-adjudication-hook.ts`); `canUseTool`
+remains installed as a backstop for any grant shape not yet measured, and no
+document should claim it adjudicates the compiled profile's own grants.
+
+### 4.8 The engine ALLOWS metacharacter-bearing commands inside a matched `Bash(<prefix>:*)` rule (live-measured 2026-07-30)
+
+§3 probed compound operators (`&&`/`||`/`;`/`|`) and process wrappers; it never
+probed redirects, quoting, or the other shell metacharacters the envelope
+adjudication policy fails closed on (`adjudication-policy.ts`,
+`UNPROVEN_SHELL_METACHARACTER_PATTERN` — `& $ \` < > \r \n`). Measured at
+engine `2.1.218`, under an `allowedTools`/`allow`grant of exactly`Bash(git status:*)`:
+
+- **`git status 2>&1` EXECUTES** — real `git status` output returned, zero
+  `permission_denials`. The redirect characters (`>`, `&`) do not defeat the
+  prefix match. In-repo probe:
+  `builtin-allow-rule-shadowing.live.test.ts` ("the ENGINE allows a
+  metacharacter-bearing command…").
+- **`git status --porcelain "a|b"` EXECUTES** — a QUOTED `|` does not make the
+  engine treat the command as a compound with an unmatched segment (one-off
+  measurement, same session; the policy's quote-unaware splitter denies it).
+
+**Consequence:** the envelope adjudication policy is measurably STRICTER than
+the engine inside a matched prefix rule. A control that turns the policy's
+verdict into a refusal for built-in calls refuses commands the engine grants —
+`npm run test 2>&1` is the everyday casualty — which is why the
+tool-adjudication bridge records built-in verdicts without acting on them
+(record-not-refuse; the enforced boundary remains the engine's own rule
+evaluation plus the OS sandbox).
+
 ## 5. Structured-output probe (work item 6)
 
 Transport: SDK `query()` — `Options.outputFormat: {type: 'json_schema', schema}` is the confirmed SDK field name (the CLI `--json-schema` flag's SDK equivalent; adaptation §4.4 only said "SDK equivalent" without naming it — there is no field literally called `jsonSchema` on `Options`).

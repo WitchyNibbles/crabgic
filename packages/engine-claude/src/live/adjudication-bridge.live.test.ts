@@ -14,19 +14,25 @@
  * `Bash(git status:*)`, which the standard-implementation envelope allows —
  * to completion, and asserts:
  *
- *   (a) the worker does NOT audit-abort (Finding 2: a pre-approved tool
- *       whose `canUseTool` bridge may never have fired must be treated as
- *       in-scope of the static `dontAsk` allow-list, not as a spurious
- *       adjudicated-vs-executed mismatch), and
- *   (b) EMPIRICALLY records WHETHER `canUseTool` fired — an
- *       `adjudication_decision` journal entry appears for the call iff the
- *       bus (and therefore the bridge) was invoked.
+ *   (a) the worker does NOT audit-abort (Finding 2: a pre-approved tool must
+ *       be treated as in-scope of the static `dontAsk` allow-list, not as a
+ *       spurious adjudicated-vs-executed mismatch — and since the PreToolUse
+ *       bridge now RECORDS the allowed Bash decision, this also smokes the
+ *       PostToolUse audit path with real records in scope for the first
+ *       time), and
+ *   (b) an `adjudication_decision` journal entry EXISTS for the driven call,
+ *       and every one is an allow. Originally this only recorded whether
+ *       `canUseTool` fired; the answer is measured now (it never does for a
+ *       rule-matched call, baseline §4.7) and the record instead comes from
+ *       the PreToolUse tool-adjudication hook, which this asserts.
  *
  * Like every `*.live.test.ts` file it fails RED (never skips) without
  * `CRABGIC_LIVE=1` — `assertLiveEnabled()` in `beforeAll` throws so the
  * engine-live CI job goes red rather than vacuously green.
  */
 import { execFileSync } from "node:child_process";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { CANONICAL_ENVELOPE_CASES, compileEnvelope } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineEvent } from "@crabgic/engine-core";
@@ -51,16 +57,28 @@ if (STANDARD_CASE === undefined) {
   throw new Error("standard-implementation canonical envelope case not found");
 }
 
-/** Collects the `payload.decision` of every `adjudication_decision` journal entry (the empirical canUseTool-fired signal). */
+/**
+ * Collects every `adjudication_decision` journal entry as `{decision, rationale}`.
+ *
+ * The rationale is what lets an assertion scope itself to ONE tool: the bus
+ * journals an allow as exactly `allowed tool call: <toolName>`. Asserting over
+ * ALL decisions instead was a review-caught flake: a worker that tries one
+ * legitimately-denied extra command on the way to the driven one would fail an
+ * `every(allow)` check without anything being wrong.
+ */
 async function collectAdjudicationDecisions(
   journal: Awaited<ReturnType<typeof createLiveAdapterContext>>["journal"],
-): Promise<readonly string[]> {
-  const decisions: string[] = [];
+): Promise<readonly { readonly decision: string; readonly rationale: string }[]> {
+  const decisions: { readonly decision: string; readonly rationale: string }[] = [];
   for await (const entry of journal.queryEntries({ type: "adjudication_decision" })) {
-    const decision = (entry as { readonly payload?: { readonly decision?: unknown } }).payload
-      ?.decision;
-    if (typeof decision === "string") {
-      decisions.push(decision);
+    const payload = (
+      entry as { readonly payload?: { readonly decision?: unknown; readonly rationale?: unknown } }
+    ).payload;
+    if (typeof payload?.decision === "string") {
+      decisions.push({
+        decision: payload.decision,
+        rationale: typeof payload.rationale === "string" ? payload.rationale : "",
+      });
     }
   }
   return decisions;
@@ -134,16 +152,110 @@ describe("adjudication bridge under permissionMode:'dontAsk' (Finding 2 — canU
         "Bash(git status) — the driven, genuinely-allowed tool",
       );
 
-      // (b) EMPIRICAL RECORD: did canUseTool fire under dontAsk? An
-      // adjudication_decision journal entry appears iff the bus/bridge was
-      // invoked. Whichever way this unprobed fact resolves, every recorded
-      // decision for the allowed call must be an allow (never a deny).
+      // (b) THE RECORD MUST EXIST. The original version of this probe only
+      // RECORDED whether canUseTool fired, and the answer (measured 2026-07-30,
+      // baseline §4.7) is that it never does for a rule-matched Bash call — the
+      // matched `Bash(git status:*)` allow entry auto-approves before the
+      // callback. Since then the PreToolUse tool-adjudication hook
+      // (`tool-adjudication-hook.ts`) covers Bash, so a real adapter run MUST
+      // journal at least one adjudication decision for the driven call, and
+      // every decision for it must be an allow. A zero here is the old hole
+      // reopening: a mutation-capable call executing with no adjudication
+      // record.
       const decisions = await collectAdjudicationDecisions(ctx.journal);
-      const canUseToolFired = decisions.length > 0;
       expect(
-        decisions.every((decision) => decision === "allow"),
-        `canUseTool ${canUseToolFired ? "FIRED" : "did NOT fire"} under permissionMode:"dontAsk"; ` +
-          "any recorded adjudication decision for the allowed git-status call must be an allow",
+        decisions.some(
+          (entry) => entry.decision === "allow" && entry.rationale === "allowed tool call: Bash",
+        ),
+        `no allow adjudication_decision was journaled for the driven Bash call — the ` +
+          `PreToolUse bridge did not fire, and the mutation-capable tools are ` +
+          `executing unrecorded again (baseline §4.7 regression). Decisions seen: ` +
+          `${JSON.stringify(decisions)}`,
+      ).toBe(true);
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("drives an allowed Write into an owned path: Pre→Post input is stable (no audit abort) and the decision is journaled", async () => {
+    // Review finding F4 on the built-in coverage change: Bash/Edit/Write newly
+    // enter the PostToolUse audit's scope with the RAW PreToolUse `tool_input`
+    // recorded, so any engine-side input mutation between PreToolUse and
+    // PostToolUse would abort a legitimate worker. The Bash test above cannot
+    // measure that for the path-taking tools; this drives a real `Write` into
+    // the standard envelope's owned path and asserts the worker survives its
+    // own audit — which is a live measurement that the engine hands PostToolUse
+    // the same `tool_input` it handed PreToolUse for a `Write`.
+    const ctx = await createLiveAdapterContext();
+    try {
+      const ownedDir = join(ctx.scratch.worktreePath, "packages", "example", "src");
+      await mkdir(ownedDir, { recursive: true });
+
+      const profile = compileEnvelope(STANDARD_CASE.envelope);
+      const substituted = substituteWorktreePlaceholders(
+        profile,
+        ctx.scratch.worktreePath,
+        ctx.scratch.tmpDir,
+      );
+      const policy = createEnvelopeAdjudicationPolicy({ permissions: substituted.permissions });
+      const adjudicate: AdjudicationCallback = createAdjudicationBus({
+        journal: ctx.journal,
+        policy,
+      });
+
+      const packet = buildTaskPacket({
+        objective:
+          "CI permissions diagnostic. Use the Write tool exactly once to create the file " +
+          "packages/example/src/probe.txt (inside the current working directory) with exactly " +
+          "the content: ok. Then reply with exactly: done.",
+        ownedPaths: ["packages/example/src"],
+        resourceLimits: { maxTurns: 4 },
+        resultSchema: { type: "object" },
+      });
+
+      const handle = ctx.adapter.spawn(packet, profile, adjudicate);
+
+      let events: EngineEvent[] = [];
+      let auditAborted = false;
+      try {
+        events = await collectEngineEvents(handle.events);
+      } catch (err) {
+        if (err instanceof AdjudicationAuditViolationError) {
+          auditAborted = true;
+        } else {
+          throw err;
+        }
+      }
+      guardEngineEventsRateLimit(events);
+
+      // THE MEASUREMENT: a genuinely-allowed Write must not audit-abort. If
+      // this fails with an abort, the engine mutated `tool_input` between
+      // PreToolUse and PostToolUse for Write, and recording the raw input is
+      // the wrong contract for path tools.
+      expect(
+        auditAborted,
+        "the worker audit-aborted on a genuinely-allowed owned-path Write — " +
+          "Pre→Post tool_input is NOT stable for Write and the audit contract needs revisiting",
+      ).toBe(false);
+
+      // Executed-call guard: the Write actually happened, into the owned path.
+      assertToolUseEmitted(
+        events,
+        (event) =>
+          event.toolName === "Write" &&
+          typeof event.toolInput.file_path === "string" &&
+          (event.toolInput.file_path as string).includes("packages/example/src/probe.txt"),
+        "Write(packages/example/src/probe.txt) — the driven, genuinely-allowed tool",
+      );
+
+      // And the record exists: the PreToolUse bridge journaled the allow.
+      const decisions = await collectAdjudicationDecisions(ctx.journal);
+      expect(
+        decisions.some(
+          (entry) => entry.decision === "allow" && entry.rationale === "allowed tool call: Write",
+        ),
+        `no allow adjudication_decision was journaled for the driven Write call. ` +
+          `Decisions seen: ${JSON.stringify(decisions)}`,
       ).toBe(true);
     } finally {
       await ctx.cleanup();
