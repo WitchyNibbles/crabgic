@@ -1,8 +1,6 @@
-import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
@@ -12,10 +10,9 @@ import {
   createIntentContractsRegistry,
   type IntakeRequest,
 } from "@crabgic/supervisor";
-import { ApprovalTokenMinter } from "../approval/token.js";
+import { EnvelopePolicySchema } from "@crabgic/contracts";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { runIntakeCommand } from "./run-intake-command.js";
-
-const secretKey = randomBytes(32);
 
 let journalDir: string;
 let store: JournalStore;
@@ -48,7 +45,7 @@ function fixtureRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
     requirements: [],
     workUnits: [],
     envelopeContent: {
-      ownedPaths: [],
+      ownedPaths: ["src/login"],
       commands: [],
       networkDestinations: [],
       credentialReferences: [],
@@ -64,141 +61,95 @@ function fixtureRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
   };
 }
 
-describe("runIntakeCommand", () => {
-  it("runs intake then completes approval in-process on an explicit 'yes' — ChangeSet reaches ready, no token in the result", async () => {
-    const changeSets = createChangeSetsRegistry();
-    const workUnits = createWorkUnitsRegistry();
-    const envelopes = createAuthorizationEnvelopesRegistry();
-    const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey });
-    const input = new PassThrough();
-    const output = new PassThrough();
+const STANDING_POLICY: LoadPolicyResult = {
+  status: "loaded",
+  policy: EnvelopePolicySchema.parse({
+    schemaVersion: 1,
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    allowedPathPrefixes: ["src"],
+  }),
+  digest: "sha256:fixture",
+};
 
-    const resultPromise = runIntakeCommand({
-      journal: store,
-      changeSets,
-      workUnits,
-      envelopes,
-      intentContracts,
-      minter,
-      secretKey,
-      io: { input, output },
-      readIntakeRequest: async () => fixtureRequest(),
-    });
-    input.write("yes\n");
-    const result = await resultPromise;
+function deps(
+  changeSets: ReturnType<typeof createChangeSetsRegistry>,
+  request: () => Promise<IntakeRequest>,
+  loadPolicy: () => LoadPolicyResult = () => STANDING_POLICY,
+) {
+  return {
+    journal: store,
+    changeSets,
+    workUnits: createWorkUnitsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
+    intentContracts: createIntentContractsRegistry(),
+    readIntakeRequest: request,
+    loadPolicy,
+  };
+}
+
+describe("runIntakeCommand", () => {
+  it("approves a policy-covered request with no prompt and no token, leaving the ChangeSet ready", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const result = await runIntakeCommand(deps(changeSets, async () => fixtureRequest()));
 
     expect(result.outcome.status).toBe("created");
-    expect(result.approval?.approved).toBe(true);
-    expect(result.declined).toBeUndefined();
+    expect(result.standing?.status).toBe("approved");
     if (result.outcome.status === "conflict") throw new Error("unreachable");
-    // The whole point of in-process completion: the ChangeSet is READY, and
-    // the spent token appears nowhere in the result (Gap 18's courier fix).
     expect(changeSets.get(result.outcome.artifacts.changeSet.id)?.state).toBe("ready");
+    // Gap 18's courier fix: nothing token-shaped is returned, because nothing
+    // is minted on this path at all.
     expect(JSON.stringify(result)).not.toContain('"token"');
   });
 
-  it("runs intake then records a decline on anything other than 'yes' — never mints", async () => {
+  it("escalates an out-of-policy request WITHOUT prompting, leaving the ChangeSet awaiting_approval", async () => {
     const changeSets = createChangeSetsRegistry();
-    const workUnits = createWorkUnitsRegistry();
-    const envelopes = createAuthorizationEnvelopesRegistry();
-    const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey });
-    const input = new PassThrough();
-    const output = new PassThrough();
+    const result = await runIntakeCommand(
+      deps(
+        changeSets,
+        async () => fixtureRequest({ requestKey: "repo:escalate" }),
+        () => ({
+          status: "loaded",
+          policy: EnvelopePolicySchema.parse({
+            schemaVersion: 1,
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            allowedPathPrefixes: ["docs"],
+          }),
+          digest: "sha256:narrow",
+        }),
+      ),
+    );
 
-    const resultPromise = runIntakeCommand({
-      journal: store,
-      changeSets,
-      workUnits,
-      envelopes,
-      intentContracts,
-      minter,
-      secretKey,
-      io: { input, output },
-      readIntakeRequest: async () => fixtureRequest(),
-    });
-    input.write("no\n");
-    const result = await resultPromise;
-
-    expect(result.declined).toBe(true);
-    expect(result.approval).toBeUndefined();
-    // "Never mints" stopped being observable from the result once the token
-    // left it, so the ChangeSet's own state is what proves nothing was
-    // approved (adversarial review, 2026-07-29).
+    expect(result.standing?.status).toBe("escalate");
     if (result.outcome.status === "conflict") throw new Error("unreachable");
     expect(changeSets.get(result.outcome.artifacts.changeSet.id)?.state).toBe("awaiting_approval");
   });
 
-  it("never reaches the approval prompt for a conflict outcome", async () => {
+  it("escalates when no policy exists, rather than assuming an approval", async () => {
     const changeSets = createChangeSetsRegistry();
-    const workUnits = createWorkUnitsRegistry();
-    const envelopes = createAuthorizationEnvelopesRegistry();
-    const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey });
-
-    const firstInput = new PassThrough();
-    const firstResult = runIntakeCommand({
-      journal: store,
-      changeSets,
-      workUnits,
-      envelopes,
-      intentContracts,
-      minter,
-      secretKey,
-      io: { input: firstInput, output: new PassThrough() },
-      readIntakeRequest: async () => fixtureRequest(),
-    });
-    firstInput.write("yes\n");
-    await firstResult;
-
-    const output = new PassThrough();
-    let wrote = false;
-    output.on("data", () => {
-      wrote = true;
-    });
-
-    const result = await runIntakeCommand({
-      journal: store,
-      changeSets,
-      workUnits,
-      envelopes,
-      intentContracts,
-      minter,
-      secretKey,
-      io: { input: new PassThrough(), output },
-      readIntakeRequest: async () => fixtureRequest({ rollbackStrategy: "A different strategy." }),
-    });
-
-    expect(result.outcome.status).toBe("conflict");
-    expect(wrote).toBe(false);
+    const result = await runIntakeCommand(
+      deps(
+        changeSets,
+        async () => fixtureRequest({ requestKey: "repo:nopolicy" }),
+        () => ({
+          status: "absent",
+        }),
+      ),
+    );
+    expect(result.standing?.status).toBe("escalate");
   });
 
-  it("rethrows a non-decline error from the approval flow rather than swallowing it", async () => {
+  it("never reaches the approval decision for a conflict outcome", async () => {
     const changeSets = createChangeSetsRegistry();
-    const workUnits = createWorkUnitsRegistry();
-    const envelopes = createAuthorizationEnvelopesRegistry();
-    const intentContracts = createIntentContractsRegistry();
-    const boomMinter = {
-      mint: async () => {
-        throw new Error("boom");
-      },
-    } as unknown as ApprovalTokenMinter;
-    const input = new PassThrough();
+    const first = deps(changeSets, async () => fixtureRequest());
+    await runIntakeCommand(first);
 
-    const resultPromise = runIntakeCommand({
-      journal: store,
-      changeSets,
-      workUnits,
-      envelopes,
-      intentContracts,
-      minter: boomMinter,
-      secretKey,
-      io: { input, output: new PassThrough() },
-      readIntakeRequest: async () => fixtureRequest({ requestKey: "repo:boom" }),
+    const result = await runIntakeCommand({
+      ...first,
+      readIntakeRequest: async () => fixtureRequest({ rollbackStrategy: "A different strategy." }),
     });
-    input.write("yes\n");
-
-    await expect(resultPromise).rejects.toThrow("boom");
+    expect(result.outcome.status).toBe("conflict");
+    expect(result.standing).toBeUndefined();
   });
 });

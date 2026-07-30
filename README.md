@@ -188,7 +188,12 @@ terminal, and none can be reached by a model, a script, or a CI job.
   provenance in its environment. **Honest limit:** a determined caller that allocates a
   pty *and* scrubs those markers can still drive the prompt — no in-process check can
   tell a typed `yes` from a written one. That is why the standing policy, not this
-  prompt, is the primary control; see [`docs/security-posture.md`](./docs/security-posture.md).
+  prompt, is the primary control.
+- **📜 The standing policy** — authored once, by you, at `crabgic install`, which now
+  refuses to write one from an agent or CI shell. No tool, command or skill offers to
+  widen it. It is your own 0600 file, though — sandboxed workers cannot reach it, a
+  session running as you can, and [`docs/security-posture.md`](./docs/security-posture.md)
+  says exactly where that line falls.
 - **🕵️ Capability quarantine** — `crabgic trust review` shows capability grants that
   crossed the high-impact line; `approve` and `revoke` are yours.
 - **🧠 Learning promotion** — `crabgic learn approve` twice, on two separate invocations,

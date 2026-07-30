@@ -123,6 +123,9 @@ function seededIntake(
       readIntakeRequest: () => {
         throw new Error("approve never reads an intake request");
       },
+      loadPolicy: () => {
+        throw new Error("approve never reads the standing policy");
+      },
       io: { input, output: new PassThrough() },
       resolveTerminal: () =>
         (options.interactive ?? true)

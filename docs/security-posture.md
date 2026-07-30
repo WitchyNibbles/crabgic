@@ -266,6 +266,38 @@ product decision for the owner**; until it lands, the standing `EnvelopePolicy` 
 session) is the control that carries the "the model can never satisfy its own gate" property, exactly as
 roadmap/11 states.
 
+### What the standing policy actually protects against (2026-07-30)
+
+Gap 18 part 3 says "the model can never widen the policy. Creating or extending it is out-of-band:
+`crabgic install`, or a human editing the file." Adversarial review found that sentence was doing
+more work than the code could support, in two different ways.
+
+**The install-time confirm had no idea who was answering — now fixed.** `createRealConfirmPolicy`
+read `process.stdin` and accepted any `yes`, so `echo yes | crabgic install` from an agent's own
+shell authored the very policy that decides what runs without review. This was demonstrated live
+during the session that fixed it. The confirm now uses the same gate as the approval prompt
+(`packages/cli/src/approval/interactive-terminal.ts`): a non-human context **skips** authoring and
+says so, while the rest of `install` proceeds — plugin and settings work is legitimately
+automatable, a standing authorization is not.
+
+**The deeper limit, stated plainly because the docs previously implied otherwise.** The policy file
+is mode 0600 at the owner's own uid. Anything running as the owner — including a manager session
+with ordinary file access — can rewrite it directly, and no in-process check can prevent that. So
+the honest scope is:
+
+- **Against workers: enforced.** A worker is sandboxed with the state root outside its writable
+  set, so it cannot reach the policy. This is the boundary the policy exists to be, and it holds.
+- **Against a compromised or adversarial manager session: not a boundary.** Such a session has the
+  owner's own authority and can edit the file, the source, or anything else the owner can. Treating
+  the policy as protection there would be security theatre.
+
+That is not a reason to weaken it — the worker boundary is the one that carries the design — but
+"no session-reachable surface may write the policy" should be read as "no _tool, command or skill_
+offers to", not as a containment claim about a session that already has the owner's filesystem.
+Closing the gap properly needs the policy to live somewhere the session cannot reach at all (a
+root-owned path, an OS keychain, or a signed artifact verified out-of-band), which is a product
+decision and is **owed**.
+
 Two smaller findings from the same review, recorded for the next pass:
 
 - **`crabgic trust approve` mints without a prompt and prints the token** (`packages/detect/src/trust/

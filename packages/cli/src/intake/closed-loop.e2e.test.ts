@@ -140,31 +140,24 @@ function policy(overrides: Partial<EnvelopePolicy> = {}): EnvelopePolicy {
 
 /** Runs intake and approval for real, and returns everything dispatch needs. */
 async function intakeAndApprove() {
-  const secretKey = randomBytes(32);
   const changeSets = createChangeSetsRegistry();
   const workUnits = createWorkUnitsRegistry();
   const envelopes = createAuthorizationEnvelopesRegistry();
   const intentContracts = createIntentContractsRegistry();
-  const minter = new ApprovalTokenMinter({ secretKey });
 
-  const input = new PassThrough();
   const commandPromise = runIntakeCommand({
     journal,
     changeSets,
     workUnits,
     envelopes,
     intentContracts,
-    minter,
-    secretKey,
-    io: { input, output: new PassThrough() },
     readIntakeRequest: () => Promise.resolve(intakeRequest()),
+    loadPolicy: () => ({ status: "loaded", policy: policy(), digest: "sha256:e2e" }),
   });
-  input.write("yes\n");
   const outcome = await commandPromise;
   if (outcome.outcome.status === "conflict") throw new Error("unreachable");
-  // Approval completes in-process now (Gap 18's courier fix): the "yes"
-  // above IS the whole flow, and the ChangeSet is ready when it returns.
-  expect(outcome.approval?.approved).toBe(true);
+  // The standing policy decides; nobody is prompted, nothing is minted.
+  expect(outcome.standing?.status).toBe("approved");
   expect(changeSets.get(CHANGE_SET_ID)?.state).toBe("ready");
 
   return { changeSets, workUnits, envelopes };
@@ -214,9 +207,18 @@ function buildDispatcher(
  * which is what let the chain look healthy while being unreachable: from
  * 1.0.0 through 1.4.0 the ONLY caller of `run.dispatch` in the repository was
  * a test exactly like that one. This test starts at `dispatchCommand`, the
- * function `bin.ts` calls, and fakes nothing but the socket transport — the
- * router hop is replaced by a direct call into the same real dispatcher the
- * daemon builds.
+ * function `bin.ts` calls, and replaces the router hop with a direct call into
+ * the same real dispatcher the daemon builds.
+ *
+ * WHAT IS STILL FAKED, stated precisely because the first version of this
+ * comment claimed "nothing but the socket transport" and that was not true:
+ * the engine adapter, the attempt worktree, and the git freeze are all seams
+ * here. What this case genuinely proves is the CHAIN —
+ * `dispatchCommand` → `run.dispatch` → the real `createRealRunDispatcher` with
+ * its own policy gate → `createRun` → `driveRun` → `spawn` — which is the part
+ * that had no shipped caller at all. It does NOT prove a worker did useful
+ * work: `work_unit_transition("dispatched")` is written immediately after
+ * `adapter.spawn(...)`, before any engine event is read.
  */
 describe("closed loop — entered through the shipped `run` command", () => {
   it("takes an intake request all the way to a driven run with no human asked", async () => {

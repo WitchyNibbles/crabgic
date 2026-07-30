@@ -49,8 +49,13 @@ export interface IntakeDependencies {
    */
   readonly secretKey: Buffer;
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
-  /** Reads the project's standing `EnvelopePolicy` (ledger Gap 18) — supplied, `run` decides routine approval by containment instead of prompting. */
-  readonly loadPolicy?: () => LoadPolicyResult;
+  /**
+   * Reads the project's standing `EnvelopePolicy` (ledger Gap 18) — REQUIRED,
+   * because it IS the approval decision. Optional would mean a caller that
+   * forgot it silently got a different, weaker approval model rather than a
+   * compile error.
+   */
+  readonly loadPolicy: () => LoadPolicyResult;
   /** Defaults to `process.stdin`/`process.stdout` (real interactive usage) when omitted — injectable so tests never block on real stdio. */
   readonly io?: ApprovalPromptIo;
   /**

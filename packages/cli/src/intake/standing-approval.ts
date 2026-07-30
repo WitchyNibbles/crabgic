@@ -180,7 +180,14 @@ export async function applyStandingApproval(
     changeSetId: changeSet.id,
     payload: {
       decision: "policy_contained",
-      rationale: `approval authorized by standing EnvelopePolicy ${loaded.digest}`,
+      // BOTH digests. The policy digest answers "what was the human standing
+      // behind"; the envelope's own `canonicalHash` answers "what was actually
+      // authorized". Recording only the former left the second question
+      // reachable only by joining through a mutable `authorizationEnvelopeId`,
+      // while the human path binds its token to the envelope digest directly.
+      rationale:
+        `approval authorized by standing EnvelopePolicy ${loaded.digest} ` +
+        `for envelope ${envelope.canonicalHash}`,
     },
   });
 

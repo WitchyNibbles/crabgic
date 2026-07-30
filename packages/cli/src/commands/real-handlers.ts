@@ -22,7 +22,8 @@ import type {
 } from "../argv/types.js";
 import type { CliDependencies } from "./types.js";
 import { notImplementedResult } from "./not-implemented.js";
-import { runIntakeCommand } from "../intake/run-intake-command.js";
+import { runIntakeCommand, type RunIntakeCommandResult } from "../intake/run-intake-command.js";
+import { sanitizeForTerminal } from "../output/sanitize.js";
 
 interface RunRecordLike {
   readonly runId: string;
@@ -286,94 +287,113 @@ export async function runRunCommand(
     workUnits: deps.intake.workUnits,
     envelopes: deps.intake.envelopes,
     intentContracts: deps.intake.intentContracts,
-    minter: deps.intake.minter,
-    secretKey: deps.intake.secretKey,
-    io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
     readIntakeRequest: deps.intake.readIntakeRequest,
-    ...(deps.intake.loadPolicy !== undefined ? { loadPolicy: deps.intake.loadPolicy } : {}),
+    loadPolicy: deps.intake.loadPolicy,
   });
 
+  // The outcome is decided ONCE, then rendered. The previous shape returned
+  // `--json` early, above the branches that decide the exit code, so every
+  // refusal -- an escaping envelope, an unowned requirement, a requestKey
+  // conflict -- reported exit 0 in JSON mode. A caller cannot tell an approval
+  // from a refusal by status, which is the one thing an exit code is for.
+  const decided = await decideRunOutcome(result, deps);
+  return cmd.json
+    ? {
+        exitCode: decided.exitCode,
+        stdout: formatJson({
+          ...result,
+          ...(decided.dispatch !== undefined ? { dispatch: decided.dispatch } : {}),
+        }),
+      }
+    : decided.exitCode === EXIT_OK
+      ? { exitCode: decided.exitCode, stdout: decided.message }
+      : { exitCode: decided.exitCode, stderr: decided.message };
+}
+
+interface DecidedRunOutcome {
+  readonly exitCode: number;
+  /** Human-readable rendering, written to stdout on success and stderr on refusal. */
+  readonly message: string;
+  readonly dispatch?: DispatchAttempt;
+}
+
+/** Turns an intake result into an exit code, a message, and (only when the change set is genuinely ready) a dispatch attempt. */
+async function decideRunOutcome(
+  result: RunIntakeCommandResult,
+  deps: CliDependencies,
+): Promise<DecidedRunOutcome> {
   if (result.outcome.status === "conflict") {
-    const conflict = {
-      exitCode: EXIT_GENERAL_ERROR,
-      stderr: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
-    };
-    return cmd.json ? { ...conflict, stdout: formatJson(result) } : conflict;
-  }
-  const changeSetId = result.outcome.artifacts.changeSet.id;
-  const digest = result.outcome.artifacts.envelope.canonicalHash;
-
-  // Approved by either route -> DISPATCH. `run` means run: an approved change
-  // set that sits in `ready` waiting for a second command is the shape ledger
-  // Gap 18's product direction exists to remove ("the user types no Crabgic
-  // command"). The daemon re-checks containment itself before spawning
-  // anything, so this is a request to start work, never a grant of authority.
-  const approved =
-    result.standing?.status === "approved" ||
-    (result.standing === undefined &&
-      result.declined !== true &&
-      result.approval?.approved === true);
-
-  if (approved) {
-    const dispatch = await dispatchReadyChangeSet(changeSetId, deps);
-    if (cmd.json) {
-      return {
-        exitCode: dispatch.accepted ? EXIT_OK : EXIT_GENERAL_ERROR,
-        stdout: formatJson({ ...result, dispatch }),
-      };
-    }
-    const authority =
-      result.standing?.status === "approved"
-        ? ` (covered by the standing approval policy ${result.standing.policyDigest}; no prompt, no token)`
-        : "";
-    return dispatch.accepted
-      ? {
-          exitCode: EXIT_OK,
-          stdout: `ChangeSet ${changeSetId} approved${authority} and dispatched as run ${dispatch.runId}\n`,
-        }
-      : {
-          // The ChangeSet IS approved and stays `ready`; only the start
-          // failed. Say exactly that, so the operator retries the dispatch
-          // rather than re-authoring an intake request.
-          exitCode: EXIT_GENERAL_ERROR,
-          stderr: `ChangeSet ${changeSetId} is approved and ready, but dispatch was refused: ${dispatch.reason}\n`,
-        };
-  }
-
-  if (cmd.json) {
-    // `result` carries no token by construction (`RunIntakeCommandResult`'s
-    // own doc comment): rendering one here was the model-as-courier exposure
-    // ledger Gap 18's audit recorded, and the shape below is asserted
-    // token-free by `./intake-dispatch.test.ts`.
-    return { exitCode: EXIT_OK, stdout: formatJson(result) };
-  }
-
-  if (result.standing?.status === "not_ready") {
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      stderr:
-        `this change set cannot be approved by any route yet: ${result.standing.reason}\n` +
+      message: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+    };
+  }
+
+  const changeSetId = result.outcome.artifacts.changeSet.id;
+  const digest = result.outcome.artifacts.envelope.canonicalHash;
+  const standing = result.standing;
+
+  if (standing === undefined) {
+    // Unreachable: `runIntakeCommand` always returns a decision for a
+    // non-conflict outcome. Refusing beats assuming an approval.
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      message: `no approval decision was reached for ChangeSet ${sanitizeForTerminal(changeSetId)}\n`,
+    };
+  }
+
+  if (standing.status === "not_ready") {
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      message:
+        `this change set cannot be approved by any route yet: ${sanitizeForTerminal(standing.reason)}\n` +
         "Fix the plan so every requirement has an owning work unit, then run intake again.\n",
     };
   }
-  if (result.declined === true) {
-    return {
-      exitCode: EXIT_OK,
-      stdout:
-        "approval declined — no token minted; ChangeSet remains awaiting_approval\n" +
-        `(a human can approve it later with \`crabgic approve ${digest}\`)\n`,
-    };
-  }
-  if (result.approval !== undefined && !result.approval.approved) {
+
+  if (standing.status === "escalate") {
+    // The refusal names every escaping dimension, and this is where the
+    // operator reads it. It used to be computed and then dropped on the floor:
+    // the human path rendered a bare digest prompt instead, and `--json`
+    // reported exit 0.
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      stderr: `approval confirmed at the prompt but verification failed: ${result.approval.reason}\n`,
+      message:
+        `ChangeSet ${sanitizeForTerminal(changeSetId)} needs approval it does not already have.\n\n` +
+        `  ${sanitizeForTerminal(standing.reason)}\n\n` +
+        `Approve it yourself in a terminal you opened:\n\n` +
+        `  crabgic approve ${sanitizeForTerminal(digest)}\n\n` +
+        (deps.standingPolicyPath !== undefined
+          ? `Or widen the standing policy, which lives at:\n\n  ${sanitizeForTerminal(deps.standingPolicyPath)}\n`
+          : ""),
     };
   }
-  return {
-    exitCode: EXIT_OK,
-    stdout: `ChangeSet ${changeSetId} approved — now ready\n`,
-  };
+
+  // Approved. Only a `ready` ChangeSet is dispatchable: a replay of one already
+  // running -- or finished -- is authorized but must not start a second run for
+  // the same change set.
+  if (standing.changeSet.state !== "ready") {
+    return {
+      exitCode: EXIT_OK,
+      message: `ChangeSet ${sanitizeForTerminal(changeSetId)} is already ${standing.changeSet.state}; nothing to start\n`,
+    };
+  }
+
+  const dispatch = await dispatchReadyChangeSet(changeSetId, deps);
+  const authority = ` (covered by the standing approval policy ${sanitizeForTerminal(standing.policyDigest)}; no prompt, no token)`;
+  return dispatch.accepted
+    ? {
+        exitCode: EXIT_OK,
+        dispatch,
+        message: `ChangeSet ${sanitizeForTerminal(changeSetId)} approved${authority} and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
+      }
+    : {
+        // The approval is durable and the ChangeSet stays `ready`; only the
+        // start failed, so the remedy is retrying the start.
+        exitCode: EXIT_GENERAL_ERROR,
+        dispatch,
+        message: `ChangeSet ${sanitizeForTerminal(changeSetId)} is approved and ready, but dispatch was refused: ${sanitizeForTerminal(dispatch.reason ?? "no reason given")}\n`,
+      };
 }
 
 export interface DispatchAttempt {

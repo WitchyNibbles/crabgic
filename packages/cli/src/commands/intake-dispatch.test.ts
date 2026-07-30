@@ -136,20 +136,30 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
         secretKey,
         readIntakeRequest: async () => fixtureRequest(),
         io: { input, output },
+        loadPolicy: () => ({
+          status: "loaded" as const,
+          policy: EnvelopePolicySchema.parse({
+            schemaVersion: 1,
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            allowedPathPrefixes: ["src"],
+          }),
+          digest: "sha256:fixture",
+        }),
       },
     };
 
-    const resultPromise = dispatchCommand({ command: "run", json: true }, deps);
-    input.write("yes\n");
-    const result = await resultPromise;
+    const result = await dispatchCommand({ command: "run", json: true }, deps);
 
     expect(result.exitCode).toBe(EXIT_OK);
     const parsed = JSON.parse(result.stdout!) as {
       outcome: { status: string };
-      approval?: { approved: boolean };
+      standing?: { status: string };
+      dispatch?: { accepted: boolean };
     };
     expect(parsed.outcome.status).toBe("created");
-    expect(parsed.approval?.approved).toBe(true);
+    expect(parsed.standing?.status).toBe("approved");
+    expect(parsed.dispatch?.accepted).toBe(true);
     // Ledger Gap 18's audit: `run --json` printing the minted token made the
     // model the courier for a human-approval token. The rendered output must
     // never contain one again.
@@ -255,13 +265,23 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     expect(changeSets.list().every((changeSet) => changeSet.state === "ready")).toBe(true);
   });
 
-  it("falls through to the prompt when the envelope escapes the policy — never a partial grant", async () => {
+  it("escalates an out-of-policy envelope WITHOUT prompting, naming the escape and the approve command", async () => {
     const secretKey = randomBytes(32);
     const input = new PassThrough();
     const output = new PassThrough();
+    let prompted = false;
+    output.on("data", () => {
+      prompted = true;
+    });
     const changeSets = createChangeSetsRegistry();
+    let dispatched = false;
     const deps: CliDependencies = {
       ...baseDeps(),
+      standingPolicyPath: "/state/crabgic/hash/envelope-policy.json",
+      connectClient: () => {
+        dispatched = true;
+        throw new Error("must not dispatch an unapproved change set");
+      },
       intake: {
         journal: store,
         changeSets,
@@ -285,16 +305,53 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
       },
     };
 
-    const resultPromise = dispatchCommand({ command: "run", json: false }, deps);
-    input.write("no\n");
-    const result = await resultPromise;
+    const result = await dispatchCommand({ command: "run", json: false }, deps);
 
-    // The prompt WAS reached (this is the escalation), and declining leaves
-    // the change set exactly where it was.
-    expect(result.exitCode).toBe(EXIT_OK);
-    expect(result.stdout).toContain("approval declined");
+    // A refusal is a non-zero exit, and the reason is what the operator reads.
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toContain("infra/secrets");
+    expect(result.stderr).toContain("crabgic approve");
+    // It names the file the human has to edit, which no message used to do.
+    expect(result.stderr).toContain("envelope-policy.json");
+    // No prompt is rendered, and nothing is dispatched or half-granted.
+    expect(prompted).toBe(false);
+    expect(dispatched).toBe(false);
     expect(changeSets.list().every((changeSet) => changeSet.state === "awaiting_approval")).toBe(
       true,
     );
+  });
+
+  it("exits non-zero for a refusal under --json too, so a caller can tell it from an approval", async () => {
+    const secretKey = randomBytes(32);
+    const deps: CliDependencies = {
+      ...baseDeps(),
+      intake: {
+        journal: store,
+        changeSets: createChangeSetsRegistry(),
+        workUnits: createWorkUnitsRegistry(),
+        envelopes: createAuthorizationEnvelopesRegistry(),
+        intentContracts: createIntentContractsRegistry(),
+        minter: new ApprovalTokenMinter({ secretKey }),
+        secretKey,
+        readIntakeRequest: async () => fixtureRequest({ ownedPaths: ["infra/secrets"] }),
+        io: { input: new PassThrough(), output: new PassThrough() },
+        loadPolicy: () => ({
+          status: "loaded",
+          policy: EnvelopePolicySchema.parse({
+            schemaVersion: 1,
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            allowedPathPrefixes: ["src"],
+          }),
+          digest: "sha256:standing",
+        }),
+      },
+    };
+
+    const result = await dispatchCommand({ command: "run", json: true }, deps);
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    const parsed = JSON.parse(result.stdout!) as { standing: { status: string; reason: string } };
+    expect(parsed.standing.status).toBe("escalate");
+    expect(parsed.standing.reason).toContain("infra/secrets");
   });
 });

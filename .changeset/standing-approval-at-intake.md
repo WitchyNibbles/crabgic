@@ -66,3 +66,37 @@ of the command, after journaling a second authorization for work that was
 already authorized. A replay now re-checks containment (so a policy narrowed
 since is still caught) and reports the existing approval without recording a
 duplicate.
+
+**`crabgic install` will not author a standing policy from an agent's shell.** The
+one place the policy is created was a bare `process.stdin` read, so
+`echo yes | crabgic install` authored the grant that decides what runs without
+review — the exact property Gap 18 part 3 exists to guarantee, demonstrated
+false against the built binary. The confirm now uses the same gate as the
+approval prompt: a non-human context skips authoring and says so, while
+everything else `install` does still installs, because plugin and settings work
+is legitimately automatable and a standing authorization is not.
+
+The docs stop overclaiming it, too. The policy is a boundary against **workers**
+— sandboxed, with the state root outside their writable set — and not against a
+session already running as the owner, which can edit the file directly. That
+distinction is now written down in `docs/security-posture.md` instead of implied
+away, and the install prompt no longer promises "nothing Crabgic runs can change
+it".
+
+**`run` no longer prompts, and no longer mints.** Its inline prompt was broken
+three ways at once: in the primary form, `crabgic run < intake.json`, the request
+read has already drained stdin, so the prompt hit an ended stream and
+auto-declined — unanswerable; it rendered a bare digest with no authority, the
+very thing the standing design exists to end; and a human who did answer got a
+spent token, a `ready` change set, and no dispatch, reported at exit 0.
+`crabgic approve <digest>` is that path done properly, so escalation now says so
+and stops. One welcome consequence: `approve` is the CLI's only remaining
+envelope-token mint, which is what the operator guide always claimed.
+
+**A refusal now exits non-zero, and says what escaped.** The refusal naming every
+out-of-policy dimension was computed and then dropped: the human path printed a
+digest prompt instead, and `--json` returned exit 0 for escaping envelopes,
+unowned requirements and requestKey conflicts alike. The outcome is decided once
+and then rendered, so status and exit code cannot disagree, and the escalation
+message names the reason, the `crabgic approve` command, and the policy file's
+own path.

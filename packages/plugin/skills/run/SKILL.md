@@ -34,11 +34,12 @@ the owner, not generated behind their back.
 4. **Read the verdict.** Three outcomes, and they mean different things:
    - **`ready`, covered by the standing approval policy** — the envelope is inside
      what the owner already approved at install time. No prompt, no token, nothing
-     to ask. Proceed.
+     to ask; the run is dispatched and the output names its id. Proceed.
    - **Escalation** — the envelope reaches outside the standing policy. The output
-     names every dimension that escapes. Show the owner what it needs and why, then
-     tell them to run `crabgic approve <envelope-digest>` in **their own terminal**.
-     You cannot do this for them, and the command refuses if you try.
+     names every dimension that escapes, and the policy file's path. Show the owner
+     what it needs and why, then tell them to run `crabgic approve <envelope-digest>`
+     in **their own terminal**. You cannot do this for them: the command refuses a
+     piped stdin and refuses a process carrying agent-runtime provenance.
    - **Not ready** — a requirement no work unit owns. That is a planning gap, not an
      approval question: fix the DAG and run intake again.
 
@@ -53,5 +54,11 @@ the owner, not generated behind their back.
 - If the supervisor is not reachable, the wrapped CLI call surfaces
   `SupervisorUnavailableError`'s message verbatim — this skill never masks it.
 - This skill never mints approval tokens and never bypasses the approval gate. The
-  standing policy is the routine authority, and nothing reachable from this session
-  may write or widen it.
+  standing policy is the routine authority; no tool, command or skill offers to write
+  or widen it, and `crabgic install` refuses to author one from a session's own shell.
+  It is still a file at the operator's own account, so treat rewriting it the way you
+  would treat rewriting their SSH config: not yours to do.
+- `crabgic run --json` is the form to parse. Read `standing.status` for the decision
+  and `standing.changeSet.state` for where the change set ended up — the
+  `outcome.artifacts.changeSet` snapshot is from intake time, before any transition.
+  A refusal exits non-zero.

@@ -10,6 +10,10 @@ import { fileURLToPath } from "node:url";
 import type { Readable, Writable } from "node:stream";
 import type { InstallerDependencies } from "./types.js";
 import type { DerivedPolicy } from "../policy/derive-policy.js";
+import {
+  resolveApprovalTerminal,
+  type ApprovalTerminalVerdict,
+} from "../approval/interactive-terminal.js";
 
 /**
  * Resolves the directory holding the plugin's distributable assets — the
@@ -45,18 +49,50 @@ export function resolvePluginSourceDir(fromUrl: string = import.meta.url): strin
   return dirname(packageJsonPath);
 }
 
-/** Reads one line of confirmation from `input`; resolves `true` only for an exact (trimmed, case-insensitive) "yes" — the same convention `../approval/prompt.ts` uses for its own human-only gate. */
+/**
+ * Reads one line of confirmation from `input`; resolves `true` only for an
+ * exact (trimmed, case-insensitive) "yes" — the same convention
+ * `../approval/prompt.ts` uses for its own human-only gate, including how it
+ * settles.
+ *
+ * EOF terminates the final line and a bare EOF declines, because a stream that
+ * has ended will never emit again: listening only for `data` left `install`
+ * hanging on a prompt nobody could answer, exactly as the approval prompt did
+ * before 2026-07-29. A stream error declines rather than crashing the install.
+ */
 function readYesConfirmation(input: Readable): Promise<boolean> {
   return new Promise((resolve) => {
+    if (input.readableEnded || input.destroyed) {
+      resolve(false);
+      return;
+    }
     let buffer = "";
+    const isYes = (line: string): boolean => line.trim().toLowerCase() === "yes";
+    const settle = (value: boolean): void => {
+      input.off("data", onData);
+      input.off("end", onEnd);
+      input.off("close", onClose);
+      input.off("error", onError);
+      resolve(value);
+    };
     function onData(chunk: Buffer | string): void {
       buffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
-      if (buffer.includes("\n")) {
-        input.off("data", onData);
-        resolve(buffer.split("\n")[0]!.trim().toLowerCase() === "yes");
-      }
+      if (buffer.includes("\n")) settle(isYes(buffer.split("\n")[0]!));
+    }
+    function onEnd(): void {
+      settle(isYes(buffer));
+    }
+    function onClose(): void {
+      // An abnormal teardown is not an answer.
+      settle(false);
+    }
+    function onError(): void {
+      settle(false);
     }
     input.on("data", onData);
+    input.on("end", onEnd);
+    input.on("close", onClose);
+    input.on("error", onError);
   });
 }
 
@@ -86,12 +122,44 @@ export function createRealConfirmGitInit(io: {
  * must be able to read what it covers, so every dimension is printed,
  * including the ones that are empty. "Nothing" is the most important thing on
  * the list, and an omitted line reads as an oversight rather than a denial.
+ *
+ * AND IT ASKS WHO IS ANSWERING (2026-07-30, adversarial review). This is the
+ * one place the standing policy is authored, so it is the one place Gap 18
+ * part 3 — "the model can never widen the policy" — is actually enforceable in
+ * code. It was a bare `process.stdin` read, so `echo yes | crabgic install`
+ * from an agent's own shell authored the policy that decides what runs without
+ * review; that was demonstrated during this session before it was fixed. The
+ * same gate the approval prompt uses now guards it, and a non-human context
+ * SKIPS authoring rather than writing a grant nobody read — everything else
+ * `install` does still installs, because plugin and settings work is
+ * legitimately automatable and a standing authorization is not.
+ *
+ * What this does NOT do, stated plainly because the docs used to overclaim it:
+ * the policy file lives at the owner's own uid, so anything running as the
+ * owner — including a manager session with file access — can edit it directly.
+ * The policy is a boundary against WORKERS (sandboxed, no write to the state
+ * root), not against a compromised session. See `docs/security-posture.md`.
  */
 export function createRealConfirmPolicy(io: {
   readonly input: Readable;
   readonly output: Writable;
+  /** Decides whether this process may author a standing grant at all. Defaults to the same gate `../approval/prompt.ts`'s callers use; injectable so tests never depend on the ambient terminal. */
+  readonly resolveTerminal?: () => ApprovalTerminalVerdict;
 }): (derived: DerivedPolicy) => Promise<boolean> {
   return async (derived) => {
+    const terminal =
+      io.resolveTerminal?.() ??
+      resolveApprovalTerminal({ env: process.env, isTty: process.stdin.isTTY === true });
+    if (!terminal.allowed) {
+      io.output.write(
+        `\nSkipping the standing authorization policy: ${terminal.reason}\n` +
+          "Everything else was installed. Run `crabgic install` yourself in a terminal you\n" +
+          "opened to author it, or write the policy file directly — until then every run\n" +
+          "stops for approval instead of proceeding on a grant nobody read.\n",
+      );
+      return false;
+    }
+
     const p = derived.policy;
     const list = (values: readonly string[]): string =>
       values.length === 0 ? "    (none)" : values.map((v) => `    ${v}`).join("\n");
@@ -107,8 +175,10 @@ export function createRealConfirmPolicy(io: {
         `  credentials\n${list(p.allowedCredentialReferences)}\n\n` +
         `  external resources (Jira, Grafana)\n${list(p.allowedRemoteResourceReferences)}\n\n` +
         `  unix sockets: ${p.allowUnixSockets ? "allowed" : "denied"}\n\n` +
-        "You can narrow or widen this later by editing the file directly; nothing\n" +
-        "Crabgic runs can change it.\n" +
+        "You can narrow or widen this later by editing the file directly. No worker\n" +
+        "Crabgic runs can reach it — the sandbox keeps them out of this directory.\n" +
+        "It is your own file at your own account, though, so treat it like your SSH\n" +
+        "keys rather than like a vault.\n" +
         'Type "yes" to accept this policy, anything else to skip it: ',
     );
     return readYesConfirmation(io.input);
