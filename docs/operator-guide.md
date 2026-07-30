@@ -99,7 +99,19 @@ crabgic status [run-id] [--watch] [--json]
 ```
 
 - With a `run-id`: queries the supervisor's `run.status` operation over the UDS control plane
-  and prints the run's current state (`changeSetId`, `runState`, `updatedAt`).
+  and prints the run's current state (`changeSetId`, `runState`, `updatedAt`), followed by a
+  **work-unit progress line** read from the journal — how many units have succeeded, are
+  running, are parked on a rate limit, or have failed. The run state answers "is it going?";
+  this answers "how far has it got?", which is the question a multi-minute run actually
+  raises. It counts only units the journal has seen, and says nothing at all when it has seen
+  none, because a denominator it cannot know would look authoritative and be wrong.
+
+  `--json` deliberately does **not** carry it: this command's JSON output is literally 05's
+  published `RunStatusResultSchema` — the raw UDS result, never re-shaped — and that schema is
+  strict. Widening it is a cross-phase interface decision the ledger governs, not something a
+  rendering improvement gets to add. A script that needs progress today can read the journal
+  through `crabgic evidence`, or the ruling can be asked for.
+
 - `--watch`: streams subsequent status-change events until the process is interrupted
   (Ctrl+C) or the run reaches a terminal state.
 - Without a `run-id` (listing every run): **wired** — `registry.runs.list` landed on the supervisor's
