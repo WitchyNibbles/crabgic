@@ -20,7 +20,7 @@
  * CLI process can exit while the daemon lives on.
  */
 import { spawn } from "node:child_process";
-import { closeSync, constants, ftruncateSync, readFileSync } from "node:fs";
+import { closeSync, constants, existsSync, ftruncateSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { openOwnedFile } from "@crabgic/journal";
 import { SupervisorUnavailableError } from "../errors.js";
@@ -206,8 +206,50 @@ export interface SpawnSupervisorDaemonOptions {
  * current `node` (`process.execPath`), detached with stdio ignored, and
  * unref'd so the CLI can exit while the daemon lives on.
  */
+/**
+ * Where the daemon entry actually is, in whichever layout this module is
+ * running from.
+ *
+ * SHIPPED BUG, found 2026-07-30 by running the built binary (the diagnostics
+ * added the day before are what made it visible instead of a silent
+ * "unreachable"). This resolved ONE candidate, `../bin/supervisord.js`, which
+ * is correct for the `tsc` layout — `dist/uds-client/ensure-supervisor.js` is
+ * one directory below `dist/bin/`. The PUBLISHED package is bundled, and
+ * esbuild splitting puts this code in `dist/chunk-*.js` at the dist root, so
+ * `../bin/…` resolved to `packages/cli/bin/supervisord.js`: a path that has
+ * never existed. Every daemon spawn in the published binary therefore died
+ * with MODULE_NOT_FOUND, which `stdio: "ignore"` swallowed, so `run`'s
+ * dispatch, `status`, `resume` and `cancel` all reported a generic
+ * unreachable socket instead.
+ *
+ * This is the same failure class the plugin-asset copy already carries a note
+ * about ("shipped broken in 1.0.0... the smoke check missed it by probing only
+ * the argument parser, never a real command"): the bundled layout is not the
+ * source layout, and only running the real artifact finds it. Both candidates
+ * are checked, and `scripts/check-install-smoke.mjs` now asserts the resolved
+ * path exists inside a real installed tarball.
+ */
+export function resolveSupervisordBin(moduleUrl: string = import.meta.url): string {
+  const candidates = [
+    // Bundled layout: this code sits at the dist root, beside `bin/`.
+    new URL("./bin/supervisord.js", moduleUrl),
+    // `tsc` layout: this file is at `dist/uds-client/`, one below `dist/bin/`.
+    new URL("../bin/supervisord.js", moduleUrl),
+  ].map((url) => fileURLToPath(url));
+
+  const found = candidates.find((candidate) => existsSync(candidate));
+  if (found === undefined) {
+    throw new Error(
+      `crabgic: the supervisor daemon entry point was not found. Looked in:\n` +
+        candidates.map((candidate) => `  ${candidate}`).join("\n") +
+        `\nThis is a packaging fault, not a configuration one — please report it.`,
+    );
+  }
+  return found;
+}
+
 export function spawnSupervisorDaemon(options: SpawnSupervisorDaemonOptions): void {
-  const supervisordBin = fileURLToPath(new URL("../bin/supervisord.js", import.meta.url));
+  const supervisordBin = resolveSupervisordBin();
 
   // Through `openOwnedFile`, never a bare `openSync(path, "w")`. Adversarial
   // review reproduced both hazards of the naive form: a FIFO planted at this

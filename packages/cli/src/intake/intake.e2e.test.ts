@@ -15,7 +15,6 @@ import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
@@ -31,6 +30,7 @@ import {
   transitionRun,
   type IntakeRequest,
 } from "@crabgic/supervisor";
+import { EnvelopePolicySchema } from "@crabgic/contracts";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 import { runContractApprove } from "./contract-approve-handler.js";
@@ -92,7 +92,7 @@ function e2eRequest(requestKey: string, changeSetId: string): IntakeRequest {
     ],
     envelopeContent: {
       ownedPaths: ["packages/example/src/login/"],
-      commands: ["npm test"],
+      commands: ["npm run test"],
       networkDestinations: [],
       credentialReferences: [],
       dependencies: [],
@@ -118,34 +118,38 @@ function e2eRequest(requestKey: string, changeSetId: string): IntakeRequest {
 
 describe("intake.e2e — request -> contract -> approval -> run", () => {
   it("approves end-to-end and reaches ready", async () => {
-    const secretKey = randomBytes(32);
     const changeSets = createChangeSetsRegistry();
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
-    const minter = new ApprovalTokenMinter({ secretKey });
     const changeSetId = "11111111-1111-4111-8111-111111111111";
 
-    const input = new PassThrough();
     const commandPromise = runIntakeCommand({
       journal: store,
       changeSets,
       workUnits,
       envelopes,
       intentContracts,
-      minter,
-      secretKey,
-      io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:approve", changeSetId),
+      loadPolicy: () => ({
+        status: "loaded" as const,
+        policy: EnvelopePolicySchema.parse({
+          schemaVersion: 1,
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          allowedPathPrefixes: ["packages", "src"],
+          allowedCommands: ["npm run test"],
+        }),
+        digest: "sha256:e2e-fixture",
+      }),
     });
-    input.write("yes\n");
     const commandResult = await commandPromise;
     if (commandResult.outcome.status === "conflict") throw new Error("unreachable");
     // The outcome snapshot is from intake time; the REGISTRY carries the
     // in-process approval's result — ready, with requirement coverage
     // resolved server-side from the ChangeSet's own contract.
     expect(commandResult.outcome.artifacts.changeSet.state).toBe("awaiting_approval");
-    expect(commandResult.approval?.approved).toBe(true);
+    expect(commandResult.standing?.status).toBe("approved");
     expect(changeSets.get(changeSetId)?.state).toBe("ready");
     // Gap 18's courier fix: no token anywhere in what the command returns.
     expect(JSON.stringify(commandResult)).not.toContain('"token"');
@@ -160,23 +164,29 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const minter = new ApprovalTokenMinter({ secretKey });
     const changeSetId = "22222222-2222-4222-8222-222222222222";
 
-    const input = new PassThrough();
     const commandPromise = runIntakeCommand({
       journal: store,
       changeSets,
       workUnits,
       envelopes,
       intentContracts,
-      minter,
-      secretKey,
-      io: { input, output: new PassThrough() },
       readIntakeRequest: async () => e2eRequest("e2e:replay", changeSetId),
+      loadPolicy: () => ({
+        status: "loaded" as const,
+        policy: EnvelopePolicySchema.parse({
+          schemaVersion: 1,
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          allowedPathPrefixes: ["packages", "src"],
+          allowedCommands: ["npm run test"],
+        }),
+        digest: "sha256:e2e-fixture",
+      }),
     });
-    input.write("yes\n");
     const commandResult = await commandPromise;
     if (commandResult.outcome.status === "conflict") throw new Error("unreachable");
     const digest = commandResult.outcome.artifacts.envelope.canonicalHash;
-    expect(commandResult.approval?.approved).toBe(true);
+    expect(commandResult.standing?.status).toBe("approved");
     expect(changeSets.get(changeSetId)?.state).toBe("ready");
 
     // A re-approval attempt is refused by the ready-transition pre-check,

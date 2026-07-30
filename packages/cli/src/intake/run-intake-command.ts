@@ -37,14 +37,8 @@ import {
   type IntakeRequest,
   type Registry,
 } from "@crabgic/supervisor";
-import {
-  runApprovalFlow,
-  ApprovalDeclinedError,
-  type ApprovalPromptIo,
-} from "../approval/prompt.js";
-import type { ApprovalTokenMinter } from "../approval/token.js";
-import { completeEnvelopeApproval } from "./complete-envelope-approval.js";
-import type { ContractApproveResult } from "./contract-approve-handler.js";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
+import { applyStandingApproval, type StandingApprovalOutcome } from "./standing-approval.js";
 
 export interface RunIntakeCommandDeps {
   readonly journal: JournalStore;
@@ -54,37 +48,52 @@ export interface RunIntakeCommandDeps {
   readonly envelopes: Registry<AuthorizationEnvelope>;
   /** Durable contract store, for the same cross-process reason as `envelopes`: `contract.approve` resolves this ChangeSet's declared `requirementIds` from here to run its unmapped-requirement readiness gate. */
   readonly intentContracts: Registry<IntentContract>;
-  readonly minter: ApprovalTokenMinter;
-  /** The same durable signing material `minter` signs with — verification now happens in-process (see `./complete-envelope-approval.ts`). */
-  readonly secretKey: Buffer;
-  readonly io: ApprovalPromptIo;
   /** Resolves the drafted intake request content (e.g. a manager-session-authored JSON file) — this module never drafts it itself. */
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
+  /**
+   * Reads the project's standing `EnvelopePolicy` (ledger Gap 18) — REQUIRED,
+   * because it is the approval decision. It was optional, defaulting to "prompt
+   * for everything", which meant a caller that forgot it silently got the
+   * pre-Gap-18 behaviour instead of an error.
+   */
+  readonly loadPolicy: () => LoadPolicyResult;
 }
 
-/**
- * NOTE the minted token is deliberately NOT part of this result. It used to
- * be, and `run --json` printed it — the exact model-as-courier exposure
- * ledger Gap 18's audit recorded. Confirmation now completes verification
- * in-process (`./complete-envelope-approval.ts`), so the token is spent
- * before this function returns and there is nothing left worth rendering.
- */
 export interface RunIntakeCommandResult {
   readonly outcome: IntakeOutcome;
-  /** Present only when the human confirmed the terminal prompt: the in-process verification's own verdict. */
-  readonly approval?: ContractApproveResult;
-  /** True when the human explicitly declined the approval prompt (never a token minted). */
-  readonly declined?: true;
+  /**
+   * The standing-policy decision (ledger Gap 18). Absent only for a
+   * `conflict`, which is resolved before authority is even considered.
+   *
+   * No token appears anywhere in this result, by construction: this function
+   * does not mint one. `run --json` used to print the token it minted — the
+   * model-as-courier exposure Gap 18's audit recorded — and now there is
+   * nothing to print because there is nothing to spend.
+   */
+  readonly standing?: StandingApprovalOutcome;
 }
 
 /**
- * Runs intake, then — if a `ChangeSet` was created or already exists
- * awaiting approval (i.e. not a `conflict` outcome) — renders the terminal
- * approval prompt for its envelope's canonical hash and mints a token on
- * explicit "yes" (via `runApprovalFlow`, 09's own sole mint-reachable
- * path). A `conflict` outcome never reaches the approval prompt at all —
- * the caller must resolve the requestKey collision first (see
- * `@crabgic/supervisor`'s `runIntake` doc comment).
+ * Runs intake, then lets the standing policy decide (ledger Gap 18). A
+ * `conflict` outcome returns before any approval is considered — the caller
+ * must resolve the requestKey collision first (see `@crabgic/supervisor`'s
+ * `runIntake` doc comment).
+ *
+ * THIS FUNCTION NEVER PROMPTS, AND NEVER MINTS (2026-07-30). It used to render
+ * an approval prompt whenever the standing policy declined to decide, and
+ * adversarial review showed that path was broken in three ways at once: in the
+ * primary invocation form, `crabgic run < intake.json`, the request read has
+ * already drained stdin, so the prompt hit an ended stream and auto-declined —
+ * it could never be answered; it rendered only a bare envelope digest, the
+ * exact "no envelope content whatsoever" failure the standing design exists to
+ * end; and a human who did answer it got a token spent, a `ready` ChangeSet,
+ * and no dispatch, reported at exit 0.
+ *
+ * `crabgic approve <digest>` is that path done properly — it gates on who is
+ * answering, renders the authority rather than a hash, and dispatches on
+ * success — so escalation now says so and stops. One consequence worth naming:
+ * the CLI's only remaining envelope-token mint is `approve`, which is what
+ * `docs/operator-guide.md` always claimed.
  */
 export async function runIntakeCommand(
   deps: RunIntakeCommandDeps,
@@ -105,25 +114,19 @@ export async function runIntakeCommand(
     return { outcome };
   }
 
-  const digest = outcome.artifacts.envelope.canonicalHash;
-  let token: string;
-  try {
-    const minted = await runApprovalFlow(deps.minter, "envelope_hash", digest, deps.io);
-    token = minted.token;
-  } catch (err) {
-    if (err instanceof ApprovalDeclinedError) {
-      return { outcome, declined: true };
-    }
-    throw err;
-  }
-
-  const approval = await completeEnvelopeApproval(outcome.artifacts.changeSet, digest, token, {
-    secretKey: deps.secretKey,
-    journal: deps.journal,
-    changeSets: deps.changeSets,
-    envelopes: deps.envelopes,
-    intentContracts: deps.intentContracts,
-    workUnits: deps.workUnits,
-  });
-  return { outcome, approval };
+  // THE APPROVAL DECISION (ledger Gap 18). Contained in the standing policy →
+  // the ChangeSet is ready and nobody was asked. Anything else stops here and
+  // is reported; `crabgic approve <digest>` is the escalation.
+  const standing = await applyStandingApproval(
+    outcome.artifacts.changeSet,
+    outcome.artifacts.envelope,
+    {
+      journal: deps.journal,
+      changeSets: deps.changeSets,
+      workUnits: deps.workUnits,
+      intentContracts: deps.intentContracts,
+      loadPolicy: deps.loadPolicy,
+    },
+  );
+  return { outcome, standing };
 }

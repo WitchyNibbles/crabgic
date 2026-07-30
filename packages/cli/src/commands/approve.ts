@@ -28,6 +28,7 @@ import { sanitizeForTerminal } from "../output/sanitize.js";
 import { completeEnvelopeApproval } from "../intake/complete-envelope-approval.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { notImplementedResult } from "./not-implemented.js";
+import { dispatchReadyChangeSet } from "./real-handlers.js";
 import type { CliDependencies } from "./types.js";
 
 /**
@@ -149,23 +150,42 @@ export async function runApproveCommand(
     workUnits: intake.workUnits,
   });
 
+  if (!approval.approved) {
+    return cmd.json
+      ? {
+          exitCode: EXIT_GENERAL_ERROR,
+          stdout: formatJson({ approved: false, reason: approval.reason }),
+        }
+      : {
+          exitCode: EXIT_GENERAL_ERROR,
+          stderr: `approval failed: ${sanitizeForTerminal(approval.reason)}\n`,
+        };
+  }
+
+  // This command completes an interrupted `run`, so it finishes the job: the
+  // human just authorized the work, and making them run a second command to
+  // actually start it is the friction Gap 18's direction exists to remove.
+  const dispatch = await dispatchReadyChangeSet(approval.changeSet.id, deps);
   if (cmd.json) {
     return {
-      exitCode: approval.approved ? EXIT_OK : EXIT_GENERAL_ERROR,
-      stdout: formatJson(
-        approval.approved
-          ? { approved: true, changeSetId: approval.changeSet.id, state: approval.changeSet.state }
-          : { approved: false, reason: approval.reason },
-      ),
+      exitCode: dispatch.accepted ? EXIT_OK : EXIT_GENERAL_ERROR,
+      stdout: formatJson({
+        approved: true,
+        changeSetId: approval.changeSet.id,
+        state: approval.changeSet.state,
+        dispatch,
+      }),
     };
   }
-  return approval.approved
+  const safeId = sanitizeForTerminal(approval.changeSet.id);
+  return dispatch.accepted
     ? {
         exitCode: EXIT_OK,
-        stdout: `ChangeSet ${sanitizeForTerminal(approval.changeSet.id)} approved — now ${approval.changeSet.state}\n`,
+        stdout: `ChangeSet ${safeId} approved and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
       }
     : {
+        // Approved and durably `ready`; only the start failed.
         exitCode: EXIT_GENERAL_ERROR,
-        stderr: `approval failed: ${sanitizeForTerminal(approval.reason)}\n`,
+        stderr: `ChangeSet ${safeId} is approved and ready, but dispatch was refused: ${sanitizeForTerminal(dispatch.reason ?? "no reason given")}\n`,
       };
 }

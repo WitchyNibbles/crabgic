@@ -38,6 +38,25 @@ afterEach(async () => {
   await rm(journalDir, { recursive: true, force: true });
 });
 
+/** Records supervisor ops and answers `run.dispatch` with a minted run id. */
+function recordingClient(): {
+  readonly calls: string[];
+  readonly connectClient: CliDependencies["connectClient"];
+} {
+  const calls: string[] = [];
+  return {
+    calls,
+    connectClient: () =>
+      Promise.resolve({
+        request: (op: string) => {
+          calls.push(op);
+          return Promise.resolve({ accepted: true, runId: "55555555-5555-4555-8555-555555555555" });
+        },
+        close: () => Promise.resolve(),
+      } as never),
+  };
+}
+
 function baseDeps(): Pick<CliDependencies, "connectClient" | "journal" | "projectHash"> {
   return {
     connectClient: () => {
@@ -103,6 +122,9 @@ function seededIntake(
       secretKey,
       readIntakeRequest: () => {
         throw new Error("approve never reads an intake request");
+      },
+      loadPolicy: () => {
+        throw new Error("approve never reads the standing policy");
       },
       io: { input, output: new PassThrough() },
       resolveTerminal: () =>
@@ -208,8 +230,10 @@ describe("dispatchCommand — approve", () => {
     const digest = "sha256:approve-happy";
     const seeded = seededIntake(digest);
 
+    const supervisor = recordingClient();
     const resultPromise = dispatchCommand({ command: "approve", digest, json: true }, {
       ...baseDeps(),
+      connectClient: supervisor.connectClient,
       intake: seeded.intake,
     } as CliDependencies);
     seeded.input.write("yes\n");
@@ -220,12 +244,15 @@ describe("dispatchCommand — approve", () => {
       approved: boolean;
       changeSetId: string;
       state: string;
+      dispatch: { accepted: boolean; runId?: string };
     };
-    expect(parsed).toEqual({
-      approved: true,
-      changeSetId: seeded.changeSetId,
-      state: "ready",
-    });
+    expect(parsed.approved).toBe(true);
+    expect(parsed.changeSetId).toBe(seeded.changeSetId);
+    expect(parsed.state).toBe("ready");
+    // `approve` finishes the job it interrupted: the human authorized the
+    // work, so the work starts -- no second command to look up.
+    expect(parsed.dispatch.accepted).toBe(true);
+    expect(supervisor.calls).toEqual(["run.dispatch"]);
     expect(seeded.intake.changeSets.get(seeded.changeSetId)?.state).toBe("ready");
     expect(result.stdout).not.toContain('"token"');
   });

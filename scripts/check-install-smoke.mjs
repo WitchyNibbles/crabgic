@@ -28,10 +28,10 @@
 // workspace hoisting cannot mask a missing dependency.
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_ROOT = join(REPO_ROOT, "packages", "cli");
@@ -227,6 +227,62 @@ try {
     }
     if (output.trim().length === 0) {
       fail("`crabgic doctor` produced no output at all from the installed package");
+    }
+  }
+
+  // (3b) THE DAEMON ENTRY MUST BE RESOLVABLE FROM THE SHIPPED LAYOUT.
+  //
+  // Found 2026-07-30 by running the built binary in a real scratch project.
+  // `spawnSupervisorDaemon` resolved exactly one candidate,
+  // `../bin/supervisord.js`, which is correct for the `tsc` layout but wrong
+  // for the PUBLISHED one: esbuild splitting puts that code in
+  // `dist/chunk-*.js` at the dist root, so the path resolved to
+  // `packages/cli/bin/supervisord.js` — never a real file. Every daemon spawn
+  // in the published package died with MODULE_NOT_FOUND, and `stdio: "ignore"`
+  // swallowed it, so `run`'s dispatch, `status`, `resume` and `cancel` all
+  // reported a generic unreachable socket instead of the real cause.
+  //
+  // Same class as the plugin-asset defect above, same lesson: the bundled
+  // layout is not the source layout, and only the real artifact proves it.
+  // `doctor` does not spawn the daemon, so it could not have caught this.
+  {
+    const installed = join(project, "node_modules", "crabgic");
+    const daemonBin = manifest.bin?.["crabgic-supervisord"];
+    if (typeof daemonBin !== "string") {
+      fail('the published manifest declares no "crabgic-supervisord" bin entry');
+    }
+    const daemonPath = join(installed, daemonBin);
+    if (!existsSync(daemonPath)) {
+      fail(
+        `the daemon entry the manifest points at is not in the tarball: ${daemonBin}\n` +
+          "Nothing can spawn a supervisor without it.",
+      );
+    }
+    // And the resolver the CLI actually uses must find it from the SHIPPED
+    // module layout — asserted by running the real exported function inside
+    // the installed package, not by re-deriving the path here.
+    const probe = [
+      `import { resolveSupervisordBin } from "${pathToFileURL(join(installed, "dist", "index.js")).href}";`,
+      "const resolved = resolveSupervisordBin();",
+      "process.stdout.write(resolved);",
+    ].join("\n");
+    const probePath = join(scratch, "daemon-resolve-probe.mjs");
+    writeFileSync(probePath, probe, "utf-8");
+    let resolved = "";
+    try {
+      resolved = execFileSync(process.execPath, [probePath], {
+        cwd: project,
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+    } catch (error) {
+      fail(
+        "the CLI's own daemon resolver could not find the supervisor entry inside the " +
+          `installed package:\n${`${error.stdout ?? ""}${error.stderr ?? ""}`.trim().slice(0, 600)}`,
+      );
+    }
+    if (!existsSync(resolved)) {
+      fail(`the CLI's daemon resolver returned a path that does not exist: ${resolved}`);
     }
   }
 

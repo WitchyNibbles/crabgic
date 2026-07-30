@@ -94,7 +94,11 @@ import {
   createRealConfirmPolicy,
 } from "./installer/real-installer-dependencies.js";
 import { derivePolicy } from "./policy/derive-policy.js";
-import { resolveEnvelopePolicyPath, writeEnvelopePolicy } from "./policy/policy-store.js";
+import {
+  loadEnvelopePolicy,
+  resolveEnvelopePolicyPath,
+  writeEnvelopePolicy,
+} from "./policy/policy-store.js";
 import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
@@ -451,6 +455,10 @@ function buildRealIntakeDependencies(
     }),
     minter,
     readIntakeRequest: readIntakeRequestFromStdin,
+    // Ledger Gap 18: routine approval is the standing policy's containment
+    // check, not a prompt. Read fresh per call — the owner may have edited the
+    // policy since this process started, and a cached grant is a stale grant.
+    loadPolicy: () => loadEnvelopePolicy(resolveEnvelopePolicyPath(xdgEnv, projectHash)),
   };
 }
 

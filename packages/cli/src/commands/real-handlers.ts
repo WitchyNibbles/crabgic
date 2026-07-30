@@ -6,6 +6,7 @@
  * because its real backend belongs to a phase that hasn't landed yet.
  */
 import { EXIT_DOCTOR_FINDINGS, EXIT_OK, EXIT_GENERAL_ERROR } from "../exit-codes.js";
+import { toErrorMessage } from "../errors.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
@@ -21,7 +22,8 @@ import type {
 } from "../argv/types.js";
 import type { CliDependencies } from "./types.js";
 import { notImplementedResult } from "./not-implemented.js";
-import { runIntakeCommand } from "../intake/run-intake-command.js";
+import { runIntakeCommand, type RunIntakeCommandResult } from "../intake/run-intake-command.js";
+import { sanitizeForTerminal } from "../output/sanitize.js";
 
 interface RunRecordLike {
   readonly runId: string;
@@ -285,43 +287,146 @@ export async function runRunCommand(
     workUnits: deps.intake.workUnits,
     envelopes: deps.intake.envelopes,
     intentContracts: deps.intake.intentContracts,
-    minter: deps.intake.minter,
-    secretKey: deps.intake.secretKey,
-    io: deps.intake.io ?? { input: process.stdin, output: process.stdout },
     readIntakeRequest: deps.intake.readIntakeRequest,
+    loadPolicy: deps.intake.loadPolicy,
   });
 
-  if (cmd.json) {
-    // `result` carries no token by construction (`RunIntakeCommandResult`'s
-    // own doc comment): rendering one here was the model-as-courier exposure
-    // ledger Gap 18's audit recorded, and the shape below is asserted
-    // token-free by `./intake-dispatch.test.ts`.
-    return { exitCode: EXIT_OK, stdout: formatJson(result) };
-  }
+  // The outcome is decided ONCE, then rendered. The previous shape returned
+  // `--json` early, above the branches that decide the exit code, so every
+  // refusal -- an escaping envelope, an unowned requirement, a requestKey
+  // conflict -- reported exit 0 in JSON mode. A caller cannot tell an approval
+  // from a refusal by status, which is the one thing an exit code is for.
+  const decided = await decideRunOutcome(result, deps);
+  return cmd.json
+    ? {
+        exitCode: decided.exitCode,
+        stdout: formatJson({
+          ...result,
+          ...(decided.dispatch !== undefined ? { dispatch: decided.dispatch } : {}),
+        }),
+      }
+    : decided.exitCode === EXIT_OK
+      ? { exitCode: decided.exitCode, stdout: decided.message }
+      : { exitCode: decided.exitCode, stderr: decided.message };
+}
 
+interface DecidedRunOutcome {
+  readonly exitCode: number;
+  /** Human-readable rendering, written to stdout on success and stderr on refusal. */
+  readonly message: string;
+  readonly dispatch?: DispatchAttempt;
+}
+
+/** Turns an intake result into an exit code, a message, and (only when the change set is genuinely ready) a dispatch attempt. */
+async function decideRunOutcome(
+  result: RunIntakeCommandResult,
+  deps: CliDependencies,
+): Promise<DecidedRunOutcome> {
   if (result.outcome.status === "conflict") {
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      stderr: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+      message: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
     };
   }
-  if (result.declined === true) {
-    const digest = result.outcome.artifacts.envelope.canonicalHash;
-    return {
-      exitCode: EXIT_OK,
-      stdout:
-        "approval declined — no token minted; ChangeSet remains awaiting_approval\n" +
-        `(a human can approve it later with \`crabgic approve ${digest}\`)\n`,
-    };
-  }
-  if (result.approval !== undefined && !result.approval.approved) {
+
+  const changeSetId = result.outcome.artifacts.changeSet.id;
+  const digest = result.outcome.artifacts.envelope.canonicalHash;
+  const standing = result.standing;
+
+  if (standing === undefined) {
+    // Unreachable: `runIntakeCommand` always returns a decision for a
+    // non-conflict outcome. Refusing beats assuming an approval.
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      stderr: `approval confirmed at the prompt but verification failed: ${result.approval.reason}\n`,
+      message: `no approval decision was reached for ChangeSet ${sanitizeForTerminal(changeSetId)}\n`,
     };
   }
-  return {
-    exitCode: EXIT_OK,
-    stdout: `ChangeSet ${result.outcome.artifacts.changeSet.id} approved — now ready\n`,
-  };
+
+  if (standing.status === "not_ready") {
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      message:
+        `this change set cannot be approved by any route yet: ${sanitizeForTerminal(standing.reason)}\n` +
+        "Fix the plan so every requirement has an owning work unit, then run intake again.\n",
+    };
+  }
+
+  if (standing.status === "escalate") {
+    // The refusal names every escaping dimension, and this is where the
+    // operator reads it. It used to be computed and then dropped on the floor:
+    // the human path rendered a bare digest prompt instead, and `--json`
+    // reported exit 0.
+    return {
+      exitCode: EXIT_GENERAL_ERROR,
+      message:
+        `ChangeSet ${sanitizeForTerminal(changeSetId)} needs approval it does not already have.\n\n` +
+        `  ${sanitizeForTerminal(standing.reason)}\n\n` +
+        `Approve it yourself in a terminal you opened:\n\n` +
+        `  crabgic approve ${sanitizeForTerminal(digest)}\n\n` +
+        (deps.standingPolicyPath !== undefined
+          ? `Or widen the standing policy, which lives at:\n\n  ${sanitizeForTerminal(deps.standingPolicyPath)}\n`
+          : ""),
+    };
+  }
+
+  // Approved. Only a `ready` ChangeSet is dispatchable: a replay of one already
+  // running -- or finished -- is authorized but must not start a second run for
+  // the same change set.
+  if (standing.changeSet.state !== "ready") {
+    return {
+      exitCode: EXIT_OK,
+      message: `ChangeSet ${sanitizeForTerminal(changeSetId)} is already ${standing.changeSet.state}; nothing to start\n`,
+    };
+  }
+
+  const dispatch = await dispatchReadyChangeSet(changeSetId, deps);
+  const authority = ` (covered by the standing approval policy ${sanitizeForTerminal(standing.policyDigest)}; no prompt, no token)`;
+  return dispatch.accepted
+    ? {
+        exitCode: EXIT_OK,
+        dispatch,
+        message: `ChangeSet ${sanitizeForTerminal(changeSetId)} approved${authority} and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
+      }
+    : {
+        // The approval is durable and the ChangeSet stays `ready`; only the
+        // start failed, so the remedy is retrying the start.
+        exitCode: EXIT_GENERAL_ERROR,
+        dispatch,
+        message: `ChangeSet ${sanitizeForTerminal(changeSetId)} is approved and ready, but dispatch was refused: ${sanitizeForTerminal(dispatch.reason ?? "no reason given")}\n`,
+      };
+}
+
+export interface DispatchAttempt {
+  readonly accepted: boolean;
+  readonly runId?: string;
+  readonly reason?: string;
+}
+
+/**
+ * Asks the supervisor to start an approved ChangeSet — the `run.dispatch`
+ * operation that, until now, no shipped surface ever sent. The daemon mints
+ * the run id (nothing else can) and re-runs the containment check against the
+ * policy IT can see before spawning a worker.
+ *
+ * A supervisor that cannot be reached is reported, never thrown past: the
+ * approval already happened and the ChangeSet is durably `ready`, so this is a
+ * retryable start failure rather than a lost approval.
+ */
+export async function dispatchReadyChangeSet(
+  changeSetId: string,
+  deps: CliDependencies,
+): Promise<DispatchAttempt> {
+  let client: Awaited<ReturnType<CliDependencies["connectClient"]>>;
+  try {
+    client = await deps.connectClient();
+  } catch (err) {
+    return { accepted: false, reason: toErrorMessage(err) };
+  }
+  try {
+    return await client.request<DispatchAttempt>("run.dispatch", { changeSetId });
+  } catch (err) {
+    return { accepted: false, reason: toErrorMessage(err) };
+  } finally {
+    await client.close();
+  }
 }

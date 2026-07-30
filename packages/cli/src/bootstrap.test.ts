@@ -17,13 +17,15 @@ import {
   ApprovalTokenAlreadyVerifiedError,
   ApprovalTokenSignatureError,
   ChangeSetSchema,
+  EnvelopePolicySchema,
   type ChangeSet,
 } from "@crabgic/contracts";
-import { resolveStateRoot } from "@crabgic/journal";
+import { resolveStateRoot, resolveXdgStateHome } from "@crabgic/journal";
 import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@crabgic/supervisor";
 import { buildChangeSet } from "@crabgic/testkit";
 import { buildProviderDispatchWiring, buildRealCliDependencies } from "./bootstrap.js";
 import { SupervisorUnavailableError } from "./errors.js";
+import { resolveEnvelopePolicyPath, writeEnvelopePolicy } from "./policy/policy-store.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
 
 let home: string;
@@ -262,6 +264,54 @@ describe("buildRealCliDependencies", () => {
       schema: ChangeSetSchema,
     });
     expect(daemonView.get(changeSet.id)).toEqual(changeSet);
+  });
+
+  /**
+   * The loader is the approval decision, so this must prove it reads THIS
+   * project's policy file — not merely that some loader exists.
+   *
+   * The first version of this test asserted `deps.standingPolicyPath` (a
+   * different field) and that the loader returned `absent` with nothing
+   * planted. A mutation audit showed both fail-open rewrites of the real
+   * wiring survived it: dropping the project scoping — so project A's policy
+   * would authorize project B's runs — and a hardcoded `absent` stub that
+   * opens no file at all. It now plants a REAL policy and reads it back.
+   */
+  it("wires a policy loader that reads THIS project's own policy file, and no other project's", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "policy-hash" });
+    expect(deps.standingPolicyPath).toBe(resolveEnvelopePolicyPath({ HOME: home }, "policy-hash"));
+
+    // Nothing planted: the loader must genuinely report `absent`, which
+    // `applyStandingApproval` turns into an escalation rather than a grant.
+    expect(deps.intake!.loadPolicy().status).toBe("absent");
+
+    // Plant a real policy at the path THIS project resolves, through the real
+    // writer (mode and directory checks included).
+    const policy = EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["src"],
+    });
+    await writeEnvelopePolicy(
+      resolveEnvelopePolicyPath({ HOME: home }, "policy-hash"),
+      policy,
+      resolveXdgStateHome({ HOME: home }),
+    );
+
+    // A freshly-built bag must now LOAD it — a stub loader, or one reading a
+    // shared/unscoped path, cannot produce this.
+    const after = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "policy-hash" });
+    const loaded = after.intake!.loadPolicy();
+    expect(loaded.status).toBe("loaded");
+    if (loaded.status !== "loaded") throw new Error("unreachable");
+    expect(loaded.policy.allowedPathPrefixes).toEqual(["src"]);
+
+    // AND a DIFFERENT project must still see nothing. This is the assertion
+    // that catches an unscoped loader: one project's standing grant must never
+    // authorize another's runs.
+    const other = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "other-hash" });
+    expect(other.intake!.loadPolicy().status).toBe("absent");
   });
 
   it("shares ONE approval-token minter between trust and run, so both subject kinds verify in-process", async () => {
