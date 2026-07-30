@@ -31,7 +31,7 @@
  * the supervisor: registering an in-flight attempt there is what makes 05's
  * `worker.terminate` operation able to reach a running worker at all.
  */
-import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
+import { getLatestAttemptForRun, type JournalStore } from "@crabgic/journal";
 import type {
   AdjudicationCallback,
   CompiledWorkerProfile,
@@ -287,9 +287,21 @@ export async function driveRun(
   // back to the stored status, unchanged from before.
   const statusById = new Map<string, WorkUnitAttemptStatus>();
   for (const unit of options.workUnits) {
-    const latest = await getLatestAttempt(deps.journal, unit.id);
+    // Scoped to THIS run's own attempts, not every attempt for the unit id.
+    // Work-unit ids are stable across runs of the same change set (a retry
+    // is a fresh run over the same, registry-stored units), so a
+    // workUnitId-only lookup would seed a retry RUN from the PRIOR run's
+    // journal — skipping the very failed work the retry exists to redo. The
+    // same run-scoping the attempt cache key needed (its own review's F2).
+    // A resume of the same run keeps the same runId, so it still sees its
+    // own prior attempts; a fresh run has none and falls back to stored.
+    // (`countPriorDispatches` in `./attempt-policy.ts` is still
+    // workUnitId-only, so a retry as a genuinely new run does not yet run to
+    // completion — its run-scoping is a tracked follow-up. This seed is
+    // scoped now so it is correct the moment that lands.)
+    const latest = await getLatestAttemptForRun(deps.journal, unit.id, options.runId);
     // A latest status of `dispatched` at drive ENTRY can only be a PRIOR
-    // drive's attempt that crashed before reaching a terminal status (this
+    // drive of THIS run that crashed before reaching a terminal status (this
     // drive has dispatched nothing yet). Treat it as `failed`: a crashed
     // attempt is terminal for this loop, so it is not silently re-run and it
     // classifies the run as `blocked`/`failed` rather than a false

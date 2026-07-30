@@ -378,4 +378,40 @@ describe("driveRun — attempt cache (phase 13's cache, finally with a productio
     expect(result.statusById.get(A)).toBe("failed");
     expect(second.dispatchOrder).toEqual([]);
   });
+
+  /**
+   * Seeding is scoped to THIS run — verified at the journal-read level in
+   * `@crabgic/journal`'s `getLatestAttemptForRun` tests. It matters because
+   * work-unit ids are stable across runs of the same change set, so a
+   * workUnitId-only seed would make a fresh RETRY run inherit the prior
+   * run's outcomes. (A retry as a genuinely new run does not run to
+   * completion end-to-end YET — `countPriorDispatches` is still
+   * workUnitId-only, so the repair-evidence gate refuses the re-dispatch;
+   * that counter's run-scoping is a tracked follow-up. The seed is scoped
+   * now so it is correct the moment that lands, and never itself the thing
+   * that inherits stale state.)
+   */
+  it("seeds a different run's units from its OWN (empty) history, not the prior run's", async () => {
+    const OTHER_RUN = "99999999-9999-4999-8999-999999999999";
+    const first = newObserved();
+    await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      buildDeps(new Map(), first, new Map()),
+    );
+    expect(first.dispatchOrder).toEqual([A, B]);
+
+    // A single fresh unit (no dependents to block), driven under a new runId
+    // over the same journal: it must be SELECTED (seeded pending from its own
+    // empty history), i.e. it reaches dispatch rather than being skipped as
+    // "already succeeded" under the prior run.
+    const solo = [
+      buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID, dependsOn: [], attemptStatus: "pending" }),
+    ];
+    const second = newObserved();
+    await driveRun(
+      { runId: OTHER_RUN, changeSetId: CHANGE_SET_ID, workUnits: solo },
+      buildDeps(new Map(), second, new Map()),
+    ).catch(() => undefined); // the repair-counter follow-up may still refuse; selection is the point
+    expect(second.dispatchOrder).toContain(A);
+  });
 });

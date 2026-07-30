@@ -7,7 +7,12 @@ import { FIRST_SEQ } from "./codec/journal-entry.js";
 import { segmentPath } from "./store/segment-layout.js";
 import { verifyChain } from "./store/verify-chain.js";
 import { createJournalStore, type JournalStore } from "./store/journal-store.js";
-import { getLatestAttempt, recordAttempt, toAttemptRecord } from "./attempts.js";
+import {
+  getLatestAttempt,
+  getLatestAttemptForRun,
+  recordAttempt,
+  toAttemptRecord,
+} from "./attempts.js";
 import type { JournalEntry } from "./codec/journal-entry.js";
 
 const dirsToClean: string[] = [];
@@ -201,5 +206,38 @@ describe("EXIT CRITERION: a parked:rate_limit attempt retains session_id across 
     expect(recovered?.status).toBe("parked:rate_limit");
     expect(recovered?.sessionId).toBe(sessionId);
     expect(journalDir.length).toBeGreaterThan(0);
+  });
+});
+
+describe("getLatestAttemptForRun — run-scoped read-back", () => {
+  it("returns only THIS run's latest attempt, never another run's over the same work unit id", async () => {
+    const { store } = freshStore();
+    const workUnitId = randomUUID();
+    const runA = randomUUID();
+    const runB = randomUUID();
+
+    // Run A drove the unit to succeeded; run B (a retry over the same,
+    // stable work-unit id) has only just dispatched it.
+    await recordAttempt(store, workUnitId, randomUUID(), "dispatched", runA);
+    await recordAttempt(store, workUnitId, randomUUID(), "succeeded", runA);
+    await recordAttempt(store, workUnitId, randomUUID(), "dispatched", runB);
+
+    expect((await getLatestAttemptForRun(store, workUnitId, runA))?.status).toBe("succeeded");
+    expect((await getLatestAttemptForRun(store, workUnitId, runB))?.status).toBe("dispatched");
+    // A run that never touched this unit sees nothing — a fresh retry must
+    // not inherit either prior run's outcome.
+    expect(await getLatestAttemptForRun(store, workUnitId, randomUUID())).toBeUndefined();
+  });
+
+  it("with runId undefined is exactly getLatestAttempt (the unscoped evidence read)", async () => {
+    const { store } = freshStore();
+    const workUnitId = randomUUID();
+    await recordAttempt(store, workUnitId, randomUUID(), "dispatched", randomUUID());
+    await recordAttempt(store, workUnitId, randomUUID(), "failed", randomUUID());
+
+    const unscoped = await getLatestAttemptForRun(store, workUnitId, undefined);
+    const direct = await getLatestAttempt(store, workUnitId);
+    expect(unscoped?.status).toBe("failed");
+    expect(unscoped).toEqual(direct);
   });
 });

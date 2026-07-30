@@ -141,3 +141,31 @@ export async function getLatestAttempt(
   }
   return latest === undefined ? undefined : toAttemptRecord(latest);
 }
+
+/**
+ * Like `getLatestAttempt`, but scoped to a single `runId` when one is given.
+ *
+ * Work-unit ids are stable across runs of the same change set (a retry is a
+ * fresh run over the same, registry-stored units), so the workUnitId-only
+ * lookup above returns the latest attempt from ANY run. A caller seeding a
+ * specific run's state — the DAG driver re-seeding a resume — must see only
+ * THIS run's attempts, or a retry run inherits the prior run's outcomes.
+ * With `runId` undefined this is exactly `getLatestAttempt` (the unscoped
+ * read every evidence/traceability caller already wants).
+ */
+export async function getLatestAttemptForRun(
+  store: JournalStore,
+  workUnitId: string,
+  runId: string | undefined,
+): Promise<WorkUnitAttemptRecord | undefined> {
+  if (runId === undefined) return getLatestAttempt(store, workUnitId);
+  let latest: JournalEntry | undefined;
+  for await (const entry of store.queryEntries({
+    type: "work_unit_transition",
+    workUnitId,
+    runId,
+  })) {
+    if (latest === undefined || entry.seq > latest.seq) latest = entry;
+  }
+  return latest === undefined ? undefined : toAttemptRecord(latest);
+}
