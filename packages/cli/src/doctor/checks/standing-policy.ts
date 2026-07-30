@@ -182,6 +182,7 @@ function renderGrant(policy: EnvelopePolicy, digest: string): string {
     `network [${or(policy.allowedNetworkDestinations)}]; ` +
     `credentials [${or(policy.allowedCredentialReferences)}]; ` +
     `remote resources [${or(policy.allowedRemoteResourceReferences)}]; ` +
-    `unix sockets ${policy.allowUnixSockets ? "allowed" : "denied"}`
+    `unix sockets ${policy.allowUnixSockets ? "allowed" : "denied"}; ` +
+    `worker turns per attempt ≤ ${String(policy.maxWorkerTurnsPerAttempt)}`
   );
 }

@@ -149,6 +149,29 @@ export function isContained(
     }
   }
 
+  // Worker turn budget (adaptation §5.7: turns are the authoritative unit).
+  // The request must be a positive integer at or below the policy's ceiling;
+  // anything malformed on EITHER side fails closed — a NaN smuggled past the
+  // schema must never read as contained, and a malformed ceiling grants
+  // nothing rather than everything. A pre-existing policy that never stated a
+  // ceiling parses to 0 (the schema's F10 fail-closed default) and escapes
+  // here, naming the field the owner has to set.
+  const requestedTurns = envelope.maxTurnsPerAttempt;
+  const grantedTurns = policy.maxWorkerTurnsPerAttempt;
+  if (
+    !Number.isInteger(requestedTurns) ||
+    requestedTurns <= 0 ||
+    !Number.isInteger(grantedTurns) ||
+    grantedTurns < 0 ||
+    requestedTurns > grantedTurns
+  ) {
+    reasons.push(
+      `worker turn budget: the envelope requests ${String(requestedTurns)} turns per attempt ` +
+        `but the policy grants up to ${String(grantedTurns)} ` +
+        `(set "maxWorkerTurnsPerAttempt" in the standing policy to grant more)`,
+    );
+  }
+
   // `dependencies`, `temporaryServices` and `prohibitedActions` are read by no
   // consumer anywhere in the system (roast F5/F14) and are deliberately not
   // gated here. Crediting `prohibitedActions` as a narrowing in particular

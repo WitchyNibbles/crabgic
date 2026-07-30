@@ -60,6 +60,16 @@ export type RemoteResourceAuthorization = z.infer<typeof RemoteResourceAuthoriza
  *   item 5) and what 11's own Test plan exercises ("canonical-hash stability
  *   and perturbation-sensitivity of `AuthorizationEnvelope`").
  */
+/**
+ * The per-attempt worker turn budget an envelope requests when it does not
+ * state one. One definition site: the intake builder resolves an absent
+ * request to this before hashing, and the dispatcher's packet compilation
+ * reads the resolved envelope field — nothing else may restate the number.
+ * 40 is the cap the dispatcher had hardcoded (un-governed) before the budget
+ * became an authority dimension.
+ */
+export const DEFAULT_MAX_TURNS_PER_ATTEMPT = 40;
+
 export const AuthorizationEnvelopeSchema = z
   .object({
     schemaVersion: SchemaVersionField,
@@ -75,6 +85,21 @@ export const AuthorizationEnvelopeSchema = z
     remoteResourceAuthorizations: z.array(RemoteResourceAuthorizationSchema),
     temporaryServices: z.array(NonEmptyStringSchema),
     prohibitedActions: z.array(NonEmptyStringSchema),
+    /**
+     * Per-attempt engine turn budget this envelope REQUESTS (turns are the
+     * authoritative budget unit; USD figures stay informational — adaptation
+     * §5.7). Tested for containment against the standing policy's
+     * `maxWorkerTurnsPerAttempt` like every other authority dimension, and
+     * compiled into each `TaskPacket.resourceLimits.maxTurns`, where the
+     * engine enforces it.
+     *
+     * Absent DEFAULTS (it does not mean "unconstrained"): an envelope written
+     * before this axis existed asks for the bounded
+     * `DEFAULT_MAX_TURNS_PER_ATTEMPT`. The F10 absent-means-deny ruling binds
+     * POLICY fields, where absence would otherwise widen authority; on the
+     * requesting side absence narrows to the default.
+     */
+    maxTurnsPerAttempt: z.number().int().positive().default(DEFAULT_MAX_TURNS_PER_ATTEMPT),
   })
   .strict();
 export type AuthorizationEnvelope = z.infer<typeof AuthorizationEnvelopeSchema>;

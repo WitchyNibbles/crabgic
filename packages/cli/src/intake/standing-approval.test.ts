@@ -43,6 +43,7 @@ afterEach(async () => {
 
 function policy(overrides: Partial<EnvelopePolicy> = {}): EnvelopePolicy {
   return EnvelopePolicySchema.parse({
+    maxWorkerTurnsPerAttempt: 40,
     schemaVersion: 1,
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     createdAt: "2026-01-01T00:00:00.000Z",

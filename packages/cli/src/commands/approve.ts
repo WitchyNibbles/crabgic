@@ -41,6 +41,22 @@ import type { CliDependencies } from "./types.js";
 function renderEnvelopeForConsent(changeSet: ChangeSet, envelope: AuthorizationEnvelope): string {
   const list = (values: readonly string[]): string =>
     values.length === 0 ? "(none)" : values.map((value) => sanitizeForTerminal(value)).join(", ");
+  // Remote authorizations render reference + flags: review established that
+  // zero flags is NOT trivially safe (the flag taxonomy is per-kind, not
+  // per-risk), so the reference itself is the load-bearing line.
+  const remotes = (values: AuthorizationEnvelope["remoteResourceAuthorizations"]): string =>
+    values.length === 0
+      ? "(none)"
+      : values
+          .map(
+            (authorization) =>
+              `${sanitizeForTerminal(authorization.reference)}${
+                authorization.highImpactFlags.length === 0
+                  ? ""
+                  : ` [${authorization.highImpactFlags.join(", ")}]`
+              }`,
+          )
+          .join(", ");
   return [
     "",
     "This approval grants the following authority:",
@@ -50,6 +66,10 @@ function renderEnvelopeForConsent(changeSet: ChangeSet, envelope: AuthorizationE
     `  commands:              ${list(envelope.commands)}`,
     `  network destinations:  ${list(envelope.networkDestinations)}`,
     `  credential references: ${list(envelope.credentialReferences)}`,
+    `  remote resources:      ${remotes(envelope.remoteResourceAuthorizations)}`,
+    `  dependencies:          ${list(envelope.dependencies)}`,
+    `  temporary services:    ${list(envelope.temporaryServices)}`,
+    `  worker turns/attempt:  ${String(envelope.maxTurnsPerAttempt)}`,
     `  prohibited actions:    ${list(envelope.prohibitedActions)}`,
     "",
   ].join("\n");

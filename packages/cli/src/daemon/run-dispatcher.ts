@@ -73,8 +73,11 @@ const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
 /** The ref a run is based on when the caller names none. */
 const DEFAULT_TARGET_REF = "HEAD";
 
-/** Per-attempt engine turn cap — not a retry count; 13's `dispatchAttempt` owns repair policy. */
-const DEFAULT_MAX_TURNS = 40;
+// The per-attempt engine turn cap comes from the AUTHORIZED envelope's own
+// `maxTurnsPerAttempt` (tested for policy containment like every other
+// authority dimension) — this module deliberately has no turn constant of its
+// own. The hardcoded 40 that used to live here was an authority nothing
+// governed.
 
 /**
  * The result shape every worker must return. Deliberately minimal and
@@ -319,7 +322,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
               objective: ctx.workUnit.title,
               baseObjectId,
               ownedPaths: [...ctx.workUnit.ownedPaths],
-              resourceLimits: { maxTurns: DEFAULT_MAX_TURNS },
+              resourceLimits: { maxTurns: envelope.maxTurnsPerAttempt },
               resultSchema: WORKER_RESULT_SCHEMA,
               envelope,
             }).packet,

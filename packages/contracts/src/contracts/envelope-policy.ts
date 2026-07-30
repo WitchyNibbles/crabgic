@@ -129,6 +129,21 @@ export const EnvelopePolicySchema = z
      * governed by this flag.
      */
     allowUnixSockets: z.boolean().default(false),
+
+    /**
+     * Ceiling on the per-attempt worker turn budget an envelope may request
+     * (turns are the authoritative unit, USD informational — adaptation
+     * §5.7). `envelope.maxTurnsPerAttempt` must be ≤ this or the dispatch
+     * escalates like any other escaping dimension.
+     *
+     * Defaults to **0 — grants nothing** (the numeric empty set), so a policy
+     * on disk from before this axis existed denies it and every dispatch
+     * escalates, naming this field, until the owner states a ceiling — F10's
+     * fail-closed shape. A FLAT number, deliberately: `digestPolicy` hashes
+     * the file's plain JSON, and the first nested field would silently change
+     * the journaled authorization identity (`policy-store.ts`).
+     */
+    maxWorkerTurnsPerAttempt: z.number().int().nonnegative().default(0),
   })
   .strict();
 

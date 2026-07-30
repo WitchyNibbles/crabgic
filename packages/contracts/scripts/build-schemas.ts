@@ -49,8 +49,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import {
   AuthorizationEnvelopeSchema,
   CapabilityManifestSchema,
@@ -120,9 +119,18 @@ const sortedContracts = [...CONTRACTS].sort((a, b) => a.fileName.localeCompare(b
 mkdirSync(SCHEMAS_DIR, { recursive: true });
 
 for (const { fileName, schema } of sortedContracts) {
-  const jsonSchema = zodToJsonSchema(schema, {
-    target: "jsonSchema7",
-    $refStrategy: "none",
+  // zod v4's NATIVE converter. The previous `zod-to-json-schema` dependency
+  // silently emits an EMPTY `{}` schema for every zod-4 schema (it walks a
+  // `_def` shape that no longer exists), and nothing in CI ran this script,
+  // so the breakage sat latent from the zod-4 upgrade until the first
+  // post-upgrade contract change tried to regenerate. `target: "draft-7"`
+  // and full inlining (`reused: "inline"`, matching the old
+  // `$refStrategy: "none"`) keep every emitted file standalone-compilable by
+  // testkit's ajv harness, same as before.
+  const jsonSchema = z.toJSONSchema(schema, {
+    target: "draft-7",
+    io: "output",
+    reused: "inline",
   });
   const serialized = `${JSON.stringify(jsonSchema, null, 2)}\n`;
   const outPath = join(SCHEMAS_DIR, `${fileName}.json`);

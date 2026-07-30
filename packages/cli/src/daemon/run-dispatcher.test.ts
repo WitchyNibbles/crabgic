@@ -162,6 +162,7 @@ const FIXTURE_POLICY = EnvelopePolicySchema.parse({
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   createdAt: "2026-01-01T00:00:00.000Z",
   allowedPathPrefixes: ["packages/example/src"],
+  maxWorkerTurnsPerAttempt: 40,
 });
 
 function newDispatcher(
@@ -285,6 +286,52 @@ describe("createRealRunDispatcher — dispatch", () => {
       },
       { timeout: 10_000 },
     );
+  });
+
+  /**
+   * The turn cap is AUTHORIZED authority, not a dispatcher constant: the
+   * envelope's `maxTurnsPerAttempt` (already tested for containment in the
+   * standing policy by the time a dispatch reaches packet compilation) is
+   * what lands in every `TaskPacket.resourceLimits.maxTurns`, where the
+   * engine enforces it. Before this, the dispatcher hardcoded 40 and no
+   * policy dimension governed it.
+   */
+  it("compiles the ENVELOPE's turn budget into the packet, not a dispatcher constant", async () => {
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        maxTurnsPerAttempt: 7,
+      }),
+    });
+    const spawnedPackets: { readonly resourceLimits?: { readonly maxTurns?: number } }[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => {
+        const adapter = new FakeEngineAdapter(
+          buildFakeEngineScript({
+            structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+          }),
+        );
+        const realSpawn = adapter.spawn.bind(adapter);
+        adapter.spawn = (packet, profile, adjudicate) => {
+          spawnedPackets.push(packet as (typeof spawnedPackets)[number]);
+          return realSpawn(packet, profile, adjudicate);
+        };
+        return Promise.resolve(adapter);
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    await vi.waitFor(
+      () => {
+        expect(spawnedPackets.length).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    expect(spawnedPackets[0]?.resourceLimits?.maxTurns).toBe(7);
   });
 
   it("is idempotent per CHANGE SET — a second dispatch never starts a competing driver", async () => {

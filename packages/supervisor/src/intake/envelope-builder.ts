@@ -20,6 +20,7 @@
 import {
   AuthorizationEnvelopeSchema,
   CURRENT_SCHEMA_VERSION,
+  DEFAULT_MAX_TURNS_PER_ATTEMPT,
   type AuthorizationEnvelope,
   type RemoteResourceAuthorization,
 } from "@crabgic/contracts";
@@ -34,6 +35,19 @@ export interface AuthorizationEnvelopeContent {
   readonly remoteResourceAuthorizations: readonly RemoteResourceAuthorization[];
   readonly temporaryServices: readonly string[];
   readonly prohibitedActions: readonly string[];
+  /**
+   * Per-attempt worker turn budget the intake requests. OPTIONAL on the
+   * request side; an absent value resolves to `DEFAULT_MAX_TURNS_PER_ATTEMPT`
+   * BEFORE hashing, so "asked for nothing" and "asked for the default
+   * explicitly" are the same authorization content and land on the same
+   * canonical hash.
+   */
+  readonly maxTurnsPerAttempt?: number;
+}
+
+/** The resolved turn budget a piece of content actually requests — one definition, used by both the hash and the built record so they can never disagree. */
+function resolveMaxTurnsPerAttempt(content: AuthorizationEnvelopeContent): number {
+  return content.maxTurnsPerAttempt ?? DEFAULT_MAX_TURNS_PER_ATTEMPT;
 }
 
 export interface BuildAuthorizationEnvelopeOptions {
@@ -57,6 +71,7 @@ export function hashEnvelopeContent(content: AuthorizationEnvelopeContent): stri
     })),
     temporaryServices: content.temporaryServices,
     prohibitedActions: content.prohibitedActions,
+    maxTurnsPerAttempt: resolveMaxTurnsPerAttempt(content),
   });
 }
 
@@ -78,6 +93,7 @@ export function buildAuthorizationEnvelope(
     remoteResourceAuthorizations: [...options.content.remoteResourceAuthorizations],
     temporaryServices: [...options.content.temporaryServices],
     prohibitedActions: [...options.content.prohibitedActions],
+    maxTurnsPerAttempt: resolveMaxTurnsPerAttempt(options.content),
   };
   return AuthorizationEnvelopeSchema.parse(envelope);
 }

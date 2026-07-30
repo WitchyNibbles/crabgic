@@ -41,6 +41,29 @@ describe("EnvelopePolicySchema", () => {
     expect(policy.allowedRemoteResourceReferences).toEqual([]);
     expect(policy.allowedWriteScratchPaths).toEqual([]);
     expect(policy.allowUnixSockets).toBe(false);
+    // The worker turn budget is an authority axis like any other: a policy
+    // written before the axis existed grants ZERO turns and every dispatch
+    // escalates until its author states a ceiling — F10's fail-closed shape
+    // for a numeric dimension (0 is the numeric empty set).
+    expect(policy.maxWorkerTurnsPerAttempt).toBe(0);
+  });
+
+  it("accepts an explicit turn ceiling and rejects meaningless ones", () => {
+    expect(
+      EnvelopePolicySchema.parse({ ...MINIMAL, maxWorkerTurnsPerAttempt: 40 })
+        .maxWorkerTurnsPerAttempt,
+    ).toBe(40);
+    // Zero is legal (it is the deny default written out explicitly).
+    expect(
+      EnvelopePolicySchema.parse({ ...MINIMAL, maxWorkerTurnsPerAttempt: 0 })
+        .maxWorkerTurnsPerAttempt,
+    ).toBe(0);
+    for (const invalid of [-1, 1.5, "40", null, Number.NaN]) {
+      expect(
+        EnvelopePolicySchema.safeParse({ ...MINIMAL, maxWorkerTurnsPerAttempt: invalid }).success,
+        `maxWorkerTurnsPerAttempt ${JSON.stringify(invalid)} must be rejected`,
+      ).toBe(false);
+    }
   });
 
   /**

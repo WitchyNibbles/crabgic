@@ -134,6 +134,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       loadPolicy: () => ({
         status: "loaded" as const,
         policy: EnvelopePolicySchema.parse({
+          maxWorkerTurnsPerAttempt: 40,
           schemaVersion: 1,
           id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           createdAt: "2026-01-01T00:00:00.000Z",
@@ -174,6 +175,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       loadPolicy: () => ({
         status: "loaded" as const,
         policy: EnvelopePolicySchema.parse({
+          maxWorkerTurnsPerAttempt: 40,
           schemaVersion: 1,
           id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           createdAt: "2026-01-01T00:00:00.000Z",
