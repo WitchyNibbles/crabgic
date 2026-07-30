@@ -176,6 +176,13 @@ export interface RealRunDispatcherOptions {
    * cannot succeed.
    */
   readonly standingPolicyPath?: string;
+  /**
+   * Epoch-SECONDS clock, threaded to the driver's park-resume readiness
+   * check. Injected so a test can make a rate-limit window pass BETWEEN a
+   * dispatch (which parks) and a later `resume` (which continues the parked
+   * unit) deterministically. Defaults to the real wall clock.
+   */
+  readonly nowSeconds?: () => number;
 }
 
 type ResolvedRun =
@@ -207,6 +214,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    * existed.
    */
   const inFlight = new Set<string>();
+  const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
   // NOTE: this dispatcher briefly constructed an in-memory attempt cache
   // (`AttemptCacheSeam`) so a same-daemon re-drive would reuse succeeded
@@ -216,6 +224,34 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
   // authorizing policy digest. The cache was removed rather than kept as
   // unreachable dead code (its review's F2). See `@crabgic/scheduler`'s
   // `driveRun` journal-seed.
+
+  /**
+   * Per-RUN retained adapters, surviving ACROSS this daemon's re-drives of the
+   * same run — keyed by runId, then by workUnitId. A unit parked on a rate
+   * limit is resumed on a LATER drive (a `crabgic resume <runId>` once the
+   * window passes), and that resume needs the SAME adapter instance that
+   * spawned the session, so it continues with full authority instead of the
+   * read-only fallback. A per-`drive()` map would be empty on that later
+   * drive; keying at the dispatcher level makes the documented limit-park
+   * re-dispatch actually reuse the session.
+   *
+   * Dropped when the run reaches a NON-parked outcome (`clearRetainedRun` from
+   * the settle path) — a parked run keeps its adapters for the next resume.
+   * SAME-DAEMON only: a daemon restart loses this map, and a re-drive then
+   * declines to resume (leaves the unit parked) rather than continue into a
+   * read-only session. Durable, restart-safe session context is the ledger's
+   * separate carry-forward.
+   */
+  const retainedByRun = new Map<
+    string,
+    Map<
+      string,
+      { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
+    >
+  >();
+  const clearRetainedRun = (runId: string): void => {
+    retainedByRun.delete(runId);
+  };
 
   /**
    * The standing-approval gate: load the policy, then test the envelope for
@@ -316,20 +352,28 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
 
-    // Per-unit adapters RETAINED for this drive's lifetime, so a
-    // rate-limit-parked unit can be RESUMED (not re-dispatched — that would
-    // count its original dispatch toward the repair budget and be refused).
-    // A resume needs the SAME adapter instance that spawned the session: only
-    // it holds that session's `{packet, profile}` context, so `adapter.resume`
-    // continues with full authority instead of the read-only fallback a fresh
-    // adapter gets (`docs/…` engine-baseline; adapter.ts's spawn-context
-    // cache). The map lives only for this `drive()` call — a re-drive after a
-    // daemon restart finds it empty and declines to resume (leaves the unit
-    // parked), which is the ledger's separate restart-safe carry-forward.
-    const retainedWorkers = new Map<
+    // This run's retained adapters, surviving across the daemon's re-drives of
+    // the run (see `retainedByRun`). A resume needs the SAME adapter instance
+    // that spawned the session — only it holds that session's `{packet,
+    // profile}` context, so `adapter.resume` continues with full authority
+    // instead of the read-only fallback a fresh adapter gets.
+    const retainedWorkers = ((): Map<
       string,
       { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
-    >();
+    > => {
+      const existing = retainedByRun.get(runId);
+      if (existing !== undefined) return existing;
+      const created = new Map<
+        string,
+        {
+          readonly adapter: EngineAdapter;
+          readonly worktreePath: string;
+          readonly configDir: string;
+        }
+      >();
+      retainedByRun.set(runId, created);
+      return created;
+    })();
 
     // ONE freeze per run: every attempt is based on the same object id,
     // which is what makes a run's results comparable and its worktrees
@@ -367,6 +411,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,
         adjudicate,
+        nowSeconds,
         compileProfile: () => Promise.resolve(profile),
         buildPacket: (ctx) =>
           Promise.resolve(
@@ -548,12 +593,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         // failed/blocked run stays `running` and blocks every retry (F5).
         const to = terminalStateFor(result.stopped);
         if (to !== undefined) await settleRunState(runId, changeSetId, to);
+        // Retained adapters are kept ONLY while the run is parked (so a later
+        // `resume` can continue the session); any other outcome means the run
+        // will not resume those sessions, so free them now.
+        if (result.stopped !== "parked") clearRetainedRun(runId);
       })
       .catch(async (err: unknown) => {
         onDriveError(runId, err);
         // A drive that threw did not complete — fail the run so the change
         // set is retryable rather than wedged `running`.
         await settleRunState(runId, changeSetId, "failed");
+        clearRetainedRun(runId);
       })
       .finally(release);
   }

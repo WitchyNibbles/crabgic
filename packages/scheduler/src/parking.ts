@@ -30,7 +30,7 @@
 
 import { z } from "zod";
 import {
-  getLatestAttempt,
+  getLatestAttemptForRun,
   recordAttempt,
   type JournalStore,
   type WorkUnitAttemptRecord,
@@ -232,8 +232,16 @@ export async function getParkStatus(
   journal: JournalStore,
   workUnitId: string,
   nowSeconds: number,
+  runId?: string,
 ): Promise<ParkStatus> {
-  const latestAttempt = await getLatestAttempt(journal, workUnitId);
+  // Run-scoped when `runId` is given: whether THIS run parked the unit, and
+  // WHICH session it retained, are run-specific facts. Work-unit ids are
+  // stable across runs of the same change set, so an unscoped read could
+  // report another run's park (and its session id — which the retaining
+  // adapter would then miss, silently downgrading a resume to read-only). The
+  // reset window itself is a unit/account-level fact and comes from the park
+  // timer unscoped. Absent `runId`, behaviour is unchanged.
+  const latestAttempt = await getLatestAttemptForRun(journal, workUnitId, runId);
   if (latestAttempt === undefined || latestAttempt.status !== "parked:rate_limit") {
     return { parked: false, readyToResume: false };
   }
@@ -253,7 +261,10 @@ export async function getParkStatus(
   return {
     parked: true,
     readyToResume: pastReset,
-    sessionId: timer.sessionId,
+    // Prefer the RUN-SCOPED attempt's session id over the (unscoped) timer's,
+    // so a resume can never continue another run's session; they are the same
+    // when parkWorkUnit wrote them together, which is the normal case.
+    sessionId: latestAttempt.sessionId ?? timer.sessionId,
     resetsAt: timer.resetsAt,
   };
 }

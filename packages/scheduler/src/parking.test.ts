@@ -337,4 +337,45 @@ describe("getParkStatus — restart-safe journal-derived read-back", () => {
       resetsAt: 5000,
     });
   });
+
+  it("run-scopes the parked-determination AND the session id when a runId is given (F2)", async () => {
+    // Work-unit ids are stable across runs of the same change set, so two runs
+    // can leave park records for the SAME unit. Run R1 parked it under its own
+    // session; a later run R2 parked the same unit under a DIFFERENT session,
+    // which becomes the GLOBAL latest attempt (and the latest park timer).
+    const RUN_R1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const RUN_R2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const SESSION_R1 = SESSION_ID;
+    const SESSION_R2 = "33333333-3333-4333-8333-333333333333";
+
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_R1, "dispatched", RUN_R1);
+    await parkWorkUnit({
+      journal: store,
+      workUnitId: WORK_UNIT_ID,
+      sessionId: SESSION_R1,
+      resetsAt: 5000,
+      runId: RUN_R1,
+    });
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_R2, "dispatched", RUN_R2);
+    await parkWorkUnit({
+      journal: store,
+      workUnitId: WORK_UNIT_ID,
+      sessionId: SESSION_R2,
+      resetsAt: 6000,
+      runId: RUN_R2,
+    });
+
+    // Scoped to R1: R1's parked attempt and R1's session — NOT the global
+    // latest. Resuming the global-latest session would continue another run's
+    // session, which the retaining adapter would miss (read-only downgrade).
+    const scoped = await getParkStatus(store, WORK_UNIT_ID, 7000, RUN_R1);
+    expect(scoped.parked).toBe(true);
+    expect(scoped.readyToResume).toBe(true);
+    expect(scoped.sessionId).toBe(SESSION_R1);
+
+    // Unscoped still reflects the global latest (R2's session) — proving the
+    // runId argument is what makes the read run-specific, not incidental.
+    const unscoped = await getParkStatus(store, WORK_UNIT_ID, 7000);
+    expect(unscoped.sessionId).toBe(SESSION_R2);
+  });
 });

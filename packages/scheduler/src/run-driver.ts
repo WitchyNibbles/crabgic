@@ -311,7 +311,7 @@ export async function driveRun(
     const resumed: string[] = [];
     for (const unit of options.workUnits) {
       if (statusById.get(unit.id) !== "parked:rate_limit") continue;
-      const park = await getParkStatus(deps.journal, unit.id, nowSeconds());
+      const park = await getParkStatus(deps.journal, unit.id, nowSeconds(), options.runId);
       if (!park.parked || !park.readyToResume || park.sessionId === undefined) continue;
       try {
         const outcome = await deps.resumeParkedUnit(

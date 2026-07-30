@@ -354,6 +354,110 @@ describe("createRealRunDispatcher — dispatch", () => {
   });
 
   /**
+   * F1 (the load-bearing scope claim): retention must survive ACROSS drives,
+   * not just within one. A unit parked while its reset window is still in the
+   * future ends its drive PARKED; a LATER `resume(runId)` — the `crabgic
+   * resume <runId>` path, once the window passes — must reuse the adapter
+   * retained from the first drive. With a per-`drive()` map that second drive
+   * finds nothing, declines, and the unit never completes; this test fails
+   * against that mutation and passes only when retention is keyed per-run at
+   * the dispatcher level.
+   *
+   * The clock is advanced only AFTER a barrier proves the first drive has left
+   * flight, so the first drive (which always reads `clock === 1000`) cannot
+   * self-resume and mask the bug.
+   */
+  it("retains a parked unit's adapter ACROSS drives — a later resume completes it (F1)", async () => {
+    const SESSION = "88888888-8888-4888-8888-888888888888";
+    const worktreePath = join(dir, "worktree");
+    let clock = 1000; // strictly before the reset window
+    let adaptersCreated = 0;
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              // Reset window in the FUTURE relative to `clock`: the first drive
+              // parks and ENDS without resuming. The resume must come from a
+              // separate, later drive.
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+              },
+              onResume: buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+              }),
+            }),
+          ),
+        );
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    // Barrier: wait until the first drive has SETTLED — released its in-flight
+    // claim — while the run persists as a live, parked-and-`running` run. A
+    // probing dispatch refuses with the LIVE-RUN reason only once the drive is
+    // out of flight; until then it refuses with "already being dispatched".
+    // The probe starts no drive (a live run exists) and never mutates the
+    // clock, so advancing it afterwards cannot race the first drive.
+    await vi.waitFor(
+      async () => {
+        const probe = await dispatcher.dispatch(CHANGE_SET_ID);
+        expect(probe.accepted).toBe(false);
+        expect(probe.reason).toMatch(/already has run .* in flight/i);
+      },
+      { timeout: 10_000 },
+    );
+
+    // The first drive parked the unit and never resumed it.
+    {
+      const statuses: string[] = [];
+      for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+        const s = (entry.payload as { status?: string }).status;
+        if (typeof s === "string") statuses.push(s);
+      }
+      expect(statuses).toContain("parked:rate_limit");
+      expect(statuses).not.toContain("succeeded");
+    }
+
+    // The reset window has now passed. A SEPARATE drive must reuse the adapter
+    // retained from the first drive.
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        const statuses: string[] = [];
+        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+          const s = (entry.payload as { status?: string }).status;
+          if (typeof s === "string") statuses.push(s);
+        }
+        expect(statuses).toContain("succeeded");
+      },
+      { timeout: 10_000 },
+    );
+
+    // Exactly one adapter ever existed (the first drive's spawn). The resume
+    // reused it ACROSS drives rather than creating a fresh one — the whole
+    // point of dispatcher-level retention.
+    expect(adaptersCreated).toBe(1);
+  });
+
+  /**
    * The turn cap is AUTHORIZED authority, not a dispatcher constant: the
    * envelope's `maxTurnsPerAttempt` (already tested for containment in the
    * standing policy by the time a dispatch reaches packet compilation) is
