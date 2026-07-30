@@ -321,19 +321,17 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       expect(result.changelogDraft).toContain(`## ${version}`);
       expect(result.tagScript).toContain(`git tag -a 'v${version}'`);
 
-      // ...and the clauses of the SAME exit criterion that are NOT met.
-      // This item is FAIL today by design: making it green means cutting a
-      // real release (CHANGELOG, tag, marketplace pin, an actual publish),
-      // which is the owner's action, not this harness's.
-      // EVERY clause of the criterion is now satisfiable, and the publish
-      // clause actually is: crabgic@1.0.0 shipped with provenance, so the
-      // registry answers for it and `publication` carries no reason. What
-      // this case still exercises is that the composite really runs each
-      // constituent check against the real repository — the verdict itself
-      // depends on which commit is being scored (see the reason categories
-      // below), so it is deliberately not pinned here.
+      // The "package published" clause, scored PRE-PUBLISH. This summary IS
+      // the pre-publish gate — it runs before the publish it gates — so it
+      // requires the candidate to be PUBLISHABLE, not already published:
+      // requiring the latter deadlocked the pipeline (publish waits on the
+      // gate; the gate waited on publish). The release version is therefore
+      // NOT yet on the registry (`published === false`), and that is the
+      // EXPECTED, ready state — it carries no blocking reason. The published
+      // fact is confirmed AFTER publish by the publish job's own registry
+      // re-check, not here.
       const joined = result.reasons.join("\n");
-      expect(result.publication.published).toBe(true);
+      expect(result.publication.published).toBe(false);
       expect(result.publication.reasons).toEqual([]);
       expect(joined).not.toContain("package published");
 
@@ -372,13 +370,16 @@ describe("runAndEmitReleaseGateSummaryEvidence — genuine integration (real git
       // expectation would let the clause regress unnoticed.
       expect(result.npmNameRecheck.fresh).toBe(true);
       expect(joined).not.toContain("npm view");
-      // ZERO publication reasons now, where there were two. The first went
-      // when the `"private": true` latch was released to prepare 1.0.0; the
-      // second — "the registry has nothing under this name" — went when
-      // crabgic@1.0.0 was actually published with provenance. Both are
-      // asserted rather than dropped so a regression in either is visible.
+      // ZERO publication reasons, scored PRE-PUBLISH (`publishable`): the
+      // manifest is public (the `"private": true` latch was released to
+      // prepare 1.0.0), and the release version is not yet on the registry —
+      // which is exactly what a publishable candidate looks like, so it
+      // carries no reason. The published bit is `false` here by design (the
+      // publish has not happened yet); the post-publish job's re-check is what
+      // asserts it flips to true. Both facts are asserted rather than dropped
+      // so a regression in either is visible.
       expect(result.publication.manifestPrivate).toBe(false);
-      expect(result.publication.published).toBe(true);
+      expect(result.publication.published).toBe(false);
       expect(result.publication.reasons).toEqual([]);
 
       // The rebuild clause is the ONE reason whose presence depends on how

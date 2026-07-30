@@ -102,6 +102,15 @@ export interface ReleaseGateSummaryOptions {
   readonly pluginRoot: string;
   /** The release version to prepare, e.g. `"1.0.0"`. */
   readonly version: string;
+  /**
+   * Which registry state the "package published" clause requires — see
+   * `checkPublication`'s `expectation`. Defaults to `"publishable"` because
+   * THIS summary IS the pre-publish gate: it runs before the publish it gates,
+   * so it verifies the candidate CAN be published, not that it already has
+   * been (the post-publish fact the publish job's own re-check confirms).
+   * Requiring `"published"` here would deadlock the pipeline.
+   */
+  readonly publicationExpectation?: "published" | "publishable";
   /** Defaults to `process.env` — the seam `CRABGIC_RELEASE_REBUILD_CHECKOUTS` is read through. */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
@@ -213,6 +222,7 @@ export async function runReleaseGateSummary(
     packageName: PUBLISHED_PACKAGE_NAME,
     version: options.version,
     runner: new RealNpmViewRunner(),
+    expectation: options.publicationExpectation ?? "publishable",
   });
 
   const { verdict, reasons } = computeReleaseGateVerdict({

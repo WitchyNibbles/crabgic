@@ -145,15 +145,22 @@ jobs:
         # useless — it trains the reader to ignore a red publish job.
         run: |
           set -uo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # THIS is the "package published" clause, verified POST-publish for
+          # the SPECIFIC version. The pre-publish release gate deliberately only
+          # requires the version to be PUBLISHABLE (not already taken); that a
+          # release actually landed is a fact only this step, after the real
+          # publish, can establish — so it checks the exact version, not merely
+          # that the name resolves.
           for attempt in $(seq 1 10); do
-            if npm view crabgic version >/dev/null 2>&1; then
-              echo "registry answered on attempt ${attempt}"
+            if [ "$(npm view "crabgic@${VERSION}" version 2>/dev/null)" = "${VERSION}" ]; then
+              echo "registry serves crabgic@${VERSION} on attempt ${attempt} — 'package published' met post-publish"
               npm view crabgic version
               npm view crabgic dist-tags
               exit 0
             fi
-            echo "registry has not caught up yet (attempt ${attempt}/10); waiting 15s"
+            echo "registry has not caught up to crabgic@${VERSION} yet (attempt ${attempt}/10); waiting 15s"
             sleep 15
           done
-          echo "::error::crabgic is still not readable from the registry after ~150s — the publish step reported success, so check https://www.npmjs.com/package/crabgic before re-running"
+          echo "::error::crabgic@${VERSION} is still not readable from the registry after ~150s — the publish step reported success, so check https://www.npmjs.com/package/crabgic before re-running"
           exit 1
