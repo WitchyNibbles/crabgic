@@ -82,6 +82,30 @@ describe("countPriorDispatches", () => {
     // Unscoped (no runId) still counts across all runs — unchanged default.
     expect(await countPriorDispatches(store, WORK_UNIT_ID)).toBe(2);
   });
+
+  /**
+   * The `previousStatus` off-by-one a prior review found: run A leaves the
+   * unit's latest transition at `parked:rate_limit`, then run B (a retry)
+   * dispatches it. Because `recordAttempt` now derives `previousStatus`
+   * run-scoped, run B's FIRST dispatch has NO prior status in run B — so it
+   * is NOT mistaken for a park-resume and correctly counts toward run B's
+   * own budget. Cross-run, an unscoped derivation had inherited run A's
+   * `parked` status and wrongly excluded the dispatch, inflating the cap.
+   */
+  it("does not let a prior run's park leak into a retry run's repair count", async () => {
+    const RUN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const RUN_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    // Run A: dispatched, then rate-limit parked (and never resumed).
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "parked:rate_limit", RUN_A);
+
+    // Run B's first dispatch of the same unit.
+    const runBFirst = await recordAttempt(store, WORK_UNIT_ID, SESSION_B, "dispatched", RUN_B);
+    // Run-scoped derivation: no prior attempt IN RUN B → no previousStatus,
+    // so it is not excluded as a park-resume.
+    expect(runBFirst.previousStatus).toBeUndefined();
+    expect(await countPriorDispatches(store, WORK_UNIT_ID, RUN_B)).toBe(1);
+  });
 });
 
 describe("assertRepairAllowed", () => {
