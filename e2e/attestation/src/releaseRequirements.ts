@@ -119,10 +119,41 @@ export function parseExitCriteria(markdown: string): readonly string[] {
   const section = next === -1 ? rest : rest.slice(0, next);
 
   const criteria: string[] = [];
+  let current: string | undefined;
+  const flush = (): void => {
+    if (current !== undefined) {
+      criteria.push(current);
+      current = undefined;
+    }
+  };
   for (const line of section.split("\n")) {
-    const match = /^\s*-\s*\[[ xX]\]\s*(.+?)\s*$/.exec(line);
-    if (match?.[1] !== undefined) criteria.push(match[1]);
+    const bullet = /^\s*-\s*\[[ xX]\]\s*(.*?)\s*$/.exec(line);
+    if (bullet?.[1] !== undefined) {
+      // A new `- [ ]`/`- [x]` bullet closes the previous criterion and opens
+      // this one.
+      flush();
+      current = bullet[1];
+      continue;
+    }
+    if (current !== undefined) {
+      // An INDENTED, non-blank line that is not itself a list item is a
+      // CONTINUATION of the current bullet (markdown lazy/indented
+      // continuation). Join it into the criterion's text with a single space
+      // so a multi-line criterion has ONE canonical text — and therefore one
+      // stable `deriveRequirementId`. Without this the parser silently dropped
+      // every continuation line, truncating the sole multi-line criterion (the
+      // 8-family gateway bullet) mid-sentence: it lost the "`NOT_IMPLEMENTED`
+      // remains" phrase its tag rule matches on AND changed its derived id out
+      // from under the harness that stamps it.
+      if (/^\s+\S/.test(line) && !/^\s*-\s/.test(line)) {
+        current = `${current} ${line.trim()}`;
+        continue;
+      }
+      // A blank line or a de-indented line ends the bullet.
+      flush();
+    }
   }
+  flush();
   return criteria;
 }
 
