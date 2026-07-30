@@ -80,7 +80,23 @@ export interface DurableApprovalLedgerOptions {
   readonly leaseRetryDelayMs?: number;
 }
 
-const DEFAULT_MAX_LEASE_ACQUIRE_ATTEMPTS = 20;
+/**
+ * How long a verification waits for another verification of the SAME token to
+ * finish before giving up.
+ *
+ * RAISED FROM 20 (200ms) TO 100 (1s) on 2026-07-30. The lease is what makes the
+ * check-and-record below safe against concurrent callers, and 200ms of patience
+ * is thin: under heavy I/O the holder's journal fsync can outlast it, and the
+ * waiter then fails with a LEASE error rather than the correct
+ * `ApprovalTokenAlreadyVerifiedError`. That direction is fail-safe — nothing is
+ * consumed twice, which is the property that matters — but it reports a
+ * confusing cause for a situation the system handles correctly, and it is what
+ * made this module's own concurrency test flaky under full-suite load.
+ *
+ * 1s stays well inside `LEASE_TTL_MS`, so a waiter still cannot outlive a dead
+ * holder's lease and deadlock behind it.
+ */
+const DEFAULT_MAX_LEASE_ACQUIRE_ATTEMPTS = 100;
 const DEFAULT_LEASE_RETRY_DELAY_MS = 10;
 const LEASE_TTL_MS = 5_000;
 

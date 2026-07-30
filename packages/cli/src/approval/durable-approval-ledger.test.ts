@@ -133,6 +133,17 @@ describe("verifyApprovalTokenDurable", () => {
 
     const fulfilled = results.filter((r) => r.status === "fulfilled");
     const rejected = results.filter((r) => r.status === "rejected");
+
+    // THE SECURITY PROPERTY, asserted unconditionally: a single-use token is
+    // consumed AT MOST once. Nothing about machine load may weaken this.
+    expect(fulfilled.length).toBeLessThanOrEqual(1);
+
+    // The LIVENESS property is separate, and separating them is the point. The
+    // two were one assertion, and it flaked under full-suite load: the loser can
+    // exhaust its lease-acquire budget while the winner is still fsyncing, and
+    // then rejects with a LEASE error instead of `AlreadyVerified`. That is the
+    // safe direction -- nothing was double-spent -- but it is a different claim,
+    // and conflating them made a liveness hiccup look like a security failure.
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
     expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(
@@ -150,6 +161,9 @@ describe("verifyApprovalTokenDurable", () => {
     );
     const results = await Promise.allSettled(attempts);
 
+    // Security first and unconditionally: at most one of ten ever succeeds.
+    expect(results.filter((r) => r.status === "fulfilled").length).toBeLessThanOrEqual(1);
+    // Then liveness: with the lease's raised acquire budget, exactly one does.
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((r) => r.status === "rejected")).toHaveLength(9);
   });
