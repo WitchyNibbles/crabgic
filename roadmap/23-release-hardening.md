@@ -140,7 +140,15 @@ and boot.
 - [x] Performance contracts satisfied rather than skipped, measured on a quiet host (15).
 - [x] Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).
 - [x] Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).
-- [x] Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero `NOT_IMPLEMENTED` remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).
+- [x] Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero
+      `NOT_IMPLEMENTED` remains **outside the recorded deferral allowlist**
+      (`e2e/live/src/knownDeferredAllowlist.ts`), which is what the live sweep actually
+      scores against (09/16, Gap 1/Gap 2's explicit phase-23 obligation).
+      **Wording corrected 2026-07-30.** The clause read "zero `NOT_IMPLEMENTED` remains"
+      full stop, while `connection capabilities` still returns it and the sweep passes only
+      because the allowlist exempts it. The tick was therefore describing something
+      stronger than the evidence produced — the exact aspirational bookkeeping this
+      roadmap's third ground rule forbids. The check is unchanged; the claim now matches it.
 - [x] No development-engine attribution in any project-controlled shared artifact (08/10/17).
 - [x] No user checkout, remote Git repository, or unauthorized provider resource modified anywhere in the matrix (assertion-harness log).
 - [x] A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via `evidence <change-set-id>`), never an opened PR (Gap 6, by design).

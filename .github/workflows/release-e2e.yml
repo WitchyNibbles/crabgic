@@ -53,6 +53,20 @@ name: release-e2e
 # release-gate report is a statement about a specific release candidate,
 # not a per-push signal.
 
+# CALLABLE AS WELL AS DISPATCHABLE (2026-07-30).
+#
+# `workflow_dispatch` alone meant the gate only ever ran when somebody
+# remembered to ask for it, and between 2026-07-27 and 2026-07-30 nobody did:
+# v1.1.2, v1.2.0, v1.3.0 and v1.4.0 all shipped while the only PASS on record
+# was scored against the v1.0.0 candidate. A gate whose whole value is that it
+# reports honestly cannot be the one artifact nobody re-checks, so `publish.yml`
+# now calls this workflow on the tagged commit and refuses to publish unless it
+# passes. The generator already exits non-zero on an overall-FAIL verdict, which
+# is what makes it usable as a gate rather than a report.
+#
+# `workflow_call` mirrors the dispatch inputs exactly, except that `scoring_mode`
+# is a plain string: `type: choice` is dispatch-only, and a called workflow that
+# declares it is rejected outright.
 on:
   workflow_dispatch:
     inputs:
@@ -67,6 +81,17 @@ on:
         options:
           - interim
           - final
+        default: interim
+  workflow_call:
+    inputs:
+      release_candidate_object_id:
+        description: "Exact release-candidate Git object ID (defaults to `git rev-parse HEAD` of the checked-out ref if omitted)"
+        required: false
+        type: string
+      scoring_mode:
+        description: "'interim' or 'final'. A publish gate always passes 'final'."
+        required: false
+        type: string
         default: interim
 
 # `actions: read` is required by the ARM64 ingest step below: downloading an

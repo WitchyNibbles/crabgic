@@ -262,13 +262,30 @@ Published to npm with provenance attestation from a tag-triggered workflow. ✅
 
 Being straight with you, because a green README that lies is worse than no README:
 
-- `crabgic connection capabilities` is declared and backed, but not wired in the shipped
-  binary — the last entry on the known-deferred list.
+- `crabgic connection capabilities` is declared and backed, but the shipped binary never
+  supplies the discoverer, so it still answers `NOT_IMPLEMENTED`. It is the last entry on
+  the deferral allowlist at
+  [`e2e/live/src/knownDeferredAllowlist.ts`](./e2e/live/src/knownDeferredAllowlist.ts),
+  which is the list — there is no other one.
 - Registering a live Jira/Grafana connection needs real credentials and is still deferred;
   connector calls answer with a typed *connection not registered* error until it lands.
 - `cancel` works at run level today; task-level cancellation is still coming.
-- A few release-gate items remain evidence-pending, including live Jira Data Center
-  conformance.
+- **A worker's gateway calls are not adjudication-journaled.** The Agent SDK shadows
+  `canUseTool` for tools named outright in `allowedTools`, which is how the gateway family
+  is granted — so the per-call fail-closed bridge never fires for them. Found by running a
+  real worker, not by reading the code. The static permission and sandbox layers are
+  unaffected; see [`docs/security-posture.md`](./docs/security-posture.md).
+- **The approval gate stops an opportunistic agent, not an evasive one.** A caller that
+  allocates a pty *and* scrubs the agent-runtime environment markers can drive the prompt;
+  and the standing policy is your own 0600 file, so a session running as you can rewrite
+  it. The policy is a boundary against sandboxed workers, which is the boundary the design
+  rests on — the honest scope of both is written up in
+  [`docs/security-posture.md`](./docs/security-posture.md).
+- **Long project paths break the daemon.** A unix socket path over 108 bytes fails with
+  `listen EINVAL`, and the socket path is derived from your XDG state root, so a deeply
+  nested checkout cannot start a supervisor.
+- Live Jira Data Center conformance is still cassette-modelled rather than run against a
+  real instance.
 
 ## ⚠️ Version drift
 
