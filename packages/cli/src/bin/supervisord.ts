@@ -94,6 +94,9 @@ async function main(): Promise<void> {
                 // ineffective for as long as it stays up.
                 loadPolicy: () =>
                   loadEnvelopePolicy(resolveEnvelopePolicyPath(xdgEnv, projectHash)),
+                // Named in containment refusals: editing this file is the
+                // only remedy that works for an out-of-policy envelope.
+                standingPolicyPath: resolveEnvelopePolicyPath(xdgEnv, projectHash),
                 onDriveError: (runId, err) => {
                   process.stderr.write(
                     `supervisord: run ${runId} failed to drive: ${toErrorMessage(err)}\n`,

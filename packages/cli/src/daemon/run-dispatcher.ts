@@ -153,6 +153,16 @@ export interface RealRunDispatcherOptions {
    * express, which is the exact inversion this ruling exists to prevent.
    */
   readonly loadPolicy?: () => LoadPolicyResult;
+  /**
+   * Where the standing policy lives on disk, included in a containment
+   * refusal so the remedy that WORKS is named at every gate. Review
+   * (2026-07-30) traced the alternative: the intake escalation names the
+   * path but the daemon refusal did not, and `crabgic approve` — the other
+   * offered remedy — mints a token this gate never reads, so an owner
+   * following the daemon's message had no path to edit and a ceremony that
+   * cannot succeed.
+   */
+  readonly standingPolicyPath?: string;
 }
 
 type ResolvedRun =
@@ -231,10 +241,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     if (!containment.contained) {
       // Every escaping dimension, not the first: the owner has to edit a file
       // this process cannot reach, so one refusal must tell them the whole
-      // gap rather than making recovery an iterative guessing game.
+      // gap rather than making recovery an iterative guessing game — and
+      // name the file, because editing it is the only remedy that works
+      // (`crabgic approve` mints a token this gate never reads).
+      const wherePolicy =
+        options.standingPolicyPath === undefined
+          ? ""
+          : ` (the standing policy is at ${options.standingPolicyPath})`;
       return {
         ok: false,
-        reason: `this change set needs authority the standing policy does not grant: ${containment.reasons.join("; ")}`,
+        reason:
+          `this change set needs authority the standing policy does not grant: ` +
+          `${containment.reasons.join("; ")}${wherePolicy}`,
       };
     }
 

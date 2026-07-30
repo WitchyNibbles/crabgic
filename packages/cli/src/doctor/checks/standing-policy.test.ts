@@ -72,6 +72,25 @@ describe("policy.standing", () => {
     expect(finding.repairStep).toMatch(/crabgic install/);
   });
 
+  /**
+   * The turn-budget sibling of the vacuous case (review 2026-07-30). Every
+   * policy authored before the dimension existed parses to a ceiling of 0 —
+   * the designed fail-closed upgrade behavior — and then refuses 100% of
+   * dispatches while passing every structural check. A green doctor on that
+   * installation is the exact F9 shape this check exists to prevent.
+   */
+  it("FAILS a policy granting zero worker turns, naming the field to set", async () => {
+    const finding = await run(() => ({
+      status: "loaded" as const,
+      policy: policy({ maxWorkerTurnsPerAttempt: 0 }),
+      digest: "sha256:turnless",
+    }));
+
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toMatch(/zero worker turns/);
+    expect(finding.repairStep).toMatch(/maxWorkerTurnsPerAttempt/);
+  });
+
   /** Invalid is a different owner problem from absent and must not be repaired by re-installing blindly. */
   it("surfaces an invalid policy's own reason", async () => {
     const finding = await run(() => ({

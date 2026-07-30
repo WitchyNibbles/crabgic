@@ -130,6 +130,10 @@ describe("createRealConfirmPolicy — who may author a standing grant", () => {
     expect(screen).toContain("src");
     expect(screen).toContain("(none)");
     expect(screen).toContain("unix sockets: denied");
+    // Review 2026-07-30: the turn budget is an authority dimension, and this
+    // render is the standing policy's authoring moment — an owner must never
+    // confirm a grant containing a dimension they were not shown.
+    expect(screen).toContain("worker turns per attempt: up to");
   });
 
   it("declines on anything but 'yes' at a human terminal", async () => {

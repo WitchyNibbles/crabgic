@@ -589,6 +589,30 @@ describe("createRealRunDispatcher — the standing-approval gate", () => {
   });
 
   /**
+   * The refusal must name the FILE, because editing it is the only remedy
+   * that works: `crabgic approve` mints a token this gate never reads
+   * (review 2026-07-30), so a refusal that names no path leaves the owner a
+   * ceremony that cannot succeed.
+   */
+  it("names the standing policy file in a containment refusal, when it knows it", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const narrow = EnvelopePolicySchema.parse({
+      schemaVersion: 1,
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      allowedPathPrefixes: ["docs"],
+    });
+
+    const result = await newDispatcher(deps, {
+      loadPolicy: () => ({ status: "loaded" as const, policy: narrow, digest: "sha256:narrow" }),
+      standingPolicyPath: "/state/crabgic/envelope-policy.json",
+    }).dispatch(CHANGE_SET_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toContain("/state/crabgic/envelope-policy.json");
+  });
+
+  /**
    * Part 4 of the ruling: a standing approval leaves no per-run artifact to
    * point at, so "what was the human standing behind when this ran" is only
    * answerable if the authorizing digest is journaled with the dispatch.
