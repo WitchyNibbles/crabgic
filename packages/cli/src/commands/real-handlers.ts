@@ -374,16 +374,28 @@ async function decideRunOutcome(
     // operator reads it. It used to be computed and then dropped on the floor:
     // the human path rendered a bare digest prompt instead, and `--json`
     // reported exit 0.
+    //
+    // THE REMEDY IS THE POLICY, not `crabgic approve` (corrected 2026-07-30).
+    // This message used to lead with `crabgic approve <digest>` — a ceremony
+    // that cannot succeed for a standing-policy escalation: approval flips
+    // the ChangeSet `ready`, and the daemon's dispatch gate then re-runs the
+    // identical containment check with no token input (containment-only by
+    // the ledger's ruling), refusing the same envelope again. Every escalate
+    // cause — envelope outside the policy, absent policy, unreadable policy —
+    // is cured only at the policy file; once it grants the authority,
+    // re-running `crabgic run` proceeds with no ceremony at all.
     return {
       exitCode: EXIT_GENERAL_ERROR,
       message:
-        `ChangeSet ${sanitizeForTerminal(changeSetId)} needs approval it does not already have.\n\n` +
+        `ChangeSet ${sanitizeForTerminal(changeSetId)} needs authority the standing policy does not grant.\n\n` +
         `  ${sanitizeForTerminal(standing.reason)}\n\n` +
-        `Approve it yourself in a terminal you opened:\n\n` +
-        `  crabgic approve ${sanitizeForTerminal(digest)}\n\n` +
         (deps.standingPolicyPath !== undefined
-          ? `Or widen the standing policy, which lives at:\n\n  ${sanitizeForTerminal(deps.standingPolicyPath)}\n`
-          : ""),
+          ? `Grant it by editing the standing policy, which lives at:\n\n` +
+            `  ${sanitizeForTerminal(deps.standingPolicyPath)}\n\n`
+          : `Grant it by editing the standing policy (run \`crabgic install\` if none exists).\n\n`) +
+        `Then run \`crabgic run\` again — an in-policy envelope proceeds with no further ceremony.\n` +
+        `(\`crabgic approve ${sanitizeForTerminal(digest)}\` records consent to the plan but cannot ` +
+        `grant authority; dispatch re-checks the policy and would refuse the same envelope again.)\n`,
     };
   }
 

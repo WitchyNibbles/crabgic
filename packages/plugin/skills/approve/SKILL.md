@@ -21,7 +21,12 @@ and neither can the session. Approval happens in the operator's OWN terminal:
   digest, reads an interactive confirmation (`packages/cli`'s `runApprovalFlow`,
   roadmap/09 — the ONLY code path that ever calls the token minter), and completes
   verification in the same process; the token is spent before the command returns
-  and is never printed anywhere.
+  and is never printed anywhere. **Scope, stated plainly:** approval records the
+  owner's consent to the PLAN (`awaiting_approval → ready`). It cannot grant
+  authority beyond the standing policy — the daemon's dispatch gate is
+  containment-only and reads no token, so an envelope outside the policy is
+  refused again at dispatch. For an authority escalation, the human edits the
+  standing policy file the refusal names, then re-runs `crabgic run`.
 - **Capability manifest**: tell the human to run `crabgic trust review`, then
   `crabgic trust approve` — roadmap/12's quarantine flow.
 

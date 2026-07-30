@@ -361,9 +361,16 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     // A refusal is a non-zero exit, and the reason is what the operator reads.
     expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
     expect(result.stderr).toContain("infra/secrets");
-    expect(result.stderr).toContain("crabgic approve");
-    // It names the file the human has to edit, which no message used to do.
+    // THE REMEDY IS THE POLICY (2026-07-30). This used to lead with
+    // `crabgic approve <digest>` — a ceremony that cannot succeed for a
+    // standing-policy escalation: approval flips the ChangeSet ready and the
+    // daemon's containment-only gate refuses the identical envelope again.
+    // The message must lead with the edit that works, name the file, and
+    // say plainly that approve records consent but grants no authority.
+    expect(result.stderr).toContain("Grant it by editing the standing policy");
     expect(result.stderr).toContain("envelope-policy.json");
+    expect(result.stderr).toContain("cannot ");
+    expect(result.stderr).toMatch(/crabgic approve .*records consent/s);
     // No prompt is rendered, and nothing is dispatched or half-granted.
     expect(prompted).toBe(false);
     expect(dispatched).toBe(false);
