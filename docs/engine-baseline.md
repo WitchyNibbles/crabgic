@@ -191,6 +191,38 @@ runs, on identical options. The probe retries the precondition and still ends
 INCONCLUSIVE most of the time. Both facts rest on positive observations, which
 non-reproduction does not weaken.
 
+### 4.7 A matched RULE-SHAPED allow entry shadows `canUseTool` exactly like a bare name (live-measured 2026-07-30)
+
+§4.5 established shadowing for a tool named **outright** in `allowedTools`; its
+warning added, unquantified, that settings-file allow **rules** "can also shadow
+the callback but are not visible here". The compiled profile grants
+`Bash`/`Edit`/`Write` only ever by rule (`Bash(<prefix>:*)`,
+`Edit(//<worktree>/…/**)` — `emitPermissionProfile` emits no bare built-in
+name), so whether a _matched rule_ short-circuits before `canUseTool` decided
+whether the mutation-capable tools execute with any adjudication record at all.
+Adversarial review (2026-07-30) found this unverified in either direction.
+
+Measured at engine `2.1.218` (inside `2.1.207`–`2.1.220`) by
+`packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts`,
+which grants exactly the production-shaped `Bash(git status:*)` rule down both
+production channels (`settings.permissions.allow` + `allowedTools`) and drives
+a real `git status` to completion, both probes conclusive on the first run:
+
+- **`canUseTool` is NOT invoked for a `Bash` call a rule-shaped allow entry
+  matched.** The executed-call guard held (real `git status` output came back),
+  so this is "auto-approved before the callback", not "denied before the
+  callback".
+- **A `PreToolUse` hook DOES fire for that same matched call** — the same
+  remedy as §4.5, so one deny-only hook can cover the gateway family and the
+  rule-granted built-ins alike.
+
+**Why this matters here:** with §4.5 + §4.7 together, _no_ production tool
+grant — bare gateway names or rule-shaped built-ins — reaches `canUseTool`.
+The per-call adjudication record therefore lives entirely on the `PreToolUse`
+bridge (`packages/engine-claude/src/tool-adjudication-hook.ts`); `canUseTool`
+remains installed as a backstop for any grant shape not yet measured, and no
+document should claim it adjudicates the compiled profile's own grants.
+
 ## 5. Structured-output probe (work item 6)
 
 Transport: SDK `query()` — `Options.outputFormat: {type: 'json_schema', schema}` is the confirmed SDK field name (the CLI `--json-schema` flag's SDK equivalent; adaptation §4.4 only said "SDK equivalent" without naming it — there is no field literally called `jsonSchema` on `Options`).

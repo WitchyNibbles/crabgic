@@ -1,5 +1,6 @@
 /**
- * The `PreToolUse` bridge that adjudicates gateway MCP tool calls.
+ * The `PreToolUse` bridge that adjudicates gateway MCP tool calls and the
+ * rule-granted mutation-capable built-ins (`Bash`, `Edit`, `Write`).
  *
  * WHY A SECOND BRIDGE EXISTS AT ALL. `./adapter.ts`'s `canUseTool` bridge is
  * the per-call adjudication gate for every tool — except the ones it never
@@ -28,10 +29,21 @@
  * as the shadowing this exists to fix. Baseline §4.6; it cost three inconclusive
  * probe runs to notice.
  *
- * SCOPED TO THE GATEWAY, DELIBERATELY. This adjudicates only tools under the
- * gateway prefix. Everything else still goes through `canUseTool`, which the
- * engine does invoke for it, and adjudicating a tool twice would journal two
- * decisions for one call.
+ * SCOPED TO THE RULE-GRANTED TOOLS, DELIBERATELY. This adjudicates the gateway
+ * family AND the mutation-capable built-ins the compiled profile grants by
+ * rule — `Bash(<prefix>:*)`, `Edit(//<worktree>/…/**)`, `Write(...)`. A
+ * rule-shaped allow entry shadows `canUseTool` exactly like a bare name does
+ * (baseline §4.7, measured live 2026-07-30 by
+ * `./live/builtin-allow-rule-shadowing.live.test.ts`), so before this hook
+ * covered them, `Bash`/`Edit`/`Write` executed with no adjudication record and
+ * sat outside the PostToolUse audit's scope. Everything ELSE — `Read`, `Glob`,
+ * `Grep`, `TodoWrite`, other servers' MCP tools — is left alone, and NOT
+ * because `canUseTool` covers it (that premise was measured false for
+ * rule-granted tools): because `createEnvelopeAdjudicationPolicy` default-
+ * denies any unlisted tool while the engine grants read-only tools without a
+ * rule, so a deny-only opinion here would black-hole every read a worker
+ * makes. The covered set is exactly the set where the policy's verdict mirrors
+ * the engine's own rule evaluation.
  *
  * MONOTONICALLY RESTRICTIVE. It can deny a call the engine would have allowed;
  * it can never allow one the engine would have denied. A `PreToolUse` hook
@@ -57,7 +69,7 @@ export const GATEWAY_TOOL_WIRE_PREFIX = `mcp__${GATEWAY_MCP_SERVER_NAME}__`;
 
 /** Denial text for an adjudication that could not be obtained — the same fail-closed wording the `canUseTool` bridge uses. */
 const GENERIC_ADJUDICATION_FAILURE_MESSAGE =
-  "gateway tool call denied: adjudication was unavailable (the callback threw, rejected, or is absent) " +
+  "tool call denied: adjudication was unavailable (the callback threw, rejected, or is absent) " +
   "— failing closed";
 
 /** The one deny shape this bridge emits, so every refusal path is identical by construction. */
@@ -72,19 +84,34 @@ function denyOutput(reason: string, interrupt?: boolean): HookJSONOutput {
   };
 }
 
-/** True for a tool this bridge owns. Matches the UNDERSCORED wire form, which is the only form a hook ever sees. */
+/** True for a gateway tool. Matches the UNDERSCORED wire form, which is the only form a hook ever sees. */
 export function isGatewayTool(toolName: string): boolean {
   return toolName.startsWith(GATEWAY_TOOL_WIRE_PREFIX);
 }
 
 /**
- * Builds the `PreToolUse` matcher list that adjudicates gateway tool calls.
+ * The built-ins this bridge adjudicates: exactly the mutation-capable tools
+ * `emitPermissionProfile` grants BY RULE, whose matched allow entries shadow
+ * `canUseTool` (baseline §4.7) and whose envelope-policy verdict mirrors the
+ * engine's own rule evaluation. Widening this set is NOT safe by default —
+ * see the file-level scope note before adding a member.
+ */
+export const ADJUDICATED_BUILTIN_TOOLS: ReadonlySet<string> = new Set(["Bash", "Edit", "Write"]);
+
+/** True for a tool this bridge owns: the gateway family plus the rule-granted built-ins. */
+export function isAdjudicatedTool(toolName: string): boolean {
+  return isGatewayTool(toolName) || ADJUDICATED_BUILTIN_TOOLS.has(toolName);
+}
+
+/**
+ * Builds the `PreToolUse` matcher list that adjudicates gateway tool calls and
+ * the rule-granted built-ins.
  *
  * Fail-closed on every path a decision could go missing: a throwing callback, a
  * rejecting one, an absent one, and a malformed hook input are all denials, and
  * never an allow.
  */
-export function createGatewayAdjudicationHook(params: {
+export function createToolAdjudicationHook(params: {
   readonly adjudicate: AdjudicationCallback;
   readonly audit: AdjudicationAuditLog;
 }): readonly HookCallbackMatcher[] {
@@ -95,23 +122,21 @@ export function createGatewayAdjudicationHook(params: {
           const hookInput = input as PreToolUseHookInput;
           const toolName = hookInput.tool_name;
 
-          // A nameless call is never legitimate, and for a gateway tool "no
-          // opinion" means auto-approved — so it is denied rather than waved
-          // through. Not reachable today (the engine always supplies a string),
-          // which is exactly why the earlier version's fail-OPEN went unnoticed.
+          // A nameless call is never legitimate, and for an allow-listed tool
+          // "no opinion" means auto-approved — so it is denied rather than
+          // waved through. Not reachable today (the engine always supplies a
+          // string), which is exactly why the earlier version's fail-OPEN went
+          // unnoticed.
           if (typeof toolName !== "string" || toolName.length === 0) {
-            return denyOutput(
-              "gateway tool call denied: the hook received no tool name to adjudicate",
-            );
+            return denyOutput("tool call denied: the hook received no tool name to adjudicate");
           }
 
-          // Not ours. Returning an empty output leaves the engine's own decision
-          // untouched, so this never becomes a second opinion on another
-          // bridge's tools. NOTE this is NOT a claim that `canUseTool`
-          // adjudicates them — adversarial review found that premise unverified
-          // and probably false for `Bash`/`Edit`/`Write`, which are allow-listed
-          // the same way. See `docs/security-posture.md`; a probe is owed.
-          if (!isGatewayTool(toolName)) return {};
+          // Not ours. Returning an empty output leaves the engine's own
+          // decision untouched. The excluded tools are the ones the profile
+          // grants NO rule for — the envelope policy would default-deny them
+          // all while the engine grants them without a rule, so an opinion
+          // here would black-hole them (file-level scope note).
+          if (!isAdjudicatedTool(toolName)) return {};
 
           const toolInput =
             typeof hookInput.tool_input === "object" && hookInput.tool_input !== null
@@ -150,9 +175,9 @@ export function createGatewayAdjudicationHook(params: {
             //
             // Consequence, stated because it is a real difference from the
             // `canUseTool` bridge: a policy's canonicalized `updatedInput` is NOT
-            // applied to a gateway call. The audit therefore records the input
-            // that will actually execute, not the canonicalized one — recording
-            // the latter would make every gateway call look like an
+            // applied to a call this bridge allows. The audit therefore records
+            // the input that will actually execute, not the canonicalized one —
+            // recording the latter would make every such call look like an
             // executed-vs-adjudicated mismatch to the PostToolUse audit and could
             // abort workers over a difference this bridge introduced itself.
             params.audit.recordAllowedDecision(toolName, toolInput);
@@ -160,7 +185,7 @@ export function createGatewayAdjudicationHook(params: {
           }
           // `interrupt` is carried through, matching the `canUseTool` bridge: a
           // policy that wants to halt the worker rather than refuse one call
-          // must be able to say so for a gateway call too.
+          // must be able to say so here too.
           return denyOutput(decision.message, decision.interrupt);
         },
       ],

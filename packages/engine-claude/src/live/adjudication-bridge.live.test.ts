@@ -14,13 +14,17 @@
  * `Bash(git status:*)`, which the standard-implementation envelope allows —
  * to completion, and asserts:
  *
- *   (a) the worker does NOT audit-abort (Finding 2: a pre-approved tool
- *       whose `canUseTool` bridge may never have fired must be treated as
- *       in-scope of the static `dontAsk` allow-list, not as a spurious
- *       adjudicated-vs-executed mismatch), and
- *   (b) EMPIRICALLY records WHETHER `canUseTool` fired — an
- *       `adjudication_decision` journal entry appears for the call iff the
- *       bus (and therefore the bridge) was invoked.
+ *   (a) the worker does NOT audit-abort (Finding 2: a pre-approved tool must
+ *       be treated as in-scope of the static `dontAsk` allow-list, not as a
+ *       spurious adjudicated-vs-executed mismatch — and since the PreToolUse
+ *       bridge now RECORDS the allowed Bash decision, this also smokes the
+ *       PostToolUse audit path with real records in scope for the first
+ *       time), and
+ *   (b) an `adjudication_decision` journal entry EXISTS for the driven call,
+ *       and every one is an allow. Originally this only recorded whether
+ *       `canUseTool` fired; the answer is measured now (it never does for a
+ *       rule-matched call, baseline §4.7) and the record instead comes from
+ *       the PreToolUse tool-adjudication hook, which this asserts.
  *
  * Like every `*.live.test.ts` file it fails RED (never skips) without
  * `CRABGIC_LIVE=1` — `assertLiveEnabled()` in `beforeAll` throws so the
@@ -134,16 +138,26 @@ describe("adjudication bridge under permissionMode:'dontAsk' (Finding 2 — canU
         "Bash(git status) — the driven, genuinely-allowed tool",
       );
 
-      // (b) EMPIRICAL RECORD: did canUseTool fire under dontAsk? An
-      // adjudication_decision journal entry appears iff the bus/bridge was
-      // invoked. Whichever way this unprobed fact resolves, every recorded
-      // decision for the allowed call must be an allow (never a deny).
+      // (b) THE RECORD MUST EXIST. The original version of this probe only
+      // RECORDED whether canUseTool fired, and the answer (measured 2026-07-30,
+      // baseline §4.7) is that it never does for a rule-matched Bash call — the
+      // matched `Bash(git status:*)` allow entry auto-approves before the
+      // callback. Since then the PreToolUse tool-adjudication hook
+      // (`tool-adjudication-hook.ts`) covers Bash, so a real adapter run MUST
+      // journal at least one adjudication decision for the driven call, and
+      // every decision for it must be an allow. A zero here is the old hole
+      // reopening: a mutation-capable call executing with no adjudication
+      // record.
       const decisions = await collectAdjudicationDecisions(ctx.journal);
-      const canUseToolFired = decisions.length > 0;
+      expect(
+        decisions.length,
+        "no adjudication_decision was journaled for the driven Bash call — the " +
+          "PreToolUse bridge did not fire, and the mutation-capable tools are " +
+          "executing unrecorded again (baseline §4.7 regression)",
+      ).toBeGreaterThan(0);
       expect(
         decisions.every((decision) => decision === "allow"),
-        `canUseTool ${canUseToolFired ? "FIRED" : "did NOT fire"} under permissionMode:"dontAsk"; ` +
-          "any recorded adjudication decision for the allowed git-status call must be an allow",
+        "every recorded adjudication decision for the allowed git-status call must be an allow",
       ).toBe(true);
     } finally {
       await ctx.cleanup();

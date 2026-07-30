@@ -73,7 +73,7 @@ import {
   type AdjudicationAuditLog,
   type AdjudicationAuditViolation,
 } from "./hooks.js";
-import { createGatewayAdjudicationHook } from "./gateway-adjudication-hook.js";
+import { createToolAdjudicationHook } from "./tool-adjudication-hook.js";
 import { createSessionRef } from "./session.js";
 
 // ---------------------------------------------------------------------------
@@ -579,13 +579,15 @@ export class ClaudeEngineAdapter implements EngineAdapter {
         const audit = createInMemoryAdjudicationAuditLog();
         const canUseTool = createCanUseToolBridge({ adjudicate: params.adjudicate, audit });
         // The SECOND adjudication bridge, for the calls the first one cannot
-        // see. A tool named outright in `allowedTools` is auto-approved before
-        // `canUseTool` runs, and the compiled profile grants the whole gateway
-        // family by name — so without this, no connector, evidence or review
-        // call is ever adjudicated or journaled. Hooks run before permission
-        // evaluation, which is why an allow entry cannot shadow one.
-        // `docs/engine-baseline.md` §4.5-4.6 for both measured engine facts.
-        const gatewayAdjudicationHook = createGatewayAdjudicationHook({
+        // see. An allow entry — a bare name (§4.5) OR a matched rule-shaped
+        // entry (§4.7) — auto-approves the call before `canUseTool` runs, and
+        // the compiled profile grants the gateway family by name and
+        // `Bash`/`Edit`/`Write` by rule — so without this, no connector,
+        // evidence, review, or mutation-capable built-in call is ever
+        // adjudicated or journaled. Hooks run before permission evaluation,
+        // which is why an allow entry cannot shadow one.
+        // `docs/engine-baseline.md` §4.5-4.7 for the measured engine facts.
+        const toolAdjudicationHook = createToolAdjudicationHook({
           adjudicate: params.adjudicate,
           audit,
         });
@@ -620,7 +622,7 @@ export class ClaudeEngineAdapter implements EngineAdapter {
             : { gatewayServerOverride: config.gatewayServerOverride }),
           canUseTool,
           hooks: {
-            PreToolUse: [...gatewayAdjudicationHook],
+            PreToolUse: [...toolAdjudicationHook],
             PostToolUse: [{ hooks: [postToolUseAuditHook] }],
             SessionEnd: [{ hooks: [sessionEndEvidenceHook.callback] }],
           },

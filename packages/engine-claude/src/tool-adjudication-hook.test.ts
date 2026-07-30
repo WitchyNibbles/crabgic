@@ -1,21 +1,26 @@
 /**
- * The `PreToolUse` bridge that adjudicates gateway MCP calls.
+ * The `PreToolUse` bridge that adjudicates gateway MCP calls AND the
+ * rule-granted mutation-capable built-ins (`Bash`, `Edit`, `Write`).
  *
  * WHAT THESE PIN. `canUseTool` is never invoked for a tool named outright in
- * `allowedTools`, and the compiled profile grants the whole gateway family that
- * way — so before this bridge existed, not one connector, evidence or review
- * call was adjudicated or journaled, while `docs/security-posture.md` said the
- * opposite. Both engine facts underneath are measured, not assumed
- * (`docs/engine-baseline.md` §4.5-4.6, via the live probe).
+ * `allowedTools` (baseline §4.5), and — measured 2026-07-30, §4.7 — a
+ * RULE-SHAPED allow entry (`Bash(git status:*)`) shadows it exactly the same
+ * way. The compiled profile grants the gateway family by name and
+ * `Bash`/`Edit`/`Write` by rule, so before this bridge covered them, not one
+ * mutation-capable call was adjudicated or journaled either. All engine facts
+ * underneath are measured, not assumed (`docs/engine-baseline.md` §4.5-4.7,
+ * via the live probes).
  */
 import { describe, expect, it, vi } from "vitest";
 import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import type { AdjudicationCallback } from "@crabgic/engine-core";
 import {
-  createGatewayAdjudicationHook,
+  ADJUDICATED_BUILTIN_TOOLS,
+  createToolAdjudicationHook,
   GATEWAY_TOOL_WIRE_PREFIX,
+  isAdjudicatedTool,
   isGatewayTool,
-} from "./gateway-adjudication-hook.js";
+} from "./tool-adjudication-hook.js";
 import { createInMemoryAdjudicationAuditLog } from "./hooks.js";
 
 /** The wire name a hook actually receives: dots normalized to underscores (baseline §4.6). */
@@ -27,7 +32,7 @@ function invoke(
   toolInput: Record<string, unknown> = {},
 ) {
   const audit = createInMemoryAdjudicationAuditLog();
-  const [matcher] = createGatewayAdjudicationHook({ adjudicate, audit });
+  const [matcher] = createToolAdjudicationHook({ adjudicate, audit });
   const hook = matcher!.hooks[0]!;
   return {
     audit,
@@ -66,7 +71,35 @@ describe("isGatewayTool", () => {
   });
 });
 
-describe("createGatewayAdjudicationHook", () => {
+describe("isAdjudicatedTool", () => {
+  it("covers exactly the tools the compiled profile grants BY RULE: the gateway family and Bash/Edit/Write", () => {
+    // These are the tools whose allow entries shadow `canUseTool` (baseline
+    // §4.5 for bare names, §4.7 for rule-shaped entries) AND whose envelope
+    // policy verdict mirrors the engine's own rule evaluation — the two
+    // properties that make a deny-only hook opinion safe.
+    expect(isAdjudicatedTool(`${GATEWAY_TOOL_WIRE_PREFIX}contract_approve`)).toBe(true);
+    expect(isAdjudicatedTool("Bash")).toBe(true);
+    expect(isAdjudicatedTool("Edit")).toBe(true);
+    expect(isAdjudicatedTool("Write")).toBe(true);
+    expect(ADJUDICATED_BUILTIN_TOOLS).toEqual(new Set(["Bash", "Edit", "Write"]));
+  });
+
+  it("EXCLUDES tools the profile grants no rule for — the policy would default-deny them all", () => {
+    // `createEnvelopeAdjudicationPolicy` denies any unlisted tool. The engine
+    // grants read-only tools WITHOUT a rule, so a deny-only hook consulting
+    // that policy for them would black-hole every `Read`/`Glob`/`Grep` call —
+    // a control added to close a hole must not break the worker it guards.
+    expect(isAdjudicatedTool("Read")).toBe(false);
+    expect(isAdjudicatedTool("Glob")).toBe(false);
+    expect(isAdjudicatedTool("Grep")).toBe(false);
+    expect(isAdjudicatedTool("TodoWrite")).toBe(false);
+    expect(isAdjudicatedTool("Task")).toBe(false);
+    expect(isAdjudicatedTool("mcp__other__contract_approve")).toBe(false);
+    expect(isAdjudicatedTool("")).toBe(false);
+  });
+});
+
+describe("createToolAdjudicationHook", () => {
   it("allows a gateway call the policy allows, and records it in the audit log", async () => {
     const adjudicate = vi.fn(async () =>
       Promise.resolve({ behavior: "allow" as const, updatedInput: { changeSetId: "cs-1" } }),
@@ -168,14 +201,55 @@ describe("createGatewayAdjudicationHook", () => {
     }
   });
 
-  it("leaves NON-gateway tools entirely alone — canUseTool already adjudicated them", async () => {
-    // Adjudicating twice would journal two decisions for one call.
+  it("adjudicates a rule-granted BUILT-IN: an allowed Bash call is recorded and gets no opinion", async () => {
+    // §4.7: a rule-shaped allow entry shadows `canUseTool` exactly like a bare
+    // name, so before this hook covered Bash/Edit/Write the mutation-capable
+    // tools executed with NO adjudication record and sat outside the
+    // PostToolUse audit's scope entirely.
+    const adjudicate = vi.fn(async () =>
+      Promise.resolve({ behavior: "allow" as const, updatedInput: { command: "git status" } }),
+    );
+    const { run, audit } = invoke(adjudicate, "Bash", { command: "git status" });
+    const output = await run();
+    expect(adjudicate).toHaveBeenCalledWith("Bash", { command: "git status" }, expect.anything());
+    expect(output).toEqual({});
+    // The audit half: Bash is now IN the PostToolUse mismatch check's scope,
+    // recorded as the input that will actually execute.
+    expect(audit.hasMatchingAllowedDecision("Bash", { command: "git status" })).toBe(true);
+  });
+
+  it("denies a built-in call the policy denies, for each of Bash/Edit/Write", async () => {
+    for (const [toolName, toolInput] of [
+      ["Bash", { command: "curl http://evil" }],
+      ["Edit", { file_path: "/outside/owned/paths.ts" }],
+      ["Write", { file_path: "/outside/owned/paths.ts" }],
+    ] as const) {
+      const adjudicate = vi.fn(async () =>
+        Promise.resolve({ behavior: "deny" as const, message: "outside the envelope" }),
+      );
+      const output = (await invoke(
+        adjudicate,
+        toolName,
+        toolInput as unknown as Record<string, unknown>,
+      ).run()) as { hookSpecificOutput?: { permissionDecision?: string } };
+      expect(adjudicate).toHaveBeenCalledOnce();
+      expect(output.hookSpecificOutput?.permissionDecision).toBe("deny");
+    }
+  });
+
+  it("leaves NON-adjudicated tools entirely alone — an opinion would black-hole them", async () => {
+    // NOT because `canUseTool` covers them (that premise was measured false
+    // for rule-granted tools, §4.7): because the envelope policy default-denies
+    // any unlisted tool while the engine grants read-only tools without a rule,
+    // so a deny-only opinion here would break every worker.
     const adjudicate = vi.fn(async () =>
       Promise.resolve({ behavior: "allow" as const, updatedInput: {} }),
     );
-    const output = await invoke(adjudicate, "Bash", { command: "ls" }).run();
+    for (const toolName of ["Read", "Glob", "Grep", "TodoWrite", "ToolSearch"]) {
+      const output = await invoke(adjudicate, toolName, { file_path: "/x" }).run();
+      expect(output).toEqual({});
+    }
     expect(adjudicate).not.toHaveBeenCalled();
-    expect(output).toEqual({});
   });
 
   it("treats a malformed tool_input as empty rather than throwing inside the engine's hook", async () => {

@@ -320,50 +320,55 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   every same-uid process identically; there is no in-protocol distinction between the CLI and
   the gateway's forwarded calls. Stated design choice (`docs/threat-model.md` §1, §Cross-
   surface themes); unchanged by implementation.
-- **`canUseTool` is SHADOWED — the gateway half is FIXED, and the rest is WORSE than first
-  thought (2026-07-30).** This entry used to record the underlying fact as unprobed:
-  "whether the SDK invokes `canUseTool` at all under `permissionMode: 'dontAsk'` was never
-  directly probed." A real worker run probed it, and the SDK answered unprompted:
+- **`canUseTool` is SHADOWED for every production grant — FIXED for the gateway family AND
+  the rule-granted built-ins (2026-07-30).** This entry used to record the underlying fact as
+  unprobed: "whether the SDK invokes `canUseTool` at all under `permissionMode: 'dontAsk'`
+  was never directly probed." A real worker run probed it, and the SDK answered unprompted:
 
   > `[CLAUDE_SDK_CAN_USE_TOOL_SHADOWED] Warning: canUseTool will not be invoked for:`
   > `mcp__<gateway>__*. Bare allowedTools entries auto-approve the whole tool before the`
   > `callback is consulted. To gate every tool call, use a PreToolUse hook.`
 
-  The mode was never the variable: an allow entry is. `compileEnvelope` grants the gateway
-  family by name, so 06's journal-first `AdjudicationCallback` never ran for a connector,
-  evidence or review call.
+  The mode was never the variable: an allow entry is. And the bare-name form was not the
+  whole story either — the follow-up probe
+  (`packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts`, live at
+  engine 2.1.218, `docs/engine-baseline.md` §4.7) measured that a matched RULE-SHAPED entry
+  (`Bash(git status:*)`, the exact shape `emitPermissionProfile` compiles for
+  `Bash`/`Edit`/`Write`) shadows the callback identically. Together with §4.5 that means
+  _no_ production tool grant reaches `canUseTool`: `compileEnvelope` grants the gateway
+  family by name and the mutation-capable built-ins by rule, so 06's journal-first
+  `AdjudicationCallback` never ran for a connector, evidence, review, `Bash`, `Edit` or
+  `Write` call.
 
-  **FIXED for gateway tools** by a second bridge on `PreToolUse`
-  (`packages/engine-claude/src/gateway-adjudication-hook.ts`), which fires before permission
-  evaluation and therefore cannot be shadowed. It can only ever DENY: a hook returning
-  `permissionDecision: "allow"` bypasses the permission system for that call, so an allow
-  from this bridge could have overridden the profile's own deny entries. The allow path
-  returns no opinion; only the deny path speaks. Independently verified against the shipped
-  CLI binary: a hook `allow` still runs the rule pipeline and a deny rule overrides it, and a
-  throwing hook is fail-closed at the engine level.
+  **FIXED for both grant shapes** by a second bridge on `PreToolUse`
+  (`packages/engine-claude/src/tool-adjudication-hook.ts`), which fires before permission
+  evaluation and therefore cannot be shadowed. It covers the gateway wire prefix plus
+  exactly `{Bash, Edit, Write}` — the set the profile grants by rule, where the envelope
+  policy's verdict mirrors the engine's own rule evaluation. It can only ever DENY: a hook
+  returning `permissionDecision: "allow"` bypasses the permission system for that call, so
+  an allow from this bridge could have overridden the profile's own deny entries. The allow
+  path returns no opinion; only the deny path speaks. Independently verified against the
+  shipped CLI binary: a hook `allow` still runs the rule pipeline and a deny rule overrides
+  it, and a throwing hook is fail-closed at the engine level. Verified live end-to-end
+  (2026-07-30): a real adapter-spawned worker's `Bash(git status)` call produced a journaled
+  allow decision via the bridge, put real records in the PostToolUse audit's scope for the
+  first time, and did not spuriously abort (`adjudication-bridge.live.test.ts`, which now
+  ASSERTS the record exists rather than recording whether it does).
 
-  **What it restores is the RECORD, not a refusal.** `adjudication-policy.ts` matches MCP
-  tools on name alone, and the profile grants the family, so the decision is `allow`
-  regardless of arguments. Gateway calls are now journaled and in audit scope; they are not
-  argument-gated, and this document should not be read as claiming they are.
+  **What it restores is the RECORD, not a refusal — for the gateway.** `adjudication-policy.ts`
+  matches MCP tools on name alone, and the profile grants the family, so a gateway decision
+  is `allow` regardless of arguments; gateway calls are journaled and in audit scope, not
+  argument-gated. For `Bash`/`Edit`/`Write` the policy IS argument-aware (command-prefix and
+  owned-path rules), so the bridge is a genuine argument-level defense-in-depth deny there —
+  still never the primary boundary, which remains the engine's own rule evaluation plus the
+  OS sandbox.
 
-  **STILL OPEN, and larger: `Bash`, `Edit` and `Write` are shadowed the same way.**
-  Adversarial review (2026-07-30) found the premise that non-gateway tools still reach
-  `canUseTool` to be unverified and probably false — `emitPermissionProfile` puts
-  `Bash(<prefix>:*)` and worktree-anchored `Edit`/`Write` rules into `permissions.allow`, and
-  `options-assembler.ts` copies that array into `allowedTools`; a matched allow rule
-  short-circuits before the path `canUseTool` lives on. The SDK's warning says its own
-  enumeration is incomplete ("Allow rules from settings files can also shadow the callback
-  but are not visible here"), and the existing `adjudication-bridge.live.test.ts` only
-  _records_ whether the callback fired for `Bash` — it never asserts it, and no evidence file
-  records a positive.
-
-  So the mutation-capable tools are very likely executing with no adjudication record at all.
-  **Owed, and it must be probed before it is asserted:** a live probe for a
-  `Bash(<prefix>:*)`-shaped allow rule, and then either extending the `PreToolUse` bridge to
-  every tool (retiring or de-duplicating the `canUseTool` one) or accepting and documenting
-  the gap. Until that probe exists, no document here should claim `canUseTool` adjudicates
-  anything.
+  **Deliberately NOT extended to `Read`/`Glob`/`Grep`/other tools:** the envelope policy
+  default-denies any unlisted tool, while the engine grants read-only tools without any
+  rule. A deny-only hook consulting that policy for them would black-hole every read a
+  worker makes. The covered set is exactly the set where the policy mirrors the engine.
+  `canUseTool` stays installed as a backstop for grant shapes not yet measured; no document
+  here claims it adjudicates the compiled profile's own grants.
 
 - **Worktree-anchor (`//<worktree>/…/**`) matching semantics are unprobed on the live engine
   (§3).** `docs/engine-baseline.md` has no path-anchor probe covering this exact substituted
