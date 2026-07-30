@@ -322,31 +322,60 @@ describe("driveRun — attempt cache (phase 13's cache, finally with a productio
 
   // Key sensitivity (a different base object id, owned path, turn budget or
   // result schema is different work and never reuses) is pinned at the key
-  // level in `attempt-cache.test.ts` — a second live drive of the same unit
-  // in the same journal is refused by the repair-evidence gate below, so it
-  // cannot be exercised end-to-end here.
+  // level in `attempt-cache.test.ts`.
 
   /**
-   * THE PRE-EXISTING RESUME BEHAVIOR THE SEAM FIXES, pinned so nobody
-   * mistakes it for a regression: without the cache, a re-drive of an
-   * already-succeeded unit reaches `dispatchAttempt`, whose repair-evidence
-   * gate counts the prior dispatch in the journal and REFUSES to repeat it
-   * with `evidenceKind: "none"` — the whole resume crashes. With the seam
-   * (test above), the succeeded unit never reaches the gate at all: its
-   * result is reused and only genuinely-pending work dispatches.
+   * The journal-seeding fix (2026-07-30) — even WITHOUT the cache seam. A
+   * re-drive used to seed every unit `pending` from the stored WorkUnit
+   * (nothing updates `attemptStatus` after intake), re-select an
+   * already-succeeded unit, reach `dispatchAttempt`, and CRASH the whole
+   * drive at the repair-evidence gate. Now `driveRun` seeds each unit's
+   * status from the journal, so a re-drive sees the units that already
+   * succeeded, does not re-select them, and completes cleanly with no second
+   * dispatch — the crash the resume path used to hit is gone at the root.
    */
-  it("without the seam, a re-drive of a succeeded unit is REFUSED by the repair-evidence gate", async () => {
+  it("a re-drive of a succeeded DAG re-executes nothing and does not crash (journal-seeded)", async () => {
     const first = newObserved();
-    await driveRun(
+    const firstResult = await driveRun(
       { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
       buildDeps(new Map(), first, new Map()),
     );
+    expect(firstResult.stopped).toBe("completed");
+    expect(first.dispatchOrder).toEqual([A, B]);
+
     const second = newObserved();
-    await expect(
-      driveRun(
-        { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
-        buildDeps(new Map(), second, new Map()),
-      ),
-    ).rejects.toThrow(/repair attempt refused/);
+    const secondResult = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      buildDeps(new Map(), second, new Map()),
+    );
+    expect(secondResult.stopped).toBe("completed");
+    expect(secondResult.statusById.get(A)).toBe("succeeded");
+    expect(secondResult.statusById.get(B)).toBe("succeeded");
+    // Nothing re-dispatched, and crucially no throw.
+    expect(second.dispatchOrder).toEqual([]);
+  });
+
+  /**
+   * A re-drive of a DAG whose first unit FAILED does not crash either: the
+   * failed unit is seeded `failed`, so it is not re-selected (repair is 13's
+   * deliberate evidence-gated path), and its dependent stays blocked. The
+   * run classifies `blocked`, never throwing at the repair gate.
+   */
+  it("a re-drive of a failed DAG classifies blocked without crashing", async () => {
+    const first = newObserved();
+    await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      buildDeps(new Map([[A, "failed"]]), first, new Map()),
+    );
+    expect(first.dispatchOrder).toEqual([A]);
+
+    const second = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      buildDeps(new Map(), second, new Map()),
+    );
+    expect(result.stopped).toBe("blocked");
+    expect(result.statusById.get(A)).toBe("failed");
+    expect(second.dispatchOrder).toEqual([]);
   });
 });

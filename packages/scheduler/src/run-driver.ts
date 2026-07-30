@@ -31,7 +31,7 @@
  * the supervisor: registering an in-flight attempt there is what makes 05's
  * `worker.terminate` operation able to reach a running worker at all.
  */
-import type { JournalStore } from "@crabgic/journal";
+import { getLatestAttempt, type JournalStore } from "@crabgic/journal";
 import type {
   AdjudicationCallback,
   CompiledWorkerProfile,
@@ -273,9 +273,31 @@ export async function driveRun(
   const resolveModel = deps.resolveModel ?? resolveModelForRole;
   const nowSeconds = deps.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
-  const statusById = new Map<string, WorkUnitAttemptStatus>(
-    options.workUnits.map((unit) => [unit.id, unit.attemptStatus]),
-  );
+  // Seed each unit's status from the JOURNAL, not the stored WorkUnit.
+  // Nothing updates a stored `attemptStatus` after intake (see the file-level
+  // note), so on a RE-DRIVE — `resume` after a crash or a limit park —
+  // `unit.attemptStatus` is still `pending` for every unit, and the loop
+  // would re-select units that already succeeded, failed or parked. A
+  // succeeded unit then either re-executed (real engine spend) or, once its
+  // dispatch was journaled, was REFUSED by the repair-evidence gate and the
+  // whole drive crashed. Folding the journal's latest attempt per unit makes
+  // a re-drive see the real state: `computeReadyUnits` only advances
+  // `pending` units, so terminal and parked units are left exactly as the
+  // prior drive left them. A first drive has no journal history and falls
+  // back to the stored status, unchanged from before.
+  const statusById = new Map<string, WorkUnitAttemptStatus>();
+  for (const unit of options.workUnits) {
+    const latest = await getLatestAttempt(deps.journal, unit.id);
+    // A latest status of `dispatched` at drive ENTRY can only be a PRIOR
+    // drive's attempt that crashed before reaching a terminal status (this
+    // drive has dispatched nothing yet). Treat it as `failed`: a crashed
+    // attempt is terminal for this loop, so it is not silently re-run and it
+    // classifies the run as `blocked`/`failed` rather than a false
+    // `completed`. Deliberate re-execution is 13's evidence-gated repair
+    // path (`resumeAttempt`), never this loop.
+    const seeded = latest?.status ?? unit.attemptStatus;
+    statusById.set(unit.id, seeded === "dispatched" ? "failed" : seeded);
+  }
   const outcomes: UnitAttemptOutcome[] = [];
   const unitById = new Map(options.workUnits.map((unit) => [unit.id, unit]));
 
