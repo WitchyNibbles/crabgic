@@ -320,6 +320,58 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   every same-uid process identically; there is no in-protocol distinction between the CLI and
   the gateway's forwarded calls. Stated design choice (`docs/threat-model.md` §1, §Cross-
   surface themes); unchanged by implementation.
+- **`canUseTool` is SHADOWED for every gateway tool — FOUND, MEASURED, AND FIXED (2026-07-30).**
+  This entry used to say the underlying fact was unprobed: "whether the SDK invokes
+  `canUseTool` at all under `permissionMode: 'dontAsk'` was never directly probed." Running a
+  real worker probed it, and the SDK answered unprompted:
+
+  > `[CLAUDE_SDK_CAN_USE_TOOL_SHADOWED] Warning: canUseTool will not be invoked for:`
+  > `mcp__<gateway>__*. Bare allowedTools entries auto-approve the whole tool before the`
+  > `callback is consulted. To gate every tool call, use a PreToolUse hook.`
+
+  The compiled profile grants the gateway family by naming those tools outright in
+  `allowedTools`, so the shadowing applied to **all** of them regardless of permission mode —
+  the mode was never the variable. For a period, 06's journal-first fail-closed
+  `AdjudicationCallback` never ran for a connector, evidence or review call, and this document
+  presented it as though it did.
+
+  **The fix ships in `packages/engine-claude/src/gateway-adjudication-hook.ts`**: a second
+  adjudication bridge on `PreToolUse`, which runs BEFORE permission evaluation and therefore
+  cannot be shadowed by an allow entry. It calls the same `AdjudicationCallback`, records the
+  same audit entries, and fails closed on every path a decision could go missing — a throwing
+  callback, a rejecting one, an absent one, a malformed hook input. It is scoped to the gateway
+  prefix, because adjudicating a non-gateway tool twice would journal two decisions for one
+  call. Both engine facts it rests on were measured before it was written
+  (`docs/engine-baseline.md` §4.5–4.6, via
+  `packages/engine-claude/src/live/mcp-adjudication-shadowing.live.test.ts`).
+
+  **The subtlety that would have made it useless:** the engine normalizes a dot in an MCP tool
+  name to an underscore, so the matcher keys on `..._contract_approve`, never the advertised
+  `contract.approve`. A matcher on the advertised name matches nothing — a control that looks
+  installed and is not, which is the same shape of defect as the shadowing it fixes.
+
+Two smaller findings from the same review, recorded for the next pass:
+
+- **`crabgic trust approve` mints without a prompt and prints the token** (`packages/detect/src/trust/
+trust-approve.ts`), so §3's "the terminal prompt is the only mint path" is false as written for the
+  capability-quarantine surface. Not currently exploitable — `capability.approve` verifies through an
+  in-memory minter whose pending table is empty across a process boundary — but that is an accident of
+  wiring, not a control. Either route it through `runApprovalFlow` or stop rendering `minted`.
+- **The spawned daemon's stderr log is an unredacted at-rest channel.** `supervisord.stderr.log` under the
+  project state root now goes through `openOwnedFile` (0600, symlink- and FIFO-refusing, truncated only
+  after the checks pass) and its tail is stripped of terminal control sequences before it reaches an error
+  message, but nothing bounds or redacts what the daemon itself writes there over its lifetime.
+
+## Residual risk — disclosed, non-blocking
+
+Every item below is a known, intentional design limitation already named in the owning
+phase's own evidence or the threat model itself — not a newly-discovered live gap, and none
+meets the CRITICAL/HIGH bar that would block this release per 14's gate semantics.
+
+- **Same-uid trust flattening (§1, Cross-surface theme 1).** The UDS control plane trusts
+  every same-uid process identically; there is no in-protocol distinction between the CLI and
+  the gateway's forwarded calls. Stated design choice (`docs/threat-model.md` §1, §Cross-
+  surface themes); unchanged by implementation.
 - **`canUseTool` is SHADOWED for every gateway tool — the adjudication bridge does not
   fire for them (§2). RESOLVED FROM "UNPROBED" TO "MEASURED", 2026-07-30, and the answer is
   worse than the question.** This entry used to say the fact was unprobed: "whether the SDK

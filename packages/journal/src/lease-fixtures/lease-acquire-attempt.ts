@@ -31,14 +31,55 @@ export async function attemptLeaseAcquire(
   }
 }
 
+/**
+ * Acquires, ANNOUNCES the outcome, and holds until the parent closes stdin.
+ *
+ * WHY NOT A FIXED HOLD (2026-07-30). This used to acquire, sleep 300ms, release
+ * and exit. The contention it was supposed to demonstrate was therefore assumed
+ * rather than enforced: on a loaded machine the second child's cold Node start
+ * can land entirely AFTER the first has released, so both legitimately acquire,
+ * and the test reports `["ACQUIRED", "ACQUIRED"]` — a red run that means "no race
+ * occurred", not "mutual exclusion failed". It was carried as a known flake for
+ * weeks.
+ *
+ * Holding until stdin closes makes the overlap a fact rather than a hope: the
+ * parent does not release either child until it has read BOTH outcomes, so both
+ * decisions provably happened while both processes were alive. The exit
+ * criterion this test exists for — exactly one of two real contending processes
+ * acquires — is only meaningful if they genuinely contend.
+ */
+async function attemptAndHoldUntilStdinCloses(
+  leaseDir: string,
+  projectHash: string,
+  pid: number,
+): Promise<void> {
+  let lease: Awaited<ReturnType<typeof Lease.acquire>> | undefined;
+  let result: AttemptResult;
+  try {
+    lease = await Lease.acquire(leaseDir, projectHash, { pid, maxAcquireAttempts: 1 });
+    result = { outcome: "ACQUIRED" };
+  } catch (err) {
+    result = { outcome: "DENIED", reason: err instanceof Error ? err.name : "unknown" };
+  }
+
+  process.stdout.write(
+    `RESULT:${result.outcome}${result.reason !== undefined ? `:${result.reason}` : ""}\n`,
+  );
+
+  // The parent closes stdin once it has both outcomes in hand.
+  await new Promise<void>((resolve) => {
+    process.stdin.on("end", resolve);
+    process.stdin.on("close", resolve);
+    process.stdin.resume();
+  });
+  if (lease !== undefined) await lease.release();
+}
+
 // Entry point: only reached when this file is the process's own CLI entry
 // (i.e. spawned directly), never when `attemptLeaseAcquire` above is
 // imported by a normal vitest run.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [, , leaseDir, projectHash, pidArg] = process.argv;
   const pid = pidArg === undefined ? process.pid : Number(pidArg);
-  const result = await attemptLeaseAcquire(leaseDir ?? "", projectHash ?? "", pid, 300);
-  process.stdout.write(
-    `RESULT:${result.outcome}${result.reason !== undefined ? `:${result.reason}` : ""}\n`,
-  );
+  await attemptAndHoldUntilStdinCloses(leaseDir ?? "", projectHash ?? "", pid);
 }
