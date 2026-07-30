@@ -54,9 +54,11 @@ export function toAttemptRecord(entry: JournalEntry): WorkUnitAttemptRecord {
  * `sessionId` durably in the payload — the field the `parked:rate_limit`
  * exit criterion depends on surviving a crash+recover cycle.
  * `previousStatus` is auto-populated from this work unit's own latest
- * prior attempt (a read-back convenience for humans/CLI readers; not
+ * prior attempt IN THE SAME RUN (a read-back convenience for humans/CLI
+ * readers AND the input to `attempt-policy.ts`'s park-resume exclusion; not
  * required for the closed-union round-trip itself — see
- * `../codec/journal-payloads.ts`).
+ * `../codec/journal-payloads.ts`). Run-scoped when a `runId` is given so it
+ * stays consistent with the run-scoped repair count.
  *
  * `runId` is an OPTIONAL 5th parameter (added, backward-compatible —
  * every pre-existing 4-arg call site keeps compiling unchanged),
@@ -106,7 +108,14 @@ export async function recordAttempt(
   runId?: string,
   usage?: WorkerAttemptUsage,
 ): Promise<WorkUnitAttemptRecord> {
-  const previous = await getLatestAttempt(store, workUnitId);
+  // Run-scoped when a runId is given: `previousStatus` must reflect THIS
+  // run's own prior attempt, not any run's. Work-unit ids are stable across
+  // runs of the same change set, so deriving it across all runs let a retry
+  // run's FIRST dispatch inherit a prior run's `parked:rate_limit` — which
+  // `attempt-policy.ts`'s (now run-scoped) repair-count then wrongly excludes
+  // as a park-resume, inflating the cap. Within a single run this is
+  // identical to the unscoped read; only the cross-run inheritance changes.
+  const previous = await getLatestAttemptForRun(store, workUnitId, runId);
 
   const entry = await store.appendEntry({
     type: "work_unit_transition",
