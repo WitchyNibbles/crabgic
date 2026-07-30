@@ -73,7 +73,11 @@ export type PolicyInstallOutcome =
   | { readonly status: "dry-run"; readonly policy: EnvelopePolicy }
   /** The owner read the candidate and said no. Not an error. */
   | { readonly status: "declined" }
-  | { readonly status: "written"; readonly policy: EnvelopePolicy };
+  | { readonly status: "written"; readonly policy: EnvelopePolicy }
+  /** A valid policy already exists — it is the owner's file (hand-added grants are never derived) and install keeps it untouched. */
+  | { readonly status: "kept-existing" }
+  /** A policy exists but does not load; overwriting it would wipe whatever the owner hand-wrote, so install refuses and surfaces the loader's own reason. */
+  | { readonly status: "existing-invalid"; readonly reason: string };
 
 export interface InstallResult {
   readonly status: InstallStatus;
@@ -305,6 +309,21 @@ async function bootstrapPolicy(
   dryRun: boolean,
 ): Promise<PolicyInstallOutcome> {
   if (deps.policy === undefined) return { status: "not-configured" };
+
+  // EXISTING POLICY FIRST, before any derivation or prompt (review
+  // 2026-07-30). The write path renames over the destination, and the
+  // derived candidate never contains hand-added grants (network,
+  // credentials, remote resources are deliberately not derived) — so
+  // re-running install used to silently replace the owner's file with a
+  // narrower one. Valid → keep untouched; invalid → refuse with the
+  // loader's own reason rather than "repair" it by deletion.
+  const existing = deps.policy.loadExisting();
+  if (existing.status === "loaded") {
+    return { status: "kept-existing" };
+  }
+  if (existing.status === "invalid") {
+    return { status: "existing-invalid", reason: existing.reason };
+  }
 
   const derived = deps.policy.derive();
   if (derived.vacuous) {

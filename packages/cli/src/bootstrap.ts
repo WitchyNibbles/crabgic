@@ -279,6 +279,9 @@ export function buildRealCliDependencies(
         // could be committed would be a standing grant every clone carried.
         policy: {
           path: resolveEnvelopePolicyPath(xdgEnv, projectHash),
+          // The existing-file guard: an existing policy is the owner's file
+          // (hand-added grants are never derived) and install keeps it.
+          loadExisting: () => loadEnvelopePolicy(resolveEnvelopePolicyPath(xdgEnv, projectHash)),
           derive: () =>
             derivePolicy({
               projectDir: process.cwd(),

@@ -1,5 +1,6 @@
 import type { EnvelopePolicy } from "@crabgic/contracts";
 import type { DerivedPolicy } from "../policy/derive-policy.js";
+import type { LoadPolicyResult } from "../policy/policy-store.js";
 
 /**
  * `install`/`upgrade`/`uninstall`'s own dependency bag — kept OPTIONAL on
@@ -36,6 +37,16 @@ export interface InstallerDependencies {
 export interface PolicyInstallDependencies {
   /** Absolute path the policy is written to (`resolveEnvelopePolicyPath` in real usage). */
   readonly path: string;
+  /**
+   * Whether a policy ALREADY exists at `path` (`loadEnvelopePolicy` in real
+   * usage). REQUIRED, not optional: review 2026-07-30 found `install`
+   * renamed a freshly-derived policy over the existing file, wiping every
+   * hand-added grant — network, credential and remote grants are never
+   * derived, so they exist only by hand. An existing policy is the owner's
+   * file; install keeps it (valid → kept untouched; invalid → refused with
+   * its own reason, never silently replaced).
+   */
+  readonly loadExisting: () => LoadPolicyResult;
   /** Derives the candidate from the repository. Injected so tests need no real tree. */
   readonly derive: () => DerivedPolicy;
   /**
