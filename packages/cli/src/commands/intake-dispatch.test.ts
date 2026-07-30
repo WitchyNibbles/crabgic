@@ -225,6 +225,52 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     expect(supervisor.calls.map((call) => call.op)).toEqual(["run.dispatch"]);
   });
 
+  /**
+   * The critic that runs where nobody reads. Wired at the command level rather
+   * than asserted only on the pure function, because a critic nothing calls is
+   * the failure mode this repository has paid for repeatedly.
+   */
+  it("notes authority the plan never uses when the standing policy auto-approves", async () => {
+    const secretKey = randomBytes(32);
+    const supervisor = recordingClient();
+    const deps: CliDependencies = {
+      ...baseDeps(),
+      connectClient: supervisor.connectClient,
+      intake: {
+        journal: store,
+        changeSets: createChangeSetsRegistry(),
+        workUnits: createWorkUnitsRegistry(),
+        envelopes: createAuthorizationEnvelopesRegistry(),
+        intentContracts: createIntentContractsRegistry(),
+        minter: new ApprovalTokenMinter({ secretKey }),
+        secretKey,
+        // Grants `src`, and the fixture declares no work units at all -- so the
+        // whole grant is unused.
+        readIntakeRequest: async () => fixtureRequest({ ownedPaths: ["src"] }),
+        io: { input: new PassThrough(), output: new PassThrough() },
+        loadPolicy: () => ({
+          status: "loaded",
+          policy: EnvelopePolicySchema.parse({
+            schemaVersion: 1,
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            allowedPathPrefixes: ["src"],
+          }),
+          digest: "sha256:standing",
+        }),
+      },
+    };
+
+    const result = await dispatchCommand({ command: "run", json: false }, deps);
+
+    // Approved and dispatched -- the note never blocks anything.
+    expect(result.exitCode).toBe(EXIT_OK);
+    expect(result.stdout).toContain("dispatched as run");
+    expect(result.stdout).toContain("no work unit uses");
+    expect(result.stdout).toContain("src");
+    expect(result.stdout).toContain("nothing is blocked");
+  });
+
   it("reports a refused dispatch WITHOUT losing the approval — the change set stays ready and retryable", async () => {
     const secretKey = randomBytes(32);
     const changeSets = createChangeSetsRegistry();

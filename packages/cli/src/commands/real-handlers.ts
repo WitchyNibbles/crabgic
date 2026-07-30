@@ -25,6 +25,7 @@ import type { CliDependencies } from "./types.js";
 import { notImplementedResult } from "./not-implemented.js";
 import { runIntakeCommand, type RunIntakeCommandResult } from "../intake/run-intake-command.js";
 import { sanitizeForTerminal } from "../output/sanitize.js";
+import { findUnusedAuthority, renderUnusedAuthority } from "../intake/unused-authority.js";
 
 interface RunRecordLike {
   readonly runId: string;
@@ -396,13 +397,25 @@ async function decideRunOutcome(
     };
   }
 
+  // The critic that runs where nobody reads. Under the standing approval an
+  // in-policy envelope is approved with no human looking at it, so a grant wider
+  // than the plan needs goes uncaught -- the one thing per-change-set review used
+  // to catch for free. Reported, never enforced: the policy allowed this.
+  const unused = findUnusedAuthority(
+    result.outcome.artifacts.envelope,
+    result.outcome.artifacts.workUnits,
+  );
+  const note = renderUnusedAuthority(unused) ?? "";
+
   const dispatch = await dispatchReadyChangeSet(changeSetId, deps);
   const authority = ` (covered by the standing approval policy ${sanitizeForTerminal(standing.policyDigest)}; no prompt, no token)`;
   return dispatch.accepted
     ? {
         exitCode: EXIT_OK,
         dispatch,
-        message: `ChangeSet ${sanitizeForTerminal(changeSetId)} approved${authority} and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
+        message:
+          `ChangeSet ${sanitizeForTerminal(changeSetId)} approved${authority} and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n` +
+          note,
       }
     : {
         // The approval is durable and the ChangeSet stays `ready`; only the
