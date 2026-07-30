@@ -60,6 +60,18 @@ const GENERIC_ADJUDICATION_FAILURE_MESSAGE =
   "gateway tool call denied: adjudication was unavailable (the callback threw, rejected, or is absent) " +
   "— failing closed";
 
+/** The one deny shape this bridge emits, so every refusal path is identical by construction. */
+function denyOutput(reason: string, interrupt?: boolean): HookJSONOutput {
+  return {
+    ...(interrupt === true ? { continue: false, stopReason: reason } : {}),
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: reason,
+    },
+  };
+}
+
 /** True for a tool this bridge owns. Matches the UNDERSCORED wire form, which is the only form a hook ever sees. */
 export function isGatewayTool(toolName: string): boolean {
   return toolName.startsWith(GATEWAY_TOOL_WIRE_PREFIX);
@@ -83,19 +95,43 @@ export function createGatewayAdjudicationHook(params: {
           const hookInput = input as PreToolUseHookInput;
           const toolName = hookInput.tool_name;
 
-          // Not ours: `canUseTool` adjudicates it and already has. Returning an
-          // empty output leaves the engine's own decision untouched — this must
-          // not become a second opinion on tools the other bridge owns.
-          if (typeof toolName !== "string" || !isGatewayTool(toolName)) return {};
+          // A nameless call is never legitimate, and for a gateway tool "no
+          // opinion" means auto-approved — so it is denied rather than waved
+          // through. Not reachable today (the engine always supplies a string),
+          // which is exactly why the earlier version's fail-OPEN went unnoticed.
+          if (typeof toolName !== "string" || toolName.length === 0) {
+            return denyOutput(
+              "gateway tool call denied: the hook received no tool name to adjudicate",
+            );
+          }
+
+          // Not ours. Returning an empty output leaves the engine's own decision
+          // untouched, so this never becomes a second opinion on another
+          // bridge's tools. NOTE this is NOT a claim that `canUseTool`
+          // adjudicates them — adversarial review found that premise unverified
+          // and probably false for `Bash`/`Edit`/`Write`, which are allow-listed
+          // the same way. See `docs/security-posture.md`; a probe is owed.
+          if (!isGatewayTool(toolName)) return {};
 
           const toolInput =
             typeof hookInput.tool_input === "object" && hookInput.tool_input !== null
               ? (hookInput.tool_input as Readonly<Record<string, unknown>>)
               : {};
 
+          // The shape check lives INSIDE the try. A callback that RESOLVES
+          // something malformed used to make `decision.behavior` throw outside
+          // it, which the engine then turns into a whole-turn stop rather than
+          // one denied call — fail-closed, but with no audit or journal record
+          // and a dead worker.
           let decision: AdjudicationDecision;
           try {
-            decision = await params.adjudicate(toolName, toolInput, { signal: options.signal });
+            const resolved = await params.adjudicate(toolName, toolInput, {
+              signal: options.signal,
+            });
+            decision =
+              resolved.behavior === "allow" || resolved.behavior === "deny"
+                ? resolved
+                : { behavior: "deny", message: GENERIC_ADJUDICATION_FAILURE_MESSAGE };
           } catch {
             decision = { behavior: "deny", message: GENERIC_ADJUDICATION_FAILURE_MESSAGE };
           }
@@ -122,13 +158,10 @@ export function createGatewayAdjudicationHook(params: {
             params.audit.recordAllowedDecision(toolName, toolInput);
             return {};
           }
-          return {
-            hookSpecificOutput: {
-              hookEventName: "PreToolUse",
-              permissionDecision: "deny",
-              permissionDecisionReason: decision.message,
-            },
-          };
+          // `interrupt` is carried through, matching the `canUseTool` bridge: a
+          // policy that wants to halt the worker rather than refuse one call
+          // must be able to say so for a gateway call too.
+          return denyOutput(decision.message, decision.interrupt);
         },
       ],
     },

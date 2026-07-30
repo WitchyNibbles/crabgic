@@ -187,12 +187,41 @@ describe("createGatewayAdjudicationHook", () => {
     expect(adjudicate).toHaveBeenCalledWith(GATEWAY_TOOL, {}, expect.anything());
   });
 
-  it("ignores an input with no tool name instead of adjudicating a nameless call", async () => {
+  it("DENIES a nameless call rather than waving it through", async () => {
+    // The earlier version returned no opinion here, which for a gateway tool
+    // means auto-approved — a fail-OPEN that a test had codified as intended.
+    // Unreachable today, which is precisely why it went unnoticed.
     const adjudicate = vi.fn(async () =>
       Promise.resolve({ behavior: "allow" as const, updatedInput: {} }),
     );
-    const output = await invoke(adjudicate, undefined as unknown as string).run();
+    for (const nameless of [undefined, "", 42]) {
+      const output = (await invoke(adjudicate, nameless as unknown as string).run()) as {
+        hookSpecificOutput?: { permissionDecision?: string };
+      };
+      expect(output.hookSpecificOutput?.permissionDecision).toBe("deny");
+    }
     expect(adjudicate).not.toHaveBeenCalled();
-    expect(output).toEqual({});
+  });
+
+  it("FAILS CLOSED when the callback RESOLVES something malformed", async () => {
+    // This used to throw outside the try/catch, which the engine turns into a
+    // whole-turn stop: fail-closed, but with no audit record and a dead worker
+    // instead of one denied call.
+    for (const malformed of [undefined, null, {}, { behavior: "maybe" }, 7]) {
+      const output = (await invoke(
+        (() => Promise.resolve(malformed)) as unknown as AdjudicationCallback,
+        GATEWAY_TOOL,
+      ).run()) as { hookSpecificOutput?: { permissionDecision?: string } };
+      expect(output.hookSpecificOutput?.permissionDecision).toBe("deny");
+    }
+  });
+
+  it("carries `interrupt` through, so a policy can still halt the worker on a gateway call", async () => {
+    const output = (await invoke(
+      async () => Promise.resolve({ behavior: "deny" as const, message: "halt", interrupt: true }),
+      GATEWAY_TOOL,
+    ).run()) as { continue?: boolean; stopReason?: string };
+    expect(output.continue).toBe(false);
+    expect(output.stopReason).toBe("halt");
   });
 });

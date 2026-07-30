@@ -37,6 +37,17 @@ never the advertised `contract.approve`. A matcher on the advertised name matche
 nothing — a control that looks installed and is not, which is the same shape of
 defect as the shadowing it fixes.
 
+Adversarial review of this change then found something larger, which is filed
+rather than fixed here: **`Bash`, `Edit` and `Write` are shadowed the same way.**
+The compiled profile puts rule-shaped entries for them into `allowedTools` too,
+and a matched allow rule short-circuits before the path `canUseTool` lives on —
+so the mutation-capable tools are very likely executing with no adjudication
+record either. The SDK's warning says its own enumeration is incomplete, and the
+existing live probe for `Bash` only records whether the callback fired without
+ever asserting it. Nothing here claims otherwise any more: the code comment, the
+tests and `docs/security-posture.md` all now say the premise is unverified, and a
+probe is owed before anyone asserts it again.
+
 Separately, the last known-flaky test is fixed at its cause. Two child processes
 contending for one lease each held for a fixed 300ms, so on a loaded machine the
 second one's cold start could land entirely after the first had released: both
