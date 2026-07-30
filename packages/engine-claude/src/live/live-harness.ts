@@ -416,6 +416,20 @@ export interface DirectQuerySpec {
   readonly canUseTool?: Options["canUseTool"];
   readonly sandbox?: Options["sandbox"];
   readonly maxTurns?: number;
+  /**
+   * Model override, defaulting to `LIVE_MODEL` (haiku) when omitted — every
+   * existing call site keeps haiku.
+   *
+   * Added 2026-07-30 for the adjudication-shadowing probe. The facts THAT probe
+   * measures — that `canUseTool` is shadowed for a bare-allowed MCP tool, and
+   * that a `PreToolUse` hook fires for it — are SDK permission-layer properties,
+   * independent of which model emits the `tool_use`. But haiku emitted the stub
+   * call only ~1 run in 8 (answering in prose instead), so the tool-invoked
+   * PRECONDITION flaked ~half the time even with retries. A model that reliably
+   * follows "call this tool" removes that nondeterminism WITHOUT touching the
+   * model-independent fact under test.
+   */
+  readonly model?: string;
   readonly extraEnv?: Readonly<Record<string, string>>;
   readonly timeoutMs?: number;
 }
@@ -455,7 +469,7 @@ export async function runDirectQuery(
       settingSources: [],
       cwd: spec.cwd,
       env,
-      model: LIVE_MODEL,
+      model: spec.model ?? LIVE_MODEL,
       maxTurns: spec.maxTurns ?? 2,
       permissionMode: "dontAsk",
       abortController: controller,
