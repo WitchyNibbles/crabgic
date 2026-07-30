@@ -147,13 +147,18 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
       }
 
       if (validation.result.outcome === "succeeded") {
-        // Post-succeeded GREEN candidate-availability marker.
+        // Post-succeeded GREEN candidate-availability marker, now carrying what
+        // the attempt COST. The engine reports usage on every result and nothing
+        // was writing it down, so the system knew each attempt's cost for
+        // exactly as long as the attempt was in memory and no run could answer
+        // "what did that cost me" afterwards.
         await recordAttempt(
           params.journal,
           params.workUnitId,
           params.sessionId,
           "succeeded",
           params.runId,
+          validation.result.usage,
         );
         return { kind: "succeeded", sessionId: params.sessionId, result: validation.result };
       }

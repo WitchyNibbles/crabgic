@@ -54,11 +54,37 @@ export const RunTransitionPayloadSchema = z
  * `previousStatus` is optional context for a human/CLI reader; not
  * required for the closed-union round-trip itself.
  */
+/**
+ * What an attempt cost, on its terminal transition (added 2026-07-30).
+ *
+ * The engine reports usage on every result and nothing wrote it down, so the
+ * system knew each attempt's cost only for as long as the attempt was in memory
+ * and no finished run could answer "what did that cost me". For a product that
+ * spends the owner's own subscription, that is the number they feel.
+ *
+ * Mirrors `WorkerResult.usage` (02) exactly rather than inventing a shape:
+ * `turnsUsed` is always present on a real result and is the load-bearing cap
+ * under subscription auth; `totalCostUsd` is optional because the engine does
+ * not always report a cost.
+ */
+export const WorkUnitAttemptUsageSchema = z
+  .object({
+    turnsUsed: z.number().int().nonnegative(),
+    totalCostUsd: z.number().nonnegative().optional(),
+  })
+  .strict();
+
 export const WorkUnitTransitionPayloadSchema = z
   .object({
     status: WorkUnitAttemptStatusSchema,
     previousStatus: WorkUnitAttemptStatusSchema.optional(),
     sessionId: IdSchema.optional(),
+    /**
+     * OPTIONAL, and it must stay that way: every entry written before this
+     * field existed is still valid, and an attempt the engine reported no usage
+     * for is not an error — it is an attempt nobody measured.
+     */
+    usage: WorkUnitAttemptUsageSchema.optional(),
   })
   .strict();
 
