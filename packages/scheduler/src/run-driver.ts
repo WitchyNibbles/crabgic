@@ -231,10 +231,9 @@ export async function driveRun(
     // same run-scoping the attempt cache key needed (its own review's F2).
     // A resume of the same run keeps the same runId, so it still sees its
     // own prior attempts; a fresh run has none and falls back to stored.
-    // (`countPriorDispatches` in `./attempt-policy.ts` is still
-    // workUnitId-only, so a retry as a genuinely new run does not yet run to
-    // completion — its run-scoping is a tracked follow-up. This seed is
-    // scoped now so it is correct the moment that lands.)
+    // `countPriorDispatches` (`./attempt-policy.ts`) is run-scoped the same
+    // way, so a retry as a genuinely new run both re-selects its units AND
+    // gets its own repair budget — it runs to completion, not refused.
     const latest = await getLatestAttemptForRun(deps.journal, unit.id, options.runId);
     // A latest status of `dispatched` at drive ENTRY can only be a PRIOR
     // drive of THIS run that crashed before reaching a terminal status (this

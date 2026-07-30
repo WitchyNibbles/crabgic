@@ -59,6 +59,29 @@ describe("countPriorDispatches", () => {
     await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched"); // previousStatus 'failed' — a real repair
     expect(await countPriorDispatches(store, WORK_UNIT_ID)).toBe(2);
   });
+
+  /**
+   * Run-scoping (2026-07-30). Work-unit ids are stable across runs of the
+   * same change set, so a workUnitId-only count made a RETRY as a genuinely
+   * new run inherit the prior run's exhausted repair budget and be refused.
+   * The budget's purpose is to stop a REPAIR LOOP within a run; a fresh run
+   * (a new, containment-gated, journaled dispatch) is a fresh attempt
+   * sequence and gets its own budget. With a runId, the count sees only that
+   * run's dispatches; without one it is unchanged (counts across all runs).
+   */
+  it("scopes the count to a runId when given, so a retry run does not inherit the prior run's budget", async () => {
+    const RUN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const RUN_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched", RUN_A);
+
+    // Run A saw two dispatches; run B has seen none.
+    expect(await countPriorDispatches(store, WORK_UNIT_ID, RUN_A)).toBe(2);
+    expect(await countPriorDispatches(store, WORK_UNIT_ID, RUN_B)).toBe(0);
+    // Unscoped (no runId) still counts across all runs — unchanged default.
+    expect(await countPriorDispatches(store, WORK_UNIT_ID)).toBe(2);
+  });
 });
 
 describe("assertRepairAllowed", () => {
@@ -89,6 +112,27 @@ describe("assertRepairAllowed", () => {
     await expect(
       assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure"),
     ).resolves.toBeUndefined();
+  });
+
+  it("scoped to a runId, a NEW run's first dispatch is allowed even though a PRIOR run exhausted the budget", async () => {
+    const RUN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const RUN_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    // Run A burns all three dispatches on this unit.
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_B, "dispatched", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_B, "failed", RUN_A);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_C, "dispatched", RUN_A);
+
+    // Unscoped, this unit is exhausted (3 dispatches) — the pre-fix behavior
+    // a retry run inherited.
+    await expect(assertRepairAllowed(store, WORK_UNIT_ID, "none")).rejects.toThrow(
+      RepairEvidenceRequiredError,
+    );
+    // Scoped to a fresh run, its FIRST dispatch is allowed with no evidence.
+    await expect(assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, RUN_B)).resolves.toBe(
+      undefined,
+    );
   });
 
   it("allows a repair when evidenceKind is 'schemaViolation', 'crash', or 'gateVerdict'", async () => {
