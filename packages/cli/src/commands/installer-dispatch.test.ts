@@ -178,3 +178,92 @@ describe("dispatchCommand — doctor registers roadmap/10's 3 checks only when d
     expect(parsed.findings).toHaveLength(8);
   });
 });
+
+/**
+ * The install command's rendered POLICY lines (review S3 — the renderer
+ * strings were the one untested surface of the existing-policy guard). What
+ * the operator reads IS the guard's product: a kept policy that renders
+ * nothing would look exactly like the silent clobber it replaced.
+ */
+describe("dispatchCommand — install renders the existing-policy outcomes", () => {
+  const POLICY_BAG_BASE = {
+    derive: () => {
+      throw new Error("derive must not run when a policy exists");
+    },
+    confirm: () => {
+      throw new Error("confirm must not run when a policy exists");
+    },
+    write: () => {
+      throw new Error("write must not run when a policy exists");
+    },
+  };
+
+  it("kept-existing: says the file was kept and how to re-author", async () => {
+    const targetDir = await makeTmpDir();
+    const deps: CliDependencies = {
+      ...(baseDeps() as CliDependencies),
+      installer: {
+        targetDir,
+        pluginSourceDir: PLUGIN_ROOT,
+        confirmGitInit: async () => true,
+        policy: {
+          ...POLICY_BAG_BASE,
+          path: join(targetDir, "policy.json"),
+          loadExisting: () => ({
+            status: "loaded" as const,
+            policy: {} as never,
+            digest: "sha256:x",
+          }),
+        },
+      },
+    };
+    const result = await dispatchCommand({ command: "install", dryRun: false, json: false }, deps);
+    expect(result.stdout).toContain("standing policy already exists and was kept untouched");
+    expect(result.stdout).toContain("delete it and re-run `crabgic install` to re-author");
+  });
+
+  it("existing-invalid, transient: the remedy agrees with the evidence — retry, never delete", async () => {
+    const targetDir = await makeTmpDir();
+    const deps: CliDependencies = {
+      ...(baseDeps() as CliDependencies),
+      installer: {
+        targetDir,
+        pluginSourceDir: PLUGIN_ROOT,
+        confirmGitInit: async () => true,
+        policy: {
+          ...POLICY_BAG_BASE,
+          path: join(targetDir, "policy.json"),
+          loadExisting: () => ({
+            status: "invalid" as const,
+            reason: "too many open files",
+            transient: true,
+          }),
+        },
+      },
+    };
+    const result = await dispatchCommand({ command: "install", dryRun: false, json: false }, deps);
+    expect(result.stdout).toContain("could not be read right now");
+    expect(result.stdout).toContain("do NOT delete it");
+    expect(result.stdout).not.toContain("fix it by hand");
+  });
+
+  it("existing-invalid, genuine: fix by hand or delete-and-reinstall", async () => {
+    const targetDir = await makeTmpDir();
+    const deps: CliDependencies = {
+      ...(baseDeps() as CliDependencies),
+      installer: {
+        targetDir,
+        pluginSourceDir: PLUGIN_ROOT,
+        confirmGitInit: async () => true,
+        policy: {
+          ...POLICY_BAG_BASE,
+          path: join(targetDir, "policy.json"),
+          loadExisting: () => ({ status: "invalid" as const, reason: "not valid JSON" }),
+        },
+      },
+    };
+    const result = await dispatchCommand({ command: "install", dryRun: false, json: false }, deps);
+    expect(result.stdout).toContain("cannot be loaded (not valid JSON)");
+    expect(result.stdout).toContain("fix it by hand, or delete it and re-run");
+  });
+});

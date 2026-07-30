@@ -65,7 +65,7 @@ export function buildStandingPolicyCheck(options: StandingPolicyCheckOptions): D
           repairStep:
             loaded.transient === true
               ? `retry once this process has descriptors available, or raise the open-file limit; do NOT re-run \`crabgic install\`, which would replace ${options.path}`
-              : `edit ${options.path} by hand to correct it, or re-run \`crabgic install\` to author a fresh one`,
+              : `edit ${options.path} by hand to correct it, or delete it and re-run \`crabgic install\` to author a fresh one (install keeps an existing file, so deleting first is required)`,
         });
       }
 
