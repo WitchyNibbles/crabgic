@@ -353,7 +353,7 @@ describe("createRealRunDispatcher — dispatch", () => {
    * unhandled rejection — one bad run must not be able to take the whole
    * daemon (and every other run it is driving) down.
    */
-  it("reports a failing background drive instead of crashing the daemon", async () => {
+  it("reports a failing background drive instead of crashing the daemon, and marks the run failed", async () => {
     const deps = buildDeps({ ...fullySeeded(), run: false });
     const errors: unknown[] = [];
     const dispatcher = newDispatcher(deps, {
@@ -361,11 +361,97 @@ describe("createRealRunDispatcher — dispatch", () => {
       onDriveError: (_runId: string, err: unknown) => errors.push(err),
     });
 
-    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
     await vi.waitFor(() => {
       expect(errors).toHaveLength(1);
     });
     expect((errors[0] as Error).message).toContain("worktree exploded");
+    // F5: an errored drive must not leave the run `running` — that would make
+    // `findLiveRunForChangeSet` treat it as in-flight and block every retry.
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("failed");
+    });
+  });
+
+  /**
+   * F5, the settle path: a drive that ends `blocked` (a unit failed and its
+   * dependents can never become ready) must move the run to `blocked`, an
+   * absorbing state, so the change set can be retried. Left `running` it
+   * would be wedged forever.
+   */
+  it("marks a run blocked when its drive ends blocked, so the change set is retryable", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      // A → B chain; A fails, so B can never become ready → the drive blocks.
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("blocked");
+    });
+  });
+
+  /**
+   * The settle transition must tolerate the run having reached an absorbing
+   * state independently — a `run.cancel` racing the drive. The drive's own
+   * `blocked`/`failed` transition is then an illegal edge from `cancelled`,
+   * which is expected: swallow it and leave the run cancelled.
+   */
+  it("does not throw when the run was cancelled out from under a settling drive", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const unhandled: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+          ),
+        ),
+      onDriveError: (_runId: string, err: unknown) => unhandled.push(err),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    // Cancel the run before/while the drive settles.
+    deps.runs.upsert({
+      runId: result.runId!,
+      changeSetId: CHANGE_SET_ID,
+      runState: "cancelled",
+      updatedAt: "2026-07-30T00:00:00.000Z",
+    });
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("cancelled");
+    });
+    // The settle must not have surfaced an IllegalTransitionError as a drive
+    // error — cancellation racing a settle is expected, not a failure.
+    expect(unhandled).toHaveLength(0);
   });
 });
 
