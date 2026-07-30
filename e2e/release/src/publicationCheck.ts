@@ -102,6 +102,22 @@ export interface CheckPublicationOptions {
   /** The release version being gated, e.g. `"1.0.0"` — presence of the NAME is not publication of the RELEASE. */
   readonly version: string;
   readonly runner: NpmViewRunner;
+  /**
+   * WHICH registry state satisfies the clause:
+   *   - `"published"` (default): the version MUST already be on the registry.
+   *     The POST-publish verification — the state a completed release is in.
+   *   - `"publishable"`: the version must NOT yet be on the registry, but the
+   *     name must resolve and the manifest be public — the PRE-publish gate.
+   *
+   * Both share the fail-closed floor (a private manifest, or an unreachable
+   * registry, blocks either way). The distinction exists because the release
+   * gate runs BEFORE publish, so requiring the version already-published there
+   * deadlocks the pipeline: publish is gated on the gate, and the gate cannot
+   * pass until publish happens. Pre-publish the honest question is "can this be
+   * published?", not "has it been?"; the latter is answered post-publish by the
+   * publish job's own registry re-check.
+   */
+  readonly expectation?: "published" | "publishable";
 }
 
 const E404_PATTERN = /\bE404\b|404 Not Found/;
@@ -167,6 +183,7 @@ export async function checkPublication(
     await options.runner.viewVersions(options.packageName),
   );
   const published = answered && versions.includes(options.version);
+  const expectation = options.expectation ?? "published";
 
   const reasons: string[] = [];
   if (manifestPrivate) {
@@ -185,7 +202,7 @@ export async function checkPublication(
         `${diagnostic}. The exit criterion's "package published" clause is therefore ` +
         `UNVERIFIED here.`,
     );
-  } else if (!published) {
+  } else if (expectation === "published" && !published) {
     reasons.push(
       unmet(
         `the npm registry reports that ${options.packageName}@${options.version} has never been ` +
@@ -193,6 +210,18 @@ export async function checkPublication(
           `running the real \`npm publish --provenance\` is an owner release action this gate ` +
           `deliberately never performs`,
       ),
+    );
+  } else if (expectation === "publishable" && published) {
+    // Pre-publish, an already-present version is the blocker: npm refuses to
+    // republish a version that has ever existed, so a tag that names one that
+    // is already live cannot be cut. "Not yet published" is the EXPECTED,
+    // ready state here and carries no reason.
+    reasons.push(
+      `the npm registry already serves ${options.packageName}@${options.version} ` +
+        `(registry-known versions: ${versions.join(", ")}); npm refuses to republish an existing ` +
+        `version, so this candidate cannot be cut — the tag or the version bump is stale. ` +
+        `Pre-publish the "package published" clause requires a PUBLISHABLE version; the published ` +
+        `state is verified after publish by the publish job's own registry re-check.`,
     );
   }
 

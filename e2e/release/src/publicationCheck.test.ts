@@ -130,6 +130,84 @@ describe("checkPublication — the exit criterion's `package published` clause",
   });
 });
 
+describe("checkPublication — `publishable` (pre-publish) expectation", () => {
+  async function checkPublishable(
+    packageJsonPath: string,
+    registry: NpmViewOutput,
+  ): Promise<Awaited<ReturnType<typeof checkPublication>>> {
+    return checkPublication({
+      packageJsonPath,
+      packageName: "crabgic",
+      version: "1.0.0",
+      runner: new FakeNpmViewRunner(registry),
+      expectation: "publishable",
+    });
+  }
+
+  it("PASSES with zero reasons when the version is NOT yet on the registry — the expected pre-publish state", async () => {
+    // The exact state that deadlocked the old gate: a freshly-bumped version
+    // the owner is about to publish. Pre-publish this must be a PASS.
+    const result = await checkPublishable(await seedManifest(PUBLISHED_MANIFEST), E404);
+    expect(result.registryAnswered).toBe(true);
+    expect(result.published).toBe(false);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("FAILS when the version is ALREADY published — npm refuses to republish, so the candidate cannot be cut", async () => {
+    const result = await checkPublishable(
+      await seedManifest(PUBLISHED_MANIFEST),
+      output({ stdout: '["0.9.0","1.0.0"]\n' }),
+    );
+    expect(result.published).toBe(true);
+    expect(result.reasons).toHaveLength(1);
+    expect(result.reasons[0]).toContain("already serves");
+    expect(result.reasons[0]).toContain("refuses to republish");
+  });
+
+  it("passes when the registry knows only OTHER versions — this version is still publishable", async () => {
+    const result = await checkPublishable(
+      await seedManifest(PUBLISHED_MANIFEST),
+      output({ stdout: '["0.9.0"]\n' }),
+    );
+    expect(result.published).toBe(false);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("STILL fails closed when the registry is unreachable — publishability cannot be assumed offline", async () => {
+    const result = await checkPublishable(
+      await seedManifest(PUBLISHED_MANIFEST),
+      output({ exitCode: 1, stderr: "npm error code ENOTFOUND\n" }),
+    );
+    expect(result.registryAnswered).toBe(false);
+    expect(result.reasons).toHaveLength(1);
+    expect(result.reasons[0]).toContain("fails CLOSED");
+  });
+
+  it("STILL reports a `private: true` manifest — a private package cannot be published in either phase", async () => {
+    const result = await checkPublishable(await seedManifest(PRIVATE_MANIFEST), E404);
+    expect(result.manifestPrivate).toBe(true);
+    expect(result.reasons.some((r) => r.includes('"private": true'))).toBe(true);
+  });
+
+  it("KNOWN ASYMMETRY: an uninterpretable zero-exit payload reads as zero-versions ⇒ publishable", async () => {
+    // A valid-JSON, zero-exit payload that is neither an array nor a string
+    // (`{}`, `42`) is read as zero known versions (interpretRegistryAnswer),
+    // so publishable mode PASSES where published mode would block. This is
+    // deliberately pinned, not fixed: `npm view … versions --json` never emits
+    // that shape (it returns an array, a bare string, or E404), and even if it
+    // did, a pre-publish PASS only lets the pipeline reach the REAL publish,
+    // which the strengthened exact-version post-publish re-check backstops.
+    const result = await checkPublishable(
+      await seedManifest(PUBLISHED_MANIFEST),
+      output({ stdout: "{}\n" }),
+    );
+    expect(result.registryAnswered).toBe(true);
+    expect(result.publishedVersions).toEqual([]);
+    expect(result.published).toBe(false);
+    expect(result.reasons).toEqual([]);
+  });
+});
+
 describe("RealNpmViewRunner — genuine `npm view` child process", () => {
   /**
    * FLIPPED AT THE 1.0.0 CUT. This asserted `published === false` — true for

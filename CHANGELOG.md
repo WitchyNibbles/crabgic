@@ -8,6 +8,41 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## 1.5.0
+
+A run that stops for a reason outside its control should not stop for good.
+
+**A rate-limit park now ends by itself.** When a worker hit an account or rate limit it was parked
+with its session retained — and then nothing continued it: the unit sat `parked` forever, and it
+could not even be re-dispatched fresh, because its original dispatch counted against the repair
+budget. A parked unit whose reset window has passed is now actively resumed, on the *same* adapter
+that spawned its session, so the continuation keeps full write authority instead of silently falling
+back to a read-only stranger. The retained adapters are keyed per run and survive across the
+daemon's re-drives, so `crabgic resume <run-id>` finds the session waiting. Honestly scoped:
+same-daemon only — a restart loses the in-memory session context (restart-safe resume remains a
+separate carry-forward), and the seam declines rather than resume read-only. A live probe proves the
+resumed session writes for real; adapters pinned by runs that ended out-of-band are swept so
+retention cannot leak.
+
+**Authority became reachable where it was stranded.** Approval is completable without couriering a
+token by hand; routine approval is decided by the standing policy rather than by asking; the
+calibration gate is reachable and certifies on a number that transfers; exit criteria are decided
+from evidence and from the artifact; the worker turn budget is an authority dimension rather than a
+hard-coded constant; and a run says so when it holds more authority than its plan needs.
+
+**Tool calls that ran unrecorded now go through adjudication.** Gateway MCP calls, and `Bash`,
+`Edit` and `Write`, were executing without an adjudication record; each is now gated and journaled.
+A run records what it costs, and `crabgic status <run-id>` answers "how far has it got?", not just
+"is it going?".
+
+**Correctness and release hygiene.** The repair-evidence budget and `recordAttempt`'s
+`previousStatus` are run-scoped, so a retry cut as a new run is no longer refused by a prior run's
+exhaustion; `resume` seeds finished work from the journal (and the now-redundant attempt cache was
+removed); a run transitions out of `running` when its drive ends in failure, so the change set stays
+retryable; `crabgic install` keeps an existing standing policy instead of clobbering it; `crabgic
+approve` is no longer offered as the remedy for an authority escalation, because it cannot be one;
+the release gate gates something; and several load-sensitive tests were fixed at their causes.
+
 ## 1.4.0
 
 Two things a review loop needs before it can run itself: an end, and permission to start.
