@@ -25,14 +25,23 @@ import {
  * `advisory` scores 0.9 raw and 0.0 kappa; only one of those numbers is honest.
  */
 
+/**
+ * `samplingSource: "random"` is explicit on every fixture, because the gate
+ * scores only the uniformly-drawn slice. A fixture that omitted it would default
+ * to `disposition` and be held out of scoring — which is the correct default (a
+ * targeted corpus biases kappa down) and makes every corpus below need to say
+ * out loud that it is a random one.
+ */
 function sample(
   owner: FindingClassification,
   classifier: FindingClassification,
+  samplingSource: CalibrationSample["samplingSource"] = "random",
 ): CalibrationSample {
   return {
     findingId: `${owner}-${classifier}-${Math.random().toString(36).slice(2)}`,
     owner,
     classifier,
+    samplingSource,
   };
 }
 
@@ -51,10 +60,16 @@ function corpus(counts: {
 }
 
 describe("scoreCalibration — agreement that cannot be faked by the common class", () => {
-  it("scores perfect agreement as kappa 1", () => {
+  it("scores perfect agreement as kappa 1 — but 20 perfect samples only reach `provisional`", () => {
     const result = scoreCalibration(corpus({ bb: 10, ba: 0, ab: 0, aa: 10 }));
     expect(result.kappa).toBeCloseTo(1, 5);
-    expect(result.calibrated).toBe(true);
+    // The redesign's central point. A flawless 20-sample corpus is not evidence
+    // that a classifier catches 70% of blockers in production: 10-of-10 perfect
+    // bounds recall at 0.74, and 8-of-8 at only 0.69. `provisional` says "not a
+    // decorative judge" and clears no stage.
+    expect(result.tier).toBe("provisional");
+    expect(result.calibrated).toBe(false);
+    expect(result.verdictReason).toContain("does NOT close a stage");
   });
 
   it("scores a classifier that always says `advisory` as kappa 0, not as 90% right", () => {
@@ -178,8 +193,10 @@ describe("scoreCalibration — the interval, not the point estimate", () => {
     expect(scoreCalibration(corpus({ bb: 5, ba: 0, ab: 0, aa: 55 })).verdictReason).toMatch(
       /blocking/i,
     );
-    expect(scoreCalibration(corpus({ bb: 9, ba: 1, ab: 1, aa: 9 })).verdictReason).toMatch(
-      /interval|confidence/i,
+    // 60% agreement on a balanced corpus: kappa 0.2, well under the screen, so
+    // the reason names the estimate and its bound rather than a sample count.
+    expect(scoreCalibration(corpus({ bb: 12, ba: 8, ab: 8, aa: 12 })).verdictReason).toMatch(
+      /lower bound|floor/i,
     );
     expect(scoreCalibration(corpus({ bb: 45, ba: 5, ab: 5, aa: 45 })).verdictReason).toMatch(
       /calibrated/i,
@@ -236,5 +253,109 @@ describe("scoreCalibration — samples are scoped to the rubric they judged", ()
     // judgements to avoid an ambiguity that does not exist.
     const result = scoreCalibration(corpus({ bb: 10, ba: 0, ab: 0, aa: 10 }));
     expect(result.sampleSize).toBe(20);
+  });
+});
+
+/**
+ * The tiers, and the arithmetic that motivated them.
+ *
+ * The gate this replaced was one threshold — kappa's 95% lower bound at 0.6 on
+ * 20 samples — asked to do two incompatible jobs at once: screen out a
+ * decorative judge, and certify one fit to close a stage. An exhaustive
+ * enumeration showed the threshold that does the second makes the first
+ * unreachable: exactly THREE of 117 reachable 20-sample tables passed, all at
+ * 19/20 agreement or better. A genuinely good classifier passed 39% of the time.
+ */
+describe("scoreCalibration — tiers", () => {
+  it("holds targeted samples out of scoring, and says how many it held out", () => {
+    // The bias this closes: `review.calibrate` deliberately surfaces findings
+    // whose disposition contradicts their classification, which is good triage
+    // and an error-enriched sample. Kappa over that pool is biased DOWN.
+    const random = corpus({ bb: 25, ba: 2, ab: 2, aa: 25 });
+    const targeted = [
+      ...Array.from({ length: 30 }, () => sample("blocking", "advisory", "disposition")),
+      ...Array.from({ length: 10 }, () => sample("advisory", "blocking", "low_confidence")),
+    ];
+
+    const result = scoreCalibration([...random, ...targeted]);
+    expect(result.randomSampleSize).toBe(54);
+    expect(result.excludedNonRandom).toBe(40);
+    // Scored on the random slice, so the 40 adversarially-selected samples do
+    // not drag the verdict down.
+    expect(result.tier).toBe("calibrated");
+    expect(result.verdictReason).toContain("targeted sample(s) held out");
+  });
+
+  it("reaches `calibrated` at 50+ samples with 20+ blocking labels and both recalls proven", () => {
+    const result = scoreCalibration(corpus({ bb: 27, ba: 3, ab: 3, aa: 27 }));
+    expect(result.tier).toBe("calibrated");
+    expect(result.calibrated).toBe(true);
+    expect(result.blockingRecallLowerBound).toBeGreaterThanOrEqual(0.7);
+    expect(result.advisoryRecallLowerBound).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it("stays `provisional` when the corpus is big enough for kappa but not for a recall claim", () => {
+    // 24 samples, 12 blocking: kappa is strong, and 12 blocking labels cannot
+    // prove recall >= 0.7 even at 12/12 (the bound is 0.779 there, but the tier
+    // also requires 20 blocking labels before it will believe a projection).
+    const result = scoreCalibration(corpus({ bb: 12, ba: 0, ab: 0, aa: 12 }));
+    expect(result.tier).toBe("provisional");
+    expect(result.calibrated).toBe(false);
+    expect(result.verdictReason).toMatch(/more blocking label|more random sample/);
+  });
+
+  it("reaches `strongly-calibrated` only at 100+ samples with the tighter floors", () => {
+    const justCalibrated = scoreCalibration(corpus({ bb: 27, ba: 3, ab: 3, aa: 27 }));
+    expect(justCalibrated.tier).toBe("calibrated");
+
+    const strong = scoreCalibration(corpus({ bb: 55, ba: 3, ab: 3, aa: 55 }));
+    expect(strong.tier).toBe("strongly-calibrated");
+    expect(strong.blockingRecallLowerBound).toBeGreaterThanOrEqual(0.75);
+    expect(strong.kappaLowerBound).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("refuses to certify a classifier that is blind to blockers, however high its raw agreement", () => {
+    // 90% advisory corpus, classifier says `advisory` always: 0.9 raw agreement,
+    // 0 kappa, and blocking recall of exactly zero.
+    const result = scoreCalibration(corpus({ bb: 0, ba: 30, ab: 0, aa: 270 }));
+    expect(result.rawAgreement).toBeCloseTo(0.9, 5);
+    expect(result.blockingRecall).toBe(0);
+    expect(result.blockingRecallLowerBound).toBe(0);
+    expect(result.tier).toBe("uncalibrated");
+  });
+
+  /**
+   * Why per-class recall replaced kappa as the certifying number: kappa does not
+   * transfer across prevalence, and the corpus is deliberately stratified.
+   */
+  it("projects production precision, showing the same classifier looks different at a different blocking rate", () => {
+    // ~0.9 sensitivity and ~0.9 specificity.
+    const result = scoreCalibration(corpus({ bb: 45, ba: 5, ab: 5, aa: 45 }));
+    const atCorpusRate = result.projectedPrecisionAt(0.5);
+    const atProductionRate = result.projectedPrecisionAt(0.1);
+
+    expect(atCorpusRate).toBeDefined();
+    expect(atProductionRate).toBeDefined();
+    // Strong on a balanced corpus; one false alarm per real blocker at a 10%
+    // production rate. Nothing about the classifier changed.
+    expect(atCorpusRate!).toBeGreaterThan(0.85);
+    expect(atProductionRate!).toBeLessThan(0.55);
+  });
+
+  it("declines to project from a rate nothing measured, rather than returning a decimal-pointed guess", () => {
+    const oneClassOnly = scoreCalibration(corpus({ bb: 0, ba: 0, ab: 0, aa: 60 }));
+    expect(oneClassOnly.projectedPrecisionAt(0.1)).toBeUndefined();
+
+    const usable = scoreCalibration(corpus({ bb: 45, ba: 5, ab: 5, aa: 45 }));
+    expect(usable.projectedPrecisionAt(0)).toBeUndefined();
+    expect(usable.projectedPrecisionAt(1)).toBeUndefined();
+  });
+
+  it("never reports `calibrated` while the kappa lower bound is under the provisional floor", () => {
+    // The fail-closed direction: a large corpus with poor agreement must not
+    // reach a certifying tier just by being large.
+    const result = scoreCalibration(corpus({ bb: 30, ba: 25, ab: 25, aa: 30 }));
+    expect(result.tier).toBe("uncalibrated");
+    expect(result.calibrated).toBe(false);
   });
 });

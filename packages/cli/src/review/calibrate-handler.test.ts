@@ -119,7 +119,12 @@ describe("runReviewCalibrate — recording the owner's call", () => {
     // still said zero would be reporting the state before the call that changed it.
     expect(result.calibration?.sampleSize).toBe(2);
     expect(result.calibration?.calibrated).toBe(false);
-    expect(result.calibration?.verdictReason).toMatch(/more classified findings/);
+    // Both labels came through the targeted path (the default provenance), so
+    // neither scores: the gate reports what exists and what it still needs,
+    // rather than claiming nobody has labelled anything.
+    expect(result.calibration?.randomSampleSize).toBe(0);
+    expect(result.calibration?.excludedNonRandom).toBe(2);
+    expect(result.calibration?.verdictReason).toMatch(/none were uniformly drawn/);
   });
 });
 

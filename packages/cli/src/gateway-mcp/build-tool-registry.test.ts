@@ -645,7 +645,10 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
     expect(body.calibration?.sampleSize).toBe(1);
     // Still uncalibrated, and now for the right reason: not "nobody has looked"
     // but "one sample is not a measurement".
-    expect(body.calibration?.verdictReason).toMatch(/more classified findings/i);
+    // Targeted-by-default provenance: labels exist, none score yet.
+    expect(body.calibration?.verdictReason).toMatch(
+      /none were uniformly drawn|more classified findings/i,
+    );
     expect(body.candidatesTotal).toBe(0);
   });
 
