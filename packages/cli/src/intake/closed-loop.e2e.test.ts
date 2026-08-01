@@ -26,7 +26,12 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
-import { EnvelopePolicySchema, type EnvelopePolicy } from "@crabgic/contracts";
+import {
+  EnvelopePolicySchema,
+  isWorkUnitAttemptStatusTerminal,
+  type EnvelopePolicy,
+  type WorkUnitAttemptStatus,
+} from "@crabgic/contracts";
 import {
   computeIntentContractId,
   computeRequirementId,
@@ -59,6 +64,40 @@ beforeEach(async () => {
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
+
+/**
+ * Waits until the dispatched drive has stopped writing to the journal.
+ *
+ * `beginDriving` is deliberately not awaited (`../daemon/run-dispatcher.ts`
+ * says so in as many words), so `dispatch` answers while the drive is still
+ * running. These tests used to wait only for the FIRST `work_unit_transition`
+ * and then return — which let `afterEach` delete the temp directory out from
+ * under a drive that was still journaling into it, and the suite failed
+ * intermittently with `ENOTEMPTY` while passing in isolation, because the
+ * race only opens under full-suite load.
+ *
+ * A TERMINAL attempt status is the deterministic settle point for these
+ * fixtures: they dispatch exactly one work unit, `driveRun`'s `finish` is a
+ * pure result constructor that journals nothing, and the completed branch of
+ * `terminalStateFor` writes no run transition either — so the terminal
+ * `work_unit_transition` really is the drive's last write. Waiting for it is
+ * also a strictly stronger assertion than "some transition happened": the
+ * unit now has to actually reach a terminal status.
+ */
+async function waitForDriveToSettle(): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      const statuses: WorkUnitAttemptStatus[] = [];
+      for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
+        // `queryEntries`' filter is a runtime narrowing the compiler cannot
+        // see, so the discriminant is re-checked here to reach `payload`.
+        if (entry.type === "work_unit_transition") statuses.push(entry.payload.status);
+      }
+      expect(statuses.some((status) => isWorkUnitAttemptStatusTerminal(status))).toBe(true);
+    },
+    { timeout: 10_000 },
+  );
+}
 
 function intakeRequest(): IntakeRequest {
   return {
@@ -317,16 +356,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
 
     // A real run exists, and real work actually ran under it.
     expect(runs.get(parsed.dispatch.runId!)?.runState).toBe("running");
-    await vi.waitFor(
-      async () => {
-        const transitions: unknown[] = [];
-        for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
-          transitions.push(entry);
-        }
-        expect(transitions.length).toBeGreaterThan(0);
-      },
-      { timeout: 10_000 },
-    );
+    await waitForDriveToSettle();
   });
 });
 
@@ -342,16 +372,7 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
     expect(outcome.runId).toMatch(/^[0-9a-f-]{36}$/);
     expect(runs.get(outcome.runId!)?.runState).toBe("running");
 
-    await vi.waitFor(
-      async () => {
-        const transitions: unknown[] = [];
-        for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
-          transitions.push(entry);
-        }
-        expect(transitions.length).toBeGreaterThan(0);
-      },
-      { timeout: 10_000 },
-    );
+    await waitForDriveToSettle();
   });
 
   /**
