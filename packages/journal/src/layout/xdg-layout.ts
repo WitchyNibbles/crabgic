@@ -83,6 +83,9 @@ export function resolveStateRoot(env: XdgEnv, projectHash: string): string {
  * nest directly under this exact path; 04 pins the root only, 07/12 own
  * writing under it.
  */
+/** File name of the journal head anchor, a sibling of the journal directory. */
+export const JOURNAL_HEAD_ANCHOR_FILE_NAME = "journal-head.anchor.json";
+
 export function resolveCacheRoot(env: XdgEnv, projectHash: string): string {
   return join(resolveXdgCacheHome(env), CRABGIC_DIR_NAME, projectHash);
 }
@@ -90,6 +93,18 @@ export function resolveCacheRoot(env: XdgEnv, projectHash: string): string {
 /** `.../journal/` under the state root — segments + snapshots both nest here (see `resolveJournalSegmentsDir`/`resolveJournalSnapshotsDir`). */
 export function resolveJournalDir(env: XdgEnv, projectHash: string): string {
   return join(resolveStateRoot(env, projectHash), JOURNAL_STATE_SUBDIR);
+}
+
+/**
+ * `.../journal-head.anchor.json` — the recorded chain head.
+ *
+ * Deliberately a SIBLING of `journal/`, not a file inside it: the anchor's
+ * whole job is to be a record kept apart from the thing it describes, and
+ * nesting it under the directory it vouches for makes "copy the anchor
+ * off-host" awkward and "rewrite both together" trivial.
+ */
+export function resolveJournalHeadAnchorPath(env: XdgEnv, projectHash: string): string {
+  return join(resolveStateRoot(env, projectHash), JOURNAL_HEAD_ANCHOR_FILE_NAME);
 }
 
 /** `.../journal/segments/` — where `appendEntry` writes ndjson segment files. */

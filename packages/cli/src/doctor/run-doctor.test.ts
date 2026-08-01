@@ -8,6 +8,9 @@ import { buildDefaultDoctorChecks, runDoctor } from "./run-doctor.js";
 
 const fakeJournal = {
   verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }),
+  queryEntries: async function* () {
+    /* an empty journal — the head-anchor check reads entries, not segments */
+  },
 };
 
 describe("buildDefaultDoctorChecks", () => {
@@ -21,6 +24,7 @@ describe("buildDefaultDoctorChecks", () => {
       "git.plumbing",
       "xdg.permissions",
       "journal.chain",
+      "journal.head-anchor",
       "wsl2.warnings",
     ]);
   });
@@ -29,7 +33,7 @@ describe("buildDefaultDoctorChecks", () => {
 describe("runDoctor", () => {
   it("runs to completion against real (possibly-absent) host binaries without crashing", async () => {
     const report = await runDoctor({ projectHash: "abc123", journal: fakeJournal });
-    expect(report.findings).toHaveLength(8);
+    expect(report.findings).toHaveLength(9);
     // Every finding is well-formed regardless of pass/fail.
     for (const finding of report.findings) {
       expect(typeof finding.passed).toBe("boolean");

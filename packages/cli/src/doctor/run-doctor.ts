@@ -8,6 +8,7 @@
 import {
   readXdgEnvFromProcess,
   resolveCacheRoot,
+  resolveJournalHeadAnchorPath,
   resolveStateRoot,
   type JournalStore,
   type XdgEnv,
@@ -25,6 +26,7 @@ import { createAuthProbeCheck, type AuthState } from "./checks/auth-probe.js";
 import { createGitPlumbingCheck } from "./checks/git-plumbing.js";
 import { createXdgPermissionsCheck } from "./checks/xdg-permissions.js";
 import { createJournalChainCheck } from "./checks/journal-chain.js";
+import { createJournalHeadAnchorCheck } from "./checks/journal-head-anchor.js";
 import { createWsl2WarningsCheck } from "./checks/wsl2-warnings.js";
 import { buildStandingPolicyCheck } from "./checks/standing-policy.js";
 import { createChecksumDriftCheck } from "./checks/checksum-drift.js";
@@ -33,7 +35,7 @@ import { createCapabilityManifestFreshnessCheck } from "./checks/capability-mani
 
 export interface RunDoctorOptions {
   readonly projectHash: string;
-  readonly journal: Pick<JournalStore, "verifyJournal">;
+  readonly journal: Pick<JournalStore, "verifyJournal" | "queryEntries">;
   /** Injectable auth resolver — defaults to "missing" (no credential-reading side effects at doctor-build time unless a real one is supplied by the caller). */
   readonly resolveAuthState?: () => Promise<AuthState>;
   /** Injectable XDG env — defaults to `readXdgEnvFromProcess()` (real process env). Overridable for tests that need a deterministic state/cache/socket path without mutating real process env. */
@@ -89,6 +91,13 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
       ],
     }),
     createJournalChainCheck({ journal: options.journal }),
+    // The companion to the chain check: `verifyJournal()` cannot see a
+    // wholesale rewrite (a re-chained history verifies clean), so the anchor
+    // is what makes one detectable at all.
+    createJournalHeadAnchorCheck({
+      journal: options.journal,
+      anchorPath: resolveJournalHeadAnchorPath(xdgEnv, options.projectHash),
+    }),
     createWsl2WarningsCheck({
       isWsl2: detectWsl2,
       stateRootPath: stateRoot,
