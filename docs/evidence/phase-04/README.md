@@ -47,13 +47,14 @@ skipped.
 | What | Evidence file |
 | --- | --- |
 | Package-scoped gate (`tsc -b packages/journal` clean; `vitest run --coverage.enabled=false packages/journal` all green; full-package coverage run) | `exit-criteria-package-gate.txt` |
+| **Post-phase fix 3 (2026-08-01)** — the lease publish-window TOCTOU: exit criterion 4 ("two-process lease contention resolves to exactly one holder") was not actually held by the shipped code. See the section below. | `fix3-lease-publish-toctou-failing.txt` (RED), `fix3-lease-publish-toctou-passing.txt` (GREEN) |
 
 ## Deviations
 
 0. **Coverage-driven additions after the initial RED/GREEN captures.** After the initial `wi5-idempotency-passing.txt` (9/9) and `wi5-attempts-passing.txt` (6/6) captures, this worker's own full-package coverage run (`npx vitest run --coverage packages/journal`) showed `idempotency.ts` and `attempts.ts` branch coverage just under 80% (71.42% and 75% respectively) — both gaps were defensive type-guard branches ("should never happen through the normal query path, guarded defensively"). Rather than leave them uncovered, the guarded logic was extracted into standalone exported functions (`assertRemoteOperationRecordEntry`, `toAttemptRecord`) and directly unit-tested with hand-crafted wrong-type `JournalEntry` fixtures, plus three more idempotency tests covering hand-crafted-fixture edge cases the source's own comments already named (a duplicate `remote_operation_record` for one `operationId`; a record with no `appliedRevision`; a wrong-typed entry reaching the index-building scan via a fake store). Final counts: `idempotency.test.ts` 13/13 (100% line/branch/function coverage), `attempts.test.ts` 7/7 (100%/81.25%/100%/100%). This is why the exit-criteria table above cites both the original and final test counts.
 1. **Idempotency registry journal-entry-type decision (work item 5's own "decide and document" instruction).** `IdempotencyRegistry` (`packages/journal/src/idempotency.ts`) persists every record as a `remote_operation_record` entry — the only one of the 13 closed `JournalEntryType` members shaped for an `(operationId, contentHash, status)` triple, and `JOURNAL_ENTRY_TYPE_DESCRIPTIONS.remote_operation_record` itself is captioned "...16's idempotency registry, 04," already tying this entry type to 04's own registry, not solely 16's pipeline. Since `RemoteOperationRecordSchema` (02, out of this package's authority to extend) has no free-form "result" field, the registry's own arbitrary `compute()` result is JSON-serialized into the `appliedRevision` field (documented as a deliberate, narrow reuse of that field's free-text shape) and `remoteMutationPlanId` (required, UUID) is set to the record's own freshly generated `id` — a documented self-referential placeholder for callers with no real `RemoteMutationPlan`. Full rationale in `idempotency.ts`'s own file-level doc comment.
 2. **Idempotency registry concurrency limitation (documented, mirroring `lease.ts`'s own residual-race precedent).** `checkOrRecord` is proven correct under sequential calls (including via a fast-check property suite) but is NOT safe against two truly concurrent, overlapping FIRST-time calls for the same never-before-seen `operationId` — both could observe "no prior record" before either persists. Closing this fully requires an atomic claim primitive this module does not implement (out of scope for this phase per the roadmap's own text: 04 supplies the primitive, not a distributed lock). See `idempotency.ts`'s "CONCURRENCY" doc-comment section.
-3. **W4's documented lease-takeover TOCTOU residual (pre-existing, left as-is per this worker's brief).** `packages/journal/src/lease.ts`'s `tryAcquireOnce` doc comment documents a residual race in the CONTENDED/takeover path: two processes can both independently pass eligibility and both `rename()` in quick succession; if a loser's post-rename verification read is scheduled between the two `rename()` calls (rather than strictly after both), it can incorrectly believe it won too. Not touched by this worker, per explicit brief instruction ("leave as is").
+3. **W4's documented lease-takeover TOCTOU residual (pre-existing, left as-is per this worker's brief).** `packages/journal/src/lease.ts`'s `tryAcquireOnce` doc comment documents a residual race in the CONTENDED/takeover path: two processes can both independently pass eligibility and both `rename()` in quick succession; if a loser's post-rename verification read is scheduled between the two `rename()` calls (rather than strictly after both), it can incorrectly believe it won too. Not touched by this worker, per explicit brief instruction ("leave as is"). **STILL OPEN as of 2026-08-01**, with a sharpened precondition — see the post-phase fix 3 section below: reaching the takeover path now requires a genuinely corrupt or genuinely expired-and-dead holder record, a state no correct post-fix process can produce, so the residual can no longer be reached by two healthy daemons merely starting at the same time. The `${path}.takeover-lock` mutex the doc comment itself proposes is flagged for the coordinated hardening round, not taken drive-by.
 4. **A one-off flake was observed in `lease.test.ts`'s two-real-child-process `O_EXCL` contention test** (`"exactly one of two real, concurrently-spawned child processes acquires the lease"`) when run as part of the FULL `packages/journal` suite immediately after a heavy prior run (the 1000-iteration crash suite). Re-run three times immediately after, alone and as part of the full suite, and passed cleanly every time — this looks like transient system-load-induced timing sensitivity in a test that spawns two real OS processes and asserts on real `O_EXCL` race timing, not a regression introduced by this integration pass (this worker did not modify `lease.ts`/`lease.test.ts`/`lease-fixtures/**`). Recorded here for transparency; the final package-gate capture (`exit-criteria-package-gate.txt`) shows a clean run.
 5. **Crash suite: two bugs found and fixed while building `packages/journal/src/crash-fixtures/**` (this worker's own new code, not a prior worker's).**
    - The initial seeded PRNG in `crash-suite.test.ts` used plain `state * 1103515245`, which silently overflows JS's 53-bit float mantissa for `state` values above ~8.1M, producing a badly degenerate sequence (every iteration picked the same mode/fault point). Fixed to use `Math.imul` for real 32-bit integer multiplication.
@@ -251,6 +252,75 @@ testable API, unchanged). Barrel-exported. New test file: `lease-project.test.ts
 Nothing scoped to this fix pass is incomplete. The pre-existing, already-documented
 `tryAcquireOnce` takeover-race TOCTOU residual (Deviation #3 above) remains open by
 explicit brief instruction — unchanged, not this pass's scope.
+
+## Post-phase fix 3 (2026-08-01) — the lease publish window was not exclusive
+
+**Defect** (`lease-acquire.ts`, pre-fix `writeExclusive`/`tryAcquireOnce`). Exit criterion 4
+above — "two-process lease contention resolves to exactly one holder" — was **not actually
+held by the shipped code**, and the integration test that certifies it was the flake that
+kept saying so. Publishing a fresh lease was `open(path, "wx")` followed by a *separate*
+`writeFile`, so between the two syscalls the lease path existed and was **empty**. A
+contender's own `open(path, "wx")` failed `EEXIST`, its read returned `""`,
+`parseLeaseRecord("")` returned `undefined`, and `isTakeoverEligible(undefined, ...)` returns
+`true` **unconditionally** — never consulting pid liveness, so the real-pid fix that closed
+the second cause of this same flake (PR #43) was bypassed entirely. The contender `rename`d
+its record over the holder's path and both returned `acquired`. Measured at **9 double
+acquires in 11,000 two-process races** on an idle machine; the window never opens for two
+in-process acquirers (one event loop queues the winner's write continuation ahead of the
+loser's read), which is why only the two-real-child-process test ever caught it, and only
+as a probability.
+
+Production impact was not theoretical: two near-simultaneous `bootSupervisor` calls are an
+expected event that `ensure-supervisor.ts` explicitly declares safe *because* "the daemon's
+own lease would refuse it anyway", `appendEntry` takes no lock of its own, and a
+double-acquire also converts into a premature *release* — `bootSupervisor`'s compose-failure
+path releases a lease it double-acquired, and `#release`'s `stillOurs` check passes for the
+rename winner, unlinking the first daemon's lease out from under its live writers.
+
+**Fix**, three coordinated changes, all inside `packages/journal`:
+
+1. **Write-then-link publish.** `writeExclusive` split into `stageExclusive` (the old body —
+   still used for the takeover temp file and `lease.ts`'s renew temp file, both privately
+   named and read by nobody) and `publishExclusive`, which stages the complete, fsynced
+   record under `<leasePath>.stage-<pid>-<now>-<rand>` and then `link()`s it into place.
+   `link(2)` fails `EEXIST` exactly like an `O_EXCL` create, so the single-winner property is
+   unchanged — but the published name already has its bytes. The stage file is unlinked on
+   every path; a crash between stage and link leaves an inert `*.stage-*` file, the same
+   accepted residue class as the existing `*.tmp-*` files.
+2. **`EEXIST`-then-`ENOENT` re-enters the exclusive create**, via a bounded 3-pass loop,
+   instead of falling into the rename takeover. The takeover publishes by `rename()`, which
+   *cannot lose*, so it would silently clobber a third process that legitimately linked the
+   lease between the contended read and the rename. Loop exhaustion returns `denied` with
+   `LeaseAcquireRaceLostError`, claiming nothing; `Lease.acquire`'s own `maxAcquireAttempts`
+   retry still sits above it.
+3. **Only `ENOENT` means absent.** The contended read propagates every other error
+   (`EACCES`/`EISDIR`/`EIO`) instead of `.catch(() => undefined)`, which used to make an
+   unreadable lease fail *open* into a takeover. "Present but unparseable" keeps its meaning —
+   immediate self-heal takeover — and that is now sound, because after change 1 no correct
+   process can leave a partial or empty lease file.
+
+Public API unchanged: `writeExclusive`/`tryAcquireOnce` are not in the `@crabgic/journal`
+barrel and appear nowhere in `docs/interface-ledger.md`, so **no ledger edit was needed and
+none was made**. `packages/cli/src/approval/durable-approval-ledger.ts`'s per-token leases
+inherit the fix with no change, since they go through `Lease.acquire`.
+
+**Regression evidence**: `fix3-lease-publish-toctou-failing.txt` (RED — both new pins failing
+against the unfixed publish path: `["acquired","acquired"]` for the empty-window race, and
+two simultaneous claimants for the `EEXIST`-then-`ENOENT` route),
+`fix3-lease-publish-toctou-passing.txt` (GREEN, same assertions plus the publish-atomicity,
+bounded-loop and error-propagation units). The new pins live in
+`packages/journal/src/lease-acquire.test.ts` and force the interleaving through a
+`TryAcquireHooks` DI seam rather than hoping for it — all three historical causes of this
+flake now have a deterministic unit-level pin that names them.
+
+**The two-real-child-process integration test is unchanged in substance** — it remains
+exit criterion 4's end-to-end proof, and its comment block now records the third cause.
+
+**Flagged for the coordinated hardening round, deliberately not taken here**: W4's takeover
+residual (Deviation #3, now with a sharpened precondition), and `roadmap/04`'s work item 6
+wording "Lease module (`O_EXCL` create, ...)", which describes a mechanism that is now a
+staged write plus an atomic link publish. Editing a phase file drive-by is out of scope for
+a defect fix.
 
 ## Design decisions recorded (within this worker's authority, not ambiguities)
 
