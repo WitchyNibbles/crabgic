@@ -187,7 +187,7 @@ describe("dispatchCommand — real backends", () => {
       findings: readonly unknown[];
       allPassed: boolean;
     };
-    expect(parsed.findings).toHaveLength(9);
+    expect(parsed.findings).toHaveLength(10);
     expect(typeof parsed.allPassed).toBe("boolean");
   });
 

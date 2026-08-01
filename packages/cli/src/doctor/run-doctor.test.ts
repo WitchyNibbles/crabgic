@@ -25,6 +25,7 @@ describe("buildDefaultDoctorChecks", () => {
       "xdg.permissions",
       "journal.chain",
       "journal.head-anchor",
+      "journal.writer-separation",
       "wsl2.warnings",
     ]);
   });
@@ -33,7 +34,7 @@ describe("buildDefaultDoctorChecks", () => {
 describe("runDoctor", () => {
   it("runs to completion against real (possibly-absent) host binaries without crashing", async () => {
     const report = await runDoctor({ projectHash: "abc123", journal: fakeJournal });
-    expect(report.findings).toHaveLength(9);
+    expect(report.findings).toHaveLength(10);
     // Every finding is well-formed regardless of pass/fail.
     for (const finding of report.findings) {
       expect(typeof finding.passed).toBe("boolean");
