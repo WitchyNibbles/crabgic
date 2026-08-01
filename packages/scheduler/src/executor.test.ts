@@ -22,6 +22,8 @@ import {
 } from "./errors.js";
 import { DEFAULT_PACKET_FIELD_BUDGETS } from "./budgets.js";
 import { parkWorkUnit } from "./parking.js";
+import { buildRequirement } from "@crabgic/testkit";
+import type { Requirement } from "@crabgic/contracts";
 
 const WORK_UNIT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -47,6 +49,7 @@ describe("dispatchAttempt", () => {
 
     const outcome = await dispatchAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet,
       profile: buildMinimalCompiledProfile(),
@@ -75,6 +78,7 @@ describe("dispatchAttempt", () => {
     await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -99,6 +103,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -138,6 +143,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -153,6 +159,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -173,6 +180,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -189,6 +197,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -205,6 +214,7 @@ describe("dispatchAttempt", () => {
     const outcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -239,6 +249,7 @@ describe("dispatchAttempt", () => {
       dispatchAttempt({
         adapter,
         journal: store,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         packet: oversizedPacket,
         profile: buildMinimalCompiledProfile(),
         adjudicate: allowAllAdjudicate,
@@ -272,6 +283,7 @@ describe("dispatchAttempt", () => {
       dispatchAttempt({
         adapter,
         journal: store,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
         profile: buildMinimalCompiledProfile(),
         adjudicate: allowAllAdjudicate,
@@ -296,6 +308,7 @@ describe("dispatchAttempt", () => {
         buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
       ),
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -335,6 +348,7 @@ describe("resumeAttempt", () => {
     const parkOutcome = await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -350,6 +364,7 @@ describe("resumeAttempt", () => {
     };
     const resumeOutcome = await resumeAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       sessionRef,
       workUnitId: WORK_UNIT_ID,
@@ -377,6 +392,7 @@ describe("resumeAttempt", () => {
       await dispatchAttempt({
         adapter: new FakeEngineAdapter(script),
         journal: store,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
         adjudicate: allowAllAdjudicate,
@@ -405,6 +421,7 @@ describe("resumeAttempt", () => {
     await expect(
       resumeAttempt({
         adapter,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         sessionRef,
         workUnitId,
@@ -425,6 +442,7 @@ describe("resumeAttempt", () => {
       await dispatchAttempt({
         adapter: new FakeEngineAdapter(script),
         journal: store,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
         adjudicate: allowAllAdjudicate,
@@ -452,6 +470,7 @@ describe("resumeAttempt", () => {
     await dispatchAttempt({
       adapter,
       journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       packet: buildTaskPacket({ workUnitId: "20202020-0000-4000-8000-000000000000" }),
       profile: buildMinimalCompiledProfile(),
       adjudicate: allowAllAdjudicate,
@@ -466,6 +485,7 @@ describe("resumeAttempt", () => {
 
     const resumeOutcome = await resumeAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       sessionRef,
       workUnitId,
@@ -502,6 +522,7 @@ describe("resumeAttempt", () => {
     await expect(
       resumeAttempt({
         adapter,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         sessionRef,
         workUnitId: WORK_UNIT_ID,
@@ -511,5 +532,114 @@ describe("resumeAttempt", () => {
       }),
     ).rejects.toThrow(GlobalPauseActiveError);
     expect(resumeCalled).toBe(false);
+  });
+});
+
+/**
+ * roadmap/24 WI5 — THE HEADLINE. Everything else in the phase records the
+ * bar; this is what makes it mean something. A worker that reports success
+ * after rewriting the criteria it was judged against must not have that
+ * success accepted.
+ *
+ * The check runs at the ONE funnel where completion is accepted, before
+ * `recordAttempt(..., "succeeded")`, and the seal context is a REQUIRED
+ * option so a caller cannot reach that funnel without saying what bar
+ * applies — the donor's first seal was reachable only through an optional
+ * parameter, and its daemon path silently skipped it.
+ */
+describe("dispatchAttempt — acceptance-criteria seal enforcement", () => {
+  const REQ_ID = "aaaaaaaa-1111-4111-8111-111111111111";
+
+  function sealedRequirement(criteria: string[] = ["The login form submits"]): Requirement {
+    return buildRequirement({ id: REQ_ID, acceptanceCriteria: criteria });
+  }
+
+  function succeedingAdapter(): FakeEngineAdapter {
+    return new FakeEngineAdapter(
+      buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+    );
+  }
+
+  it("accepts a success whose criteria still match what was approved", async () => {
+    const requirement = sealedRequirement();
+    const outcome = await dispatchAttempt({
+      adapter: succeedingAdapter(),
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      criteriaSeal: {
+        requirements: [requirement],
+        approvalSeal: {
+          changeSetId: "22222222-2222-4222-8222-222222222222",
+          criteriaHashes: { [REQ_ID]: requirement.criteriaHash },
+        },
+      },
+    });
+
+    expect(outcome.kind).toBe("succeeded");
+    expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe("succeeded");
+  });
+
+  it("REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded", async () => {
+    const approved = sealedRequirement(["The login form submits"]);
+    // The worker's own, widened bar — self-consistent, hash recomputed.
+    const widened = sealedRequirement(["Anything at all is acceptable"]);
+
+    const outcome = await dispatchAttempt({
+      adapter: succeedingAdapter(),
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      criteriaSeal: {
+        requirements: [widened],
+        approvalSeal: {
+          changeSetId: "22222222-2222-4222-8222-222222222222",
+          criteriaHashes: { [REQ_ID]: approved.criteriaHash },
+        },
+      },
+    });
+
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind !== "failed") throw new Error("unreachable");
+    expect(outcome.diagnostics.join(" ")).toContain("approval_seal_mismatch");
+
+    // The journal must not carry a `succeeded` for a unit that rewrote its bar.
+    const latest = await getLatestAttempt(store, WORK_UNIT_ID);
+    expect(latest?.status).toBe("failed");
+  });
+
+  it("REFUSES a success when the change set was never sealed — fail-closed, not fail-open", async () => {
+    const outcome = await dispatchAttempt({
+      adapter: succeedingAdapter(),
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      criteriaSeal: { requirements: [sealedRequirement()], approvalSeal: undefined },
+    });
+
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind !== "failed") throw new Error("unreachable");
+    expect(outcome.diagnostics.join(" ")).toContain("no_approval_seal");
+    expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe("failed");
+  });
+
+  it("a unit with no requirements of its own is accepted — the seal constrains, it does not invent work", async () => {
+    const outcome = await dispatchAttempt({
+      adapter: succeedingAdapter(),
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+    });
+
+    expect(outcome.kind).toBe("succeeded");
   });
 });

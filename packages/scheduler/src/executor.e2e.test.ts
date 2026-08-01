@@ -105,6 +105,7 @@ describe("E2E: 3-unit DAG with forced overlap (two serialize, one proceeds indep
     const [outcomeA, outcomeC] = await Promise.all([
       dispatchAttempt({
         adapter: adapterA,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId: A }),
         profile: buildMinimalCompiledProfile(),
@@ -113,6 +114,7 @@ describe("E2E: 3-unit DAG with forced overlap (two serialize, one proceeds indep
       }),
       dispatchAttempt({
         adapter: adapterC,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId: C }),
         profile: buildMinimalCompiledProfile(),
@@ -137,6 +139,7 @@ describe("E2E: 3-unit DAG with forced overlap (two serialize, one proceeds indep
     );
     const outcomeB = await dispatchAttempt({
       adapter: adapterB,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId: B }),
       profile: buildMinimalCompiledProfile(),
@@ -173,6 +176,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
 
     const initialOutcome = await dispatchAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId: D }),
       profile: buildMinimalCompiledProfile(),
@@ -195,6 +199,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     // it does not, in the dedicated cap-exhaustion test below).
     const repairOutcome = await resumeAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       sessionRef,
       workUnitId: D,
@@ -214,6 +219,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
       });
       await dispatchAttempt({
         adapter: new FakeEngineAdapter(script),
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
@@ -240,6 +246,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     await expect(
       resumeAttempt({
         adapter,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         sessionRef,
         workUnitId,
@@ -263,6 +270,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     });
     await dispatchAttempt({
       adapter: new FakeEngineAdapter(failScript1),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -271,6 +279,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     });
     await dispatchAttempt({
       adapter: new FakeEngineAdapter(failScript2),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -292,6 +301,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     await expect(
       dispatchAttempt({
         adapter: thirdAdapter,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
@@ -304,6 +314,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     // ... but WITH fresh evidence, the 3rd (final) attempt is allowed.
     const thirdOutcome = await dispatchAttempt({
       adapter: thirdAdapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -316,6 +327,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     await expect(
       dispatchAttempt({
         adapter: thirdAdapter,
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
@@ -330,6 +342,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     const violatingScript = buildFakeEngineScript({ failure: { kind: "schemaViolation" } });
     const outcome1 = await dispatchAttempt({
       adapter: new FakeEngineAdapter(violatingScript),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -341,6 +354,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     // Repair 1, citing the schema-violation evidence — allowed.
     const outcome2 = await dispatchAttempt({
       adapter: new FakeEngineAdapter(violatingScript),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -353,6 +367,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     // still allowed (this is the 2nd repair, cap not yet reached).
     const outcome3 = await dispatchAttempt({
       adapter: new FakeEngineAdapter(violatingScript),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -367,6 +382,7 @@ describe("E2E: crash mid-attempt → repair with fresh diagnostic evidence", () 
     await expect(
       dispatchAttempt({
         adapter: new FakeEngineAdapter(violatingScript),
+        criteriaSeal: { requirements: [], approvalSeal: undefined },
         journal: store,
         packet: buildTaskPacket({ workUnitId }),
         profile: buildMinimalCompiledProfile(),
@@ -394,6 +410,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
 
     const parkOutcome = await dispatchAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),
@@ -427,6 +444,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
     };
     const resumeOutcome = await resumeAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: freshStore,
       sessionRef,
       workUnitId,
@@ -456,6 +474,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
           failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
         }),
       ),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId: workUnitG }),
       profile: buildMinimalCompiledProfile(),
@@ -469,6 +488,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
           failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
         }),
       ),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId: workUnitH }),
       profile: buildMinimalCompiledProfile(),
@@ -503,6 +523,7 @@ describe("E2E: shadow-run alongside a live primary — isolation asserted", () =
     });
     const primaryOutcome = await dispatchAttempt({
       adapter: new FakeEngineAdapter(primaryScript),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
       profile: buildMinimalCompiledProfile(),

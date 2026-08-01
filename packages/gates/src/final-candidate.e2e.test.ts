@@ -103,6 +103,7 @@ describe("E2E: final-candidate re-verification dispatched as its own TaskPacket 
     });
     const outcome = await dispatchAttempt({
       adapter: new FakeEngineAdapter(script),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: tj.store,
       packet: buildTaskPacket({
         workUnitId,
@@ -141,6 +142,7 @@ describe("E2E: final-candidate re-verification dispatched as its own TaskPacket 
     });
     const outcome = await dispatchAttempt({
       adapter: new FakeEngineAdapter(script),
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: tj.store,
       packet: buildTaskPacket({
         objective: "Final-candidate gate re-verification",

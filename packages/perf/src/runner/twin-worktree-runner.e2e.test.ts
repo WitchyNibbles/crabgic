@@ -50,6 +50,7 @@ function makeDispatchWorktree() {
     const adapter = new FakeEngineAdapter(script);
     const outcome = await dispatchAttempt({
       adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
       journal: tj.store,
       packet: buildTaskPacket({
         workUnitId: randomUUID(),

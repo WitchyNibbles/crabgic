@@ -68,7 +68,13 @@ import type {
   SessionRef,
   WorkerHandle,
 } from "@crabgic/engine-core";
-import type { TaskPacket, WorkerResult } from "@crabgic/contracts";
+import {
+  verifyCriteriaSeal,
+  type CriteriaApprovalSeal,
+  type Requirement,
+  type TaskPacket,
+  type WorkerResult,
+} from "@crabgic/contracts";
 import { assertPacketWithinBudget } from "./budgets.js";
 import { assertRepairAllowed, type AttemptEvidenceKind } from "./attempt-policy.js";
 import { assertNotGloballyPaused, parkWorkUnit } from "./parking.js";
@@ -97,9 +103,28 @@ export type DispatchAttemptOutcome =
       readonly accountWide: boolean;
     };
 
+/**
+ * The acceptance bar this attempt is judged against — roadmap/24.
+ *
+ * Carries DATA, not a callback, on purpose: a `verify()` closure is trivially
+ * satisfied by a caller that passes `() => {}`, whereas supplying the wrong
+ * requirements or a fabricated seal requires forging the very things the
+ * journal already records. It is a REQUIRED field on both public entry
+ * points for the same reason `BuildEnforcedPerformanceContractOptions.journal`
+ * is required: an optional integrity check is one a caller silently skips.
+ */
+export interface AttemptCriteriaSeal {
+  /** The requirements owned by THIS work unit. Empty is legitimate — a chore unit owns none, and the seal constrains work rather than inventing it. */
+  readonly requirements: readonly Requirement[];
+  /** The seal recorded when this ChangeSet was approved, or `undefined` if it never was — which is a refusal, never a pass. */
+  readonly approvalSeal: CriteriaApprovalSeal | undefined;
+}
+
 interface ConsumeEventsParams {
   readonly events: AsyncIterable<EngineEvent>;
   readonly journal: JournalStore;
+  /** Required — see `AttemptCriteriaSeal`. Both public entry points thread it, so the acceptance funnel cannot be reached without a bar. */
+  readonly criteriaSeal: AttemptCriteriaSeal;
   readonly workUnitId: string;
   readonly sessionId: string;
   /**
@@ -147,6 +172,41 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
       }
 
       if (validation.result.outcome === "succeeded") {
+        // THE SEAL CHECK, and it runs BEFORE the success is written down.
+        // A worker that rewrote the criteria it is judged against does not get
+        // to have that success recorded — the whole point of roadmap/24.
+        //
+        // Reported as `gateVerdict` rather than a new `AttemptEvidenceKind`
+        // member: a seal refusal IS a verification gate refusing the
+        // candidate, and the repair-policy vocabulary belongs to 13/14. The
+        // existing dispatch cap bounds the retries, and a genuine tamper
+        // simply fails again — which is the correct fail-closed shape.
+        const sealFailures = params.criteriaSeal.requirements
+          .map((requirement) => ({
+            requirement,
+            result: verifyCriteriaSeal(requirement, params.criteriaSeal.approvalSeal),
+          }))
+          .filter((checked) => !checked.result.ok);
+
+        if (sealFailures.length > 0) {
+          await recordAttempt(
+            params.journal,
+            params.workUnitId,
+            params.sessionId,
+            "failed",
+            params.runId,
+          );
+          return {
+            kind: "failed",
+            sessionId: params.sessionId,
+            evidenceKind: "gateVerdict",
+            diagnostics: sealFailures.map(
+              (checked) =>
+                `acceptance-criteria seal verification failed for requirement ${checked.requirement.id} (${checked.result.reason})`,
+            ),
+            result: validation.result,
+          };
+        }
         // Post-succeeded GREEN candidate-availability marker, now carrying what
         // the attempt COST. The engine reports usage on every result and nothing
         // was writing it down, so the system knew each attempt's cost for
@@ -198,6 +258,8 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
 export interface DispatchAttemptOptions {
   readonly adapter: EngineAdapter;
   readonly journal: JournalStore;
+  /** The bar this attempt is judged against (roadmap/24) — REQUIRED, so no caller reaches the acceptance funnel without one. */
+  readonly criteriaSeal: AttemptCriteriaSeal;
   readonly packet: TaskPacket;
   readonly profile: CompiledWorkerProfile;
   readonly adjudicate: AdjudicationCallback;
@@ -268,6 +330,7 @@ export async function dispatchAttempt(
   return consumeEvents({
     events: handle.events,
     journal: options.journal,
+    criteriaSeal: options.criteriaSeal,
     workUnitId,
     sessionId,
     ...(options.runId !== undefined ? { runId: options.runId } : {}),
@@ -292,6 +355,8 @@ export type ResumeTrigger =
 export interface ResumeAttemptOptions {
   readonly adapter: EngineAdapter;
   readonly journal: JournalStore;
+  /** The bar this attempt is judged against (roadmap/24) — REQUIRED, so no caller reaches the acceptance funnel without one. */
+  readonly criteriaSeal: AttemptCriteriaSeal;
   readonly sessionRef: SessionRef;
   readonly workUnitId: string;
   readonly adjudicate: AdjudicationCallback;
@@ -341,6 +406,7 @@ export async function resumeAttempt(
   return consumeEvents({
     events: handle.events,
     journal: options.journal,
+    criteriaSeal: options.criteriaSeal,
     workUnitId: options.workUnitId,
     sessionId,
     ...(options.runId !== undefined ? { runId: options.runId } : {}),

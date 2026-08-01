@@ -88,6 +88,9 @@ function buildDeps(
     liveWorkers,
     adjudicate: allowAllAdjudicate,
     compileProfile: () => Promise.resolve(buildMinimalCompiledProfile()),
+    // No requirements of its own, so nothing to verify — the correct default
+    // for driver tests that are not about roadmap/24's seal.
+    resolveCriteriaSeal: () => Promise.resolve({ requirements: [], approvalSeal: undefined }),
     buildPacket: (ctx) => Promise.resolve(buildTaskPacket({ workUnitId: ctx.workUnit.id })),
     createAdapter: (ctx) => {
       observed.dispatchOrder.push(ctx.workUnit.id);
