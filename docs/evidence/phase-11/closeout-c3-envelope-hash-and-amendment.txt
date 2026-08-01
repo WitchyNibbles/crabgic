@@ -1,0 +1,22 @@
+# Phase 11 exit criterion 3-envelope-hash-and-amendment — envelope hash stable across repeat builds; amendment produces a distinct hash and invalidates the prior token
+#
+# Produced by the criteria-closeout pass (batch 2), 2026-08-01T22:18:33Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/supervisor/src/intake/envelope-builder.test.ts packages/supervisor/src/intake/amendment.test.ts packages/cli/src/approval/durable-approval-ledger.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p11
+
+
+ Test Files  3 passed (3)
+      Tests  27 passed (27)
+   Start at  00:18:34
+   Duration  1.34s (transform 1.80s, setup 0ms, import 2.59s, tests 314ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
