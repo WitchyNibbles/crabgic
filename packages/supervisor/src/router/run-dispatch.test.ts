@@ -28,7 +28,7 @@ import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
 import { buildSupervisorRouter, type SupervisorDependencies } from "./build-router.js";
-import type { RunDispatcher } from "./run-dispatcher.js";
+import { DISPATCHER_DRAINING_REASON, type RunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGE_SET_ID = "99999999-9999-4999-8999-999999999999";
@@ -44,7 +44,12 @@ afterEach(async () => {
   await rm(journalDir, { recursive: true, force: true });
 });
 
-function baseDeps(runDispatcher?: RunDispatcher): SupervisorDependencies {
+/**
+ * Takes a PARTIAL dispatcher and fills the rest in: these cases are about the
+ * router's own delegation, not about any one method, so a case exercising
+ * `run.dispatch` should not have to restate `resume` and `drain` to compile.
+ */
+function baseDeps(runDispatcher?: Partial<RunDispatcher>): SupervisorDependencies {
   return {
     journal,
     runs: createRunsRegistry(),
@@ -53,7 +58,17 @@ function baseDeps(runDispatcher?: RunDispatcher): SupervisorDependencies {
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     liveWorkers: new Map(),
-    ...(runDispatcher !== undefined ? { runDispatcher } : {}),
+    ...(runDispatcher !== undefined
+      ? {
+          runDispatcher: {
+            dispatch: () => Promise.resolve({ accepted: false, reason: "not under test" }),
+            resume: () => Promise.resolve({ accepted: false, reason: "not under test" }),
+            drain: () =>
+              Promise.resolve({ settledRunIds: [], cancelledRunIds: [], unsettledRunIds: [] }),
+            ...runDispatcher,
+          },
+        }
+      : {}),
   };
 }
 
@@ -124,6 +139,30 @@ describe("run.dispatch", () => {
       accepted: false,
       reason: "run is already dispatching",
     });
+  });
+
+  /**
+   * A draining daemon's refusal has to survive the wire, not just the call.
+   * `RunDispatchResultSchema` is `.strict()` with `reason:
+   * NonEmptyStringSchema.optional()`, so the shared constant reaching the
+   * operator intact — rather than tripping result validation on the way out
+   * during the one window where the daemon most needs to explain itself — is
+   * a property worth pinning at this layer.
+   */
+  it("passes the draining refusal through to the caller unchanged, on both operations", async () => {
+    const draining = {
+      dispatch: () => Promise.resolve({ accepted: false, reason: DISPATCHER_DRAINING_REASON }),
+      resume: () => Promise.resolve({ accepted: false, reason: DISPATCHER_DRAINING_REASON }),
+    };
+
+    expect(
+      await buildSupervisorRouter(baseDeps(draining)).dispatch("run.dispatch", {
+        changeSetId: CHANGE_SET_ID,
+      }),
+    ).toEqual({ accepted: false, reason: DISPATCHER_DRAINING_REASON });
+    expect(
+      await buildSupervisorRouter(baseDeps(draining)).dispatch("run.resume", { runId: RUN_ID }),
+    ).toEqual({ accepted: false, reason: DISPATCHER_DRAINING_REASON });
   });
 
   /**

@@ -74,4 +74,77 @@ export interface RunDispatcher {
    * `dispatch`.
    */
   resume(runId: string): Promise<RunDispatchOutcome>;
+
+  /**
+   * Stops accepting new work and waits for every detached drive to settle —
+   * the graceful-shutdown half of the ownership-not-completion contract
+   * above, and roadmap/05 §Lifecycle's "clean shutdown drains workers before
+   * exit".
+   *
+   * WHY THIS IS ON THE INTERFACE rather than a convenience on one
+   * implementation: the boot layer (`../compose/boot-supervisor.ts`) cannot
+   * release the project lease until it holds. That lease is the journal's
+   * ONLY single-writer guarantee — `appendEntry` takes no lock — so releasing
+   * it while a detached drive is still appending hands the chain to whichever
+   * daemon the next CLI call spawns, and two appenders produce a duplicate
+   * `seq`/`prevHash` that `repairJournal` classifies as TAMPER rather than as
+   * a torn tail. `drain` is what makes "release the lease last" expressible.
+   *
+   * ONE-WAY DOOR. Once drained, `dispatch`/`resume` refuse permanently with
+   * `DISPATCHER_DRAINING_REASON`. Re-opening would let a dispatch start a
+   * drive after the caller had already released the lease, which is the race
+   * this exists to close. Implementations must be idempotent.
+   */
+  drain(options?: DrainOptions): Promise<DrainOutcome>;
 }
+
+export interface DrainOptions {
+  /** How long to wait for in-flight drives to settle on their own before terminating their workers. */
+  readonly timeoutMs?: number;
+  /** The grace window handed to each live worker's `terminate` at the deadline, and the window allowed for its drive to unwind afterwards. */
+  readonly graceMs?: number;
+}
+
+/**
+ * What a drain actually achieved, partitioned by how each in-flight run ended.
+ * Every run in flight when `drain` was called appears in exactly one list.
+ */
+export interface DrainOutcome {
+  /** Drives that finished on their own inside the deadline. Nothing was interrupted. */
+  readonly settledRunIds: readonly string[];
+  /**
+   * Drives cut off at the deadline: their live workers were terminated and the
+   * run was journaled to a terminal state, so restart recovery sees an
+   * explicitly-ended run rather than a phantom `running` one whose units are
+   * all terminal — a run nothing can finish and whose change set nothing can
+   * re-dispatch.
+   *
+   * "Cut off" is decided by the DEADLINE, not by how the drive then unwound. A
+   * drive that reacts to its worker's termination and finishes inside the
+   * grace window still lands here, and is still journaled terminal, even
+   * though its own last act may have been an orderly `completed`/`parked`.
+   * That is deliberate: it did not run to the end its caller asked for, it ran
+   * to the end shutdown imposed on it, and a run recorded as merely `parked`
+   * would keep its change set un-dispatchable while waiting for a session no
+   * daemon holds.
+   */
+  readonly cancelledRunIds: readonly string[];
+  /**
+   * Drives STILL live after both the deadline and the termination window.
+   * Nothing is journaled for these: a second appender beside a live one is the
+   * corruption drain exists to prevent. A caller holding the single-writer
+   * lease MUST NOT release it when this list is non-empty — the lease's own
+   * PID/start-time takeover is the safe reclaim path for a writer that never
+   * stopped.
+   */
+  readonly unsettledRunIds: readonly string[];
+}
+
+/**
+ * The single refusal a drained dispatcher answers with. A shared constant
+ * rather than a per-site string so callers (and tests) can recognise "the
+ * daemon is going down" without pattern-matching prose, and without widening
+ * `RunDispatchResultSchema`'s wire shape to carry a discriminator.
+ */
+export const DISPATCHER_DRAINING_REASON =
+  "the supervisor is shutting down: its run dispatcher is draining and is not accepting new work";

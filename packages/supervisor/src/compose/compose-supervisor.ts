@@ -52,7 +52,7 @@ import type { PeerAuthOptions } from "../peer-auth/peer-auth-middleware.js";
 import { createRunsRegistry } from "../registries/runs-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
-import { recoverRun } from "../registries/recovery.js";
+import { collectReplayedSessionIds, recoverRun } from "../registries/recovery.js";
 import {
   reapOrphansAtStartup,
   type OrphanRecoveryHook,
@@ -181,14 +181,24 @@ export async function composeSupervisor(
 
   // Step 3: replay the journal for every known run, rebuilding runs + workers.
   const recoveredRunIds = await enumerateJournalRunIds(journal);
+  // Which run each replayed session belongs to. Carried through to the reaper
+  // so the failed-attempt records it writes are RUN-SCOPED: an attempt with no
+  // runId is invisible to `getLatestAttemptForRun`/`recover(runId)`, so the
+  // reaper's own verdict used to be unreadable by the driver that acts on it
+  // (see `reapOrphansAtStartup`'s `runIdBySessionId`).
+  const runIdBySessionId = new Map<string, string>();
   for (const runId of recoveredRunIds) {
-    await recoverRun(runId, { journal, runs, workers });
+    const result = await recoverRun(runId, { journal, runs, workers });
+    for (const sessionId of collectReplayedSessionIds(result)) {
+      runIdBySessionId.set(sessionId, runId);
+    }
   }
   // Formalize the orphaned workers replay surfaced (`crashed` -> journaled
   // failed attempt + recovery-hook call site).
   const reapedWorkerIds = await reapOrphansAtStartup({
     journal,
     workers,
+    runIdBySessionId,
     ...(config.onOrphanDetected !== undefined ? { onOrphanDetected: config.onOrphanDetected } : {}),
   });
 

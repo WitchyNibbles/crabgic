@@ -105,8 +105,28 @@ async function main(): Promise<void> {
               }),
           }
         : {}),
-      onShutdown: () => {
+      onShutdown: (info) => {
         process.exitCode = EXIT_OK;
+        // Say so when the drain could not finish. The lease is deliberately
+        // left held in that case (`bootSupervisor`'s teardown), which an
+        // operator watching the next `crabgic` invocation take over a
+        // "stale-looking" lease deserves to have been told about rather than
+        // discover.
+        if (!info.leaseReleased) {
+          const why =
+            info.drainError !== undefined
+              ? `the drain could not complete (${String(info.drainError)})`
+              : `${String(info.unsettledRunIds.length)} run(s) were still writing ` +
+                `(${info.unsettledRunIds.join(", ")})`;
+          process.stderr.write(
+            `supervisord: ${why} at ` +
+              `shutdown; the project lease is NOT released ` +
+              `— the next daemon takes it over once this pid is gone AND the lease TTL has ` +
+              `expired, so a \`crabgic\` command in the meantime reports that a daemon is ` +
+              `already running. That wait is the point: it is what stops a second writer ` +
+              `joining one that never stopped.\n`,
+          );
+        }
       },
     });
     if (projectDir === undefined || projectDir.length === 0) {

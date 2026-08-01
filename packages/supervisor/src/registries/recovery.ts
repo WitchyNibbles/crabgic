@@ -85,6 +85,43 @@ export async function recoverRun(
 const TERMINAL_ATTEMPT_STATUSES = new Set(["succeeded", "failed", "cancelled"]);
 
 /**
+ * Statuses that are neither terminal nor orphaned — a session deliberately
+ * held open rather than one a crash abandoned.
+ *
+ * `parked:rate_limit` is the only one. It is 13's limit-parking state: the
+ * session is RETAINED on purpose so a later `resume` can continue the same
+ * engine conversation once the reset window passes, and the park record
+ * (plus its journal-derived reset timer) is the authoritative statement of
+ * what the unit is doing. Classifying it as an orphan meant a restart
+ * synthesized a `crashed` worker for it and the startup reaper then journaled
+ * a `failed` attempt over the park — an edge `WorkUnitAttemptStatus` does not
+ * even permit (`parked:rate_limit` transitions ONLY to `dispatched`), and one
+ * written WITHOUT the run's id, so it was invisible to every run-scoped
+ * reader while visible to unscoped ones. `crabgic resume` then read a park
+ * that had been failed behind its back on one side and was still parked on
+ * the other.
+ */
+const RETAINED_ATTEMPT_STATUSES = new Set(["parked:rate_limit"]);
+
+/**
+ * The engine session ids this replay mentions. `recover(runId)` filters
+ * entries to that run, so every id here belongs to it — which is what lets
+ * the startup orphan reaper attribute its attempt records to a run instead of
+ * writing them unscoped (`../worker-lifecycle/orphan-reaper.ts`).
+ */
+export function collectReplayedSessionIds(result: RecoverResult): readonly string[] {
+  const sessionIds = new Set<string>();
+  for (const entry of result.replayed) {
+    if (entry.type === "session_assignment") {
+      sessionIds.add(entry.payload.sessionId);
+    } else if (entry.type === "work_unit_transition" && entry.payload.sessionId !== undefined) {
+      sessionIds.add(entry.payload.sessionId);
+    }
+  }
+  return [...sessionIds];
+}
+
+/**
  * Rebuilds orphaned `WorkerRecord`s purely from the replayed journal —
  * deliberately NOT dependent on any pre-existing `WorkersRegistry` entry,
  * since on a genuine process restart the in-memory registry starts EMPTY
@@ -114,7 +151,12 @@ function reconstructOrphanedWorkers(result: RecoverResult, workers: WorkersRegis
   const nowIso = new Date().toISOString();
   for (const [sessionId, workUnitId] of workUnitBySession) {
     const latestStatus = latestStatusBySession.get(sessionId);
-    const isOrphaned = latestStatus === undefined || !TERMINAL_ATTEMPT_STATUSES.has(latestStatus);
+    // Orphaned = the replay left it neither finished nor deliberately held.
+    // A retained (parked) session is left exactly as the journal describes it
+    // — see `RETAINED_ATTEMPT_STATUSES`.
+    const isOrphaned =
+      latestStatus === undefined ||
+      !(TERMINAL_ATTEMPT_STATUSES.has(latestStatus) || RETAINED_ATTEMPT_STATUSES.has(latestStatus));
     if (!isOrphaned) continue;
 
     const existing = workers.query((w) => w.sessionId === sessionId)[0];

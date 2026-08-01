@@ -24,6 +24,16 @@ separate carry-forward), and the seam declines rather than resume read-only. A l
 resumed session writes for real; adapters pinned by runs that ended out-of-band are swept so
 retention cannot leak.
 
+> **Correction (added after 1.5.0 shipped).** That scoping was true and incomplete, and the
+> incomplete half was the part an operator would actually meet. After a restart with a parked run,
+> `crabgic resume` reported success while doing nothing at all: the seam declined, the unit re-parked,
+> the run stayed `running`, and a `running` run blocks every fresh dispatch of its change set — so
+> the change set was wedged until someone thought to `crabgic cancel` a run that was reporting
+> success. Startup recovery also mis-read the park as a crash and journaled a `failed` attempt over
+> it, without the run's id, so run-scoped and unscoped readers of the same journal disagreed about
+> what had happened. Both are fixed in the next release; this note stays so the 1.5.0 disclosure is
+> not read as having covered them.
+
 **Authority became reachable where it was stranded.** Approval is completable without couriering a
 token by hand; routine approval is decided by the standing policy rather than by asking; the
 calibration gate is reachable and certifies on a number that transfers; exit criteria are decided
