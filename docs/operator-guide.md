@@ -252,6 +252,68 @@ plugin/installer wires it into the project's `.mcp.json` automatically.
 
 ---
 
+## 11b. Journal integrity: writer separation and head anchoring (advanced)
+
+By default crabgic runs entirely as your own user account. That is supported and
+is what almost everyone should use — but it means the journal, which is the
+system's record of what actually happened, is writable by every process your
+account starts, workers included. Two mechanisms exist for deployments that need
+more than that. Neither is on by default, and `crabgic doctor` will tell you
+plainly which of them is in effect.
+
+**What you are protecting against.** Not a corrupted file — `doctor`'s
+`journal.chain` check already catches that. The concern is a _rewrite_: the
+chain is a plain SHA-256 with no secret, so anything that can write the segment
+files can re-chain a different history from scratch, and chain verification will
+report it clean. Detecting that needs something outside the journal.
+
+### Writer separation (ownership)
+
+Run the daemon as its own service account that owns the state root, and leave
+workers running as you. A worker then has no write path to the journal at all —
+no permission rule and no secret is load-bearing, because the file simply is not
+writable by that uid.
+
+Sketch, on a systemd host:
+
+1. Create a service account (for example `crabgic-daemon`) with no login shell.
+2. Give it ownership of the project's state root, mode `0700`:
+   `chown -R crabgic-daemon $XDG_STATE_HOME/crabgic/<project-hash>`
+3. Run the daemon under that account (a systemd unit with `User=crabgic-daemon`).
+4. Allow your own uid to reach its control socket — the daemon admits its own
+   uid plus any explicitly configured additional uids, and nothing else. An
+   empty or absent list behaves exactly like the single-uid default, so this
+   never widens a deployment that did not ask for it.
+
+`crabgic doctor` reports which state you are in under `journal.writer-separation`:
+it fails only on a journal directory that is group- or world-writable (wrong
+under any model), and otherwise tells you whether separation is in effect or
+absent.
+
+**Honest limit, worth knowing before you invest in this.** The CLI still writes
+the journal directly for intake. Under separation those writes would have to
+route through the daemon instead, and that routing does not exist yet — so
+today separation protects the journal from _workers_, not from every path the
+system itself uses. Full separation is finished when intake writes go over the
+control plane.
+
+### Head anchoring (detection)
+
+Record what the journal's head was, somewhere the machine cannot quietly
+rewrite. An anchor is a small `(seq, hash)` pair; if the journal no longer
+carries that hash at that seq, the history underneath it changed.
+
+Kept beside the journal it is a weak signal — whoever rewrites the segments can
+usually rewrite the anchor in the same breath. Its value is that it is small and
+copyable: keep a copy off the host (a signed log, a WORM bucket, a git note
+pushed to a remote, your own notes), and any holder of an older copy can detect
+a rewrite that the machine itself would report as clean. **The primitive is the
+anchor; the strength is wherever you keep it.**
+
+`crabgic doctor` reports this under `journal.head-anchor`. With no anchor
+recorded it passes and says so — there is simply nothing to compare against
+yet.
+
 ## 12. What the manager session will and will not stop for
 
 `crabgic install` writes a **manager operating protocol** into your project's `CLAUDE.md`

@@ -59,3 +59,68 @@ describe("authenticatePeer", () => {
     expect((result as { admitted: boolean }).admitted).toBe(false);
   });
 });
+
+/**
+ * WRITER-IDENTITY SEPARATION (2026-08-01). Same-uid trust flattening is named
+ * in `docs/threat-model.md` as a cross-surface theme: everything runs as the
+ * invoking uid, so nothing the process can read is hidden from anything else
+ * it spawns. The durable fix is to run the daemon as its OWN uid that owns the
+ * state root, leaving workers as the invoking user with no write path to the
+ * journal at all.
+ *
+ * That only works if the daemon can still admit the operator's CLI, which is
+ * now a DIFFERENT uid — so strict "peer uid === my uid" has to become an
+ * explicit, configured allow-set. Explicit is the whole point: the default
+ * stays own-uid-only, and every additional uid is something an operator wrote
+ * down.
+ */
+describe("authenticatePeer — explicitly allowed additional uids (writer-identity separation)", () => {
+  it("still refuses a foreign uid when no additional uids are configured", async () => {
+    const result = await authenticatePeer(FAKE_SOCKET, {
+      reader: readerReturning(1001),
+      invokingUid: 999,
+    });
+    expect(result.admitted).toBe(false);
+    expect(result.reason).toContain("foreign uid 1001");
+  });
+
+  it("admits a uid the operator explicitly allowed", async () => {
+    const result = await authenticatePeer(FAKE_SOCKET, {
+      reader: readerReturning(1001),
+      invokingUid: 999,
+      additionalAllowedUids: [1001],
+    });
+    expect(result.admitted).toBe(true);
+    expect(result.credentials?.uid).toBe(1001);
+  });
+
+  it("still refuses a uid that is not in the allow-set", async () => {
+    const result = await authenticatePeer(FAKE_SOCKET, {
+      reader: readerReturning(1002),
+      invokingUid: 999,
+      additionalAllowedUids: [1001],
+    });
+    expect(result.admitted).toBe(false);
+    expect(result.reason).toContain("foreign uid 1002");
+  });
+
+  it("names the whole allow-set in its refusal, so an operator can see what WAS allowed", async () => {
+    const result = await authenticatePeer(FAKE_SOCKET, {
+      reader: readerReturning(1002),
+      invokingUid: 999,
+      additionalAllowedUids: [1001, 1003],
+    });
+    expect(result.reason).toContain("999");
+    expect(result.reason).toContain("1001");
+    expect(result.reason).toContain("1003");
+  });
+
+  it("an empty allow-set behaves exactly like no allow-set at all", async () => {
+    const result = await authenticatePeer(FAKE_SOCKET, {
+      reader: readerReturning(999),
+      invokingUid: 999,
+      additionalAllowedUids: [],
+    });
+    expect(result.admitted).toBe(true);
+  });
+});

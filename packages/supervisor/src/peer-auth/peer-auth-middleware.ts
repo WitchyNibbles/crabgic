@@ -23,6 +23,21 @@ export interface PeerAuthOptions {
   readonly reader: PeerCredentialReader;
   /** The uid this server's own process runs as — defaults to `process.getuid()`. Overridable for tests. */
   readonly invokingUid?: number;
+  /**
+   * Additional uids this server admits besides its own — the enabling half of
+   * WRITER-IDENTITY SEPARATION (`docs/threat-model.md`'s "same-uid trust
+   * flattening" theme).
+   *
+   * Running the daemon as its own uid, owning the state root, is what stops a
+   * worker from having any write path to the journal. But then the operator's
+   * CLI is a foreign uid, and strict equality would lock it out — so the
+   * separation needs a way to say "this other uid is also me."
+   *
+   * EXPLICIT BY CONSTRUCTION, and that is the point: omitted or empty behaves
+   * exactly like before (own uid only), so this can never widen a deployment
+   * that did not ask for it. Every admitted uid is one an operator wrote down.
+   */
+  readonly additionalAllowedUids?: readonly number[];
   /** Safety bound on the credential read itself, in case `reader` never settles. Default 3000ms. */
   readonly timeoutMs?: number;
 }
@@ -92,10 +107,16 @@ export async function authenticatePeer(
     return { admitted: false, reason: `peer credential bridge failed: ${toErrorMessage(err)}` };
   }
 
-  if (credentials.uid !== invokingUid) {
+  const allowed = new Set<number>([invokingUid, ...(options.additionalAllowedUids ?? [])]);
+  if (!allowed.has(credentials.uid)) {
+    // The refusal names the WHOLE allow-set, not just the invoking uid: under
+    // separation "expected uid X" is misleading when several are legitimate,
+    // and an operator debugging a locked-out CLI needs to see what actually
+    // was permitted.
+    const permitted = [...allowed].sort((a, b) => a - b).join(", ");
     return {
       admitted: false,
-      reason: `foreign uid ${credentials.uid} refused (expected invoking uid ${invokingUid})`,
+      reason: `foreign uid ${credentials.uid} refused (permitted uids: ${permitted})`,
       credentials,
     };
   }

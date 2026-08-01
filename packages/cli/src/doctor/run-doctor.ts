@@ -8,6 +8,7 @@
 import {
   readXdgEnvFromProcess,
   resolveCacheRoot,
+  resolveJournalDir,
   resolveJournalHeadAnchorPath,
   resolveStateRoot,
   type JournalStore,
@@ -27,6 +28,7 @@ import { createGitPlumbingCheck } from "./checks/git-plumbing.js";
 import { createXdgPermissionsCheck } from "./checks/xdg-permissions.js";
 import { createJournalChainCheck } from "./checks/journal-chain.js";
 import { createJournalHeadAnchorCheck } from "./checks/journal-head-anchor.js";
+import { createJournalWriterSeparationCheck } from "./checks/journal-writer-separation.js";
 import { createWsl2WarningsCheck } from "./checks/wsl2-warnings.js";
 import { buildStandingPolicyCheck } from "./checks/standing-policy.js";
 import { createChecksumDriftCheck } from "./checks/checksum-drift.js";
@@ -97,6 +99,9 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
     createJournalHeadAnchorCheck({
       journal: options.journal,
       anchorPath: resolveJournalHeadAnchorPath(xdgEnv, options.projectHash),
+    }),
+    createJournalWriterSeparationCheck({
+      journalDir: resolveJournalDir(xdgEnv, options.projectHash),
     }),
     createWsl2WarningsCheck({
       isWsl2: detectWsl2,
