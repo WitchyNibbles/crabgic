@@ -1,0 +1,67 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 11
+"Threat model review recorded: `docs/threat-model.md` STRIDE list covers UDS, worker
+ runtime, envelope compiler, installer, gateway, connectors, capability quarantine,
+ renderer, learning store; sign-off note committed."
+Captured: 2026-08-01T21:34:57Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+A committed-document criterion; there is no suite to run. Verified by reading the file.
+
+=== 1. the nine surfaces, as section headings ===
+$ grep -n "^## [0-9]\." docs/threat-model.md
+70:## 1. UDS (Unix domain socket control plane)
+91:## 2. Worker runtime
+113:## 3. Envelope compiler
+133:## 4. Installer
+153:## 5. Gateway
+172:## 6. Connectors
+191:## 7. Capability quarantine
+211:## 8. Renderer
+230:## 9. Learning store
+
+=== 2. each surface carries all six STRIDE rows ===
+$ per-section count of STRIDE row labels
+1. UDS (Unix domain socket control plane) 6/6 STRIDE rows
+2. Worker runtime                6/6 STRIDE rows
+3. Envelope compiler             6/6 STRIDE rows
+4. Installer                     6/6 STRIDE rows
+5. Gateway                       6/6 STRIDE rows
+6. Connectors                    6/6 STRIDE rows
+7. Capability quarantine         6/6 STRIDE rows
+8. Renderer                      6/6 STRIDE rows
+9. Learning store                6/6 STRIDE rows
+
+9 surfaces x 6 = 54 cells; the document's own Review note claims 54.
+
+=== 3. the sign-off note ===
+$ grep -n "^## Review note" -A 4 docs/threat-model.md | head -8
+280:## Review note
+281-
+282-- **Reviewer:** this orchestrated documentation pass (phase 02, work item 9), conducted by reading
+283-  `docs/claude-code-adaptation.md`, `docs/engine-baseline.md`, `docs/interface-ledger.md`, and roadmap phases
+284-  02, 03, 05, 06, 10, 12, 16, 17, and 22 directly, and cross-checking each cited mechanism against the owning
+
+$ grep -n "^- \*\*Reviewer:\*\*\|^- \*\*Date:\*\*\|^- \*\*Verdict:\*\*\|^- \*\*Scope reviewed:\*\*\|^- \*\*Open items" docs/threat-model.md
+282:- **Reviewer:** this orchestrated documentation pass (phase 02, work item 9), conducted by reading
+286:- **Date:** 2026-07-15.
+287:- **Scope reviewed:** the nine surfaces required by `roadmap/02-contracts-and-schemas.md`'s exit criterion —
+296:- **Verdict:** the design, as specified across the current roadmap corpus, provides concrete, phase-owned
+305:- **Open items (honest, not ceremonial):**
+
+The phase-02 evidence README calls this section the doc's "Open items" section; it is
+in fact headed "## Review note" and Open items is one of its five bullets. Same section,
+imprecise pointer — recorded here so the closeout index cites what is actually on disk.
+
+=== 4. Gap-5 blast-radius recheck (interface-ledger Resolution 2026-08-01) ===
+Gap 5's coordinated-edit list names docs/threat-model.md §7's Repudiation row. That row
+WAS updated (it now opens "**Closed 2026-08-01.**"). Two other places in the same file
+still describe the gap as open, and were not part of that edit:
+$ grep -n "unresolved\|remains open pending" docs/threat-model.md
+34:section, and every claim marked `UNRESOLVED` there is treated as unresolved here too, never as settled.
+265:3. **The capability-quarantine journal gap is real and unresolved.** Phase 12's own text flags, and this review
+316:     Repudiation cells) — phase 12's own text flags this as unresolved and explicitly outside its authority to
+317:     fix unilaterally; it remains open pending a coordinated `JournalEntryType` resolution round.
+318:  3. **The gateway's optional upstream-MCP-client wrap's quarantine status is unresolved** (§5/§6, Spoofing/
+
+Out of scope for this criterion (which requires the 9-surface STRIDE list and a committed
+sign-off note, both present) and out of this closeout's write set. Reported to the
+orchestrator as a stale-doc finding, not fixed here.

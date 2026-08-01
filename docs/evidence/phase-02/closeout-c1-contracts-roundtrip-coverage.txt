@@ -1,0 +1,154 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 1
+"All 21 contracts round-trip (parse -> serialize -> parse) with full schema-branch
+ coverage — coverage report artifact."
+Captured: 2026-08-01T21:33:42Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+Scoped coverage run over the @crabgic/contracts project. The repo's 80% thresholds are
+whole-suite thresholds; they are set to 0 here so a scoped run reports rather than gates.
+The gating, whole-suite coverage report lives in CI run 30718972881, job 91419417946.
+
+=== command ===
+$ npx vitest run --project @crabgic/contracts \
+    --coverage.include="packages/contracts/src/contracts/**/*.ts" \
+    --coverage.thresholds.lines=0 --coverage.thresholds.branches=0 \
+    --coverage.thresholds.functions=0 --coverage.thresholds.statements=0
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02
+      Coverage enabled with v8
+
+
+ Test Files  50 passed (50)
+      Tests  643 passed (643)
+   Start at  23:33:42
+   Duration  2.76s (transform 3.23s, setup 0ms, import 8.92s, tests 7.79s, environment 7ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.95 |    93.89 |     100 |     100 |                   
+ criteria-seal.ts  |     100 |    85.71 |     100 |     100 | 121-124           
+ debt-index.ts     |    91.3 |    88.88 |     100 |     100 | 36,84             
+ plan-record.ts    |   98.48 |    94.73 |     100 |     100 | 92-100            
+ review-verdict.ts |     100 |       92 |     100 |     100 | 128-129           
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.95% ( 284/287 )
+Branches     : 93.89% ( 123/131 )
+Functions    : 100% ( 52/52 )
+Lines        : 100% ( 248/248 )
+================================================================================
+vitest exit: 0
+
+NOTE ON READING THE TABLE ABOVE: v8's text reporter lists only files BELOW 100%.
+The four listed (criteria-seal, debt-index, plan-record, review-verdict) are NOT among
+this criterion's 21 contracts — they are later additions to the same directory
+(interface-ledger Gap 20). Explicit per-file numbers for the 21 follow, from the
+json-summary reporter, so the claim does not rest on an absence.
+
+=== command ===
+$ npx vitest run --project @crabgic/contracts --coverage.include="packages/contracts/src/contracts/**/*.ts" \
+    --coverage.reporter=json-summary --coverage.thresholds.{lines,branches,functions,statements}=0
+  then: print the 21 rows named by roadmap/02 §In scope
+
+contract module                          stmts  branch   funcs   lines
+project-profile.ts                         100     100     100     100
+stack-evidence.ts                          100     100     100     100
+intent-contract.ts                         100     100     100     100
+requirement.ts                             100     100     100     100
+authorization-envelope.ts                  100     100     100     100
+capability-manifest.ts                     100     100     100     100
+performance-contract.ts                    100     100     100     100
+change-set.ts                              100     100     100     100
+work-unit.ts                               100     100     100     100
+task-packet.ts                             100     100     100     100
+worker-result.ts                           100     100     100     100
+evidence-record.ts                         100     100     100     100
+external-connection.ts                     100     100     100     100
+capability-snapshot.ts                     100     100     100     100
+remote-mutation-plan.ts                    100     100     100     100
+remote-operation-record.ts                 100     100     100     100
+remote-resource.ts                         100     100     100     100
+communication-policy.ts                    100     100     100     100
+rendered-artifact.ts                       100     100     100     100
+learning-proposal.ts                       100     100     100     100
+run-snapshot.ts                            100     100     100     100
+
+21 contract modules checked; 0 below 100% on any metric.
+EnvelopePolicy (added 2026-07-28, ledger Gap 18) is a 22nd contract in the same
+directory and is outside this criterion's '21'; for the record it is also at 100/100/100/100.
+envelope-policy.ts [100, 100, 100, 100]
+
+----------------------------------------------------------------------
+THE ROUND-TRIP HALF — one parse -> serialize -> parse test per contract
+----------------------------------------------------------------------
+$ for each of the 21: grep -n "round-trip" packages/contracts/src/contracts/<name>.test.ts
+
+packages/contracts/src/contracts/project-profile.test.ts:112:describe("ProjectProfileSchema — round-trip", () => {
+packages/contracts/src/contracts/stack-evidence.test.ts:91:describe("StackEvidenceSchema — round-trip", () => {
+packages/contracts/src/contracts/intent-contract.test.ts:86:describe("IntentContractSchema — round-trip", () => {
+packages/contracts/src/contracts/requirement.test.ts:73:describe("RequirementSchema — round-trip", () => {
+packages/contracts/src/contracts/authorization-envelope.test.ts:111:describe("AuthorizationEnvelopeSchema — round-trip", () => {
+packages/contracts/src/contracts/capability-manifest.test.ts:122:describe("CapabilityManifestSchema — round-trip", () => {
+packages/contracts/src/contracts/performance-contract.test.ts:108:describe("PerformanceContractSchema — round-trip", () => {
+packages/contracts/src/contracts/change-set.test.ts:73:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+packages/contracts/src/contracts/work-unit.test.ts:69:  it("round-trips through JSON.stringify/JSON.parse deep-equal, with session_id present", () => {
+packages/contracts/src/contracts/work-unit.test.ts:77:  it("round-trips through JSON.stringify/JSON.parse deep-equal, without session_id", () => {
+packages/contracts/src/contracts/task-packet.test.ts:65:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+packages/contracts/src/contracts/worker-result.test.ts:63:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+packages/contracts/src/contracts/evidence-record.test.ts:104:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+packages/contracts/src/contracts/external-connection.test.ts:139:describe("ExternalConnectionSchema — round-trip", () => {
+packages/contracts/src/contracts/capability-snapshot.test.ts:79:describe("CapabilitySnapshotSchema — round-trip", () => {
+packages/contracts/src/contracts/remote-mutation-plan.test.ts:89:describe("RemoteMutationPlanSchema — round-trip", () => {
+packages/contracts/src/contracts/remote-operation-record.test.ts:87:describe("RemoteOperationRecordSchema — round-trip", () => {
+packages/contracts/src/contracts/remote-resource.test.ts:74:describe("RemoteResourceSchema — round-trip", () => {
+packages/contracts/src/contracts/communication-policy.test.ts:174:  it("round-trips through JSON serialize/parse", () => {
+packages/contracts/src/contracts/rendered-artifact.test.ts:69:describe("RenderedArtifactSchema — round-trip", () => {
+packages/contracts/src/contracts/learning-proposal.test.ts:85:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+packages/contracts/src/contracts/run-snapshot.test.ts:63:  it("round-trips through JSON.stringify/JSON.parse deep-equal", () => {
+
+21/21 contract modules carry a round-trip test. Shape, verbatim, from work-unit.test.ts:
+
+  it("round-trips through JSON.stringify/JSON.parse deep-equal, with session_id present", () => {
+    const original = WorkUnitSchema.parse(
+      validWorkUnit({ session_id: SESSION_ID, attemptStatus: "dispatched" }),
+    );
+    const revived = WorkUnitSchema.parse(JSON.parse(JSON.stringify(original)) as unknown);
+    expect(revived).toEqual(original);
+  });
+  it("round-trips through JSON.stringify/JSON.parse deep-equal, without session_id", () => {
+    const original = WorkUnitSchema.parse(validWorkUnit());
+    const revived = WorkUnitSchema.parse(JSON.parse(JSON.stringify(original)) as unknown);
+    expect(revived).toEqual(original);
+  });
+
+Anti-vacuity: each of these suites also carries invalid-shape and unknown-key rejection
+cases (`.strict()`), so a schema that parsed everything would fail them. Example:
+51:  it("rejects an unknown key (.strict())", () => {
+
+----------------------------------------------------------------------
+ADDENDUM 2026-08-02 — why this scoped table has fewer rows than CI's
+----------------------------------------------------------------------
+Review of PR #57 correctly noted that the CI whole-suite coverage block for this
+directory contains SEVEN rows below 100% on some metric, not the four the scoped table
+above lists. Three of them are absent here — acceptance-criteria-parser.ts and
+budget-sourcing.ts (both 0/0/0/0, added in 4f2b33b) and metric-direction.ts (0%
+statements/functions/lines, added in bddac4c). Nothing in the @crabgic/contracts vitest
+project imports them, so v8 never loads them into this scoped run's file set at all;
+in CI they are loaded by suites in other packages. Verified rather than assumed:
+
+$ npx vitest run --project @crabgic/contracts --coverage.include="packages/contracts/src/contracts/**/*.ts" \
+    --coverage.reporter=json-summary --coverage.thresholds.{lines,branches,functions,statements}=0
+  then: look the three up in coverage/coverage-summary.json
+
+  acceptance-criteria-parser.ts      ABSENT from the scoped summary
+  budget-sourcing.ts                 ABSENT from the scoped summary
+  metric-direction.ts                ABSENT from the scoped summary
+  files in scoped summary: 30 (the 21 + envelope-policy + 8 later additions)
+
+None of the three is one of this criterion's 21, and the enumeration above resolves all
+21 by name and asserts each is present, so an absent file cannot hide a member. Recorded
+here because their 0% coverage is a genuine repo-health item — invisible under the global
+80% gate — reported to the closeout integrator and out of this pass's write set.

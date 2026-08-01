@@ -1,0 +1,105 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 7
+"JSON Schema artifacts byte-stable across two consecutive builds (empty diff)."
+Captured: 2026-08-01T21:31:52Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+Method identical to docs/evidence/phase-02/wi1-json-schema-bytestable.txt (2026-07-15):
+run the writer twice with no source edits between runs, diff -r the two output copies,
+and confirm git sees no change against the committed tree. schemas/*.json are GENERATED
+— never hand-edited — so regenerating through the writer and getting an empty diff is
+what makes the committed bytes provenance-checked rather than merely present.
+
+=== RUN 1 ===
+$ npm --prefix packages/contracts run build:schemas
+
+> @crabgic/contracts@0.0.0 build:schemas
+> tsc -b && node scripts/build-schemas.ts
+
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/authorization-envelope.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/capability-manifest.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/capability-snapshot.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/change-set.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/communication-policy.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/evidence-record.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/external-connection.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/intent-contract.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/learning-proposal.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/performance-contract.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/project-profile.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-mutation-plan.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-operation-record.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-resource.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/rendered-artifact.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/requirement.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/run-snapshot.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/stack-evidence.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/task-packet.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/work-unit.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/worker-result.json
+done: 21 schema files written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas
+exit: 0
+
+=== RUN 2 (immediately after, no source edits between) ===
+$ npm --prefix packages/contracts run build:schemas
+
+> @crabgic/contracts@0.0.0 build:schemas
+> tsc -b && node scripts/build-schemas.ts
+
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/authorization-envelope.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/capability-manifest.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/capability-snapshot.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/change-set.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/communication-policy.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/evidence-record.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/external-connection.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/intent-contract.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/learning-proposal.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/performance-contract.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/project-profile.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-mutation-plan.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-operation-record.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/remote-resource.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/rendered-artifact.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/requirement.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/run-snapshot.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/stack-evidence.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/task-packet.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/work-unit.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas/worker-result.json
+done: 21 schema files written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/contracts/schemas
+exit: 0
+
+=== diff -r RUN1 vs RUN2 ===
+$ diff -r <scratch>/schema-run1 <scratch>/schema-run2
+diff -r exit: 0  (0 with no output above = byte-identical)
+
+=== git diff against the COMMITTED schemas ===
+$ git diff --stat -- packages/contracts/schemas
+(empty above = the regenerated bytes equal the committed bytes)
+$ git status --short -- packages/contracts/schemas
+(empty above = no untracked/modified schema file)
+
+=== file count + a sha256 manifest of the regenerated output ===
+$ ls packages/contracts/schemas/*.json | wc -l
+21
+$ sha256sum packages/contracts/schemas/*.json
+f0ae22e7b872463edea9443ddae3a58b7462cfbc382ff001b23735a7c4fe8921  packages/contracts/schemas/authorization-envelope.json
+811c21f9161951be35d93c6fda52386bc4d1af4a1a27f694c9e0dd259a2f70ed  packages/contracts/schemas/capability-manifest.json
+d4921f84e539f946b93c5373a0fe3517cf88c7662557f90cf772c52a2763b684  packages/contracts/schemas/capability-snapshot.json
+48b3e66b8a026aaf6c7857e44971e6952017f971533d4fdc3a4241ab7c917f79  packages/contracts/schemas/change-set.json
+58267379ca5ed591e90aa10a52fcaf5b92867661834355f2e9b3304b371756e5  packages/contracts/schemas/communication-policy.json
+28a40fe8fa5a498fd8c64ddbfef178cdf319e9d34419ecf038d7aef72e59b4b6  packages/contracts/schemas/evidence-record.json
+d9b34909c421a0d4025cbedf3e1f844c534d78f7b70cfbc5c4db85f173628869  packages/contracts/schemas/external-connection.json
+552c5b7c73b11556a1bb120c4686e9b24405a195205886ffeb7235c125e3c710  packages/contracts/schemas/intent-contract.json
+0238b868db05f80b56951f2a135ca9b7faa77f475e3e2f547c6d2667125754c0  packages/contracts/schemas/learning-proposal.json
+0128e5e7136c32479d6f8fccbb730551ff18dd406c5256a36b93a191e1f1972e  packages/contracts/schemas/performance-contract.json
+daae19da4c4a2aa0b6a93181082f5f104a926a8d0290c5283539ed1b3f015fc1  packages/contracts/schemas/project-profile.json
+a553e95fb9f2f9cc8c6ea7fd0bdd962873d1ba0df63ad1c900fef2d852efd5bc  packages/contracts/schemas/remote-mutation-plan.json
+eb2ec9e848d06b99c4c03b6fccbf0917a0fb390b98e390a33710c4753f3a996a  packages/contracts/schemas/remote-operation-record.json
+49e78a11db06b0ee874625294821f34aa0fb829a7c20a460f1b2e45cb3d1728c  packages/contracts/schemas/remote-resource.json
+f1f2eb7bc16e3cee1050bddb58b2873d88d0e1fb4d5aab2cd876d1e51e1d7715  packages/contracts/schemas/rendered-artifact.json
+96bd4ae68d38471298ed5fbe2fea43bbf139e7ba0a6b329603f988c9e689f65c  packages/contracts/schemas/requirement.json
+44d840241bbf6a21c8f9974b7d4ed8593999e148b9314ce682e3e1f6fb67667f  packages/contracts/schemas/run-snapshot.json
+529f0315e061dbe323dcf7549dfd772e56b7fdc6de01105ed9262af145a261db  packages/contracts/schemas/stack-evidence.json
+a405deae1ed950a2095dc5e638a1e0f808607cfc234164c899a71dae9a328d00  packages/contracts/schemas/task-packet.json
+78e0b0dd7bade247bfd37927bb958c05b6994a78e9c36380cf0734c6c4da93c5  packages/contracts/schemas/work-unit.json
+07948be62f3c03c2f25b19668a55e67f024afed0ed266464b00aea4af36a9e65  packages/contracts/schemas/worker-result.json
