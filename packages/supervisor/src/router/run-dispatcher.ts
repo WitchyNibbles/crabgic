@@ -113,11 +113,20 @@ export interface DrainOutcome {
   /** Drives that finished on their own inside the deadline. Nothing was interrupted. */
   readonly settledRunIds: readonly string[];
   /**
-   * Drives cut off AT the deadline: their live workers were terminated and the
+   * Drives cut off at the deadline: their live workers were terminated and the
    * run was journaled to a terminal state, so restart recovery sees an
    * explicitly-ended run rather than a phantom `running` one whose units are
    * all terminal — a run nothing can finish and whose change set nothing can
    * re-dispatch.
+   *
+   * "Cut off" is decided by the DEADLINE, not by how the drive then unwound. A
+   * drive that reacts to its worker's termination and finishes inside the
+   * grace window still lands here, and is still journaled terminal, even
+   * though its own last act may have been an orderly `completed`/`parked`.
+   * That is deliberate: it did not run to the end its caller asked for, it ran
+   * to the end shutdown imposed on it, and a run recorded as merely `parked`
+   * would keep its change set un-dispatchable while waiting for a session no
+   * daemon holds.
    */
   readonly cancelledRunIds: readonly string[];
   /**

@@ -285,6 +285,33 @@ describe("bootSupervisor — draining the dispatcher before the lease is release
     await booted.lease.release();
   });
 
+  /**
+   * "Cannot tell" must never render as "nothing is writing". The real
+   * dispatcher's `drain` does not reject, but the lazy wrapper's does when a
+   * deferred engine load is still in flight at shutdown and fails — and this
+   * whole sequence runs under `void shutdown(signal)` from the signal handler,
+   * so an escaping rejection would kill the process AND skip both the lease
+   * decision and `onShutdown`.
+   */
+  it("fails safe when the drain itself throws: keeps the lease and still reports", async () => {
+    const order: string[] = [];
+    const shutdownInfos: Parameters<NonNullable<BootSupervisorConfig["onShutdown"]>>[0][] = [];
+    const boom = new Error("engine module load failed during shutdown");
+
+    booted = await bootWith(dispatcherStub({ drain: () => Promise.reject(boom) }), order, {
+      onShutdown: (info) => shutdownInfos.push(info),
+    });
+
+    await expect(booted.shutdown()).resolves.toBeUndefined();
+
+    expect(booted.lease.held).toBe(true);
+    expect(shutdownInfos).toEqual([
+      { leaseReleased: false, unsettledRunIds: [], drainError: boom },
+    ]);
+
+    await booted.lease.release();
+  });
+
   it("still releases the lease when no dispatcher was ever composed", async () => {
     const order: string[] = [];
     booted = await bootSupervisor({

@@ -43,6 +43,7 @@ import {
   resolveLeasesDir,
   type LeaseAcquireOptions,
 } from "@crabgic/journal";
+import type { DrainOutcome } from "../router/run-dispatcher.js";
 import {
   composeSupervisor,
   type ComposedSupervisor,
@@ -79,14 +80,23 @@ const DEFAULT_DRAIN_GRACE_MS = 5_000;
 export interface SupervisorShutdownInfo {
   readonly signal?: NodeJS.Signals;
   /**
-   * Whether the project lease was handed back. `false` means a drive was
-   * still appending when the drain gave up, so the lease is deliberately left
-   * held for the next daemon's PID/start-time takeover — see the file-level
-   * doc comment.
+   * Whether the project lease was handed back. `false` means the shutdown
+   * could not establish that every writer had stopped — either a drive
+   * outlived the drain (`unsettledRunIds`) or the drain itself failed
+   * (`drainError`) — so the lease is deliberately left held for the next
+   * daemon's PID/start-time takeover. See the file-level doc comment.
    */
   readonly leaseReleased: boolean;
-  /** The runs whose drives outlived the drain. Non-empty exactly when `leaseReleased` is false. */
+  /** The runs whose drives outlived the drain. */
   readonly unsettledRunIds: readonly string[];
+  /**
+   * Why the drain could not answer at all, if it could not. The real
+   * dispatcher never rejects, but the lazy wrapper's `drain` does when a
+   * deferred engine load is still in flight at shutdown and fails. An
+   * unanswered drain is treated exactly like an unsettled one: "cannot tell"
+   * must never render as "nothing is writing".
+   */
+  readonly drainError?: unknown;
 }
 
 export interface BootSupervisorConfig extends ComposeSupervisorConfig {
@@ -181,22 +191,35 @@ export async function bootSupervisor(config: BootSupervisorConfig): Promise<Boot
     //     journal; at the deadline, terminate its workers and journal the
     //     run's own end. A daemon composed without a dispatcher (the control
     //     plane serves fine without one) has nothing to drain.
-    const drained = await composed.deps.runDispatcher?.drain({
-      timeoutMs: config.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS,
-      graceMs: config.drainGraceMs ?? DEFAULT_DRAIN_GRACE_MS,
-    });
+    //     A drain that THROWS is caught rather than allowed to escape: this
+    //     runs under `void shutdown(signal)` from the signal handler, so an
+    //     unhandled rejection here would take out the process AND skip the
+    //     lease decision and `onShutdown` entirely. An unanswered drain is
+    //     treated as an unsettled one — "cannot tell" must never render as
+    //     "nothing is writing".
+    let drained: DrainOutcome | undefined;
+    let drainError: unknown;
+    try {
+      drained = await composed.deps.runDispatcher?.drain({
+        timeoutMs: config.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS,
+        graceMs: config.drainGraceMs ?? DEFAULT_DRAIN_GRACE_MS,
+      });
+    } catch (err) {
+      drainError = err;
+    }
     // (c) RELEASE THE LEASE LAST — and only if nothing is still writing. See
     //     the file-level doc comment: handing a freed lease to the next
     //     daemon while an appender is live is the corruption; leaving it held
     //     by a process that is about to exit is not, because the lease
     //     validates its holder's pid and start time before honouring it.
     const unsettledRunIds = drained?.unsettledRunIds ?? [];
-    const leaseReleased = unsettledRunIds.length === 0;
+    const leaseReleased = unsettledRunIds.length === 0 && drainError === undefined;
     if (leaseReleased) await lease.release();
     config.onShutdown?.({
       ...(signal !== undefined ? { signal } : {}),
       leaseReleased,
       unsettledRunIds,
+      ...(drainError !== undefined ? { drainError } : {}),
     });
   };
   const shutdown = (signal?: NodeJS.Signals): Promise<void> =>

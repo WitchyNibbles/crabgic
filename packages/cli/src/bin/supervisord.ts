@@ -113,10 +113,18 @@ async function main(): Promise<void> {
         // "stale-looking" lease deserves to have been told about rather than
         // discover.
         if (!info.leaseReleased) {
+          const why =
+            info.drainError !== undefined
+              ? `the drain could not complete (${String(info.drainError)})`
+              : `${String(info.unsettledRunIds.length)} run(s) were still writing ` +
+                `(${info.unsettledRunIds.join(", ")})`;
           process.stderr.write(
-            `supervisord: ${String(info.unsettledRunIds.length)} run(s) were still writing at ` +
-              `shutdown (${info.unsettledRunIds.join(", ")}); the project lease is NOT released ` +
-              `— the next daemon reclaims it once this process is gone\n`,
+            `supervisord: ${why} at ` +
+              `shutdown; the project lease is NOT released ` +
+              `— the next daemon takes it over once this pid is gone AND the lease TTL has ` +
+              `expired, so a \`crabgic\` command in the meantime reports that a daemon is ` +
+              `already running. That wait is the point: it is what stops a second writer ` +
+              `joining one that never stopped.\n`,
           );
         }
       },
