@@ -34,6 +34,10 @@ something crabgic should deliberately *not* take.
 
 ## 1. Sealed acceptance criteria — the one with real teeth
 
+> **Phase spec exists:** `roadmap/24-sealed-acceptance-criteria.md`. Scoping that spec
+> found the gap is deeper than tamper-exposure: `Requirement` records are not persisted at
+> all after intake, so the phase is store + seal + verify, not seal alone.
+
 Archon's finding, arrived at the hard way: if the agent that implements a task can also
 edit that task's acceptance criteria, "done" means nothing. It responded with a completion
 seal — a hash over normalised criteria taken at activation, verified before completion, and
