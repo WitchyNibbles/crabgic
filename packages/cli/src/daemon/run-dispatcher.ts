@@ -40,7 +40,13 @@ import type {
   WorkUnit,
 } from "@crabgic/contracts";
 import type { XdgEnv } from "@crabgic/journal";
-import { findLatestCriteriaSeal, type JournalStore } from "@crabgic/journal";
+import {
+  CRABGIC_DIR_NAME,
+  findLatestCriteriaSeal,
+  resolveXdgCacheHome,
+  resolveXdgStateHome,
+  type JournalStore,
+} from "@crabgic/journal";
 import {
   createRun,
   findLiveRunForChangeSet,
@@ -424,7 +430,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
 
     // Compiled once: the profile is a pure function of the envelope, and
     // every worker in this run runs under the same authorization.
-    const profile = compileEnvelope(envelope, policy);
+    // The compiler's own deny literals are XDG DEFAULTS (`~/.local/state/...`)
+    // and do not track a custom `$XDG_STATE_HOME`. That matters because the
+    // engine's `Write`/`Edit` tools run outside the bubblewrap boundary, so
+    // for them the deny RULE is the only thing between a worker and the
+    // journal. Resolving the real roots here — the composition root is the
+    // only place that knows them — closes that gap without giving
+    // `@crabgic/engine-core` a dependency on `@crabgic/journal`.
+    const profile = compileEnvelope(envelope, policy, {
+      stateRoot: `${resolveXdgStateHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
+      cacheRoot: `${resolveXdgCacheHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
+    });
 
     return await driveRun(
       { runId, changeSetId: changeSet.id, workUnits },

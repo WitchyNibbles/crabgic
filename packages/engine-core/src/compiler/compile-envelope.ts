@@ -1,4 +1,5 @@
 import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
+import type { RuntimeRootsDenyInput } from "./xdg-default-paths.js";
 import { emitPermissionProfile } from "./permission-profile.js";
 import { emitSandboxProfile } from "./sandbox-profile.js";
 import { toWorkerSettingsJson, toWorkerSdkOptions } from "./worker-settings.js";
@@ -23,9 +24,10 @@ import {
 export function compileEnvelope(
   envelope: AuthorizationEnvelope,
   policy?: EnvelopePolicy,
+  runtimeRoots?: RuntimeRootsDenyInput,
 ): CompiledWorkerProfile {
-  const permissions = emitPermissionProfile(envelope);
-  const sandbox = emitSandboxProfile(envelope, policy);
+  const permissions = emitPermissionProfile(envelope, runtimeRoots);
+  const sandbox = emitSandboxProfile(envelope, policy, runtimeRoots);
   const settingsJson = toWorkerSettingsJson(permissions, sandbox);
   const sdkOptions = toWorkerSdkOptions(permissions);
 
