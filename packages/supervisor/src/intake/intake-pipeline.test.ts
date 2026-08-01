@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { computeCriteriaHash } from "@crabgic/contracts";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
+import { createRequirementsRegistry } from "../registries/requirements-registry.js";
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { createIntentContractsRegistry } from "../registries/intent-contracts-registry.js";
@@ -83,6 +85,7 @@ function freshDeps(): IntakeDeps {
     workUnits: createWorkUnitsRegistry(),
     envelopes: createAuthorizationEnvelopesRegistry(),
     intentContracts: createIntentContractsRegistry(),
+    requirements: createRequirementsRegistry(),
   };
 }
 
@@ -123,6 +126,33 @@ describe("runIntake", () => {
     expect(stored).toEqual(outcome.artifacts.intentContract);
     expect(stored!.requirementIds.length).toBeGreaterThan(0);
     expect(stored!.id).toBe(outcome.artifacts.changeSet.intentContractId);
+  });
+
+  /**
+   * The `Requirement` records themselves — roadmap/24. The IntentContract
+   * persists only `requirementIds`, so before this the criteria a work unit
+   * is judged against were resolvable from nothing: no registry held them,
+   * and the sole durable copy was an incidental blob inside the intake
+   * idempotency journal entry. Sealing them is meaningless if the seal
+   * cannot be read back and compared.
+   */
+  it("persists every Requirement record, sealed, so completion can be judged against them", async () => {
+    const deps = freshDeps();
+
+    const outcome = await runIntake(deps, baseRequest());
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    expect(outcome.artifacts.requirements.length).toBeGreaterThan(0);
+    for (const requirement of outcome.artifacts.requirements) {
+      const stored = deps.requirements.get(requirement.id);
+      expect(stored).toEqual(requirement);
+      // The seal survives persistence, and matches the criteria it covers.
+      expect(stored!.criteriaHash).toBe(computeCriteriaHash(stored!.acceptanceCriteria));
+    }
+    // Every id the contract declares resolves to a stored record.
+    for (const id of outcome.artifacts.intentContract.requirementIds) {
+      expect(deps.requirements.get(id)).toBeDefined();
+    }
   });
 
   it("re-inspecting an unchanged repo never creates a second ChangeSet (journal-verified)", async () => {

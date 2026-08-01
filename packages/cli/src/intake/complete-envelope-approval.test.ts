@@ -8,6 +8,7 @@ import {
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   createWorkUnitsRegistry,
 } from "@crabgic/supervisor";
 import { buildAuthorizationEnvelope, buildChangeSet, buildIntentContract } from "@crabgic/testkit";
@@ -35,6 +36,7 @@ function seededDeps() {
     changeSets: createChangeSetsRegistry(),
     envelopes: createAuthorizationEnvelopesRegistry(),
     intentContracts: createIntentContractsRegistry(),
+    requirements: createRequirementsRegistry(),
     workUnits: createWorkUnitsRegistry(),
   };
 }

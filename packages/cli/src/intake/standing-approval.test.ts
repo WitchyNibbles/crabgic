@@ -12,6 +12,7 @@ import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   createChangeSetsRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   createWorkUnitsRegistry,
 } from "@crabgic/supervisor";
 import {
@@ -24,6 +25,7 @@ import {
   buildAuthorizationEnvelope,
   buildChangeSet,
   buildIntentContract,
+  buildRequirement,
   buildWorkUnit,
 } from "@crabgic/testkit";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
@@ -69,6 +71,7 @@ function seed(
 ): Seeded {
   const changeSets = createChangeSetsRegistry();
   const intentContracts = createIntentContractsRegistry();
+  const requirements = createRequirementsRegistry();
   const workUnits = createWorkUnitsRegistry();
 
   const requirementId = randomUUID();
@@ -79,6 +82,10 @@ function seed(
   });
   const contract = buildIntentContract({ id: randomUUID(), requirementIds: [requirementId] });
   intentContracts.put(contract);
+  // The record behind the declared id — roadmap/24. Approval seals the
+  // criteria, so a contract declaring a requirement whose record is missing is
+  // now refused rather than approved-with-nothing-sealed.
+  requirements.put(buildRequirement({ id: requirementId, intentContractId: contract.id }));
   const changeSet = buildChangeSet({
     id: randomUUID(),
     state: "awaiting_approval",
@@ -99,7 +106,7 @@ function seed(
   return {
     changeSet,
     envelope,
-    deps: { journal: store, changeSets, workUnits, intentContracts, loadPolicy },
+    deps: { journal: store, changeSets, workUnits, intentContracts, requirements, loadPolicy },
   };
 }
 
@@ -128,9 +135,13 @@ describe("applyStandingApproval", () => {
     expect(seeded.deps.changeSets.get(seeded.changeSet.id)?.state).toBe("ready");
 
     // Gap 18 part 4: evidence must answer what the human was standing behind.
+    // Two decisions now, and they answer different questions: what authority
+    // was standing behind this, and what bar was it approved against (roadmap/24).
     const recorded = await adjudications();
-    expect(recorded).toHaveLength(1);
-    expect(recorded[0]!.decision).toBe("policy_contained");
+    expect(recorded.map((entry) => entry.decision)).toStrictEqual([
+      "policy_contained",
+      "criteria_sealed",
+    ]);
     expect(recorded[0]!.rationale).toContain("sha256:pol");
   });
 
@@ -244,7 +255,8 @@ describe("applyStandingApproval", () => {
     expect(first.status).toBe("approved");
     if (first.status !== "approved") throw new Error("unreachable");
     expect(first.alreadyApproved).toBeUndefined();
-    expect(await adjudications()).toHaveLength(1);
+    // The authorization and its criteria seal — one each, not one of each per replay.
+    expect(await adjudications()).toHaveLength(2);
 
     // The replay: the SAME request, re-read from the registry as `run` would.
     const replayed = seeded.deps.changeSets.get(seeded.changeSet.id)!;
@@ -254,8 +266,12 @@ describe("applyStandingApproval", () => {
     expect(second.status).toBe("approved");
     if (second.status !== "approved") throw new Error("unreachable");
     expect(second.alreadyApproved).toBe(true);
-    // Exactly one authorization on record, not two.
-    expect(await adjudications()).toHaveLength(1);
+    // Still the SAME two the first call wrote — one authorization and one
+    // criteria seal. The replay added neither, which is the whole point.
+    expect((await adjudications()).map((entry) => entry.decision)).toStrictEqual([
+      "policy_contained",
+      "criteria_sealed",
+    ]);
   });
 
   it("still refuses a replay whose policy has NARROWED since it was approved", async () => {

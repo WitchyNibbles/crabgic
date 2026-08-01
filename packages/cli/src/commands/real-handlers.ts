@@ -305,6 +305,7 @@ export async function runRunCommand(
     workUnits: deps.intake.workUnits,
     envelopes: deps.intake.envelopes,
     intentContracts: deps.intake.intentContracts,
+    requirements: deps.intake.requirements,
     readIntakeRequest: deps.intake.readIntakeRequest,
     loadPolicy: deps.intake.loadPolicy,
   });

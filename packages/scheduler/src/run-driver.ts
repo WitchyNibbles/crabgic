@@ -45,7 +45,11 @@ import {
   journalFanoutRationaleIfFannedOut,
   selectDispatchSet,
 } from "./fanout.js";
-import { dispatchAttempt, type DispatchAttemptOutcome } from "./executor.js";
+import {
+  dispatchAttempt,
+  type AttemptCriteriaSeal,
+  type DispatchAttemptOutcome,
+} from "./executor.js";
 import { GlobalPauseActiveError } from "./errors.js";
 import { getParkStatus, isGloballyPaused } from "./parking.js";
 import { resolveModelForRole } from "./router.js";
@@ -82,6 +86,14 @@ export interface RunDriverDependencies {
   readonly adjudicate: AdjudicationCallback;
   readonly createAdapter: (ctx: WorkerDispatchContext) => Promise<EngineAdapter>;
   readonly buildPacket: (ctx: WorkerDispatchContext) => Promise<TaskPacket>;
+  /**
+   * Resolves the acceptance bar for one work unit (roadmap/24) — its own
+   * requirements, plus the seal recorded when the ChangeSet was approved.
+   * REQUIRED: the executor refuses to accept a completion without one, and a
+   * resolver that cannot be omitted is what keeps that true for the daemon
+   * path rather than only for whichever caller remembered.
+   */
+  readonly resolveCriteriaSeal: (ctx: WorkerDispatchContext) => Promise<AttemptCriteriaSeal>;
   readonly compileProfile: (ctx: WorkerDispatchContext) => Promise<CompiledWorkerProfile>;
   /** Role -> model alias. Defaults to `./router.ts`'s balanced-default map. */
   readonly resolveModel?: (role: string) => string;
@@ -189,6 +201,7 @@ async function runDispatch(
       packet,
       profile,
       adjudicate: deps.adjudicate,
+      criteriaSeal: await deps.resolveCriteriaSeal(ctx),
       // First dispatch of a unit needs no repair evidence; a repair
       // re-dispatch is `resumeAttempt`'s evidence-gated path, never this
       // loop's (`./attempt-policy.ts`).

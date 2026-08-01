@@ -158,3 +158,6 @@ export type { IdempotencyStatus, IdempotencyOutcome } from "./idempotency.js";
 // ---- Work-unit attempt tracking ----
 export { recordAttempt, getLatestAttempt, getLatestAttemptForRun } from "./attempts.js";
 export type { WorkUnitAttemptRecord } from "./attempts.js";
+
+// ---- Acceptance-criteria seal anchor (roadmap/24) ----
+export { journalCriteriaSeal, findLatestCriteriaSeal } from "./criteria-seal-anchor.js";

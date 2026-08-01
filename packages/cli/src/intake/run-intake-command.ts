@@ -28,6 +28,7 @@ import type {
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import type { JournalStore } from "@crabgic/journal";
@@ -48,6 +49,8 @@ export interface RunIntakeCommandDeps {
   readonly envelopes: Registry<AuthorizationEnvelope>;
   /** Durable contract store, for the same cross-process reason as `envelopes`: `contract.approve` resolves this ChangeSet's declared `requirementIds` from here to run its unmapped-requirement readiness gate. */
   readonly intentContracts: Registry<IntentContract>;
+  /** Durable `Requirement` store (roadmap/24) — persisted at intake, sealed at approval, verified before a completion is accepted. */
+  readonly requirements: Registry<Requirement>;
   /** Resolves the drafted intake request content (e.g. a manager-session-authored JSON file) — this module never drafts it itself. */
   readonly readIntakeRequest: () => Promise<IntakeRequest>;
   /**
@@ -108,6 +111,7 @@ export async function runIntakeCommand(
       workUnits: deps.workUnits,
       envelopes: deps.envelopes,
       intentContracts: deps.intentContracts,
+      requirements: deps.requirements,
     },
     request,
   );
@@ -129,6 +133,7 @@ export async function runIntakeCommand(
       changeSets: deps.changeSets,
       workUnits: deps.workUnits,
       intentContracts: deps.intentContracts,
+      requirements: deps.requirements,
       loadPolicy: deps.loadPolicy,
     },
   );

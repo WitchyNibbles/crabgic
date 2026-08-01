@@ -6,7 +6,7 @@
  * (09) and the gateway's (16) forwarded `run.status`/`run.cancel` calls
  * through this SAME router instance.
  */
-import type { AuthorizationEnvelope, ChangeSet, WorkUnit } from "@crabgic/contracts";
+import type { AuthorizationEnvelope, ChangeSet, Requirement, WorkUnit } from "@crabgic/contracts";
 import type { JournalStore } from "@crabgic/journal";
 import { transitionRun } from "../run-lifecycle/run-transition.js";
 import { reapOrphansAtStartup } from "../worker-lifecycle/orphan-reaper.js";
@@ -64,6 +64,13 @@ export interface SupervisorDependencies {
    * an authorization boundary and is never listed over the wire.
    */
   readonly envelopes?: Registry<AuthorizationEnvelope>;
+  /**
+   * The `Requirement` records (roadmap/24). Needed by the run dispatcher to
+   * resolve the acceptance bar a completion is verified against. Optional for
+   * the same reason `envelopes` is — the construction sites that predate
+   * `run.dispatch` keep compiling — and, like it, never listed over the wire.
+   */
+  readonly requirements?: Registry<Requirement>;
   readonly workers: WorkersRegistry;
   readonly artifactIndex: Registry<ArtifactIndexEntry>;
   readonly liveWorkers: ReadonlyMap<string, TerminableWorker>;

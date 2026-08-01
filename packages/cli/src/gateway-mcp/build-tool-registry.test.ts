@@ -17,6 +17,7 @@ import type {
   ChangeSet,
   EvidenceRecord,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import { createCapabilityStore } from "@crabgic/detect";
@@ -64,6 +65,7 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
     workUnits: createInMemoryRegistry<WorkUnit>(),
     envelopes: createInMemoryRegistry<AuthorizationEnvelope>(),
     intentContracts: createInMemoryRegistry<IntentContract>(),
+    requirements: createInMemoryRegistry<Requirement>(),
     capability: { store },
     approvalTokenVerifier: minter,
     resolveCapabilityStoreKey: () => undefined,

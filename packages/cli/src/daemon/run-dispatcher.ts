@@ -40,12 +40,13 @@ import type {
   WorkUnit,
 } from "@crabgic/contracts";
 import type { XdgEnv } from "@crabgic/journal";
-import type { JournalStore } from "@crabgic/journal";
+import { findLatestCriteriaSeal, type JournalStore } from "@crabgic/journal";
 import {
   createRun,
   findLiveRunForChangeSet,
   findPublishedRunForChangeSet,
   provisionWorkerDirs,
+  resolveRequirements,
   transitionRun,
   type RunDispatcher,
   type RunDispatchOutcome,
@@ -433,6 +434,19 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         adjudicate,
         nowSeconds,
         compileProfile: () => Promise.resolve(profile),
+        // roadmap/24: the bar this unit is judged against. Both halves come
+        // from durable state the worker cannot rewrite without detection —
+        // the records from the registry intake persisted, the seal from the
+        // append-only journal at approval time. Resolved per attempt rather
+        // than cached for the run, so a re-approval after a material
+        // amendment is picked up rather than judged against a stale bar.
+        resolveCriteriaSeal: async (ctx) => ({
+          requirements:
+            deps.requirements === undefined
+              ? []
+              : resolveRequirements(deps.requirements, ctx.workUnit.requirementIds),
+          approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),
+        }),
         buildPacket: (ctx) =>
           Promise.resolve(
             buildTaskPacket({
@@ -518,6 +532,15 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
           return resumeAttempt({
             adapter: retained.adapter,
             journal: deps.journal,
+            // The SAME bar the fresh dispatch is held to — a park-resume must
+            // not become a way to complete against an unverified one.
+            criteriaSeal: {
+              requirements:
+                deps.requirements === undefined
+                  ? []
+                  : resolveRequirements(deps.requirements, ctx.workUnit.requirementIds),
+              approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),
+            },
             sessionRef,
             workUnitId: ctx.workUnit.id,
             adjudicate,
