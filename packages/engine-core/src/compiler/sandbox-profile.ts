@@ -3,12 +3,7 @@ import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { SandboxProfileSchema, type SandboxProfile } from "./compiled-worker-profile.js";
 import { validateNetworkDestination } from "./network-destination.js";
 import { validateOwnedPath } from "./owned-path.js";
-import {
-  CONTROL_REPO_STATE_ROOT_DENY_PATH,
-  CONTROL_REPO_CACHE_ROOT_DENY_PATH,
-  SSH_DENY_PATH,
-  AWS_DENY_PATH,
-} from "./xdg-default-paths.js";
+import { mandatoryPathDenyRoots, type RuntimeRootsDenyInput } from "./xdg-default-paths.js";
 import {
   WORKTREE_WRITE_PLACEHOLDER,
   WORKER_TMP_WRITE_PLACEHOLDER,
@@ -34,12 +29,6 @@ export { WORKTREE_WRITE_PLACEHOLDER, WORKER_TMP_WRITE_PLACEHOLDER };
  * Denying them explicitly is the deny-wins backstop, symmetric with
  * `permission-profile.ts`'s own `Read`/`Edit`/`Write` deny triplets.
  */
-const MANDATORY_SENSITIVE_DENY_PATHS: readonly string[] = [
-  CONTROL_REPO_STATE_ROOT_DENY_PATH,
-  CONTROL_REPO_CACHE_ROOT_DENY_PATH,
-  SSH_DENY_PATH,
-  AWS_DENY_PATH,
-];
 
 /**
  * The worktree's own git internals, carved back OUT of the whole-worktree
@@ -204,6 +193,7 @@ function narrowedAllowWrite(
 export function emitSandboxProfile(
   envelope: AuthorizationEnvelope,
   policy?: EnvelopePolicy,
+  runtimeRoots?: RuntimeRootsDenyInput,
 ): SandboxProfile {
   return SandboxProfileSchema.parse({
     enabled: true,
@@ -224,8 +214,8 @@ export function emitSandboxProfile(
         policy === undefined
           ? [WORKTREE_WRITE_PLACEHOLDER, WORKER_TMP_WRITE_PLACEHOLDER]
           : narrowedAllowWrite(envelope, policy),
-      denyWrite: [...WORKTREE_GIT_INTERNALS_DENY_PATHS, ...MANDATORY_SENSITIVE_DENY_PATHS],
-      denyRead: [...MANDATORY_SENSITIVE_DENY_PATHS],
+      denyWrite: [...WORKTREE_GIT_INTERNALS_DENY_PATHS, ...mandatoryPathDenyRoots(runtimeRoots)],
+      denyRead: [...mandatoryPathDenyRoots(runtimeRoots)],
     },
     credentials: {
       envVars: envelope.credentialReferences.map((name) => ({ name, mode: "mask" as const })),

@@ -28,13 +28,22 @@
  * (`~/.cache/crabgic/**`) is assumed to hold the control
  * clone — mirroring Gap 14's own state-root/cache-root split.
  *
- * Once phases 04 (`@crabgic/journal`) and 05/06 (this package's consumers) are
- * both linked, 05/06 must add a consistency test proving these defaults
- * never silently diverge from `@crabgic/journal`'s real runtime-resolved roots
- * (e.g. an env override, or a non-default `$XDG_STATE_HOME`, must not
- * create a gap between what this compiler denies and where the journal
- * actually lives) — this package cannot add that test itself without
- * creating the forbidden `@crabgic/engine-core -> @crabgic/journal` edge.
+ * CARRY-FORWARD DISCHARGED (2026-08-01). The gap this comment predicted —
+ * "a non-default `$XDG_STATE_HOME` must not create a gap between what this
+ * compiler denies and where the journal actually lives" — was real and
+ * reachable, not merely theoretical: the engine's own `Write`/`Edit` tools
+ * execute OUTSIDE the bubblewrap boundary
+ * (`docs/evidence/phase-06/sandbox-containment-determination.json`, arm
+ * `sandbox-write-tool`), so for those tools these deny RULES are the only
+ * thing between a worker and the journal, and under a custom
+ * `$XDG_STATE_HOME` they named a path the journal was not in.
+ *
+ * The fix keeps the seam: this package still does not import
+ * `@crabgic/journal`. `compileEnvelope` now accepts the caller's already-
+ * resolved runtime roots (`RuntimeRootsDenyInput`) and denies those IN
+ * ADDITION to the literals below. The literals stay because they remain
+ * correct when the env vars are unset, and because deny-wins means an extra
+ * deny can never loosen anything.
  */
 export const CONTROL_REPO_STATE_ROOT_DENY_PATH = "~/.local/state/crabgic/**";
 
@@ -46,3 +55,42 @@ export const SSH_DENY_PATH = "~/.ssh/**";
 
 /** Mandatory credential-path deny (adaptation §4.2, §5.1, Appendix B). */
 export const AWS_DENY_PATH = "~/.aws/**";
+
+/**
+ * The caller's REAL, already-resolved runtime roots — the concrete
+ * directories `@crabgic/journal` actually uses for this host and user, which
+ * only a caller that can read the environment knows.
+ *
+ * Supplied to `compileEnvelope` so the compiled denies cover where the
+ * journal and control clone genuinely live, not merely where the XDG spec
+ * defaults put them. Both are directory paths WITHOUT a trailing glob; the
+ * compiler appends `/**` itself, exactly as it does for the literals above.
+ */
+export interface RuntimeRootsDenyInput {
+  /** Absolute path of the resolved state root holding the journal and control state (e.g. `$XDG_STATE_HOME/crabgic`). */
+  readonly stateRoot: string;
+  /** Absolute path of the resolved cache root holding the control clone (e.g. `$XDG_CACHE_HOME/crabgic`). */
+  readonly cacheRoot: string;
+}
+
+/**
+ * The full mandatory deny set: the tilde-default literals plus, when the
+ * caller supplied them, its resolved roots. De-duplicated, because a default
+ * environment resolves to exactly the literals and emitting each twice would
+ * be noise in every golden profile.
+ */
+export function mandatoryPathDenyRoots(runtimeRoots?: RuntimeRootsDenyInput): readonly string[] {
+  const resolved =
+    runtimeRoots === undefined
+      ? []
+      : [`${runtimeRoots.stateRoot}/**`, `${runtimeRoots.cacheRoot}/**`];
+  return [
+    ...new Set([
+      CONTROL_REPO_STATE_ROOT_DENY_PATH,
+      CONTROL_REPO_CACHE_ROOT_DENY_PATH,
+      ...resolved,
+      SSH_DENY_PATH,
+      AWS_DENY_PATH,
+    ]),
+  ];
+}

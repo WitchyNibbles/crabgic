@@ -3,12 +3,7 @@ import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { PermissionProfileSchema, type PermissionProfile } from "./compiled-worker-profile.js";
 import { validateOwnedPath } from "./owned-path.js";
 import { WORKTREE_WRITE_PLACEHOLDER } from "./worktree-placeholders.js";
-import {
-  CONTROL_REPO_STATE_ROOT_DENY_PATH,
-  CONTROL_REPO_CACHE_ROOT_DENY_PATH,
-  SSH_DENY_PATH,
-  AWS_DENY_PATH,
-} from "./xdg-default-paths.js";
+import { mandatoryPathDenyRoots, type RuntimeRootsDenyInput } from "./xdg-default-paths.js";
 
 /**
  * The four doc-confirmed `Bash(...)` command-prefix literals, no space
@@ -51,20 +46,6 @@ const MANDATORY_FIXED_DENY: readonly string[] = [
 ];
 
 /**
- * The four mandatory sensitive-path deny ROOTS (control-repo state+cache
- * root, `~/.ssh`, `~/.aws`; SEAM DECISION in `./xdg-default-paths.ts`).
- * Mirrored below into `Read`, `Edit`, and `Write` deny forms — phase-03
- * security-fix round, CRITICAL 1, defect (2): before this fix only `Read`
- * denies existed for these roots, with no `Edit`/`Write` backstop at all.
- */
-const MANDATORY_SENSITIVE_PATH_DENY_ROOTS: readonly string[] = [
-  CONTROL_REPO_STATE_ROOT_DENY_PATH,
-  CONTROL_REPO_CACHE_ROOT_DENY_PATH,
-  SSH_DENY_PATH,
-  AWS_DENY_PATH,
-];
-
-/**
  * Mandatory path denies, `~/`-anchored (adaptation §4.2, §5.1; SEAM
  * DECISION in `./xdg-default-paths.ts` for the control-repo/journal
  * literals) — now `Read`/`Edit`/`Write` siblings for every sensitive root,
@@ -75,13 +56,16 @@ const MANDATORY_SENSITIVE_PATH_DENY_ROOTS: readonly string[] = [
  * already blocks reads of the sensitive roots, and workers should never
  * legitimately need to Edit/Write them either.
  */
-const MANDATORY_PATH_DENY: readonly string[] = [
-  ...MANDATORY_SENSITIVE_PATH_DENY_ROOTS.map((path) => `Read(${path})`),
-  ...MANDATORY_SENSITIVE_PATH_DENY_ROOTS.map((path) => `Edit(${path})`),
-  ...MANDATORY_SENSITIVE_PATH_DENY_ROOTS.map((path) => `Write(${path})`),
-  `Edit(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
-  `Write(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
-];
+function mandatoryPathDeny(runtimeRoots?: RuntimeRootsDenyInput): readonly string[] {
+  const roots = mandatoryPathDenyRoots(runtimeRoots);
+  return [
+    ...roots.map((path) => `Read(${path})`),
+    ...roots.map((path) => `Edit(${path})`),
+    ...roots.map((path) => `Write(${path})`),
+    `Edit(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
+    `Write(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
+  ];
+}
 
 /**
  * `emitPermissionProfile` — roadmap/03-envelope-compiler-engine-adapter.md
@@ -106,7 +90,10 @@ const MANDATORY_PATH_DENY: readonly string[] = [
  * does. See `./owned-path.js`'s own doc comment for the full defect
  * writeup and the recorded engine-fact-drift gap.
  */
-export function emitPermissionProfile(envelope: AuthorizationEnvelope): PermissionProfile {
+export function emitPermissionProfile(
+  envelope: AuthorizationEnvelope,
+  runtimeRoots?: RuntimeRootsDenyInput,
+): PermissionProfile {
   const ownedPathAllow = envelope.ownedPaths.flatMap((path) => {
     const relativePath = validateOwnedPath(path);
     return [
@@ -126,7 +113,7 @@ export function emitPermissionProfile(envelope: AuthorizationEnvelope): Permissi
     defaultMode: "dontAsk",
     disableBypassPermissionsMode: "disable",
     allow: [...ownedPathAllow, ...bashAllow, gatewayAllow],
-    deny: [...MANDATORY_FIXED_DENY, ...MANDATORY_PATH_DENY],
+    deny: [...MANDATORY_FIXED_DENY, ...mandatoryPathDeny(runtimeRoots)],
     ask: [],
   });
 }
