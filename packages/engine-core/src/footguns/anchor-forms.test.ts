@@ -35,32 +35,44 @@ describe("footgun: '//' vs '~/' anchor forms never collide or shadow", () => {
     }
   });
 
-  // The numRuns bump from 5000 to 10000 (Test plan: ≥10k cases) plus the
-  // CRITICAL 1 fix's larger deny array (10 new Edit/Write backstop
-  // entries) pushes this specific nested-loop property over vitest's
-  // default 5000ms per-test timeout under v8 coverage instrumentation — a
-  // coverage-instrumentation timing artifact, not a correctness issue (the
-  // equivalent property.test.ts properties, with less nested work per
-  // iteration, stay under the default). Scoped to this one test via `it`'s
-  // own per-test timeout argument — vitest.config.ts is off-limits to this
-  // worker.
-  const SLOW_PROPERTY_TIMEOUT_MS = 20000;
-
-  it(
-    "no allow rule ever appears verbatim in the deny list, and vice versa, for any owned-path/command/network/credential input (fast-check, ≥10k cases)",
-    () => {
-      fc.assert(
-        fc.property(envelopeArbitrary(), (envelope) => {
-          const profile = compileEnvelope(envelope);
-          for (const denyRule of profile.permissions.deny) {
-            expect(profile.permissions.allow).not.toContain(denyRule);
-          }
-        }),
-        { numRuns: 10000 },
-      );
-    },
-    SLOW_PROPERTY_TIMEOUT_MS,
-  );
+  // ONE assertion per generated case, not one per deny rule. The earlier
+  // form asserted inside a `for (const denyRule of ...deny)` loop, which
+  // at 10k cases x 20 mandatory deny rules meant 200,000 `expect()` calls
+  // — and a vitest/chai `expect()` costs far more than the work it was
+  // guarding. Measured on this suite (10k cases, no coverage):
+  //
+  //   generate the envelope only .................  245ms
+  //   + compileEnvelope (the actual code under test)  478ms
+  //   + per-deny-rule expect() loop (old form) ... 3942ms
+  //   + Set intersection, one expect() (this form)  620ms
+  //
+  // i.e. 88% of the old runtime was assertion-object construction, not
+  // property evaluation. That overhead is also the part that degrades
+  // worst under full-suite parallel CPU contention, which is how this
+  // suite kept flaking on a 20s timeout despite finishing in ~4s alone.
+  //
+  // The assertion is UNCHANGED in strength: `deny ∩ allow === ∅` is
+  // exactly what the old loop checked, one membership test at a time, and
+  // set intersection is symmetric so it still covers the "and vice versa"
+  // direction. numRuns stays at the Test plan's mandated 10k. On failure
+  // this form is strictly more informative — it reports every colliding
+  // rule at once rather than aborting on the first.
+  //
+  // No per-test timeout override: the root vitest.config.ts already sets
+  // `testTimeout: 20000` repo-wide (its comment cites this very suite).
+  // The local override that used to sit here restated that same 20000 and
+  // its rationale referenced a 5000ms default that no longer exists.
+  it("no allow rule ever appears verbatim in the deny list, and vice versa, for any owned-path/command/network/credential input (fast-check, ≥10k cases)", () => {
+    fc.assert(
+      fc.property(envelopeArbitrary(), (envelope) => {
+        const profile = compileEnvelope(envelope);
+        const allowed = new Set(profile.permissions.allow);
+        const collisions = profile.permissions.deny.filter((rule) => allowed.has(rule));
+        expect(collisions).toEqual([]);
+      }),
+      { numRuns: 10000 },
+    );
+  });
 
   it("a mandatory deny is never accidentally emitted twice under two different anchor spellings", () => {
     const profile = compileEnvelope(buildEnvelopeFixture());
