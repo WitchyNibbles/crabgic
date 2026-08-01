@@ -53,6 +53,7 @@ import {
   assertLiveEnabled,
   bashCommandsAttempted,
   createLiveScratch,
+  ensureCanary,
   resolveWorkerAuthMaterial,
   runDirectQuery,
   toolResultText,
@@ -104,8 +105,14 @@ async function untilCommandExecuted(
   return last;
 }
 
-beforeAll(() => {
+// `ensureCanary()` added 2026-08-01 — see the same note in
+// `path-anchor-differential.live.test.ts`. §4.7/§4.8's built-in-allow-rule
+// shadowing determination was recorded against `TESTED_ENGINE_VERSION` without
+// ever verifying that the engine which answered was that version. Memoized per
+// suite run, so it costs zero extra engine invocations.
+beforeAll(async () => {
   assertLiveEnabled();
+  await ensureCanary();
 });
 
 describe("built-in allow-RULE shadowing (engine fact, live)", () => {

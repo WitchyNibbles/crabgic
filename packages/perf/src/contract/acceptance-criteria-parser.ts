@@ -12,6 +12,7 @@
  * move changed no behavior.
  */
 export {
+  ContradictoryCriterionDirectionError,
   parseAcceptanceCriterionAsBudget,
   parseAcceptanceCriteriaAsBudgets,
 } from "@crabgic/contracts";

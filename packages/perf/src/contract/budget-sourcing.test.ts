@@ -39,6 +39,21 @@ describe("resolveBudgetSource", () => {
     expect(result.budgets).toEqual([]);
   });
 
+  // The ecosystem label reaches this rule straight from `JSON.parse` (intake
+  // has no `IntakeRequestSchema`). Before the `Object.hasOwn` guard,
+  // `ECOSYSTEM_RESEARCH_BUDGETS["constructor"]` answered with `Object` — arity
+  // 1, so it passed the `.length > 0` liveness check — and spreading it threw
+  // `TypeError: researched is not iterable` out of `@crabgic/contracts`,
+  // crashing `runIntake` on a one-word request body.
+  it.each(["constructor", "hasOwnProperty", "__proto__", "toString", "isPrototypeOf"])(
+    "falls through to source #3 for inherited Object.prototype member %j, never throwing",
+    (member) => {
+      const result = resolveBudgetSource({ ecosystem: member });
+      expect(result.source).toBe("base_revision_measurement");
+      expect(result.budgets).toEqual([]);
+    },
+  );
+
   it("source order is strict: a resolving source #1 wins even when source #2 would also resolve", () => {
     const result = resolveBudgetSource({
       requirementAcceptanceCriteria: ["cpu_time <= 1s"],

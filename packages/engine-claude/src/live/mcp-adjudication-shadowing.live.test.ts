@@ -86,6 +86,7 @@ import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import {
   assertLiveEnabled,
   createLiveScratch,
+  ensureCanary,
   LIVE_GATEWAY_OVERRIDE,
   resolveWorkerAuthMaterial,
   runDirectQuery,
@@ -223,8 +224,14 @@ function invokedTool(messages: readonly SDKMessage[], toolName: string): boolean
   return false;
 }
 
-beforeAll(() => {
+// `ensureCanary()` added 2026-08-01 — see the same note in
+// `path-anchor-differential.live.test.ts`. The MCP-shadowing determination
+// (bare `allowedTools` entries bypass the adjudication bridge) was recorded
+// against `TESTED_ENGINE_VERSION` on assertion, not on measurement. Memoized
+// per suite run, so it costs zero extra engine invocations.
+beforeAll(async () => {
   assertLiveEnabled();
+  await ensureCanary();
 });
 
 describe("MCP adjudication shadowing (engine fact, live)", () => {

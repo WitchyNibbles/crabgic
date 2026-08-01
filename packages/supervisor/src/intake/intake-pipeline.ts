@@ -28,6 +28,8 @@
 import {
   CURRENT_SCHEMA_VERSION,
   ChangeSetSchema,
+  isKnownResearchEcosystem,
+  KNOWN_RESEARCH_ECOSYSTEMS,
   type AuthorizationEnvelope,
   type CapabilityManifest,
   type ChangeSet,
@@ -70,8 +72,16 @@ export interface IntakeRequest {
    * The project's ecosystem label, for the ecosystem-research fallback
    * (source #2). A declared INPUT selecting a pinned-table row — not a
    * conclusion — and unverified against phase 12's detection until
-   * StackEvidence is wired into intake; see ledger Gap 21's residual. Absent
-   * or unknown simply falls through to `base_revision_measurement`.
+   * StackEvidence is wired into intake; see ledger Gap 21's residual.
+   *
+   * VALIDATED, not free-form (2026-08-01). Omitting the field falls through to
+   * `base_revision_measurement`; supplying a value the pinned table has no row
+   * for is an `UnknownEcosystemError`, never a silent fall-through — see
+   * `assertKnownEcosystem`. This is narrower than
+   * `ProjectProfile.ecosystems[].ecosystem`, which stays deliberately
+   * free-form (`project-profile.ts`): that field labels what phase 12
+   * DETECTED, while this one selects a row from a four-row table and does
+   * nothing else.
    *
    * NOTE what is NOT here: `performanceBudgetSource` and `performanceBudgets`.
    * Intake DERIVES both (ledger Gap 21), so a declaration disagreeing with the
@@ -131,6 +141,55 @@ export interface IntakeDeps {
   readonly requirements: Registry<Requirement>;
 }
 
+/**
+ * `IntakeRequest.ecosystem` names no row of roadmap/15's pinned
+ * ecosystem-research table.
+ */
+export class UnknownEcosystemError extends Error {
+  constructor(readonly ecosystem: string) {
+    super(
+      `intake: unknown ecosystem ${JSON.stringify(ecosystem)} — ` +
+        `the pinned ecosystem-research budget table has rows for ${KNOWN_RESEARCH_ECOSYSTEMS.join(", ")} only. ` +
+        "Omit the field to source budgets from base-revision measurement instead.",
+    );
+    this.name = "UnknownEcosystemError";
+  }
+}
+
+/**
+ * Fails intake closed on an ecosystem the pinned table cannot serve.
+ *
+ * WHY VALIDATE AT ALL — intake's input is `JSON.parse(raw) as IntakeRequest`
+ * with no `IntakeRequestSchema` (`@crabgic/cli`'s `bootstrap.ts` documents that
+ * choice: each builder `*Schema.parse`s what it constructs). `ecosystem` is the
+ * one field no builder ever parses; it is passed straight into a table lookup.
+ * That left two defects:
+ *
+ *  1. A CRASH. `ECOSYSTEM_RESEARCH_BUDGETS` is an object literal, so
+ *     `TABLE["constructor"]` answered with `Object` — arity 1, passing
+ *     `resolveBudgetSource`'s `.length > 0` liveness check — and spreading it
+ *     threw `TypeError: researched is not iterable` out of
+ *     `@crabgic/contracts`. A stdin body containing `"ecosystem":
+ *     "constructor"` (or `"hasOwnProperty"`) crashed `runIntake`.
+ *     `isKnownResearchEcosystem`'s `Object.hasOwn` closes that at the table.
+ *  2. A SILENT DEGRADE, which the table guard alone does NOT close. `"Node"`,
+ *     `"node "` or `"java"` look accepted and quietly produce
+ *     `base_revision_measurement` budgets — an empty set the gate-time builder
+ *     is then expected to populate. The author never learns their label was
+ *     ignored.
+ *
+ * Checked unconditionally, BEFORE the idempotency record is written and
+ * regardless of whether a resolving source #1 means the table would ever be
+ * consulted: a typo must not be an error or a no-op depending on whether some
+ * unrelated acceptance criterion happened to parse. Rejecting before
+ * `checkOrRecord` persists anything also means a corrected retry with the same
+ * `requestKey` is a clean first intake, not a content conflict.
+ */
+function assertKnownEcosystem(ecosystem: string | undefined): void {
+  if (ecosystem === undefined) return;
+  if (!isKnownResearchEcosystem(ecosystem)) throw new UnknownEcosystemError(ecosystem);
+}
+
 function requestContentHash(request: IntakeRequest): string {
   return canonicalHash({
     sections: request.sections,
@@ -157,6 +216,8 @@ export function computeIntentContractId(changeSetId: string): string {
 }
 
 export function buildIntakeArtifacts(request: IntakeRequest): IntakeArtifacts {
+  assertKnownEcosystem(request.ecosystem);
+
   const intentContractId = computeIntentContractId(request.id);
   const envelopeId = deriveStableId(`${request.id}:envelope`);
   const manifestId = deriveStableId(`${request.id}:capability-manifest`);
@@ -245,6 +306,13 @@ export function buildIntakeArtifacts(request: IntakeRequest): IntakeArtifacts {
  * the registry entries and performs that one transition exactly once.
  */
 export async function runIntake(deps: IntakeDeps, request: IntakeRequest): Promise<IntakeOutcome> {
+  // Before `checkOrRecord`, not only inside `compute`: the replay and conflict
+  // branches never call `compute`, and a request this process would refuse to
+  // build must not be answered "replayed" off a record some earlier version
+  // wrote. `buildIntakeArtifacts` re-checks because it is exported and callable
+  // on its own.
+  assertKnownEcosystem(request.ecosystem);
+
   const idempotency = new IdempotencyRegistry(deps.journal);
   const outcome = await idempotency.checkOrRecord<IntakeArtifacts>(
     `intake:${request.requestKey}`,

@@ -1555,9 +1555,27 @@ should always have had.
 1. `IntakeRequest.ecosystem` is a declared input selecting a pinned-table row, unverified against phase 12's
    detection until StackEvidence is wired into intake. It can pick the wrong defaults; it can no longer
    misdescribe provenance.
+   **NARROWED 2026-08-01 (label update, no ruling change).** Two halves of this residual are now closed and
+   only the StackEvidence half remains open. (a) The table indexed a plain object literal, so
+   `{"ecosystem":"constructor"}` on intake's unvalidated stdin threw a `TypeError` out of
+   `@crabgic/contracts` and crashed `runIntake`; `ecosystemResearchBudgets` now answers only for own rows
+   (`Object.hasOwn`). (b) An ecosystem the pinned table has no row for is refused at the boundary
+   (`UnknownEcosystemError`, `intake-pipeline.ts`) instead of silently degrading to source #3. **Still open,
+   unchanged:** the declared ecosystem is not reconciled against phase 12's detection — a *valid* label can
+   still be the wrong one for the repository, and the `stackEvidenceProvider` seam on `project.inspect`
+   remains unfilled in production.
 2. The parser captures and discards the comparison operator, so `latency >= 200ms` derives the same budget as
    `<= 200ms`; direction comes from `higherIsWorse(metric)` at decision time. Pre-existing, and newly
    production-reachable because source #1 is now executed — recorded here rather than silently changed.
+   **CLOSED 2026-08-01 (label update, no ruling change).** The operator is no longer discarded: it is read
+   for validation only, and a criterion whose operator contradicts its metric's canonical direction is
+   refused with a diagnostic (`ContradictoryCriterionDirectionError`) rather than silently reinterpreted as
+   its opposite — `throughput <= 1000` was recorded as a budget the gate enforces as a floor (recorded, not
+   enforced: `createPerformanceGateHandler` still has no production caller). The schema is unchanged and still
+   carries no direction field; `higherIsWorse(metric)` remains the single source of direction at decision
+   time, relocated beside `PERFORMANCE_METRICS` in `@crabgic/contracts` so the parser can reach it without an
+   11 → 15 edge (`packages/perf` re-exports it verbatim). Direction-consistent criteria parse exactly as
+   before: all six supervisor goldens are byte-identical.
 3. The same-process journal-writer ceiling (roadmap/24 §Risks) applies to the intake anchor unchanged.
 4. Upgrade boundary: `requestContentHash` now covers `ecosystem` and no longer covers the removed fields, so
    a same-`requestKey` replay across the upgrade reports `conflict`. Same ruling as roadmap/24 — drain

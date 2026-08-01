@@ -8,6 +8,37 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
+## Unreleased
+
+Mirrors `.changeset/upgrade-boundary-and-intake-validation.md`; folded into the next
+version's section at release time, not rewritten by hand there.
+
+**⚠️ Before upgrading from 1.5.0 — read `docs/upgrade-guide.md`, "Before upgrading".** Two
+rulings that until now lived only in design documents. (1) **Finish or cancel in-flight
+runs first.** Change sets created before phase 24 carry no approval seal, and the new
+verification fails them closed; the ruling is to drain rather than grandfather, and no
+enforcement epoch is implemented deliberately. Wait for every run to reach
+`published_local`, `failed`, `blocked` or `cancelled` (`crabgic status <run-id>`), or stop
+it with `crabgic cancel <run-id>`. (2) **A replayed `requestKey` across this upgrade
+reports `conflict`, by design.** `IntakeRequest` no longer carries
+`performanceBudgetSource`/`performanceBudgets` — intake derives them — so an unchanged
+intake document hashes differently on either side of the upgrade and is refused as a
+content conflict rather than minting a second change set. Nothing is lost or overwritten;
+re-run under a fresh `requestKey`, or use the amendment flow. The refusal message now says
+so instead of leaving you hunting for an edit that never happened.
+
+**Intake validates the two inputs nothing was validating.** Intake reads its request as
+`JSON.parse` with no schema, and `ecosystem` was the one field no builder ever parsed: it
+indexed a plain object literal, so `{"ecosystem": "constructor"}` on stdin crashed
+`runIntake` with a `TypeError` raised from inside `@crabgic/contracts`. The pinned budget
+table now answers only for its own rows, and an ecosystem it has no row for is refused at
+the boundary instead of quietly degrading to base-revision measurement. Separately, a
+performance acceptance criterion whose operator contradicts its metric's canonical
+direction — `throughput <= 1000 ops/sec`, where a throughput budget is a floor — was
+silently enforced as its opposite, because a budget entry carries no direction of its own.
+It is now refused with a diagnostic naming the operator to write. Direction-consistent
+criteria parse exactly as before and no derived budget value moves.
+
 ## 1.5.0
 
 A run that stops for a reason outside its control should not stop for good.

@@ -419,3 +419,69 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     expect(parsed.standing.reason).toContain("infra/secrets");
   });
 });
+
+/**
+ * The requestKey-conflict refusal (ledger Gap 21, residual 4; roadmap/24
+ * §Risks, "Upgrade migration"). Intake is idempotent on
+ * `(requestKey, requestContentHash)`, so the SAME key with CHANGED content is
+ * refused rather than silently minting a second `ChangeSet`. That refusal has
+ * one cause an operator cannot deduce from the message: `IntakeRequest`'s field
+ * set changed across the 1.5 -> next upgrade (`performanceBudgetSource` and
+ * `performanceBudgets` were removed once intake began deriving them), so the
+ * identical intake document hashes differently on either side of the upgrade.
+ * The message named neither the upgrade nor the drain-first remedy, and the
+ * remedy lived only in two design documents.
+ */
+describe("dispatchCommand — run, requestKey conflict", () => {
+  function conflictDeps(request: IntakeRequest): CliDependencies {
+    const secretKey = randomBytes(32);
+    return {
+      ...baseDeps(),
+      intake: {
+        journal: store,
+        changeSets: createChangeSetsRegistry(),
+        workUnits: createWorkUnitsRegistry(),
+        envelopes: createAuthorizationEnvelopesRegistry(),
+        intentContracts: createIntentContractsRegistry(),
+        requirements: createRequirementsRegistry(),
+        minter: new ApprovalTokenMinter({ secretKey }),
+        secretKey,
+        readIntakeRequest: async () => request,
+        io: { input: new PassThrough(), output: new PassThrough() },
+        loadPolicy: () => ({
+          status: "loaded",
+          policy: EnvelopePolicySchema.parse({
+            maxWorkerTurnsPerAttempt: 40,
+            schemaVersion: 1,
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            allowedPathPrefixes: ["src"],
+          }),
+          digest: "sha256:standing",
+        }),
+      },
+    };
+  }
+
+  /** Records the first intake, then re-runs the same key with different content. */
+  async function conflictingSecondRun(): Promise<{ exitCode: number; stderr?: string }> {
+    await dispatchCommand({ command: "run", json: true }, conflictDeps(fixtureRequest()));
+    return dispatchCommand(
+      { command: "run", json: false },
+      conflictDeps({ ...fixtureRequest(), rollbackStrategy: "Revert the feature flag instead." }),
+    );
+  }
+
+  it("refuses with a non-zero exit and names the fresh-key / amendment remedy", async () => {
+    const result = await conflictingSecondRun();
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toContain("intake conflict");
+    expect(result.stderr).toContain("use a fresh requestKey or the amendment flow");
+  });
+
+  it("names the upgrade boundary as a cause, and points at the upgrade guide", async () => {
+    const result = await conflictingSecondRun();
+    expect(result.stderr).toContain("upgrad");
+    expect(result.stderr).toContain("docs/upgrade-guide.md");
+  });
+});

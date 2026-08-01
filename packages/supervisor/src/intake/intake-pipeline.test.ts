@@ -9,7 +9,12 @@ import { createRequirementsRegistry } from "../registries/requirements-registry.
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { createIntentContractsRegistry } from "../registries/intent-contracts-registry.js";
-import { runIntake, type IntakeDeps, type IntakeRequest } from "./intake-pipeline.js";
+import {
+  runIntake,
+  UnknownEcosystemError,
+  type IntakeDeps,
+  type IntakeRequest,
+} from "./intake-pipeline.js";
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
 const WU_ID = "22222222-1111-4111-8111-111111111111";
@@ -316,6 +321,87 @@ describe("runIntake — derived budget provenance", () => {
 
     const second = await runIntake(deps, { ...request, ecosystem: "python" });
     expect(second.status).toBe("conflict");
+  });
+
+  // Intake reads its request as `JSON.parse(raw) as IntakeRequest` — there is
+  // no `IntakeRequestSchema`, so `ecosystem` arrives entirely unvalidated. It
+  // selects a row in a pinned four-row table and does nothing else, so an
+  // unknown value is a typo the author will never see: it silently degrades to
+  // source #3 while looking like it picked a budget. Fail fast at the boundary.
+  it.each(["java", "Node", "node ", "cobol", ""])(
+    "rejects the unknown ecosystem %j rather than silently degrading to source #3",
+    async (ecosystem) => {
+      const deps = freshDeps();
+      await expect(
+        runIntake(deps, withRequirements([perfRequirement], { ecosystem })),
+      ).rejects.toThrow(UnknownEcosystemError);
+    },
+  );
+
+  it("names the known ecosystems in the rejection, so the fix is obvious", async () => {
+    const deps = freshDeps();
+    await expect(
+      runIntake(deps, withRequirements([perfRequirement], { ecosystem: "java" })),
+    ).rejects.toThrow(/go, node, python, rust/);
+  });
+
+  // The crash this validation closes: `ECOSYSTEM_RESEARCH_BUDGETS` was a plain
+  // object literal, so `TABLE["constructor"]` answered with `Object` (arity 1,
+  // passing the `.length > 0` liveness check) and spreading it threw
+  // `TypeError: researched is not iterable` out of `@crabgic/contracts`. Prose
+  // criteria are what reach source #2, so this is the shape that crashed: a
+  // stdin body whose only unusual field is `"ecosystem": "constructor"`.
+  it.each(["constructor", "hasOwnProperty", "__proto__", "toString"])(
+    "rejects the inherited Object.prototype member %j as an ecosystem, never crashing",
+    async (member) => {
+      const deps = freshDeps();
+      const attempt = runIntake(
+        deps,
+        withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }], {
+          ecosystem: member,
+        }),
+      );
+      await expect(attempt).rejects.toThrow(UnknownEcosystemError);
+      await expect(attempt).rejects.not.toThrow(TypeError);
+    },
+  );
+
+  // Validation is a boundary check, not a lookup guard: it fires even when a
+  // resolving source #1 means the ecosystem would never have been consulted.
+  // Otherwise the same typo is an error or a silent no-op depending on whether
+  // some unrelated criterion happened to parse.
+  it("rejects an unknown ecosystem even when source #1 resolves and the table is never consulted", async () => {
+    const deps = freshDeps();
+    await expect(
+      runIntake(deps, withRequirements([perfRequirement], { ecosystem: "constructor" })),
+    ).rejects.toThrow(UnknownEcosystemError);
+  });
+
+  it("a rejected ecosystem writes no idempotency record, so a corrected retry is not a conflict", async () => {
+    const deps = freshDeps();
+    await expect(
+      runIntake(deps, withRequirements([perfRequirement], { ecosystem: "constructor" })),
+    ).rejects.toThrow(UnknownEcosystemError);
+
+    const retry = await runIntake(deps, withRequirements([perfRequirement], { ecosystem: "node" }));
+    expect(retry.status).toBe("created");
+  });
+
+  it("still accepts every ecosystem the pinned table actually has a row for", async () => {
+    for (const ecosystem of ["node", "python", "go", "rust"]) {
+      const deps = freshDeps();
+      const outcome = await runIntake(
+        deps,
+        withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }], {
+          ecosystem,
+          requestKey: `repo:${ecosystem}`,
+        }),
+      );
+      if (outcome.status === "conflict") throw new Error("unreachable");
+      expect(outcome.artifacts.provisionalPerformanceContract.budgetSource).toBe(
+        "ecosystem_research",
+      );
+    }
   });
 
   it("anchors the DERIVED provisional contract in the intake idempotency record", async () => {

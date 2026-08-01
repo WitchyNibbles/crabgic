@@ -21,6 +21,52 @@ covers upgrade, uninstall, and version-drift handling.
 crabgic upgrade [--dry-run]
 ```
 
+### Before upgrading
+
+Two rulings that were previously recorded only in design documents
+(`roadmap/24-*.md` §Risks & open questions, "Upgrade migration";
+`docs/interface-ledger.md` Gap 21) and never reached this guide. Both matter at the
+upgrade boundary and nowhere else.
+
+**1. Finish or cancel in-flight runs first.** Pre-phase-24 `ChangeSet`s carry no
+`criteriaHash` and no approval seal, and the new verification fails them closed. The
+ruling is to drain rather than grandfather: runs are short-lived, and restart-resume of a
+parked run is already unsupported (`CHANGELOG.md`, v1.5.0). No enforcement epoch is
+implemented deliberately — an epoch constant is a standing foot-gun, and this project has
+no years of live state to justify one.
+
+Today that drain is manual. For each run you started:
+
+```
+crabgic status <run-id>       # wait for published_local, failed, blocked, or cancelled
+crabgic cancel <run-id>       # or stop it outright
+```
+
+`published_local` is the successful end state; `failed`/`blocked`/`cancelled` are the
+three named terminals (`packages/contracts/src/state-machines/run-lifecycle.ts`). A run
+sitting in `running`, `verifying`, `integrating` or `final_verifying` is still in flight.
+Upgrade only once every run is in one of those four absorbing states.
+
+> A supervisor-side `drain` — one call that stops accepting new work, waits for the
+> detached drives to settle, and only then releases the journal lease — is landing
+> separately. Until it does, the sequence above is the whole mechanism; this section will
+> name the command once it exists.
+
+**2. A replayed `requestKey` across the upgrade reports `conflict`, by design.** Intake is
+idempotent on `(requestKey, requestContentHash)`, and the content hash covers the fields
+the request actually carries. Version 1.5.0's `IntakeRequest` carried
+`performanceBudgetSource` and `performanceBudgets`; the next version derives both and
+removed the fields (ledger Gap 21). The same intake document therefore hashes differently
+before and after the upgrade, and re-running it under its old `requestKey` is a _content
+conflict_ — intake refusing to mint a second `ChangeSet` under an identity that already
+has one, which is exactly what that check is for. It is not data loss and nothing is
+overwritten.
+
+The remedy is a fresh `requestKey` for the re-run, or the amendment flow
+(`packages/supervisor/src/intake/amendment.ts`) if you are changing an
+already-approved envelope. Runs completed before the upgrade are unaffected — their
+`ChangeSet`s already exist.
+
 ### Add-only merge (10's mechanism)
 
 Every artifact the installer manages (`CLAUDE.md`'s managed block, `.claude/settings.json`,

@@ -47,6 +47,14 @@ export interface ResolvedBudgetSource {
  * unrepresentable rather than policed. Before that, the repo's own golden
  * fixture declared `requirement_acceptance_criteria` beside a budget none of
  * its criteria parse to.
+ *
+ * THROWS `ContradictoryCriterionDirectionError` (from source #1's parser) for a
+ * criterion whose comparison operator contradicts its metric's canonical
+ * direction. Falling through to source #2 in that case would silently replace
+ * the author's own stated budget with an ecosystem default; see the parser's
+ * own doc comment. `ecosystem` is validated by the caller — intake refuses an
+ * unknown label rather than passing it here (see `ecosystemResearchBudgets`,
+ * which answers only for own table rows).
  */
 export function resolveBudgetSource(options: ResolveBudgetSourceOptions): ResolvedBudgetSource {
   if (options.requirementAcceptanceCriteria !== undefined) {
