@@ -1,0 +1,48 @@
+roadmap/24 exit criterion 8 — proof the type-level fixture BITES.
+
+Two deliberate breaks, each reverted immediately after capture. Both make
+`npm run typecheck` (`tsc -b`, the `typecheck` job in .github/workflows/ci.yml)
+exit non-zero, which is what makes the fixture a gate rather than a comment.
+
+
+=== BREAK 1: the @ts-expect-error directive is deleted ===
+(so the omission is no longer suppressed — the raw compiler error the fixture asserts)
+
+$ npm run typecheck   # with the first @ts-expect-error removed from packages/scheduler/src/criteria-seal-required.type.test.ts
+
+> crabgic-monorepo@0.0.0 typecheck
+> tsc -b
+
+packages/scheduler/src/criteria-seal-required.type.test.ts(81,11): error TS2741: Property 'criteriaSeal' is missing in type '{ adapter: FakeEngineAdapter; journal: JournalStore; packet: { schemaVersion: 1; id: string; workUnitId: string; requirementIds: string[]; objective: string; ... 7 more ...; resultSchema: Record<...>; }; profile: { ...; }; adjudicate: (_toolName: string, toolInput: Readonly<Record<string, unknown>>) => Promise<{ rea...' but required in type 'DispatchAttemptOptions'.
+
+(exit status 2)
+
+
+=== BREAK 2: `criteriaSeal` is made OPTIONAL on both public options types ===
+(the actual regression this criterion exists to prevent — the fixture fails LOUDLY,
+reporting all four directives as unused, and the shared internal funnel refuses too)
+
+$ npm run typecheck   # with `readonly criteriaSeal?: AttemptCriteriaSeal` on DispatchAttemptOptions and ResumeAttemptOptions
+
+> crabgic-monorepo@0.0.0 typecheck
+> tsc -b
+
+packages/scheduler/src/criteria-seal-required.type.test.ts(81,5): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(100,7): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(118,5): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(138,7): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/executor.ts(396,5): error TS2322: Type 'AttemptCriteriaSeal | undefined' is not assignable to type 'AttemptCriteriaSeal'.
+  Type 'undefined' is not assignable to type 'AttemptCriteriaSeal'.
+packages/scheduler/src/executor.ts(472,5): error TS2322: Type 'AttemptCriteriaSeal | undefined' is not assignable to type 'AttemptCriteriaSeal'.
+  Type 'undefined' is not assignable to type 'AttemptCriteriaSeal'.
+
+(exit status 2)
+
+
+=== RESTORED ===
+$ npm run typecheck
+
+> crabgic-monorepo@0.0.0 typecheck
+> tsc -b
+
+(exit status 0 — no output)
