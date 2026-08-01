@@ -344,7 +344,18 @@ async function decideRunOutcome(
   if (result.outcome.status === "conflict") {
     return {
       exitCode: EXIT_GENERAL_ERROR,
-      message: `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n`,
+      message:
+        `intake conflict: an intake request with this requestKey already exists with different content (existing content hash ${result.outcome.existingContentHash}); use a fresh requestKey or the amendment flow\n` +
+        // The one cause an operator cannot deduce from the line above. Intake's
+        // content hash covers the fields the request carries, and that field
+        // set changed across the 1.5 -> next upgrade (`performanceBudgetSource`
+        // and `performanceBudgets` were removed once intake began deriving
+        // them, ledger Gap 21). So an UNCHANGED intake document replayed under
+        // its old requestKey across the upgrade hashes differently and lands
+        // here — the operator sees "different content" for a file they did not
+        // touch. Naming it beats letting them hunt for an edit that never
+        // happened.
+        "If you just upgraded crabgic, a reused requestKey causes this even for an unchanged request: the request's field set changed across the upgrade, so its content hash did too. See docs/upgrade-guide.md, “Before upgrading”.\n",
     };
   }
 
