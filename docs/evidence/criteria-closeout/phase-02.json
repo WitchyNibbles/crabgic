@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 1,
+  "phase": "02",
+  "roadmapFile": "roadmap/02-contracts-and-schemas.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 1 (phase 02)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "All 21 contracts round-trip (parse → serialize → parse) with full schema-branch coverage — coverage report artifact.",
+      "textSha256": "69fe91b443c2d737e523e8d3551d65faa58fc679d2ee955308c97e055322a5ab",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log lines 409-463 name each of the 21 contract suites individually, e.g. line 419 — '  ✓  @crabgic/contracts  src/contracts/authorization-envelope.test.ts (12 tests) 23ms'; run summary line 1035 ' Test Files  623 passed (623)' / 1036 '      Tests  6060 passed | 1 skipped (6061)'. The same job's v8 coverage table (log lines 1306-1339) is the coverage report: every one of the 21 contract modules reads '100 | 100 | 100 | 100', e.g. line 1338 '   work-unit.ts     |     100 |      100 |     100 |     100 |'. Seven rows in that block are below 100% on some metric and not one of them is a member of this criterion's 21: criteria-seal.ts (85.71% branch, added d84065d), debt-index.ts (88.88%) and review-verdict.ts (92%, both added 2475963), plan-record.ts (94.73%, ledger Gap 20), plus acceptance-criteria-parser.ts and budget-sourcing.ts at 0/0/0/0 (added 4f2b33b, ledger Gap 21) and metric-direction.ts at 0% statements/functions/lines with 100% branch (added bddac4c). The three uncovered ones are a repo-health item reported to the closeout integrator, not a gap in this criterion."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/work-unit.test.ts:69",
+          "quotedAssertion": "packages/contracts/src/contracts/work-unit.test.ts:69-82 — 'const revived = WorkUnitSchema.parse(JSON.parse(JSON.stringify(original)) as unknown); expect(revived).toEqual(original);', run twice (session_id present / absent). This parse → serialize → parse shape is present in all 21 contract suites; the full 21-line grep is in the closeout transcript."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/work-unit.test.ts:51",
+          "quotedAssertion": "packages/contracts/src/contracts/work-unit.test.ts:51 — 'it(\"rejects an unknown key (.strict())\", …)'. The anti-vacuity control: every one of the 21 suites carries invalid-shape and unknown-key rejection cases, so a schema that accepted everything would round-trip perfectly and still fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/ajv-harness.test.ts:52",
+          "quotedAssertion": "packages/testkit/src/ajv-harness.test.ts:52-54 — 'expect(results).toHaveLength(21); const failures = results.filter((r) => !r.valid); expect(failures).toEqual([]);' — the same 21 instances validated a second time against the EMITTED JSON Schema, not only the zod schema, so the round-trip is proven on both surfaces."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c1-contracts-roundtrip-coverage.txt",
+          "quotedAssertion": "Scoped coverage run at the closeout commit, with the 21 contract modules enumerated by name from the json-summary reporter rather than inferred from v8's below-100%-only text table: '21 contract modules checked; 0 below 100% on any metric.' The same file lists the round-trip test for each of the 21 by file:line. Its 2026-08-02 addendum records why three of the seven sub-100% rows in CI's table are absent from this scoped one: nothing in the @crabgic/contracts project imports them, so v8 never loads them into its file set ('files in scoped summary: 30')."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/exit-criteria-full-gate.txt",
+          "quotedAssertion": "§1, the phase's own committed coverage report (2026-07-15): 'Statements : 98.05% ( 404/412 ) / Branches : 90.82% ( 99/109 )' over 452 tests. Historical — those global figures predate 20 packages of later work; the per-module numbers above are what carries the 'full schema-branch coverage' clause."
+        }
+      ],
+      "notes": "Two scope facts recorded so the tick is not read wider than it is. (a) The 21 are the ones roadmap/02 §In scope names and `packages/contracts/schemas/` emits, one JSON file each. `EnvelopePolicy` — added 2026-07-28 by ledger Gap 18 and listed in §In scope alongside them, which makes that bullet's parenthetical count of 21 arithmetically 22 — has no `schemas/*.json` export and no testkit builder, so it is outside this criterion's 21. For the record it is also at 100/100/100/100. (b) CI does not upload a coverage report as a workflow artifact; the report is emitted into the job log by v8's text reporter. The criterion's 'coverage report artifact' channel is met by committed artifacts (`exit-criteria-full-gate.txt` §1 and the closeout transcript), with the CI job log as the execution evidence. (c) Rebased 2026-08-02 onto `af46e00`, which `pass.headSha` now records. The three PRs it brought in (#52, #53, #56) touch no file under `packages/contracts` or `packages/testkit`, and every one of this record's 33 `file:line` citations was re-resolved against the rebased tree with zero drift; the cited CI run 30718972881 is green at `65ff0da`, the pre-rebase branch point, and the PR's own run covers the rebased tree."
+    },
+    {
+      "index": 2,
+      "text": "Run-lifecycle invariant suite green; fast-check fuzz (≥10k cases) finds no illegal path.",
+      "textSha256": "67a152193cef6bd986ebc1eee0ed2b74e2e1761a6e68ca1563cc0c3413e4c168",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 442 — '  ✓  @crabgic/contracts  src/state-machines/run-lifecycle.test.ts (42 tests) 2408ms'. The 2.4s runtime on a 42-test file is the fuzz block actually running its 10k cases."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/run-lifecycle.test.ts:126",
+          "quotedAssertion": "packages/contracts/src/state-machines/run-lifecycle.test.ts:126 — '{ numRuns: 10_000 },' closing the fc.assert at :89. The ≥10k clause is literal, not approximate."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/run-lifecycle.test.ts:109",
+          "quotedAssertion": "packages/contracts/src/state-machines/run-lifecycle.test.ts:109-116 — inside the fuzz property: 'if (allowed.includes(candidate)) { current = runLifecycleTransition(current, candidate); expect(RUN_LIFECYCLE_STATES).toContain(current); } else { expect(() => runLifecycleTransition(current, candidate)).toThrow(IllegalTransitionError); }'. Both directions are asserted — a random sequence never reaches an undeclared state AND every undeclared edge throws — which is what 'finds no illegal path' requires."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/run-lifecycle.test.ts:100",
+          "quotedAssertion": "packages/contracts/src/state-machines/run-lifecycle.test.ts:100-107 — once an absorbing state is reached, 'expect(() => runLifecycleTransition(current, candidate)).toThrow(IllegalTransitionError); continue;' for every remaining attempt: terminals absorb permanently, not just for one step."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/run-lifecycle.test.ts:31",
+          "quotedAssertion": "packages/contracts/src/state-machines/run-lifecycle.test.ts:31-39 — the invariant suite's positive half generates one `it` per declared edge from the table itself ('expect(runLifecycleTransition(from as never, to as never)).toBe(to)'), and :76-82 asserts every non-absorbing state has ≥1 outgoing edge. Without those, a transition table that allowed nothing would satisfy the fuzz property vacuously."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c2-run-lifecycle.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  42 passed (42)' — scoped local re-run at the closeout commit, command line in the file header."
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "text": "`WorkUnitAttemptStatus` exhaustive transition-table suite green; `parked:rate_limit` proven reachable only from, and returning only to, `dispatched`.",
+      "textSha256": "4415d1655e0149857faba863d440e07e4b91ef3c8745b25460b3e28b621453d4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 430 — '  ✓  @crabgic/contracts  src/state-machines/work-unit-attempt-status.test.ts (28 tests) 2303ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:55",
+          "quotedAssertion": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:55-61 — 'expect(WORK_UNIT_ATTEMPT_STATUS_TRANSITIONS[\"parked:rate_limit\"]).toEqual([\"dispatched\"]);' (returning only to) followed by a loop over every other source state asserting 'expect(tos).not.toContain(\"parked:rate_limit\");' (reachable only from). Both halves of the criterion's clause, asserted separately."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:122",
+          "quotedAssertion": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:122-127 — the same property re-proved under fuzz rather than by reading the table: 'if (previous === \"parked:rate_limit\") { expect(current).toBe(\"dispatched\"); } if (current === \"parked:rate_limit\") { expect(previous).toBe(\"dispatched\"); }', at ':138 { numRuns: 10_000 }'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:30",
+          "quotedAssertion": "packages/contracts/src/state-machines/work-unit-attempt-status.test.ts:30-38 — the exhaustive half: one generated `it` per declared edge, driven off the table itself. :41-52 pins the declared shape (pending → {dispatched,cancelled}; dispatched → {succeeded,failed,cancelled,parked:rate_limit}), :21 pins 6 members, :76-78 pins 3 terminals, and :82-94 lists nine illegal pairs including 'parked:rate_limit → succeeded' (work item 3's failing-first fixture). Without the declared-shape and illegal-sample blocks, an empty transition table would satisfy the parked-only-touches-dispatched assertions vacuously."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c3-work-unit-attempt-status.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  28 passed (28)' — scoped local re-run at the closeout commit."
+        }
+      ],
+      "notes": "Matches interface-ledger Gap 4's ruling verbatim: a standalone 6-member union orthogonal to the Run lifecycle, `parked:rate_limit` transitioning only to/from `dispatched`, with the four resolution-mandated members plus the two discretionary ones (`pending`, `cancelled`) the ruling delegated to this phase."
+    },
+    {
+      "index": 4,
+      "text": "Canonical connector-error union (10 members): a type-level test proves no raw provider-body field is constructible on the public type; every member has ≥1 round-trip fixture.",
+      "textSha256": "d4fdb48f7826b96be92c8bf7271466d310aa59f78807c8fb687f2c49f6822202",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 412 — '  ✓  @crabgic/contracts  src/errors/connector-error.test.ts (37 tests) 29ms'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91419417975, steps \"tsc -b (cold)\" and \"tsc -b (incremental, no-op expected)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "Green. This is the channel that executes the TYPE-LEVEL half: the three `@ts-expect-error` directives in connector-error.test.ts are only satisfied because tsc really does reject each raw-body construction — an unused directive is itself TS2578 and would fail this job. A green vitest run proves nothing about them."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/errors/connector-error.test.ts:183",
+          "quotedAssertion": "packages/contracts/src/errors/connector-error.test.ts:183-186 — '// @ts-expect-error — `rawProviderBody` is not a key of `ConnectorErrorData` … rawProviderBody: { secret: \"should never type-check\" },'; :199-202 the same for reading `err.rawProviderResponse` off a constructed instance; :210-212 the same for the constructor's own input type. Three distinct surfaces of 'not constructible on the public type'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/errors/connector-error.test.ts:65",
+          "quotedAssertion": "packages/contracts/src/errors/connector-error.test.ts:65-83 — an it.each over the 10-entry CONSTRUCTORS table (:41-52): 'const roundTripped = ConnectorErrorDataSchema.parse(JSON.parse(serialized)); expect(roundTripped).toStrictEqual(data); expect(roundTripped.kind).toBe(kind);'. That is the '≥1 round-trip fixture per member' clause, one per member by construction rather than by hand."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/errors/connector-error.test.ts:82",
+          "quotedAssertion": "packages/contracts/src/errors/connector-error.test.ts:72/:82 — each round-trip fixture is built WITH a raw provider response carrying a secret ('rawProviderResponse: { status: 500, body: { secretToken: \"should-never-survive\" } }') and then asserts 'expect(JSON.stringify(roundTripped)).not.toContain(\"should-never-survive\");'. The runtime redaction control that makes the type-level assertions mean something in practice; :12 and :16-27 additionally pin the union at exactly 10 members in roadmap order."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c4-connector-errors.txt",
+          "quotedAssertion": "'Tests  37 passed (37)', then 'npx tsc -b packages/contracts … tsc exit: 0'; then three NEGATIVE CONTROLS in which each `@ts-expect-error` is deleted in turn and the suppressed diagnostic is captured verbatim — 'error TS2353: … \\'rawProviderBody\\' does not exist in type …', 'error TS2339: Property \\'rawProviderResponse\\' does not exist on type \\'ConnectorError\\'', 'error TS2353: … does not exist in type \\'ConnectorErrorInput\\'' — each followed by a revert and a clean rebuild. This is what rules out the directives suppressing nothing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi4-connector-errors-passing.txt",
+          "quotedAssertion": "The phase's own TDD capture. Its RED counterpart, `wi4-connector-errors-failing.txt`, is a module-resolution failure rather than assertion-level failures — `docs/evidence/phase-02/README.md` §Deviations 9 records that weakness honestly. The negative controls in the closeout transcript above are what supply the assertion-level discrimination that capture could not."
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "text": "`JournalEntryType` exhaustiveness check: an uncovered category added anywhere in the codebase fails `tsc -b`, demonstrated by a temporarily-stubbed 14th category.",
+      "textSha256": "58d3d4e7526dd35b3d8396dcf8e1e4777ec7b03e3ffba271a1280954e869219b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi5-journal-14th-member-tsc-failing.txt",
+          "quotedAssertion": "The phase's own demonstration (2026-07-15): with the stub present, 'packages/contracts/src/journal/journal-entry-type.test.ts(17,7): error TS2741: Property \\'capability_quarantine_verdict\\' is missing in type … but required in type \\'Record<StubbedFourteenMemberJournalEntryType, string>\\'. Exit code: 1'. Paired with `wi5-journal-tsc-clean.txt`, 'Exit code: 0' once reverted."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c5-journal-14th-member.txt",
+          "quotedAssertion": "Re-run at the closeout commit, in two demos. DEMO A reproduces the recorded stub and gets the identical diagnostic ('error TS2741: Property \\'capability_quarantine_verdict\\' is missing … required in type \\'Record<StubbedFourteenMemberJournalEntryType, string>\\'', tsc exit 1). DEMO B is stronger and is what carries the criterion's 'anywhere in the codebase' clause: the 14th member is added to JOURNAL_ENTRY_TYPES itself with a matching description (so packages/contracts still compiles) and `npx tsc -b --force` is run over the WHOLE repo — five sites in three other packages fail, one of them production code: 'packages/journal/src/codec/journal-payloads.ts(217,3): error TS1360', 'packages/journal/src/codec/journal-entry.test.ts(21,7): error TS2741', 'packages/journal/src/store/query-entries.test.ts(31,7): error TS2741', 'packages/scheduler/src/conformance.test.ts(26,7): error TS2741', 'packages/gates/src/conformance.test.ts(21,7): error TS2741'. Both stubs reverted, 'git diff --stat' empty, clean rebuild 'tsc exit: 0'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91419417975",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "Green — the standing channel. `tsc -b` is a required every-push job, so the exhaustiveness mechanism is enforced on every commit rather than only at the moment of the demonstration."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/contracts/src/journal/journal-entry-type.ts:62",
+          "quotedAssertion": "packages/contracts/src/journal/journal-entry-type.ts:62 — 'export const JOURNAL_ENTRY_TYPE_DESCRIPTIONS: Readonly<Record<JournalEntryType, string>> = {' — the mechanism itself, in source rather than in a test: a `Record<K, V>`-typed object literal rejects both a missing key and a stray one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/journal/journal-entry-type.test.ts:20",
+          "quotedAssertion": "packages/contracts/src/journal/journal-entry-type.test.ts:20 — 'expect(JOURNAL_ENTRY_TYPES.length).toBe(13);', :41-55 pins the 13 members verbatim in ledger order, :59 'expect(JOURNAL_ENTRY_TYPES).not.toContain(\"rate_limit_park\");' (Gap 5's rejected fourth-resolver list), and :65 'expect(descriptorKeys).toEqual(memberKeys);' — the runtime mirror of the compile-time exhaustiveness."
+        }
+      ],
+      "notes": "Gap-5 blast-radius check, per the ledger's Resolution (2026-08-01). Both wi5 transcripts remain accurate: the resolution keeps the union closed at 13 and journals capability-quarantine verdicts as `adjudication_decision` entries instead, so no member, JSON schema or golden changed. The stub category the 2026-07-15 capture happened to pick — `capability_quarantine_verdict` — is precisely the 14th member the resolution declined to add; the transcript is a demonstration of the compile-time mechanism, not a proposal, so it needed no revision. DEMO B's five breaking sites match the ledger's own cost estimate for a 14th member ('5 compile-breaking `Record<JournalEntryType, …>` sites') exactly."
+    },
+    {
+      "index": 6,
+      "text": "Property tests prove no random config-layer stack can loosen a declared security key (≥10k fast-check cases, zero counterexamples).",
+      "textSha256": "e394328df118c3c0d5b388a53d7a9d55118f562f2fdd159a3d29706174c0de19",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 421 — '  ✓  @crabgic/contracts  src/config/precedence.test.ts (15 tests) 2625ms'. The 2.6s is the three property blocks (10000 + 5000 + 5000 + 2000 runs) executing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/config/precedence.test.ts:271",
+          "quotedAssertion": "packages/contracts/src/config/precedence.test.ts:271 — '{ numRuns: 10000 },' closing the monotonicity property opened at :227 (\"no CLI/env/project/user/defaults combination ever loosens a declared security key\"). The ≥10k clause is literal; :305 and :323 add 5000-run adversarial properties on top."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/config/precedence.test.ts:250",
+          "quotedAssertion": "packages/contracts/src/config/precedence.test.ts:250-268 — the property asserts an outcome per security-key KIND, not merely 'did not throw': deny-list 'expect(resolved[\"deniedToolPatterns\"] ?? []).toEqual(expectedDenyList)' against the recomputed sorted union of every layer; boolean 'if (anyLayerSecure) expect(resolved[\"sandboxEnabled\"]).toBe(true)'; numeric 'expect(resolved[\"maxConcurrentWorkers\"] as number).toBeLessThanOrEqual(layerValue)' for EVERY layer's own declared value."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/config/precedence.test.ts:236",
+          "quotedAssertion": "packages/contracts/src/config/precedence.test.ts:236-239 — the escape hatch is typed, not silent: 'catch (error) { expect(error).toBeInstanceOf(SecurityKeyLoosenedError); return; }'. A resolver that threw a generic Error on every input would fail here, and :120-143 prove non-security keys still follow plain CLI > env > project > user > defaults precedence — so 'reject everything' is not a passing strategy either."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/config/precedence.test.ts:277",
+          "quotedAssertion": "packages/contracts/src/config/precedence.test.ts:277-347 — the roadmap Test-plan Security bullet's adversarial corpus, as three further properties: flipping a boolean security key from each of the 10 ordered layer pairs (5000 runs), raising a min-wins numeric from a lower-precedence layer (5000 runs), and 'an attempt to inject a wider allow list (shrink the deny list) from any layer never shrinks the resolved deny list' (2000 runs)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c6-config-resolver.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  15 passed (15)' — scoped local re-run at the closeout commit. Zero counterexamples: fast-check reports a counterexample as a test failure, so a green run is the 'zero counterexamples' clause."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi8-config-resolver-passing.txt",
+          "quotedAssertion": "The phase's own TDD pair (`wi8-config-resolver-failing.txt` is its RED counterpart), work item 8's 'a config stack that lowers a security-key boolean must be rejected before the resolver exists'."
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "text": "JSON Schema artifacts byte-stable across two consecutive builds (empty diff).",
+      "textSha256": "7663d7922647eceeffd0ebaaebaf7fdb7f8cc47c2585699f5aa002cc51c3dd87",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c7-schema-bytestable.txt",
+          "quotedAssertion": "Two consecutive `npm --prefix packages/contracts run build:schemas` runs at the closeout commit, then 'diff -r <scratch>/schema-run1 <scratch>/schema-run2' → 'diff -r exit: 0  (0 with no output above = byte-identical)'; 'git diff --stat -- packages/contracts/schemas' and 'git status --short -- packages/contracts/schemas' both empty, i.e. the regenerated bytes also equal the COMMITTED bytes; 21 files, with a sha256 manifest of each."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi1-json-schema-bytestable.txt",
+          "quotedAssertion": "The phase's own capture of the identical procedure (2026-07-15): 'diff -r exit code: 0', 'git diff --stat packages/contracts/schemas (empty output above = no diff)', 'Verdict: PASS.' It also records the determinism settings the property rests on — `target: \"jsonSchema7\"`, `$refStrategy: \"none\"`, `JSON.stringify(schema, null, 2)` plus one trailing newline, and a fixed alphabetized-by-filename emission array rather than `Object.keys` order."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/exit-criteria-full-gate.txt",
+          "quotedAssertion": "§6 re-confirms the check at the end of the phase's integration pass, and the file's dated ADDENDUM re-runs it after the `CONNECTOR_ERROR_KINDS` order fix (which changed `schemas/remote-operation-record.json`) — evidence the property has survived a real regeneration, not only an idle one."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/contracts/scripts/build-schemas.ts",
+          "quotedAssertion": "The writer under test. `schemas/*.json` are generated, never hand-edited, so regenerating through this script and getting an empty diff against the committed tree is what makes the committed bytes provenance-checked rather than merely present."
+        }
+      ],
+      "notes": "Channel honesty: no CI job regenerates `packages/contracts/schemas/*.json` and diffs (grepped `.github/workflows/*.yml` and `scripts/*.mjs` — zero hits for `build:schemas`), so this criterion has no CI channel to cite and does not name one. Its execution evidence is the committed 2026-07-15 transcript plus the closeout re-run above; the latter is what covers the tree at HEAD, since the schemas have changed since 2026-07-15. The nearest standing guard is `packages/testkit/src/ajv-harness.test.ts`, which fails in CI if a committed schema stops accepting its contract's fixture — that catches a stale schema, not an unstable one."
+    },
+    {
+      "index": 8,
+      "text": "`GATEWAY_MCP_SERVER_NAME` is the sole definition site of the literal `\"crabgic_gateway\"` — a repo-wide grep/golden-value CI check fails if the literal appears a second time under `packages/*`.",
+      "textSha256": "9811f179e4599bfc08f1810442a7d1dce180457d800e4326d86e5378acdf690a",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:76",
+          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:76 — 'expect(GATEWAY_MCP_SERVER_NAME).toBe(\"crabgic_gateway\");'. The golden-value half is fully met and matches interface-ledger Gap 11's pinned value."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:95",
+          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:95 — 'expect(violations).toEqual([]);' after a recursive read-only walk of every `.ts` file under each `packages/<pkg>/src`, allowlisting only server-name.ts and this test (:29-32). PARTIAL: this closes the criterion for TypeScript sources under `src/` only, which is narrower than the `packages/*` the criterion names."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c8-gateway-literal-scan.txt",
+          "quotedAssertion": "Part 2 is the negative control — a second occurrence appended to `packages/journal/src/index.ts` makes the scan fail ('AssertionError: expected [ { …(2) } ] to deeply equal []', vitest exit 1), so the check genuinely discriminates within its scope. Part 3 is the gap: 'git grep -c -F crabgic_gateway -- packages/' returns 14 files, of which `packages/plugin/.mcp.json` is a hand-typed, committed, shipped occurrence bound to the constant by no offline test, and `packages/engine-claude/src/live/fixtures/stub-mcp-server.mjs` is a second (in a comment, and .mjs so outside the extension filter). The engine-core goldens are shown to be derived by regenerating them through `write-goldens.ts` for an empty diff; the engine-claude goldens are byte-asserted against freshly generated output by `options-assembler.test.ts`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:21",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:24-29 — the INSTALLER's generated `.mcp.json` entry is correctly derived: '{ mcpServers: { [GATEWAY_MCP_SERVER_NAME]: { command: \"crabgic\", args: [\"gateway\", \"mcp\"] } } }', with the file's own header noting it never hand-types the literal precisely because of this scanner. Cited to make the gap precise: the installer path is bound; the plugin package's static manifest is a different artifact and is not."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md",
+      "notes": "Recorded UNMET, not WORDING-MISMATCH. The criterion states a behaviour — 'a … CI check fails if the literal appears a second time under `packages/*`' — that does not hold at HEAD: the literal appears hand-typed a second time under `packages/*` and the check is green. Narrowing the claim to the scan's real scope (`packages/*/src/**/*.ts`) would drop a guarantee that roadmap/02 §In scope states in its own words ('no phase hand-types the literal a second time') and that `packages/plugin/.mcp.json` is currently violating, so per the wording protocol it is not a wording fix. Not fixed in this pass — verifying one's own same-pass fix is self-review."
+    },
+    {
+      "index": 9,
+      "text": "`HighImpactCapabilityFlag` (11 members) fixture-tested; label strings byte-match what 18/20 cite (`closing transitions`, `bulk mutations`, etc.).",
+      "textSha256": "187a98ef8a57a8bd457943d4cd4656d8c3fa0795eeae6ecddb0a4bbd39a117c4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 459 — '  ✓  @crabgic/contracts  src/capability-flags/high-impact-capability-flag.test.ts (6 tests) 13ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:9",
+          "quotedAssertion": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:9 — 'expect(HIGH_IMPACT_CAPABILITY_FLAGS.length).toBe(11);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:23",
+          "quotedAssertion": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:23-35 — the byte-match clause as a full ordered equality against the literal list, including the two the criterion calls out: 'expect(HIGH_IMPACT_CAPABILITY_FLAGS).toEqual([\"assignment\", \"reporter change\", \"closing transitions\", \"sprint completion\", \"attachments\", \"bulk mutations\", \"issue creation\", \"alert disabling\", \"contact points\", \"mute timings\", \"notification templates\"]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:38",
+          "quotedAssertion": "packages/contracts/src/capability-flags/high-impact-capability-flag.test.ts:38-63 — the 18/20 split is asserted separately, Jira's 7 and Grafana's 4 each by name, which is what makes 'what 18/20 cite' a checked claim rather than a total. :18-20 'expect(HighImpactCapabilityFlagSchema.safeParse(\"random capability\").success).toBe(false);' is the closed-union control."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c9-high-impact-flags.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  6 passed (6)' — scoped local re-run at the closeout commit."
+        }
+      ],
+      "notes": "Ledger check: interface-ledger Gap 10 ('Capability-flag label drift') is the settled authority on these labels, and the asserted list matches roadmap/02 §In scope verbatim. `docs/evidence/phase-02/README.md` §Deviations 1 records that this module has no `*-failing.txt` capture because its RED state predates a session interruption; the criterion asks for 'fixture-tested', not for a failing-first capture, so that deviation does not bear on this box."
+    },
+    {
+      "index": 10,
+      "text": "CommunicationPolicy golden snapshot includes the review-comment limit and contains no dashboard-version-message entry.",
+      "textSha256": "df93362d3fcd7de8bb8e5103928f1b1099f0e32dac657c1850c815218184fb28",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 413 — '  ✓  @crabgic/contracts  src/contracts/communication-policy.test.ts (23 tests) 23ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.test.ts:143",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.test.ts:143 — 'expect(DEFAULT_COMMUNICATION_POLICY).toEqual(GOLDEN_COMMUNICATION_POLICY);' against the literal snapshot declared at :22-47, which carries 'reviewComment: { maxLines: 6, shape: [\"finding\", \"evidence\", \"action\"] }'. The golden is a whole-object equality, so an added dashboard entry would fail it too."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.test.ts:147",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.test.ts:147 — 'expect(DEFAULT_COMMUNICATION_POLICY.limits.reviewComment.maxLines).toBe(6);' — the criterion's first clause, asserted directly and not only via the snapshot."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.test.ts:150",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.test.ts:150-153 — the second clause, as a recursive key sweep rather than a single lookup: 'for (const key of collectKeys(DEFAULT_COMMUNICATION_POLICY)) { expect(key).not.toMatch(/dashboard/i); }' (collectKeys at :12-20 walks nested objects and arrays). :130-134 applies the same sweep to COMMUNICATION_POLICY_LIMITS."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.test.ts:200",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.test.ts:193-205 — the boundary control on the review-comment limit: a 6-line comment passes `checkLimit` and a 7-line one does not, so the recorded 6 is enforced rather than merely stored. Plus :166-172, a `prohibitedContentCategories: [\"dashboard_version\"]` fixture that the schema must reject."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c10-communication-policy.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  23 passed (23)' — scoped local re-run at the closeout commit."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi6-comms-renderer-passing.txt",
+          "quotedAssertion": "The phase's own TDD pair with `wi6-comms-renderer-failing.txt`, work item 6's mandated over-length review-comment failing-first fixture."
+        }
+      ],
+      "notes": "Ledger check: the 'no dashboard-version-message entry' clause is interface-ledger Gap 6's ruling (rendered artifacts are terminal human-facing copy; no dashboard-version message exists to have a limit for). The test's `/dashboard/i` sweep is broader than the ruling's wording, which is the safe direction."
+    },
+    {
+      "index": 11,
+      "text": "Threat model review recorded: `docs/threat-model.md` STRIDE list covers UDS, worker runtime, envelope compiler, installer, gateway, connectors, capability quarantine, renderer, learning store; sign-off note committed.",
+      "textSha256": "bdc4f2cf71d5bc410922bb0f98105a52d63103c01c7373d48ce5ba3afb27ffb1",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/threat-model.md",
+          "quotedAssertion": "The nine surfaces are the document's nine numbered sections, in the criterion's own order: ':70 ## 1. UDS (Unix domain socket control plane)', ':91 ## 2. Worker runtime', ':113 ## 3. Envelope compiler', ':133 ## 4. Installer', ':153 ## 5. Gateway', ':172 ## 6. Connectors', ':191 ## 7. Capability quarantine', ':211 ## 8. Renderer', ':230 ## 9. Learning store'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/threat-model.md",
+          "quotedAssertion": "The sign-off note is ':280 ## Review note', carrying ':282 - **Reviewer:**', ':286 - **Date:** 2026-07-15.', ':287 - **Scope reviewed:**', ':296 - **Verdict:** the design, as specified across the current roadmap corpus, provides concrete, phase-owned mitigations for every one of the 54 STRIDE cells — none of the 54 is residual-risk-only with no mitigation at all', and ':305 - **Open items (honest, not ceremonial):**' with seven named items. Committed."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c11-threat-model.txt",
+          "quotedAssertion": "The anti-vacuity check on 'STRIDE list covers': rather than trusting the nine headings, the transcript parses each section's table and counts distinct STRIDE row labels — every surface reports '6/6 STRIDE rows', '9 surfaces x 6 = 54 cells; the document's own Review note claims 54.' A document with nine headings and empty tables would fail this."
+        }
+      ],
+      "notes": "Two record corrections, neither affecting the tick. (1) `docs/evidence/phase-02/README.md`'s map row points at the doc's 'Open items' section as the sign-off; the section is actually headed '## Review note' and Open items is one of its five bullets. Same text, imprecise pointer — this index cites what is on disk. (2) Gap-5 blast-radius finding, reported to the orchestrator and NOT fixed here (outside this closeout's write set): the ledger's Resolution (2026-08-01) lists `docs/threat-model.md` §7's Repudiation row among its coordinated edits, and that row was duly updated ('**Closed 2026-08-01.**'). Two other passages in the same file were missed and still describe the gap as open — :265 'The capability-quarantine journal gap is real and unresolved.' (Cross-surface residual themes 3) and :316-317 'it remains open pending a coordinated `JournalEntryType` resolution round.' (Review note, Open items 2). The criterion requires the nine-surface STRIDE list and a committed sign-off note; both are present, so this is a staleness defect in a cited document rather than a failure of this box."
+    },
+    {
+      "index": 12,
+      "text": "Testkit fixture builders exist for all 21 contracts plus both new unions, each producing an instance that validates against its own schema — meta-test running every builder through its contract's zod parser.",
+      "textSha256": "ca81966f2996fa2ea7f74ab7a1a6619404d189768f3fe4888720f477ea4151c1",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 915 — '  ✓  @crabgic/testkit  src/fixtures/registry.test.ts (28 tests) 45ms'; line 912 — '  ✓  @crabgic/testkit  src/ajv-harness.test.ts (4 tests) 455ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fixtures/registry.test.ts:13",
+          "quotedAssertion": "packages/testkit/src/fixtures/registry.test.ts:13-22 — the counts the criterion names, each pinned separately: 'expect(CONTRACT_FIXTURES).toHaveLength(21);', 'expect(ENUM_FIXTURES).toHaveLength(2);' (WorkUnitAttemptStatus and JournalEntryType, registry.ts:209-220), 'expect(ALL_FIXTURES).toHaveLength(23);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fixtures/registry.test.ts:29",
+          "quotedAssertion": "packages/testkit/src/fixtures/registry.test.ts:29-45 — the meta-test itself, generated from the registry rather than hand-listed: 'it.each(CONTRACT_FIXTURES.map(…))(\"%s builder\\'s default output parses against its own contract zod schema\", (_name, entry) => { const instance = entry.build(); const result = entry.schema.safeParse(instance); expect(result.success).toBe(true); })', and the same shape over ENUM_FIXTURES. That is 'every builder through its contract's zod parser', literally."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/ajv-harness.test.ts:52",
+          "quotedAssertion": "packages/testkit/src/ajv-harness.test.ts:52-54 — the second surface: 'expect(results).toHaveLength(21); … expect(failures).toEqual([]);' validating each builder's output against `packages/contracts/schemas/<kebabName>.json` via ajv, so a builder cannot satisfy the zod schema while drifting from the emitted JSON Schema."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/ajv-harness.test.ts:31",
+          "quotedAssertion": "packages/testkit/src/ajv-harness.test.ts:31-37 — the negative control: 'const result = validateAgainstEmittedJsonSchema(\"work-unit\", { not: \"a work unit\" }); expect(result.valid).toBe(false); expect(result.errors.length).toBeGreaterThan(0);'. Without it, a harness that returned `valid: true` unconditionally would pass the 21-fixture sweep. registry.test.ts:47-54 adds the immutability control (two calls are `not.toBe` but `toEqual`), so a builder returning one shared frozen object is also excluded."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/closeout-c12-testkit-builders.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / 'Tests  32 passed (32)' — scoped local re-run of both suites at the closeout commit."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-02/wi10-testkit-passing.txt",
+          "quotedAssertion": "The phase's own GREEN capture, paired with `wi10-testkit-failing.txt` whose RED state is all four test files failing with `Cannot find module` before any `packages/testkit/src` implementation existed — a genuine tests-first ordering record for this work item."
+        }
+      ],
+      "notes": "Same 21-vs-22 note as criterion 1: `EnvelopePolicy` (ledger Gap 18, added 2026-07-28) has no builder in CONTRACT_FIXTURES and no `schemas/*.json`, so the registry's 21 are the 21 this criterion names. `docs/evidence/phase-02/README.md` §Deviations 5 records the one shape decision inside the 21 — `buildPerformanceContract()` returns the `provisional` variant of a two-variant discriminated union, deliberately, to keep one builder per contract; both variants validate against the same schema."
+    }
+  ]
+}

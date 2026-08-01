@@ -1,0 +1,22 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 12
+"Testkit fixture builders exist for all 21 contracts plus both new unions, each producing an instance that validates against its own schema — meta-test running every builder through its contract's zod parser."
+Captured: 2026-08-01T21:34:31Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+NOTE: --coverage.enabled=false. The repo's 80% line+branch gate is a WHOLE-SUITE
+threshold; applying it to a single scoped file would fail on scope, not on merit.
+Coverage evidence for this phase is captured separately in
+docs/evidence/phase-02/closeout-c1-contracts-roundtrip-coverage.txt.
+
+=== command ===
+$ npx vitest run --coverage.enabled=false --project @crabgic/testkit src/fixtures/registry.test.ts src/ajv-harness.test.ts
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02
+
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  23:34:31
+   Duration  780ms (transform 635ms, setup 0ms, import 981ms, tests 180ms, environment 0ms)
+
+vitest exit: 0

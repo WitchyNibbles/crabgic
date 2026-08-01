@@ -1,0 +1,58 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 5
+"`JournalEntryType` exhaustiveness check: an uncovered category added anywhere in the
+ codebase fails `tsc -b`, demonstrated by a temporarily-stubbed 14th category."
+Captured: 2026-08-01T21:30:24Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+Re-runs the demonstration recorded in docs/evidence/phase-02/wi5-journal-14th-member-tsc-
+failing.txt (2026-07-15) against the tree at this closeout commit, and extends it: the
+original capture stubbed the 14th category in the test harness only, which shows the
+MECHANISM. Demo B below adds the 14th member to the union itself and compiles the WHOLE
+repo, which shows the 'anywhere in the codebase' half — every exhaustive site in every
+package breaks until it is updated.
+
+----------------------------------------------------------------------
+BASELINE — unmodified tree
+----------------------------------------------------------------------
+$ npx tsc -b --force packages/contracts
+tsc exit: 0  (no output above = zero diagnostics)
+
+----------------------------------------------------------------------
+DEMO A — the recorded stub: a 14th category declared in the test harness only
+----------------------------------------------------------------------
+Stub added to packages/contracts/src/journal/journal-entry-type.test.ts:
+  type StubbedFourteenMemberJournalEntryType = JournalEntryType | "capability_quarantine_verdict";
+  const wi5StubbedDescriptions: Record<StubbedFourteenMemberJournalEntryType, string> =
+    JOURNAL_ENTRY_TYPE_DESCRIPTIONS;
+
+$ npx tsc -b --force packages/contracts
+packages/contracts/src/journal/journal-entry-type.test.ts(11,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type 'Readonly<Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 4 more ... | "learning_transition", string>>' but required in type 'Record<StubbedFourteenMemberJournalEntryType, string>'.
+tsc exit: 1
+
+----------------------------------------------------------------------
+DEMO B — the 14th member added to the union ITSELF, whole-repo tsc -b
+----------------------------------------------------------------------
+A member "capability_quarantine_verdict" is appended to JOURNAL_ENTRY_TYPES in
+packages/contracts/src/journal/journal-entry-type.ts, together with a matching
+JOURNAL_ENTRY_TYPE_DESCRIPTIONS entry so that packages/contracts ITSELF still compiles.
+Everything that then fails is a site elsewhere in the codebase that the new category is
+uncovered at — which is what the criterion means by "anywhere in the codebase".
+
+$ npx tsc -b --force
+packages/journal/src/codec/journal-entry.test.ts(21,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type '{ run_transition: { from: string; to: string; }; work_unit_transition: { status: string; }; adjudication_decision: { decision: string; rationale: string; }; remote_operation_record: { schemaVersion: number; ... 5 more ...; recordedAt: string; }; ... 8 more ...; learning_transition: { ...; }; }' but required in type 'Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", unknown>'.
+packages/journal/src/codec/journal-payloads.ts(217,3): error TS1360: Type '{ run_transition: z.ZodObject<{ from: z.ZodEnum<{ draft: "draft"; awaiting_approval: "awaiting_approval"; ready: "ready"; running: "running"; verifying: "verifying"; integrating: "integrating"; final_verifying: "final_verifying"; published_local: "published_local"; failed: "failed"; blocked: "blocked"; cancelled: "c...' does not satisfy the expected type 'Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", ZodType<...>>'.
+  Property 'capability_quarantine_verdict' is missing in type '{ run_transition: z.ZodObject<{ from: z.ZodEnum<{ draft: "draft"; awaiting_approval: "awaiting_approval"; ready: "ready"; running: "running"; verifying: "verifying"; integrating: "integrating"; final_verifying: "final_verifying"; published_local: "published_local"; failed: "failed"; blocked: "blocked"; cancelled: "c...' but required in type 'Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", ZodType<...>>'.
+packages/journal/src/store/query-entries.test.ts(31,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type '{ run_transition: { type: "run_transition"; payload: { from: "draft"; to: "awaiting_approval"; }; }; work_unit_transition: { type: "work_unit_transition"; payload: { status: "pending"; }; }; adjudication_decision: { ...; }; ... 9 more ...; learning_transition: { ...; }; }' but required in type 'Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", { ...; } | ... 11 more ... | { ...; }>'.
+packages/scheduler/src/conformance.test.ts(26,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type '{ run_transition: false; work_unit_transition: true; adjudication_decision: true; remote_operation_record: false; evidence_pointer: false; session_assignment: true; git_freeze: false; ... 5 more ...; learning_transition: false; }' but required in type 'Readonly<Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", boolean>>'.
+packages/gates/src/conformance.test.ts(21,7): error TS2741: Property 'capability_quarantine_verdict' is missing in type '{ run_transition: false; work_unit_transition: false; adjudication_decision: true; remote_operation_record: false; evidence_pointer: true; session_assignment: false; git_freeze: false; ... 5 more ...; learning_transition: false; }' but required in type 'Readonly<Record<"run_transition" | "work_unit_transition" | "adjudication_decision" | "remote_operation_record" | "evidence_pointer" | "session_assignment" | "git_freeze" | "worktree_quarantine" | ... 5 more ... | "capability_quarantine_verdict", boolean>>'.
+tsc exit: 2
+
+Five compile-breaking sites in three packages, matching interface-ledger Gap 5's own count
+("5 compile-breaking `Record<JournalEntryType, …>` sites"), one of them production code
+(packages/journal/src/codec/journal-payloads.ts:217, a `satisfies` clause).
+
+----------------------------------------------------------------------
+REVERT — tree restored to HEAD, clean rebuild
+----------------------------------------------------------------------
+$ git diff --stat   (empty = both stubs fully reverted)
+$ npx tsc -b --force
+tsc exit: 0  (no output above = zero diagnostics; wi5-journal-tsc-clean.txt's shape)

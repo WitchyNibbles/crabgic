@@ -1,0 +1,146 @@
+criteria-closeout pass, batch 1 — roadmap/02 exit criterion 8
+"`GATEWAY_MCP_SERVER_NAME` is the sole definition site of the literal `"crabgic_gateway"`
+ — a repo-wide grep/golden-value CI check fails if the literal appears a second time under
+ `packages/*`."
+Captured: 2026-08-01T21:32:05Z  worktree HEAD: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+
+This criterion is recorded UNMET. The check exists and works, but its scope is narrower
+than the criterion's words, and the difference is populated at HEAD — see part 3.
+Defect: docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md
+
+----------------------------------------------------------------------
+1. The check as it exists, green
+----------------------------------------------------------------------
+$ npx vitest run --coverage.enabled=false --project @crabgic/contracts src/gateway/server-name.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:32:06
+   Duration  179ms (transform 22ms, setup 0ms, import 32ms, tests 43ms, environment 0ms)
+
+vitest exit: 0
+
+----------------------------------------------------------------------
+2. NEGATIVE CONTROL — the check does discriminate (a .ts file under packages/*/src)
+----------------------------------------------------------------------
+A second occurrence of the literal is appended, inside a comment, to
+packages/journal/src/index.ts (a package the check has never had a hit in).
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/contracts src/gateway/server-name.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02
+
+ ❯ |@crabgic/contracts| src/gateway/server-name.test.ts (2 tests | 1 failed) 49ms
+     × is the sole definition site of the literal under packages/*/src (exit criterion) 46ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the sole definition site of the literal under packages/*/src (exit criterion)
+AssertionError: expected [ { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "file": "packages/journal/src/index.ts",
++     "occurrences": 1,
++   },
++ ]
+
+ ❯ src/gateway/server-name.test.ts:95:24
+     93|     }
+     94|
+     95|     expect(violations).toEqual([]);
+       |                        ^
+     96|   });
+     97| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  23:32:15
+   Duration  188ms (transform 22ms, setup 0ms, import 32ms, tests 49ms, environment 0ms)
+
+vitest exit: 1
+
+----------------------------------------------------------------------
+3. THE GAP — every occurrence of the literal under packages/*, at HEAD
+----------------------------------------------------------------------
+$ git grep -c -F crabgic_gateway -- packages/
+packages/contracts/src/gateway/server-name.test.ts:5
+packages/contracts/src/gateway/server-name.ts:2
+packages/engine-claude/README.md:1
+packages/engine-claude/goldens/network-granted.sdk-call.json:3
+packages/engine-claude/goldens/read-only.sdk-call.json:3
+packages/engine-claude/goldens/standard-implementation.sdk-call.json:3
+packages/engine-claude/src/live/fixtures/stub-mcp-server.mjs:1
+packages/engine-core/goldens/network-granted.sdk-options.json:2
+packages/engine-core/goldens/network-granted.settings.json:1
+packages/engine-core/goldens/read-only.sdk-options.json:2
+packages/engine-core/goldens/read-only.settings.json:1
+packages/engine-core/goldens/standard-implementation.sdk-options.json:2
+packages/engine-core/goldens/standard-implementation.settings.json:1
+packages/plugin/.mcp.json:1
+
+The check (packages/contracts/src/gateway/server-name.test.ts) walks only
+packages/<pkg>/src/**/*.ts and allowlists exactly two paths — server-name.ts and its own
+test. Everything else above is outside its scan. Triaged one by one:
+
+  (a) packages/engine-core/goldens/*.json — GENERATED. Written by
+      packages/engine-core/scripts/write-goldens.ts from the compiled source, which
+      derives the name from GATEWAY_MCP_SERVER_NAME. Regenerated below; empty diff.
+  (b) packages/engine-claude/goldens/*.sdk-call.json — DERIVED. Not written by a script,
+      but packages/engine-claude/src/options-assembler.test.ts's "golden SDK-call
+      fixtures — byte-stability against committed goldens" block regenerates each one
+      in-process and asserts byte-identity with the committed file, so a drifted literal
+      would fail that suite.
+  (c) packages/engine-claude/README.md — prose.
+  (d) packages/engine-claude/src/live/fixtures/stub-mcp-server.mjs — a hand-typed
+      occurrence in a .mjs live fixture; under packages/*/src but outside the scan's
+      .ts extension filter.
+  (e) packages/plugin/.mcp.json — the SHIPPED plugin manifest. Hand-typed, committed,
+      functional, and bound to the constant by NO offline test. (The INSTALLER's
+      generated .mcp.json entry is bound — packages/cli/src/installer/
+      mcp-entry.golden.test.ts builds the key from the imported constant — but the
+      plugin package's own static manifest is a separate artifact.) The only check that
+      touches it is packages/plugin/src/live/plugin-load.live.test.ts:51, an @live test,
+      not run in CI.
+
+$ cat packages/plugin/.mcp.json
+{
+  "mcpServers": {
+    "crabgic_gateway": {
+      "command": "crabgic",
+      "args": ["gateway", "mcp"]
+    }
+  }
+}
+
+--- (a) regenerating the engine-core goldens through the writer ---
+$ npm --prefix packages/engine-core run build:goldens
+
+> @crabgic/engine-core@0.0.0 build:goldens
+> tsc -b && node scripts/write-goldens.ts
+
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/read-only.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/read-only.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/standard-implementation.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/standard-implementation.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/network-granted.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens/network-granted.sdk-options.json
+done: 6 golden artifact(s) written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p02/packages/engine-core/goldens
+$ git diff --stat -- packages/engine-core/goldens
+(empty above = regenerated bytes equal committed bytes; the literal there is derived)
+
+Conclusion: the literal DOES appear a second time under packages/*, hand-typed, in
+(d) and (e) — and the CI check is green. The criterion's stated behaviour does not hold
+at HEAD. Recorded UNMET rather than reworded, because narrowing 'under packages/*' to
+'under packages/*/src, .ts only' drops a guarantee that (e) is actively depending on.
+Remedy: docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md
