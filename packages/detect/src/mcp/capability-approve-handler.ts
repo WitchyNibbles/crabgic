@@ -13,6 +13,24 @@
  * (must fail closed with no pre-minted token)") — a missing/invalid/
  * expired/already-consumed token NEVER flips the stored decision to
  * `approved`; only a successful `minter.verify(...)` call does.
+ *
+ * **interface-ledger Gap 5, resolution (2026-08-01):** the flip itself is
+ * now journaled. `store.updateDecision` is journal-first and rejects if
+ * the append fails, so a `pending -> approved` transition that cannot be
+ * recorded does not happen — the token is consumed by `verify` either way
+ * (single-use, by design), but the capability stays unapproved. That is
+ * the fail-closed direction: a consumed token with no approval is
+ * recoverable by minting another; an approval with no record is not.
+ *
+ * A journal failure THROWS rather than returning `{approved: false,
+ * reason}`, and that asymmetry is deliberate. `approved: false` means "this
+ * token does not authorise this capability" — an answer about the
+ * REQUEST, which a caller may reasonably surface to a model or a user and
+ * move on from. A failed append means "this system could not record what
+ * it was about to do" — an answer about the SYSTEM, and collapsing the two
+ * would let a caller read an infrastructure fault as a rejected token and
+ * retry into the same silent hole. The result union stays a verdict about
+ * the token; everything else propagates.
  */
 import type { ApprovalTokenMinter } from "@crabgic/contracts";
 import type { CapabilityStore } from "../capability-store/store.js";
@@ -32,10 +50,10 @@ export interface CapabilityApproveDeps {
 export type CapabilityApproveResult =
   { readonly approved: true } | { readonly approved: false; readonly reason: string };
 
-export function runCapabilityApprove(
+export async function runCapabilityApprove(
   input: CapabilityApproveInput,
   deps: CapabilityApproveDeps,
-): CapabilityApproveResult {
+): Promise<CapabilityApproveResult> {
   try {
     deps.minter.verify(input.token, { subjectKind: "capability_digest", digest: input.digest });
   } catch (err) {
@@ -45,6 +63,6 @@ export function runCapabilityApprove(
     };
   }
 
-  deps.store.updateDecision(deps.storeKey, "approved");
+  await deps.store.updateDecision(deps.storeKey, "approved");
   return { approved: true };
 }

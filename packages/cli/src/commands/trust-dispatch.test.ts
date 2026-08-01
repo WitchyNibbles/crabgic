@@ -54,8 +54,11 @@ function baseDeps(): Pick<CliDependencies, "connectClient" | "journal" | "projec
 async function newTrustDeps(): Promise<TrustCommandDependencies> {
   const root = await mkdtemp(join(tmpdir(), "eo-trust-dispatch-"));
   dirs.push(root);
+  // interface-ledger Gap 5: `trust revoke` flips a decision, and an
+  // unjournaled flip is refused — so this bag needs a real sink.
+  const journal = { appendEntry: async () => undefined };
   return {
-    store: createCapabilityStore(root),
+    store: createCapabilityStore(root, { journal }),
     minter: new ApprovalTokenMinter({ secretKey: randomBytes(32) }),
     approvalLedger: createApprovalLedger(root),
   };

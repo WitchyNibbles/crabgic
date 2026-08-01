@@ -39,6 +39,31 @@ genuinely solid, but found 3 real issues. All fixed here, TDD (failing test firs
 | 2 (MEDIUM, confirmed fail-open) | Stage 5 (sandbox_test) was structurally vacuous: `fake-sandbox-runner.ts` hardcoded `passed:true` regardless of `deniedOperations`, so a candidate declaring network egress or a `~/.ssh` read reached stage 6 (`pending`) with the denial only "recorded," never gating anything; an empty/absent `selfTestPlan` sailed through identically to a genuinely-tested-and-clean one. | `createFakeSandboxRunner` now returns `passed: deniedOperations.length === 0` — a real (if in-process) policy verdict. `sandbox-stage.ts` already propagated `sandboxResult.passed` straight through (only its doc comment was wrong); `pipeline.ts`'s existing stage-ordering logic now genuinely REJECTS at `sandbox_test` on any denied operation, never reaching `manifest_entry`. The real OS-jail runtime stays a documented carry-forward (deviation 3, below) — but the STAGE itself now gates on the policy verdict, not a no-op. | `src/quarantine/sandbox/fake-sandbox-runner.test.ts` (passed:false for denied ops, passed:true when all allowed, mixed allowed+denied); `src/quarantine/stages/sandbox-stage.test.ts` (REJECTS for network-egress and `~/.ssh`-read cases); `src/quarantine/pipeline.test.ts` (new `failAt:"sandbox"`-shaped case: stages stop at `sandbox_test`, `decision:"rejected"`, no `manifestEntry`; plus a benign-allowed-operation case still reaching stage 6); `src/quarantine/pipeline.property.test.ts` (extended the stage-ordering totality property to a 5th `failAt: "sandbox"` branch, prefix length 5) |
 | 3 (LOW/MEDIUM, confirmed dead guard) | The unsigned-digest-swap provenance guard (stage 3) was unreachable from production: `capability-audit-handler.ts`'s `runCapabilityAudit` computed `reaudit` informationally via `checkReauditRequired` but called `runQuarantinePipeline` WITHOUT threading the store's `previousDigest` for the same capability name — stage 3 only fires when `previousDigest` is supplied, so only a hand-built test injecting it manually ever exercised the guard; a real digest swap through the real handler never triggered it. | `runCapabilityAudit` now resolves `deps.store.findLatestByName(name)` BEFORE running the pipeline and threads its `report.digest` into `runQuarantinePipeline`'s `previousDigest` option (computed strictly before `store.save()`, so it reflects the prior audit, never this one). A real digest change for an already-known capability name with no accompanying valid signature is now genuinely rejected at `verify_provenance` on every real `capability.audit` call, not just reported after the fact. | `src/mcp/capability-audit-handler.test.ts`'s new case: two REAL `runCapabilityAudit` calls (no manual `previousDigest` injection) — first pending, second (different content, same name) asserts `stages === ["fetch","pin","verify_provenance"]`, last stage `passed:false`, `decision:"rejected"`; a companion case proves a byte-identical second audit does NOT trip the guard |
 
+## Amendment 2026-08-01 — capability-quarantine verdicts are journaled (interface-ledger Gap 5)
+
+This phase's own §Risks bullet flagged that audit verdicts had no dedicated `JournalEntryType`
+member and were "recorded only in the capability store's own artifact, not the journal." The
+effect was worse than the wording: a rejection never mints an `approval_token_mint`, so a
+**rejected audit produced no journal entry at all**, and `updateDecision`'s in-place rewrite of
+`report.json` left the `pending -> approved` flip and `trust revoke`'s reversal equally
+untraceable. Ledger Gap 5's Resolution (2026-08-01) closes this **without** a 14th union member,
+by reusing `adjudication_decision` under a `capability_audit:` discriminator — phase 14's
+already-blessed shape.
+
+Three signatures became async as a direct consequence, because journaling is:
+`CapabilityStore.updateDecision`, `runCapabilityAudit`, `runCapabilityApprove` — and so
+`runTrustRevokeCommand`, which flips through the store. Both write paths are journal-first
+(verdict before `store.save`, transition before the artifact rewrite) and fail closed: no sink
+means refusal, a failed append aborts and leaves the artifact untouched.
+
+| Change | Tests |
+|---|---|
+| New `src/capability-store/audit-journal.ts`: record schemas, writers, guarded parsers, and readers (`readCapabilityAuditVerdicts`/`readCapabilityDecisionTransitions`) | `src/capability-store/audit-journal.test.ts` — round-trips both record kinds through a REAL on-disk `createJournalStore` and asserts `verifyJournal().valid` (proving the real store satisfies the narrow sink and the payload passes `AdjudicationDecisionPayloadSchema`'s `.strict()` check); reader skips foreign `adjudication_decision` entries (14's ratchet), undecodable rationales, and malformed payloads without throwing; verdict carries no scan-finding *detail* |
+| `runCapabilityAudit` journals the verdict before `store.save`; fails closed without a sink | `src/mcp/capability-audit-handler.test.ts` — a **rejected** candidate now yields exactly one `adjudication_decision` (previously zero); full-verdict case asserts per-stage pass/fail, scan-finding count and severities, digest and re-audit reason; a failing sink aborts with `store.list()` empty; a missing sink rejects with `CapabilityAuditJournalUnavailableError` |
+| `updateDecision` is journal-first and fail-closed | `src/capability-store/store.test.ts` — an `onAppend` hook reads `report.json` off disk at append time and observes it still says `pending`; a failing sink leaves both `report.json` and `manifest-entry.json` untouched; a revoke journals `approved -> rejected` as its own entry |
+| `capability.approve`'s flip is durable | `src/mcp/capability-approve-handler.test.ts` — a successful approve journals the transition; an unjournalable one does not approve; a refused verify journals nothing |
+| Wired through the production composition root | `packages/cli/src/bootstrap.test.ts` — `trust review|approve|revoke` run end-to-end through `buildRealCliDependencies` + `dispatchCommand`, and the revoke's transition is read back out of the REAL journal |
+
 ## Public interfaces exported (for downstream phases, especially 14)
 
 All re-exported from `packages/detect/src/index.ts` (`@eo/detect`):
@@ -56,9 +81,17 @@ All re-exported from `packages/detect/src/index.ts` (`@eo/detect`):
   point; scanners `secretScanner`/`scriptScanner`/`permissionScanner`/`DEFAULT_SCANNERS`;
   sandbox `SandboxRunner`/`createFakeSandboxRunner`/`DEFAULT_SANDBOX_POLICY`.
 - **Capability store**: `resolveCapabilityStoreDir`/`resolveCapabilityEntryDir`,
-  `computeCapabilityStoreKey`, `createCapabilityStore` (→ `CapabilityStore`:
+  `computeCapabilityStoreKey`, `createCapabilityStore(rootDir, options?)` (→ `CapabilityStore`:
   `save`/`load`/`updateDecision`/`list`/`findLatestByName`/`findByDigest`),
   `checkReauditRequired`, `createApprovalLedger`.
+- **Capability-audit journaling** (added 2026-08-01, interface-ledger Gap 5's resolution —
+  see the amendment below): `CapabilityAuditJournalSink`,
+  `CapabilityAuditJournalUnavailableError`, `CapabilityAuditVerdictRecord`/its schema,
+  `CapabilityDecisionTransitionRecord`/its schema,
+  `buildCapabilityAuditVerdictRecord`, `journalCapabilityAuditVerdict`,
+  `journalCapabilityDecisionTransition`, `parseCapabilityAuditVerdict`,
+  `parseCapabilityDecisionTransition`, `readCapabilityAuditVerdicts`,
+  `readCapabilityDecisionTransitions`.
 - **MCP tools**: `CAPABILITY_AUDIT_TOOL`/`CAPABILITY_APPROVE_TOOL`,
   `registerCapabilityTools(registry)`, `runCapabilityAudit`, `runCapabilityApprove`.
 - **Trust CLI backend**: `TrustCommandDependencies`, `runTrustReviewCommand`,

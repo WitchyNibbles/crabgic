@@ -27,12 +27,31 @@
  * direction. This bag stays distinct from `CliDependencies` on the merits
  * — it names capability-store collaborators that mean nothing to the other
  * commands — not because of a dependency restriction.
+ *
+ * **Amended 2026-08-01 (interface-ledger Gap 5, resolution):** the note
+ * above said this bag "deliberately omits `appendEntry`" because nothing
+ * here needed to write a journal entry directly — every write went through
+ * the minter. That was exactly the hole Gap 5's resolution closes: a
+ * REJECTED capability audit never mints, so it never reached the journal
+ * at all, and `trust revoke`'s flip back to `rejected` was likewise
+ * unrecorded. The sink is NOT a field on this bag and the backends do not
+ * journal themselves: it is threaded into `createCapabilityStore(root, {
+ * journal })` by whoever constructs `store` (see
+ * `../capability-store/audit-journal.ts`), so a transition is recorded
+ * exactly once, at the single place that rewrites the artifact, no matter
+ * which caller triggers it — and a store built without one refuses the
+ * flip rather than performing it silently.
  */
 import type { ApprovalTokenMinter } from "@crabgic/contracts";
 import type { ApprovalLedger } from "../capability-store/approval-ledger.js";
 import type { CapabilityStore } from "../capability-store/store.js";
 
 export interface TrustCommandDependencies {
+  /**
+   * Construct this with `createCapabilityStore(root, { journal })` —
+   * `trust revoke` flips a decision, and an unjournaled flip is refused
+   * (interface-ledger Gap 5).
+   */
   readonly store: CapabilityStore;
   /** A fully-configured minter — if durable journaling of `approval_token_mint` is desired, construct it with `ApprovalTokenMinterOptions.journal` already wired (mirroring `@crabgic/contracts`'s `approval/token.ts` convention); this bag does not re-journal on its own. */
   readonly minter: ApprovalTokenMinter;

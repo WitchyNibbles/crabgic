@@ -55,7 +55,7 @@ function realRegistry() {
 function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "mutationApplyClients"> {
   const journal = createJournalStore({ journalDir: join(home, "journal") });
   const minter = new ApprovalTokenMinter({ secretKey: Buffer.alloc(32, 7), journal });
-  const store = createCapabilityStore(join(home, "capability-store"));
+  const store = createCapabilityStore(join(home, "capability-store"), { journal });
   return {
     journal,
     connections: new InMemoryExternalConnectionStore(),
@@ -66,7 +66,7 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
     envelopes: createInMemoryRegistry<AuthorizationEnvelope>(),
     intentContracts: createInMemoryRegistry<IntentContract>(),
     requirements: createInMemoryRegistry<Requirement>(),
-    capability: { store },
+    capability: { store, journal },
     approvalTokenVerifier: minter,
     resolveCapabilityStoreKey: () => undefined,
     reviewFindingsPath: join(mkdtempSync(join(tmpdir(), "eo-reg-review-")), "review-findings.json"),

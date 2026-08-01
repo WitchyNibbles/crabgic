@@ -2,7 +2,12 @@ import { randomBytes } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { ApprovalTokenMinter } from "@crabgic/contracts";
 import { freshTmpDir, removeDirTree } from "../test-support/fixture-repo.js";
+import {
+  createRecordingJournal,
+  type RecordingJournal,
+} from "../test-support/recording-journal.js";
 import { createCapabilityStore } from "../capability-store/store.js";
+import { parseCapabilityDecisionTransition } from "../capability-store/audit-journal.js";
 import { createApprovalLedger } from "../capability-store/approval-ledger.js";
 import { runQuarantinePipeline } from "../quarantine/pipeline.js";
 import type { TrustCommandDependencies } from "./dependencies.js";
@@ -40,11 +45,14 @@ describe("trust review|approve|revoke — end-to-end backend chain", () => {
     for (const d of dirs.splice(0)) removeDirTree(d);
   });
 
+  let journal: RecordingJournal;
+
   function newDeps(): TrustCommandDependencies {
     const root = freshTmpDir();
     dirs.push(root);
+    journal = createRecordingJournal();
     return {
-      store: createCapabilityStore(root),
+      store: createCapabilityStore(root, { journal }),
       minter: new ApprovalTokenMinter({ secretKey: randomBytes(32) }),
       approvalLedger: createApprovalLedger(root),
     };
@@ -78,14 +86,17 @@ describe("trust review|approve|revoke — end-to-end backend chain", () => {
     );
     const { tokenId } = JSON.parse(minted.stdout ?? "{}") as { tokenId: string };
 
-    const result = runTrustRevokeCommand({ command: "trust-revoke", tokenId, json: false }, deps);
+    const result = await runTrustRevokeCommand(
+      { command: "trust-revoke", tokenId, json: false },
+      deps,
+    );
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("revoked approval");
   });
 
-  it("trust revoke reports a human-readable, non-throwing error for an unknown token id (non-json)", () => {
+  it("trust revoke reports a human-readable, non-throwing error for an unknown token id (non-json)", async () => {
     const deps = newDeps();
-    const result = runTrustRevokeCommand(
+    const result = await runTrustRevokeCommand(
       { command: "trust-revoke", tokenId: "never-minted", json: false },
       deps,
     );
@@ -116,15 +127,25 @@ describe("trust review|approve|revoke — end-to-end backend chain", () => {
       subjectKind: "capability_digest",
       digest: report.digest,
     });
-    deps.store.updateDecision(saved.key, "approved");
+    await deps.store.updateDecision(saved.key, "approved");
     expect(deps.store.load(saved.key)?.report.decision).toBe("approved");
 
-    const revoke = runTrustRevokeCommand(
+    const revoke = await runTrustRevokeCommand(
       { command: "trust-revoke", tokenId: minted.tokenId, json: true },
       deps,
     );
     expect(revoke.exitCode).toBe(0);
     expect(deps.store.load(saved.key)?.report.decision).toBe("rejected");
+
+    // interface-ledger Gap 5, resolution: both halves of the round trip
+    // are durable in the hash-chained journal, not only in the rewritable
+    // `report.json` (which by now records ONLY the final `rejected`).
+    expect(
+      journal.entries.map((e) => parseCapabilityDecisionTransition(e.payload.rationale)),
+    ).toMatchObject([
+      { from: "pending", to: "approved" },
+      { from: "approved", to: "rejected" },
+    ]);
   });
 
   it("trust approve mints without ever itself flipping the stored decision (only capability.approve does that)", async () => {
@@ -139,12 +160,14 @@ describe("trust review|approve|revoke — end-to-end backend chain", () => {
     expect(deps.store.load(saved.key)?.report.decision).toBe("pending");
   });
 
-  it("trust revoke fails gracefully (non-zero exit, no throw) for an unknown token id", () => {
+  it("trust revoke fails gracefully (non-zero exit, no throw) for an unknown token id", async () => {
     const deps = newDeps();
-    const result = runTrustRevokeCommand(
+    const result = await runTrustRevokeCommand(
       { command: "trust-revoke", tokenId: "never-minted", json: false },
       deps,
     );
     expect(result.exitCode).not.toBe(0);
+    // Nothing was flipped, so nothing was journaled.
+    expect(journal.entries).toHaveLength(0);
   });
 });

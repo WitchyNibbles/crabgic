@@ -17,13 +17,16 @@ import {
   ApprovalTokenAlreadyVerifiedError,
   ApprovalTokenSignatureError,
   ChangeSetSchema,
+  EXIT_OK,
   EnvelopePolicySchema,
   type ChangeSet,
 } from "@crabgic/contracts";
+import { readCapabilityDecisionTransitions, runQuarantinePipeline } from "@crabgic/detect";
 import { resolveStateRoot, resolveXdgStateHome } from "@crabgic/journal";
 import { CHANGE_SETS_FILE_NAME, createFileRegistry } from "@crabgic/supervisor";
 import { buildChangeSet } from "@crabgic/testkit";
 import { buildProviderDispatchWiring, buildRealCliDependencies } from "./bootstrap.js";
+import { dispatchCommand } from "./commands/dispatch.js";
 import { SupervisorUnavailableError } from "./errors.js";
 import { resolveEnvelopePolicyPath, writeEnvelopePolicy } from "./policy/policy-store.js";
 import type { SpawnSupervisorDaemonOptions } from "./uds-client/ensure-supervisor.js";
@@ -143,6 +146,59 @@ describe("buildRealCliDependencies", () => {
         digest: "d".repeat(64),
       }),
     ).not.toThrow();
+  });
+
+  /**
+   * The seam nothing covered, and the reason `docs/operator-guide.md` §5
+   * spent nine months telling operators that `trust review|approve|revoke`
+   * returns `NOT_IMPLEMENTED` after the wiring had landed (`01ae7aa`,
+   * 2026-07-25). Two suites straddled the gap without closing it:
+   * `./commands/trust-dispatch.test.ts` runs `dispatchCommand` against a
+   * HAND-BUILT trust bag (proving the routing, not the composition root),
+   * and the case above proves `buildRealCliDependencies` produces a bag
+   * (exercising only its minter, never a command). Neither runs an actual
+   * `trust` command through the actual shipped wiring, so the SHIPPED
+   * behaviour of these three verbs was never asserted anywhere.
+   *
+   * It also pins interface-ledger Gap 5's resolution end-to-end: the store
+   * this bag builds is journal-first, so a `trust revoke` that reached the
+   * real backend necessarily appended its `approved -> rejected`
+   * transition to the REAL on-disk journal first — an unjournalable flip
+   * is refused outright. Asserting the entry is here rather than in
+   * `@crabgic/detect` because only this level proves the production
+   * composition root actually hands the store a sink.
+   */
+  it("runs `trust review|approve|revoke` end-to-end through the SHIPPED wiring, journaling the decision transition", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: { HOME: home }, projectHash: "trust-e2e" });
+    const { report, manifestEntry } = runQuarantinePipeline({
+      kind: "skill",
+      name: "operator-guide-fixture",
+      files: [{ path: "SKILL.md", content: "# ordinary\n" }],
+      permissionFootprint: ["Read(./**)"],
+    });
+    const saved = deps.trust!.store.save(report, manifestEntry);
+
+    // `trust review` — the real backend's own wording, never the stub's.
+    const review = await dispatchCommand({ command: "trust-review", json: false }, deps);
+    expect(review.exitCode).toBe(EXIT_OK);
+    expect(review.stdout).toContain('[pending] skill "operator-guide-fixture"');
+
+    // `trust approve` mints, and by design flips NOTHING on its own.
+    const approve = await dispatchCommand(
+      { command: "trust-approve", digest: report.digest, json: true },
+      deps,
+    );
+    expect(approve.exitCode).toBe(EXIT_OK);
+    const { tokenId } = JSON.parse(approve.stdout ?? "{}") as { tokenId: string };
+    expect(deps.trust!.store.load(saved.key)?.report.decision).toBe("pending");
+
+    // `trust revoke` does flip — through the journal-first store.
+    const revoke = await dispatchCommand({ command: "trust-revoke", tokenId, json: false }, deps);
+    expect(revoke.exitCode).toBe(EXIT_OK);
+    expect(deps.trust!.store.load(saved.key)?.report.decision).toBe("rejected");
+
+    const transitions = await readCapabilityDecisionTransitions(deps.journal, saved.key);
+    expect(transitions).toMatchObject([{ from: "pending", to: "rejected" }]);
   });
 
   /**
