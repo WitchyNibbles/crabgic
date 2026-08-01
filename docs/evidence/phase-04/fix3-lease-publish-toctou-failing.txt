@@ -1,0 +1,71 @@
+# RED capture — fix3: the lease publish-window TOCTOU (third cause of the lease.test.ts double acquire)
+#
+# Captured 2026-08-01 against UNFIXED packages/journal/src/lease-acquire.ts:
+#   publish was open(path,"wx") + a SEPARATE writeFile, so the lease path was
+#   observable EMPTY between them; a contender read "", parseLeaseRecord returned
+#   undefined, and isTakeoverEligible(undefined, ...) granted a takeover
+#   unconditionally — never consulting pid liveness.
+#
+# (Run from an isolated git worktree; its absolute path is rendered as `<repo>` below.
+#  Nothing else in this capture is edited.)
+#
+# Command: npx vitest run --coverage.enabled=false packages/journal/src/lease-acquire.test.ts
+# (the TryAcquireHooks seam was already in place; it is behaviour-neutral —
+#  the full packages/journal lease suite was 46/46 green with the seam and no fix)
+
+
+ RUN  v4.1.10 <repo>
+
+ ❯ |@crabgic/journal| src/lease-acquire.test.ts (2 tests | 2 failed) 27ms
+     × an acquirer paused between staking its claim and publishing its record never shares the lease with a concurrent complete acquirer 16ms
+     × an acquirer whose contended read finds the holder gone must never clobber a third process's fresh lease 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer paused between staking its claim and publishing its record never shares the lease with a concurrent complete acquirer
+AssertionError: expected [ 'acquired', 'acquired' ] to deeply equal [ 'acquired', 'denied' ]
+
+- Expected
++ Received
+
+  [
+    "acquired",
+-   "denied",
++   "acquired",
+  ]
+
+ ❯ src/lease-acquire.test.ts:119:41
+    117|     const a = await pendingA;
+    118|
+    119|     expect([a.status, b.status].sort()).toEqual(["acquired", "denied"]…
+       |                                         ^
+    120|
+    121|     const onDisk = parseLeaseRecord(await readFile(leasePath, "utf8"));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer whose contended read finds the holder gone must never clobber a third process's fresh lease
+AssertionError: expected [ { result: { …(2) }, …(1) }, …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/lease-acquire.test.ts:170:22
+    168|     const acquired = parties.filter((party) => party.result.status ===…
+    169|
+    170|     expect(acquired).toHaveLength(1);
+       |                      ^
+    171|     expect(parseLeaseRecord(await readFile(leasePath, "utf8"))).toEqua…
+    172|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  22:38:36
+   Duration  242ms (transform 40ms, setup 0ms, import 90ms, tests 27ms, environment 0ms)
+

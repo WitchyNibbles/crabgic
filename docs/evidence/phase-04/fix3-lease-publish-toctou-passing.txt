@@ -1,0 +1,50 @@
+# GREEN capture — fix3: the lease publish-window TOCTOU
+#
+# Captured 2026-08-01 against the fixed packages/journal/src/lease-acquire.ts:
+#   stageExclusive + publishExclusive (write-then-link), a bounded 3-pass
+#   create/read loop where ENOENT re-enters the create, and ENOENT-only absence.
+#
+# (Run from an isolated git worktree; its absolute path is rendered as `<repo>` below.)
+#
+# 1/2 — the two pins from the RED capture, plus the supporting units, same file:
+#   npx vitest run --coverage.enabled=false packages/journal/src/lease-acquire.test.ts
+
+
+ RUN  v4.1.10 <repo>
+
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer paused between staking its claim and publishing its record never shares the lease with a concurrent complete acquirer 18ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer whose contended read finds the holder gone must never clobber a third process's fresh lease 13ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > gives up with LeaseAcquireRaceLostError, claiming nothing, when the lease path flaps for every bounded pass 20ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a contended-read failure that is not ENOENT instead of reading it as 'no holder' 10ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a non-EEXIST publish failure instead of reporting it as contention 11ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > links a complete 0600 payload into place and leaves no stage file behind 8ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > reports 'exists' without touching the existing file, and still cleans up its stage file 11ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  22:45:01
+   Duration  425ms (transform 66ms, setup 0ms, import 144ms, tests 94ms, environment 0ms)
+
+
+# 2/2 — every lease test in the package, unchanged ones included:
+#   npx vitest run --coverage.enabled=false packages/journal/src/lease
+
+
+ RUN  v4.1.10 <repo>
+
+
+ Test Files  6 passed (6)
+      Tests  53 passed (53)
+   Start at  22:45:03
+   Duration  1.84s (transform 702ms, setup 0ms, import 1.68s, tests 1.73s, environment 2ms)
+
+
+# Coverage of the touched files (thresholds relaxed only so the whole table prints;
+#  the repo gate is 80% lines/branches/functions/statements and both files clear it):
+
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+  lease-acquire.ts |      96 |    89.28 |   88.88 |     100 | 147,264,271       
+  lease.ts         |   84.76 |    78.87 |   85.71 |   87.23 | ...72-274,283-288 
+-------------------|---------|----------|---------|---------|-------------------

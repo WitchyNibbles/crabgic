@@ -6,7 +6,7 @@ import {
   LeaseLostError,
   type LeaseLostReason,
 } from "./lease-errors.js";
-import { delay, tryAcquireOnce, writeExclusive, type LeaseClock } from "./lease-acquire.js";
+import { delay, stageExclusive, tryAcquireOnce, type LeaseClock } from "./lease-acquire.js";
 import {
   buildLeaseRecord,
   parseLeaseRecord,
@@ -262,7 +262,11 @@ export class Lease {
     const renewed = renewLeaseRecord(this.#record, nowMs, this.#ttlMs);
     const tmpPath = `${this.leasePath}.tmp-renew-${this.pid}-${nowMs}`;
     try {
-      await writeExclusive(tmpPath, JSON.stringify(renewed));
+      // `stageExclusive`, not the publish helper: this name is private to
+      // this renewal and nobody reads it, and the visible replacement is
+      // the `rename` below (an atomic replace, unlike the link publish an
+      // acquire needs, which must FAIL when the path already exists).
+      await stageExclusive(tmpPath, JSON.stringify(renewed));
       await rename(tmpPath, this.leasePath);
     } catch (err) {
       this.#handleTransientFailure(nowMs, toError(err));

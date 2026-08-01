@@ -399,6 +399,31 @@ describe("Lease.acquire — INTEGRATION: two real child processes contending for
    * it is now timing-independent. (Linux/WSL2: start-time verification is
    * documented as Linux-only, and off-`/proc` platforms degrade to the TTL
    * path, as `Lease.acquire`'s own fallback comment records.)
+   *
+   * THE THIRD CAUSE (2026-08-01) — and this one was a genuine production
+   * mutual-exclusion defect, not a test that was asking the wrong question.
+   * Publishing a fresh lease was `open(path, "wx")` followed by a SEPARATE
+   * write, so between those two syscalls the lease path existed and was
+   * EMPTY. The contender's create failed EEXIST, its read returned `""`,
+   * `parseLeaseRecord("")` returned `undefined`, and
+   * `isTakeoverEligible(undefined, ...)` returns `true` UNCONDITIONALLY —
+   * without ever consulting pid liveness, so the real-pid fix above was
+   * bypassed entirely. The contender renamed its record over the holder's and
+   * both returned ACQUIRED. Measured at 9 double acquires in 11,000
+   * two-process races on an idle machine; two near-simultaneous
+   * `bootSupervisor` calls are an expected production event, and the journal's
+   * `appendEntry` takes no lock of its own, so the lease is the only
+   * single-writer guarantee there is. `tryAcquireOnce` now stages the complete
+   * record under a private name and `link()`s it into place, so the lease path
+   * is never observable without its full payload.
+   *
+   * WHY THIS TEST KEPT BEING THE ONLY ONE TO CATCH IT, and what changed. The
+   * window never opens for two IN-PROCESS acquirers (one event loop queues the
+   * winner's write continuation ahead of the loser's read), so only two real
+   * OS processes could ever hit it — as a probability, which is a flake, not a
+   * pin. This test stays exactly as it is: it is the exit criterion and the
+   * only end-to-end proof. But all three causes now also have deterministic
+   * unit-level pins that name them, in `lease-acquire.test.ts`.
    */
   it("exactly one of two real, concurrently-spawned child processes acquires the lease", async () => {
     const a = spawnAttempt();
