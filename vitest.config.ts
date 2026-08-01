@@ -70,6 +70,19 @@ export default defineConfig({
         extends: true,
         test: { root: "e2e/report", name: "e2e-report" },
       },
+      // The criteria-closeout meta-check (`scripts/check-criteria-closeout
+      // .mjs`). `scripts/` is not an npm workspace member, so it is not one
+      // of the `packages/*` dirs enumerated above, and its suite would
+      // otherwise be discovered by nothing at all. The check itself also runs
+      // as a `meta-checks` step in `ci.yml` against the real committed
+      // records; this project is what unit-tests the validator's own
+      // rejection paths, which a green run over valid records never
+      // exercises. Nothing under `scripts/` is in the coverage `include`
+      // globs, so this adds no denominator.
+      {
+        extends: true,
+        test: { root: "scripts", name: "scripts" },
+      },
     ],
     passWithNoTests: true,
     // The default 5s per-test timeout is too tight for this repo's legitimate

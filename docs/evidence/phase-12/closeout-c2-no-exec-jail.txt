@@ -1,0 +1,20 @@
+# Phase 12 exit criterion 2 — no-execution proof (no-exec jail + package-wide static spawn-surface scan)
+#
+# Produced by the criteria-closeout pass (batch 0 pilot), 2026-08-01T20:58:21Z.
+# Repository HEAD at capture: 16937fb3627fa26a97c535a9df59a0f634159987
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/detect/src/no-exec-jail.test.ts packages/detect/src/spawn-surface-scan.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-pilot
+
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  22:58:22
+   Duration  547ms (transform 300ms, setup 0ms, import 69ms, tests 409ms, environment 0ms)
+
+# ----------------------------------------------------------------------
+# exit status: 0

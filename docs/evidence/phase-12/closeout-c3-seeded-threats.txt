@@ -1,0 +1,20 @@
+# Phase 12 exit criterion 3 — quarantine catches the four seeded threats
+#
+# Produced by the criteria-closeout pass (batch 0 pilot), 2026-08-01T20:58:23Z.
+# Repository HEAD at capture: 16937fb3627fa26a97c535a9df59a0f634159987
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/detect/src/quarantine/pipeline.test.ts packages/detect/src/quarantine/pipeline.property.test.ts packages/detect/src/quarantine/scanners packages/detect/src/quarantine/stages
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-pilot
+
+
+ Test Files  10 passed (10)
+      Tests  45 passed (45)
+   Start at  22:58:23
+   Duration  363ms (transform 489ms, setup 0ms, import 981ms, tests 77ms, environment 1ms)
+
+# ----------------------------------------------------------------------
+# exit status: 0

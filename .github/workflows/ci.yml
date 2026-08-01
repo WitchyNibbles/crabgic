@@ -203,7 +203,7 @@ jobs:
         run: npm run check:engine-pin
 
   meta-checks:
-    name: meta-checks (workspace-count, repo-hygiene, release-notes)
+    name: meta-checks (workspace-count, repo-hygiene, release-notes, criteria-closeout)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -218,3 +218,22 @@ jobs:
         run: npm run check:hygiene
       - name: release-notes-prep records the npm-name verdict
         run: npm run check:release-notes
+      # The criteria-closeout index (`docs/evidence/criteria-closeout/
+      # phase-NN.json`) is where each roadmap phase's ticked exit criteria
+      # record their citations. Validated here so a record cannot drift from
+      # the phase file it describes: the check re-hashes every criterion's
+      # verbatim text and requires that text to account for the WHOLE checkbox
+      # item (prefix match, with the remainder constrained to the `— **`
+      # citation annotation — a bare prefix match would let a record pin a
+      # harmless opening substring, and a bare em-dash lead would let it stop
+      # at the criterion's OWN internal em dash, either way leaving a softened
+      # tail invisible), cross-checks tick state and checkbox count in both
+      # directions, and resolves every `test`/`artifact` citation to a real
+      # file inside the repo. A criterion quietly reworded to make it tickable,
+      # or a citation pointing at a file that no longer exists, fails this
+      # step. It cannot catch a criterion and its record rewritten together in
+      # one commit — that is what reading the roadmap diff is for. Runs on
+      # `npm ci` alone: the validator is dependency-free precisely because this
+      # job does not build.
+      - name: criteria-closeout index matches its roadmap phase files
+        run: npm run check:criteria-closeout
