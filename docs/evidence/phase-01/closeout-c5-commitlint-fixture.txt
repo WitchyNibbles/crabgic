@@ -1,0 +1,35 @@
+Closeout re-verification — phase 01 exit criterion 5 (commitlint rejects the
+work-item-4 malformed-message fixture).
+
+Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Verbatim output; nothing edited.
+
+This is a LOCAL re-run of the same three cases `wi4-commitlint-rejecting-passing.txt`
+recorded on 2026-07-15, against today's `commitlint.config.js`. It is NOT a GitHub
+Actions run: see the closeout record's wording correction for criterion 5 — no CI run
+has ever recorded commitlint REJECTING a message, because every commit that reaches
+`main` is well-formed by construction.
+
+$ echo "this is a malformed commit message with no type prefix" | npx commitlint
+⧗   --- input ---
+this is a malformed commit message with no type prefix
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+
+✖   found 2 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "build: bump deps" | npx commitlint   # a conventional-commit default type OUTSIDE the narrowed feat|fix|refactor|docs|test|chore|perf|ci set
+⧗   --- input ---
+build: bump deps
+✖   type must be one of [feat, fix, refactor, docs, test, chore, perf, ci] [type-enum]
+
+✖   found 1 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "feat: add commitlint config" | npx commitlint   # control case: a well-formed message must be ACCEPTED
+exit=0

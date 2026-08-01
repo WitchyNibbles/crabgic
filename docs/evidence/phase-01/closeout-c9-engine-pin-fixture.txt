@@ -1,0 +1,38 @@
+Closeout re-verification — phase 01 exit criterion 9 (`engine-pin-lint` rejects the
+work-item-7 `^`-ranged fixture manifest, and passes on the real workspace).
+
+Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Verbatim output; nothing edited.
+
+Two things changed since `wi7-engine-pin-lint-fixture-and-real.txt` (2026-07-15) and
+both are recorded here rather than assumed:
+  * The FIXTURE half is still a local run. No GitHub Actions run has ever recorded
+    `engine-pin-lint` failing — the fixture manifest lives outside the workspace by
+    design, so the CI job never sees it. See the closeout record's wording correction.
+  * The REAL-WORKSPACE half is no longer vacuous. At phase 01 the workspace declared
+    no engine dependency at all; phase 06 added `@anthropic-ai/claude-agent-sdk`, so
+    the check now passes against a real target — exactly what the criterion predicted
+    ("06's SDK dependency is the first real enforcement target"). The `engine-pin-lint`
+    CI job green at 65ff0da is the CI-channel evidence for THIS half.
+
+$ cat /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/p01fix/wi7-fixture-manifest.json
+{
+  "name": "wi7-fixture",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^2.1.0"
+  }
+}
+
+$ node scripts/check-engine-pin.mjs /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/p01fix/wi7-fixture-manifest.json
+engine-pin-lint: FAIL
+  - /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/p01fix/wi7-fixture-manifest.json: dependencies["@anthropic-ai/claude-agent-sdk"] = "^2.1.0" is not an exact pin (no ^/~/range/wildcard/tag allowed — engine-bundling dependencies must be pinned exactly)
+exit=1
+
+$ node scripts/check-engine-pin.mjs   # the real workspace, packages/*/package.json
+engine-pin-lint: PASS — checked 18 manifest(s), no range-specified engine-bundling dependency found (watched: @anthropic-ai/claude-agent-sdk).
+exit=0
+
+$ grep -rn "claude-agent-sdk" packages/*/package.json   # the real, exact-pinned targets the PASS above covers
+packages/cli/package.json:49:    "@anthropic-ai/claude-agent-sdk": "0.3.218",
+packages/engine-claude/package.json:28:    "@anthropic-ai/claude-agent-sdk": "0.3.218",
+exit=0

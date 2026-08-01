@@ -1,0 +1,58 @@
+Closeout re-verification — phase 01 exit criterion 4 (the 80% line+branch coverage
+gate FAILS below threshold, and passes once corrected).
+
+Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Verbatim output; nothing edited.
+
+What this is, stated exactly, because it is NOT the original fixture:
+
+  * The work-item-3 fixture package (`packages/_fixture-coverage-temp`, ~53% covered)
+    was deliberately REMOVED at phase 01 after `wi3-coverage-gate-failing.txt` captured
+    it — the workspace-count check requires exactly 18 packages, so it cannot be
+    reinstated without breaking `meta-checks`. It is therefore unreproducible as
+    written, and this run re-establishes the same PROPERTY a different way: the repo's
+    own `vitest.config.ts` thresholds (lines/branches/functions/statements = 80) fail
+    `vitest run --coverage` when measured coverage is below them.
+  * The run below narrows the TEST SELECTION (one directory of tests) and nothing else.
+    `coverage.include` still spans `packages/*/src/**/*.ts`, so the denominator is the
+    whole workspace and the measured figure collapses to 0.26% lines / 0.12% branches.
+    The only flag added beyond `--coverage` is `--coverage.reporter=text-summary`,
+    which suppresses the ~700-line per-file table; the thresholds are read from
+    `vitest.config.ts` unchanged, and the four ERROR lines are the gate's own output.
+  * The "passes once corrected" half of this criterion is NOT evidenced here. It is
+    evidenced in CI: `CI / unit-test+coverage (ubuntu-latest)` job 91419417946, step
+    "test with 80% line+branch coverage gate", green at 65ff0da, measuring
+    94.54 % stmts / 87.38 % branch / 96.05 % funcs / 95.48 % lines over 623 test files.
+
+$ npx vitest run --coverage --coverage.reporter=text-summary packages/contracts/src/errors
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p01
+      Coverage enabled with v8
+
+
+ Test Files  1 passed (1)
+      Tests  37 passed (37)
+   Start at  23:29:28
+   Duration  6.02s (transform 33ms, setup 0ms, import 86ms, tests 15ms, environment 0ms)
+
+ % Coverage report from v8
+
+=============================== Coverage summary ===============================
+Statements   : 0.24% ( 34/13648 )
+Branches     : 0.12% ( 9/7477 )
+Functions    : 0.44% ( 14/3141 )
+Lines        : 0.26% ( 34/12636 )
+================================================================================
+ERROR: Coverage for lines (0.26%) does not meet global threshold (80%)
+ERROR: Coverage for functions (0.44%) does not meet global threshold (80%)
+ERROR: Coverage for statements (0.24%) does not meet global threshold (80%)
+ERROR: Coverage for branches (0.12%) does not meet global threshold (80%)
+exit=1
+
+$ sed -n "138,143p" vitest.config.ts   # the thresholds the ERROR lines above were checked against
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },
