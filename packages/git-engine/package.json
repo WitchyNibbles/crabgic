@@ -31,6 +31,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@crabgic/testkit": "0.0.0",
     "fast-check": "4.9.0"
   }
 }

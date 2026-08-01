@@ -35,6 +35,7 @@ export {
   assertObjectId,
   assertSafeRefPositional,
   CONTROL_CONTEXT_ENV,
+  GIT_LOCATION_ENV_VARS,
   InvalidObjectIdError,
   OPTION_TERMINATOR,
   UnsafeGitRefError,

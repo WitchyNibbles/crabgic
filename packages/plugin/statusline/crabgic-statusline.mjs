@@ -148,17 +148,55 @@ export function parseGitStatus(stdout) {
 }
 
 /**
+ * Ambient git variables that decide WHICH repository git operates on. Git
+ * consults them BEFORE `cwd`, so with any of them inherited this segment
+ * would report the branch of whatever repository the engine's own parent
+ * process was pointed at rather than the session's `current_dir`. Kept as a
+ * literal list rather than a `GIT_*` prefix sweep so nothing else about the
+ * user's environment is altered by a read-only status line. Mirrors
+ * `@crabgic/git-engine`'s `GIT_LOCATION_ENV_VARS` — this file is a
+ * zero-dependency `.mjs` on the TUI hot path and cannot import it.
+ */
+const GIT_LOCATION_ENV_VARS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CONFIG",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_COUNT",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_GRAFT_FILE",
+  "GIT_INDEX_FILE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_PREFIX",
+  "GIT_SHALLOW_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_NAMESPACE",
+  "GIT_QUARANTINE_PATH",
+  "GIT_CEILING_DIRECTORIES",
+  "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+  "GIT_TEMPLATE_DIR",
+];
+
+/**
  * The one impure segment: the branch is NOT in the status-line payload
  * (`workspace.repo` carries only host/owner/name — see engine-baseline §17.1),
  * so it has to come from git. One spawn covers both branch and dirtiness;
  * `--no-optional-locks` keeps a status line from contending for `index.lock`
  * with the user's own commands, and the timeouts keep a pathological repo
- * from stalling the TUI.
+ * from stalling the TUI. The environment is scrubbed of git's
+ * repository-location variables so `cwd` genuinely decides which repository
+ * is reported (see `GIT_LOCATION_ENV_VARS`).
  */
 export function readGitStatus(cwd, worktreeBranch) {
+  const env = { ...process.env };
+  for (const name of GIT_LOCATION_ENV_VARS) delete env[name];
   const run = (args, timeout) =>
     execFileSync("git", ["--no-optional-locks", ...args], {
       cwd,
+      env,
       encoding: "utf8",
       timeout,
       stdio: ["ignore", "pipe", "ignore"],

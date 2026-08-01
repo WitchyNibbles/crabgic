@@ -46,7 +46,7 @@
  * Like every `*.live.test.ts` here it fails RED (never skips) without
  * `CRABGIC_LIVE=1`.
  */
-import { execFileSync } from "node:child_process";
+import { runFixtureGit } from "@crabgic/testkit";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
@@ -74,7 +74,7 @@ const PROMPT =
 
 /** A fresh `git init` repo so `git status` completes with unmistakable output. */
 function initGitRepo(worktreePath: string): void {
-  execFileSync("git", ["init", "--quiet"], { cwd: worktreePath });
+  runFixtureGit(worktreePath, ["init", "--quiet"]);
 }
 
 /**

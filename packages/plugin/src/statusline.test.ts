@@ -10,14 +10,19 @@
  * work through the bundled `crabgic` CLI measured ~300ms, which is visibly
  * laggy in the TUI.
  *
- * Everything except the single `execFileSync` git call is a pure function, so
- * the whole line is asserted here without spawning a process or a terminal.
+ * Everything except the single git call is a pure function, so the whole line
+ * is asserted here without spawning a process or a terminal. The fixtures
+ * that DO need a real repository go through `@crabgic/testkit`'s
+ * `runFixtureGit`, which scrubs the inherited git environment: `{ cwd }`
+ * alone does not isolate a git subprocess, and this repo's own `pre-push`
+ * hook runs the suite with `GIT_DIR` pointed at the repository being pushed.
  * The payload shapes exercised below are the ones
  * `docs/engine-baseline.md` §17 records as really occurring — in particular
  * the cold-start shape (`context_window.used_percentage: null`, no
  * `rate_limits`) which is what every session shows before its first API
  * response.
  */
+import { GIT_FIXTURE_IDENTITY_ENV, runFixtureGit } from "@crabgic/testkit";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -161,15 +166,17 @@ describe("readGitStatus", () => {
   async function makeRepo(): Promise<string> {
     const dir = await mkdtemp(join(tmpdir(), "crabgic-statusline-git-"));
     created.push(dir);
+    // `runFixtureGit`, never a bare `execFileSync("git", ...)`: `{ cwd }` does
+    // not isolate a git subprocess (see `@crabgic/testkit`'s `git-env.ts`),
+    // and the identity arrives by environment, so this fixture runs no
+    // `git config` at all — there is no config write left to mis-aim.
     const git = (...args: string[]): void => {
-      execFileSync("git", args, { cwd: dir, stdio: "ignore" });
+      runFixtureGit(dir, args, { env: GIT_FIXTURE_IDENTITY_ENV });
     };
     git("init", "-b", "main");
-    git("config", "user.email", "test@example.invalid");
-    git("config", "user.name", "test");
     await writeFile(join(dir, "tracked.txt"), "one\n", "utf8");
     git("add", "tracked.txt");
-    git("commit", "-m", "initial");
+    git("commit", "-m", "initial", "--no-verify");
     return dir;
   }
 
@@ -195,9 +202,33 @@ describe("readGitStatus", () => {
 
   it("falls back to a short sha on a detached HEAD", async () => {
     const dir = await makeRepo();
-    execFileSync("git", ["checkout", "--detach", "HEAD"], { cwd: dir, stdio: "ignore" });
+    runFixtureGit(dir, ["checkout", "--detach", "HEAD"]);
     const status = readGitStatus(dir);
     expect(status?.branch).toMatch(/^@[0-9a-f]{7,}$/);
+  });
+
+  /**
+   * `readGitStatus` is read-only, so an inherited `GIT_DIR` cannot corrupt
+   * anything — but it silently reports the WRONG repository, which for a
+   * status line is a correctness bug: the segment would show the branch of
+   * whatever repo the engine's parent process was pointed at instead of the
+   * session's `current_dir`. Behavioral guard on the `.mjs`'s own scrub,
+   * since the repo-wide hygiene scan only proves the constant is textually
+   * present in the file.
+   */
+  it("an ambient GIT_DIR never overrides cwd: the branch reported is cwd's, not the poisoned repo's", async () => {
+    const poisoned = await makeRepo();
+    runFixtureGit(poisoned, ["checkout", "-q", "-b", "poisoned-branch"]);
+    const target = await makeRepo(); // on `main`
+
+    const original = process.env["GIT_DIR"];
+    process.env["GIT_DIR"] = join(poisoned, ".git");
+    try {
+      expect(readGitStatus(target)).toEqual({ branch: "main", dirty: false });
+    } finally {
+      if (original === undefined) delete process.env["GIT_DIR"];
+      else process.env["GIT_DIR"] = original;
+    }
   });
 
   it("returns null outside a repository rather than throwing into the TUI", async () => {

@@ -4,20 +4,28 @@
  * invalid `.git`, unborn HEAD, dirty repo, monorepo, config drift,
  * interrupted upgrade, rollback, uninstall preserving user edits."
  */
-import { execFile } from "node:child_process";
+import { GIT_FIXTURE_IDENTITY_ENV, runFixtureGit } from "@crabgic/testkit";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { runInstall } from "./install.js";
 import { runUpgrade, recoverInterruptedUpgrade } from "./upgrade.js";
 import { runUninstall } from "./uninstall.js";
+
+/**
+ * `runFixtureGit`, never a bare `execFile("git", ...)`: `{ cwd }` does not
+ * isolate a git subprocess — git resolves its repository from `GIT_DIR` and
+ * friends first — and this repo's `pre-push` hook runs the suite with
+ * `GIT_DIR` set. See `@crabgic/testkit`'s `git-env.ts`.
+ */
+function git(dir: string, args: readonly string[]): void {
+  runFixtureGit(dir, args, { env: GIT_FIXTURE_IDENTITY_ENV });
+}
 import { backupArtifact, writeUpgradeMarker, readUpgradeMarker } from "./state-store.js";
 import type { InstallerDependencies } from "./types.js";
 
-const execFileAsync = promisify(execFile);
 const PLUGIN_ROOT = new URL("../../../plugin", import.meta.url).pathname;
 
 const dirs: string[] = [];
@@ -85,7 +93,7 @@ describe("install.matrix.test", () => {
 
   it("unborn HEAD: a freshly `git init`-ed repo with zero commits installs cleanly", async () => {
     const dir = await makeTmpDir();
-    await execFileAsync("git", ["init"], { cwd: dir });
+    git(dir, ["init"]);
     const result = await runInstall(deps(dir), { dryRun: false });
     expect(result.repoState).toBe("unborn-head");
     expect(result.status).toBe("installed");
@@ -93,12 +101,10 @@ describe("install.matrix.test", () => {
 
   it("dirty repo: uncommitted working-tree changes do not block installation", async () => {
     const dir = await makeTmpDir();
-    await execFileAsync("git", ["init"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.email", "t@example.invalid"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.name", "T"], { cwd: dir });
+    git(dir, ["init"]);
     await writeFile(join(dir, "a.txt"), "a");
-    await execFileAsync("git", ["add", "a.txt"], { cwd: dir });
-    await execFileAsync("git", ["commit", "-m", "init"], { cwd: dir });
+    git(dir, ["add", "a.txt"]);
+    git(dir, ["commit", "-m", "init", "--no-verify"]);
     await writeFile(join(dir, "a.txt"), "modified, uncommitted");
 
     const result = await runInstall(deps(dir), { dryRun: false });

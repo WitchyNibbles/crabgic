@@ -30,7 +30,7 @@
  * `CRABGIC_LIVE=1` — `assertLiveEnabled()` in `beforeAll` throws so the
  * engine-live CI job goes red rather than vacuously green.
  */
-import { execFileSync } from "node:child_process";
+import { runFixtureGit } from "@crabgic/testkit";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -94,7 +94,7 @@ describe("adjudication bridge under permissionMode:'dontAsk' (Finding 2 — canU
     const ctx = await createLiveAdapterContext();
     try {
       // A real git repo in the worktree so `git status` completes cleanly.
-      execFileSync("git", ["init", "--quiet"], { cwd: ctx.scratch.worktreePath });
+      runFixtureGit(ctx.scratch.worktreePath, ["init", "--quiet"]);
 
       const profile = compileEnvelope(STANDARD_CASE.envelope);
       // The envelope policy's binding precondition is ALREADY-substituted

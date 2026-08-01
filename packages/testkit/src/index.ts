@@ -13,6 +13,13 @@ export * from "./providers/id-provider.js";
 export * from "./fixtures/index.js";
 export * from "./ajv-harness.js";
 
+// Hermetic environment for any test that spawns a REAL `git` against a
+// throwaway directory (`./git-env.ts`). Not tied to one phase: it exists
+// because `cwd` does NOT isolate a git subprocess — an inherited `GIT_DIR`
+// outranks it — and this repo's own pre-push hook runs the suite with
+// `GIT_DIR` set. Every fixture that shells out to git must route through it.
+export * from "./git-env.js";
+
 // Fake engine (roadmap/03-envelope-compiler-engine-adapter.md work items
 // 5-6): scriptable EngineAdapter implementation + envelope-conformance
 // fixture format, reused byte-identical by 06's own @live suite.

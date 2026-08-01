@@ -35,5 +35,8 @@
     "@crabgic/contracts": "0.0.0",
     "@crabgic/engine-claude": "0.0.0",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@crabgic/testkit": "0.0.0"
   }
 }

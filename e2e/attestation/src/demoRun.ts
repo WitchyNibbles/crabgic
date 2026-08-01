@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { createGitPlumbing, nameBranch, publishLocal } from "@crabgic/git-engine";
+import { GIT_FIXTURE_IDENTITY_ENV, gitFixtureEnv } from "@crabgic/testkit";
 import {
   lint,
   renderPrBody,
@@ -51,6 +52,17 @@ const exec = promisify(execFile);
 const plumbing = createGitPlumbing();
 
 /**
+ * Environment for every `git` spawned below. `{ cwd }` alone does NOT aim a
+ * git subprocess at a throwaway directory: git resolves its repository from
+ * `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` first, and git exports `GIT_DIR`
+ * into every hook it runs. Without this scrub the demo's `init`, `config`
+ * and `commit` calls land in whatever repository the runner inherited. See
+ * `@crabgic/testkit`'s `git-env.ts`. The identity comes from the same place,
+ * so the demo writes no git config at all.
+ */
+const DEMO_GIT_ENV = gitFixtureEnv(GIT_FIXTURE_IDENTITY_ENV);
+
+/**
  * ASCII record/unit separators. Deliberately NOT `NUL`: Node's
  * `child_process` rejects any argument containing a null byte
  * (`ERR_INVALID_ARG_VALUE`), so the conventional `git log -z` idiom cannot
@@ -63,18 +75,19 @@ const FIELD_SEPARATOR = String.fromCharCode(31);
 /** A throwaway repository with one commit, no remote, and a deterministic identity. */
 async function buildThrowawayRepo(prefix: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), prefix));
-  await exec("git", ["init", "-q", "-b", "main"], { cwd: dir });
-  await exec("git", ["config", "user.email", "demo@example.invalid"], { cwd: dir });
-  await exec("git", ["config", "user.name", "Demo Runner"], { cwd: dir });
+  await exec("git", ["init", "-q", "-b", "main"], { cwd: dir, env: DEMO_GIT_ENV });
   await writeFile(join(dir, "README.md"), "# demo\n", "utf-8");
-  await exec("git", ["add", "-A"], { cwd: dir });
-  await exec("git", ["commit", "-q", "-m", "chore: seed the demo repository"], { cwd: dir });
+  await exec("git", ["add", "-A"], { cwd: dir, env: DEMO_GIT_ENV });
+  await exec("git", ["commit", "-q", "-m", "chore: seed the demo repository"], {
+    cwd: dir,
+    env: DEMO_GIT_ENV,
+  });
   return dir;
 }
 
 /** Counts configured remotes — the structural proof that nothing could have been pushed. */
 async function countRemotes(repoDir: string): Promise<number> {
-  const { stdout } = await exec("git", ["remote"], { cwd: repoDir });
+  const { stdout } = await exec("git", ["remote"], { cwd: repoDir, env: DEMO_GIT_ENV });
   return stdout.split("\n").filter((line) => line.trim() !== "").length;
 }
 
@@ -116,11 +129,17 @@ export async function runDemoPublication(
   }
   const branchName = named.branchName;
 
-  await exec("git", ["checkout", "-q", "-b", "integration"], { cwd: controlRepo });
+  await exec("git", ["checkout", "-q", "-b", "integration"], {
+    cwd: controlRepo,
+    env: DEMO_GIT_ENV,
+  });
   await mkdir(join(controlRepo, "src"), { recursive: true });
   await writeFile(join(controlRepo, "src", "demo-feature.txt"), "the demo feature\n", "utf-8");
-  await exec("git", ["add", "-A"], { cwd: controlRepo });
-  await exec("git", ["commit", "-q", "-m", "feat: record the demo handoff"], { cwd: controlRepo });
+  await exec("git", ["add", "-A"], { cwd: controlRepo, env: DEMO_GIT_ENV });
+  await exec("git", ["commit", "-q", "-m", "feat: record the demo handoff"], {
+    cwd: controlRepo,
+    env: DEMO_GIT_ENV,
+  });
 
   // 17's renderer produces the handoff bundle; 17's own lint judges it,
   // each artifact under ITS OWN `ArtifactKind` so the kind-specific stages
@@ -180,7 +199,7 @@ export async function runDemoPublication(
   const { stdout: log } = await exec(
     "git",
     ["log", `--format=%s${FIELD_SEPARATOR}%b${RECORD_SEPARATOR}`, branchName, "--not", "main"],
-    { cwd: userRepo },
+    { cwd: userRepo, env: DEMO_GIT_ENV },
   ).catch(() => ({ stdout: "" }));
 
   const commits = log

@@ -1,24 +1,31 @@
 /**
  * Real, on-disk git fixture-repo builder shared by this package's own test
  * suite (roadmap/07-git-control-repo-worktrees.md Test plan: "Integration
- * over REAL on-disk fixture git repos... no mocked git"). Deliberately uses
- * `node:child_process.execFileSync` directly (argv array, no shell — same
- * security posture as `../plumbing.ts`, just not routed through the
- * plumbing wrapper itself, since fixture setup must not depend on the very
- * module under test in WI1's own RED phase).
+ * over REAL on-disk fixture git repos... no mocked git"). Deliberately does
+ * NOT route through `../plumbing.ts`: fixture setup must not depend on the
+ * very module under test in WI1's own RED phase.
+ *
+ * It does, however, route through `@crabgic/testkit`'s `runFixtureGit` — the
+ * one place in this repo that knows `{ cwd }` alone does not isolate a git
+ * subprocess. `git` resolves its repository from `GIT_DIR`/`GIT_WORK_TREE`/
+ * `GIT_INDEX_FILE` before it looks at the working directory, and git exports
+ * `GIT_DIR` into every hook it runs — including this repo's own `pre-push`
+ * hook, which runs the whole suite. Every `init`/`config`/`commit` below was
+ * therefore aimed at the repository being pushed until 2026-08-01. Read that
+ * module's header before adding a git call anywhere in this file.
  *
  * Not part of this package's public barrel (`../index.ts`) — test scaffolding
  * only.
  */
 
-import { execFileSync } from "node:child_process";
+import { runFixtureGit } from "@crabgic/testkit";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** Runs `git <args>` in `cwd`, argv-array only, no shell. Throws on non-zero exit. */
+/** Runs `git <args>` in `cwd`, argv-array only, no shell, with the inherited git environment scrubbed. Throws on non-zero exit. */
 export function fixtureGit(cwd: string, args: readonly string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  return runFixtureGit(cwd, args);
 }
 
 /** Creates a fresh temp directory under the OS tmpdir, tracked for cleanup by the caller. */
