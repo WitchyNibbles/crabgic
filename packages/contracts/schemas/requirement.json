@@ -46,6 +46,10 @@
         "minLength": 1
       }
     },
+    "criteriaHash": {
+      "type": "string",
+      "minLength": 1
+    },
     "workUnitIds": {
       "type": "array",
       "items": {
@@ -91,6 +95,7 @@
     "title",
     "description",
     "acceptanceCriteria",
+    "criteriaHash",
     "workUnitIds",
     "renderedArtifactIds",
     "testIdentifiers",

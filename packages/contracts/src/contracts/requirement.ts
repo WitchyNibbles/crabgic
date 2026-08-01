@@ -22,6 +22,16 @@ import { IntentContractSectionKeySchema } from "./intent-contract.js";
  * criteria (minimal shape: no structured acceptance-criterion format is
  * pinned upstream).
  *
+ * `criteriaHash` is the canonical hash of that list, taken where the record
+ * is built and verified before completion is accepted
+ * (roadmap/24-sealed-acceptance-criteria.md, `./criteria-seal.ts`). It is
+ * REQUIRED rather than optional on purpose: an unsealed requirement is
+ * unrepresentable instead of merely discouraged, which is the same
+ * schema-over-convention posture `docs/interface-ledger.md` Gap 20 took for
+ * `ReviewVerdict`. Note it is deliberately NOT folded into `id` — the
+ * requirement's identity must survive a sanctioned amendment, while its
+ * seal must not.
+ *
  * The 4 bidirectional-mapping arrays (`workUnitIds`, `renderedArtifactIds`,
  * `testIdentifiers`, `evidenceRecordIds`) implement roadmap/11 §In scope,
  * "Contract assembly" bullet's "bidirectional requirement ↔
@@ -46,6 +56,7 @@ export const RequirementSchema = z
     title: NonEmptyStringSchema,
     description: NonEmptyStringSchema,
     acceptanceCriteria: z.array(NonEmptyStringSchema).min(1),
+    criteriaHash: NonEmptyStringSchema,
     workUnitIds: z.array(IdSchema),
     renderedArtifactIds: z.array(IdSchema),
     testIdentifiers: z.array(NonEmptyStringSchema),

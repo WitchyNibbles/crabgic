@@ -10,6 +10,7 @@ const validRequirement = {
   title: "Doctor run completes quickly",
   description: "The `doctor` command must complete its full check suite in bounded time.",
   acceptanceCriteria: ["p95 wall-clock time under 5s on a warm cache"],
+  criteriaHash: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
   workUnitIds: ["6c84fb90-12c4-11e1-840d-7b25c5ee775a"],
   renderedArtifactIds: [],
   testIdentifiers: ["packages/cli/src/doctor.test.ts > completes under budget"],
@@ -49,6 +50,16 @@ describe("RequirementSchema — invalid-shape rejection", () => {
   it("rejects a missing title", () => {
     const { title: _title, ...rest } = validRequirement;
     expect(RequirementSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects a missing criteriaHash — an unsealed requirement is unrepresentable (roadmap/24)", () => {
+    const { criteriaHash: _criteriaHash, ...rest } = validRequirement;
+    expect(RequirementSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects an empty criteriaHash", () => {
+    const invalid = { ...validRequirement, criteriaHash: "" };
+    expect(RequirementSchema.safeParse(invalid).success).toBe(false);
   });
 });
 

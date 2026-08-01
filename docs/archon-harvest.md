@@ -15,20 +15,20 @@ consolidated here.
 It got further than crabgic on several axes and made mistakes crabgic has not made yet.
 Both are worth keeping. What follows was checked against this repository rather than
 assumed — several organs turned out to be already present, and one turned out to be
-something crabgic should deliberately *not* take.
+something crabgic should deliberately _not_ take.
 
 ## Summary
 
-| # | Organ | Status here | Recommendation |
-|---|---|---|---|
-| 1 | Sealed, tamper-checked acceptance criteria | Absent for criteria; **the mechanism already exists for perf budgets** | **Harvest — highest value.** Extend crabgic's own pattern |
-| 2 | Out-of-band notifications (park / block / complete) | Absent | Harvest the design, if unattended operation is a goal |
-| 3 | Full-screen watch dashboard + terminal-injection safety | Partial (`status --watch` is a line-append stream) | Harvest the **safety** idea now; the dashboard only if wanted |
-| 4 | Context/token economy instrumentation | Partial (turns + USD only) | Harvest the schema; treat archon's own results as unproven |
-| 5 | Per-role effort dimension + per-session pinning | Model routing present, **no effort dimension** | Harvest the engine fact and the pinning discipline |
-| 6 | Park episode counters | Deliberately excluded here | **Do not harvest** unless notifications land first |
-| 7 | 33-agent / 52-skill specialist corpus | 5 agents, 6 skills, deliberately lean | **Do not harvest.** Archon's own audit called much of it inert |
-| 8 | Honest-residual security doctrine | Practised here already | Adopt explicitly in `docs/threat-model.md` |
+| #   | Organ                                                   | Status here                                                            | Recommendation                                                 |
+| --- | ------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Sealed, tamper-checked acceptance criteria              | Absent for criteria; **the mechanism already exists for perf budgets** | **Harvest — highest value.** Extend crabgic's own pattern      |
+| 2   | Out-of-band notifications (park / block / complete)     | Absent                                                                 | Harvest the design, if unattended operation is a goal          |
+| 3   | Full-screen watch dashboard + terminal-injection safety | Partial (`status --watch` is a line-append stream)                     | Harvest the **safety** idea now; the dashboard only if wanted  |
+| 4   | Context/token economy instrumentation                   | Partial (turns + USD only)                                             | Harvest the schema; treat archon's own results as unproven     |
+| 5   | Per-role effort dimension + per-session pinning         | Model routing present, **no effort dimension**                         | Harvest the engine fact and the pinning discipline             |
+| 6   | Park episode counters                                   | Deliberately excluded here                                             | **Do not harvest** unless notifications land first             |
+| 7   | 33-agent / 52-skill specialist corpus                   | 5 agents, 6 skills, deliberately lean                                  | **Do not harvest.** Archon's own audit called much of it inert |
+| 8   | Honest-residual security doctrine                       | Practised here already                                                 | Adopt explicitly in `docs/threat-model.md`                     |
 
 ---
 
@@ -52,7 +52,7 @@ source-constant epoch is treated as tampering rather than as "never sealed."
 and no verification anywhere. The `AuthorizationEnvelope` canonical hash deliberately covers
 capability content only — paths, commands, network destinations, credentials, turn caps —
 so criteria sit outside the seal. Amendment detection exists
-(`packages/gates/src/material-amendment-guard.ts`) but watches the *upstream tracker* for
+(`packages/gates/src/material-amendment-guard.ts`) but watches the _upstream tracker_ for
 milestone drift; it does not model an implementer editing its own bar.
 
 **Why this is the highest-value item: crabgic already built the mechanism.**
@@ -144,7 +144,7 @@ archon's measurement is a starting hypothesis to re-verify, not a fact to inheri
 **Park episode counters.** Crabgic excludes re-park from dispatch counting on purpose —
 `countPriorDispatches` skips a `dispatched` whose `previousStatus` was `parked:rate_limit`,
 so a rate-limit park never burns the repair budget. Archon needed episode numbering to stop
-dedupe-key collisions across park → resume → re-park; that is a *notification* problem.
+dedupe-key collisions across park → resume → re-park; that is a _notification_ problem.
 Importing the counters without the notification spine would add state for no benefit.
 
 **The 33-agent, 52-skill corpus.** Crabgic ships 5 subagents and 6 skills, manifest-validated,
