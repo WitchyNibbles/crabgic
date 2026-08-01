@@ -104,8 +104,6 @@ function fixtureRequest(overrides: { readonly ownedPaths?: string[] } = {}): Int
       prohibitedActions: [],
     },
     rollbackStrategy: "Revert the integration commit.",
-    performanceBudgetSource: "ecosystem_research",
-    performanceBudgets: [],
   };
 }
 

@@ -21,6 +21,7 @@ Before this phase, `final_verifying` has no performance-regression gate and 11's
   2. Else ecosystem research.
   3. Else the base-revision benchmark run sets the budget itself.
   - The enforced figure must hash-match the provisional one 11's approval render already committed to (via ChangeSet, 02); a mismatch fails closed rather than silently re-sourcing.
+  - **Where the rule lives, and who runs it (ledger Gap 21, 2026-08-01):** the sourcing order is implemented in `@crabgic/contracts` (`budget-sourcing.ts`, `acceptance-criteria-parser.ts`, `ecosystem-research-table.ts`; `packages/perf` re-exports them verbatim) and is EXECUTED by 11's intake, which derives `(budgetSource, budgets)` from the performance-section requirements it has just built. `IntakeRequest` carries neither field, so provenance cannot be misdeclared. This phase consumes that result; it does not source it.
 - **Methodology:**
   - Framework-appropriate warmup; ≥10 interleaved repetitions (A/B alternating base/candidate, never concurrent).
   - Two worktrees — the integrated candidate's own worktree plus a base-revision worktree, both provisioned through 13's executor (13's own dependency on 07; this phase never calls `packages/git-engine` directly).

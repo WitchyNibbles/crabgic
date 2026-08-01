@@ -33,9 +33,8 @@ import {
   type ChangeSet,
   type IntentContract,
   type IntentContractSections,
-  type PerformanceBudgetSource,
-  type ProvisionalPerformanceBudgetEntry,
   type ProvisionalPerformanceContract,
+  resolveBudgetSource,
   type Requirement,
   type WorkUnit,
 } from "@crabgic/contracts";
@@ -67,8 +66,18 @@ export interface IntakeRequest {
   readonly workUnits: readonly WorkUnitDraft[];
   readonly envelopeContent: AuthorizationEnvelopeContent;
   readonly rollbackStrategy: string;
-  readonly performanceBudgetSource: PerformanceBudgetSource;
-  readonly performanceBudgets: readonly ProvisionalPerformanceBudgetEntry[];
+  /**
+   * The project's ecosystem label, for the ecosystem-research fallback
+   * (source #2). A declared INPUT selecting a pinned-table row — not a
+   * conclusion — and unverified against phase 12's detection until
+   * StackEvidence is wired into intake; see ledger Gap 21's residual. Absent
+   * or unknown simply falls through to `base_revision_measurement`.
+   *
+   * NOTE what is NOT here: `performanceBudgetSource` and `performanceBudgets`.
+   * Intake DERIVES both (ledger Gap 21), so a declaration disagreeing with the
+   * criteria it names is unrepresentable rather than policed.
+   */
+  readonly ecosystem?: string;
   readonly capabilityManifest?: Omit<
     BuildCapabilityManifestOptions,
     "id" | "changeSetId" | "createdAt"
@@ -129,8 +138,7 @@ function requestContentHash(request: IntakeRequest): string {
     workUnits: request.workUnits.map((w) => ({ ...w })),
     envelopeContent: { ...request.envelopeContent },
     rollbackStrategy: request.rollbackStrategy,
-    performanceBudgetSource: request.performanceBudgetSource,
-    performanceBudgets: request.performanceBudgets.map((b) => ({ ...b })),
+    ecosystem: request.ecosystem,
   });
 }
 
@@ -182,12 +190,24 @@ export function buildIntakeArtifacts(request: IntakeRequest): IntakeArtifacts {
     ...(request.capabilityManifest ?? {}),
   });
 
+  // DERIVED, never declared (ledger Gap 21). roadmap/15's order, executed
+  // against the requirements just built: performance-section criteria first,
+  // then the declared ecosystem's pinned row, then an empty set tagged
+  // `base_revision_measurement` for the gate-time builder to populate from the
+  // measured base revision.
+  const { source: budgetSource, budgets } = resolveBudgetSource({
+    requirementAcceptanceCriteria: requirements
+      .filter((requirement) => requirement.section === "performance")
+      .flatMap((requirement) => requirement.acceptanceCriteria),
+    ...(request.ecosystem !== undefined ? { ecosystem: request.ecosystem } : {}),
+  });
+
   const provisionalPerformanceContract = buildProvisionalPerformanceContract({
     id: perfContractId,
     changeSetId: request.id,
     createdAt: request.createdAt,
-    budgetSource: request.performanceBudgetSource,
-    budgets: request.performanceBudgets,
+    budgetSource,
+    budgets,
   });
 
   const changeSet: ChangeSet = ChangeSetSchema.parse({

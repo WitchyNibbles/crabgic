@@ -77,6 +77,8 @@ name these fields" is corrected (it does, consistently); and the "Phases affecte
 | [17](#gap-17--the-manager-session-has-no-operating-protocol-and-manager-hooks-may-not-block) | Manager session has no operating protocol | Protocol owned by `@crabgic/plugin`'s `manager-protocol.ts`, always shipped in the `CLAUDE.md` managed block (additive to the `@AGENTS.md` bridge, never replaced by it); `Stop` may block via the autonomy gate, `PreToolUse` still may not |
 | [18](#gap-18--approval-is-pinned-per-changeset-to-a-command-the-user-must-type) | Approval pinned to a per-ChangeSet terminal prompt | Standing `EnvelopePolicy` (02, written by `install`, owner-only, never in the repo); dispatch does a containment check — inside it runs with no prompt, outside it halts on `expanded_authority`; no session-reachable surface may widen it |
 | [19](#gap-19--adversarial-quality-loops-collide-with-exhausted_repairs) | Adversarial quality loops vs `exhausted_repairs` | Different loops: repairs stay capped at initial + 2; roast rounds are read-only, uncapped, and close when a round yields no **novel + falsifiable** finding — no severity floor, fresh reviewer per round |
+| [20](#gap-20--the-amended-review-loop-is-stated-in-prose-and-enforced-nowhere) | Amended review loop enforced nowhere | The checkable half is checked in `@crabgic/contracts` (`ReviewVerdict`/`ReviewFinding` superRefines, `isStageClosable`, `PIPELINE_STAGES` as data); the rest is named as unchecked |
+| [21](#gap-21--budget-provenance-was-declared-by-the-caller-and-checked-by-nothing) | Budget provenance declared, never checked | The sourcing rule moves to `@crabgic/contracts` and intake DERIVES `(budgetSource, budgets)`; the caller-declared fields are removed from `IntakeRequest`, so a misdeclaration is unrepresentable |
 
 ---
 
@@ -1441,6 +1443,73 @@ vacuously; writing a second path matcher for the debt index instead of importing
 absent `gateVerdict` as a pass in a closure derivation, which restores exactly the hole the field was added to
 close; or deciding `implement-gates-pass` from `exitStatus` again, which re-poisons every TDD-compliant
 ChangeSet.
+
+---
+
+## Gap 21 — Budget provenance was declared by the caller and checked by nothing
+
+**Origin:** raised 2026-08-01 while adjudicating the unwired `resolveBudgetSource` (recorded in that
+module's own annotation the same day); made closable by roadmap/24's requirement persistence. Like Gap 16
+and Gap 20, it was never seen by the four original resolvers and follows their shape rather than being
+retrofitted into that narrative.
+
+**Gap statement:** roadmap/15's 3-source budget order ("first source that resolves wins") was implemented in
+`packages/perf` and enforced nowhere. `IntakeRequest` carried `performanceBudgetSource` +
+`performanceBudgets` as required caller-supplied fields; `buildIntakeArtifacts` copied both verbatim into the
+provisional `PerformanceContract`; and that unverified declaration was then journal-anchored
+(`journal-anchor.ts`) and gate-enforced at `final_verifying`. A caller could declare
+`requirement_acceptance_criteria` beside budgets no criterion ever produced — **and the repo's own golden
+fixture did exactly that**, declaring that source beside a `latency p95 200ms` budget while its only
+requirements were `scope` and `security` sections carrying pure prose.
+
+**Ruling:** the sourcing rule is a cross-phase interface owned by `@crabgic/contracts`
+(`acceptance-criteria-parser.ts`, `ecosystem-research-table.ts`, `budget-sourcing.ts` — relocated from
+`packages/perf`, which re-exports them verbatim; the `shared/canonical-hash.ts` and `approval/token.ts`
+consolidation precedent). Intake (11) **derives** `(budgetSource, budgets)` by executing that rule against
+the performance-section `Requirement`s it has just built, else the request's declared `ecosystem` against the
+pinned table, else the empty set tagged `base_revision_measurement` for the gate-time builder to populate
+from the measured base revision. `performanceBudgetSource` and `performanceBudgets` are **removed from
+`IntakeRequest`**: a declaration disagreeing with the criteria it names is unrepresentable, not policed —
+the same posture as `contract.approve` deriving the expected digest server-side (CRITICAL C1) and
+`review.submit` refusing a caller-supplied verdict (Gap 20). Source #1's scope is pinned to
+performance-section criteria only.
+
+**No new package edge.** An 11 → 15 edge is refused: the roadmap graph runs 11 → 13 → 15, so it would be a
+phase-level cycle, even though the package graph would tolerate it. Both sides reach the rule through
+`@crabgic/contracts`, which both already depend on. `check-package-graph-acyclic.mjs` and
+`check-workspace-count.mjs` both still pass at 18 workspaces.
+
+**Interaction with roadmap/24's seal:** budgets sourced from criteria are now transitively bound by that
+phase's criteria seal — the criteria that produced them are sealed at approval and verified before
+completion and at `final_verifying` — while the budget set itself stays pinned by 15's first-writer-wins
+journal anchor. The two anchors attest the same fact from opposite ends, and their deliberate
+latest-wins / first-writer-wins contrast is unchanged.
+
+**Phases affected:** 11, 15, 24.
+
+**Verified in:** `packages/contracts/src/contracts/budget-sourcing.ts` (implementation + WIRED header);
+`packages/supervisor/src/intake/intake-pipeline.ts` (`IntakeRequest`, `requestContentHash`,
+`buildIntakeArtifacts`); `packages/perf/src/contract/budget-sourcing.ts` (re-export shim);
+`roadmap/15-performance-contracts.md` §In scope, "Budget sourcing".
+
+**Evidence the derivation is provenance-only, not a behaviour change:** regenerating the goldens leaves
+`packages/supervisor/goldens/provisional-performance-contract.json` **byte-identical** — the derived budget
+reproduces exactly the figure the fixture used to declare. Only `intent-contract.json`, `requirements.json`
+and `work-unit-graph.json` move, and only because the fixture gained the real performance requirement it
+should always have had.
+
+**Disclosed residuals — labelled, not claimed closed:**
+
+1. `IntakeRequest.ecosystem` is a declared input selecting a pinned-table row, unverified against phase 12's
+   detection until StackEvidence is wired into intake. It can pick the wrong defaults; it can no longer
+   misdescribe provenance.
+2. The parser captures and discards the comparison operator, so `latency >= 200ms` derives the same budget as
+   `<= 200ms`; direction comes from `higherIsWorse(metric)` at decision time. Pre-existing, and newly
+   production-reachable because source #1 is now executed — recorded here rather than silently changed.
+3. The same-process journal-writer ceiling (roadmap/24 §Risks) applies to the intake anchor unchanged.
+4. Upgrade boundary: `requestContentHash` now covers `ecosystem` and no longer covers the removed fields, so
+   a same-`requestKey` replay across the upgrade reports `conflict`. Same ruling as roadmap/24 — drain
+   in-flight runs before upgrading; no epoch arithmetic.
 
 ---
 

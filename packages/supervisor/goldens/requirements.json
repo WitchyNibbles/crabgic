@@ -36,5 +36,24 @@
     "testIdentifiers": [],
     "evidenceRecordIds": [],
     "createdAt": "2026-07-15T12:00:00.000Z"
+  },
+  {
+    "schemaVersion": 1,
+    "id": "6f0de1cb-a067-4952-91a0-652b4e295c42",
+    "intentContractId": "2b6ead49-606e-4fcc-9690-487abbe1e207",
+    "section": "performance",
+    "title": "Login submit latency budget",
+    "description": "The login submit round trip stays inside its latency budget.",
+    "acceptanceCriteria": [
+      "latency p95 <= 200ms"
+    ],
+    "criteriaHash": "sha256:084a779e7c9490a2d1f68f9224b1eab7933daa8987849abee874c92e37abcc35",
+    "workUnitIds": [
+      "22222222-1111-4111-8111-111111111111"
+    ],
+    "renderedArtifactIds": [],
+    "testIdentifiers": [],
+    "evidenceRecordIds": [],
+    "createdAt": "2026-07-15T12:00:00.000Z"
   }
 ]
