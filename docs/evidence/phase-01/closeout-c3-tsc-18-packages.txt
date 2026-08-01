@@ -2,7 +2,8 @@ Closeout re-verification — phase 01 exit criterion 3 (all 18 packages compile 
 `tsc -b`, cold and incremental, zero circular project references).
 
 Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
-65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Verbatim output; nothing edited.
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Every `$ ` line below is the exact command
+that produced the output beneath it, and the output is unedited.
 
 The criterion's named channel — "the CI typecheck job log" — is satisfied at head by
 `CI / typecheck (ubuntu-latest)` job 91419417975 (and `typecheck (ubuntu-24.04-arm)`
@@ -42,7 +43,8 @@ $ node scripts/check-package-graph-acyclic.mjs   # manifest-level DAG guard (the
 check-package-graph-acyclic: PASS — 18 workspace packages, dependency graph is a DAG.
 exit=0
 
-$ for p in <the 18 package dirs>; do echo -n "$p: "; git show e6aa458:packages/$p/src/index.ts; done   # e6aa458 = "feat: bootstrap 18-package strict-TS monorepo, toolchain, and CI skeleton (phase 01)"
+$ # e6aa458 = "feat: bootstrap 18-package strict-TS monorepo, toolchain, and CI skeleton (phase 01)"
+$ for p in contracts testkit engine-core journal supervisor engine-claude git-engine gateway renderer connectors-jira connectors-grafana detect scheduler gates perf learning cli plugin; do echo -n "packages/$p/src/index.ts: "; git show e6aa458:packages/$p/src/index.ts; done
 packages/contracts/src/index.ts: export {};
 packages/testkit/src/index.ts: export {};
 packages/engine-core/src/index.ts: export {};

@@ -1,14 +1,16 @@
-Closeout re-verification — phase 01 exit criterion 5 (commitlint rejects the
-work-item-4 malformed-message fixture).
+Closeout supplementary — phase 01 exit criterion 5 (commitlint rejects the work-item-4
+malformed-message fixture in CI).
 
 Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
-65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Verbatim output; nothing edited.
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Every `$ ` line below is the exact command
+that produced the output beneath it, and the output is unedited.
 
-This is a LOCAL re-run of the same three cases `wi4-commitlint-rejecting-passing.txt`
-recorded on 2026-07-15, against today's `commitlint.config.js`. It is NOT a GitHub
-Actions run: see the closeout record's wording correction for criterion 5 — no CI run
-has ever recorded commitlint REJECTING a message, because every commit that reaches
-`main` is well-formed by construction.
+THE CRITERION'S OWN CHANNEL IS A REAL CI RUN AND IT NOW EXISTS. `CI` run 30720815771,
+job `commitlint` 91424161887, step "lint PR commits", **failed** on scratch PR #59 at
+commit `a4f88bd`, whose message is verbatim this fixture. That run is the primary
+evidence; this file is supplementary and shows the same config rejecting the same
+fixture locally, plus the two cases CI's single commit could not cover — the
+out-of-enum `build:` type, and the well-formed control that must be ACCEPTED.
 
 $ echo "this is a malformed commit message with no type prefix" | npx commitlint
 ⧗   --- input ---

@@ -3,7 +3,7 @@
   "phase": "01",
   "roadmapFile": "roadmap/01-repo-bootstrap.md",
   "pass": {
-    "date": "2026-08-01",
+    "date": "2026-08-02",
     "agent": "criteria-closeout pass, batch 1 (foundations) — phase 01",
     "headSha": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e"
   },
@@ -134,9 +134,23 @@
       "index": 4,
       "text": "Coverage gate fails CI against the work-item-3 fixture below 80% line+branch, and passes once corrected — evidenced by the recorded before/after CI run.",
       "textSha256": "65040819af685bc15455e73133806e8091af5913a027ff0ed3f5fa9258d0dedf",
-      "classification": "WORDING-MISMATCH",
+      "classification": "EVIDENCE-EXISTS",
       "ticked": true,
       "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91424161927, step \"test with 80% line+branch coverage gate\" — the BEFORE half: FAILED, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161927 log line 1024 — ' Test Files  623 passed (623)'; line 1025 — '      Tests  6060 passed | 1 skipped (6061)'; then lines 1900-1904 — 'ERROR: Coverage for lines (74.31%) does not meet global threshold (80%)' / 'ERROR: Coverage for functions (69.51%) …' / 'ERROR: Coverage for statements (74.81%) …' / 'ERROR: Coverage for branches (66.16%) …' / '##[error]Process completed with exit code 1.' EVERY TEST PASSED and the job still failed — the failure is attributable to the coverage gate and to nothing else. In the same run `lint`, `typecheck` and `meta-checks` were all green (only `commitlint` and `engine-pin-lint`, this PR's other two deliberate seeds, joined it in red)."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91424161915, step \"test with 80% line+branch coverage gate\" — the BEFORE half on the x86-64 leg of the same red run",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161915 log line 1043 — ' Test Files  623 passed (623)'; lines 1919-1923 — 'ERROR: Coverage for lines (74.31%) does not meet global threshold (80%)' / '… functions (69.51%) …' / '… statements (74.8%) …' / '… branches (66.12%) …' / '##[error]Process completed with exit code 1.' Both architectures reject it, so the gate is not an artefact of one runner."
+        },
         {
           "kind": "ci-run",
           "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\" — the AFTER half, in CI",
@@ -157,7 +171,7 @@
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-01/closeout-c4-coverage-gate.txt",
-          "quotedAssertion": "re-captured at this commit against today's config: 'ERROR: Coverage for lines (0.26%) does not meet global threshold (80%)' / 'ERROR: Coverage for functions (0.44%) …' / 'ERROR: Coverage for statements (0.24%) …' / 'ERROR: Coverage for branches (0.12%) …', exit=1, with `vitest.config.ts:138-143` quoted in the same file. The header states exactly what was narrowed (test selection, and `--coverage.reporter=text-summary`) and what was not (the thresholds, and `coverage.include`, which still spans `packages/*/src/**/*.ts`)."
+          "quotedAssertion": "the same seeded tree run locally as a full `npm test`: ' Test Files  623 passed (623)' / '      Tests  6061 passed (6061)' and then 'Statements   : 74.78% ( 12901/17250 ) / Branches     : 66.1% ( 6531/9880 ) / Functions    : 69.49% ( 3018/4343 ) / Lines        : 74.29% ( 12064/16237 )' followed by the four 'ERROR: Coverage for … does not meet global threshold (80%)' lines and 'exit=1'. Supplementary to the CI run above; recorded because a locally GREEN suite exiting 1 isolates the gate as the cause even more plainly than the CI log does."
         },
         {
           "kind": "artifact",
@@ -165,19 +179,22 @@
           "quotedAssertion": "vitest.config.ts:138-143 — 'thresholds: { lines: 80, branches: 80, functions: 80, statements: 80, },' — the configured gate both halves above were measured against."
         }
       ],
-      "wordingCorrection": {
-        "before": "Coverage gate fails CI against the work-item-3 fixture below 80% line+branch, and passes once corrected — evidenced by the recorded before/after CI run.",
-        "after": "Coverage gate fails against the work-item-3 fixture below 80% line+branch, and passes once corrected — the PASSING half evidenced by a real CI run of the named job (`CI` / `unit-test+coverage (ubuntu-latest)`, green at 65ff0da at 87.38% branch / 95.48% lines), the FAILING half by a verbatim recorded LOCAL run, captured twice: 2026-07-15 against the fixture package itself, and again at the closeout commit against the same unchanged thresholds."
-      },
-      "notes": "Why this is a wording correction and not a silent reinterpretation of a named channel. (a) No GitHub Actions run has ever recorded the red half, and none can be produced now: phase 01 executed on 2026-07-15 against a repository with no git remote at all — recorded at the time in docs/evidence/phase-01/README.md, 'Deviations from a literal CI-evidenced phase' — and the fixture package `packages/_fixture-coverage-temp` was deleted as soon as its transcript was captured. Reinstating it would fail the `meta-checks` workspace-count step, which requires exactly 18 packages. (b) What is weaker is the CHANNEL of the red half, not the guarantee: the gate itself is unchanged, is the one CI evaluates on every push, and is shown failing below threshold in two independent verbatim transcripts six weeks apart. (c) Per the wording protocol, the original text is preserved verbatim in the phase file and the correction is a dated annotation inside the checkbox item."
+      "notes": "The failing CI run was PRODUCED DELIBERATELY for this criterion, and the whole method is on the record so nobody mistakes it for an accident. This closeout originally ticked the box on local transcripts with a wording correction downgrading the channel; the phase-01 review rejected that — the named channel was not wrong, only unproduced and still producible — and ruled: produce it. Scratch PR #59 (`chore/redrun-phase-01-scratch`, base af46e00, head a4f88bd) seeds `packages/testkit/src/_fixture-coverage-temp.ts`, 1200 untested `if`/`else` functions that nothing imports, so `coverage.include`'s `packages/*/src/**/*.ts` puts ~4.8k uncovered lines and ~2.4k uncovered branches into the gate's denominator. `vitest.config.ts` was NOT touched: the unmodified thresholds are what rejected it. The seed lives inside an existing package rather than as a new `packages/*` directory precisely so `meta-checks`' workspace-count step would stay green and the red set would be exactly the three deliberate seeds. Scratch PR #59 is closed unmerged; the run and its job logs persist. Phase 01's ORIGINAL fixture (`packages/_fixture-coverage-temp`, ~53% covered) was deleted at phase 01 and was the whole denominator in a then-empty workspace, which is why the reproduction had to be scaled rather than restored — `wi3-coverage-gate-failing.txt` remains the record of the original."
     },
     {
       "index": 5,
       "text": "Commitlint rejects the work-item-4 malformed-message fixture in CI — evidenced by the recorded failing CI run.",
       "textSha256": "e52901f72d4fc51d4b02f64970a08471c4483cae4015d8898864e029eaf33ee4",
-      "classification": "WORDING-MISMATCH",
+      "classification": "EVIDENCE-EXISTS",
       "ticked": true,
       "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / commitlint, job 91424161887, step \"lint PR commits\" — FAILED; the recorded failing CI run this criterion names, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161887 log line 216 — 'Run npx commitlint --from af46e007c1363d4838d74e2eea0d531e4d6bb4f3 --to a4f88bdba67d3a64b1373915082176e45c4a748e --verbose'; line 220 '⧗   --- input ---'; line 221 — 'this is a malformed commit message with no type prefix' (the work-item-4 fixture, verbatim, as the commit's real message); lines 222-223 — '✖   subject may not be empty [subject-empty]' / '✖   type may not be empty [type-empty]'; line 225 '✖   found 2 problems, 0 warnings'; line 228 '##[error]Process completed with exit code 1.'"
+        },
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-01/closeout-c5-commitlint-fixture.txt",
@@ -206,11 +223,7 @@
           "quotedAssertion": "commitlint.config.js:8 — '\"type-enum\": [2, \"always\", [\"feat\", \"fix\", \"refactor\", \"docs\", \"test\", \"chore\", \"perf\", \"ci\"]],' over 'extends: [\"@commitlint/config-conventional\"]'. This is the source of the [type-enum] rejection quoted above: stock config-conventional ACCEPTS `build:`, and the file's own comment says so — 'Notably excludes conventional-commit's own defaults `build` and `revert`'."
         }
       ],
-      "wordingCorrection": {
-        "before": "Commitlint rejects the work-item-4 malformed-message fixture in CI — evidenced by the recorded failing CI run.",
-        "after": "Commitlint rejects the work-item-4 malformed-message fixture — evidenced by a verbatim recorded LOCAL run of the repository's own `commitlint.config.js`, captured twice (2026-07-15 and again at the closeout commit), plus the `commitlint` CI job that enforces that same config on every push and pull request, green at 65ff0da."
-      },
-      "notes": "Why this is a wording correction rather than a reinterpreted channel. (a) No GitHub Actions run has ever recorded commitlint REJECTING a message, and on this repository essentially none can: the `commitlint` job lints the commits actually pushed, so a red run would mean a malformed commit had already reached `main`. The phase's original evidence predates the remote entirely (docs/evidence/phase-01/README.md, 'Deviations'). (b) What is weaker is the channel of the red half. The guarantee — that config rejects the malformed fixture and the out-of-enum type, and accepts a well-formed message — is proved twice, verbatim, and the config is the one CI runs. (c) Original wording preserved in the phase file; dated annotation appended; no rule and no config was changed by this pass."
+      "notes": "The failing CI run was PRODUCED DELIBERATELY for this criterion; scratch PR #59 exists only to carry a commit whose message IS the work-item-4 fixture, and it is closed unmerged. An earlier draft of this record ticked the box on local transcripts and justified it with the claim that a red commitlint run 'would mean a malformed commit had reached main'. THAT CLAIM WAS FALSE and is retracted here rather than quietly deleted: `.github/workflows/ci.yml`'s `commitlint` job has a `lint PR commits` step gated on `github.event_name == 'pull_request'` which lints the PR branch's own commit range, so a malformed commit on any PR branch produces the red run with `main` untouched — which is exactly what job 91424161887 is. An impossibility claim that does not survive reading the workflow it cites is the defect class this pass exists to eliminate. The local transcript is retained as supplementary because CI's single commit can only exercise one case, while the criterion's fixture family also needs the out-of-enum `build:` type and the well-formed control that must be ACCEPTED. `commitlint.config.js` was not modified on the scratch branch: the unmodified config is what rejected the message."
     },
     {
       "index": 6,
@@ -315,9 +328,16 @@
       "index": 9,
       "text": "`engine-pin-lint` CI check rejects the work-item-7 fixture manifest declaring a `^`-ranged `@anthropic-ai/claude-agent-sdk` and passes on the real workspace (which declares no engine dependency at this phase) — evidenced by the recorded failing/passing CI runs; 06's SDK dependency is the first real enforcement target.",
       "textSha256": "27592a2fca4510833cf8aa97e81cbfe13cc5fbb3dd5540bd446c222c95b90964",
-      "classification": "WORDING-MISMATCH",
+      "classification": "EVIDENCE-EXISTS",
       "ticked": true,
       "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / engine-pin-lint, job 91424161909 — FAILED; the recorded failing CI run this criterion names, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161909 log line 174 — 'engine-pin-lint: FAIL'; line 175 — '  - /home/runner/work/crabgic/crabgic/packages/engine-claude/package.json: dependencies[\"@anthropic-ai/claude-agent-sdk\"] = \"^0.3.218\" is not an exact pin (no ^/~/range/wildcard/tag allowed — engine-bundling dependencies must be pinned exactly)'; line 176 — '##[error]Process completed with exit code 1.'"
+        },
         {
           "kind": "ci-run",
           "ref": "CI / engine-pin-lint, job 91419417923, step \"engine-pin-lint (fails on any ^/~/range specifier for the pinned engine dependency)\" — the PASSING half, in CI",
@@ -346,11 +366,7 @@
           "quotedAssertion": "scripts/check-engine-pin.mjs:39 — 'const EXACT_SEMVER = /^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-.]+)?(\\+[0-9A-Za-z-.]+)?$/;', applied at :64 'if (!EXACT_SEMVER.test(specifier))' across `dependencies`/`devDependencies`/`peerDependencies`/`optionalDependencies` (:28-33). Anchored at both ends, so `^`, `~`, `>=`, `*`, tags and `workspace:*` all fail — the rejection is a property of the pattern, not of one hard-coded string."
         }
       ],
-      "wordingCorrection": {
-        "before": "`engine-pin-lint` CI check rejects the work-item-7 fixture manifest declaring a `^`-ranged `@anthropic-ai/claude-agent-sdk` and passes on the real workspace (which declares no engine dependency at this phase) — evidenced by the recorded failing/passing CI runs; 06's SDK dependency is the first real enforcement target.",
-        "after": "`engine-pin-lint` rejects the work-item-7 fixture manifest declaring a `^`-ranged `@anthropic-ai/claude-agent-sdk` and passes on the real workspace — the PASSING half evidenced by a real CI run of the named `engine-pin-lint` job (green at 65ff0da), the REJECTION by a verbatim recorded LOCAL run of the same script, captured twice; the fixture manifest lives outside the workspace by design, so the CI job never sees it. The parenthetical \"(which declares no engine dependency at this phase)\" was true on 2026-07-15 and no longer is: phase 06 added `@anthropic-ai/claude-agent-sdk` to `packages/engine-claude` and `packages/cli`, both at the exact pin `0.3.218`, so the green half now passes against real targets — the criterion's own predicted outcome."
-      },
-      "notes": "Two corrections, in opposite directions, and both are recorded. (1) Channel, weaker: no GitHub Actions run has ever recorded `engine-pin-lint` FAILING, and by construction none can — `scripts/check-engine-pin.mjs` with no arguments globs `packages/*/package.json`, and the fixture manifest deliberately is not one of those, so the CI job cannot see it. The red half is a verbatim recorded local run of the same script, captured twice six weeks apart. What is weaker is that half's channel, not the guarantee that a `^`-range is rejected. (2) Scope, stronger: the parenthetical describing a workspace with no engine dependency has been overtaken by phase 06, exactly as the criterion's own closing clause anticipated (\"06's SDK dependency is the first real enforcement target\"), which makes the CI-green half non-vacuous today in a way it was not when written. No check was changed."
+      "notes": "Both halves are now real CI runs of the named job. The failing one was PRODUCED DELIBERATELY: scratch PR #59 changes `packages/engine-claude/package.json` from the exact pin `\"0.3.218\"` to `\"^0.3.218\"` — one character — with the matching one-line `package-lock.json` specifier update so `npm ci` still succeeds and the job fails at its own check rather than at install. `scripts/check-engine-pin.mjs` was NOT touched. The scratch PR is closed unmerged. An earlier draft argued the red run was impossible because the work-item-7 fixture manifest sits outside `packages/*/package.json`; that was true of THAT fixture and irrelevant — the criterion is about the check rejecting a `^`-ranged engine dependency, and seeding it where the CI job does look proves exactly that. The standalone-manifest form is retained as supplementary in `closeout-c9-engine-pin-fixture.txt`. One scope note that is NOT a wording correction: the parenthetical \"(which declares no engine dependency at this phase)\" was true on 2026-07-15 and no longer is, because phase 06 added the SDK to `packages/engine-claude` and `packages/cli` at the exact pin `0.3.218`. That is the criterion's own predicted successor state (\"06's SDK dependency is the first real enforcement target\"), and it makes the green half stronger than when written — it now passes against real targets instead of vacuously."
     },
     {
       "index": 10,
