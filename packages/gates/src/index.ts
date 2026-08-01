@@ -198,3 +198,7 @@ export {
   SECURITY_FIXTURE_MANIFEST,
 } from "./security-fixture-manifest.js";
 export type { SecurityFixtureEntry, SecurityFixtureId } from "./security-fixture-manifest.js";
+
+// ---- Acceptance-criteria seal gate (roadmap/24 WI6) ----
+export { registerCriteriaSealGate } from "./criteria-seal-gate.js";
+export type { CriteriaSealGateOptions } from "./criteria-seal-gate.js";

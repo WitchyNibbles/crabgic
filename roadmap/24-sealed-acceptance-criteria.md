@@ -5,7 +5,7 @@
 | **Depends on** | 04, 11, 13, 14 |
 | **Unlocks** | — (first post-v1 phase; the requirement-source consumers named in Out of scope become possible after it) |
 | **Sources** | `docs/archon-harvest.md` §1 (donor audit); the frozen archon donor's Phase-2 completion-seal history (its `STATUS.md` + `.archon/work/product-state.md`); `docs/interface-ledger.md` Gap 5 (closed journal union) and Gap 20 (schema-over-prose doctrine); `packages/perf/src/contract/hash-link.ts` lines 26–41 (the recorded threat model: a self-checksum alone was a MAJOR finding) |
-| **Primary package** | `packages/contracts` (seal semantics); enforcement lands in `packages/supervisor`, `packages/scheduler`, `packages/gates`, one query helper in `packages/journal` — no new workspace (the roster is pinned at 18 by `scripts/check-workspace-count.mjs`) |
+| **Primary package** | `packages/contracts` (seal semantics); enforcement lands in `packages/supervisor`, `packages/scheduler`, `packages/gates`, the seal anchor in `packages/journal` — no new workspace (the roster is pinned at 18 by `scripts/check-workspace-count.mjs`) |
 
 ## Goal
 
@@ -43,13 +43,14 @@ the material-amendment path — demote, re-approve, re-seal — and anything els
   unrepresentable in new documents (Gap 20 doctrine), not policed by convention.
 - **Approval seal** — at the `awaiting_approval → ready` transition, journal an
   `adjudication_decision` entry carrying `{requirementId → criteriaHash}` for the
-  ChangeSet's full requirement set. There are exactly two activation paths and both seal:
-  `packages/cli/src/intake/standing-approval.ts` and
-  `packages/cli/src/intake/contract-approve-handler.ts` (both already funnel through
-  `transitionChangeSetToReady`, which already requires `requirementIds`). Free-text reuse
-  of `adjudication_decision` follows the three existing precedents (envelope amendment,
-  `policy_contained`, standing-approval rationale) — **no 14th `JournalEntryType` member**;
-  Gap 5's union is closed at 13 and phases 12 and 14 made the identical choice.
+  ChangeSet's full requirement set. Sealed **inside `transitionChangeSetToReady`** — the
+  one funnel both activation paths (`standing-approval.ts`, `contract-approve-handler.ts`)
+  already share — rather than in each caller, so `ready` is unreachable without a seal by
+  construction. Sealing per-caller is the exact shape the donor's first seal shipped with:
+  one path threaded it, the daemon path did not, and every test injected the option.
+  **No 14th `JournalEntryType` member**; Gap 5's union is closed at 13 and phases 12 and 14
+  made the identical choice. The seal is a typed payload member rather than free text,
+  per Gap 20.
 - **Seal verification, perf-shaped** — mirror `verifyProvisionalBudgetIntegrity`'s
   first-failure-wins ladder, with reasons as data:
   `CriteriaSealFailureReason = "self_consistency_mismatch" | "no_approval_seal" |
@@ -75,11 +76,16 @@ the material-amendment path — demote, re-approve, re-seal — and anything els
   mismatch it converts the typed error into a blocking `GateVerdict` so `emitEvidence`
   still journals the failure (the `performance-gate.ts:170-182` catch-and-convert
   precedent), emitting a standard `EvidenceRecord` via the single `fireOne` path.
-- **Anchored-object query helper** — lift `packages/perf/src/contract/journal-anchor.ts`'s
+- ~~**Anchored-object query helper** — lift `packages/perf/src/contract/journal-anchor.ts`'s
   structural `findObjectById` DFS into `packages/journal` as a generic
-  find-anchored-object utility (journal depends only on contracts; scheduler and gates
-  both already depend on journal — no new package edges, and the perf-local copy can
-  migrate to it without behavior change).
+  find-anchored-object utility.~~ **Not built — superseded during implementation.** The
+  seal rides on a typed, optional `criteriaSeal` member of the
+  `adjudication_decision` payload, so its lookup is a direct read of a field this code
+  owns both ends of, not a search of someone else's blob. perf needs a structural DFS
+  only because it reads back a record phase 11 committed for unrelated reasons in a shape
+  15 may not assume. Building the generic finder anyway would have produced a primitive
+  with no production caller — the "built and tested, zero call sites" pattern the donor's
+  own audit flagged as overstated mechanization. perf's copy is untouched.
 
 ## Out of scope
 
@@ -110,8 +116,12 @@ the material-amendment path — demote, re-approve, re-seal — and anything els
   `CriteriaSealFailureReason` (3-member, canonical, owned here);
   `CriteriaSealMismatchError` carrying the reason, with a missing-seal subclass (the
   `BudgetJournalAnchorMissingError extends BudgetHashLinkMismatchError` shape).
-- **`packages/journal`:** generic anchored-object finder over typed journal entries
-  (generalizing perf's DFS; earliest/latest selection explicit at the call site).
+- **`packages/journal`:** an optional, typed `criteriaSeal` member on the
+  `adjudication_decision` payload (no 14th entry type — Gap 5 closes the entry-type
+  union, not payload shapes), plus `journalCriteriaSeal` / `findLatestCriteriaSeal`.
+  Latest-wins, deliberately opposite to perf's first-writer-wins: re-approval after a
+  material amendment must supersede, and a rollback to superseded criteria must not
+  verify clean.
 - **`packages/supervisor`:** requirement registry persistence; `criteriaHash` computed at
   the only `Requirement` construction site.
 - **`packages/cli` (intake handlers):** approval-seal journal write on both activation
@@ -147,9 +157,12 @@ the material-amendment path — demote, re-approve, re-seal — and anything els
    typed errors.
    - Failing-first: a `Requirement` without `criteriaHash` must fail parse; seal-check unit
      fixtures for all three failure reasons.
-2. Journal: generic anchored-object finder.
-   - Failing-first: fixture journal where the target id appears in none / one / several
-     entries; selection rule proven.
+2. Journal: the seal's typed payload member + `journalCriteriaSeal` /
+   `findLatestCriteriaSeal` (revised from "generic anchored-object finder" — see In
+   scope).
+   - Failing-first: round-trip; no-seal; another change set's seal; LATEST-wins across
+     re-approval; an `adjudication_decision` carrying no seal is ignored; the hash chain
+     still verifies.
 3. Supervisor + bootstrap: requirement registry, persisted at intake beside the existing
    four; hash computed in `buildIntentContract`.
    - Failing-first: restart-shaped test — build, persist, reload, resolve every approved
