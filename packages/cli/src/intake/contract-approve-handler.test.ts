@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { buildRequirement } from "@crabgic/testkit";
 import {
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
@@ -61,7 +62,15 @@ describe("runContractApprove", () => {
         digest: "sha256:abc",
         token: "irrelevant",
       },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
 
     expect(result.approved).toBe(false);
@@ -105,6 +114,7 @@ describe("runContractApprove", () => {
         changeSets: vanishingChangeSets,
         envelopes,
         requirementIds: [],
+        requirements: [],
         workUnits: [],
       },
     );
@@ -126,7 +136,15 @@ describe("runContractApprove", () => {
 
     const result = await runContractApprove(
       { changeSetId: seed.id, digest: "sha256:abc", token: "totally-forged-token" },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
 
     expect(result.approved).toBe(false);
@@ -149,7 +167,15 @@ describe("runContractApprove", () => {
     // digest can.
     const result = await runContractApprove(
       { changeSetId: seed.id, digest: "sha256:abc", token: "" },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
     expect(result.approved).toBe(false);
   });
@@ -182,7 +208,15 @@ describe("runContractApprove", () => {
     // trusts the caller-supplied digest instead of B's own actual envelope.
     const bypassAttempt = await runContractApprove(
       { changeSetId: seedB.id, digest: "sha256:envelope-for-A", token: tokenForA.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
 
     expect(bypassAttempt.approved).toBe(false);
@@ -190,7 +224,15 @@ describe("runContractApprove", () => {
     // The legitimate token for A must still be usable to approve A itself.
     const legitimate = await runContractApprove(
       { changeSetId: seedA.id, digest: "sha256:envelope-for-A", token: tokenForA.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
     expect(legitimate.approved).toBe(true);
     expect(changeSets.get(seedA.id)?.state).toBe("ready");
@@ -213,7 +255,15 @@ describe("runContractApprove", () => {
 
     const result = await runContractApprove(
       { changeSetId: seed.id, digest: "sha256:stale-claimed-hash", token: staleToken.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
 
     expect(result.approved).toBe(false);
@@ -241,6 +291,7 @@ describe("runContractApprove", () => {
         changeSets,
         envelopes,
         requirementIds: [REQ_A, REQ_B],
+        requirements: [buildRequirement({ id: REQ_A }), buildRequirement({ id: REQ_B })],
         workUnits: [{ requirementIds: [REQ_A, REQ_B] }],
       },
     );
@@ -267,6 +318,7 @@ describe("runContractApprove", () => {
       changeSets,
       envelopes,
       requirementIds: [REQ_A, REQ_B],
+      requirements: [buildRequirement({ id: REQ_A }), buildRequirement({ id: REQ_B })],
       workUnits: [{ requirementIds: [REQ_A] }],
     };
 
@@ -298,7 +350,15 @@ describe("runContractApprove", () => {
 
     const result = await runContractApprove(
       { changeSetId: seed.id, digest: "sha256:abc", token: minted.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
 
     expect(result.approved).toBe(false);
@@ -310,7 +370,15 @@ describe("runContractApprove", () => {
     changeSets.put({ ...seed, state: "awaiting_approval" });
     const retry = await runContractApprove(
       { changeSetId: seed.id, digest: "sha256:abc", token: minted.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
     expect(retry.approved).toBe(true);
   });
@@ -339,6 +407,7 @@ describe("runContractApprove", () => {
         changeSets,
         envelopes,
         requirementIds: [],
+        requirements: [],
         workUnits: [],
         clock,
       },
@@ -364,6 +433,7 @@ describe("runContractApprove", () => {
       changeSets,
       envelopes,
       requirementIds: [],
+      requirements: [],
       workUnits: [],
     };
 

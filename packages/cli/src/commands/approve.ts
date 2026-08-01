@@ -176,6 +176,7 @@ export async function runApproveCommand(
     changeSets: intake.changeSets,
     envelopes: intake.envelopes,
     intentContracts: intake.intentContracts,
+    requirements: intake.requirements,
     workUnits: intake.workUnits,
   });
 

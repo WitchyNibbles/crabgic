@@ -39,12 +39,14 @@ import type {
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import { isContained } from "@crabgic/engine-core";
 import type { JournalStore } from "@crabgic/journal";
 import {
   findUnmappedRequirements,
+  resolveRequirements,
   transitionChangeSetToReady,
   type Registry,
 } from "@crabgic/supervisor";
@@ -85,6 +87,8 @@ export interface StandingApprovalDeps {
   readonly workUnits: Registry<WorkUnit>;
   /** Read server-side for the requirement set — never taken from a caller, mirroring `./complete-envelope-approval.ts`. */
   readonly intentContracts: Registry<IntentContract>;
+  /** Resolves the `Requirement` records this approval seals (roadmap/24) — the standing path is an approval like any other, so it seals like any other. */
+  readonly requirements: Registry<Requirement>;
   /** Reads the project's standing policy. Injected so tests never touch a real XDG state root. */
   readonly loadPolicy: () => LoadPolicyResult;
 }
@@ -200,6 +204,9 @@ export async function applyStandingApproval(
     changeSetId: changeSet.id,
     requirementIds: contract.requirementIds,
     workUnits,
+    // Resolved from the durable store, never from the caller: the seal must
+    // cover the records the rest of the system will actually read back.
+    requirements: resolveRequirements(deps.requirements, contract.requirementIds),
   });
 
   return { status: "approved", changeSet: readyChangeSet, policyDigest: loaded.digest };

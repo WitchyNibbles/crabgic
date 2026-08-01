@@ -25,3 +25,23 @@ import { createInMemoryRegistry, type Registry } from "./registry.js";
 export function createRequirementsRegistry(): Registry<Requirement> {
   return createInMemoryRegistry<Requirement>();
 }
+
+/**
+ * Resolves the records for a contract's declared requirement ids, dropping
+ * ids with no record.
+ *
+ * Dropping is correct HERE and only here: the approval funnel
+ * (`../intake/readiness-gate.ts`) compares what it was given against the ids
+ * the contract declares and throws `UnsealableRequirementError` if any are
+ * missing. Refusing in this resolver instead would scatter the same check
+ * across every approval path — one shared helper so three call sites cannot
+ * drift, one place that refuses.
+ */
+export function resolveRequirements(
+  registry: Pick<Registry<Requirement>, "get">,
+  requirementIds: readonly string[],
+): readonly Requirement[] {
+  return requirementIds
+    .map((id) => registry.get(id))
+    .filter((requirement): requirement is Requirement => requirement !== undefined);
+}

@@ -402,6 +402,7 @@ export function buildRealGatewayToolRegistry(
     workUnits: intake.workUnits,
     envelopes: intake.envelopes,
     intentContracts: intake.intentContracts,
+    requirements: intake.requirements,
     capability: { store: trust.store },
     approvalTokenVerifier: trust.minter,
     resolveCapabilityStoreKey: (digest) => trust.store.findByDigest(digest)?.key,

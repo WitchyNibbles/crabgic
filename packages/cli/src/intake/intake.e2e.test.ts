@@ -205,7 +205,15 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const reissued = await minter.mint("envelope_hash", digest);
     const replay = await runContractApprove(
       { changeSetId, digest, token: reissued.token },
-      { secretKey, journal: store, changeSets, envelopes, requirementIds: [], workUnits: [] },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [],
+        workUnits: [],
+        requirements: [],
+      },
     );
     expect(replay.approved).toBe(false);
     if (replay.approved) throw new Error("unreachable");

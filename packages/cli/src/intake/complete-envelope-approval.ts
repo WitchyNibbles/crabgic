@@ -26,10 +26,11 @@ import type {
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import type { JournalStore } from "@crabgic/journal";
-import type { Registry } from "@crabgic/supervisor";
+import { resolveRequirements, type Registry } from "@crabgic/supervisor";
 import { runContractApprove, type ContractApproveResult } from "./contract-approve-handler.js";
 
 export interface CompleteEnvelopeApprovalDeps {
@@ -38,6 +39,8 @@ export interface CompleteEnvelopeApprovalDeps {
   readonly changeSets: Registry<ChangeSet>;
   readonly envelopes: Registry<AuthorizationEnvelope>;
   readonly intentContracts: Registry<IntentContract>;
+  /** Durable `Requirement` store (roadmap/24) — the records the ready transition seals. */
+  readonly requirements: Registry<Requirement>;
   readonly workUnits: Registry<WorkUnit>;
 }
 
@@ -63,6 +66,7 @@ export async function completeEnvelopeApproval(
       envelopes: deps.envelopes,
       workUnits: deps.workUnits.list(),
       requirementIds: contract.requirementIds,
+      requirements: resolveRequirements(deps.requirements, contract.requirementIds),
     },
   );
 }

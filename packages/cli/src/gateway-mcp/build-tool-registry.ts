@@ -55,11 +55,12 @@ import {
   type CapabilityApproveDeps,
   type CapabilityAuditDeps,
 } from "@crabgic/detect";
-import type { ProjectInspectDeps, Registry } from "@crabgic/supervisor";
+import { resolveRequirements, type ProjectInspectDeps, type Registry } from "@crabgic/supervisor";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
@@ -98,6 +99,8 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly workUnits: Registry<WorkUnit>;
   readonly envelopes: Registry<AuthorizationEnvelope>;
   readonly intentContracts: Registry<IntentContract>;
+  /** Durable `Requirement` store (roadmap/24) — the records the ready transition seals. */
+  readonly requirements: Registry<Requirement>;
   readonly capability: CapabilityAuditDeps;
   /** Verifies a `trust approve` token — the process-wide minter `../bootstrap.ts` builds. */
   readonly approvalTokenVerifier: CapabilityApproveDeps["minter"];
@@ -408,6 +411,7 @@ function buildIntakeTools(
           envelopes: deps.envelopes,
           workUnits: deps.workUnits.list(),
           requirementIds: contract.requirementIds,
+          requirements: resolveRequirements(deps.requirements, contract.requirementIds),
         }),
       );
     },

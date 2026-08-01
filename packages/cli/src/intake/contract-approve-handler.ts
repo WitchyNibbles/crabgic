@@ -67,6 +67,8 @@ export interface ContractApproveDeps {
   readonly envelopes: Pick<Registry<AuthorizationEnvelope>, "get">;
   readonly requirementIds: readonly string[];
   readonly workUnits: TransitionChangeSetToReadyOptions["workUnits"];
+  /** The `Requirement` records the ready transition seals (roadmap/24) — required, so this path cannot approve something it did not seal. */
+  readonly requirements: TransitionChangeSetToReadyOptions["requirements"];
 }
 
 export type ContractApproveResult =
@@ -144,6 +146,7 @@ export async function runContractApprove(
       changeSetId: input.changeSetId,
       requirementIds: deps.requirementIds,
       workUnits: deps.workUnits,
+      requirements: deps.requirements,
     });
     return { approved: true, changeSet: readyChangeSet };
   } catch (err) {

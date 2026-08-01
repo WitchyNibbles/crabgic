@@ -133,6 +133,7 @@ export async function runIntakeCommand(
       changeSets: deps.changeSets,
       workUnits: deps.workUnits,
       intentContracts: deps.intentContracts,
+      requirements: deps.requirements,
       loadPolicy: deps.loadPolicy,
     },
   );
