@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 6 — overlap analyzer catches rename collisions, clears disjoint fixtures, exercised by the fast-check property suite
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:32Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/overlap-analyzer.test.ts packages/git-engine/src/overlap-analyzer.property.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  2 passed (2)
+      Tests  16 passed (16)
+   Start at  23:29:33
+   Duration  977ms (transform 498ms, setup 0ms, import 723ms, tests 410ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

@@ -1,0 +1,481 @@
+{
+  "schemaVersion": 1,
+  "phase": "07",
+  "roadmapFile": "roadmap/07-git-control-repo-worktrees.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 1 (phase 07)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Invariance harness: user checkout tree-hash identical before/after every engine operation across the suite (`invariance.spec`).",
+      "textSha256": "c558edb59a018b206a1d481600ecda23b11e9d1f02ea8451714e35a997c8c759",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 653 — '  ✓  @crabgic/git-engine  src/invariance.test.ts (18 tests) 319ms'; line 655 — '  ✓  @crabgic/git-engine  src/intake-freeze.test.ts (8 tests) 1107ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/invariance.test.ts:73",
+          "quotedAssertion": "packages/git-engine/src/invariance.test.ts:73-77 — 'assertTreeInvariant THROWS TreeMutatedError against a deliberately mutated fixture tree (the RED-proving case)' / 'await expect(assertTreeInvariant(dir, before)).rejects.toBeInstanceOf(TreeMutatedError);' — the harness is proven capable of failing before anything is allowed to trust it passing. :80-84 is the clean control ('resolves cleanly when nothing changed')."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/invariance.test.ts:187",
+          "quotedAssertion": "packages/git-engine/src/invariance.test.ts:187-198 — 'changes when .git/index bytes change (the exact MINOR 4 mutation this harness must detect)' / 'appendFileSync(indexPath, Buffer.from([0])); … expect(after).not.toBe(before);'; :207-213 'withUserCheckoutInvariance throws TreeMutatedError when a wrapped operation repoints HEAD (a .git-only mutation invisible to the working-tree-only harness)'. Without these the harness is `.git`-blind, which is why MINOR 4 went undetected in the original build."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/invariance.test.ts:101",
+          "quotedAssertion": "packages/git-engine/src/invariance.test.ts:101-107 and :109-117 — symlink add and symlink-retarget both change the hash. Before the MINOR 5 fix a symlink swap was invisible to both the before and the after hash, i.e. the harness could have been passed a mutated tree and said nothing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:186",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:186-197 — 'await withUserCheckoutInvariance(userCheckout, () => freezeIntake({…}));' followed by 'expect(afterIndexBytes.equals(beforeIndexBytes)).toBe(true);', under a deliberate racy-git `utimesSync` trigger (:180-181). This is the harness APPLIED — not merely tested — around the one phase-07 operation handed a real user checkout, and it transitively covers `validateRepository`'s own `ls-files` against that checkout, which `freezeIntake` runs internally (:117-118 asserts the resulting repositoryFormat report)."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/src/scenarios/checkout-invariance-scenario.ts:25",
+          "quotedAssertion": "e2e/matrix/git/src/scenarios/checkout-invariance-scenario.ts:25-32 — 'const result = await withTreeInvariance(userRepo.dir, async () => { const clone = await ensureControlClone(plumbing, { sourceRepoPath: userRepo.dir, controlDir }); const fetchedObjectId = await fetchRefresh(plumbing, controlDir, \"main\"); … });' — the second phase-07 operation that is handed the user's own repository (as the clone SOURCE), wrapped in the same exported harness. Driven by e2e/matrix/git/test/checkout-invariance-scenario.test.ts, an offline project (its vitest.config.ts: 'No network, no live engine'), NOT part of the default `npm test` fan-out; executed locally for this closeout, transcript below."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:124",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:124-137 — 'const workingTreeHashBefore = await computeWorkingTreeHash(userRepoPath); … expect(workingTreeHashAfter).toBe(workingTreeHashBefore);' plus the same for HEAD. Same package, 08's half; cited because it is the third user-repo-touching operation and it reuses 07's harness rather than forking it (`cas-ref-update.ts:154` and `merge-preflight.ts:195` wrap `withTreeInvariance` in PRODUCTION, not just in tests)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/plumbing.test.ts:177",
+          "quotedAssertion": "packages/git-engine/src/plumbing.test.ts:177-194 — 'a poisoned GIT_DIR is scrubbed: a config write lands in cwd's repo, and the poisoned repo is untouched' / 'expect(await localEmail(target)).toBe(\"scrubbed@example.invalid\"); expect(await localEmail(victim)).toBe(\"\");' with the positive control at :196-212 ('CONTROL: the same write on an unscrubbed spawn DOES land in the poisoned repo instead'). This is what makes \"the other phase-07 operations are never handed a user checkout\" a containment claim rather than an assumption — and it dates from 2ff3bce (2026-08-01), not from this phase's build."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c1-invariance-harness.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 26 passed (26)' — scoped local re-run of invariance.test.ts + intake-freeze.test.ts at the closeout commit, command line recorded in the file header"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c1b-control-clone-invariance.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 1 passed (1)' — scoped local run of e2e/matrix/git's checkout-invariance scenario (offline; no network, no live engine) at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/README.md",
+          "quotedAssertion": "docs/evidence/phase-07/README.md, exit-criteria table, invariance row — '**Corrected 2026-07-18** (see \"Validation round\" section below — the original wording here was overstated) … It is NOT literally wrapped around every other test in this suite: worktree-lifecycle/control-clone/overlap-analyzer's own tests operate on control-owned dirs … not a user checkout'. The correction below is this phase's own recorded finding, not a new reinterpretation invented by the closeout."
+        }
+      ],
+      "wordingCorrection": {
+        "before": "Invariance harness: user checkout tree-hash identical before/after every engine operation across the suite (`invariance.spec`).",
+        "after": "Invariance harness: the harness is exercised and proven non-vacuous in its own dedicated suite, and an invariance assertion is applied around every operation in this package that is handed a user-checkout path — at THREE deliberately different strengths, which the original wording flattened into one uniform claim. (i) FULL user-checkout invariance — `computeWorkingTreeHash` PLUS `computeGitStateHash` over `HEAD`/`config`/`index`/`packed-refs`/every loose ref under `refs/` — at `freezeIntake`, via `withUserCheckoutInvariance` (`intake-freeze.test.ts:186-197`). Correct there, and only there, because a freeze is a pure read that must leave the checkout unchanged in every respect. (ii) WORKING-TREE HASH ONLY, via `withTreeInvariance` (`invariance.ts:144-153`), at three sites: `ensureControlClone`/`fetchRefresh` in 23's git matrix (`e2e/matrix/git/src/scenarios/checkout-invariance-scenario.ts:25-32`), and 08's `applyCasUpdate` (`cas-ref-update.ts:154`) and `preflightMerge` (`merge-preflight.ts:195`) in production. For the two 08 sites this is the strongest assertion available and is documented as such — writing refs (`.git/refs`) and writing objects (`.git/objects`) is precisely what those operations are for, so a `.git`-inclusive hash would flag their intended effect. At the clone-source site it means something weaker and worth stating plainly: the user repo's own `.git` state is NOT asserted unchanged across `ensureControlClone`, only its working tree. (iii) Working tree PLUS a `HEAD`/`index` digest that deliberately EXCLUDES `refs/`, `config` and `packed-refs`, at `publishLocal` — a documented, purpose-built narrowing of 07's harness rather than a reuse of it (`publish-local.ts:19-33` and `:88-99`: 'this operation's entire PURPOSE is to add exactly one new loose ref, so wrapping it in that same combined hash would (correctly) detect its own intended effect as a \"mutation\" and always fail'). It proves 'HEAD/index/worktree untouched' exactly, not 'nothing in `.git` changed'. The remaining phase-07 operations (`createWorktree`, `destroyWorktree`, `quarantineWorktree`, `sweepOrphanWorktrees`, `analyzeOverlap`) are never given a user-checkout path and operate on control-owned dirs; that they cannot reach one by another route is asserted separately by the ambient-`GIT_DIR` containment test and its positive control (`plumbing.test.ts:177-212`), which dates from `2ff3bce` (2026-08-01), not from this phase's build. Residual, named rather than papered over: no test in this package asserts that a BYSTANDER user checkout is byte-identical across a control-dir operation, so a path-computation bug aiming `createWorktree` or `sweepOrphanWorktrees` at a user checkout would be caught by neither the hash wraps nor the env scrub."
+      },
+      "notes": "Three things a reader should not have to reconstruct. (a) The criterion names `invariance.spec`; the file is `packages/git-engine/src/invariance.test.ts` — this repo has no `.spec.ts` files at all, so the name is the roadmap's generic form, not a missing artifact. (b) `packages/git-engine/src/invariance.test.ts:22-24`'s own doc comment STILL asserts the overstated claim ('every other test file in this package wraps its operation in `withTreeInvariance`'), as does the built `dist/invariance.d.ts:5-6`; the source-of-truth correction lives in the evidence README and now here. Left as-is rather than edited, per the pass rule against fixing findings in the same pass — it is a stale comment, not a failing check. (c) Re-resolved 2026-08-02 after rebasing onto `af46e00` (#52/#53/#56): none of those PRs touched a file this record cites, and all 51 code-shaped quoted assertions were re-located against the rebased tree. The cited CI run is green at `65ff0da`, the branch point; the closeout PR's own CI run covers the rebased tree. (d) The correction is more precise, not weaker: the guarantee the box carries — no operation in this package mutates the user's checkout — is evidenced by hash for every operation that can reach one, and by env containment for the rest. Recorded honestly: for the second group that containment is one commit old."
+    },
+    {
+      "index": 2,
+      "text": "SHA-256, submodule, LFS, unborn-HEAD, filters/hooks fixtures pass repository validation.",
+      "textSha256": "baa98e0293b9a06db1230494a12374d320708b9e2487f9e493dbac6093e0df22",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 664 — '  ✓  @crabgic/git-engine  src/repo-validation.test.ts (12 tests) 774ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/repo-validation.test.ts:44",
+          "quotedAssertion": "packages/git-engine/src/repo-validation.test.ts:44-49 — 'detects unborn HEAD on a freshly-init'd repo with zero commits' / 'expect(report.hasUnbornHead).toBe(true);'. Two negative controls: :29-34 a normal repo, and :36-42 a DETACHED head ('not unborn — symbolic-ref itself fails') — the exact false positive a naive symbolic-ref check produces."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/repo-validation.test.ts:58",
+          "quotedAssertion": "packages/git-engine/src/repo-validation.test.ts:58-66 — a repo really initialized with `--object-format=sha256` and committed into, then 'expect(report.objectFormat).toBe(\"sha256\");'; :51-56 asserts 'sha1' on a default repo, so the detector is not hardcoded."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/repo-validation.test.ts:75",
+          "quotedAssertion": "packages/git-engine/src/repo-validation.test.ts:75-87 — a committed `.gitmodules`, then 'expect(report.hasSubmodules).toBe(true);'; control at :68-73. :96-106 is the LFS shape — a real pointer body ('version https://git-lfs.github.com/spec/v1\\noid sha256:…') detected by content signature with no smudge, 'expect(report.lfsPointerPaths).toContain(\"assets/big.bin\");'; control at :89-94 ('expect(report.lfsPointerPaths).toEqual([])')."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/repo-validation.test.ts:123",
+          "quotedAssertion": "packages/git-engine/src/repo-validation.test.ts:123-140 — 'neutralizeHooksPath actually prevents a hook from firing': a real executable `pre-commit` hook is installed, `core.hooksPath` set to it, neutralized, then a real commit is made and 'expect(existsSync(marker)).toBe(false);'. This is behavioural, not a flag read; the flag read (:115-121, with control at :108-113) is the weaker companion assertion."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c2-repo-validation.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 12 passed (12)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/wi3-repo-validation-failing.txt",
+          "quotedAssertion": "the original RED capture for WI3, taken against a deliberately-wrong-but-present stub, per docs/evidence/phase-07/README.md §Deviations 6 ('Genuine, stub-backed RED was captured for all 8 work items … never a bare \"module not found\"')"
+        }
+      ],
+      "notes": "Every fixture is a real on-disk repo driven by real git (2.43.0 in the original build), built by `src/test-support/fixture-repo.ts`; there is no mocked git in this suite. `validateRepository` reports rather than throws, which is why each shape needs its own negative control to be non-vacuous — all five have one."
+    },
+    {
+      "index": 3,
+      "text": "Dirty-overlap block fires exactly on intersection with the porcelain snapshot; a disjoint dirty path never blocks.",
+      "textSha256": "9b2ef4f9026f3a037ff64bc600bb407d91d97eb95839cbc2b3e7006231636962",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 655 — '  ✓  @crabgic/git-engine  src/intake-freeze.test.ts (8 tests) 1107ms'; line 659 — '  ✓  @crabgic/git-engine  src/porcelain-parser.test.ts (13 tests) 16ms'; line 677 — '  ✓  @crabgic/git-engine  src/porcelain-parser.property.test.ts (2 tests) 372ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:63",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:63-86 — the same checkout is made dirty in BOTH an intersecting path and a disjoint one, and the block names exactly one: 'expect(result.status).toBe(\"blocked\"); expect(result.offendingPaths).toEqual([\"src/a.txt\"]); expect(result.offendingPaths).not.toContain(\"README.md\");'. The `exactly` in the criterion is what the third assertion buys."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:48",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:48-61 — 'a disjoint dirty path never blocks the freeze' / 'expect(result.status).toBe(\"frozen\");' with README.md dirty and the planned write pointed elsewhere. The anti-vacuity control: a block-everything implementation satisfies the first clause and fails here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:104",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:104-119 — 'expect(result.freeze.dirtySnapshot.untracked.map((e) => e.path)).toContain(\"untracked-new.txt\");' — the block really is computed against a captured porcelain-v2 snapshot, not an ad-hoc path list; :121-137 then proves the blocked freeze leaves the unrelated dirt on disk untouched."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/porcelain-parser.test.ts",
+          "quotedAssertion": "13 unit tests over hand-built `git status --porcelain=v2` byte streams covering modified/added/deleted/renamed/untracked/ignored/conflicted, plus `porcelain-parser.property.test.ts`'s re-parse determinism property. Cited because 'the porcelain snapshot' is the criterion's named comparison basis, so a mis-parse would make the block's exactness meaningless."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c3-dirty-overlap-block.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 23 passed (23)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/wi5-intake-freeze-failing.txt",
+          "quotedAssertion": "the original stub-backed RED capture for the intake-freeze half of WI5"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "text": "Quarantine journaled and recoverable; crash-orphan sweep completes or quarantines every orphaned worktree after a kill -9, never silently drops one.",
+      "textSha256": "634d7407a01ad56da42f041b36f24f166fd751e03964dc8a38791159acb5341e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 648 — '  ✓  @crabgic/git-engine  src/worktree-lifecycle.test.ts (13 tests) 1321ms'; line 656 — '  ✓  @crabgic/git-engine  src/worktree-lifecycle.crash.test.ts (2 tests) 2399ms'; line 674 — '  ✓  @crabgic/git-engine  src/control-clone.crash.test.ts (1 test) 903ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.test.ts:151",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.test.ts:151-187 — a dirty worktree is quarantined and 'expect(quarantineEntries).toHaveLength(1); expect(quarantineEntries[0].payload.reason).toContain(\"dirty worktree\");' against a REAL `@crabgic/journal` store, with 'expect(existsSync(join(result.quarantinedPath, \"uncommitted.txt\"))).toBe(true);' proving the move preserved the work. :189-213 re-reads the file's bytes ('do not lose me\\n'), so quarantine can never silently degrade to deletion."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:34",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:34-137 — a REAL `kill -9` via 04's `runKillHarness` across four fault points ('before-worktree-add', 'after-worktree-add-before-identity', 'after-identity-before-marker', 'done'). `verify` accepts only three outcomes and computes them from disk: genuinely complete ('recovered: gitDirOk && !dirty && hasMarker', :99-102), quarantined (:113-117), or provably never-started (`rev-parse --verify` on the attempt ref fails, :118-126). :132-136 'expect(report.results.filter((r) => r.verdict === \"fail\")).toHaveLength(0); expect(report.allConverged).toBe(true);'. A registered-but-abandoned worktree — the 'silently dropped' case — matches none of the three and fails."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:141",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:141-236 — the same harness for `kill -9` mid-QUARANTINE across 'before-quarantine-move'/'after-marker-before-journal'/'done', with recovery defined as every quarantined dir having a matching journal entry (:219-221 'quarantinedDirs.length > 0 && quarantinedDirs.every((name) => [...journaledPaths].some((p) => p.endsWith(name)))'). This is the 'journaled AND recoverable' half under interruption."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.test.ts:217",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.test.ts:217-237 — the negative control: a clean, fully-created worktree is 'reported completed, not quarantined' ('expect(report.quarantined).toEqual([]);'). Without it a sweep that quarantined everything would satisfy :239-260's dirty case. :298-332 additionally pins MINOR 6: five repeated sweeps over one persistent quarantine dir yield exactly ONE journal entry."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c4-quarantine-crash-sweep.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 16 passed (16)' — scoped local re-run at the closeout commit, including both real kill -9 harness suites"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/wi6-crash-failing.txt",
+          "quotedAssertion": "the original RED for both crash scenarios, captured against `sweepOrphanWorktrees` reverted to its 'finds nothing' stub — docs/evidence/phase-07/README.md §Deviations 6 records the captured verdict detail showing 'hasMarker=false'/'recovered=false' at the interrupted fault points"
+        }
+      ],
+      "notes": "The crash suites spawn `src/crash-fixtures/*.mjs` against this package's REAL built `dist`, so they exercise shipped code rather than an in-process re-implementation. `control-clone.crash.test.ts` covers the kill -9 mid-clone case named in the phase's Test plan; it is included in the transcript for completeness though this criterion's wording is about worktrees."
+    },
+    {
+      "index": 5,
+      "text": "Every worktree carries the configured neutral git identity (`user.name`/`user.email`) immediately after creation, with no explicit identity call from the caller — verified across the worktree-creation fixture set.",
+      "textSha256": "36a0800bb449e0ac9ee4ce3bae00f34419429911e7184db676b639de95a59eb4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 673 — '  ✓  @crabgic/git-engine  src/git-identity.test.ts (2 tests) 177ms'; line 679 — '  ✓  @crabgic/git-engine  src/git-identity.retry.test.ts (2 tests) 34ms'; line 648 — '  ✓  @crabgic/git-engine  src/worktree-lifecycle.test.ts (13 tests) 1321ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.test.ts:73",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.test.ts:73-92 — 'configures the neutral git identity automatically at creation time (WI8 integration)': createWorktree, then a commit with NO caller-side identity call, then 'expect(authorName).toBe(\"Crabgic\"); expect(authorEmail).toBe(\"svc@example.invalid\");' read off `git log -1 --format=%an/%ae`. The criterion's 'with no explicit identity call from the caller' is exactly what this test's shape asserts."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.ts:120",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.ts:120 — 'await configureGitIdentity(plumbing, worktreePath, options.serviceEmail);' on createWorktree's single, unconditional code path (no option gates it), and :125 writes the completion marker only AFTER it, so a worktree interrupted before identity can never be swept as complete (worktree-lifecycle.crash.test.ts:87-98 checks that marker in git's own admin dir). This is why one integration assertion generalises over the creation fixture set rather than sampling it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/git-identity.test.ts:29",
+          "quotedAssertion": "packages/git-engine/src/git-identity.test.ts:29-43 — the fixture's own identity is UNSET first (:34-35), then 'expect(name.stdout.trim()).toBe(CRABGIC_GIT_IDENTITY_NAME); expect(email.stdout.trim()).toBe(\"svc-eo@example.invalid\");' read back from `config --local` (never global). :45-61 repeats it through a real commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/git-env.ts:81",
+          "quotedAssertion": "packages/testkit/src/git-env.ts:81-91 — `GIT_FIXTURE_ENV_OVERLAY` pins 'GIT_CONFIG_GLOBAL: \"/dev/null\"' / 'GIT_CONFIG_SYSTEM: \"/dev/null\"' and gitFixtureEnv (:122-132) drops every inherited `GIT_*` name, and `GIT_FIXTURE_IDENTITY_ENV` is deliberately opt-in ':105-110' precisely so this suite can test repo-local identity. So a worktree with NO identity configured would fail its commit outright rather than silently inherit one — the anti-vacuity condition for both assertions above."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c5-git-identity.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 17 passed (17)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/wi8-git-identity-failing.txt",
+          "quotedAssertion": "the original stub-backed RED capture for WI8"
+        }
+      ],
+      "notes": "Scope, stated so the tick is not read wider than it is: 'across the worktree-creation fixture set' is discharged structurally rather than by a per-fixture assertion. Identity is configured on createWorktree's one unconditional path (worktree-lifecycle.ts:120) and gated by the completion marker, and the fixture environment cannot supply a fallback identity — so the single end-to-end assertion plus the direct unit tests cover every worktree the suite creates. There is no separate per-fixture identity assertion in each of the other createWorktree tests (basic, 12-way concurrent, destroy, quarantine, sweep, symlinked-root); if a reviewer wants that literal reading, it is a cheap S-sized addition, not a missing guarantee. `git-identity.retry.test.ts` covers the shared-`.git/config` `config.lock` contention that 12-way concurrent creation exposed (README §Deviations 2)."
+    },
+    {
+      "index": 6,
+      "text": "Overlap analyzer catches rename collisions (moved-in-one/edited-in-other fixture) and clears disjoint-path fixtures, exercised by the fast-check property suite.",
+      "textSha256": "8dde303cb34fda409810a9ab2acd5790b8879334b425b0776cc202594d5f83e6",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 660 — '  ✓  @crabgic/git-engine  src/overlap-analyzer.test.ts (12 tests) 210ms'; line 662 — '  ✓  @crabgic/git-engine  src/overlap-analyzer.property.test.ts (4 tests) 663ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/overlap-analyzer.test.ts:25",
+          "quotedAssertion": "packages/git-engine/src/overlap-analyzer.test.ts:25-38 — the criterion's named fixture, verbatim: unit A renames `src/old-name.txt`→`src/new-name.txt`, unit B writes `src/old-name.txt`; 'expect(verdicts[0]!.collides).toBe(true); expect(verdicts[0]!.collidingPaths).toContain(\"src/old-name.txt\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/overlap-analyzer.test.ts:151",
+          "quotedAssertion": "packages/git-engine/src/overlap-analyzer.test.ts:151-179 — 'real-git end-to-end: a fixture repo's move-in-one/edit-in-other is flagged as a collision': two real branches off one base, renames recovered by `detectRenamesFromWorktree`'s real `git diff --find-renames` (:136-149 asserts that recovery independently), then the same verdict. The rename-awareness is not simulated by hand-written rename pairs."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/overlap-analyzer.test.ts:40",
+          "quotedAssertion": "packages/git-engine/src/overlap-analyzer.test.ts:40-48 — the disjoint clause: 'expect(verdicts[0]!.collides).toBe(false); expect(verdicts[0]!.collidingPaths).toEqual([]);'. :126-132 pins the documented non-case-folding decision, so 'clears disjoint fixtures' is not achieved by folding everything together."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/overlap-analyzer.property.test.ts:101",
+          "quotedAssertion": "packages/git-engine/src/overlap-analyzer.property.test.ts:101-112 — 'never misses a true collision: a shared path (possibly only via a rename) is ALWAYS flagged' at { numRuns: 1000 }; :141-159 'never flags a genuinely disjoint pair (touched sets share nothing), including spelling-variant paths' at 1000 runs; :82-99 full equivalence against a reference model. The model is independently authored on `node:path`'s `posix.normalize` (:54-58), deliberately not a copy of the module's own hand-rolled normalizer — the MAJOR-3 finding was that the ORIGINAL reference model shared the module's exact-equality flaw and so could not fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/overlap-analyzer.property.test.ts:114",
+          "quotedAssertion": "packages/git-engine/src/overlap-analyzer.property.test.ts:114-133 — 'MAJOR 3 fix: never misses a collision even when the two units spell the SAME canonical path differently', 1000 runs over six spelling variants; the four exact validator-proven false-negative pairs are pinned as explicit fixtures at overlap-analyzer.test.ts:89-124."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c6-overlap-analyzer.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 16 passed (16)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/wi7-overlap-analyzer-failing.txt",
+          "quotedAssertion": "the original RED, captured against a stub that 'always reported no collision', which genuinely failed both the unit fixture and the property's 'never misses a true collision' invariant (README §Deviations 6)"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "text": "Every entry this package journals matches the `git_freeze` or `worktree_quarantine` member of `JournalEntryType` and passes 02's discriminated-union exhaustiveness harness (mirrors 13's own exit-criterion phrasing for the same harness).",
+      "textSha256": "9eeb9b8bc68a0deb045381f87c7a495db0f42c627a769ac9a28a09a5d1cbeecb",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 672 — '  ✓  @crabgic/git-engine  src/journal-entry-type-compliance.test.ts (4 tests) 12ms'; line 671 — '  ✓  @crabgic/git-engine  src/integration-journal-entry-type-compliance.test.ts (5 tests) 13ms'. The compile-time half is covered by the same run's `typecheck (ubuntu-latest)` job 91419417975 (`tsc -b`), green at the same sha."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/journal-entry-type-compliance.test.ts:19",
+          "quotedAssertion": "packages/git-engine/src/journal-entry-type-compliance.test.ts:19-23 — 'type AssertMembersAreValid = GitEngineJournalEntryInput[\"type\"] extends JournalEntryType ? true : never; const _typeCheck: AssertMembersAreValid = true;'. This is the compile-time half: a typo or a member 02 never declared fails `tsc -b packages/git-engine`, not a runtime expect."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/journal-entry-type-compliance.test.ts:28",
+          "quotedAssertion": "packages/git-engine/src/journal-entry-type-compliance.test.ts:28-32 — 'for (const type of THIS_PACKAGE_JOURNAL_ENTRY_TYPES) expect(JOURNAL_ENTRY_TYPES).toContain(type);'; :34-36 'expect(THIS_PACKAGE_JOURNAL_ENTRY_TYPES).toHaveLength(2);' (never a 3rd); :38-52 and :54-68 round-trip a constructed entry of each shape through @crabgic/journal's real `JournalEntrySchema`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/journal/journal-entry-type.ts:62",
+          "quotedAssertion": "packages/contracts/src/journal/journal-entry-type.ts:62 — 'export const JOURNAL_ENTRY_TYPE_DESCRIPTIONS: Readonly<Record<JournalEntryType, string>>' with :73-74 'git_freeze: \"A control-repo or worktree freeze event (07).\"' / 'worktree_quarantine: \"A worktree quarantine event (07).\"'. This IS 02's exhaustiveness mechanism the criterion names: a missing or stray key fails `tsc -b packages/contracts` (:45-56 documents it, with the 14th-member RED captured in docs/evidence/phase-02). Pinned at runtime by journal-entry-type.test.ts:40-56's verbatim 13-member list and :62-70's descriptor/member key equality."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:154",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:154-156 — 'const freezeEntries = entries.filter((e) => e.type === \"git_freeze\"); expect(freezeEntries).toHaveLength(1); expect(() => JournalEntrySchema.parse(freezeEntries[0])).not.toThrow();' — an entry produced by the REAL freeze path, not a hand-constructed candidate; worktree-lifecycle.test.ts:180-186 is the same for a real `worktree_quarantine`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:38",
+          "quotedAssertion": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:38-41 — 'is disjoint from 07's own two members (git_freeze/worktree_quarantine)' / 'expect(INTEGRATION_JOURNAL_ENTRY_TYPES).not.toContain(\"git_freeze\"); expect(INTEGRATION_JOURNAL_ENTRY_TYPES).not.toContain(\"worktree_quarantine\");'. This is what keeps the wording correction below from losing anything."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c7-journal-entry-types.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 16 passed (16)' — scoped local re-run at the closeout commit, including 02's own journal-entry-type suite"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c7b-tsc-exhaustiveness.txt",
+          "quotedAssertion": "'exit status: 0' for 'npx tsc -b --force packages/contracts packages/git-engine' — a COLD rebuild, so both compile-time halves (02's Record descriptor and git-engine's AssertMembersAreValid) were genuinely re-evaluated rather than served from a build cache"
+        }
+      ],
+      "wordingCorrection": {
+        "before": "Every entry this package journals matches the `git_freeze` or `worktree_quarantine` member of `JournalEntryType` and passes 02's discriminated-union exhaustiveness harness (mirrors 13's own exit-criterion phrasing for the same harness).",
+        "after": "Every entry THIS PHASE's operations journal matches the `git_freeze` or `worktree_quarantine` member of `JournalEntryType` and passes 02's discriminated-union exhaustiveness harness. \"This package\" was accurate when written — 07 built `packages/git-engine` alone — but phase 08 has since extended the same package in place (this phase's own §Out of scope: \"08 and 07 are two phases building one package\") and journals `cas_ref_update` and `evidence_pointer` from `src/integration-journal.ts`. Those two are themselves closed members of the same 13-member union and are proven disjoint from this phase's two, so the package-wide property the criterion was reaching for — this package never journals an undeclared type — still holds and is still tested."
+      },
+      "notes": "Why this is a correction and not a weakening. The phase file's own §Interfaces produced already scopes the guarantee to the phase (\"this phase is the sole writer of the `git_freeze` and `worktree_quarantine` members of `JournalEntryType`'s 13-member union\"), and 08 carries its own exit criterion for its own two members. The disjointness is asserted (integration-journal-entry-type-compliance.test.ts:38-41), and 08's module deliberately does NOT extend 07's `GitEngineJournalEntryInput` union — integration-journal.ts:8-19 records that choice and names this criterion as the reason. So nothing about the original guarantee is given up; only the scope word is made accurate at HEAD. Second, narrower note: the criterion says the entries \"pass 02's discriminated-union exhaustiveness harness\". 02's harness is a `tsc -b`-enforced `Record<JournalEntryType, string>` descriptor rather than a runnable assertion an outside package can invoke; git-engine's participation in it is the compile-time `AssertMembersAreValid` check plus the runtime `JOURNAL_ENTRY_TYPES` membership assertion. Both were re-run cold for this closeout. That is the same mechanism, exercised from this package's side."
+    },
+    {
+      "index": 8,
+      "text": "Control clone resolves at `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` — a path-convention test, not just documentation.",
+      "textSha256": "d31b1b1242452bcaf20e9fc1d9cd4439cd4ddc4d858a4086ba74662b08e4794a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 663 — '  ✓  @crabgic/git-engine  src/control-clone.test.ts (7 tests) 556ms'; line 682 — '  ✓  @crabgic/git-engine  src/layout.test.ts (4 tests) 6ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/control-clone.test.ts:31",
+          "quotedAssertion": "packages/git-engine/src/control-clone.test.ts:31-37 — the dedicated path-convention test: with XDG_CACHE_HOME=/custom/cache, 'expect(resolved).toBe(join(resolveXdgCacheHome(env), \"crabgic\", projectHash, \"git-control\"));' plus 'expect(GIT_CONTROL_SUBDIR).toBe(\"git-control\");' pinning the segment name itself, so the literal is asserted and not merely re-derived from the same constant."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/layout.test.ts:16",
+          "quotedAssertion": "packages/git-engine/src/layout.test.ts:16-20 — the same assertion in the layout suite; :34-41 'all three roots share the identical <project-hash> parent' pins the ORDER (`<project-hash>/git-control/`, not `git-control/<project-hash>/`), which is precisely the half of ledger Gap 14 that four independent resolvers disagreed on."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/daemon/run-dispatcher.ts:439",
+          "quotedAssertion": "packages/cli/src/daemon/run-dispatcher.ts:439 — 'const controlDir = resolveGitControlDir(xdgEnv, projectHash);' and :471 'await ensureControlClone(plumbing, { controlDir, sourceRepoPath: projectDir });'. The convention is not a documented constant nobody honours: the shipped daemon resolves it and clones there."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md:714-717 (Gap 14) — \"`07-git-control-repo-worktrees.md` §In scope, 'Control clone,' line 17 — 'into `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/`'… §Exit criteria, line 80 — the same path repeated as a path-convention test\"; :726-727 records that the shipped order is `<project-hash>/git-control/`. Criterion, ledger and tests agree verbatim."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c8-control-clone-path.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 11 passed (11)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Stale-evidence flag, not a defect in the criterion: docs/evidence/phase-07/README.md's exit-criteria table still spells this row `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/`, a pre-rename artifact from the original 2026-07-18 build (the same README also still names `@eo/journal` and `ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME`, both since renamed). The roadmap, ledger Gap 14 and every test at HEAD say `crabgic`. Left unedited per the pass rule against fixing findings in the same pass; noted here and in the phase file so a reader of the older trail is not misled."
+    },
+    {
+      "index": 9,
+      "text": "Command-injection corpus: zero fixtures reach a shell; a static check confirms no `shell: true` / string-concatenated command line exists anywhere on this package's spawn surface.",
+      "textSha256": "e3925cdd056e20733bdcee0159976ea9240c54533b9b759a99645fed98712698",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 652 — '  ✓  @crabgic/git-engine  src/plumbing.test.ts (20 tests) 75ms'; line 665 — '  ✓  @crabgic/git-engine  src/spawn-surface-scan.test.ts (5 tests) 15ms'; line 661 — '  ✓  @crabgic/git-engine  src/argument-injection.regression.test.ts (7 tests) 370ms'; line 654 — '  ✓  @crabgic/git-engine  src/control-context-isolation.test.ts (3 tests) 304ms'; line 895 — '  ✓  @crabgic/testkit  src/git-spawn-hygiene.test.ts (4 tests) 126ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/plumbing.test.ts:29",
+          "quotedAssertion": "packages/git-engine/src/plumbing.test.ts:29-51 — the corpus itself: 12 fixtures covering ';', '&&', '||', '|', '$(…)', backticks, embedded newline, '../../../../etc/passwd', quote breakout, and three leading-dash option-smuggling shapes. :55-70 asserts each against a spawn-capture shim — 'expect(request.command).toBe(\"git\"); expect(request.args).toEqual([\"checkout\", fixture.value]);' — i.e. the value survives as ONE literal argv element with no shell anywhere in the path."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/plumbing.test.ts:118",
+          "quotedAssertion": "packages/git-engine/src/plumbing.test.ts:118-129 — the same property against REAL git rather than a shim: 'const maliciousRef = `nonexistent-ref; touch ${marker}`; … expect(existsSync(marker)).toBe(false);'. A shim-only corpus could be satisfied by a wrapper that never spawns at all; this one cannot."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/spawn-surface-scan.test.ts:42",
+          "quotedAssertion": "packages/git-engine/src/spawn-surface-scan.test.ts:42-49 / :51-61 / :63-72 — 'expect(offenders).toEqual([]);' for (a) /shell\\s*:\\s*true/, (b) a bare `exec(`/`execSync(` string-command call, (c) a shell binary (sh|bash|cmd|powershell) as the spawned command, over every .ts/.mjs under the package's src/ (only the scanner itself excluded). :74-76 'expect(ALL_SOURCE_FILES.length).toBeGreaterThan(5);' is the anti-vacuity floor against an empty glob certifying the absence."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/spawn-surface-scan.test.ts:93",
+          "quotedAssertion": "packages/git-engine/src/spawn-surface-scan.test.ts:93-109 — the NOTE-7 addition: every call site taking a caller-influenced positional ('control-clone.ts', 'overlap-analyzer.ts', 'intake-freeze.ts', 'worktree-lifecycle.ts') must textually import git-arg-guard and reference OPTION_TERMINATOR, 'expect(offenders).toEqual([]);'. Recorded because the shell-only scan above is blind to option smuggling, which is a different attack class from the one the criterion's words name."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/argument-injection.regression.test.ts:46",
+          "quotedAssertion": "packages/git-engine/src/argument-injection.regression.test.ts:46-66 — the fetch `--upload-pack=touch <marker>;git-upload-pack` RCE, reproduced and blocked inside an mkdtemp sandbox: 'expect(existsSync(marker)).toBe(false);'; :82-106 the `git diff --output=<victim>` overwrite: 'expect(readFileSync(victim, \"utf8\")).toBe(preciousContent);'. Both were live exploits against the pre-2026-07-18 tree, so these are proven-attack regressions rather than hypotheticals."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/plumbing.test.ts:177",
+          "quotedAssertion": "packages/git-engine/src/plumbing.test.ts:177-194 (ambient GIT_DIR scrubbed: the write lands in cwd's repo, 'expect(await localEmail(victim)).toBe(\"\")') with the CONTROL at :196-212 ('the same write on an unscrubbed spawn DOES land in the poisoned repo instead', 'expect(await localEmail(victim)).toBe(\"hijacked@example.invalid\")'). Added 2026-08-01 in 2ff3bce: argv hygiene alone never made a spawn safe while an ambient GIT_DIR could redirect the whole command at another repository."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/git-spawn-hygiene.test.ts:140",
+          "quotedAssertion": "packages/testkit/src/git-spawn-hygiene.test.ts:140-149 — 'every file that spawns a MUTATING git command references a sanctioned environment scrub' / 'expect(offenders).toEqual([]);' across packages/, e2e/, scripts/, spikes/; :151-153 'expect(ALL_FILES.length).toBeGreaterThan(200);' and :194-204 'expect(scrubbed.length).toBeGreaterThanOrEqual(5)' are its two anti-vacuity floors; :155-192 pins eight known evasion shapes AND three read-only shapes that must stay exempt. This is the same static-scan idiom this criterion asks for, extended repo-wide."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/closeout-c9-command-injection.txt",
+          "quotedAssertion": "'Test Files 6 passed (6) / Tests 47 passed (47)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-07/fix-crit1-argument-injection-failing.txt",
+          "quotedAssertion": "the original RED capture in which both option-smuggling exploits genuinely fired against the unfixed code"
+        }
+      ],
+      "notes": "Two scope statements so the tick is not read wider than it is. (a) The static check detects `shell: true`, the string-command APIs (`exec`/`execSync`) and a shell binary as the spawned command. It does not pattern-match \"string concatenation\" as such — the criterion's phrase — but concatenation is only reachable as a command line through exactly those APIs, all of which are asserted absent, and the one real spawn site (plumbing.ts:92) passes `[...request.args]` with `shell: false` explicitly set rather than omitted. (b) `spawn-surface-scan.test.ts`'s own doc comment (:6-16) claims it excludes test files and `test-support/`/`crash-fixtures/`; the code excludes only the scanner itself, i.e. it scans MORE than documented. Stale comment, stricter behaviour — noted rather than fixed, per the pass rule."
+    }
+  ]
+}

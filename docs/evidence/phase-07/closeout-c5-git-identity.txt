@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 5 — every worktree carries the neutral git identity immediately after creation, with no caller identity call
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:29Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/git-identity.test.ts packages/git-engine/src/git-identity.retry.test.ts packages/git-engine/src/worktree-lifecycle.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  3 passed (3)
+      Tests  17 passed (17)
+   Start at  23:29:30
+   Duration  2.20s (transform 996ms, setup 0ms, import 1.48s, tests 1.53s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

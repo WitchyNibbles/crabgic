@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 9 — command-injection corpus reaches no shell; static spawn-surface scan; option-smuggling regressions; ambient-config and ambient-GIT_DIR containment
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:30:00Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/plumbing.test.ts packages/git-engine/src/spawn-surface-scan.test.ts packages/git-engine/src/argument-injection.regression.test.ts packages/git-engine/src/control-context-isolation.test.ts packages/testkit/src/git-spawn-hygiene.test.ts packages/testkit/src/git-env.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  6 passed (6)
+      Tests  47 passed (47)
+   Start at  23:30:01
+   Duration  1.18s (transform 1.01s, setup 0ms, import 1.56s, tests 1.04s, environment 1ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

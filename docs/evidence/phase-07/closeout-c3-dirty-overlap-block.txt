@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 3 — dirty-overlap block fires exactly on intersection; a disjoint dirty path never blocks
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:16Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/intake-freeze.test.ts packages/git-engine/src/porcelain-parser.test.ts packages/git-engine/src/porcelain-parser.property.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  3 passed (3)
+      Tests  23 passed (23)
+   Start at  23:29:17
+   Duration  1.83s (transform 596ms, setup 0ms, import 886ms, tests 1.04s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

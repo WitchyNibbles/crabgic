@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 2 — SHA-256 / submodule / LFS / unborn-HEAD / filters-hooks fixtures pass repository validation
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:14Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/repo-validation.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  23:29:15
+   Duration  1.36s (transform 419ms, setup 0ms, import 592ms, tests 655ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

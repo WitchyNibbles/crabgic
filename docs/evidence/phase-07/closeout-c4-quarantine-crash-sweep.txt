@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 4 — quarantine journaled and recoverable; kill -9 crash-orphan sweep completes or quarantines, never silently drops
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:26Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/worktree-lifecycle.test.ts packages/git-engine/src/worktree-lifecycle.crash.test.ts packages/git-engine/src/control-clone.crash.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  23:29:26
+   Duration  2.68s (transform 1.76s, setup 0ms, import 2.55s, tests 3.84s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
