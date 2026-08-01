@@ -1,0 +1,39 @@
+Criteria-closeout pass, phase 03, criterion 2 (compiler property suite, >=10k fast-check cases).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+Local supplement to the CI execution cited in docs/evidence/criteria-closeout/phase-03.json
+(the criterion names CI as its channel; this run is corroboration, not the primary citation).
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/footguns/property.test.ts packages/engine-core/src/footguns/mcp-deny.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03
+
+ ✓ |@crabgic/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > a minimal envelope's compiled deny list never contains 'mcp__*' 5ms
+ ✓ |@crabgic/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > the mandatory gateway allow entry is always present, never shadowed 1ms
+ ✓ |@crabgic/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > no envelope, of any shape, ever produces a blanket mcp__* deny (fast-check, ≥10k cases) 871ms
+ ✓ |@crabgic/engine-core| src/footguns/mcp-deny.test.ts > footgun: never a blanket mcp__* deny > single-server exposure comes from strictMcpConfig, not a deny (roadmap/03's own footgun bullet) 1ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: no allow outside the envelope (≥10k cases, semantic confinement) > a target path outside every declared owned path is never allowed for Edit 1066ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: no allow outside the envelope (≥10k cases, semantic confinement) > a target inside a declared owned path IS allowed for Edit (positive confinement counterpart) 672ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: no allow outside the envelope (≥10k cases, semantic confinement) > every emitted allow rule is still explainable by the envelope that produced it (structural sanity, kept alongside the semantic property above) 774ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: malformed ownedPaths are always rejected (≥10k cases, CRITICAL 1) > compileEnvelope throws EnvelopeCompilationError whenever ownedPaths carries a malformed entry (absolute/'~'/'..'/glob) 610ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: malformed networkDestinations are always rejected (MINOR 4) > compileEnvelope throws EnvelopeCompilationError whenever networkDestinations carries a malformed entry 143ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: mandatory denies survive any envelope (≥10k cases) > every fixed mandatory deny, every mandatory denyRead path, and the Edit/Write deny backstop are present, for any envelope 1930ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: no blanket mcp__* deny ever (≥10k cases) > the compiled profile never contains a blanket mcp__* deny, for any envelope 668ms
+ ✓ |@crabgic/engine-core| src/footguns/property.test.ts > compileEnvelope — property: every owned-path allow rule is worktree-scoped (≥10k cases, CRITICAL 1) > no envelope, of any well-formed shape, ever produces an unanchored owned-path allow rule 677ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  23:28:13
+   Duration  7.05s (transform 510ms, setup 0ms, import 789ms, tests 7.42s, environment 0ms)
+
+exit code: 0
+
+$ grep -n "numRuns" packages/engine-core/src/footguns/property.test.ts packages/engine-core/src/footguns/mcp-deny.test.ts
+packages/engine-core/src/footguns/mcp-deny.test.ts:34:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:81:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:96:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:117:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:128:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:139:      { numRuns: 2000 },
+packages/engine-core/src/footguns/property.test.ts:155:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:166:      { numRuns: 10000 },
+packages/engine-core/src/footguns/property.test.ts:179:      { numRuns: 10000 },

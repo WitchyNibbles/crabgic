@@ -1,0 +1,42 @@
+Criteria-closeout pass, phase 03, criterion 1 (EngineCapabilities field-exhaustiveness).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+
+$ npx tsc -b packages/engine-core --force   # the TYPE-LEVEL exhaustiveness mechanism (Record<keyof EngineCapabilities, string>)
+exit code: 0
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/adapter/engine-capabilities.test.ts packages/engine-core/src/adapter/engine-adapter.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03
+
+ ✓ |@crabgic/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > ENGINE_CAPABILITIES_FIELD_NAMES is exactly the five Gap-7 fields, sorted 2ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > the descriptor has exactly five entries, one description each 1ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > returns keys that are exactly supportsJsonSchema, supportsSessionResume, permissionModel, sandboxModel, engineVersion — no more, no fewer 0ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > supportsJsonSchema/supportsSessionResume are booleans; permissionModel/sandboxModel/engineVersion are strings 0ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-capabilities.test.ts > EngineAdapter.capabilities() — runtime keys test (roadmap/03 work item 1 failing-first fixture) > never carries the retired structuredOutput/sessionResume draft field names (Gap 7) 0ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > spawn returns a WorkerHandle with a string sessionRef.sessionId and an async-iterable events stream 1ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > resume returns a WorkerHandle carrying the exact sessionRef it was given 0ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > cancel resolves without throwing 1ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > capabilities() returns a truthy object (key-shape asserted in engine-capabilities.test.ts) 0ms
+ ✓ |@crabgic/engine-core| src/adapter/engine-adapter.test.ts > EngineAdapter — stub conformance (roadmap/03 work item 1 failing-first fixture) > an empty scripted event stream is a valid, iterable async sequence 0ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  23:27:41
+   Duration  471ms (transform 257ms, setup 0ms, import 393ms, tests 8ms, environment 0ms)
+
+exit code: 0
+
+=== Negative control (temporary local mutation, reverted immediately after) ===
+A 6th field 'sixthField' was added to the EngineCapabilities interface to prove the
+type-level exhaustiveness mechanism is not vacuous. Nothing else was changed.
+
+$ npx tsc -b packages/engine-core --force
+packages/engine-core/src/adapter/engine-capabilities.ts(36,14): error TS2741: Property 'sixthField' is missing in type '{ supportsJsonSchema: string; supportsSessionResume: string; permissionModel: string; sandboxModel: string; engineVersion: string; }' but required in type 'Readonly<Record<keyof EngineCapabilities, string>>'.
+packages/engine-core/src/adapter/stub-engine-adapter.ts(50,5): error TS2741: Property 'sixthField' is missing in type '{ supportsJsonSchema: true; supportsSessionResume: true; permissionModel: string; sandboxModel: string; engineVersion: string; }' but required in type 'EngineCapabilities'.
+exit code: 2
+
+Mutation reverted:
+$ git diff --stat packages/engine-core/src/adapter/engine-capabilities.ts
+(empty = reverted)
+$ npx tsc -b packages/engine-core --force
+exit code: 0

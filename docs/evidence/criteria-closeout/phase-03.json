@@ -1,0 +1,326 @@
+{
+  "schemaVersion": 1,
+  "phase": "03",
+  "roadmapFile": "roadmap/03-envelope-compiler-engine-adapter.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 1 (phase 03)",
+    "headSha": "d11b05944a0b6e96dda8b468d93234dbb0e93100"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`EngineCapabilities` field-exhaustiveness test passes: exactly `supportsJsonSchema, supportsSessionResume, permissionModel, sandboxModel, engineVersion`, no more, no fewer (Gap 7).",
+      "textSha256": "2d22df436cf3ff606c1591212e5b52744c92913787f86655df918e08d40067fc",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 531 — '  ✓  @crabgic/engine-core  src/adapter/engine-capabilities.test.ts (5 tests) 9ms'; line 530 — '  ✓  @crabgic/engine-core  src/adapter/engine-adapter.test.ts (5 tests) 10ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91419417975, steps \"tsc -b (cold)\" and \"tsc -b (incremental, no-op expected)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 162 — '> tsc -b' (and again at line 170, the incremental leg). This is the job that enforces the type-level exhaustiveness mechanism; vitest transpiles with esbuild and does not perform excess/missing-property checking, as engine-capabilities.test.ts's own header comment states."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/adapter/engine-capabilities.test.ts:22",
+          "quotedAssertion": "packages/engine-core/src/adapter/engine-capabilities.test.ts:22-28 — 'expect(ENGINE_CAPABILITIES_FIELD_NAMES).toEqual([\"engineVersion\",\"permissionModel\",\"sandboxModel\",\"supportsJsonSchema\",\"supportsSessionResume\"]);' — the five Gap-7 names, pinned literally"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/adapter/engine-capabilities.test.ts:50",
+          "quotedAssertion": "packages/engine-core/src/adapter/engine-capabilities.test.ts:50 — 'expect(Object.keys(caps).sort()).toEqual(ENGINE_CAPABILITIES_FIELD_NAMES);' against a live capabilities() return (StubEngineAdapter) — the 'no more, no fewer' clause at runtime"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/adapter/engine-capabilities.test.ts:66",
+          "quotedAssertion": "packages/engine-core/src/adapter/engine-capabilities.test.ts:66-67 — 'expect(\"structuredOutput\" in caps).toBe(false); expect(\"sessionResume\" in caps).toBe(false);' — Gap 7's retired draft names can never reappear"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/adapter/engine-capabilities.ts:34",
+          "quotedAssertion": "packages/engine-core/src/adapter/engine-capabilities.ts:34-36 — (three source lines, joined) 'export const ENGINE_CAPABILITIES_FIELD_DESCRIPTIONS: Readonly< Record<keyof EngineCapabilities, string> > = {' — the compile-time exhaustiveness mechanism itself; an object literal assigned to Record<keyof I, string> rejects both a missing key and a stray one"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c1-engine-capabilities.txt",
+          "quotedAssertion": "NEGATIVE CONTROL, run in this pass: with a 6th field temporarily added to the interface, 'npx tsc -b packages/engine-core --force' fails — \"engine-capabilities.ts(36,14): error TS2741: Property 'sixthField' is missing in type '{...}' but required in type 'Readonly<Record<keyof EngineCapabilities, string>>'\" and the same for stub-engine-adapter.ts(50,5); exit code 2. Reverted in the same transcript, with 'git diff --stat' empty and tsc back to exit 0. Also carries the green scoped vitest run (2 files / 10 tests)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi1-adapter-types-passing.txt",
+          "quotedAssertion": "line 33 — ' ✓ |@eo/engine-core| src/adapter/engine-capabilities.test.ts > EngineCapabilities — field-exhaustiveness (interface-ledger Gap 7) > ENGINE_CAPABILITIES_FIELD_NAMES is exactly the five Gap-7 fields, sorted 1ms'; ' Test Files  3 passed (3)' / '      Tests  23 passed (23)'. Captured 2026-07-17 under the pre-rename package name @eo/engine-core; wi1-adapter-types-failing.txt is the RED half."
+        }
+      ],
+      "notes": "The runtime keys test exercises this phase's own StubEngineAdapter; 06's real adapter has its own conformance obligation. The criterion's 'no more, no fewer' is therefore carried by the compile-time Record<keyof EngineCapabilities, string> descriptor, which is why the typecheck job is cited alongside the unit job and why this pass added an explicit negative control rather than asserting the mechanism works."
+    },
+    {
+      "index": 2,
+      "text": "Compiler property suite (no allow outside the envelope; mandatory denies survive any envelope; no blanket `mcp__*` deny ever emitted) green at ≥10k fast-check cases in CI.",
+      "textSha256": "51127b540f436c0f75b1e6a92802a5a990fb5f97209950062056862e0844aa73",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 608 — '  ✓  @crabgic/engine-core  src/footguns/property.test.ts (8 tests) 30675ms'; line 534 — '  ✓  @crabgic/engine-core  src/footguns/mcp-deny.test.ts (4 tests) 4781ms'. The criterion names CI as its channel, so this run — not the local transcript — is the primary citation."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:114",
+          "quotedAssertion": "packages/engine-core/src/footguns/property.test.ts:114 — 'expect(isGatewayAllow || isAuthorizedBashRule || isOwnedPathRule).toBe(true);' for EVERY rule in profile.permissions.allow, at { numRuns: 10000 } (:117). This is 'no allow outside the envelope' in its general form: every emitted allow rule must be explainable by the envelope that produced it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:78",
+          "quotedAssertion": "packages/engine-core/src/footguns/property.test.ts:78 — 'expect(isEditAllowed(profile, target)).toBe(false);' for '../etc/passwd', '/etc/passwd', '~/.ssh/id_rsa', '.git/config' and a never-owned sentinel path, at { numRuns: 10000 } (:81) — the semantic confinement counterpart, evaluated through an independent matcher rather than the compiler's own emitter."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:149",
+          "quotedAssertion": "packages/engine-core/src/footguns/property.test.ts:149-153 — 'expect(profile.permissions.deny).toContain(rule);' for Agent, WebFetch, WebSearch, Bash(git push:*), Bash(curl:*), Bash(wget:*), plus 'expect(() => assertMandatoryDenyReadPathsPresent(profile)).not.toThrow();' and 'expect(() => assertEditWriteDenyBackstopPresent(profile)).not.toThrow();', at { numRuns: 10000 } (:155) — the 'mandatory denies survive any envelope' property."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:164",
+          "quotedAssertion": "packages/engine-core/src/footguns/property.test.ts:164 — 'expect(() => assertNoBlanketMcpDeny(compileEnvelope(envelope))).not.toThrow();' at { numRuns: 10000 } (:166); the same property is duplicated in packages/engine-core/src/footguns/mcp-deny.test.ts:32 at { numRuns: 10000 } (:34)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:93",
+          "quotedAssertion": "packages/engine-core/src/footguns/property.test.ts:93 — 'expect(isEditAllowed(profile, insideTarget)).toBe(true);' for every declared owned path. The POSITIVE control: without it a matcher that denied everything would satisfy the outside-target property vacuously."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/confinement-check.ts:103",
+          "quotedAssertion": "packages/engine-core/src/footguns/confinement-check.ts:103 — 'export function isEditAllowed(profile, targetPath)'. Its doc comment records why it exists: the OLD property 're-derived the exact string the compiler itself emitted and checked equality against it — tautological, and unable to detect a confinement escape by construction' (MAJOR 3, phase-03 security-fix round). This is the anti-vacuity control the criterion's own history demands."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi4-footguns-passing.txt",
+          "quotedAssertion": "' Test Files  5 passed (5)' / '      Tests  26 passed (26)', plus the transcript's own closing note: 'Note: `property.test.ts`'s three properties each run at `numRuns: 10000`'. wi4-footguns-failing.txt is the RED half."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c2-property-suite.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 12 passed (12)' — scoped local re-run at the closeout commit, with the numRuns grep appended so the >=10k claim is checkable from the transcript alone. Supplementary: the criterion's channel is CI."
+        }
+      ],
+      "notes": "Scope, recorded so the '>=10k' is not read wider than it is: property.test.ts's fifth property (malformed networkDestinations, MINOR 4) runs at numRuns 2000. It is NOT one of the three properties this criterion names; all three named ones — and the two CRITICAL-1 properties added later — are at 10000. Rebase check (2026-08-01, after this record was first written): main advanced to d11b059 (#52), which rewrote packages/engine-core/src/footguns/anchor-forms.test.ts — a file in this phase's package but NOT cited by any entry in this record; property.test.ts, mcp-deny.test.ts and confinement-check.ts are byte-identical across that commit, so every citation and the committed transcript (captured at 65ff0da, the pre-rebase branch point) still resolve. Every file:line in this record was re-resolved against the rebased tree before pushing; one stale reference was found and corrected (fake-engine-adapter.test.ts, criterion 5)."
+    },
+    {
+      "index": 3,
+      "text": "Golden settings artifacts for the three canonical envelopes (read-only, standard implementation, network-granted) committed and byte-stable across two consecutive builds.",
+      "textSha256": "d7fe4948a090da161a94f9d5f88c590b8424a4d59527c08a7405ce26f57dcf6b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 537 — '  ✓  @crabgic/engine-core  src/goldens/generate-golden-artifacts.test.ts (9 tests) 17ms'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c3-goldens-two-builds.txt",
+          "quotedAssertion": "the two-build procedure re-run at the closeout commit: 'npx tsc -b packages/engine-core --force' + '(cd packages/engine-core && node scripts/write-goldens.ts)' executed twice, then 'diff -r <build1> <build2>' → 'exit code: 0 (0 = byte-identical across the two consecutive builds)', 'diff -r <committed> <build2>' → 'exit code: 0 (0 = the committed artifacts ARE the compiler output)', 'git status --porcelain packages/engine-core/goldens' empty, plus sha256 of all six artifacts."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi3-sandbox-goldens-passing.txt",
+          "quotedAssertion": "Part 2, the original 2026-07-18 capture of the same procedure — 'diff -r: (empty — exit code 0, zero differences across all 6 files)'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/engine-core/goldens/standard-implementation.settings.json",
+          "quotedAssertion": "one of the six committed artifacts; sha256 8a2a99c08ccaf1a651784b98bb3b04b1f2123c96ecfd91e4d1a87e15032653a9 recorded in the closeout transcript. The other five are read-only.settings.json, read-only.sdk-options.json, standard-implementation.sdk-options.json, network-granted.settings.json, network-granted.sdk-options.json."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/goldens/generate-golden-artifacts.test.ts:23",
+          "quotedAssertion": "packages/engine-core/src/goldens/generate-golden-artifacts.test.ts:21-23 — one `it` per artifact, 'const committed = readFileSync(join(GOLDENS_DIR, artifact.relativePath), \"utf8\"); expect(artifact.content).toBe(committed);' — committed bytes vs freshly compiled bytes, so drift fails CI"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/goldens/generate-golden-artifacts.test.ts:32",
+          "quotedAssertion": "packages/engine-core/src/goldens/generate-golden-artifacts.test.ts:29-32 — 'const first = buildGoldenArtifacts(); const second = buildGoldenArtifacts(); expect(second).toEqual(first);'; :43 'expect(buildGoldenArtifacts()).toHaveLength(6);' pins 2 serializations x 3 canonical envelopes"
+        }
+      ],
+      "notes": "The in-process test proves determinism within one process; the 'two consecutive builds' clause specifically is discharged by the two full 'tsc -b --force' + write-goldens cycles in the transcripts, once by the phase itself and once in this pass at the closeout commit."
+    },
+    {
+      "index": 4,
+      "text": "Fake-engine replay parity: every fixture in the initial envelope-conformance set produces its hand-derived expected per-layer verdict.",
+      "textSha256": "7bd493e048692798f647d5544269da5053764d47a9b91b818684aa8eede120f4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 910 — '  ✓  @crabgic/testkit  src/fake-engine/conformance-fixtures/fixtures.test.ts (10 tests) 25ms'; line 899 — '  ✓  @crabgic/testkit  src/fake-engine/parity.test.ts (8 tests) 9ms'; line 905 — '  ✓  @crabgic/testkit  src/fake-engine/conformance-fixtures/schema.test.ts (7 tests) 18ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:23",
+          "quotedAssertion": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:20-23 — each layer's OWN evaluator is called in isolation and then 'expect({ permissions, adjudication, sandbox }).toEqual(fixture.expected);', parameterized by it.each over all seven fixtures (:16). The scoped re-run names all seven by title, each '<name> reproduces its hand-derived expected per-layer verdict'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:28",
+          "quotedAssertion": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:28-38 — 'expect(CONFORMANCE_FIXTURES.map((fixture) => fixture.name).sort()).toEqual([...].sort())' over exactly compound-command-smuggling, process-wrapper-smuggling, path-escape-relative, path-escape-absolute, deny-wins-same-level, deny-wins-cross-level, blanket-mcp-deny-footgun — the 'initial envelope-conformance set' is pinned, so a fixture cannot be quietly dropped to make the parity claim easier."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.ts:65",
+          "quotedAssertion": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.ts:65 — 'expected: { permissions: \"deny\", adjudication: \"allow\", sandbox: \"deny\" }' with baselineCitation \"docs/engine-baseline.md §3, probe 'permissions.compound-command-smuggling'\" (:62). The expectations are hand-written literals carrying their own derivation, not values read back from the evaluator."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/parity.test.ts:53",
+          "quotedAssertion": "packages/testkit/src/fake-engine/parity.test.ts:53-95 — the fake's verdict for compound-command smuggling, process-wrapper smuggling and both deny-wins shapes is checked against the COMMITTED phase-00 record, e.g. :55 'expect(probe.observed).toContain(\"compound denied=true\")' read from spikes/fixtures/03-permissions.verdicts.json at test time (:15, :39) rather than restated in the test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/parity.test.ts:106",
+          "quotedAssertion": "packages/testkit/src/fake-engine/parity.test.ts:100-106 — 'expect(evaluatePermissionLayer({allow:[\"Bash(cargo check:*)\"],\"deny\":[]}, {toolName:\"Bash\", toolInput:{command:\"cargo check --workspace\"}})).toBe(\"allow\")' against the baseline's recorded 'No-space form is the required syntax' verdict. ANTI-VACUITY: all seven conformance fixtures expect permissions=\"deny\", so a degenerate always-deny evaluator would satisfy that whole column; this is one of the places the evaluator is shown returning \"allow\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/permission-evaluator.test.ts:29",
+          "quotedAssertion": "packages/testkit/src/fake-engine/permission-evaluator.test.ts — six '.toBe(\"allow\")' cases (:29, :60, :98, :142, :166, :250) across Bash prefix, path, mcp and bare-tool-name rules. Second anti-vacuity control for the same reason."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:53",
+          "quotedAssertion": "packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts:48-53 — 'expect(evaluatePermissionLayer(permissionRules, fixture!.toolCall)).toBe(\"deny\");' with no sandbox or adjudication involved: the literal 'each layer independently assertable by disabling the others' mechanism work item 6 requires."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi6-conformance-passing.txt",
+          "quotedAssertion": "lines 29-35 — all seven fixtures green under the title 'envelope-conformance fixture set — exit criterion 4 > <name> reproduces its hand-derived expected per-layer verdict'. wi6-conformance-failing.txt is the RED half (fixture-schema validator against a fixture missing a required per-layer verdict field)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c4-conformance-parity.txt",
+          "quotedAssertion": "'Test Files 7 passed (7) / Tests 77 passed (77)' — scoped local re-run at the closeout commit covering fixtures, schema, parity and the three layer evaluators, each of the seven fixtures named individually in the verbose output."
+        }
+      ],
+      "notes": "What this box does and does not evidence. It evidences the FAKE's agreement with hand-derived expectations — which is exactly what the criterion says. It does not evidence the real engine's agreement with the fake; the phase's own final Risks bullet reserves that for 06's @live suite, and this pass ran no live test. Engine-fact check (README ground rule 5): docs/engine-baseline.md §14.4 (2026-08-01) supersedes §14.3 and records that a path-scoped rule is honored as an ALLOW rule and was not honored as a DENY rule. None of the seven fixtures depends on a path-scoped deny firing: the two path-escape fixtures deny because NO allow rule matches (default-deny under dontAsk, which §14.4 explicitly reaffirms as the mechanism that actually contains a worker), the deny-wins pair uses Bash command-prefix rules citing §3's live probes, and the blanket-mcp-deny fixture is a tool-name pattern outside §14.4's Write-tool path-rule scope. Two documented fidelity limits carried from the phase's own evidence README, so the tick is not read wider: the sandbox evaluator deliberately does not check filesystem.allowWrite (placeholder tokens only until 06/07 substitute real paths), which is why both path-escape fixtures record sandbox: 'allow'; and path-matching.ts's cross-anchor handling is hardened but not complete (documented as a known limitation that can only over-deny, never over-allow)."
+    },
+    {
+      "index": 5,
+      "text": "Demo test: spawn fake worker → attempt a smuggled command (`allowed-cmd && curl …`) → observe denial → receive a structured `WorkerResult`-shaped failure — runs green in CI with no `claude` binary installed.",
+      "textSha256": "6c989a244d6c0fdcb41db9eda7f2168b65e0a6b28ef5ccf24e5ccae921f2be8f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 909 — '  ✓  @crabgic/testkit  src/fake-engine/demo.test.ts (1 test) 23ms'. No step of ci.yml's test job installs a `claude` CLI — its steps are checkout, setup-node, `npm ci`, `npm run build`, a bubblewrap install, a bubblewrap confinement probe, `npm test`, and an ARM64 record step. See this entry's note for the one respect in which the runner is nevertheless not engine-free."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/demo.test.ts:41",
+          "quotedAssertion": "packages/testkit/src/fake-engine/demo.test.ts:41 — 'expect(events.some((event) => event.type === \"toolUse\")).toBe(false);' after spawning with the smuggled command 'npm run test && curl http://example.com' (:30-35): the observed denial."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/demo.test.ts:45",
+          "quotedAssertion": "packages/testkit/src/fake-engine/demo.test.ts:45-47 — 'expect(resultEvent?.permissionDenials).toEqual([{ toolName: \"Bash\", toolInput: { command: smuggledCommand } }]);' — the denial is attributed to the exact smuggled call, not merely to an empty event stream."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/demo.test.ts:52",
+          "quotedAssertion": "packages/testkit/src/fake-engine/demo.test.ts:52-54 — 'expect(() => WorkerResultSchema.parse(workerResult)).not.toThrow(); expect(workerResult.outcome).toBe(\"failed\"); expect(workerResult.diagnostics[0]).toContain(\"curl\");' — the structured WorkerResult-shaped failure, validated against 02's own schema."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/demo.test.ts:35",
+          "quotedAssertion": "packages/testkit/src/fake-engine/demo.test.ts:35 — 'adapter.spawn(buildTaskPacket(), profile, alwaysAllowAdjudicate)'. ANTI-VACUITY: the adjudication callback always allows, so the denial can only have come from the compiled permission profile — the layer the criterion is about."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:49",
+          "quotedAssertion": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:49 — 'expect(events.map((e) => e.type)).toEqual([\"init\", \"toolUse\", \"result\"]);' for an ALLOWED scripted call, with :53-54 asserting the toolUse event's own toolName/toolResult (8 tests, CI job-log line 897). Without this, an adapter that never emitted toolUse at all would satisfy demo.test.ts:41 vacuously."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c5-demo-no-engine.txt",
+          "quotedAssertion": "the 'no claude binary installed' clause, demonstrated directly: PATH scrubbed to node+coreutils so 'command -v claude' returns 'rc=127', AND node_modules/@anthropic-ai moved aside for the duration so the SDK's bundled engine binary is absent too ('ls node_modules/@anthropic-ai' → 'No such file or directory'); the demo then runs green — 'Test Files 1 passed (1) / Tests 1 passed (1)', exit code 0. The scope is restored and re-listed in the same transcript. Appended static basis: 'grep -rn \"child_process\" packages/testkit/src/fake-engine/ packages/engine-core/src/' → rc=1, and no @anthropic-ai dependency in the demo's package closure."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi5-fake-engine-passing.txt",
+          "quotedAssertion": "line 118 — ' ✓ |@eo/testkit| src/fake-engine/demo.test.ts > exit criterion 5 — smuggled-command demo > spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure 4ms'; ' Test Files  14 passed (14)' / '      Tests  111 passed (111)'. wi5-fake-engine-failing.txt is the RED half."
+        }
+      ],
+      "notes": "Honest reading of 'with no `claude` binary installed'. The CI run proves the demo is green in CI; it does NOT by itself prove the runner is engine-free, because `npm ci` installs @anthropic-ai/claude-agent-sdk-linux-x64 (06's dependency), which ships a `claude` binary under node_modules. Rather than reinterpret the clause, this pass removed both engine sources locally — the CLI on PATH and the SDK's bundled binary — and re-ran the demo green; the transcript records the removal, the run and the restoration. Combined with the static facts (no child_process reference anywhere in the fake engine or the compiler, no @anthropic-ai dependency in @crabgic/testkit, @crabgic/engine-core or @crabgic/contracts), the clause is discharged as written rather than softened."
+    },
+    {
+      "index": 6,
+      "text": "Mutation suite: each seeded broken-compiler variant (blanket `mcp__*` deny; missing control-repo `denyRead`; space-before-colon `Bash` literal) is caught by a failing test, recorded in the mutation-test report.",
+      "textSha256": "4a9e83f425f1a2d5efda80b0a1cb6833928a6089d10185ff702626c4d1915e0b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job log line 524 — '  ✓  @crabgic/engine-core  src/footguns/mutation.test.ts (17 tests) 15ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/mutation.test.ts:171",
+          "quotedAssertion": "packages/engine-core/src/footguns/mutation.test.ts:170-174 — seed 1, blanket mcp__* deny: 'expect(() => assertNoBlanketMcpDeny(withBlanketMcpDenyBug(baseline))).toThrow(BlanketMcpDenyViolationError);', where `baseline` is the REAL compileEnvelope's own output (:163)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/mutation.test.ts:184",
+          "quotedAssertion": "packages/engine-core/src/footguns/mutation.test.ts:182-186 — seed 2, dropped mandatory denyRead: 'expect(() => assertMandatoryDenyReadPathsPresent(withDroppedMandatoryDenyReadPathsBug(baseline))).toThrow(MissingMandatoryDenyReadPathError);'. The invariant walks MANDATORY_SANDBOX_DENY_READ_PATHS against profile.sandbox.filesystem.denyRead (packages/engine-core/src/footguns/invariants.ts:53-58) and the report records the first missing entry as CONTROL_REPO_STATE_ROOT_DENY_PATH — the criterion's 'control-repo denyRead'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/mutation.test.ts:196",
+          "quotedAssertion": "packages/engine-core/src/footguns/mutation.test.ts:194-198 — seed 3, space-before-colon Bash literal (interface-ledger Gap 12): 'expect(() => assertNoSpaceBeforeColonBashLiteral(withSpaceBeforeColonBashLiteralBug(baseline))).toThrow(SpaceBeforeColonBashLiteralError);', the seeded variant rewriting 'Bash(git status:*)' to 'Bash(git status :*)' (:66-68)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/mutation.test.ts:167",
+          "quotedAssertion": "packages/engine-core/src/footguns/mutation.test.ts:166-168, :178-180, :190-192 — the three negative controls: each invariant 'does not throw' against the unmutated real compiler output. Without them an always-throwing assertion would satisfy every seed."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/wi4-mutation-report.txt",
+          "quotedAssertion": "the mutation-test report the criterion names. 'Seed 1 — blanket `mcp__*` deny … Result: CAUGHT.'; 'Seed 2 — dropped mandatory denyRead paths (control-repo state+cache root, ~/.ssh, ~/.aws) … Result: CAUGHT.'; 'Seed 3 — space-before-colon Bash literal (interface-ledger Gap 12) … Result: CAUGHT.' Each entry records the variant function, the assertion under test, the expected typed error, and both halves (negative control PASS + seeded variant CAUGHT)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-03/closeout-c6-mutation-suite.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 17 passed (17)' — scoped local re-run at the closeout commit, listing all eight seeds by name."
+        }
+      ],
+      "notes": "Two caveats recorded rather than papered over. (1) REPORT STALENESS: wi4-mutation-report.txt was last regenerated 2026-07-18 and describes 5 seeds / 12 tests; the suite at HEAD has 8 seeds / 17 tests (seeds 6-8 were added by the phase-06 sandbox-containment round). All three seeds this criterion names are recorded in the report, so the criterion is discharged, but the report is no longer a complete description of the suite — bookkeeping only, flagged to the closeout integrator, and deliberately not fixed in this pass (no verify-your-own-fix). (2) SCOPE vs the engine: seed 2 mutates the SANDBOX denyRead list, the mechanism docs/engine-baseline.md §14.2 shows binding for shell-issued writes; it is distinct from the permission-layer path denies §14.4 (2026-08-01) finds inert on the pinned engine. This box evidences that the compiler still emits these entries and that dropping them is caught — not that the engine enforces the permission-layer ones."
+    }
+  ]
+}
