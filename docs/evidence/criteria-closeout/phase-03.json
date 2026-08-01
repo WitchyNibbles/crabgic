@@ -259,8 +259,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:48",
-          "quotedAssertion": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:48 — 'expect(events.map((e) => e.type)).toEqual([\"init\", \"toolUse\", \"result\"]);' for an ALLOWED scripted call, with :52-53 asserting the toolUse event's own toolName/toolResult (8 tests, CI job-log line 897). Without this, an adapter that never emitted toolUse at all would satisfy demo.test.ts:41 vacuously."
+          "ref": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:49",
+          "quotedAssertion": "packages/testkit/src/fake-engine/fake-engine-adapter.test.ts:49 — 'expect(events.map((e) => e.type)).toEqual([\"init\", \"toolUse\", \"result\"]);' for an ALLOWED scripted call, with :53-54 asserting the toolUse event's own toolName/toolResult (8 tests, CI job-log line 897). Without this, an adapter that never emitted toolUse at all would satisfy demo.test.ts:41 vacuously."
         },
         {
           "kind": "artifact",
@@ -273,7 +273,7 @@
           "quotedAssertion": "line 118 — ' ✓ |@eo/testkit| src/fake-engine/demo.test.ts > exit criterion 5 — smuggled-command demo > spawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure 4ms'; ' Test Files  14 passed (14)' / '      Tests  111 passed (111)'. wi5-fake-engine-failing.txt is the RED half."
         }
       ],
-      "notes": "Honest reading of 'with no `claude` binary installed'. The CI run proves the demo is green in CI; it does NOT by itself prove the runner is engine-free, because `npm ci` installs @anthropic-ai/claude-agent-sdk-linux-x64 (06's dependency), which ships a `claude` binary under node_modules. Rather than reinterpret the clause, this pass removed both engine sources locally — the CLI on PATH and the SDK's bundled binary — and re-ran the demo green; the transcript records the removal, the run and the restoration. Combined with the static facts (no child_process reference anywhere in the fake engine or the compiler, no @anthropic-ai dependency in @crabgic/testkit, @crabgic/engine-core or @crabgic/contracts), the clause is discharged as written rather than softened."
+      "notes": "Honest reading of 'with no `claude` binary installed'. The CI run proves the demo is green in CI; it does NOT by itself prove the runner is engine-free, because `npm ci` installs @anthropic-ai/claude-agent-sdk-linux-x64 (06's dependency), which ships a `claude` binary under node_modules. Rather than reinterpret the clause, this pass removed both engine sources locally — the CLI on PATH and the SDK's bundled binary — and re-ran the demo green; the transcript records the removal, the run and the restoration. Combined with the static facts (no child_process reference anywhere in the fake engine or the compiler, no @anthropic-ai dependency in @crabgic/testkit, @crabgic/engine-core or @crabgic/contracts), the clause is discharged as written rather than softened. CITATION CORRECTED 2026-08-02 (follow-up to #56): the anti-vacuity citation read fake-engine-adapter.test.ts:48, which is the blank line above the assertion; the assertion is at :49 and the toolName/toolResult follow-ups at :53-54. Found by re-resolving every file:line against the tree after main moved — the closeout validator cannot catch this class, because the file still exists. Nothing else in this record changes; pass.headSha stays at the commit the pass was executed against."
     },
     {
       "index": 6,
