@@ -104,7 +104,17 @@ export interface AmendEnvelopeOptions {
 export interface AmendEnvelopeResult {
   readonly envelope: ReturnType<typeof buildAuthorizationEnvelope>;
   readonly changeSet: ChangeSet;
-  /** Whether the new content actually differs from what the caller last knew (informational — this module always builds and swaps in the new envelope id regardless; a non-material "amendment" with identical content is still schema-valid, just hash-identical). */
+  /**
+   * Whether the new content actually differs from the envelope this ChangeSet
+   * currently points at. Informational: this module builds and swaps in the new
+   * envelope id either way, and the DEMOTION below is deliberately
+   * unconditional — an amendment against an approved-looking state demotes
+   * whether or not the content moved, because that is the fail-closed choice
+   * and narrowing it is a security decision, not a reporting fix.
+   *
+   * `true` when the previous envelope cannot be resolved: "cannot tell" must
+   * never be reported as "nothing changed".
+   */
   readonly materialChange: boolean;
 }
 
@@ -132,6 +142,18 @@ export async function amendEnvelope(options: AmendEnvelopeOptions): Promise<Amen
     createdAt: options.createdAt,
     content: options.content,
   });
+
+  // Answered BEFORE the new envelope replaces the old reference, which is the
+  // only moment the previous hash is still reachable. This used to be the
+  // literal `true`, so the one question the field exists to answer — did the
+  // content actually move? — was answered "yes" for a caller re-submitting
+  // byte-identical content, with `isMaterialEnvelopeChange` exported right
+  // below and never consulted. An unresolvable previous envelope reports
+  // `true`: "cannot tell" must never render as "nothing changed".
+  const previous = options.envelopes.get(current.authorizationEnvelopeId);
+  const materialChange =
+    previous === undefined || isMaterialEnvelopeChange(previous.canonicalHash, options.content);
+
   options.envelopes.put(envelope);
 
   await options.journal.appendEntry({
@@ -170,7 +192,7 @@ export async function amendEnvelope(options: AmendEnvelopeOptions): Promise<Amen
   return {
     envelope,
     changeSet: finalChangeSet,
-    materialChange: true,
+    materialChange,
   };
 }
 
