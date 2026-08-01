@@ -1,0 +1,66 @@
+captured (UTC): 2026-08-01T22:17:11Z
+HEAD:           af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+cwd:            <repo root> (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run packages/git-engine/src/renderer-corpus-shared.test.ts packages/git-engine/src/branch-namer.property.test.ts packages/git-engine/src/branch-namer.test.ts packages/git-engine/src/commit-renderer.test.ts --coverage.enabled=false --reporter=verbose
+exit status:    0
+----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p08
+
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles type(scope): outcome 2ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > omits the scope parens when scope is absent 0ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles a 4-line Why/Risk/Compat/Verification body 1ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > renders a clean subject+body through 17's renderWithRegeneration() 8ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks on an over-long subject (never reaches the body render at all) 2ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body carries an attribution leak, even though the subject alone is clean 1ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body exceeds the 5-line limit 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > this suite actually found fixtures for at least one of 08's kinds (sanity guard against an empty/broken path) 4ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > the seeded attribution-leak fixture is present and scoped to commit_body — the exact fixture this phase's own belt-and-suspenders assertion reuses 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-attribution-leak (commit_body): Generated-with/Co-Authored-By attribution trailer leaked into a commit body (shared with 08's belt-and-suspenders assertion). 18ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-bidi-override (commit_body): Trojan Source bidi-override (CVE-2021-42574) smuggled into a commit body. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-confusable-domain (review_comment): Cyrillic а (U+0430) homograph inside an otherwise-Latin domain, in a link. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-confusable-greek-alpha (review_comment): Greek lowercase alpha (U+03B1) homograph in a domain-in-link fixture — M4 adversarial-review fixture. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-engine-name-leak (pr_body): Engine-name credit line leaked into a PR body (adaptation §9 Neutrality test-matrix item). 2ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-html-injection (pr_body): Raw <script> HTML tag injected into a PR body. 5ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-html-injection-slash-attribute (pr_body): Slash-delimited-attribute XSS tag with no whitespace before attrs (<svg/onload=...>) in a PR body — M1 adversarial-review fixture. 2ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-line-paragraph-separator (review_comment): LINE SEPARATOR (U+2028) smuggled into a review comment to bypass newline-based line counting — L3 adversarial-review fixture. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-lrm-rlm-direction-marks (commit_body): LEFT-TO-RIGHT MARK (U+200E) smuggled into a commit body — L3 adversarial-review fixture. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-over-length (review_comment): Over-length payload exceeding the review comment's 6-line CommunicationPolicy limit. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-remote-image (pr_body): Embedded remote image in a PR body. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-script-url (review_comment): javascript: URL injected into a review comment. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-anthropic-key (review_comment): Hyphenated Anthropic-style API key (sk-ant-*) leaked in a review comment — C1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-aws-key (review_comment): AWS-style access key leaked in a review comment. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-connection-string (pr_body): Database connection string with embedded credentials leaked in a PR body. 5ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-github-fine-grained-pat (commit_body): Modern GitHub fine-grained personal access token (github_pat_*) leaked in a commit body — H2 adversarial-review fixture. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-openai-project-key (pr_body): Hyphenated OpenAI-style project API key (sk-proj-*) leaked in a PR body — C1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-pem-key (commit_body): PEM private-key header leaked in a commit body. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-raw-jwt (review_comment): Raw JWT with no Bearer prefix leaked in a review comment — H2 adversarial-review fixture. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-unevidenced-claim (review_comment): Unevidenced completion claim ('fixed') with no evidence reference anywhere in the text. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-unevidenced-claim-standard-token (review_comment): Unevidenced completion claim next to a standard/hash token (SHA-256) that must not count as a ticket-key evidence reference — M3 adversarial-review fixture. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-branch-name (branch_name): A clean branch name within the 64-char limit. 5ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-commit-body (commit_body): A clean, short commit body within the 5-line limit. 0ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-commit-subject (commit_subject): A clean conventional-commit subject. 5ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-pr-body (pr_body): A clean, fully-shaped PR body. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-pr-title (pr_title): A clean PR title matching the commit-subject convention. 1ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-review-comment (review_comment): A clean, fully-shaped review comment with evidence. 1ms
+ ✓ |@crabgic/git-engine| src/branch-namer.property.test.ts > buildBranchNameCandidate — property suite > output is always ≤64 chars and always git-ref-legal 122ms
+ ✓ |@crabgic/git-engine| src/branch-namer.property.test.ts > buildBranchNameCandidate — property suite > a monotonically growing existingBranchNames set always produces a longer, still-legal, always-distinct suffix chain 75ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > slugify > lowercases, hyphenates, and collapses non-alphanumeric runs 10ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > slugify > falls back to a non-empty slug for all-non-alphanumeric input 0ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > builds <type>/<slug> for a clean input 1ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > embeds a validated JIRA key as <type>/<JIRA-KEY>-<slug> 0ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > ignores a malformed JIRA key rather than embedding garbage 0ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > never exceeds 64 chars even for a very long slug source 0ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > appends a monotonically increasing collision suffix 4ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > keeps a suffixed collision candidate within 64 chars even for a maximally long slug 2ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > trims the slug further once even a long numeric collision suffix (-1000) would overflow 64 chars 288ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > rejects a type outside the closed 9-member set 1ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > buildBranchNameCandidate > accepts every one of the 9 closed branch types 1ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > nameBranch > renders a clean candidate through 17's renderWithRegeneration() 6ms
+ ✓ |@crabgic/git-engine| src/branch-namer.test.ts > nameBranch > blocks a slug carrying an attribution token, even though it is charset/length-legal 2ms
+
+ Test Files  4 passed (4)
+      Tests  51 passed (51)
+   Start at  00:17:13
+   Duration  2.52s (transform 4.36s, setup 0ms, import 7.70s, tests 608ms, environment 1ms)
+

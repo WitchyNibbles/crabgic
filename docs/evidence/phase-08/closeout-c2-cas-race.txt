@@ -1,0 +1,35 @@
+captured (UTC): 2026-08-01T22:16:33Z
+HEAD:           af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+cwd:            <repo root> (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run packages/git-engine/src/cas-ref-update.test.ts packages/git-engine/src/integration-journal.test.ts packages/git-engine/src/integration-journal-entry-type-compliance.test.ts --coverage.enabled=false --reporter=verbose
+exit status:    0
+----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p08
+
+ ✓ |@crabgic/git-engine| src/integration-journal.test.ts > buildCasRefUpdateEntryInput > omits correlation fields entirely when none are supplied 3ms
+ ✓ |@crabgic/git-engine| src/integration-journal.test.ts > buildCasRefUpdateEntryInput > includes only the correlation fields actually supplied 0ms
+ ✓ |@crabgic/git-engine| src/integration-journal.test.ts > buildCasRefUpdateEntryInput > includes every correlation field when all are supplied 0ms
+ ✓ |@crabgic/git-engine| src/integration-journal.test.ts > buildEvidencePointerEntryInput > wraps an EvidenceRecord as the entry payload with the changeSetId at the envelope level 1ms
+ ✓ |@crabgic/git-engine| src/integration-journal-entry-type-compliance.test.ts > this phase's own journal-entry-type surface (exit criterion) > both members it writes are real, closed members of @crabgic/contracts' 13-member JournalEntryType 3ms
+ ✓ |@crabgic/git-engine| src/integration-journal-entry-type-compliance.test.ts > this phase's own journal-entry-type surface (exit criterion) > writes exactly two members — never a 3rd, undeclared journal-entry type 1ms
+ ✓ |@crabgic/git-engine| src/integration-journal-entry-type-compliance.test.ts > this phase's own journal-entry-type surface (exit criterion) > is disjoint from 07's own two members (git_freeze/worktree_quarantine) 1ms
+ ✓ |@crabgic/git-engine| src/integration-journal-entry-type-compliance.test.ts > this phase's own journal-entry-type surface (exit criterion) > a constructed cas_ref_update entry round-trips through @crabgic/journal's own JournalEntrySchema 3ms
+ ✓ |@crabgic/git-engine| src/integration-journal-entry-type-compliance.test.ts > this phase's own journal-entry-type surface (exit criterion) > a constructed evidence_pointer entry round-trips through @crabgic/journal's own JournalEntrySchema 2ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > creates a fresh ref when expectedOldValue is the zero sentinel 114ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > threads runId/changeSetId/workUnitId correlation through to the journaled entry when all three are supplied 103ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > resolves to the zero-OID sentinel (never throws) when the ref never existed at all and a lost race is reported 113ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > advances a ref whose current value matches expectedOldValue, journaling exactly one attempt 106ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > never overwrites on a lost race and blocks (no rebuild supplied), leaving the ref exactly at the winner's value 150ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > converges via the rebuild loop when the loser recomputes against the winner's new tip 139ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > blocks when the rebuild callback itself reports blocked 132ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > terminates (never loops forever) when a competitor keeps racing ahead — bounded by maxAttempts 244ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > proves the invariance-harness extension: the working tree is byte-identical before/after 121ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > rejects a flag-shaped ref before ever spawning git 97ms
+ ✓ |@crabgic/git-engine| src/cas-ref-update.test.ts > applyCasUpdate > rejects a non-hex newValue before ever spawning git 91ms
+
+ Test Files  3 passed (3)
+      Tests  20 passed (20)
+   Start at  00:16:34
+   Duration  2.97s (transform 2.15s, setup 0ms, import 3.17s, tests 1.43s, environment 0ms)
+

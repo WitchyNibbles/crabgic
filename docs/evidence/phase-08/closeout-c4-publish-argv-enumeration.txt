@@ -1,0 +1,80 @@
+captured (UTC): 2026-08-01T22:18:17Z
+HEAD:           af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+cwd:            <repo root> (git worktree of WitchyNibbles/crabgic)
+command:        node ./p08-publish-argv-probe.mjs
+exit status:    0
+----------------------------------------------------------------------
+WHAT THIS IS: a one-shot closeout PROBE, not a repository test. It is not
+committed as source; its full text is reproduced verbatim below so the run
+can be repeated. It supplements — never replaces — publish-local.test.ts's
+own in-repo "zero remote interaction" assertion, by enumerating the COMPLETE
+set of git invocations publishLocal issues, rather than only asserting the
+absence of one subcommand.
+----------------------------------------------------------------------
+SCRIPT (placed at <repo root>/p08-publish-argv-probe.mjs for the run, then removed):
+----------------------------------------------------------------------
+// Closeout probe for roadmap/08 exit criterion 4's "zero remote interaction"
+// clause. Enumerates EVERY git argv publishLocal issues at runtime, via the
+// same GitSpawnFn seam packages/git-engine/src/publish-local.test.ts's
+// createCapturingSpawn uses. Not a repository test: a one-shot probe whose
+// verbatim output is committed as closeout evidence.
+import { createGitPlumbing, createNodeGitSpawn, publishLocal } from "@crabgic/git-engine";
+import { buildBasicFixtureRepo, commitAll, fixtureGit, writeFixtureFile, removeDirTree }
+  from "./packages/git-engine/dist/test-support/fixture-repo.js";
+
+const real = createNodeGitSpawn();
+const calls = [];
+const plumbing = createGitPlumbing({
+  spawnFn: async (r) => { calls.push(r); return real(r); },
+});
+
+const { dir: userRepoPath } = buildBasicFixtureRepo();
+const { dir: controlRepoPath } = buildBasicFixtureRepo();
+fixtureGit(controlRepoPath, ["checkout", "-q", "-b", "integration/target"]);
+writeFixtureFile(controlRepoPath, "integrated.txt", "integrated content\n");
+commitAll(controlRepoPath, "integration result");
+
+console.log("user repo remotes before:", JSON.stringify(fixtureGit(userRepoPath, ["remote"])));
+
+const result = await publishLocal(plumbing, {
+  userRepoPath, controlRepoPath,
+  sourceRef: "integration/target",
+  branchName: "feat/argv-probe",
+});
+console.log("publishLocal result:", JSON.stringify(result));
+console.log("user repo remotes after: ", JSON.stringify(fixtureGit(userRepoPath, ["remote"])));
+console.log("");
+console.log("COMPLETE set of git invocations publishLocal made (" + calls.length + "):");
+for (const [i, c] of calls.entries()) {
+  const where = c.cwd === userRepoPath ? "<user-repo>" : c.cwd === controlRepoPath ? "<control-repo>" : c.cwd;
+  const argv = c.args.map((a) =>
+    a === controlRepoPath ? "<control-repo-path>" : a);
+  console.log(`  ${i + 1}. cwd=${where}  git ${JSON.stringify(argv)}`);
+}
+const NETWORK = ["push", "ls-remote", "remote", "send-pack", "receive-pack", "clone", "pull", "request-pull"];
+const offenders = calls.filter((c) => c.args.some((a) => NETWORK.includes(a)));
+console.log("");
+console.log("argv elements matching any of " + JSON.stringify(NETWORK) + ": " + offenders.length);
+const fetchCalls = calls.filter((c) => c.args[0] === "fetch");
+for (const f of fetchCalls) {
+  const src = f.args[2];
+  console.log(`fetch source argument: ${JSON.stringify(src === controlRepoPath ? "<control-repo-path>" : src)}` +
+    `  -> is an existing local directory: ${(await import("node:fs")).existsSync(src)}`);
+}
+removeDirTree(userRepoPath); removeDirTree(controlRepoPath);
+----------------------------------------------------------------------
+OUTPUT:
+----------------------------------------------------------------------
+user repo remotes before: ""
+publishLocal result: {"status":"published","branchName":"feat/argv-probe","objectId":"927b1942ff75726a3300947b74402bf80ba228eb"}
+user repo remotes after:  ""
+
+COMPLETE set of git invocations publishLocal made (5):
+  1. cwd=<user-repo>  git ["for-each-ref","--format=%(objectname)"]
+  2. cwd=<user-repo>  git ["fetch","--end-of-options","<control-repo-path>","integration/target:refs/heads/feat/argv-probe"]
+  3. cwd=<user-repo>  git ["rev-parse","--verify","--end-of-options","refs/heads/feat/argv-probe"]
+  4. cwd=<user-repo>  git ["rev-list","927b1942ff75726a3300947b74402bf80ba228eb","--not","--end-of-options","263d2c0269f456875c74b6e35b1548e3b5407587"]
+  5. cwd=<user-repo>  git ["log","-1","--format=%B","--end-of-options","927b1942ff75726a3300947b74402bf80ba228eb"]
+
+argv elements matching any of ["push","ls-remote","remote","send-pack","receive-pack","clone","pull","request-pull"]: 0
+fetch source argument: "<control-repo-path>"  -> is an existing local directory: true

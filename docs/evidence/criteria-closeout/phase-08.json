@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "phase": "08",
+  "roadmapFile": "roadmap/08-integration-publication.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 2 (phase 08)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Conflict fixtures yield resolution `WorkUnit`s; clean fixtures integrate to a `treeId`.",
+      "textSha256": "c5fd77004debd229c41e78f40bfbbe589f6c877a6e64511c8cf2b0d4f1bde819",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 644 — '  ✓  @crabgic/git-engine  src/merge-preflight.test.ts (9 tests) 720ms'. Ancestor-run citation per the emptiness rule: `git diff --stat d11b0594 af46e007 -- packages/` is EMPTY (the two intervening commits 97ef18c and af46e00 are roadmap/docs-only closeout commits), so this run executed byte-identical package sources to the closeout base."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/merge-preflight.test.ts:82",
+          "quotedAssertion": "packages/git-engine/src/merge-preflight.test.ts:82-84 — 'expect(result.ok).toBe(true); if (result.ok) { expect(result.treeId).toMatch(/^[0-9a-f]{40,64}$/); }' on `buildCleanDivergingFixture()` (a real on-disk repo whose candidate branch edits a DIFFERENT file than the tip) — the \"clean fixtures integrate to a treeId\" clause, against real `git merge-tree --write-tree`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/merge-preflight.test.ts:100",
+          "quotedAssertion": "packages/git-engine/src/merge-preflight.test.ts:100-108 — 'expect(result.ok).toBe(false); … expect(result.conflicts).toHaveLength(1); expect(unit.ownedPaths).toEqual([\"src/a.txt\"]); expect(unit.attemptStatus).toBe(\"pending\"); expect(unit.role).toBe(\"merge-conflict-resolution\");' on `buildConflictingFixture()` (both sides edit the SAME line of `src/a.txt`) — the \"conflict fixtures yield resolution WorkUnits\" clause, explicitly \"never a silent auto-merge\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/merge-preflight.ts:157",
+          "quotedAssertion": "packages/git-engine/src/merge-preflight.ts:156-157 — 'function buildResolutionWorkUnit(changeSetId, path, role): WorkUnit { return WorkUnitSchema.parse({' — every conflict object is constructed THROUGH 02's own `WorkUnitSchema`, so the criterion's `WorkUnit` is 02's schema instance and not a look-alike shape the test happens to spot-check."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/merge-preflight.test.ts:222",
+          "quotedAssertion": "packages/git-engine/src/merge-preflight.test.ts:222-226 — 'expect(preflightB.ok).toBe(false); … expect(preflightB.conflicts[0]!.ownedPaths).toEqual([\"src/a.txt\"]);' after WU-A's tree is really integrated via `git commit-tree` (:198-207), advancing the tip. The paired control at :250-256 preflights the SAME WU-B against the STALE frozen base and asserts 'expect(result.ok).toBe(true)' — the recorded 2026-07-24 HIGH finding, kept in-tree as a permanent demonstration that a wrong second argument makes conflict detection vacuous."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/merge-preflight.test.ts:153",
+          "quotedAssertion": "packages/git-engine/src/merge-preflight.test.ts:153-163 — an unknown `candidateRef` 'rejects.toBeInstanceOf(GitCommandError)'. The disambiguation control: without it, an implementation that reported every git failure as a conflict would satisfy the conflict half of this criterion for the wrong reason."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c1-merge-preflight.txt",
+          "quotedAssertion": "'Test Files  1 passed (1) / Tests  9 passed (9)', exit status 0 — scoped local re-run at the closeout base `af46e00`, verbose reporter, every test named individually. Command and UTC timestamp in the file header."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/README.md",
+          "quotedAssertion": "§Exit-criteria → evidence map, row 1 — names exactly `merge-preflight.test.ts`'s two clause tests. Every path and test name this row cites resolves at HEAD (verified with `git ls-files` plus a name-by-name read); see the pass note on this README's per-file test COUNTS, which do not."
+        }
+      ],
+      "notes": "Scope, so the tick is not read wider than it is. (a) The conflicting fixture has ONE conflicting path, so the criterion's plural \"WorkUnit`s`\" is evidenced at n=1; the one-unit-per-conflicting-path granularity is this phase's own documented design choice (docs/evidence/phase-08/README.md §Design decisions), and no fixture with two or more simultaneously conflicting paths exists. (b) `preflightMerge`'s working-tree invariance is asserted in the same clean-fixture test (:73/:86-87, `computeWorkingTreeHash` before/after)."
+    },
+    {
+      "index": 2,
+      "text": "Racing integrators: CAS never overwrites; rebuild converges or blocks with a journaled `cas_ref_update` entry.",
+      "textSha256": "0e7a261ba26cd94828cef9dbee69c00ffce64c6337ec7e64941c37a8f32aa016",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 648 — '  ✓  @crabgic/git-engine  src/cas-ref-update.test.ts (11 tests) 631ms'; line 666 — '  ✓  @crabgic/git-engine  src/integration-journal-entry-type-compliance.test.ts (5 tests) 9ms'; line 675 — '  ✓  @crabgic/git-engine  src/integration-journal.test.ts (4 tests) 6ms'. Same emptiness proof as criterion 1."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/cas-ref-update.test.ts:173",
+          "quotedAssertion": "packages/git-engine/src/cas-ref-update.test.ts:173-179 — 'expect(loser.status).toBe(\"blocked\"); expect(fixtureGit(dir, [\"rev-parse\", \"refs/heads/target\"]).trim()).toBe(second); expect(journal.entries).toHaveLength(1); expect(journal.entries[0]).toMatchObject({ type: \"cas_ref_update\", payload: { ref: \"refs/heads/target\", objectId: third } });' — all three clauses of the criterion's blocked branch in one assertion block: never overwrites (the ref is still the WINNER's value, read back out of real git), blocks, and journals a `cas_ref_update` entry for the LOST attempt."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/cas-ref-update.test.ts:204",
+          "quotedAssertion": "packages/git-engine/src/cas-ref-update.test.ts:204-210 — 'expect(result).toEqual({ status: \"applied\", ref: \"refs/heads/target\", objectId: third, attempts: 2 }); expect(rebuildCalls).toEqual([second]);' — the \"rebuild converges\" branch, with the rebuild callback proven to have been handed the WINNER's new tip (`second`), not the caller's stale expectation."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/cas-ref-update.test.ts:266",
+          "quotedAssertion": "packages/git-engine/src/cas-ref-update.test.ts:266-268 — 'expect(result.status).toBe(\"blocked\"); expect(result.attempts).toBe(3); expect(rebuildCallCount).toBe(2);' against a rebuild callback that itself races the real ref further ahead on every call (:245-253) — the roadmap's own \"rebuild-and-reverify loop must terminate\" risk, bounded by `maxAttempts`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/cas-ref-update.test.ts:134",
+          "quotedAssertion": "packages/git-engine/src/cas-ref-update.test.ts:134-145 — the positive control: an UNCONTESTED update yields 'status: \"applied\" … attempts: 1' and 'expect(journal.entries).toHaveLength(1)'. Without it, an implementation that blocked every update would satisfy the never-overwrites clause vacuously."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:56",
+          "quotedAssertion": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:43-57 — 'expect(() => JournalEntrySchema.parse(candidate)).not.toThrow();' for a constructed `cas_ref_update` entry, plus :28-32 'expect(JOURNAL_ENTRY_TYPES).toContain(type)' over both members this package writes. This is what makes \"journaled\" mean an entry the real `@crabgic/journal` codec accepts, given that the CAS suite itself appends through a capturing fake (see notes)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c2-cas-race.txt",
+          "quotedAssertion": "'Test Files  3 passed (3) / Tests  20 passed (20)', exit status 0 — scoped local re-run of `cas-ref-update.test.ts` + `integration-journal.test.ts` + `integration-journal-entry-type-compliance.test.ts` at the closeout base, verbose reporter."
+        }
+      ],
+      "notes": "Two scope facts recorded so the tick is precise. (1) The \"race\" is deterministic, not concurrent: integrator B is invoked SEQUENTIALLY with the stale `expectedOldValue` A already consumed (:153-171), which is the exact state a lost race produces — no two OS processes contend for the ref. The one test that does mutate the ref from underneath a live call is the termination test (:243-255). (2) The CAS suite's journal is `createCapturingJournal()` (:26-37), a fake typed as `IntegrationJournalAppender` = `Pick<JournalStore, \"appendEntry\">`; the append INPUT shape is asserted there, and the resulting entry's acceptance by the real journal codec is asserted separately in `integration-journal-entry-type-compliance.test.ts`. No test in this package writes a `cas_ref_update` end-to-end into an on-disk `createJournalStore` — criterion 6's suite does exactly that for `evidence_pointer`, but the CAS path does not have that end-to-end form. ISOLATION CAVEAT (dated): `applyCasUpdate`'s `update-ref` was steerable by an inherited ambient `GIT_DIR` until 2ff3bce (2026-08-01), which made `createNodeGitSpawn` scrub `GIT_LOCATION_ENV_VARS` instead of spreading `process.env` whole (packages/git-engine/src/plumbing.ts:76-79 with git-arg-guard.ts:74-137). Containment is evidenced as of that commit and this closeout base, not retroactively."
+    },
+    {
+      "index": 3,
+      "text": "Golden/property rendering tests pass incl. Unicode/length edges, asserted against 17's shared corpus rather than a forked copy.",
+      "textSha256": "6660732361ca322cde57fc1d653173d283d504ccc6345603b5f0dfe333cdab32",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 664 — '  ✓  @crabgic/git-engine  src/renderer-corpus-shared.test.ts (29 tests) 16ms'; line 673 — '  ✓  @crabgic/git-engine  src/branch-namer.property.test.ts (2 tests) 131ms'; line 660 — '  ✓  @crabgic/git-engine  src/branch-namer.test.ts (13 tests) 235ms'; line 665 — '  ✓  @crabgic/git-engine  src/commit-renderer.test.ts (7 tests) 16ms'. Same emptiness proof as criterion 1."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:28",
+          "quotedAssertion": "packages/git-engine/src/renderer-corpus-shared.test.ts:28-35 — 'const CORPUS_DIR = join(dirname(fileURLToPath(import.meta.url)), \"..\", \"..\", \"renderer\", \"fixtures\", \"corpus\");' and :55-61 `loadFixtures()` reading every `*.json` there at runtime. This is the \"rather than a forked copy\" clause, structurally: the fixtures are read out of `packages/renderer/fixtures/corpus/` — 17's own directory, the same one `packages/renderer/src/corpus.test.ts` reads — with zero embedded content in this package."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:82",
+          "quotedAssertion": "packages/git-engine/src/renderer-corpus-shared.test.ts:82-93 — 'const outcome = lint(fixture.candidate, fixture.kind, DEFAULT_COMMUNICATION_POLICY); if (fixture.expect === \"ok\") { expect(outcome).toEqual({ ok: true }); } else { expect(outcome.ok).toBe(false); … for (const expectedStage of fixture.expectedStages) expect(stages.has(expectedStage)).toBe(true); }' — a per-fixture `it()` for each of the 27 corpus fixtures whose `kind` is one of this phase's six."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c3-rendering-corpus.txt",
+          "quotedAssertion": "The verbose transcript enumerates the Unicode edges by name — 'attack-bidi-override (commit_body): Trojan Source bidi-override (CVE-2021-42574)', 'attack-lrm-rlm-direction-marks (commit_body): LEFT-TO-RIGHT MARK (U+200E)', 'attack-line-paragraph-separator (review_comment): LINE SEPARATOR (U+2028)', 'attack-confusable-domain (review_comment): Cyrillic а (U+0430) homograph', 'attack-confusable-greek-alpha (review_comment): Greek lowercase alpha (U+03B1)' — and the length edge, 'attack-over-length (review_comment): Over-length payload exceeding the review comment's 6-line CommunicationPolicy limit'. 'Test Files  4 passed (4) / Tests  51 passed (51)', exit status 0."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/branch-namer.property.test.ts:30",
+          "quotedAssertion": "packages/git-engine/src/branch-namer.property.test.ts:30-32 — 'expect(candidate.length).toBeLessThanOrEqual(MAX_BRANCH_NAME_LENGTH); expect(candidate).toMatch(GIT_REF_LEGAL); expect(candidate.startsWith(`${type}/`)).toBe(true);' at `numRuns: 500` over `fc.string({ minLength: 0, maxLength: 300 })` slug sources — the criterion's \"property\" half, and its own length edge. :50 'expect(names).not.toContain(candidate);' over an 8-deep collision chain at `numRuns: 100`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/branch-namer.test.ts:135",
+          "quotedAssertion": "The `renderWithRegeneration()` half of \"rendering tests\" (the corpus suite calls `lint()` directly): branch-namer.test.ts:135-138 — 'const result = await nameBranch({ type: \"feat\", slugSource: \"add a new capability\" }); expect(result).toEqual({ status: \"named\", branchName: \"feat/add-a-new-capability\" });' — and its blocking counterpart at :140-151, 'expect(result.status).toBe(\"blocked\"); expect(result.error).toBe(\"policy_blocked\");' for a slug that is charset/length-legal but carries an attribution token. Plus commit-renderer.test.ts:56-68 'renders a clean subject+body through 17's renderWithRegeneration()'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:66",
+          "quotedAssertion": "packages/git-engine/src/renderer-corpus-shared.test.ts:66-68 — 'expect(fixtures.length).toBeGreaterThan(0);', the suite's own guard against a broken CORPUS_DIR certifying an empty set. See notes: this guard is weaker than the property it protects."
+        }
+      ],
+      "notes": "Anti-vacuity, and the one weakness in it. The 27 in-scope fixtures include 6 `valid-*` cases that expect `{ ok: true }` (one per ArtifactKind this phase owns), so a lint that blocked everything fails the suite — the blocked-case assertions are not satisfiable by a degenerate implementation. The weakness: the empty-glob guard at :66-68 asserts only `> 0`, so a filter or path regression that silently dropped most fixtures would still pass it (contrast phase 12's `spawn-surface-scan.test.ts:85`, which pins a floor of 10). What closes it in practice is the per-fixture `it()` generation — the executed test COUNT is 29 (27 fixtures + 2 named tests) in both the CI job log and the committed transcript, and that count is arithmetically checkable against the corpus directory. Recorded rather than fixed, per the pass rule against same-pass repairs. Split of channels, stated because the criterion says \"rendering\": the shared-corpus suite exercises 17's `lint()` directly; `renderWithRegeneration()` is exercised by branch-namer/commit-renderer. Both are cited above."
+    },
+    {
+      "index": 4,
+      "text": "Publish test: branch appears; user checkout byte-identical; zero remote interaction.",
+      "textSha256": "08d767871fa8887d689f11d7961a095878cd3e227a12fe04ffaeea2fd4a73af3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 646 — '  ✓  @crabgic/git-engine  src/publish-local.test.ts (11 tests) 1190ms'. Same emptiness proof as criterion 1."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:115",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:100-117 — 'const before = fixtureGit(userRepoPath, [\"branch\", \"--list\", \"feat/my-change\"]); expect(before.trim()).toBe(\"\");' … 'expect(fixtureGit(userRepoPath, [\"rev-parse\", \"refs/heads/feat/my-change\"]).trim()).toBe(integrationObjectId);' — the \"branch appears\" clause, with the before-state asserted absent so the after-state is not pre-existing, and the branch pinned to the control repo's integration commit rather than merely existing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:136",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:136-137 — 'expect(headAfter).toBe(headBefore); expect(workingTreeHashAfter).toBe(workingTreeHashBefore);' with `workingTreeHash` from 07's own `computeWorkingTreeHash` (:125/:135) — the \"user checkout byte-identical\" clause, measured externally to the routine."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:152",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:152-155 — 'for (const call of capturing.calls) { expect(call.args).not.toContain(\"push\"); } expect(capturing.calls.length).toBeGreaterThan(0);' over a `GitSpawnFn` that wraps the REAL spawn and records every request (:38-51). The second line is the shim's own non-vacuity guard: an empty capture list would otherwise satisfy the loop trivially. Confirmed capturing in practice — the closeout probe below observed 5 calls through the identical seam."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c4-publish-argv-enumeration.txt",
+          "quotedAssertion": "'COMPLETE set of git invocations publishLocal made (5): 1. for-each-ref --format=%(objectname) | 2. fetch --end-of-options <control-repo-path> integration/target:refs/heads/feat/argv-probe | 3. rev-parse --verify --end-of-options refs/heads/feat/argv-probe | 4. rev-list <tip> --not --end-of-options <pre-existing-tip> | 5. log -1 --format=%B --end-of-options <tip>'; 'argv elements matching any of [\"push\",\"ls-remote\",\"remote\",\"send-pack\",\"receive-pack\",\"clone\",\"pull\",\"request-pull\"]: 0'; 'user repo remotes before: \"\"' / 'after: \"\"'; 'fetch source argument: \"<control-repo-path>\" -> is an existing local directory: true'. This upgrades the in-repo assertion from \"no push\" to an enumerated complete invocation set — see notes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:204",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:204-232 — a fake `GitPlumbing` whose `fetch` appends to `.git/HEAD` as a side effect, then reports success; 'rejects.toBeInstanceOf(PublishLocalInvarianceViolationError)'. The anti-vacuity control for the byte-identical clause: it proves the routine's own internal invariance digest (publish-local.ts:101-104, over `computeWorkingTreeHash` + a `HEAD`/`index` digest) actually fires, rather than being a comparison that can never fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.ts:259",
+          "quotedAssertion": "packages/git-engine/src/publish-local.ts:259-266 — the single write into user space, 'plumbing.run([\"fetch\", OPTION_TERMINATOR, options.controlRepoPath, refspec], { cwd: options.userRepoPath, … })' with `refspec = `${options.sourceRef}:refs/heads/${options.branchName}`` (:253) and `controlRepoPath` documented at :195 as \"the fetch SOURCE, a local filesystem path, never a remote URL\"."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c4-publish-local.txt",
+          "quotedAssertion": "'Test Files  1 passed (1) / Tests  11 passed (11)', exit status 0 — scoped local re-run at the closeout base, verbose reporter, all 11 tests named."
+        }
+      ],
+      "notes": "Three precision notes. (1) READ THE GLOB, NOT THE COMMENT: `createCapturingSpawn`'s doc comment at publish-local.test.ts:37 claims the shim proves 'no `push`, no network-shaped remote name', but the loop at :152-153 checks only the literal `push`. The comment overstates the in-repo check. Rather than weaken the criterion's \"zero remote interaction\" wording to match, this pass enumerated the routine's COMPLETE runtime invocation set with a one-shot probe through the same `GitSpawnFn` seam (closeout-c4-publish-argv-enumeration.txt, script text reproduced in the transcript so the run is repeatable): 5 calls, none of them a network subcommand, the fetch source an existing local directory, and the user repo carrying no configured remote before or after. The probe is supplementary evidence, not a repository test; the in-repo assertion is unchanged. (2) The externally-measured half of \"byte-identical\" covers HEAD and the working tree; the `index` is covered by the routine's own digest (publish-local.ts:89-99 loops `[\"HEAD\", \"index\"]`), whose liveness is proven by the :204 violation test — that test mutates HEAD specifically, so `index` liveness rides on the two sharing one digest function rather than on its own case. (3) ISOLATION CAVEAT (dated): `publishLocal`'s `update-ref -d` cleanup path was steerable by an inherited ambient `GIT_DIR` until 2ff3bce (2026-08-01), which made `createNodeGitSpawn` scrub `GIT_LOCATION_ENV_VARS` (plumbing.ts:76-79). Containment is evidenced as of that commit and this closeout base, not retroactively."
+    },
+    {
+      "index": 5,
+      "text": "Seeded \"Generated with…\" body is blocked (shared fixture with 17).",
+      "textSha256": "cad61b30ce2320bc6e895dfe6ae8c2ddbcc06606b4f7ba4e23f179a9f3fb260c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 664 — '  ✓  @crabgic/git-engine  src/renderer-corpus-shared.test.ts (29 tests) 16ms'; line 665 — '  ✓  @crabgic/git-engine  src/commit-renderer.test.ts (7 tests) 16ms'; line 646 — '  ✓  @crabgic/git-engine  src/publish-local.test.ts (11 tests) 1190ms'. Same emptiness proof as criterion 1."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/fixtures/corpus/attack-attribution-leak.json",
+          "quotedAssertion": "17's own fixture file, kind `commit_body`, expect `blocked`, expectedStages `[\"metadata-strip\", \"attribution-neutral\"]` — the single physical copy this criterion's \"shared fixture with 17\" clause names. `packages/git-engine` embeds no copy of it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:70",
+          "quotedAssertion": "packages/git-engine/src/renderer-corpus-shared.test.ts:70-75 — 'const attributionFixture = fixtures.find((f) => f.id === \"attack-attribution-leak\"); expect(attributionFixture).toBeDefined(); expect(attributionFixture?.candidate).toContain(\"Generated with\"); expect(attributionFixture?.candidate).toContain(\"Co-Authored-By\");' — the criterion's literal \"Generated with…\" string, read out of 17's file rather than restated here, so a change to 17's corpus that removed the seed fails this test."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c5-attribution-fixture.txt",
+          "quotedAssertion": "'✓ … src/renderer-corpus-shared.test.ts > … > attack-attribution-leak (commit_body): Generated-with/Co-Authored-By attribution trailer leaked into a commit body (shared with 08's belt-and-suspenders assertion).' — the generated per-fixture case running `lint()` and asserting blocked (assertion body at renderer-corpus-shared.test.ts:87-93); and '✓ … src/commit-renderer.test.ts > renderCommit > blocks when the body carries an attribution leak, even though the subject alone is clean'. 'Tests  3 passed | 33 skipped (36)', exit status 0 (a `-t attribution` filtered run — the unfiltered full-suite run is closeout-c3-rendering-corpus.txt)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/commit-renderer.test.ts:78",
+          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:78-87 — 'const result = await renderCommit(baseInput({ why: \"🤖 Generated with Claude Code and Co-Authored-By: Claude\" })); expect(result.status).toBe(\"blocked\"); … expect(result.which).toBe(\"body\"); expect(result.findings.length).toBeGreaterThan(0);' — the same class asserted FUNCTIONALLY through this phase's own `renderCommit` path, not only through `lint()` on the fixture."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/publish-local.test.ts:234",
+          "quotedAssertion": "packages/git-engine/src/publish-local.test.ts:234-251 — the third enforcement point, on a REAL git commit whose message carries '🤖 Generated with Claude Code\\nCo-Authored-By: Claude <noreply@anthropic.com>' (:88): 'rejects.toBeInstanceOf(PublishedAttributionLeakError)' AND 'expect(listOutput.trim()).toBe(\"\")' — the branch is deleted, so publication fails closed. Its negative control at :253-281 proves a PRE-EXISTING tainted commit in the user's own history does not block an otherwise clean publish."
+        }
+      ],
+      "notes": "\"Blocked\" is evidenced at all three points the roadmap distinguishes: 17's `lint()` over the shared fixture (the criterion's literal channel), this phase's own `renderCommit` render path, and publication-time belt-and-suspenders over real commit objects. Anti-vacuity: `valid-commit-body` (same kind, expect `ok`) runs in the same generated loop, so a lint that blocked every commit body would fail the suite."
+    },
+    {
+      "index": 6,
+      "text": "A fixture `ChangeSet`'s rendered `pr_title`/`pr_body`/`review_comment` are each wrapped in an `EvidenceRecord` with an `evidence_pointer` journal entry, queryable from the journal by `ChangeSet` ID with no duplication on re-run (Gap 6).",
+      "textSha256": "dd9535754b99ea0747a8a25e310439c2438be1f47444464b16764c063d73b296",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91422199956, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          "commit": "d11b0594",
+          "quotedAssertion": "job log line 647 — '  ✓  @crabgic/git-engine  src/evidence-attachment.test.ts (7 tests) 144ms'. Same emptiness proof as criterion 1."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/evidence-attachment.test.ts:63",
+          "quotedAssertion": "packages/git-engine/src/evidence-attachment.test.ts:63-75 — 'expect(result.outcomes).toHaveLength(3); expect(result.outcomes.map((o) => o.kind)).toEqual([\"pr_title\", \"pr_body\", \"review_comment\"]); … expect(outcome.evidenceRecord.changeSetId).toBe(\"a0000000-0000-4000-8000-000000000001\"); … expect(new Set(digests).size).toBe(3);' — the three named kinds, each wrapped in an `EvidenceRecord`, each referencing a DISTINCT `RenderedArtifact` digest."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/evidence-attachment.test.ts:77",
+          "quotedAssertion": "packages/git-engine/src/evidence-attachment.test.ts:77-84 — 'for await (const entry of journal.queryEntries({ type: \"evidence_pointer\", changeSetId: \"a0000000-0000-4000-8000-000000000001\" })) { journaled.push(entry); } expect(journaled).toHaveLength(3);' against a REAL `createJournalStore({ journalDir })` over an `mkdtemp` directory (:26-29) — the criterion's \"queryable from the journal by ChangeSet ID\" clause, executed through 04's own query surface, not a fake."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/evidence-attachment.test.ts:206",
+          "quotedAssertion": "packages/git-engine/src/evidence-attachment.test.ts:206-215 — 'expect(secondIds).toEqual(firstIds);' (byte-identical replay of the same `EvidenceRecord.id`s, not fresh records) and 'expect(journaled).toHaveLength(3);' after the SECOND run — the \"no duplication on re-run\" clause. :218-242 repeats it with a BRAND NEW `IdempotencyRegistry` over the same journal, so the property is durable rather than in-process memoization."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/evidence-attachment.test.ts:172",
+          "quotedAssertion": "packages/git-engine/src/evidence-attachment.test.ts:160-180 — the partial-block recovery case (2026-07-24 LOW-MEDIUM fix): after a first run in which `review_comment` blocked, a second run with only `finding` fixed replays pr_title/pr_body byte-identically ('expect(secondPrTitle.evidenceRecord.id).toBe(firstPrTitle.evidenceRecord.id)') and attaches the fixed kind — 'expect(journaled).toHaveLength(3);'. This is the anti-vacuity control for \"no duplication\": an implementation that simply never attached anything twice would fail it, because the recovery run MUST add the third entry."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:79",
+          "quotedAssertion": "packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:59-80 — 'expect(() => JournalEntrySchema.parse(candidate)).not.toThrow();' for a constructed `evidence_pointer` entry whose payload is an `EvidenceRecord`; and integration-journal.test.ts:57-63 asserts `buildEvidencePointerEntryInput` puts the `EvidenceRecord` in `payload` with `changeSetId` at the envelope level — which is what makes the by-ChangeSet-ID query above resolvable."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-08/closeout-c6-evidence-attachment.txt",
+          "quotedAssertion": "'Test Files  1 passed (1) / Tests  7 passed (7)', exit status 0 — scoped local re-run at the closeout base, verbose reporter, all 7 tests named."
+        }
+      ],
+      "notes": "Reciprocal closed-set check (the mirror of phase 07's, whose `journal-entry-type-compliance.test.ts` had to be read against 08 widening the same package's journal usage): this criterion makes NO closed-set claim that a later phase has since widened. `evidence_pointer` is a SHARED member of interface-ledger Gap 5's closed 13-member union — the ledger's own Gap-5 \"Verified in\" list names 14 as another writer (line 379), and at HEAD `packages/engine-claude`, `packages/perf` and `packages/learning` also write or read it. Nothing in criterion 6 asserts exclusivity: the \"exactly 3\" counts are scoped to a single fixture `ChangeSet` id, queried by that id. The only closed-set claim this phase makes lives in `integration-journal-entry-type-compliance.test.ts:34-41` (\"writes exactly two members\", disjoint from 07's two), which is not one of this phase's six exit criteria and still holds at HEAD."
+    }
+  ]
+}
