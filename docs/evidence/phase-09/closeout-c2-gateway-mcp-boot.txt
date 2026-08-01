@@ -1,0 +1,62 @@
+# Phase 09 exit criterion 2 — gateway mcp boots and lists exactly the resolved tool set over stdio to a stub MCP client
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:23:25Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/gateway/src/mcp/stdio-boot.test.ts packages/gateway/src/mcp/server.test.ts packages/cli/src/gateway-mcp/build-tool-registry.test.ts packages/contracts/src/gateway/tool-registry.test.ts packages/contracts/src/gateway/server-name.test.ts packages/cli/src/installer/mcp-entry.golden.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09
+
+ ✓ |@crabgic/contracts| src/gateway/tool-registry.test.ts > createToolRegistry > lists zero tools for a freshly-created registry 2ms
+ ✓ |@crabgic/contracts| src/gateway/tool-registry.test.ts > createToolRegistry > registers and lists a fake tool 1ms
+ ✓ |@crabgic/contracts| src/gateway/tool-registry.test.ts > createToolRegistry > rejects a duplicate tool-name registration 1ms
+ ✓ |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the literal "crabgic_gateway" (golden value, interface-ledger Gap 11) 2ms
+ ✓ |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the sole definition site of the literal under packages/*/src (exit criterion) 64ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > the merged .mcp.json entry, keyed GATEWAY_MCP_SERVER_NAME, is byte-for-byte the ledger's literal shape 2ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > buildGatewayMcpServerEntry() is exactly {command, args} with no extra fields 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > is idempotent and preserves other configured MCP servers, add-only 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > never overwrites an already-present entry under GATEWAY_MCP_SERVER_NAME, even a different one 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24, CONFIRMED): never clobbers a present-but-non-object mcpServers value (a string) 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-non-object mcpServers value (an array) 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-null mcpServers value 0ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer — unit > booting against an empty registry produces a well-formed server, no crash 6ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer + connectGatewayMcpServer — in-process (real callback body coverage) > a successful tool call round-trips with no isError field 11ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer + connectGatewayMcpServer — in-process (real callback body coverage) > a failed tool call (isError: true) round-trips with isError set 3ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > completes the MCP handshake under GATEWAY_MCP_SERVER_NAME 13ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > lists exactly the resolved tool set to a stub MCP client 5ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > INVOKES a registered tool through tools/call and returns its handler's content 4ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > rejects a call whose arguments violate the tool's own schema, rather than invoking the handler 2ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > boots against an empty registry without crashing 6ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > lists exactly this phase's native tool set over stdio to a stub MCP client 315ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > accepts one externally-registered tool with no name collision — the registration API is genuinely extensible 294ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > calling a native tool over stdio round-trips through the real handler 329ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > calling a native tool over stdio surfaces isError:true for a failed dispatch 333ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildRealGatewayToolRegistry > registers every family the shipped binary is supposed to expose 13ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildRealGatewayToolRegistry > gives every registered tool a real, invocable handler — never a descriptor-only stub 7ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildRealGatewayToolRegistry > INVOKES project.inspect against the real journal and ChangeSet registry 7ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildRealGatewayToolRegistry > refuses contract.approve for an unknown ChangeSet without consulting the token 6ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildRealGatewayToolRegistry > answers a tracker call with a typed error when no connection is configured 7ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildProductionGatewayToolRegistry — provider dispatch > carries the jira-cloud and grafana provider keys, not an empty registry 4ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildProductionGatewayToolRegistry — provider dispatch > a tracker call on a stored jira-cloud connection no longer reports an unknown provider 6ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildProductionGatewayToolRegistry — provider dispatch > an observability call on a stored grafana connection reports the per-connection error too 4ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > buildProductionGatewayToolRegistry — provider dispatch > buildRealGatewayToolRegistry populates both provider registries end to end 12ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.submit — server-derived exit criteria > refuses a claimed implement-gates-pass and implement-tests-first with no gate evidence 8ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.submit — server-derived exit criteria > derives both from journaled gate evidence, and closes the stage on it 20ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.calibrate — the corpus is fillable through the shipped surface > reports an empty corpus and nothing to ask about before any review has happened 5ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.calibrate — the corpus is fillable through the shipped surface > records the owner's call against a finding the reviewer actually submitted 6ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.calibrate — the corpus is fillable through the shipped surface > refuses a judgement about a finding no reviewer ever submitted 4ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.submit — design and plan records across stages > scores the plan against the design the design stage stored, one call earlier 9ms
+ ✓ |crabgic| src/gateway-mcp/build-tool-registry.test.ts > review.submit — design and plan records across stages > keeps the stored design after a plan submission that does not carry one 6ms
+
+ Test Files  6 passed (6)
+      Tests  40 passed (40)
+   Start at  00:23:26
+   Duration  2.95s (transform 3.04s, setup 0ms, import 4.52s, tests 1.53s, environment 1ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

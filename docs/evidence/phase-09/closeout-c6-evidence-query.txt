@@ -1,0 +1,33 @@
+# Phase 09 exit criterion 6 — evidence <change-set-id> returns every journaled EvidenceRecord for that ChangeSet, and an empty-but-valid report before any exist
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:23:31Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/cli/src/evidence/evidence.query.test.ts packages/git-engine/src/evidence-attachment.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09
+
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > attaches exactly 3 EvidenceRecords (one per ArtifactKind), each referencing a distinct RenderedArtifact digest 49ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > renders pr_title without a scope segment when scope is omitted from the source 34ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > blocks the affected kind(s) when a field carries an attribution leak, without throwing 25ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > 2026-07-24 LOW-MEDIUM fix — partial-block recovery: fixing ONE blocked kind's own field never disturbs the other already-attached kinds, and the fixed kind then attaches 29ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > is idempotent: re-running with the SAME source never duplicates EvidenceRecords/journal entries 39ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > survives a BRAND NEW IdempotencyRegistry instance pointed at the same journal (durable, not in-process-only) 33ms
+ ✓ |@crabgic/git-engine| src/evidence-attachment.test.ts > attachEvidence > throws EvidenceAttachmentConflictError when a re-run supplies DIFFERENT source content for the same changeSetId 39ms
+ ✓ |crabgic| src/evidence/evidence.query.test.ts > queryEvidence > returns an empty-but-valid report for a fresh ChangeSet with zero records 4ms
+ ✓ |crabgic| src/evidence/evidence.query.test.ts > queryEvidence > returns every journaled EvidenceRecord for that ChangeSet, and none for a different one 17ms
+ ✓ |crabgic| src/evidence/evidence.query.test.ts > queryEvidence > ignores a non-evidence_pointer entry even if a permissive journal fake yielded one under the same filter 2ms
+ ✓ |crabgic| src/evidence/evidence.query.test.ts > queryEvidence > returns multiple EvidenceRecords for the same ChangeSet, in journal order 18ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  00:23:32
+   Duration  1.26s (transform 1.35s, setup 0ms, import 1.90s, tests 293ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
