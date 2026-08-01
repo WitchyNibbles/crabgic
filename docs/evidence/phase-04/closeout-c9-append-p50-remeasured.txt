@@ -1,0 +1,64 @@
+# Phase 04 exit criterion 9 — append p50 latency re-measured at the closeout commit (the 2026-07-18 capture's throwaway runner test file was deleted, so the documented number is re-derived here from the shipped measureAppendLatencies)
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:19:29Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   node ../bench.mjs
+# Exit status: 0
+#
+# `bench.mjs` is a throwaway runner OUTSIDE the repository (the same
+# arrangement the 2026-07-18 capture used, whose runner was a temporary
+# test file since deleted). Its full source is inlined here so this
+# measurement is reproducible without it, and so nothing about the
+# method has to be taken on trust. It adds no permanent test file and
+# calls only the SHIPPED, barrel-adjacent measurement functions:
+#
+#   import { mkdtempSync, rmSync } from "node:fs";
+#   import { tmpdir } from "node:os";
+#   import { join } from "node:path";
+#   import { measureAppendLatencies, summarizeLatencies }
+#     from "./wt-p04/packages/journal/dist/store/append-benchmark.js";
+#   import { resolveStoreConfig }
+#     from "./wt-p04/packages/journal/dist/store/store-config.js";
+#   const dir = mkdtempSync(join(tmpdir(), "eo-journal-closeout-bench-"));
+#   try {
+#     const latencies = await measureAppendLatencies(
+#       resolveStoreConfig({ journalDir: dir }), 1000);
+#     console.log("1000 sequential real appendEntry() calls (real fs, real fsync(file), real fsync(dir)):");
+#     console.log(JSON.stringify(summarizeLatencies(latencies), null, 2));
+#   } finally {
+#     rmSync(dir, { recursive: true, force: true });
+#   }
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+1000 sequential real appendEntry() calls (real fs, real fsync(file), real fsync(dir)):
+{
+  "count": 1000,
+  "p50Ms": 13.335670000000391,
+  "p90Ms": 26.37027399999897,
+  "p99Ms": 40.32914100000016,
+  "meanMs": 14.964345598000019,
+  "minMs": 2.639763999999559,
+  "maxMs": 57.73528500000066
+}
+
+# ----------------------------------------------------------------------
+# SECOND CAPTURE, same command, on an IDLE machine.
+# The run above was captured while the 1000-iteration crash suite
+# (closeout-c1-crash-suite-1k.txt) was running concurrently on this box.
+# Both captures are kept verbatim: the spread between them is itself the
+# point, and is why the regression gate's threshold is where it is.
+# Timestamp: 2026-08-01T22:23:09Z   HEAD: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command: node ../bench.mjs
+1000 sequential real appendEntry() calls (real fs, real fsync(file), real fsync(dir)):
+{
+  "count": 1000,
+  "p50Ms": 2.7037610000002132,
+  "p90Ms": 3.9768309999999474,
+  "p99Ms": 6.841113999999834,
+  "meanMs": 3.005249608000003,
+  "minMs": 2.1760359999999537,
+  "maxMs": 18.792653
+}

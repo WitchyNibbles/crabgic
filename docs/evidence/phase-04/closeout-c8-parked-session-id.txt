@@ -1,0 +1,31 @@
+# Phase 04 exit criterion 8 — a parked:rate_limit attempt retains its session_id across a simulated crash+recover cycle
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:38Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/attempts.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/attempts.test.ts > recordAttempt — basic persistence > persists a work_unit_transition entry carrying workUnitId, sessionId, and status 56ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > recordAttempt — basic persistence > auto-populates previousStatus from the prior recorded attempt for the same work unit 28ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > recordAttempt — optional runId threading (crash-recovery correctness fix) > persists the work_unit_transition entry WITHOUT a top-level runId when none is supplied (backward-compatible default) 24ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > recordAttempt — optional runId threading (crash-recovery correctness fix) > persists the work_unit_transition entry carrying a top-level runId when one IS supplied — mirroring session_assignment's own convention 17ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > getLatestAttempt — read-back path > returns undefined when no attempts exist for a work unit 10ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > getLatestAttempt — read-back path > returns the LATEST (highest seq) attempt, not the first 40ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > getLatestAttempt — read-back path > ignores attempts belonging to OTHER work units 21ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > toAttemptRecord — defensive type guard > throws when given a JournalEntry that is NOT a work_unit_transition (should never happen through the normal query path, guarded defensively) 2ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > EXIT CRITERION: a parked:rate_limit attempt retains session_id across a simulated crash+recover cycle > survives a torn-tail crash immediately after it, and read-back through recordAttempt/getLatestAttempt still reports the exact session_id 86ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > getLatestAttemptForRun — run-scoped read-back > returns only THIS run's latest attempt, never another run's over the same work unit id 43ms
+ ✓ |@crabgic/journal| src/attempts.test.ts > getLatestAttemptForRun — run-scoped read-back > with runId undefined is exactly getLatestAttempt (the unscoped evidence read) 26ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  00:17:40
+   Duration  1.99s (transform 1.10s, setup 0ms, import 1.41s, tests 356ms, environment 0ms)
+

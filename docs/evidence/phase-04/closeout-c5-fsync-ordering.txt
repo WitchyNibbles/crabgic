@@ -1,0 +1,41 @@
+# Phase 04 exit criterion 5 — fsync ordering (write -> fsync(file) -> fsync(dir)) on the real append path
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:21Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/store/durable-io.test.ts packages/journal/src/store/append-entry.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyAppendLine — real filesystem > appends bytes that are actually readable back afterward 30ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyAppendLine — real filesystem > creates the file at the requested 0600 mode 6ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyAppendLine — real filesystem > performs write -> fsync(file) -> fsync(dir), in exactly that order, on the real fs port 11ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyWriteFileAtomic — real filesystem > the final path never observably contains partial content — temp file then atomic rename 15ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyWriteFileAtomic — real filesystem > performs write -> fsync(temp) -> rename -> fsync(dir), in that order 13ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyTruncateFile — real filesystem > truncates to the requested byte length and durably fsyncs the result 19ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > durablyTruncateFile — real filesystem > performs truncate -> fsync(file) -> fsync(dir), in that order 20ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > RecordingFsPort — read-path pass-throughs (readFile/readdir/stat/unlink) > forwards readFile/readdir/stat/unlink to the wrapped port without recording them as ops 12ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > RecordingFsPort — read-path pass-throughs (readFile/readdir/stat/unlink) > forwards mkdir to the wrapped port and records it as an op 2ms
+ ✓ |@crabgic/journal| src/store/durable-io.test.ts > RecordingFsPort — read-path pass-throughs (readFile/readdir/stat/unlink) > a non-object handle (never produced by the real port, but a valid OpaqueHandle value at the type level) records an op with no path rather than throwing 1ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > assigns schemaVersion, seq=FIRST_SEQ, prevHash=GENESIS_PREV_HASH, and a valid hash to the first entry 31ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > chains seq/prevHash monotonically across sequential appends 39ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > persists each entry as its own ndjson line, byte-readable back from disk 25ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > creates the segments directory at 0700 and segment files at 0600 23ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > rotates to a new segment once the size threshold is crossed 27ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > rotates to a new segment once the age threshold is crossed 27ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > carries the optional runId/changeSetId/workUnitId correlation fields when supplied 23ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > refuses to append onto a segment whose tail is corrupted (readLastEntry surfaces JournalCorruptedTailError) 21ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > readLastEntry returns undefined for a segment with no entries yet (file doesn't exist) 4ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — real filesystem > readLastEntry returns undefined for a segment file that exists but has zero lines 3ms
+ ✓ |@crabgic/journal| src/store/append-entry.test.ts > appendEntry — p50 latency (documented measurement) > appends 100 sequential entries and reports p50 latency under a generous bound 1322ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  00:17:23
+   Duration  2.93s (transform 928ms, setup 0ms, import 1.34s, tests 1.68s, environment 0ms)
+

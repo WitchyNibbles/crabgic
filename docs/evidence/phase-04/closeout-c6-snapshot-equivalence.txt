@@ -1,0 +1,31 @@
+# Phase 04 exit criterion 6 — snapshot+replay equivalence to full replay-from-genesis (fast-check property suite)
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:26Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/store/journal-recovery-properties.test.ts packages/journal/src/store/snapshot-io.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > round-trips a snapshot written and then loaded back 33ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > returns undefined when no snapshot exists for the run 2ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > picks the snapshot with the highest journalSequenceNumber among several for the same run 90ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > never mixes up snapshots belonging to different runs 43ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > writes the snapshots directory at 0700 and the snapshot file at 0600 31ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > writeSnapshot / loadLatestSnapshot — real filesystem > re-writing the same (runId, journalSequenceNumber) overwrites the same file rather than accumulating 85ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > recover > with no snapshot, replays every journal entry belonging to the run 98ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > recover > with a snapshot, replays only entries strictly after its journalSequenceNumber 56ms
+ ✓ |@crabgic/journal| src/store/snapshot-io.test.ts > recover > a parked:rate_limit work_unit_transition entry retains its sessionId across a simulated crash+recover cycle 28ms
+ ✓ |@crabgic/journal| src/store/journal-recovery-properties.test.ts > property: randomized torn-write injection always recovers to a valid chain prefix > recovers to a valid chain prefix across randomized entry counts and cut points 1687ms
+ ✓ |@crabgic/journal| src/store/journal-recovery-properties.test.ts > property: snapshot+replay reconstructs identical state to full replay-from-genesis > recovered state matches full replay-from-genesis across randomized walks and snapshot points 1027ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  00:17:28
+   Duration  5.46s (transform 3.26s, setup 0ms, import 4.62s, tests 3.19s, environment 0ms)
+

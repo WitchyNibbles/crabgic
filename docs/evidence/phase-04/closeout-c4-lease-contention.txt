@@ -1,0 +1,189 @@
+# Phase 04 exit criterion 4 — two-process lease contention, takeover only on expiry AND start-time mismatch
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:18:11Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/lease.test.ts packages/journal/src/lease-acquire.test.ts packages/journal/src/lease-record.test.ts packages/journal/src/lease-proc-stat.test.ts packages/journal/src/lease-project.test.ts packages/journal/src/lease-fixtures/lease-acquire-attempt.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a normal single-word comm 2ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing spaces (robust split on the LAST ')') 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing its own parentheses 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing an unbalanced trailing paren immediately before the real close 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when there is no ')' at all 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when the line is truncated right after the comm 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when there are too few fields after the comm to reach field 22 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when the starttime field is not numeric (torn/corrupt write) 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined for a negative starttime (malformed) 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > readProcessStartTimeFromProc — integration (real /proc filesystem) > reads this test process's own real start time as a non-negative integer 4ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > readProcessStartTimeFromProc — integration (real /proc filesystem) > returns undefined for a pid that (almost certainly) does not exist 0ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer paused between staking its claim and publishing its record never shares the lease with a concurrent complete acquirer 30ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer whose contended read finds the holder gone must never clobber a third process's fresh lease 13ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > gives up with LeaseAcquireRaceLostError, claiming nothing, when the lease path flaps for every bounded pass 14ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a contended-read failure that is not ENOENT instead of reading it as 'no holder' 5ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a non-EEXIST publish failure instead of reporting it as contention 5ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > links a complete 0600 payload into place and leaves no stage file behind 6ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > reports 'exists' without touching the existing file, and still cleans up its stage file 5ms
+ ✓ |@crabgic/journal| src/lease-project.test.ts > acquireProjectLease — convenience wrapper resolving leaseDir via the real XDG environment > acquires a lease at the SAME path resolveLeasesDir/Lease.acquire(leaseDir, ...) would compute directly 29ms
+ ✓ |@crabgic/journal| src/lease-project.test.ts > acquireProjectLease — convenience wrapper resolving leaseDir via the real XDG environment > a second acquireProjectLease for the SAME projectHash is denied while the first is live (delegates real contention semantics) 17ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > buildLeaseRecord / renewLeaseRecord — unit > builds a schema-valid record with expiry = nowMs + ttlMs 3ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > buildLeaseRecord / renewLeaseRecord — unit > renewLeaseRecord never mutates its input and advances renewedAtMs/expiresAtMs only 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > round-trips a record built by buildLeaseRecord 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for invalid JSON (truncated / torn write) 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for valid JSON that does not match the schema (missing fields) 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for valid JSON with wrong field types 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for an unrecognized schemaVersion 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isLeaseExpired — unit > is false strictly before expiresAtMs and true at/after it (inclusive boundary) 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is eligible when there is no existing record to protect 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is never eligible while the recorded process is confirmed still alive, expired or not 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is not eligible before expiry even when the process cannot be confirmed alive 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is eligible only once expired AND the process is confirmed not alive (dead or recycled pid) 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — fast-check property (forged PID/start-time never wins takeover) > never allows takeover when the recorded process is confirmed still alive, for any forged record/clock combination 137ms
+ ✓ |@crabgic/journal| src/lease-fixtures/lease-acquire-attempt.test.ts > attemptLeaseAcquire — in-process concurrent contention (fast analog of the real two-process test) > exactly one of two concurrent attempts against the same lease acquires it 175ms
+ ✓ |@crabgic/journal| src/lease-fixtures/lease-acquire-attempt.test.ts > attemptLeaseAcquire — in-process concurrent contention (fast analog of the real two-process test) > a fresh attempt after the prior holder released succeeds 21ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — fast-check property (forged PID/start-time never wins takeover) > matches the exact reference truth table: eligible iff (not alive) AND expired, for any record/clock/liveness combination 73ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > creates a lease file with PID + start-time + expiry metadata, and release() removes it 14ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() is idempotent (calling it twice does not throw) 6ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > a second acquire is DENIED (LeaseHeldError) while the first holder is live and not expired 8ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > NEVER takes over while the recorded process is confirmed still alive, even after the clock says expired (roadmap/04 exit criterion) 7ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > takes over once expired AND the recorded pid is confirmed dead (readProcessStartTime returns undefined) 10ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > takes over when the lease file is corrupt (unparseable — nothing to protect) 8ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > retries across maxAcquireAttempts until eligibility is reached (genuinely exercises the retry delay) 19ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > propagates a non-EEXIST error from the underlying atomic create instead of treating it as contention 3ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() on a lease file that has already vanished entirely is a no-op, not an error 6ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > the automatic heartbeat interval actually renews the on-disk record (autoRenew: true) 125ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > renewNow() advances renewedAtMs/expiresAtMs on disk without changing pid/startTimeTicks 7ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() does NOT delete a lease file that a takeover already replaced (never destroys a live new holder's lease) 6ms
+ ✓ |@crabgic/journal| src/lease.test.ts > LeaseAcquireRaceLostError — unit > carries the lease path and a descriptive message (the residual-takeover-race error documented in lease.ts) 0ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire — INTEGRATION: two real child processes contending for one lease dir (roadmap/04 work item 6 exit criterion) > exactly one of two real, concurrently-spawned child processes acquires the lease 249ms
+ ✓ |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > A's renewNow() must NEVER clobber B's file once B has legitimately acquired after an out-of-band deletion 9ms
+ ✓ |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > out-of-band deletion (file simply gone, no replacement yet): renewNow() rejects LeaseLostError('missing') and writes nothing 4ms
+ ✓ |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > onLeaseLost fires exactly once, synchronously, when the automatic heartbeat detects loss 66ms
+
+ Test Files  6 passed (6)
+      Tests  53 passed (53)
+   Start at  00:18:12
+   Duration  1.28s (transform 540ms, setup 0ms, import 1.32s, tests 1.11s, environment 1ms)
+
+
+# ----------------------------------------------------------------------
+# SECOND CAPTURE, same command, appended in the same closeout pass and
+# kept because it does NOT agree with the first.
+#
+# The run above was green (53/53). Re-running the identical command later
+# in the same session, on an idle machine, the ONE arm this phase's brief
+# already tracks as a known real-timer flake — 'onLeaseLost fires exactly
+# once, synchronously, when the automatic heartbeat detects loss' — fails
+# most of the time. It reproduced 5/5 times when lease.test.ts was run
+# alone and 3/3 in this six-file form. It is NOT this pass's doing:
+# 'git diff origin/main -- packages/' is empty in this worktree, so the
+# code and tests below are byte-identical to origin/main, and the same
+# arm passed in CI run 30720547145 at this exact base commit.
+#
+# It is recorded here rather than quietly re-rolled until green, because
+# committing only the passing capture would be cherry-picking. What
+# matters for exit criterion 4 is visible below: the two-real-child-
+# process contention test PASSES in this run too. The failing arm is a
+# heartbeat-choreography race in the 2026-07-18 MAJOR-2 regression test
+# (A's 10ms heartbeat can fire in the window between the out-of-band
+# unlink and B republishing, so A observes 'missing' rather than
+# 'ownership_mismatch'), separately tracked and deliberately not touched
+# by this pass.
+# Timestamp: 2026-08-01T22:40:06Z   HEAD: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command: npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/lease.test.ts packages/journal/src/lease-acquire.test.ts packages/journal/src/lease-record.test.ts packages/journal/src/lease-proc-stat.test.ts packages/journal/src/lease-project.test.ts packages/journal/src/lease-fixtures/lease-acquire-attempt.test.ts
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a normal single-word comm 6ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing spaces (robust split on the LAST ')') 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing its own parentheses 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > parses a comm containing an unbalanced trailing paren immediately before the real close 3ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when there is no ')' at all 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when the line is truncated right after the comm 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when there are too few fields after the comm to reach field 22 2ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined when the starttime field is not numeric (torn/corrupt write) 0ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > parseProcStatStartTimeTicks — unit > returns undefined for a negative starttime (malformed) 1ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > readProcessStartTimeFromProc — integration (real /proc filesystem) > reads this test process's own real start time as a non-negative integer 21ms
+ ✓ |@crabgic/journal| src/lease-proc-stat.test.ts > readProcessStartTimeFromProc — integration (real /proc filesystem) > returns undefined for a pid that (almost certainly) does not exist 1ms
+ ✓ |@crabgic/journal| src/lease-project.test.ts > acquireProjectLease — convenience wrapper resolving leaseDir via the real XDG environment > acquires a lease at the SAME path resolveLeasesDir/Lease.acquire(leaseDir, ...) would compute directly 50ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer paused between staking its claim and publishing its record never shares the lease with a concurrent complete acquirer 62ms
+ ✓ |@crabgic/journal| src/lease-project.test.ts > acquireProjectLease — convenience wrapper resolving leaseDir via the real XDG environment > a second acquireProjectLease for the SAME projectHash is denied while the first is live (delegates real contention semantics) 64ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > an acquirer whose contended read finds the holder gone must never clobber a third process's fresh lease 92ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > gives up with LeaseAcquireRaceLostError, claiming nothing, when the lease path flaps for every bounded pass 54ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a contended-read failure that is not ENOENT instead of reading it as 'no holder' 23ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > tryAcquireOnce — publish-window mutual exclusion > propagates a non-EEXIST publish failure instead of reporting it as contention 23ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > links a complete 0600 payload into place and leaves no stage file behind 15ms
+ ✓ |@crabgic/journal| src/lease-acquire.test.ts > publishExclusive — atomic content publish > reports 'exists' without touching the existing file, and still cleans up its stage file 16ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > buildLeaseRecord / renewLeaseRecord — unit > builds a schema-valid record with expiry = nowMs + ttlMs 3ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > buildLeaseRecord / renewLeaseRecord — unit > renewLeaseRecord never mutates its input and advances renewedAtMs/expiresAtMs only 2ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > round-trips a record built by buildLeaseRecord 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for invalid JSON (truncated / torn write) 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for valid JSON that does not match the schema (missing fields) 2ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for valid JSON with wrong field types 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > parseLeaseRecord — corrupt-file handling > returns undefined for an unrecognized schemaVersion 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isLeaseExpired — unit > is false strictly before expiresAtMs and true at/after it (inclusive boundary) 1ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is eligible when there is no existing record to protect 2ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is never eligible while the recorded process is confirmed still alive, expired or not 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is not eligible before expiry even when the process cannot be confirmed alive 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — unit (roadmap/04 work item 6 + exit criteria) > is eligible only once expired AND the process is confirmed not alive (dead or recycled pid) 0ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — fast-check property (forged PID/start-time never wins takeover) > never allows takeover when the recorded process is confirmed still alive, for any forged record/clock combination 479ms
+ ✓ |@crabgic/journal| src/lease-fixtures/lease-acquire-attempt.test.ts > attemptLeaseAcquire — in-process concurrent contention (fast analog of the real two-process test) > exactly one of two concurrent attempts against the same lease acquires it 218ms
+ ✓ |@crabgic/journal| src/lease-fixtures/lease-acquire-attempt.test.ts > attemptLeaseAcquire — in-process concurrent contention (fast analog of the real two-process test) > a fresh attempt after the prior holder released succeeds 39ms
+ ✓ |@crabgic/journal| src/lease-record.test.ts > isTakeoverEligible — fast-check property (forged PID/start-time never wins takeover) > matches the exact reference truth table: eligible iff (not alive) AND expired, for any record/clock/liveness combination 358ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > creates a lease file with PID + start-time + expiry metadata, and release() removes it 39ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() is idempotent (calling it twice does not throw) 22ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > a second acquire is DENIED (LeaseHeldError) while the first holder is live and not expired 32ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > NEVER takes over while the recorded process is confirmed still alive, even after the clock says expired (roadmap/04 exit criterion) 38ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > takes over once expired AND the recorded pid is confirmed dead (readProcessStartTime returns undefined) 81ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > takes over when the lease file is corrupt (unparseable — nothing to protect) 55ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > retries across maxAcquireAttempts until eligibility is reached (genuinely exercises the retry delay) 85ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > propagates a non-EEXIST error from the underlying atomic create instead of treating it as contention 6ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() on a lease file that has already vanished entirely is a no-op, not an error 30ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > the automatic heartbeat interval actually renews the on-disk record (autoRenew: true) 153ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > renewNow() advances renewedAtMs/expiresAtMs on disk without changing pid/startTimeTicks 55ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader) > release() does NOT delete a lease file that a takeover already replaced (never destroys a live new holder's lease) 30ms
+ ✓ |@crabgic/journal| src/lease.test.ts > LeaseAcquireRaceLostError — unit > carries the lease path and a descriptive message (the residual-takeover-race error documented in lease.ts) 1ms
+ ✓ |@crabgic/journal| src/lease.test.ts > Lease.acquire — INTEGRATION: two real child processes contending for one lease dir (roadmap/04 work item 6 exit criterion) > exactly one of two real, concurrently-spawned child processes acquires the lease 976ms
+ ✓ |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > A's renewNow() must NEVER clobber B's file once B has legitimately acquired after an out-of-band deletion 64ms
+ ✓ |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > out-of-band deletion (file simply gone, no replacement yet): renewNow() rejects LeaseLostError('missing') and writes nothing 41ms
+ × |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > onLeaseLost fires exactly once, synchronously, when the automatic heartbeat detects loss 119ms
+   → expected [ 'missing' ] to deeply equal [ 'ownership_mismatch' ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/journal| src/lease.test.ts > VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band lease-file removal must never create a silent double holder > onLeaseLost fires exactly once, synchronously, when the automatic heartbeat detects loss
+AssertionError: expected [ 'missing' ] to deeply equal [ 'ownership_mismatch' ]
+
+- Expected
++ Received
+
+  [
+-   "ownership_mismatch",
++   "missing",
+  ]
+
+ ❯ src/lease.test.ts:579:24
+    577|
+    578|     expect(leaseA.held).toBe(false);
+    579|     expect(lostEvents).toEqual(["ownership_mismatch"]);
+       |                        ^
+    580|   });
+    581| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 52 passed (53)
+   Start at  00:40:08
+   Duration  3.79s (transform 1.27s, setup 0ms, import 3.06s, tests 3.41s, environment 1ms)
+
+# Exit status of the second capture: 1
