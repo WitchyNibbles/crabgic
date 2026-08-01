@@ -43,10 +43,12 @@ import {
   AuthorizationEnvelopeSchema,
   ChangeSetSchema,
   IntentContractSchema,
+  RequirementSchema,
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
   type IntentContract,
+  type Requirement,
   type WorkUnit,
 } from "@crabgic/contracts";
 import {
@@ -60,6 +62,7 @@ import {
   CHANGE_SETS_FILE_NAME,
   createFileRegistry,
   INTENT_CONTRACTS_FILE_NAME,
+  REQUIREMENTS_FILE_NAME,
   resolveSupervisorSocketPath,
   WORK_UNITS_FILE_NAME,
   type IntakeRequest,
@@ -455,6 +458,14 @@ function buildRealIntakeDependencies(
     intentContracts: createFileRegistry<IntentContract>({
       path: join(stateRoot, INTENT_CONTRACTS_FILE_NAME),
       schema: IntentContractSchema,
+    }),
+    // File-backed for a STRONGER reason than the four above: the daemon
+    // itself reads these. Seal verification resolves a work unit's
+    // requirements before accepting its completion, and that happens in the
+    // process that drives the run, not the one that took the intake.
+    requirements: createFileRegistry<Requirement>({
+      path: join(stateRoot, REQUIREMENTS_FILE_NAME),
+      schema: RequirementSchema,
     }),
     minter,
     readIntakeRequest: readIntakeRequestFromStdin,

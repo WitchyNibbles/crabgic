@@ -113,6 +113,13 @@ export interface IntakeDeps {
    * `../registries/intent-contracts-registry.ts`).
    */
   readonly intentContracts: Registry<IntentContract>;
+  /**
+   * The `Requirement` records themselves — roadmap/24. The contract above
+   * persists only their ids, so without this the acceptance criteria a work
+   * unit is judged against, and the seal over them, are resolvable from
+   * nowhere once this process exits.
+   */
+  readonly requirements: Registry<Requirement>;
 }
 
 function requestContentHash(request: IntakeRequest): string {
@@ -236,6 +243,7 @@ export async function runIntake(deps: IntakeDeps, request: IntakeRequest): Promi
     deps.changeSets.put(artifacts.changeSet);
     deps.envelopes.put(artifacts.envelope);
     deps.intentContracts.put(artifacts.intentContract);
+    for (const requirement of artifacts.requirements) deps.requirements.put(requirement);
     for (const workUnit of artifacts.workUnits) deps.workUnits.put(workUnit);
     await transitionChangeSet({
       journal: deps.journal,

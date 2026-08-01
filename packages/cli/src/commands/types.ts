@@ -9,6 +9,7 @@ import type {
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import type { Registry, IntakeRequest } from "@crabgic/supervisor";
@@ -40,6 +41,8 @@ export interface IntakeDependencies {
   readonly envelopes: Registry<AuthorizationEnvelope>;
   /** Durable contract store — see `../intake/run-intake-command.ts`'s own doc comment on `RunIntakeCommandDeps.intentContracts`. */
   readonly intentContracts: Registry<IntentContract>;
+  /** Durable `Requirement` store (roadmap/24) — the criteria a completion is verified against, and the seal over them. */
+  readonly requirements: Registry<Requirement>;
   readonly minter: ApprovalTokenMinter;
   /**
    * The project's durable approval-signing key — the SAME material `minter`

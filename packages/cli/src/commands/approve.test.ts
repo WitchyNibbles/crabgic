@@ -16,6 +16,7 @@ import {
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   createWorkUnitsRegistry,
 } from "@crabgic/supervisor";
 import { buildAuthorizationEnvelope, buildChangeSet, buildIntentContract } from "@crabgic/testkit";
@@ -90,6 +91,7 @@ function seededIntake(
   const changeSets = createChangeSetsRegistry();
   const envelopes = createAuthorizationEnvelopesRegistry();
   const intentContracts = createIntentContractsRegistry();
+  const requirements = createRequirementsRegistry();
   const workUnits = createWorkUnitsRegistry();
 
   const envelope = buildAuthorizationEnvelope({
@@ -118,6 +120,7 @@ function seededIntake(
       workUnits,
       envelopes,
       intentContracts,
+      requirements,
       minter: new ApprovalTokenMinter({ secretKey }),
       secretKey,
       readIntakeRequest: () => {
@@ -359,6 +362,7 @@ describe("dispatchCommand — approve", () => {
     const brokenIntake: IntakeDependencies = {
       ...seeded.intake,
       intentContracts: createIntentContractsRegistry(),
+      requirements: createRequirementsRegistry(),
     };
 
     const resultPromise = dispatchCommand({ command: "approve", digest, json: false }, {

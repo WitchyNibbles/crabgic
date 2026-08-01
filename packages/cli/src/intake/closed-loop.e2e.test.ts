@@ -33,6 +33,7 @@ import {
   createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   createRunsRegistry,
   createWorkersRegistry,
   createArtifactIndexRegistry,
@@ -145,6 +146,7 @@ async function intakeAndApprove() {
   const workUnits = createWorkUnitsRegistry();
   const envelopes = createAuthorizationEnvelopesRegistry();
   const intentContracts = createIntentContractsRegistry();
+  const requirements = createRequirementsRegistry();
 
   const commandPromise = runIntakeCommand({
     journal,
@@ -152,6 +154,7 @@ async function intakeAndApprove() {
     workUnits,
     envelopes,
     intentContracts,
+    requirements,
     readIntakeRequest: () => Promise.resolve(intakeRequest()),
     loadPolicy: () => ({ status: "loaded", policy: policy(), digest: "sha256:e2e" }),
   });
@@ -228,6 +231,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
+    const requirements = createRequirementsRegistry();
     const runs = createRunsRegistry();
     const standingPolicy = policy();
 
@@ -283,6 +287,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
         workUnits,
         envelopes,
         intentContracts,
+        requirements,
         minter: new ApprovalTokenMinter({ secretKey }),
         secretKey,
         readIntakeRequest: () => Promise.resolve(intakeRequest()),

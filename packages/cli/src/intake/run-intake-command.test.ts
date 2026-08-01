@@ -8,6 +8,7 @@ import {
   createWorkUnitsRegistry,
   createAuthorizationEnvelopesRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   type IntakeRequest,
 } from "@crabgic/supervisor";
 import { EnvelopePolicySchema } from "@crabgic/contracts";
@@ -84,6 +85,7 @@ function deps(
     workUnits: createWorkUnitsRegistry(),
     envelopes: createAuthorizationEnvelopesRegistry(),
     intentContracts: createIntentContractsRegistry(),
+    requirements: createRequirementsRegistry(),
     readIntakeRequest: request,
     loadPolicy,
   };

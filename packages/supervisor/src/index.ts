@@ -56,6 +56,7 @@ export * from "./registries/runs-registry.js";
 export * from "./registries/change-sets-registry.js";
 export * from "./registries/authorization-envelopes-registry.js";
 export * from "./registries/intent-contracts-registry.js";
+export * from "./registries/requirements-registry.js";
 export * from "./registries/work-units-registry.js";
 export * from "./registries/workers-registry.js";
 export * from "./registries/artifact-index-registry.js";

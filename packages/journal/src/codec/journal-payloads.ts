@@ -26,6 +26,7 @@
 
 import { z } from "zod";
 import {
+  CriteriaApprovalSealSchema,
   EvidenceRecordSchema,
   IdSchema,
   LearningProposalStateSchema,
@@ -102,6 +103,24 @@ export const AdjudicationDecisionPayloadSchema = z
     decision: NonEmptyStringSchema,
     rationale: NonEmptyStringSchema,
     subjectId: IdSchema.optional(),
+    /**
+     * OPTIONAL, and it must stay that way: every adjudication entry written
+     * before roadmap/24 existed is still valid, and an adjudication that is
+     * not an approval carries no seal.
+     *
+     * Approving a ChangeSet is an adjudication decision, so the seal of the
+     * acceptance criteria that approval covers rides on this member rather
+     * than on a 14th `JournalEntryType` — the union is closed at 13 by
+     * `docs/interface-ledger.md` Gap 5, which is a ruling about entry TYPES
+     * and not about payload shapes. Adding an optional field to an existing
+     * payload changes no existing entry's validity.
+     *
+     * It is a typed field and not JSON stuffed into `rationale` because Gap
+     * 20's own ruling is that what a schema can carry, a schema should carry
+     * — a hand-encoded blob inside a free-text field is exactly the
+     * convention-instead-of-contract shape that ruling rejects.
+     */
+    criteriaSeal: CriteriaApprovalSealSchema.optional(),
   })
   .strict();
 

@@ -22,6 +22,7 @@ import {
   computeRequirementId,
   createAuthorizationEnvelopesRegistry,
   createIntentContractsRegistry,
+  createRequirementsRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -122,6 +123,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
+    const requirements = createRequirementsRegistry();
     const changeSetId = "11111111-1111-4111-8111-111111111111";
 
     const commandPromise = runIntakeCommand({
@@ -130,6 +132,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       workUnits,
       envelopes,
       intentContracts,
+      requirements,
       readIntakeRequest: async () => e2eRequest("e2e:approve", changeSetId),
       loadPolicy: () => ({
         status: "loaded" as const,
@@ -162,6 +165,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
     const workUnits = createWorkUnitsRegistry();
     const envelopes = createAuthorizationEnvelopesRegistry();
     const intentContracts = createIntentContractsRegistry();
+    const requirements = createRequirementsRegistry();
     const minter = new ApprovalTokenMinter({ secretKey });
     const changeSetId = "22222222-2222-4222-8222-222222222222";
 
@@ -171,6 +175,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       workUnits,
       envelopes,
       intentContracts,
+      requirements,
       readIntakeRequest: async () => e2eRequest("e2e:replay", changeSetId),
       loadPolicy: () => ({
         status: "loaded" as const,
