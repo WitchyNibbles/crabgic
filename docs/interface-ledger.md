@@ -308,7 +308,59 @@ learning_transition`. Rate-limit-park events are `work_unit_transition` entries 
 13; a 14th member requires a new coordinated resolution round, not a unilateral addition. (Phase 12 has
 flagged, but not resolved, that capability-audit pass/fail decisions have no clean dedicated member — this
 tension is explicitly left open and is *not* grounds to add a 14th member unilaterally; Phase 14 makes the
-identical choice for its own gate/flake evidence, citing this same closed-at-13 decision.)
+identical choice for its own gate/flake evidence, citing this same closed-at-13 decision.) **That
+parenthetical is superseded — see "Resolution (2026-08-01)" immediately below, which closes the phase-12
+tension and corrects the phase-14 comparison, which was false in effect.**
+
+**Resolution (2026-08-01) — the tension is closed by reuse; the union stays at 13, and the "identical
+choice" claim was wrong.** The parenthetical above understated the problem and misdescribed the precedent,
+in that order.
+
+*What was actually broken.* Phase 12's flagged gap was not a naming inconvenience. **A rejected capability
+audit produced zero journal entries anywhere.** `runCapabilityAudit` persisted only into the capability
+store; `CapabilityStore.updateDecision` overwrote `report.json` in place with no history, so the `pending ->
+approved` flip and `trust revoke`'s flip back left no trace either. The only central record capability
+quarantine ever produced was the `approval_token_mint` a human `trust approve` writes — which by
+construction never happens for a rejection. The store artifact is rewritable; the journal is the
+hash-chained, tamper-evident one. The security-relevant half of the trail lived only in the rewritable half.
+
+*The correction to the record.* "Phase 14 makes the identical choice" was true of the *conclusion* and false
+of the *effect*. Phase 14 does journal: `@crabgic/gates`'s `coverage/ratchet-store.ts` and
+`flake/quarantine-registry.ts` write real `adjudication_decision` entries, carrying a discriminator in
+`payload.decision` and the structured record JSON-encoded in `payload.rationale`. Phase 12 journaled nothing
+for the verdict. Both phases reached the same *ruling* (no 14th member), but only one of them had a journal
+write behind it, and this entry read as though both did.
+
+*The ruling.* `JournalEntryType` stays closed at exactly **13**. Capability-quarantine verdicts and
+`CapabilityDecision` transitions journal as `adjudication_decision` entries, following phase 14's shape
+verbatim: a namespaced discriminator in `payload.decision` under the `capability_audit:` prefix
+(`capability_audit:verdict`, `capability_audit:decision_transition`), with the schema-validated record
+JSON-encoded in `payload.rationale`. Two ordering guarantees carry the security value — `runCapabilityAudit`
+journals the verdict **before** `store.save`, and `updateDecision` journals the transition **before**
+rewriting the artifact — and both **fail closed**: they refuse to run at all when no journal sink is
+supplied, and abort (leaving the artifact untouched) when an append fails. The store artifact remains the
+detailed record (full stage detail, findings, sandbox result); the journal carries the verdict and every
+transition. Implemented in `packages/detect/src/capability-store/audit-journal.ts`.
+
+*Why not a 14th member.* It would carry the same information at strictly higher cost — 5 compile-breaking
+`Record<JournalEntryType, …>` sites, `journal-entry.ts`'s dual union lists, ~12 hard-coded `13` assertions,
+two phase-02 evidence transcripts, and the 16 phase files listed under "Phases affected" below — and it
+would require the coordinated resolution round that reuse does not. That trade may become worth making if
+capability verdicts ever need querying without a string discriminator; it is not worth making today. This
+resolution changes **no** schema member, no JSON schema, and no golden.
+
+*Boundary with Gap 20.* Gap 20's "what a schema can carry, a schema should carry" governs typed fields on
+payloads this repo owns — it is why `criteriaSeal` became a typed optional field on
+`AdjudicationDecisionPayloadSchema` rather than JSON stuffed into `rationale`. It does not extend to
+phase-local vocabulary: adding capability-quarantine fields to that shared, `.strict()` payload would push
+phase-12 concepts into a contract every other adjudication writer shares. JSON-in-`rationale` is what phase
+14 established for exactly this case, and `audit-journal.ts` keeps it zod-validated on both write and read,
+so it is a contract in practice rather than a convention.
+
+*Coordinated phase-file edit (2026-08-01):* `roadmap/12-stack-detection-quarantine.md` §Risks (the flagged
+bullet, now resolved), `roadmap/14-quality-security-gates.md` §Risks (the mirror citation, corrected to name
+the members each phase actually writes), `docs/security-posture.md` §"Known residual risks" (the item that
+explicitly refused residual-risk acceptance), and `docs/threat-model.md` §7's Repudiation row.
 
 **Phases affected:** 02, 04, 05, 06, 07, 08, 09, 11, 12, 13, 14, 16, 18, 21, 22, 23 — every phase that writes
 or consumes a `JournalEntryType` member (07 is the sole writer of `git_freeze`/`worktree_quarantine`, 16 of

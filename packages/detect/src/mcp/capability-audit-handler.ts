@@ -24,7 +24,23 @@
  * additional informational context distinguishing "digest changed" from
  * "permission footprint changed" for a human reviewer — it does not gate
  * anything on its own.)
+ *
+ * **interface-ledger Gap 5, resolution (2026-08-01).** This handler used
+ * to write the verdict into the capability store and NOWHERE else, which
+ * meant a REJECTED capability audit produced zero journal entries
+ * anywhere: the store artifact is rewritable, and the only journal entry
+ * capability quarantine ever produced was the `approval_token_mint` a
+ * human `trust approve` mints — which never happens for a rejection. The
+ * verdict is now journaled as an `adjudication_decision` (the closed-at-13
+ * reuse precedent phase 14 already set) BEFORE `store.save`, and a failed
+ * append aborts the audit. See `../capability-store/audit-journal.ts`.
  */
+import {
+  CapabilityAuditJournalUnavailableError,
+  buildCapabilityAuditVerdictRecord,
+  journalCapabilityAuditVerdict,
+  type CapabilityAuditJournalSink,
+} from "../capability-store/audit-journal.js";
 import type { CapabilityStore } from "../capability-store/store.js";
 import { checkReauditRequired, type ReauditDecision } from "../capability-store/reaudit.js";
 import { computeCandidateDigest } from "../quarantine/digest.js";
@@ -38,6 +54,14 @@ export interface CapabilityAuditInput {
 export interface CapabilityAuditDeps {
   readonly store: CapabilityStore;
   readonly pipelineOptions?: QuarantinePipelineOptions;
+  /**
+   * Where the verdict is journaled. OPTIONAL on the type only so this bag
+   * stays structurally compatible with the read-mostly store consumers
+   * that share it — `runCapabilityAudit` REJECTS with
+   * `CapabilityAuditJournalUnavailableError` when it is absent rather than
+   * auditing unjournaled (interface-ledger Gap 5, fail closed).
+   */
+  readonly journal?: CapabilityAuditJournalSink;
 }
 
 export interface CapabilityAuditOutput {
@@ -45,10 +69,17 @@ export interface CapabilityAuditOutput {
   readonly reaudit?: ReauditDecision;
 }
 
-export function runCapabilityAudit(
+export async function runCapabilityAudit(
   input: CapabilityAuditInput,
   deps: CapabilityAuditDeps,
-): CapabilityAuditOutput {
+): Promise<CapabilityAuditOutput> {
+  // Refused before any work happens: an audit whose verdict cannot be
+  // journaled is one nobody can later verify occurred, which is strictly
+  // worse than no audit because it looks like one.
+  if (deps.journal === undefined) {
+    throw new CapabilityAuditJournalUnavailableError("capability.audit");
+  }
+
   // Computed BEFORE saving this run's result — otherwise the store would
   // already reflect this very audit, making "changed since last audit"
   // trivially always false.
@@ -69,6 +100,15 @@ export function runCapabilityAudit(
   };
 
   const { report, manifestEntry } = runQuarantinePipeline(input.candidate, pipelineOptions);
+
+  // JOURNAL FIRST, then persist. A rejection here propagates and nothing
+  // is written to the store, so the two records can never disagree about
+  // whether an audit happened — and in particular the store can never
+  // hold a verdict the tamper-evident journal has no entry for.
+  await journalCapabilityAuditVerdict(
+    deps.journal,
+    buildCapabilityAuditVerdictRecord(report, reaudit),
+  );
   deps.store.save(report, manifestEntry);
 
   return reaudit !== undefined ? { report, reaudit } : { report };

@@ -5,6 +5,12 @@
  * since `ApprovalTokenMinter` itself forgets a consumed/expired token by
  * design), finds the corresponding capability-store entry, and flips its
  * decision back to `rejected` — never silently deletes the audit trail.
+ *
+ * **interface-ledger Gap 5, resolution (2026-08-01):** the flip goes
+ * through `store.updateDecision`, which is now journal-first — the
+ * `approved -> rejected` transition is appended to the hash-chained
+ * journal before `report.json` is rewritten, and a failed append aborts
+ * the revoke. This backend is async purely because of that.
  */
 import {
   EXIT_GENERAL_ERROR,
@@ -15,10 +21,10 @@ import {
 } from "@crabgic/contracts";
 import type { TrustCommandDependencies } from "./dependencies.js";
 
-export function runTrustRevokeCommand(
+export async function runTrustRevokeCommand(
   cmd: TrustRevokeCommand,
   deps: TrustCommandDependencies,
-): CommandResult {
+): Promise<CommandResult> {
   const digest = deps.approvalLedger.lookup(cmd.tokenId);
   if (digest === undefined) {
     const message = `no approval record found for token "${cmd.tokenId}" — nothing to revoke`;
@@ -41,7 +47,7 @@ export function runTrustRevokeCommand(
     };
   }
 
-  deps.store.updateDecision(entry.key, "rejected");
+  await deps.store.updateDecision(entry.key, "rejected");
   return {
     exitCode: EXIT_OK,
     stdout: cmd.json

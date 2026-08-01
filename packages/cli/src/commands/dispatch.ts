@@ -141,7 +141,7 @@ export async function dispatchCommand(
           : notImplementedResult(command.command, command.json);
       case "trust-revoke":
         return deps.trust !== undefined
-          ? runTrustRevokeCommand(command, deps.trust)
+          ? await runTrustRevokeCommand(command, deps.trust)
           : notImplementedResult(command.command, command.json);
 
       // roadmap/16's `ExternalConnection` store + reachability probe, wired
