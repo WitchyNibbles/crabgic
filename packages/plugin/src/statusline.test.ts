@@ -207,6 +207,30 @@ describe("readGitStatus", () => {
     expect(status?.branch).toMatch(/^@[0-9a-f]{7,}$/);
   });
 
+  /**
+   * `readGitStatus` is read-only, so an inherited `GIT_DIR` cannot corrupt
+   * anything — but it silently reports the WRONG repository, which for a
+   * status line is a correctness bug: the segment would show the branch of
+   * whatever repo the engine's parent process was pointed at instead of the
+   * session's `current_dir`. Behavioral guard on the `.mjs`'s own scrub,
+   * since the repo-wide hygiene scan only proves the constant is textually
+   * present in the file.
+   */
+  it("an ambient GIT_DIR never overrides cwd: the branch reported is cwd's, not the poisoned repo's", async () => {
+    const poisoned = await makeRepo();
+    runFixtureGit(poisoned, ["checkout", "-q", "-b", "poisoned-branch"]);
+    const target = await makeRepo(); // on `main`
+
+    const original = process.env["GIT_DIR"];
+    process.env["GIT_DIR"] = join(poisoned, ".git");
+    try {
+      expect(readGitStatus(target)).toEqual({ branch: "main", dirty: false });
+    } finally {
+      if (original === undefined) delete process.env["GIT_DIR"];
+      else process.env["GIT_DIR"] = original;
+    }
+  });
+
   it("returns null outside a repository rather than throwing into the TUI", async () => {
     const dir = await mkdtemp(join(tmpdir(), "crabgic-statusline-plain-"));
     created.push(dir);

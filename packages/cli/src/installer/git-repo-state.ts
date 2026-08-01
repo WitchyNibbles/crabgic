@@ -48,6 +48,7 @@ const GIT_LOCATION_ENV_VARS: readonly string[] = [
   "GIT_QUARANTINE_PATH",
   "GIT_CEILING_DIRECTORIES",
   "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+  "GIT_TEMPLATE_DIR",
 ];
 
 /** `process.env` minus every ambient git-location variable, so `cwd` genuinely decides which repository is touched. */

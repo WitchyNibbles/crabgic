@@ -33,11 +33,29 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".."
  * Matches `git` as the COMMAND argument of any exec/spawn variant
  * (`execFileSync`, `execFileAsync`, `spawnSync`, ...), capturing the
  * subcommand when it is written as a literal first element of the argv array.
- * A non-literal argv (`execFileSync("git", args, ...)`) captures `undefined`
- * and is treated as must-scrub — that generic-helper shape is precisely how
- * both original offenders were written.
+ *
+ * The capture is `[a-z][a-z-]*` — it must START with a letter. That is
+ * load-bearing, not cosmetic: with a leading dash permitted, the FIRST argv
+ * element of `["-c", "user.email=…", "commit", …]` or
+ * `["--git-dir", d, "config", …]` is captured as `-c` / `--git-dir`, neither
+ * of which is in `MUTATING_SUBCOMMANDS`, so a fully hijackable mutating spawn
+ * would be classified read-only and exempted. `-c user.name=…` is exactly the
+ * config-free identity idiom this module steers people toward, so it is the
+ * most likely future shape, not a contrived one. A leading dash now yields
+ * `undefined` and falls into the must-scrub branch below.
+ *
+ * A non-literal argv (`execFileSync("git", args, ...)`) likewise captures
+ * `undefined` and is treated as must-scrub — that generic-helper shape is
+ * precisely how both original offenders were written.
  */
-const GIT_SPAWN = /(?:exec|spawn)\w*\s*\(\s*["'`]git["'`]\s*,\s*(?:\[\s*["'`]([a-z-]+)["'`])?/g;
+const GIT_SPAWN =
+  /(?:exec|spawn)\w*\s*\(\s*["'`]git["'`]\s*,\s*(?:\[\s*["'`]([a-z][a-z-]*)["'`])?/g;
+
+/**
+ * A shell-STRING spawn (`execSync("git init …", { cwd })`) has no argv array
+ * to classify, so it can never be proven read-only. Always must-scrub.
+ */
+const GIT_SHELL_SPAWN = /(?:exec|spawn)\w*\s*\(\s*["'`]git\s/;
 
 /**
  * Subcommands that WRITE. A read-only query (`rev-parse`, `log`, `ls-files`,
@@ -80,8 +98,9 @@ const MUTATING_SUBCOMMANDS = new Set([
   "worktree",
 ]);
 
-/** True when a file spawns git with a mutating (or unclassifiable) subcommand. */
+/** True when a file spawns git with a mutating — or unclassifiable, so assumed mutating — command. */
 function spawnsMutatingGit(text: string): boolean {
+  if (GIT_SHELL_SPAWN.test(text)) return true;
   for (const match of text.matchAll(GIT_SPAWN)) {
     const subcommand = match[1];
     if (subcommand === undefined || MUTATING_SUBCOMMANDS.has(subcommand)) return true;
@@ -131,6 +150,45 @@ describe("git-spawn hygiene (repo-wide GIT_DIR-hijack guard)", () => {
 
   it("the scan actually covers this repo (guard against a broken walk)", () => {
     expect(ALL_FILES.length).toBeGreaterThan(200);
+  });
+
+  it("the classifier flags every known evasion shape, not just the obvious ones", () => {
+    // Adversarial review of PR #50 found the first two of these slipping
+    // through: the subcommand capture allowed a leading dash, so the spawn was
+    // classified by the FLAG (`-c`, `--git-dir`) rather than by the mutating
+    // subcommand behind it. They are pinned here so the regex cannot regress.
+    const mustBeFlagged: readonly [string, string][] = [
+      [
+        "leading -c identity idiom (the shape this module recommends)",
+        'execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@x.invalid", "commit", "-m", "x"], { cwd });',
+      ],
+      [
+        "explicit --git-dir before a mutating subcommand",
+        'execFileSync("git", ["--git-dir", d, "config", "user.email", "x@y.invalid"], { cwd });',
+      ],
+      ["--no-pager before a mutating subcommand", 'execFileSync("git", ["--no-pager", "commit"]);'],
+      ["shell-string spawn", 'execSync("git init --quiet", { cwd });'],
+      ["non-literal argv (the original offenders' shape)", 'execFileSync("git", args, { cwd });'],
+      ["plain literal mutating subcommand", 'execFileSync("git", ["init"], { cwd });'],
+      ["async variant", 'await execFileAsync("git", ["commit", "-m", "x"], { cwd });'],
+      ["spawnSync variant", 'spawnSync("git", ["worktree", "add", p], { cwd });'],
+    ];
+    const missed = mustBeFlagged
+      .filter(([, snippet]) => !spawnsMutatingGit(snippet))
+      .map(([label]) => label);
+    expect(missed).toEqual([]);
+
+    // ...and the read-only shapes stay exempt, so the scan does not force
+    // churn onto release tooling that queries the ambient repo on purpose.
+    const mustBeExempt: readonly [string, string][] = [
+      ["rev-parse", 'execFileSync("git", ["rev-parse", "HEAD"], { cwd });'],
+      ["log", 'await exec("git", ["log", "--format=%s"], { cwd });'],
+      ["archive", 'execFileSync("git", ["archive", ref], { cwd });'],
+    ];
+    const overFlagged = mustBeExempt
+      .filter(([, snippet]) => spawnsMutatingGit(snippet))
+      .map(([label]) => label);
+    expect(overFlagged).toEqual([]);
   });
 
   it("the guard is not vacuous: mutating git spawns really do exist and really are scrubbed", () => {

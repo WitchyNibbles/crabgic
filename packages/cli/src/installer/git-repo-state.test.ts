@@ -1,5 +1,5 @@
 import { GIT_FIXTURE_IDENTITY_ENV, runFixtureGit } from "@crabgic/testkit";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -78,6 +78,58 @@ describe("performGitInit", () => {
     const dir = makeTmpDir();
     await performGitInit(dir);
     expect(await detectGitRepoState(dir)).toBe("unborn-head");
+  });
+
+  /**
+   * `performGitInit` is the single most destructive call in the installer:
+   * `crabgic install` runs it against a user-chosen `targetDir`, and git
+   * resolves which repository `init` acts on from `GIT_DIR` BEFORE it looks
+   * at `cwd`. With an ambient `GIT_DIR` inherited — from a wrapper script, a
+   * parent git process, or any hook, since git exports `GIT_DIR` to every
+   * hook it runs — an "install into this empty folder" would instead
+   * re-initialize the caller's own repository, and when that `GIT_DIR` names
+   * a linked worktree it writes `core.bare = true` into the shared config and
+   * breaks `git status` there outright.
+   *
+   * This is a BEHAVIORAL guard on the production call, deliberately not
+   * satisfied by the repo-wide hygiene scan: that scan only proves
+   * `GIT_LOCATION_ENV_VARS` appears somewhere in the file, so deleting
+   * `env: targetDirOnlyEnv()` from this one call site while leaving the
+   * constant defined would keep every static check green.
+   */
+  it("a poisoned ambient GIT_DIR cannot redirect the init away from targetDir", async () => {
+    const victim = makeTmpDir();
+    git(victim, ["init", "-q", "-b", "main"]);
+    writeFileSync(join(victim, "real.txt"), "real work");
+    git(victim, ["add", "real.txt"]);
+    git(victim, ["commit", "-q", "-m", "legitimate commit", "--no-verify"]);
+
+    const victimGitDir = join(victim, ".git");
+    const before = {
+      head: runFixtureGit(victim, ["rev-parse", "HEAD"]).trim(),
+      commitCount: runFixtureGit(victim, ["rev-list", "--count", "HEAD"]).trim(),
+      config: readFileSync(join(victimGitDir, "config"), "utf8"),
+    };
+
+    const target = makeTmpDir();
+    const original = process.env["GIT_DIR"];
+    process.env["GIT_DIR"] = victimGitDir;
+    try {
+      await performGitInit(target);
+    } finally {
+      if (original === undefined) delete process.env["GIT_DIR"];
+      else process.env["GIT_DIR"] = original;
+    }
+
+    // The init landed in `targetDir`...
+    expect(existsSync(join(target, ".git"))).toBe(true);
+    expect(await detectGitRepoState(target)).toBe("unborn-head");
+    // ...and the repository `GIT_DIR` pointed at is byte-identical.
+    expect({
+      head: runFixtureGit(victim, ["rev-parse", "HEAD"]).trim(),
+      commitCount: runFixtureGit(victim, ["rev-list", "--count", "HEAD"]).trim(),
+      config: readFileSync(join(victimGitDir, "config"), "utf8"),
+    }).toEqual(before);
   });
 });
 

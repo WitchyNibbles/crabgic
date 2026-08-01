@@ -134,33 +134,28 @@ export function gitFixtureEnv(
 export interface RunFixtureGitOptions {
   /** Extra git variables to set for this one call, applied after the scrub. */
   readonly env?: Readonly<Record<string, string>>;
-  /** When true, a non-zero exit returns the captured output instead of throwing. */
-  readonly allowFailure?: boolean;
 }
 
 /**
  * Runs `git <args>` in `cwd` with the sanitized environment, argv-array only
  * and no shell (same spawn posture as `git-engine`'s production plumbing).
- * Returns stdout. Throws on a non-zero exit unless `allowFailure` is set.
+ * Returns stdout; throws on a non-zero exit.
+ *
+ * Deliberately has no `allowFailure` escape hatch: a fixture that expects git
+ * to fail should assert on the throw, and an unexpected failure in fixture
+ * SETUP must be loud rather than silently yielding an empty string. Add one
+ * only alongside a caller that needs it.
  */
 export function runFixtureGit(
   cwd: string,
   args: readonly string[],
   options: RunFixtureGitOptions = {},
 ): string {
-  try {
-    return execFileSync("git", [...args], {
-      cwd,
-      env: gitFixtureEnv(options.env ?? {}),
-      encoding: "utf8",
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (error) {
-    if (options.allowFailure === true) {
-      const stdout = (error as { readonly stdout?: string }).stdout;
-      return typeof stdout === "string" ? stdout : "";
-    }
-    throw error;
-  }
+  return execFileSync("git", [...args], {
+    cwd,
+    env: gitFixtureEnv(options.env ?? {}),
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }

@@ -98,8 +98,13 @@ export const CONTROL_CONTEXT_ENV: Readonly<Record<string, string>> = Object.free
  * authoritative list of what it treats as repository-local — plus four it
  * omits but that redirect resolution just as effectively: `GIT_NAMESPACE`,
  * `GIT_QUARANTINE_PATH` (git sets this for `pre-receive`/`update` hooks, and
- * it redirects object writes), `GIT_CEILING_DIRECTORIES`, and
- * `GIT_DISCOVERY_ACROSS_FILESYSTEM`.
+ * it redirects object writes), `GIT_CEILING_DIRECTORIES`,
+ * `GIT_DISCOVERY_ACROSS_FILESYSTEM`, and `GIT_TEMPLATE_DIR` — that last one
+ * is an execution vector rather than a location one: an ambient template dir
+ * plants its `hooks/` into every repository `git init`/`git clone` creates,
+ * so `ensureControlClone` would install attacker- or accident-supplied hooks
+ * into the control clone at creation time, before `neutralizeHooksPath` ever
+ * runs.
  *
  * Deliberately does NOT include `GIT_CONFIG_GLOBAL`/`GIT_CONFIG_SYSTEM`:
  * those are ambient CONFIG, whose neutralization is `CONTROL_CONTEXT_ENV`'s
@@ -129,6 +134,7 @@ export const GIT_LOCATION_ENV_VARS: readonly string[] = Object.freeze([
   "GIT_QUARANTINE_PATH",
   "GIT_CEILING_DIRECTORIES",
   "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+  "GIT_TEMPLATE_DIR",
 ]);
 
 /**
