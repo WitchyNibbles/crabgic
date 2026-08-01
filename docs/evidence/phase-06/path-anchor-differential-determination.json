@@ -1,0 +1,71 @@
+{
+  "probe": "path-anchor-differential.live.test.ts",
+  "question": "Which single setup difference between engine-baseline §14.1 (lone rule, single-segment, no scoping) and §14.2 (compiler's full object, nested path, scopes) is causal?",
+  "readWith": [
+    "docs/evidence/phase-06/path-anchor-determination.json",
+    "docs/evidence/phase-06/sandbox-containment-determination.json"
+  ],
+  "caveat": "Write tool only, one engine version, these shapes. Names a causal variable ONLY when the control scopes and exactly one arm loses it. Authorizes no production change.",
+  "arms": {
+    "control-compiled-nested": {
+      "description": "B's own no-sandbox configuration, re-run here so this file's verdicts rest on its own control",
+      "ownedRelPath": "packages/example/src",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    },
+    "single-segment-owned-path": {
+      "description": "control, except the owned path is one segment (A's shape) instead of nested (B's shape)",
+      "ownedRelPath": "owned",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    },
+    "lone-rule-full-shape": {
+      "description": "control, except permissions.allow carries ONLY the owned-path Write rule; tool enablement still supplied via allowedTools, so this cannot fail for §14.1's tool-disabled reason",
+      "ownedRelPath": "packages/example/src",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    },
+    "minimal-permission-object": {
+      "description": "control, except permissions carries ONLY {allow:[ownedPathWriteRule]} — no defaultMode, no disableBypassPermissionsMode, no populated deny. This is §14.1's object shape, on the allow side, with tool enablement still supplied via allowedTools",
+      "ownedRelPath": "packages/example/src",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    },
+    "path-scoped-deny": {
+      "description": "control, plus an explicit path-scoped Write deny naming the INSIDE target. Deny-wins, so an honored deny must refuse a write the allow rule would otherwise permit; if inside is still allowed, path-scoped deny rules are inert and the compiler's sensitive-root denies are too",
+      "ownedRelPath": "packages/example/src",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    },
+    "_summary": {
+      "description": "ALLOW-side path scoping held in EVERY arm — path depth, a lone allow rule, and a minimal permission object are each RULED OUT as the cause of §14.1's non-match. a path-scoped DENY rule was NOT honored: it did not refuse a write the allow rule permitted, inside the compiler's own full permission object, with an allow-side control scoping in the same run. This corroborates §14.1's deny-side result and localizes the causal variable to the CHANNEL (allow vs deny), not object shape, path depth, or rule count.",
+      "ownedRelPath": "n/a",
+      "insideAttempted": true,
+      "oneUpAttempted": true,
+      "insideDenied": false,
+      "oneUpDenied": true,
+      "scopes": true,
+      "inconclusive": false
+    }
+  }
+}
