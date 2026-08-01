@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "phase": "13",
+  "roadmapFile": "roadmap/13-scheduler-packets-context.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 2 (scheduler, task packets, caching, limit parking)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Property test over random DAGs + overlap sets: overlapping units never concurrent (fast-check suite).",
+      "textSha256": "7f1c5d5fcd4c28fb917233c9f082e84e30fbc50f2a31bb7166f017d36dcdc09d",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 813 — '  ✓  @crabgic/scheduler  src/fanout.property.test.ts (3 tests) 1093ms'; line 824 — '  ✓  @crabgic/scheduler  src/readiness.test.ts (8 tests) 10ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/fanout.property.test.ts:56",
+          "quotedAssertion": "packages/scheduler/src/fanout.property.test.ts:56 — 'expect(collidingSet.has(key)).toBe(false);' over every pair drawn from `selectDispatchSet`'s output, 2000 fast-check cases of random ready-id sets × random collision graphs × random caps (:61 'numRuns: 2000'). This is the criterion's 'overlapping units never concurrent' at the selection primitive."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/fanout.property.test.ts:127",
+          "quotedAssertion": "packages/scheduler/src/fanout.property.test.ts:127 — 'expect(collidingKeySet.has(key)).toBe(false);' inside a full round-based execution of a RANDOM ACYCLIC `dependsOn` DAG (1–7 units, `buildRandomDag` :67-79) crossed with a random overlap graph, driven to completion through `computeReadyUnits` + `selectDispatchSet`. This is the criterion's 'random DAGs + overlap sets' clause, 1500 cases (:142)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/fanout.property.test.ts:236",
+          "quotedAssertion": "packages/scheduler/src/fanout.property.test.ts:236 — 'expect(collidingKeySet.has(key)).toBe(false);' over `activeThisRound` = 'already-in-flight ∪ newly-selected' (:232), with each dispatched unit given a random 1–3-round in-flight LIFETIME (:221-222). Without this suite the property only ever held for units that succeeded instantaneously in their own dispatch round, so `readiness.ts`'s cross-round `inFlightUnitIds` guard was never exercised by a property test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/fanout.property.test.ts:138",
+          "quotedAssertion": "packages/scheduler/src/fanout.property.test.ts:138-139 — 'expect([...statusById.values()].every((s) => s === \"succeeded\")).toBe(true); expect(ids.every((id) => statusById.get(id) === \"succeeded\")).toBe(true);' and :120 'expect(selected.length).toBeGreaterThan(0);'. The anti-vacuity controls: a scheduler that dispatched NOTHING would satisfy 'no colliding pair was concurrent' trivially, so the simulation must additionally converge with every unit of the DAG reaching `succeeded`. :254 repeats the convergence guard for the in-flight-window suite."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c1-overlap-never-concurrent.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / '      Tests  21 passed (21)' / 'exit status: 0' — scoped local re-run at the closeout base commit; command line and HEAD sha recorded in the file header"
+        }
+      ],
+      "notes": "Non-vacuity beyond the in-suite controls: `docs/evidence/phase-13/README.md` §Adversarial-validation repair pass records that the in-flight suite was verified to FAIL within a handful of cases when `readiness.ts`'s `inFlightUnitIds` guard is disabled (a mutation check, confirmed then reverted). Scope recorded honestly: the collision input is `@crabgic/git-engine`'s `CollisionVerdict` supplied as a fixture, so this property tests the SCHEDULER's use of overlap verdicts, not 07's overlap-analysis algorithm itself (which roadmap/13 §Out of scope explicitly assigns to 07)."
+    },
+    {
+      "index": 2,
+      "text": "Third attempt without new evidence refused with a typed error; a 06 schema-violation failure counts as valid evidence exactly once (integration suite).",
+      "textSha256": "128757b6c93349b0012c3089391c84a12ba7d2cefd2ac88cc5fde86e2f88ba9f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 805 — '  ✓  @crabgic/scheduler  src/executor.e2e.test.ts (10 tests) 249ms'; line 809 — '  ✓  @crabgic/scheduler  src/attempt-policy.test.ts (23 tests) 257ms'; line 806 — '  ✓  @crabgic/scheduler  src/executor.test.ts (20 tests) 286ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:301",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:301-312 — after two real fake-engine dispatch/failed cycles, a third `dispatchAttempt` with `evidenceKind: \"none\"` gives '.rejects.toThrow(RepairEvidenceRequiredError); expect(spawnCalled).toBe(false);'. Both halves matter: the error is TYPED, and the refusal happens BEFORE `adapter.spawn` is reached (the spy is installed at :296)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:315",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:315-324 — the positive control: the SAME third attempt, changed only to cite `evidenceKind: \"workerResultFailure\"`, runs and 'expect(thirdOutcome.kind).toBe(\"succeeded\");'. Without it, an executor that refused every third attempt unconditionally would satisfy the refusal assertion."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/attempt-policy.test.ts:128",
+          "quotedAssertion": "packages/scheduler/src/attempt-policy.test.ts:128-129 — 'expect((err as RepairEvidenceRequiredError).reason).toBe(\"noNewEvidence\"); expect((err as RepairEvidenceRequiredError).priorDispatchCount).toBe(1);' — the typed error carries a discriminated `reason` and the journal-derived prior-dispatch count, not just a class name. :206 asserts the distinct `\"attemptsExhausted\"` reason for the over-cap case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:340",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:340-392 — a schema-violating fake-engine script: :352 'expect(outcome1).toMatchObject({ kind: \"failed\", evidenceKind: \"schemaViolation\" });' establishes 06's typed schema-violation failure as the evidence source; it then justifies repair 1 (:355-364) and repair 2 (:368-377), and the 4th dispatch citing the identical evidence kind again is refused (:382-392). Citing the same evidence kind repeatedly never buys a repair past the absolute cap."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/attempt-policy.test.ts:210",
+          "quotedAssertion": "packages/scheduler/src/attempt-policy.test.ts:210 — 're-checking evidence multiple times before an actual redispatch never itself consumes a repair slot (no double-counting)'. This is the criterion's 'exactly once' clause proper: the cap counter is derived from journaled `dispatched` transitions, so consulting the gate is not itself an attempt."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/attempt-policy.test.ts:273",
+          "quotedAssertion": "packages/scheduler/src/attempt-policy.test.ts:273 — 'refuses a repair whose evidenceDetail is IDENTICAL to the immediately-prior repair's, with reason \"evidenceNotDistinct\"', with :308 the matching control that a DIFFERING detail under the same `evidenceKind` is allowed. Added by the adversarial-validation repair pass; it strengthens 'new evidence' from 'a kind was named' toward 'the evidence is not a verbatim repeat'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:213",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:213-259 — 'MAJOR-1: a resumeAttempt crashRepair is REFUSED once the cap is exhausted — the gate actually blocks the call, not a side assertion', ending ':256-258 .rejects.toThrow(RepairEvidenceRequiredError); expect(resumeCalled).toBe(false);'. This closes the bypass the criterion would otherwise leave open: crash recovery routes through `resume`, so an ungated `resumeAttempt` could out-flank the third-attempt refusal entirely."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c2-repair-evidence-gate.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / '      Tests  53 passed (53)' / 'exit status: 0' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Reading of 'exactly once', recorded so the tick is not read as wider than it is: the cap counter is journal-derived per DISPATCH, so one schema-violation failure justifies one repair and no more; a second repair in the e2e suite is justified by the SECOND attempt's own fresh schema violation, not by re-spending the first. Post-phase-13 drift checked: `ff018f4` and `7704f19` run-scoped the counter and `previousStatus`, and `attempt-policy.test.ts:141`/`:95` are the tests that came with them — they narrow the count to the owning run, which strengthens rather than weakens this criterion (a retry run no longer inherits an exhausted budget). Every test name `docs/evidence/phase-13/README.md` cites for this criterion was verified present at this commit."
+    },
+    {
+      "index": 3,
+      "text": "Packet budget violations block dispatch with an actionable diff — no silent truncation (unit suite).",
+      "textSha256": "193db66013bae6ff61d16fb37bebd9c5b431ba6e5e487eeff830551cee22f311",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 823 — '  ✓  @crabgic/scheduler  src/budgets.test.ts (9 tests) 14ms'; line 832 — '  ✓  @crabgic/scheduler  src/budgets.property.test.ts (3 tests) 2124ms'; line 806 — '  ✓  @crabgic/scheduler  src/executor.test.ts (20 tests) 286ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/budgets.test.ts:31",
+          "quotedAssertion": "packages/scheduler/src/budgets.test.ts:31 — 'expect(violations[0]?.diff).toBe(\"x\".repeat(50));' for an objective exactly 50 bytes over budget. The 'actionable diff' clause: the violation carries the exact excess tail, not a boolean."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/budgets.test.ts:33",
+          "quotedAssertion": "packages/scheduler/src/budgets.test.ts:33 — 'expect(packet.objective).toBe(overLong);' — the 'no silent truncation' clause, asserted on the packet itself after the check ran. :44 repeats it for the property suite."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:258",
+          "quotedAssertion": "packages/scheduler/src/executor.test.ts:258-259 — 'rejects.toThrow(PacketBudgetExceededError); expect(spawnCalled).toBe(false);' inside 'throws PacketBudgetExceededError before ever calling adapter.spawn for an over-budget packet'. This is the 'block DISPATCH' clause specifically: the budget check is proven to sit before the engine call, not merely to return the right error type somewhere."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/budgets.test.ts:14",
+          "quotedAssertion": "packages/scheduler/src/budgets.test.ts:14 — 'expect(checkPacketBudgets(packet)).toEqual([]);' for a within-budget fixture, plus budgets.property.test.ts:58 'expect(violations.find((v) => v.field === \"objective\")).toBeUndefined();' over 1000 random within-budget objectives. The negative controls: a checker that flagged everything would satisfy every positive assertion above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/budgets.test.ts:58",
+          "quotedAssertion": "packages/scheduler/src/budgets.test.ts:58-80 — 'MINOR-5 regression: measures TRUE UTF-8 byte length, not JS string .length'. 1500 'é' characters are under the 2000-unit budget by `.length` but 3000 real UTF-8 bytes; the test asserts `actualBytes` equals `Buffer.byteLength(...)`. A `.length`-based implementation reports zero violations here, so this is what makes the `*Bytes` field names true."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c3-packet-budget-block.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  12 passed (12)' / 'exit status: 0' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "The criterion names a 'unit suite' as its channel, and `budgets.test.ts` is that suite; `budgets.property.test.ts` (fast-check, 1000 cases per field) and the `executor.test.ts` dispatch-path test are supplementary and are what carry the word 'dispatch' in the criterion, since the pure unit suite can only prove the check throws, not where it sits relative to `adapter.spawn`."
+    },
+    {
+      "index": 4,
+      "text": "Parking E2E completes with the same `session_id`; journal shows the full arc; survives a simulated supervisor restart mid-park.",
+      "textSha256": "edde0c5d3cba9d4e94009743cf932e782728cf8d2117557734738be7bd5b54b7",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 805 — '  ✓  @crabgic/scheduler  src/executor.e2e.test.ts (10 tests) 249ms'; line 808 — '  ✓  @crabgic/scheduler  src/parking.test.ts (22 tests) 200ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:454",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:454 — 'expect(resumeOutcome).toMatchObject({ kind: \"succeeded\", sessionId });' where `sessionId` is the same constant the pre-park dispatch ran under (:398, :403-407). The criterion's 'completes with the same `session_id`' clause, end to end through a real park."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:424",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:424-437 — 'const freshStore = createJournalStore({ journalDir });' then 'expect(beforeReset).toMatchObject({ parked: true, readyToResume: false });' and 'expect(afterReset).toMatchObject({ parked: true, readyToResume: true, sessionId });'. The 'simulated supervisor restart mid-park' clause: a brand-new JournalStore over the identical on-disk `journalDir`, zero in-memory state carried over, and the resume at :448 is driven through THAT store."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:461",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:461 — 'expect(finalStatus.parked).toBe(false);' read back from the restarted store after the resume. `getParkStatus` derives entirely from the journal — packages/scheduler/src/parking.ts:244-246, 'const latestAttempt = await getLatestAttemptForRun(journal, workUnitId, runId); if (latestAttempt === undefined || latestAttempt.status !== \"parked:rate_limit\") return { parked: false, readyToResume: false };' — so parked/not-parked at each stage IS a cold read of the journaled arc, not an in-memory flag."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/parking.test.ts:333",
+          "quotedAssertion": "packages/scheduler/src/parking.test.ts:333-338 — 'expect(status).toEqual({ parked: true, readyToResume: true, sessionId: SESSION_ID, resetsAt: 5000 });' from a FRESH JournalStore over the same journalDir (:331). An exact-equality assertion, so the retained session id and the derived reset instant both survive the simulated restart, not merely the parked flag."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/parking.test.ts:56",
+          "quotedAssertion": "packages/scheduler/src/parking.test.ts:56-58 — 'const latest = await getLatestAttempt(store, WORK_UNIT_ID); expect(latest?.status).toBe(\"parked:rate_limit\"); expect(latest?.sessionId).toBe(SESSION_ID);' and :68-69 'expect(timer).toEqual({ workUnitId, sessionId, resetsAt: 5000 });'. The park leg of the arc asserted directly on journal reads: the typed `work_unit_transition` AND the journal-derived timer."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:115",
+          "quotedAssertion": "packages/scheduler/src/executor.test.ts:115-135 — 'expect(transitionEntries.length).toBeGreaterThanOrEqual(2); for (const entry of transitionEntries) expect(entry.runId).toBe(runId);' then the same query filtered BY runId, 'expect(scoped.length).toBeGreaterThanOrEqual(2);'. The dispatched and succeeded legs of the arc, proven present in the journal and reachable by the run-scoped replay query `recoverRun` itself uses. :228-230 covers the parked leg from the executor side."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:499",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:499-503 — 'expect(statusG.sessionId).toBe(sessionG); expect(statusH.sessionId).toBe(sessionH); expect(statusG.sessionId).not.toBe(statusH.sessionId);' — the adjacent §Test plan conformance item ('two concurrently-parked work units from the same project never collide on a `session_id`'), which is what makes the same-session_id guarantee above meaningful when more than one unit is parked."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c4-parking-arc-restart.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / '      Tests  52 passed (52)' / 'exit status: 0' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "SCOPE — read this before treating the box as a system-level restart guarantee. The criterion's own word is 'simulated', and what is simulated is JOURNAL-STATE restart: a fresh `JournalStore` over the same on-disk directory, which is exactly the property roadmap/13 §In scope claims ('parking timers derived from journal (restart-safe)'). Two things the simulation deliberately does not cover, recorded here rather than left for a reader to discover: (a) the `EngineAdapter` instance is carried across the simulated restart in memory (executor.e2e.test.ts:408 → :446), and the `SessionRef` is hand-constructed at :439-444 rather than recovered from the journal — `worktreePath`/`configDir` are journaled nowhere, which is why CHANGELOG.md discloses v1.5.0's park-resume as same-daemon-only; (b) the real cross-process restart path (supervisor replay → `recovery.ts` → orphan reaper → `crabgic resume`) lives in `packages/cli` and `packages/supervisor`, outside this phase's package, and roadmap/13 §Out of scope assigns worker lifecycle to 05/06. That path was genuinely broken until `9057abe` (#46), which fixed an honest resume refusal, stopped parked sessions being reaped as crashed, and threaded `runId` onto the reaper's journal write; `9057abe` touched no file under `packages/scheduler`, so it neither strengthens nor invalidates any citation above. This box evidences the scheduler-side parking arc the criterion names; it does not evidence a restart-safe daemon."
+    },
+    {
+      "index": 5,
+      "text": "Cache hit path byte-identical to cold path; poisoning/partial-match property tests green.",
+      "textSha256": "45d6d6d9689b5757daa583b7359b27a9b247b41565b3a09773ab5c6f0c4760ec",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 812 — '  ✓  @crabgic/scheduler  src/cache.test.ts (11 tests) 13ms'; line 820 — '  ✓  @crabgic/scheduler  src/cache.property.test.ts (4 tests) 665ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/cache.test.ts:103",
+          "quotedAssertion": "packages/scheduler/src/cache.test.ts:103-106 — 'expect(second.source).toBe(\"hit\"); expect(second.value).toBe(first.value); expect(compute).toHaveBeenCalledTimes(1);'. The criterion's 'hit path byte-identical to cold path': the second call is a HIT (not a silent recompute — the mock is asserted to have run exactly once) and returns the identical value the cold path produced."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/cache.property.test.ts:37",
+          "quotedAssertion": "packages/scheduler/src/cache.property.test.ts:37/:42 — 'if (exactMatch) { expect(result).toBe(value); } else { expect(result).toBeUndefined(); }' over 3000 random (write-key, read-key, value) draws. The biconditional is what closes 'no partial-match false positive'; the `toBe(value)` branch is simultaneously the anti-vacuity control, since a cache that never hit would satisfy the miss branch alone."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/cache.property.test.ts:50",
+          "quotedAssertion": "packages/scheduler/src/cache.property.test.ts:50-69 — 'an entry keyed to one fingerprint is NEVER served to a dispatch declaring a different one, even with an identical contentHash and many co-resident entries': 2–6 unique fingerprints all written under one shared `contentHash`, then every one read back to its own value (:61-63). This is roadmap/13 §Test plan's cache-poisoning-resistance item."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/cache.property.test.ts:105",
+          "quotedAssertion": "packages/scheduler/src/cache.property.test.ts:88-114 — the boundary-shift generator: `prefix` / `prefix + mid` as the two contentHashes and `mid + suffix` / `suffix` as the two fingerprints, so both pairs share one flat concatenation; ':105 expect(resultAtSplitB).toBeUndefined();' with ':107 expect(cache.get({contentHash: prefix, toolchainFingerprint: mid + suffix})).toBe(value);'. It CONSTRUCTS the adversarial pair rather than hoping two independently-random strings collide — the README records that the original independent-random suites never would have caught the shipped `::`-join bug."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/cache.test.ts:109",
+          "quotedAssertion": "packages/scheduler/src/cache.test.ts:109-127 — 'bypass:true never reads AND never writes the cache': ':125 expect(cache.get({contentHash: \"h1\", toolchainFingerprint: \"f1\"})).toBe(\"pre-existing\"); :126 expect(cache.size).toBe(1);'. The shadow-run bypass path roadmap/13 §In scope requires of this cache, asserted on both sides."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c5-cache-hit-and-poisoning.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  15 passed (15)' / 'exit status: 0' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Subject-still-exists check, because this phase's caching territory saw later churn: the criterion's subject is `SchedulerCache` (content-hash + toolchain-fingerprint keyed), and `git log ff887c2..HEAD -- packages/scheduler/src/cache.ts packages/scheduler/src/cache.test.ts packages/scheduler/src/cache.property.test.ts` is EMPTY — untouched since the phase landed. The separate `attempt-cache.ts` added by `fc697dd` and removed by `a3f77a0` ('journal-seeding supersedes it') was a different, later module; `a3f77a0`'s diff touches `attempt-cache.*`, `run-driver.*`, `index.ts` and the CLI dispatcher, and no `cache.*` file. No criterion in this phase references it. Also recorded: `docs/evidence/phase-13/README.md` §Carry-forwards notes the cache is in-memory-only with no eviction or disk persistence — this criterion makes no durability claim, and none is ticked here."
+    },
+    {
+      "index": 6,
+      "text": "Shadow-run E2E: mirrored attempt runs to completion in isolation; primary attempt's journal/cache/artifacts are provably unmodified (diff-based isolation assertion).",
+      "textSha256": "daa877a136d5dc97095a7ab4e3d3ee93b7f04ceebf576d88d67f2f9d4cb46c26",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 811 — '  ✓  @crabgic/scheduler  src/shadow-run.test.ts (5 tests) 65ms'; line 805 — '  ✓  @crabgic/scheduler  src/executor.e2e.test.ts (10 tests) 249ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:556",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:533/:556 — 'expect(primaryOutcome.kind).toBe(\"succeeded\");' and 'expect(shadowResult.workerResult?.summary).toBe(\"shadow mirrored result\");'. The 'mirrored attempt runs to completion' clause, alongside a primary that also completed — the two are distinguished by their own scripted summaries and session ids, so a shadow that silently returned the primary's result would fail here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:561",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:535-536 / :558-561 — the full journal entry list is enumerated before and after the shadow run and 'expect(afterShadow).toHaveLength(beforeShadow.length + 1);'. This is the criterion's named 'diff-based isolation assertion', over every entry in the store rather than a filtered subset."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.e2e.test.ts:563",
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:563-571 — 'expect(primaryLatest?.status).toBe(\"succeeded\"); expect(primaryLatest?.sessionId).toBe(\"70000000-0000-4000-8000-000000000001\");' and 'expect(primaryCache.get({contentHash: \"h\", toolchainFingerprint: \"fp\"})).toBe(\"primary-cached-value\"); expect(primaryArtifacts.list(workUnitId, \"primary-attempt\")).toHaveLength(1);'. The cache and artifact store are pre-populated at :512-518 and, per the comment at :552-554, are never passed to `runShadowAttempt` at all — isolation is structural, not a flag the test trusts."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/shadow-run.test.ts:123",
+          "quotedAssertion": "packages/scheduler/src/shadow-run.test.ts:100/:102/:112/:123 — 'expect(after).toHaveLength(before.length + 1); expect(newEntry.type).toBe(\"adjudication_decision\"); expect(markerEntries).toHaveLength(1);' and, decisively, 'expect(primaryTransitions).toHaveLength(1);' — the primary's own `work_unit_transition` history is byte-for-byte what it was before the shadow ran. This is the assertion that makes 'the primary attempt's journal is unmodified' precise."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/shadow-run.test.ts:154",
+          "quotedAssertion": "packages/scheduler/src/shadow-run.test.ts:154-183 — 'artifacts are isolated in a fresh store, never reachable from a separately-constructed primary store even under an identical (workUnitId, attemptId)-shaped collision': 'expect(result.artifacts.recordCount).toBeGreaterThan(0);' (the shadow really recorded something — the anti-vacuity half) with 'expect(primaryArtifacts.recordCount).toBe(1);'. roadmap/13 §Test plan's adversarial same-content-hash collision case."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c6-shadow-run-isolation.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / '      Tests  5 passed (5)' / 'exit status: 0' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "One disclosure, so 'unmodified' is not read as stronger than the evidence: the shadow run DOES append exactly one entry to the journal — the marker. That is not a slack reading of the criterion; it is what this phase's own governing text specifies twice, in §In scope ('no mutation of the primary attempt's journal state beyond a marker entry') and §Interfaces produced ('cache-bypassed, no primary-journal mutation beyond a marker entry'). What the tests prove unmodified is the primary attempt's own state — its `work_unit_transition`/`session_assignment` history (shadow-run.test.ts:123), its cache, and its artifact store — with the diff pinned at exactly +1 marker entry so an extra write of any kind fails the assertion."
+    },
+    {
+      "index": 7,
+      "text": "Every attempt transition this package records matches a `WorkUnitAttemptStatus` member, and every entry it journals matches a `JournalEntryType` member (exercised here against 02's discriminated-union exhaustiveness harness).",
+      "textSha256": "e3648205608e1a16a9a38f06099c3a9515d94e2abf3bde625b80a24d973bce9b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\" (`npm test`); and CI / typecheck (ubuntu-latest), job 91423926914",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 819 — '  ✓  @crabgic/scheduler  src/conformance.test.ts (4 tests) 11ms'. The `typecheck` job of the same run is green, which is the other half: the exhaustiveness harness this criterion names is TYPE-level, so it is `tsc` that fails on a missing or stray key."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/conformance.test.ts:54",
+          "quotedAssertion": "packages/scheduler/src/conformance.test.ts:54/:58 — 'expect(Object.keys(JOURNAL_ENTRY_TYPE_USAGE).sort()).toEqual([...JOURNAL_ENTRY_TYPES].sort());' and 'expect(Object.keys(WORK_UNIT_ATTEMPT_STATUS_USAGE).sort()).toEqual([...WORK_UNIT_ATTEMPT_STATUSES].sort());' — the declared maps are pinned to 02's exported closed unions at runtime as well as through their `Readonly<Record<JournalEntryType, boolean>>` / `Readonly<Record<WorkUnitAttemptStatus, boolean>>` types (:26, :43)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/conformance.test.ts:71",
+          "quotedAssertion": "packages/scheduler/src/conformance.test.ts:71-78 — 'expect(usedTypes.sort()).toEqual([\"work_unit_transition\", \"adjudication_decision\", \"session_assignment\", \"fanout_rationale\"].sort());' and :89-91 'expect(usedStatuses.sort()).toEqual([\"dispatched\", \"succeeded\", \"failed\", \"cancelled\", \"parked:rate_limit\"].sort());'. Not just 'a subset' — the exact sets are pinned, so a new journal write of a different member has to be reflected here or the suite fails."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/journal/src/codec/journal-entry.ts:203",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.ts:203-217 — 'export const JournalEntryInputSchema = z.discriminatedUnion(\"type\", [RunTransitionEntrySchema.omit(...), … LearningTransitionEntrySchema.omit(...)]);', exactly 13 branches, and `JournalStore.appendEntry(input: JournalEntryInput)` (packages/journal/src/store/journal-store.ts:53). This is where the criterion's guarantee actually comes from: an entry type outside the closed union cannot compile and cannot parse."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/journal/src/attempts.ts:103",
+          "quotedAssertion": "packages/journal/src/attempts.ts:103-110 — 'export async function recordAttempt(store: JournalStore, workUnitId: string, sessionId: string, status: WorkUnitAttemptStatus, runId?: string, usage?: WorkerAttemptUsage)'. Every attempt transition this package records goes through this one function, whose `status` parameter is 02's closed union — the compile-time half of the criterion's first clause."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-13/closeout-c7-union-conformance.txt",
+          "quotedAssertion": "'$ npx tsc -b packages/scheduler --force' / 'exit status: 0', then 'Test Files  1 passed (1)' / '      Tests  4 passed (4)' / 'exit status: 0' — scoped local re-run at the closeout base commit, capturing BOTH halves the criterion needs"
+        }
+      ],
+      "notes": "Independently re-derived at this commit rather than taken from the map: every journal write in the package's non-test source is `packages/scheduler/src/executor.ts:183` (`adjudication_decision`, the phase-24 criteria-seal refusal added by `06693e5`), `:384` (`session_assignment`), `parking.ts:92`, `shadow-run.ts:101`, `attempt-policy.ts:165` (all `adjudication_decision`), `fanout.ts:86` (`fanout_rationale`), plus every `recordAttempt` call in `executor.ts` and `parking.ts` (`work_unit_transition`). That is exactly the four types and five statuses the conformance suite pins, including for the code added to this package after phase 13 landed. Honest limit of the runtime suite on its own: the usage map is hand-declared, so the runtime assertions restate what the compiler already enforces — the load-bearing guarantee is the typed `appendEntry`/`recordAttempt` signatures cited above, which is why the `tsc -b` step is captured in the transcript alongside the suite."
+    }
+  ]
+}
