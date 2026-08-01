@@ -109,6 +109,8 @@ export {
   resolveStateRoot,
   resolveCacheRoot,
   resolveJournalDir,
+  resolveJournalHeadAnchorPath,
+  JOURNAL_HEAD_ANCHOR_FILE_NAME,
   resolveJournalSegmentsDir,
   resolveJournalSnapshotsDir,
   resolveLeasesDir,
@@ -161,3 +163,19 @@ export type { WorkUnitAttemptRecord } from "./attempts.js";
 
 // ---- Acceptance-criteria seal anchor (roadmap/24) ----
 export { journalCriteriaSeal, findLatestCriteriaSeal } from "./criteria-seal-anchor.js";
+
+// ---- Journal head anchoring (detects wholesale chain rewrites) ----
+export {
+  readJournalHead,
+  recordHeadAnchor,
+  readHeadAnchor,
+  verifyAgainstHeadAnchor,
+  verifyRecordedHeadAnchor,
+  HeadAnchorRecordSchema,
+} from "./head-anchor.js";
+export type {
+  JournalHead,
+  HeadAnchorRecord,
+  HeadAnchorVerdict,
+  HeadAnchorFailureReason,
+} from "./head-anchor.js";

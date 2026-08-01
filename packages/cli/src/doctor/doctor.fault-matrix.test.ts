@@ -49,6 +49,9 @@ function probeResult(overrides: Partial<ProbeResult>): ProbeResult {
 
 const fakeJournal = {
   verifyJournal: async () => ({ segments: [], valid: true, totalValidEntries: 0 }),
+  queryEntries: async function* () {
+    /* an empty journal — the head-anchor check reads entries, not segments */
+  },
 };
 
 describe("doctor fault-fixture matrix", () => {

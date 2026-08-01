@@ -154,7 +154,7 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
 });
 
 describe("dispatchCommand — doctor registers roadmap/10's 3 checks only when deps.installer is present", () => {
-  it("doctor --json reports 11 findings (09's 8 + this phase's 3) when deps.installer is supplied", async () => {
+  it("doctor --json reports 12 findings (09's 9 + this phase's 3) when deps.installer is supplied", async () => {
     const targetDir = await makeTmpDir();
     const deps: CliDependencies = {
       ...baseDeps(),
@@ -165,17 +165,17 @@ describe("dispatchCommand — doctor registers roadmap/10's 3 checks only when d
       deps,
     );
     const parsed = JSON.parse(result.stdout!) as { findings: readonly unknown[] };
-    expect(parsed.findings).toHaveLength(11);
+    expect(parsed.findings).toHaveLength(12);
   });
 
-  it("doctor --json still reports exactly 8 findings when deps.installer is absent (09's own baseline, unchanged)", async () => {
+  it("doctor --json still reports exactly 9 findings when deps.installer is absent (09's baseline + the head-anchor check)", async () => {
     const deps: CliDependencies = baseDeps() as CliDependencies;
     const result = await dispatchCommand(
       { command: "doctor", repairPlan: false, json: true },
       deps,
     );
     const parsed = JSON.parse(result.stdout!) as { findings: readonly unknown[] };
-    expect(parsed.findings).toHaveLength(8);
+    expect(parsed.findings).toHaveLength(9);
   });
 });
 
