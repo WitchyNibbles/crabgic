@@ -34,9 +34,37 @@ export const ECOSYSTEM_RESEARCH_BUDGETS: Readonly<
   ],
 };
 
-/** The ecosystem-research budgets for `ecosystem`, or `undefined` if this phase's pinned table has no entry for it (falls through to the base-revision-measurement source). */
+/**
+ * Every ecosystem this pinned table actually has a row for, sorted — the exact
+ * vocabulary `IntakeRequest.ecosystem` may use. Derived from the table itself
+ * so the two can never drift.
+ */
+export const KNOWN_RESEARCH_ECOSYSTEMS: readonly string[] = Object.freeze(
+  Object.keys(ECOSYSTEM_RESEARCH_BUDGETS).sort((a, b) => a.localeCompare(b)),
+);
+
+/**
+ * Whether `ecosystem` is an OWN row of the pinned table.
+ *
+ * `Object.hasOwn`, not `in` and not a truthiness check on the lookup: the
+ * argument reaches this module straight from `JSON.parse` (intake reads its
+ * request off stdin and there is no `IntakeRequestSchema`), and
+ * `ECOSYSTEM_RESEARCH_BUDGETS` is an object literal, so it inherits
+ * `Object.prototype`. Without this guard `TABLE["constructor"]` answered with
+ * `Object` — a function of arity 1, which passed the caller's `.length > 0`
+ * liveness check — and the caller then spread it, throwing
+ * `TypeError: researched is not iterable` out of this package and crashing
+ * `runIntake`. `hasOwnProperty`, `isPrototypeOf` and
+ * `propertyIsEnumerable` are arity-1 too and behaved identically.
+ */
+export function isKnownResearchEcosystem(ecosystem: string): boolean {
+  return Object.hasOwn(ECOSYSTEM_RESEARCH_BUDGETS, ecosystem);
+}
+
+/** The ecosystem-research budgets for `ecosystem`, or `undefined` if this phase's pinned table has no OWN entry for it (falls through to the base-revision-measurement source). */
 export function ecosystemResearchBudgets(
   ecosystem: string,
 ): readonly ProvisionalPerformanceBudgetEntry[] | undefined {
+  if (!isKnownResearchEcosystem(ecosystem)) return undefined;
   return ECOSYSTEM_RESEARCH_BUDGETS[ecosystem];
 }

@@ -99,6 +99,9 @@ export * from "./contracts/performance-contract.js";
 export * from "./contracts/acceptance-criteria-parser.js";
 export * from "./contracts/ecosystem-research-table.js";
 export * from "./contracts/budget-sourcing.js";
+// Relocated alongside them (2026-08-01): the parser needs each metric's
+// canonical direction to refuse a criterion whose operator contradicts it.
+export * from "./contracts/metric-direction.js";
 export * from "./contracts/project-profile.js";
 export * from "./contracts/remote-mutation-plan.js";
 export * from "./contracts/remote-operation-record.js";

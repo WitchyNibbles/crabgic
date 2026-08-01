@@ -44,12 +44,15 @@ export type { DetectPerformanceRiskOptions } from "./risk/detector.js";
 export { canonicalHash, canonicalStringify } from "./contract/canonical-hash.js";
 export type { CanonicalJsonValue } from "./contract/canonical-hash.js";
 export {
+  ContradictoryCriterionDirectionError,
   parseAcceptanceCriteriaAsBudgets,
   parseAcceptanceCriterionAsBudget,
 } from "./contract/acceptance-criteria-parser.js";
 export {
   ECOSYSTEM_RESEARCH_BUDGETS,
   ecosystemResearchBudgets,
+  isKnownResearchEcosystem,
+  KNOWN_RESEARCH_ECOSYSTEMS,
 } from "./contract/ecosystem-research-table.js";
 export { resolveBudgetSource } from "./contract/budget-sourcing.js";
 export type {
