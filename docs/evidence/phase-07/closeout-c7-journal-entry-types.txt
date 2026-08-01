@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 7 — journal entries match git_freeze / worktree_quarantine and pass 02's discriminated-union exhaustiveness mechanism (vitest + the compile-time half via tsc -b)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:43Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/journal-entry-type-compliance.test.ts packages/git-engine/src/integration-journal-entry-type-compliance.test.ts packages/contracts/src/journal/journal-entry-type.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  23:29:44
+   Duration  696ms (transform 786ms, setup 0ms, import 1.19s, tests 21ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

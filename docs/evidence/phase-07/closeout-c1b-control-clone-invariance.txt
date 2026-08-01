@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 1 (second application site) — ensureControlClone + fetchRefresh wrapped in withTreeInvariance against a real user repo (23's offline git matrix; no network, no live engine)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:31:17Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --config e2e/matrix/git/vitest.config.ts test/checkout-invariance-scenario.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07/e2e/matrix/git
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:31:17
+   Duration  869ms (transform 472ms, setup 0ms, import 639ms, tests 113ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

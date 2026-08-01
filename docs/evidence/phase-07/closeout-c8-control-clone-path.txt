@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 8 — control clone resolves at $XDG_CACHE_HOME/crabgic/<project-hash>/git-control/ (path-convention test)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:51Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/layout.test.ts packages/git-engine/src/control-clone.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  23:29:51
+   Duration  1.61s (transform 992ms, setup 0ms, import 1.40s, tests 638ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

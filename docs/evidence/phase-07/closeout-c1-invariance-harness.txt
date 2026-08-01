@@ -1,0 +1,22 @@
+# Phase 07 exit criterion 1 — invariance harness: user-checkout tree-hash before/after (harness's own suite + its application around freezeIntake)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:12Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false packages/git-engine/src/invariance.test.ts packages/git-engine/src/intake-freeze.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p07
+
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  23:29:13
+   Duration  1.68s (transform 863ms, setup 0ms, import 1.26s, tests 1.22s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

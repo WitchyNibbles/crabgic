@@ -1,0 +1,13 @@
+# Phase 07 exit criterion 7 (compile-time half) — the Record<JournalEntryType, string> exhaustiveness mechanism and git-engine's AssertMembersAreValid check under a cold tsc -b
+#
+# Produced by the criteria-closeout pass (batch 1, phase 07), 2026-08-01T21:29:44Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx tsc -b --force packages/contracts packages/git-engine
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
