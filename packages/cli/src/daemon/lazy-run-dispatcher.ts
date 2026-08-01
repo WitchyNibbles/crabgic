@@ -23,7 +23,13 @@
  * `@crabgic/supervisor`'s `createRunDispatcher` hook is synchronous, so the
  * laziness has to live behind `dispatch` rather than in the factory.
  */
-import type { RunDispatcher, RunDispatchOutcome } from "@crabgic/supervisor";
+import {
+  DISPATCHER_DRAINING_REASON,
+  type DrainOptions,
+  type DrainOutcome,
+  type RunDispatcher,
+  type RunDispatchOutcome,
+} from "@crabgic/supervisor";
 import type { RealRunDispatcherOptions } from "./run-dispatcher.js";
 
 /** The slice of `./run-dispatcher.js` this wrapper needs — the seam tests substitute. */
@@ -59,6 +65,24 @@ export function createLazyRunDispatcher(
 ): RunDispatcher {
   let pending: Promise<RunDispatcher> | undefined;
   let real: RunDispatcher | undefined;
+  /**
+   * The one-way door, latched HERE as well as in the real dispatcher.
+   *
+   * `RunDispatcher.drain`'s contract is that a drained dispatcher refuses
+   * permanently — and this wrapper is what `bin/supervisord.ts` actually
+   * composes, so it is where the contract has to hold. Delegating alone did
+   * not deliver it: draining a NEVER-LOADED dispatcher returns the empty
+   * outcome without touching anything, so a later `dispatch` would load the
+   * engine and be ACCEPTED, starting a drive after the caller had decided the
+   * daemon was quiescing. Even on the loaded path there is a microtask window
+   * between this wrapper's `drain` being entered and the real dispatcher
+   * setting its own flag. Neither is reachable in today's composed daemon —
+   * `bootSupervisor` closes the control plane before draining, and the UDS
+   * server's close waits for its connections — but "unreachable given the
+   * current caller" is exactly the kind of guarantee this change exists to
+   * stop people reasoning from.
+   */
+  let drained = false;
 
   /**
    * Resolves the one real dispatcher, loading the engine on first use.
@@ -87,10 +111,37 @@ export function createLazyRunDispatcher(
 
   return {
     async dispatch(changeSetId: string): Promise<RunDispatchOutcome> {
+      // Refused HERE, before `resolveReal` — a drained daemon must not load
+      // the engine to discover it is drained, and must not be talked into a
+      // drive by the microtask gap between the two flags.
+      if (drained) return { accepted: false, reason: DISPATCHER_DRAINING_REASON };
       return (await resolveReal()).dispatch(changeSetId);
     },
     async resume(runId: string): Promise<RunDispatchOutcome> {
+      if (drained) return { accepted: false, reason: DISPATCHER_DRAINING_REASON };
       return (await resolveReal()).resume(runId);
+    },
+    /**
+     * Shuts the door, then drains the real dispatcher IF one was ever built —
+     * and never builds one to do it.
+     *
+     * A daemon that served only status/evidence/registry reads has no drive to
+     * wait for, and importing 40.9 MiB of engine on the way out to ask it
+     * "nothing in flight, right?" would spend the whole idle-footprint budget
+     * at the one moment it can buy nothing. Nothing loaded means nothing
+     * dispatched means nothing to drain; the load being in progress is
+     * awaited, because that load's own dispatch is a drive we WOULD have to
+     * wait for. The door shuts either way — see `drained`.
+     */
+    async drain(options?: DrainOptions): Promise<DrainOutcome> {
+      // Latched synchronously, before the first await, for the same reason
+      // the real dispatcher does it: anything admitted after this point is a
+      // drive nobody is going to wait for.
+      drained = true;
+      if (real === undefined && pending === undefined) {
+        return { settledRunIds: [], cancelledRunIds: [], unsettledRunIds: [] };
+      }
+      return (await resolveReal()).drain(options);
     },
   };
 }

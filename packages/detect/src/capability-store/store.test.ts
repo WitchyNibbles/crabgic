@@ -1,7 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { freshTmpDir, removeDirTree } from "../test-support/fixture-repo.js";
+import { createFailingJournal, createRecordingJournal } from "../test-support/recording-journal.js";
 import { runQuarantinePipeline } from "../quarantine/pipeline.js";
+import type { AuditReport } from "../quarantine/types.js";
 import { createCapabilityStore } from "./store.js";
+import {
+  CAPABILITY_DECISION_TRANSITION_DECISION,
+  CapabilityAuditJournalUnavailableError,
+  parseCapabilityDecisionTransition,
+} from "./audit-journal.js";
 import { computeCapabilityStoreKey } from "./key.js";
 
 const BENIGN_SKILL = {
@@ -40,12 +49,12 @@ describe("createCapabilityStore", () => {
     expect(store.load("nonexistent-key")).toBeUndefined();
   });
 
-  it("updateDecision flips a stored entry's decision on both the report and the manifest entry", () => {
-    const store = createCapabilityStore(newRoot());
+  it("updateDecision flips a stored entry's decision on both the report and the manifest entry", async () => {
+    const store = createCapabilityStore(newRoot(), { journal: createRecordingJournal() });
     const { report, manifestEntry } = runQuarantinePipeline(BENIGN_SKILL);
     const saved = store.save(report, manifestEntry);
 
-    const updated = store.updateDecision(saved.key, "approved");
+    const updated = await store.updateDecision(saved.key, "approved");
     expect(updated.report.decision).toBe("approved");
     expect(updated.manifestEntry).toMatchObject({ decision: "approved" });
 
@@ -54,9 +63,21 @@ describe("createCapabilityStore", () => {
     expect(reloaded?.manifestEntry).toMatchObject({ decision: "approved" });
   });
 
-  it("updateDecision throws for an unknown key", () => {
-    const store = createCapabilityStore(newRoot());
-    expect(() => store.updateDecision("nonexistent-key", "approved")).toThrow();
+  it("updateDecision flips a report saved WITHOUT a manifest entry (a rejected audit produces none)", async () => {
+    const store = createCapabilityStore(newRoot(), { journal: createRecordingJournal() });
+    const { report } = runQuarantinePipeline({ kind: "skill" });
+    const saved = store.save(report);
+
+    const updated = await store.updateDecision(saved.key, "approved");
+    expect(updated.report.decision).toBe("approved");
+    expect(updated.manifestEntry).toBeUndefined();
+  });
+
+  it("updateDecision rejects for an unknown key", async () => {
+    const store = createCapabilityStore(newRoot(), { journal: createRecordingJournal() });
+    await expect(store.updateDecision("nonexistent-key", "approved")).rejects.toThrow(
+      /no entry found/,
+    );
   });
 
   it("list() returns every saved entry", () => {
@@ -102,5 +123,88 @@ describe("createCapabilityStore", () => {
     // A brand-new store instance over the SAME root sees the same data.
     const reopened = createCapabilityStore(root);
     expect(reopened.load(saved.key)?.report.digest).toBe(report.digest);
+  });
+
+  /**
+   * interface-ledger Gap 5, resolution (2026-08-01). `updateDecision`
+   * OVERWRITES `report.json` in place — the artifact keeps only the newest
+   * decision and no history at all, so before this the `pending ->
+   * approved` flip (and `trust revoke`'s flip back) left no durable,
+   * tamper-evident trace anywhere. The transition is now journaled FIRST,
+   * as an `adjudication_decision`; only then is the artifact rewritten.
+   */
+  describe("decision-transition journaling (interface-ledger Gap 5)", () => {
+    it("appends the pending -> approved transition BEFORE rewriting report.json", async () => {
+      const root = newRoot();
+      let savedKey = "";
+      const onDiskAtAppendTime: string[] = [];
+      const journal = createRecordingJournal(() => {
+        const raw = readFileSync(join(root, savedKey, "report.json"), "utf8");
+        onDiskAtAppendTime.push((JSON.parse(raw) as AuditReport).decision);
+      });
+      const store = createCapabilityStore(root, { journal });
+      const { report, manifestEntry } = runQuarantinePipeline(BENIGN_SKILL);
+      savedKey = store.save(report, manifestEntry).key;
+
+      const updated = await store.updateDecision(savedKey, "approved");
+
+      // The artifact still read `pending` at the instant the entry was appended.
+      expect(onDiskAtAppendTime).toEqual(["pending"]);
+      expect(updated.report.decision).toBe("approved");
+
+      expect(journal.entries).toHaveLength(1);
+      const [entry] = journal.entries;
+      expect(entry?.type).toBe("adjudication_decision");
+      expect(entry?.payload.decision).toBe(CAPABILITY_DECISION_TRANSITION_DECISION);
+      const transition = parseCapabilityDecisionTransition(entry?.payload.rationale ?? "");
+      expect(transition).toMatchObject({
+        storeKey: savedKey,
+        candidateName: "benign-skill",
+        digest: report.digest,
+        from: "pending",
+        to: "approved",
+      });
+    });
+
+    it("ABORTS the flip when the journal append fails — fail closed, artifact untouched", async () => {
+      const root = newRoot();
+      const store = createCapabilityStore(root, { journal: createFailingJournal() });
+      const { report, manifestEntry } = runQuarantinePipeline(BENIGN_SKILL);
+      const saved = store.save(report, manifestEntry);
+
+      await expect(store.updateDecision(saved.key, "approved")).rejects.toThrow(
+        /journal append failed/,
+      );
+      expect(store.load(saved.key)?.report.decision).toBe("pending");
+      expect(store.load(saved.key)?.manifestEntry).toMatchObject({ decision: "pending" });
+    });
+
+    it("fails CLOSED when the store was constructed without a journal sink", async () => {
+      const store = createCapabilityStore(newRoot());
+      const { report, manifestEntry } = runQuarantinePipeline(BENIGN_SKILL);
+      const saved = store.save(report, manifestEntry);
+
+      await expect(store.updateDecision(saved.key, "approved")).rejects.toBeInstanceOf(
+        CapabilityAuditJournalUnavailableError,
+      );
+      expect(store.load(saved.key)?.report.decision).toBe("pending");
+    });
+
+    it("journals a revoke (approved -> rejected) too, so the reversal is as durable as the approval", async () => {
+      const journal = createRecordingJournal();
+      const store = createCapabilityStore(newRoot(), { journal });
+      const { report, manifestEntry } = runQuarantinePipeline(BENIGN_SKILL);
+      const saved = store.save(report, manifestEntry);
+
+      await store.updateDecision(saved.key, "approved");
+      await store.updateDecision(saved.key, "rejected");
+
+      expect(
+        journal.entries.map((e) => parseCapabilityDecisionTransition(e.payload.rationale)),
+      ).toMatchObject([
+        { from: "pending", to: "approved" },
+        { from: "approved", to: "rejected" },
+      ]);
+    });
   });
 });

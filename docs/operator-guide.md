@@ -159,12 +159,42 @@ attribution-free branch is the entire hand-off (interface-ledger Gap 6; see
 crabgic trust review|approve|revoke
 ```
 
-**`NOT_IMPLEMENTED`** at this repository's current build — 12's `trust review|approve|revoke`
-backend exists in `packages/detect`, but the CLI-dispatch wiring into `packages/cli` is an
-explicit, documented carry-forward from phase 11, left for whichever phase/reconcile pass owns
-that wiring decision (`docs/evidence/phase-11/README.md`, "Carry-forwards from prior phases").
-`capability.approve` itself only ever verifies a previously human-minted `trust approve`
-token; it is never model-satisfiable, mirroring `contract.approve`'s own treatment.
+**Wired and functional in the shipped binary.** All three verbs dispatch to 12's real
+`@crabgic/detect` backends (`packages/cli/src/commands/dispatch.ts`), and
+`buildRealCliDependencies` supplies that bag by default (`packages/cli/src/bootstrap.ts`), so
+none of them returns 09's `NOT_IMPLEMENTED` stub.
+
+> **Correction (2026-08-01).** This section previously said these commands were
+> `NOT_IMPLEMENTED` and pointed at an unresolved phase-11 wiring carry-forward. That
+> carry-forward was discharged in `01ae7aa` (2026-07-25), one day after this paragraph was
+> written, and the guide was never updated — so the guide told operators a working feature was
+> unavailable. Pinned end-to-end through the real composition root by
+> `packages/cli/src/bootstrap.test.ts`'s "runs `trust review|approve|revoke` end-to-end through
+> the SHIPPED wiring" case, which is the coverage whose absence let the claim drift.
+
+- **`crabgic trust review`** lists every audited capability in this project's capability store
+  (`$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/`, interface-ledger Gap 14) with
+  its current decision, most-recently-audited first — `[pending] skill "name" — sha256:…`, or
+  `no capability audits recorded yet`. `--json` returns the full structured reports.
+- **`crabgic trust approve <digest>`** mints a **single-use approval token bound to that
+  content digest, and nothing else.** It deliberately does **not** flip any stored decision.
+  That separation is the whole control: only `capability.approve`, verifying a token this
+  command already minted, can move a capability to `approved` — and `capability.approve` can
+  only ever _verify_ a previously human-minted token, never mint one, so it is never
+  model-satisfiable. Mirrors `contract.approve`'s own treatment in 11.
+- **`crabgic trust revoke <token-id>`** resolves the digest the token was bound to and flips
+  that store entry back to `rejected`. It never deletes the audit trail.
+
+Every decision transition these commands cause is appended to 04's hash-chained journal as an
+`adjudication_decision` entry **before** the store artifact is rewritten, and a flip that
+cannot be journaled is refused outright (interface-ledger Gap 5). This matters operationally:
+`report.json` is rewritten in place and holds only the _newest_ decision, so the journal — not
+the store — is where the history of who approved or revoked what actually lives.
+
+The approval signing key is durable and project-scoped
+(`packages/cli/src/approval/signing-key.ts`, 0600 under the project's XDG state root), so a
+token minted by one short-lived `trust approve` invocation does verify in the long-lived
+`gateway mcp` process. It is still consumed on first verify; a replay is rejected as a replay.
 
 ## 6. Managing external connections
 

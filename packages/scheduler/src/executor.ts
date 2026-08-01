@@ -71,6 +71,7 @@ import type {
 import {
   verifyCriteriaSeal,
   type CriteriaApprovalSeal,
+  type CriteriaSealCheckResult,
   type Requirement,
   type TaskPacket,
   type WorkerResult,
@@ -136,6 +137,61 @@ interface ConsumeEventsParams {
   readonly runId?: string;
 }
 
+/** One requirement whose seal check refused, paired with the typed reason it refused for. */
+interface SealFailure {
+  readonly requirement: Requirement;
+  readonly result: CriteriaSealCheckResult;
+}
+
+/**
+ * Writes the seal refusal's TYPED REASON to the journal — roadmap/24's exit
+ * criterion "`failed` is recorded and the typed reason
+ * (`self_consistency_mismatch` or `approval_seal_mismatch`) is journaled".
+ *
+ * WHY THIS EXISTS (found closing phase 24, 2026-08-01): the reason was
+ * computed, put on `DispatchAttemptOutcome.diagnostics`, and then written
+ * down nowhere. Neither `./run-driver.ts` nor `@crabgic/cli`'s
+ * `run-dispatcher.ts` persists diagnostics, so the durable record of a
+ * tamper was a bare `work_unit_transition: failed` — indistinguishable from
+ * an ordinary flaky worker the moment the process exited. The refusal is the
+ * one outcome whose reason a human must be able to read back later, and it
+ * was the one outcome whose reason nothing kept.
+ *
+ * WHY `adjudication_decision` AND NOT A 14TH ENTRY TYPE: `JournalEntryType`
+ * is closed at 13 members (`docs/interface-ledger.md` Gap 5, a ruling about
+ * entry TYPES, not payload shapes). Refusing a reported success against the
+ * approved bar IS an adjudication decision, so it rides on the existing
+ * member with its own `decision` discriminator — exactly the precedent
+ * `journalCriteriaSeal`'s `criteria_sealed` set for the write half of this
+ * same mechanism.
+ *
+ * WHAT IT DELIBERATELY DOES NOT CARRY (roadmap/24 §Security): requirement
+ * IDS, the typed reason, and HASHES only. Never the acceptance-criteria
+ * text — which is attacker-authored on precisely the path this entry
+ * records — and never environment, argv, or any worker-supplied prose.
+ */
+async function journalSealRefusal(
+  params: ConsumeEventsParams,
+  failures: readonly SealFailure[],
+): Promise<void> {
+  const detail = failures
+    .map(
+      (checked) =>
+        `${checked.requirement.id}=${checked.result.reason ?? "unknown"} (approved ${params.criteriaSeal.approvalSeal?.criteriaHashes[checked.requirement.id] ?? "none"}, presented ${checked.result.recomputedHash})`,
+    )
+    .join("; ");
+  await params.journal.appendEntry({
+    type: "adjudication_decision",
+    ...(params.runId !== undefined ? { runId: params.runId } : {}),
+    workUnitId: params.workUnitId,
+    payload: {
+      decision: "criteria_seal_refused",
+      rationale: `refused a reported success: ${String(failures.length)} acceptance-criteria seal check(s) failed — ${detail}`,
+      subjectId: params.workUnitId,
+    },
+  });
+}
+
 /** Shared event-consumption loop between a fresh dispatch and a resume — see file-level doc comment. */
 async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttemptOutcome> {
   for await (const event of params.events) {
@@ -189,6 +245,16 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
           .filter((checked) => !checked.result.ok);
 
         if (sealFailures.length > 0) {
+          const diagnostics = sealFailures.map(
+            (checked) =>
+              `acceptance-criteria seal verification failed for requirement ${checked.requirement.id} (${checked.result.reason})`,
+          );
+          // Journaled BEFORE the `failed` transition, and for the same reason
+          // `readiness-gate.ts` seals before it transitions: a crash between
+          // the two must leave the REASON behind, not a bare `failed` nothing
+          // accounts for. See `journalSealRefusal` for why the reason has to
+          // reach the journal at all.
+          await journalSealRefusal(params, sealFailures);
           await recordAttempt(
             params.journal,
             params.workUnitId,
@@ -200,10 +266,7 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
             kind: "failed",
             sessionId: params.sessionId,
             evidenceKind: "gateVerdict",
-            diagnostics: sealFailures.map(
-              (checked) =>
-                `acceptance-criteria seal verification failed for requirement ${checked.requirement.id} (${checked.result.reason})`,
-            ),
+            diagnostics,
             result: validation.result,
           };
         }

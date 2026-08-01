@@ -31,7 +31,7 @@
  * competing driver over the same work units.
  */
 import { describe, expect, it, vi } from "vitest";
-import type { RunDispatcher } from "@crabgic/supervisor";
+import { DISPATCHER_DRAINING_REASON, type RunDispatcher } from "@crabgic/supervisor";
 import {
   createLazyRunDispatcher,
   loadRunDispatcherModule,
@@ -43,15 +43,17 @@ import type { RealRunDispatcherOptions } from "./run-dispatcher.js";
 const OPTIONS = { projectDir: "/nowhere" } as unknown as RealRunDispatcherOptions;
 
 /**
- * Fills in whichever of the two `RunDispatcher` methods a case does not
- * exercise. `resume` was split out of `dispatch` on 2026-07-28 (ledger Gap
- * 18); these cases are about the LAZY LOADING contract, not about either
- * method's own semantics, so they should not have to restate both.
+ * Fills in whichever `RunDispatcher` method a case does not exercise.
+ * `resume` was split out of `dispatch` on 2026-07-28 (ledger Gap 18) and
+ * `drain` was added for graceful shutdown; these cases are about the LAZY
+ * LOADING contract, not about any method's own semantics, so they should not
+ * have to restate all three.
  */
 function asDispatcher(partial: Partial<RunDispatcher>): RunDispatcher {
   return {
     dispatch: () => Promise.resolve({ accepted: true }),
     resume: () => Promise.resolve({ accepted: true }),
+    drain: () => Promise.resolve({ settledRunIds: [], cancelledRunIds: [], unsettledRunIds: [] }),
     ...partial,
   };
 }
@@ -119,6 +121,89 @@ describe("createLazyRunDispatcher", () => {
 
     expect(load).toHaveBeenCalledTimes(1);
     expect(stub.created()).toBe(1);
+  });
+
+  /**
+   * Shutdown must not be the thing that finally pays the 40.9 MiB import. A
+   * daemon that only ever served status/evidence reads has no drive to wait
+   * for, and loading the engine to ask "nothing in flight, right?" would spend
+   * the entire idle-footprint budget at the one moment it can buy nothing.
+   */
+  it("drains without loading the module when nothing was ever dispatched", async () => {
+    const load = vi.fn<() => Promise<RunDispatcherModule>>();
+
+    const outcome = await createLazyRunDispatcher(OPTIONS, load).drain({ timeoutMs: 1 });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ settledRunIds: [], cancelledRunIds: [], unsettledRunIds: [] });
+  });
+
+  /**
+   * THE ONE-WAY DOOR HAS TO LATCH IN THIS WRAPPER, not only in the dispatcher
+   * behind it — this is the object `bin/supervisord.ts` actually composes, so
+   * this is where `RunDispatcher.drain`'s "refuses permanently" contract is
+   * either kept or not.
+   *
+   * Delegation alone did not keep it. Draining a NEVER-LOADED dispatcher
+   * returns the empty outcome and touches nothing, so a later `dispatch` would
+   * load the engine and be ACCEPTED — a drive started after the caller had
+   * decided the daemon was quiescing, and after the boot layer may already
+   * have released the single-writer lease. Unreachable through today's
+   * composed daemon (the control plane is closed first, and the UDS close
+   * waits for its connections), which is exactly why it needs a test rather
+   * than an argument.
+   */
+  it("drain on a never-loaded dispatcher still shuts the door: a later dispatch is refused and the engine is never loaded", async () => {
+    const load = vi.fn<() => Promise<RunDispatcherModule>>();
+    const lazy = createLazyRunDispatcher(OPTIONS, load);
+
+    await lazy.drain({ timeoutMs: 1 });
+
+    expect(await lazy.dispatch("change-set-1")).toEqual({
+      accepted: false,
+      reason: DISPATCHER_DRAINING_REASON,
+    });
+    expect(await lazy.resume("run-1")).toEqual({
+      accepted: false,
+      reason: DISPATCHER_DRAINING_REASON,
+    });
+    // Still never loaded: a drained daemon must not import 40.9 MiB of engine
+    // just to discover it is drained.
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  /** And once one HAS been built, the wrapper refuses without even reaching it. */
+  it("refuses after draining a loaded dispatcher, without delegating the call", async () => {
+    const dispatch = vi.fn(() => Promise.resolve({ accepted: true as const }));
+    const resume = vi.fn(() => Promise.resolve({ accepted: true as const }));
+    const stub = stubModule(asDispatcher({ dispatch, resume }));
+    const lazy = createLazyRunDispatcher(OPTIONS, vi.fn(stub.load));
+
+    await lazy.dispatch("change-set-1");
+    await lazy.drain({ timeoutMs: 1 });
+
+    expect((await lazy.dispatch("change-set-1")).reason).toBe(DISPATCHER_DRAINING_REASON);
+    expect((await lazy.resume("run-1")).reason).toBe(DISPATCHER_DRAINING_REASON);
+    expect(dispatch).toHaveBeenCalledTimes(1); // the pre-drain one only
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it("drains the real dispatcher once one exists, forwarding the deadline", async () => {
+    const drain = vi.fn(() =>
+      Promise.resolve({
+        settledRunIds: ["run-1"],
+        cancelledRunIds: [],
+        unsettledRunIds: [],
+      }),
+    );
+    const stub = stubModule(asDispatcher({ drain }));
+    const lazy = createLazyRunDispatcher(OPTIONS, vi.fn(stub.load));
+
+    await lazy.dispatch("run-1");
+    const outcome = await lazy.drain({ timeoutMs: 7, graceMs: 3 });
+
+    expect(drain).toHaveBeenCalledWith({ timeoutMs: 7, graceMs: 3 });
+    expect(outcome.settledRunIds).toEqual(["run-1"]);
   });
 
   it("propagates a load failure and does not poison the dispatcher against a later retry", async () => {

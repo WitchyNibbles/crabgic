@@ -10,7 +10,7 @@ import {
   buildWorkerResult,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
-import { recoverRun, RunRecoveryDataError } from "./recovery.js";
+import { collectReplayedSessionIds, recoverRun, RunRecoveryDataError } from "./recovery.js";
 import { createRunsRegistry } from "./runs-registry.js";
 import { createWorkersRegistry } from "./workers-registry.js";
 import { spawnManagedWorker } from "../worker-lifecycle/worker-lifecycle-manager.js";
@@ -85,6 +85,94 @@ describe("recoverRun — wired against @crabgic/journal's real recover(runId)", 
 
     expect(workers.get("worker-1")?.status).toBe("crashed");
     expect(workers.get("worker-1")?.terminatedAt).toBeDefined();
+  });
+
+  /**
+   * A rate-limit park is a LIVE-WAITING state, not an orphan. Before this
+   * fix `parked:rate_limit` was simply "not terminal", so replay synthesized
+   * a `crashed` worker for it and the startup reaper then journaled a
+   * `failed` attempt over the park record — an edge `WorkUnitAttemptStatus`
+   * does not even permit (`parked:rate_limit` transitions ONLY to
+   * `dispatched`), which made `crabgic resume` see a unit that had been
+   * failed behind its back while the park timer said it was waiting.
+   */
+  it("does NOT reap a rate-limit-PARKED session as a crashed worker — parked is live-waiting, not orphaned", async () => {
+    await store.appendEntry({
+      type: "session_assignment",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { sessionId: SESSION_ID },
+    });
+    await store.appendEntry({
+      type: "work_unit_transition",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { status: "dispatched", sessionId: SESSION_ID },
+    });
+    await store.appendEntry({
+      type: "work_unit_transition",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { status: "parked:rate_limit", sessionId: SESSION_ID },
+    });
+
+    const runs = createRunsRegistry();
+    const workers = createWorkersRegistry();
+    await recoverRun(RUN_ID, { journal: store, runs, workers });
+
+    expect(workers.query((w) => w.sessionId === SESSION_ID)).toEqual([]);
+  });
+
+  /**
+   * The park must not be laundered into a crash by a PRE-EXISTING registry
+   * entry either: on a genuine restart the map starts empty, but
+   * `recoverRun` is documented idempotent and is also called against a
+   * populated one.
+   */
+  it("leaves an existing worker record alone when its session is parked rather than orphaned", async () => {
+    await store.appendEntry({
+      type: "session_assignment",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { sessionId: SESSION_ID },
+    });
+    await store.appendEntry({
+      type: "work_unit_transition",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { status: "parked:rate_limit", sessionId: SESSION_ID },
+    });
+
+    const runs = createRunsRegistry();
+    const workers = createWorkersRegistry();
+    workers.upsert({
+      workerId: "worker-1",
+      workUnitId: WORK_UNIT_ID,
+      sessionId: SESSION_ID,
+      status: "running",
+      startedAt: "2026-07-18T00:00:00.000Z",
+    });
+
+    await recoverRun(RUN_ID, { journal: store, runs, workers });
+
+    expect(workers.get("worker-1")?.status).toBe("running");
+    expect(workers.get("worker-1")?.terminatedAt).toBeUndefined();
+  });
+
+  /** The runId every replayed session belongs to, for the reaper's run-scoped attempt records. */
+  it("collects the run's replayed session ids so the reaper can attribute its records", async () => {
+    await store.appendEntry({
+      type: "session_assignment",
+      runId: RUN_ID,
+      workUnitId: WORK_UNIT_ID,
+      payload: { sessionId: SESSION_ID },
+    });
+
+    const runs = createRunsRegistry();
+    const workers = createWorkersRegistry();
+    const result = await recoverRun(RUN_ID, { journal: store, runs, workers });
+
+    expect([...collectReplayedSessionIds(result)]).toEqual([SESSION_ID]);
   });
 
   it("reconstructs an orphaned worker from a bare journal replay, with NO pre-existing WorkersRegistry entry — the genuine-restart case", async () => {

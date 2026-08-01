@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createJournalStore, findLatestCriteriaSeal, type JournalStore } from "@crabgic/journal";
+import { verifyCriteriaSeal } from "@crabgic/contracts";
 import { buildRequirement } from "@crabgic/testkit";
 import {
   createAuthorizationEnvelopesRegistry,
@@ -298,6 +299,107 @@ describe("runContractApprove", () => {
 
     expect(result.approved).toBe(true);
     expect(changeSets.get(seed.id)?.state).toBe("ready");
+  });
+
+  /**
+   * roadmap/24 exit criterion 4, THE TOKEN PATH: "Both activation paths
+   * journal the approval seal." The funnel test
+   * (`@crabgic/supervisor`'s `readiness-gate.test.ts`) proves the seal is
+   * taken inside `transitionChangeSetToReady`; this proves THIS path
+   * actually reaches that funnel, with THIS ChangeSet's real records, and
+   * that the resulting seal is readable back out of the journal by the same
+   * `findLatestCriteriaSeal` the dispatcher uses at completion time.
+   *
+   * The full hash SET is asserted, not merely the entry's existence: a seal
+   * that silently dropped a requirement would read as `no_approval_seal` for
+   * that requirement at completion — an approval-time bookkeeping gap
+   * surfacing as an unexplainable mid-run refusal.
+   */
+  it("journals the approval seal — the full requirement-to-criteriaHash set — on the token path (roadmap/24 exit criterion 4)", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    const seed = seedChangeSetWithEnvelope(
+      changeSets,
+      envelopes,
+      "awaiting_approval",
+      "sha256:abc",
+    );
+
+    const reqA = buildRequirement({ id: REQ_A, acceptanceCriteria: ["A holds"] });
+    const reqB = buildRequirement({
+      id: REQ_B,
+      acceptanceCriteria: ["B holds", "and B still holds"],
+    });
+    const minter = new ApprovalTokenMinter({ secretKey });
+    const minted = await minter.mint("envelope_hash", "sha256:abc");
+
+    // No seal exists before the approval — otherwise "it is sealed after"
+    // would prove nothing about this call.
+    expect(await findLatestCriteriaSeal(store, seed.id)).toBeUndefined();
+
+    const result = await runContractApprove(
+      { changeSetId: seed.id, digest: "sha256:abc", token: minted.token },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [REQ_A, REQ_B],
+        requirements: [reqA, reqB],
+        workUnits: [{ requirementIds: [REQ_A, REQ_B] }],
+      },
+    );
+
+    expect(result.approved).toBe(true);
+    const seal = await findLatestCriteriaSeal(store, seed.id);
+    expect(seal).toBeDefined();
+    expect(seal!.changeSetId).toBe(seed.id);
+    // Every declared requirement, and nothing else.
+    expect(seal!.criteriaHashes).toStrictEqual({
+      [REQ_A]: reqA.criteriaHash,
+      [REQ_B]: reqB.criteriaHash,
+    });
+    expect(verifyCriteriaSeal(reqA, seal).ok).toBe(true);
+    expect(verifyCriteriaSeal(reqB, seal).ok).toBe(true);
+  });
+
+  /**
+   * The other half of the same criterion: "absence of a seal for a
+   * post-phase approval is impossible to produce through either path." A
+   * refused approval must leave NO seal behind — a seal recorded for an
+   * approval that did not happen would authorize a bar nobody approved.
+   */
+  it("leaves no seal behind when this path refuses the approval (roadmap/24 exit criterion 4)", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    const seed = seedChangeSetWithEnvelope(
+      changeSets,
+      envelopes,
+      "awaiting_approval",
+      "sha256:abc",
+    );
+
+    // A real, well-formed token — just minted for a different envelope, so
+    // verification against THIS ChangeSet's server-derived digest fails.
+    const minter = new ApprovalTokenMinter({ secretKey });
+    const wrongEnvelopeToken = await minter.mint("envelope_hash", "sha256:some-other-envelope");
+
+    const result = await runContractApprove(
+      { changeSetId: seed.id, digest: "sha256:abc", token: wrongEnvelopeToken.token },
+      {
+        secretKey,
+        journal: store,
+        changeSets,
+        envelopes,
+        requirementIds: [REQ_A],
+        requirements: [buildRequirement({ id: REQ_A })],
+        workUnits: [{ requirementIds: [REQ_A] }],
+      },
+    );
+
+    expect(result.approved).toBe(false);
+    expect(changeSets.get(seed.id)?.state).toBe("awaiting_approval");
+    expect(await findLatestCriteriaSeal(store, seed.id)).toBeUndefined();
   });
 
   it("verifies but refuses ready when a requirement is unmapped — never flips state, and the token is NOT consumed (L5)", async () => {

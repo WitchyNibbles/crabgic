@@ -403,7 +403,10 @@ export function buildRealGatewayToolRegistry(
     envelopes: intake.envelopes,
     intentContracts: intake.intentContracts,
     requirements: intake.requirements,
-    capability: { store: trust.store },
+    // `journal` is load-bearing, not decorative: `capability.audit` REFUSES
+    // to run without it (interface-ledger Gap 5 — a verdict nobody can
+    // later verify happened is worse than no verdict).
+    capability: { store: trust.store, journal: intake.journal },
     approvalTokenVerifier: trust.minter,
     resolveCapabilityStoreKey: (digest) => trust.store.findByDigest(digest)?.key,
   });
@@ -525,24 +528,37 @@ function buildRealConnectionDependencies(
  * capability-store path (`$XDG_CACHE_HOME/crabgic/
  * <project-hash>/capability-store/`, interface-ledger Gap 14).
  *
- * The HMAC signing key is freshly random PER PROCESS — never a hardcoded
- * or on-disk secret (`ApprovalTokenMinterOptions.secretKey`'s own
- * contract). That is deliberate, not a limitation: a minted token is
- * single-use and verified by `capability.approve` within the same process
- * tree, which is the scope `docs/evidence/phase-09/README.md` ("#6
- * (approval-token cross-process durability)") already settled. A key that
- * outlived the process would let a token outlive it too, which is exactly
- * what the single-use gate exists to prevent.
+ * **Corrected 2026-08-01:** this docblock used to claim "the HMAC signing
+ * key is freshly random PER PROCESS." That has not been true since
+ * `./approval/signing-key.ts` landed — the `minter` handed to this
+ * function is built at `buildRealCliDependencies` from
+ * `loadOrCreateApprovalSigningKey`, a DURABLE, 0600, project-scoped
+ * on-disk key. It has to be: `trust approve` mints in one short-lived CLI
+ * process and `capability.approve` verifies in the long-lived `gateway
+ * mcp` one, so a per-process key made every such token dead on arrival.
+ * Replay protection does not depend on the key's lifetime — it is enforced
+ * durably by the minter's own single-use bookkeeping, which is what
+ * `./bootstrap.test.ts`'s "second process rejects a token as a replay, not
+ * as a bad signature" case pins.
+ *
+ * **interface-ledger Gap 5, resolution (2026-08-01):** `journal` used to
+ * be accepted and deliberately ignored (`_journal`) — the capability store
+ * had nothing to journal because nothing in phase 12 wrote an entry
+ * directly. It does now: the store is journal-first for every
+ * `CapabilityDecision` transition, and refuses the flip outright without a
+ * sink. This is the SAME `JournalStore` the minter already writes
+ * `approval_token_mint` through, so the mint and the flip it authorises
+ * land in one chain, in order.
  */
 function buildRealTrustDependencies(
   xdgEnv: XdgEnv,
   projectHash: string,
-  _journal: JournalStore,
+  journal: JournalStore,
   minter: ApprovalTokenMinter,
 ): TrustCommandDependencies {
   const storeRoot = resolveCapabilityStoreDir(xdgEnv, projectHash);
   return {
-    store: createCapabilityStore(storeRoot),
+    store: createCapabilityStore(storeRoot, { journal }),
     minter,
     approvalLedger: createApprovalLedger(storeRoot),
   };

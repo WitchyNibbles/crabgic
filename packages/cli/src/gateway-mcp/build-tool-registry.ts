@@ -429,7 +429,7 @@ function buildCapabilityTools(
     description: CAPABILITY_AUDIT_TOOL.description,
     inputSchema: CAPABILITY_AUDIT_SHAPE,
     handler: async (args) =>
-      jsonResult(runCapabilityAudit({ candidate: args.candidate }, deps.capability)),
+      jsonResult(await runCapabilityAudit({ candidate: args.candidate }, deps.capability)),
   };
 
   const capabilityApprove: GatewayToolDefinition<typeof CAPABILITY_APPROVE_SHAPE> = {
@@ -442,7 +442,7 @@ function buildCapabilityTools(
         return errorResult(`no audited capability is stored under digest "${args.digest}"`);
       }
       return jsonResult(
-        runCapabilityApprove(args, {
+        await runCapabilityApprove(args, {
           minter: deps.approvalTokenVerifier,
           store: deps.capability.store,
           storeKey,

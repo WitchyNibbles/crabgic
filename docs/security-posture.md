@@ -437,12 +437,21 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   the cross-process durable-cache reconciliation (phase 06's carry-forward) to close
   structurally — persisting spawn context makes the fallback unnecessary rather than merely
   unreachable — rather than be rediscovered there.
-- **Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member (§7).**
-  Only the subsequent approval-token mint is centrally journaled; the audit pass/fail verdict
-  itself lives only in the capability store's own artifact. `JournalEntryType` is deliberately
-  closed at 13 members pending a coordinated resolution round (interface-ledger Gap 5) — this
-  is the one item the threat model's own review flagged as "needs a follow-up decision," not a
-  residual-risk acceptance, and it remains open, unchanged by implementation.
+- **CLOSED 2026-08-01 — capability-quarantine audit verdicts are journaled (§7).** This item
+  used to read "no dedicated `JournalEntryType` member ... needs a follow-up decision, not a
+  residual-risk acceptance, and it remains open." The decision has now been made, and the
+  underlying defect was worse than the item described: because a rejection never mints a
+  token, a **rejected audit produced no journal entry at all**, and `updateDecision`'s
+  in-place rewrite of `report.json` left the `pending -> approved` flip and `trust revoke`'s
+  flip back equally untraceable. Interface-ledger Gap 5's Resolution (2026-08-01) keeps the
+  union closed at 13 and journals both the verdict and every decision transition as
+  `adjudication_decision` entries under a `capability_audit:` discriminator — phase 14's
+  already-blessed reuse shape. Both writes are journal-first (verdict before `store.save`,
+  transition before the artifact rewrite) and fail closed: no sink means the operation is
+  refused, a failed append aborts it. Not a full closure of the surface: the journal carries
+  the verdict, per-stage pass/fail, scan-finding count and severities, digest and re-audit
+  reason, while finding _details_ stay in the 0600 store artifact (a scanner detail line can
+  quote matched secret text). See `packages/detect/src/capability-store/audit-journal.ts`.
 - **Stage-5 sandboxed-test harness invocation API is an unverified build-time spike (§7).**
   12's own risk text names this directly; not yet closed by an `engine-baseline.md`-style
   probe.

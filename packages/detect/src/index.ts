@@ -34,6 +34,7 @@ export * from "./quarantine/stages/sandbox-stage.js";
 export * from "./capability-store/layout.js";
 export * from "./capability-store/key.js";
 export * from "./capability-store/store.js";
+export * from "./capability-store/audit-journal.js";
 export * from "./capability-store/reaudit.js";
 export * from "./capability-store/approval-ledger.js";
 
