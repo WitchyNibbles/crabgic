@@ -1,0 +1,53 @@
+Criteria-closeout pass, phase 03, criterion 3 (golden settings artifacts, byte-stable across two consecutive builds).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+Reproduces docs/evidence/phase-03/wi3-sandbox-goldens-passing.txt Part 2's procedure at the closeout commit.
+
+Committed goldens copied aside first:
+network-granted.sdk-options.json
+network-granted.settings.json
+read-only.sdk-options.json
+read-only.settings.json
+standard-implementation.sdk-options.json
+standard-implementation.settings.json
+
+=== BUILD 1 ===
+$ npx tsc -b packages/engine-core --force
+exit code: 0
+$ (cd packages/engine-core && node scripts/write-goldens.ts)
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/read-only.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/read-only.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/standard-implementation.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/standard-implementation.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/network-granted.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/network-granted.sdk-options.json
+done: 6 golden artifact(s) written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens
+exit code: 0
+
+=== BUILD 2 (consecutive, full rebuild again) ===
+$ npx tsc -b packages/engine-core --force
+exit code: 0
+$ (cd packages/engine-core && node scripts/write-goldens.ts)
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/read-only.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/read-only.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/standard-implementation.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/standard-implementation.sdk-options.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/network-granted.settings.json
+wrote /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens/network-granted.sdk-options.json
+done: 6 golden artifact(s) written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03/packages/engine-core/goldens
+exit code: 0
+
+=== BYTE DIFFS ===
+$ diff -r <build1> <build2>
+exit code: 0 (0 = byte-identical across the two consecutive builds)
+$ diff -r <committed> <build2>
+exit code: 0 (0 = the committed artifacts ARE the compiler output)
+$ git status --porcelain packages/engine-core/goldens
+(empty = the working tree goldens are unchanged by two regenerations)
+
+$ sha256sum packages/engine-core/goldens/*.json
+d507edf288f3057da052be4b81bb00d8c0547c5d28d15f1c3a71d166abdd4747  packages/engine-core/goldens/network-granted.sdk-options.json
+b2046eb6ad2283211c6edacc9a00336c85a0f371ef27e4a834df379b26c60377  packages/engine-core/goldens/network-granted.settings.json
+3d00dbd894800c9ffb14ab2b0c2e36d257238df423eec15f33c44b00fac2d050  packages/engine-core/goldens/read-only.sdk-options.json
+37899f305acbb0208e93b4f7dacc80bab5a8195bef740de2d4f8d0a83e61b15b  packages/engine-core/goldens/read-only.settings.json
+68d0b7ee79ce7c588e809f3b043a4b23dc19c13c6eb52e7fd7f365add4e14ac9  packages/engine-core/goldens/standard-implementation.sdk-options.json
+8a2a99c08ccaf1a651784b98bb3b04b1f2123c96ecfd91e4d1a87e15032653a9  packages/engine-core/goldens/standard-implementation.settings.json

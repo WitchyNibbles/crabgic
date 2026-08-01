@@ -1,0 +1,43 @@
+Criteria-closeout pass, phase 03, criterion 5 (fake-worker smuggled-command demo, green with no claude binary).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+
+The criterion's channel is CI (cited separately in the closeout index). This local run adds what a
+CI run cannot show on its own: the demo is green in an environment where NO claude binary is
+reachable at all. Two engine sources exist on a normal checkout and BOTH were removed for this run:
+  (a) the CLI on PATH (/home/eimi/.local/bin/claude) -- PATH scrubbed to a minimal node+coreutils set;
+  (b) the Agent SDK's bundled platform binary that 'npm ci' installs for packages/engine-claude
+      (node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude) -- the whole @anthropic-ai scope
+      was moved aside for the duration of the run and restored immediately after (verified below).
+
+$ env -i PATH=<node+coreutils only> HOME=$HOME sh -c "command -v claude; echo rc=$?"
+rc=127
+$ ls node_modules/@anthropic-ai
+ls: cannot access 'node_modules/@anthropic-ai': No such file or directory
+
+$ env -i PATH=<node+coreutils only> HOME=$HOME npx vitest run --coverage.enabled=false --reporter=verbose packages/testkit/src/fake-engine/demo.test.ts
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03[39m
+
+ [32m✓[39m [30m[42m @crabgic/testkit [49m[39m src/fake-engine/demo.test.ts[2m > [22mexit criterion 5 — smuggled-command demo[2m > [22mspawn -> smuggled command -> observed denial -> structured WorkerResult-shaped failure[32m 8[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 23:29:24
+[2m   Duration [22m 566ms[2m (transform 315ms, setup 0ms, import 448ms, tests 9ms, environment 0ms)[22m
+
+exit code: 0
+
+SDK scope restored:
+$ ls node_modules/@anthropic-ai
+claude-agent-sdk
+claude-agent-sdk-linux-x64
+sdk
+$ ls node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude
+node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude
+
+=== Static basis: the demo's dependency closure carries no engine ===
+$ grep -rn "child_process" packages/testkit/src/fake-engine/ packages/engine-core/src/ ; echo "grep rc=$?"
+grep rc=1 (1 = no match anywhere in the fake engine or the compiler)
+
+$ grep -n "anthropic" packages/testkit/package.json packages/engine-core/package.json packages/contracts/package.json; echo "grep rc=$?"
+grep rc=1 (1 = no @anthropic-ai dependency in the demo's package closure)

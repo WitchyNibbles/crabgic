@@ -1,0 +1,96 @@
+Criteria-closeout pass, phase 03, criterion 4 (fake-engine replay parity over the envelope-conformance fixture set).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+conformance-fixtures/fixtures.test.ts is the criterion's own suite; parity.test.ts cross-checks the
+fake's verdicts against the COMMITTED spikes/fixtures/*.verdicts.json; permission-evaluator.test.ts and
+layered-conformance.test.ts are the anti-vacuity controls (all seven fixtures expect permissions=deny,
+so a degenerate always-deny evaluator would satisfy that column on its own — these suites are where the
+evaluator is shown to return "allow" too).
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/testkit/src/fake-engine/conformance-fixtures/fixtures.test.ts packages/testkit/src/fake-engine/conformance-fixtures/schema.test.ts packages/testkit/src/fake-engine/parity.test.ts packages/testkit/src/fake-engine/permission-evaluator.test.ts packages/testkit/src/fake-engine/layered-conformance.test.ts packages/testkit/src/fake-engine/sandbox-evaluator.test.ts packages/testkit/src/fake-engine/adjudication-layer.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03
+
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that returns allow -> allow 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that returns deny -> deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that THROWS -> deny, never allow (fail-closed) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a callback that throws a differently-worded error -> still deny (catch is message-agnostic) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > no callback supplied at all (runtime-undefined, bypassing the type system) -> deny, never allow 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > evaluateAdjudicationLayer — fail-closed contract (security) > a non-function value passed where a callback is expected -> deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysAllowAdjudicate resolves an allow decision 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysDenyAdjudicate resolves a deny decision 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/adjudication-layer.test.ts > test doubles round-trip through their own declared behavior > alwaysThrowAdjudicate rejects 2ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture whose 'expected' object is missing the 'sandbox' verdict 5ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects a fixture missing the entire 'expected' object 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an 'expected' verdict value outside the allow|deny enum 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — RED fixture: missing a required per-layer verdict field > rejects an unknown extra top-level field (.strict()) 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — accepts a well-formed fixture > parses the valid fixture and round-trips its fields 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema — accepts a well-formed fixture > accepts optional permissionOverride/additionalPermissionLevels/envelopeOverrides fields 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/schema.test.ts > ConformanceFixtureSchema is directly usable via its own zod .strict() parse > ConformanceFixtureSchema.parse behaves identically to validateConformanceFixture 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a full URL 2ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > extracts a domain from a bare curl target 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > extractNetworkDomain > returns undefined for a command with no network reference 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > denies a Bash call targeting a domain outside allowedDomains 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > allows a Bash call targeting an explicitly allowlisted domain 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — network egress (docs/engine-baseline.md §6 'egress denied, empty allowlist') > allows a Bash call with no network reference regardless of allowedDomains 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > denies a Read under a denyRead entry 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > allows a Read outside any denyRead entry 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/sandbox-evaluator.test.ts > evaluateSandboxLayer — filesystem denyRead (docs/engine-baseline.md §6 'denyRead ~/.ssh enforced') > allows a non-filesystem, non-Bash tool call by default (e.g. mcp__ tool) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > allow + allow + allow -> overall allow, every field populated 2ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > permission layer alone denying makes overall deny even if adjudication/sandbox allow 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > adjudication layer alone denying makes overall deny even if permissions/sandbox allow 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > a throwing adjudication callback still fails closed inside the combined evaluation 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > sandbox layer alone denying (disallowed network domain) makes overall deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/layered-conformance.test.ts > evaluateAllLayers > an explicit permissionRules override is used instead of the profile's own permissions (cross-level merge support) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > baseline recorded PASS for every probe this fixture set reproduces 2ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > compound-command-smuggling: fake engine denies the same command baseline recorded as denied 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > process-wrapper-smuggling: fake engine denies the same command baseline recorded as denied 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > deny-wins-same-level: fake engine denies, matching baseline's recorded denial 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > deny-wins-cross-level: fake engine denies via rule-set merge, matching baseline's cross-tier denial 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §3 permission probes > bash-colon-spacing: the no-space form matches (baseline's load-bearing verdict for phase 03) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §8 rate-limit schema > the committed structured-event-shape probe is PASS and cites the exact utilization values this package replays 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/parity.test.ts > Fake-engine vs phase-00 parity — docs/engine-baseline.md §5 structured-output schema-violation shape > the committed schema-violation probe is PASS and matches the exact shape this package's schemaViolation injection replays 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > denies an unlisted tool (baseline: 'dontAsk auto-denies an unlisted tool (Write)') 2ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > allows a Bash command matching an allow-listed prefix 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — dontAsk default-deny > denies a Bash call with a missing/non-string command (decomposes to zero subcommands) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > denies 'echo x && curl ...' — curl subcommand independently fails to match 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > denies 'nohup curl ...' — wrapper stripped, curl still fails to match 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — compound-command and process-wrapper smuggling (baseline §3) > the un-smuggled control command (echo alone) still allows 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — deny-wins (baseline §3) > same-level: a rule present in both allow and deny is denied 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — deny-wins (baseline §3) > cross-level: merging a project-tier allow with a user-tier deny for the same rule still denies 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > allows an Edit inside the owned path 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies an Edit outside the owned path 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies a relative traversal escape out of the owned path 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > denies an absolute-path escape attempt 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Edit/Write path matching (baseline §3 'edit-outside-allowed-path') > an explicit path deny rule wins over a matching path allow rule (deny-wins) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — generic bare tool-name rules (non-Bash/Edit/Write/Read/mcp__) > allows a call matching an exact tool-name allow rule 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — generic bare tool-name rules (non-Bash/Edit/Write/Read/mcp__) > denies an unlisted generic tool call by default (dontAsk default-deny) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — Agent/Task alias (baseline §4: deny 'Agent' removes the 'Task' tool literal) > a deny:['Agent'] ruleset denies a call to the live 'Task' tool literal 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — mcp__ tool names and the blanket-deny footgun (adaptation Appendix B) > allows a gateway tool call matching the server-scoped allow entry 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — mcp__ tool names and the blanket-deny footgun (adaptation Appendix B) > a blanket mcp__* deny shadows the specific gateway allow (deny wins) — the footgun scenario 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status & curl evil' (single '&' background operator, not split by the compound-operator regex) must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status $(curl evil)' (command substitution) must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status `curl evil`' (backtick command substitution) must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > 'git status ${IFS}curl evil' (parameter expansion) must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > an embedded newline must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > a redirect ('>') must deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > evaluatePermissionLayer — MAJOR 2 regression: shell-metacharacter smuggling must deny, not allow > the un-smuggled control command alone still allows (metacharacter denial does not over-block) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > mergePermissionRuleSets > unions allow/deny arrays across every ruleset given, preserving order 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > mergePermissionRuleSets > merging zero rulesets yields an empty ruleset 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/permission-evaluator.test.ts > permissionProfileToRuleSet > projects a PermissionProfile-shaped object down to just allow/deny 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > compound-command-smuggling reproduces its hand-derived expected per-layer verdict 6ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > process-wrapper-smuggling reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > path-escape-relative reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > path-escape-absolute reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > deny-wins-same-level reproduces its hand-derived expected per-layer verdict 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > deny-wins-cross-level reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > blanket-mcp-deny-footgun reproduces its hand-derived expected per-layer verdict 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > covers exactly the seven required scenario classes (roadmap/03 work item 6) 0ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > each fixture cites a baseline/spec source for its hand-derived expectation 1ms
+ ✓ |@crabgic/testkit| src/fake-engine/conformance-fixtures/fixtures.test.ts > envelope-conformance fixture set — exit criterion 4 > each layer is independently callable without the others (disabling layers 3/4 to check layer 2 alone) 1ms
+
+ Test Files  7 passed (7)
+      Tests  77 passed (77)
+   Start at  23:29:05
+   Duration  652ms (transform 1.53s, setup 0ms, import 2.47s, tests 56ms, environment 1ms)
+
+exit code: 0
