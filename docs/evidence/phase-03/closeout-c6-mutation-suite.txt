@@ -1,0 +1,35 @@
+Criteria-closeout pass, phase 03, criterion 6 (mutation suite over seeded broken-compiler variants).
+Date: 2026-08-01. Worktree: chore/closeout-phase-03 at 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e.
+The criterion names three seeds (blanket mcp__* deny; missing control-repo denyRead; space-before-colon
+Bash literal) = seeds 1-3 below. Seeds 4-8 are later additions (phase-03 CRITICAL-1 round and the
+phase-06 sandbox-containment round) and are NOT recorded in docs/evidence/phase-03/wi4-mutation-report.txt,
+which was last regenerated 2026-07-18 at 5 seeds / 12 tests. This run is the current state: 8 seeds, 17 tests.
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/engine-core/src/footguns/mutation.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p03
+
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 1: blanket mcp__* deny > the real compiler's own output never trips assertNoBlanketMcpDeny 2ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 1: blanket mcp__* deny > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 2: dropped mandatory denyRead paths > the real compiler's own output never trips assertMandatoryDenyReadPathsPresent 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 2: dropped mandatory denyRead paths > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 3: space-before-colon Bash literal > the real compiler's own output never trips assertNoSpaceBeforeColonBashLiteral 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 3: space-before-colon Bash literal > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 4: raw unanchored owned-path allow rule (CRITICAL 1) > the real compiler's own output never trips assertAllOwnedPathAllowRulesAreWorktreeScoped 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 4: raw unanchored owned-path allow rule (CRITICAL 1) > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 5: dropped Edit/Write deny backstop (CRITICAL 1) > the real compiler's own output never trips assertEditWriteDenyBackstopPresent 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 5: dropped Edit/Write deny backstop (CRITICAL 1) > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seeds 6+7: sandbox auto-allows Bash (phase-06 containment fix) > the real compiler's own output never trips assertSandboxNeverAutoAllowsBash 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seeds 6+7: sandbox auto-allows Bash (phase-06 containment fix) > the ABSENT-key variant IS caught (the SDK default is true, so absence is not neutral) 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seeds 6+7: sandbox auto-allows Bash (phase-06 containment fix) > the explicitly-true variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 8: dropped sandbox denyWrite carve-out (phase-06 containment fix) > the real compiler's own output never trips assertSandboxDenyWritePathsPresent 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > mutation suite — seed 8: dropped sandbox denyWrite carve-out (phase-06 containment fix) > the seeded variant IS caught 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > assertNoFootguns — runs every check together > never throws against the real compiler's own output 0ms
+ ✓ |@crabgic/engine-core| src/footguns/mutation.test.ts > assertNoFootguns — runs every check together > catches each of the eight seeded variants in turn 1ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  23:29:36
+   Duration  541ms (transform 274ms, setup 0ms, import 406ms, tests 7ms, environment 0ms)
+
+exit code: 0
