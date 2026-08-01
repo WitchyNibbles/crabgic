@@ -14,18 +14,33 @@ import { createTestJournal, type TestJournal } from "./test-support/test-journal
  * verdict)."
  *
  * One real `@crabgic/journal` `JournalStore` is shared across every `fc.assert`
- * iteration (constructing a fresh temp-dir store per iteration would be
- * needlessly slow); each iteration instead uses its OWN freshly-generated
+ * iteration (constructing a fresh temp-dir store per iteration was measured
+ * at only ~26% faster, and pays for it with 150 extra mkdtemp + recursive-rm
+ * pairs — filesystem *metadata* churn, which is the wrong thing to add when
+ * the failure mode being fixed is contention during a parallel full-suite
+ * run); each iteration instead uses its OWN freshly-generated
  * `randomUUID()` release-candidate object ID, which fully isolates one
  * iteration's journaled evidence from every other iteration's — the
  * generator only ever matches evidence whose `objectId` equals the exact
  * candidate id passed in for that run.
+ *
+ * `skipFsync: true`: between them these two properties journal ~1600
+ * `EvidenceRecord`s, every one of them mere SETUP for the assertions below,
+ * and each one costing two fsyncs on the real durable append path. Measured
+ * for the first property alone (150 cases, 984 appends, no coverage): 4287ms
+ * with fsync vs 1820ms without — 85% of its wall time was fsync, and fsync
+ * is precisely the operation that degrades worst when ~20 suites run
+ * concurrently, which is how this file came to sit at 18.5s against a 20s
+ * timeout. Nothing this file asserts depends on crash durability; the
+ * fsync-ordering contract is owned and proven by `@crabgic/journal`'s own
+ * kill-harness suite. See `./test-support/test-journal.js` for exactly what
+ * stays real (all of it, bar the two syscalls).
  */
 
 let tj: TestJournal;
 
 beforeEach(async () => {
-  tj = await createTestJournal();
+  tj = await createTestJournal({ skipFsync: true });
 });
 
 afterEach(async () => {

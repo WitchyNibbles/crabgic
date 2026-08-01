@@ -12,7 +12,12 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import {
+  createJournalStore,
+  createNodeFsPort,
+  type FsPort,
+  type JournalStore,
+} from "@crabgic/journal";
 
 /**
  * SHARED-JOURNAL MODE (`CRABGIC_RELEASE_GATE_JOURNAL_DIR`): every harness's own
@@ -38,9 +43,49 @@ export interface TestJournal {
   cleanup(): Promise<void>;
 }
 
-export async function createTestJournal(): Promise<TestJournal> {
+export interface CreateTestJournalOptions {
+  /**
+   * Opt out of `fsync` on this journal's writes. Default `false` — every
+   * caller keeps the real, fully durable append path unless it asks not to.
+   *
+   * WHY THIS EXISTS: `appendEntry`'s durable write is `write -> fsync(file)
+   * -> fsync(dir)` (roadmap/04 §In scope), i.e. TWO fsyncs per journaled
+   * record. That is exactly right in production and it is what
+   * `@crabgic/journal`'s own kill-harness/crash-fixture suites exist to
+   * prove. It is also, measured, ~85% of the wall time of this project's
+   * fast-check property suite, which journals ~1000 records purely as
+   * SETUP for the thing it actually asserts on (the report generator's
+   * scoring). Per-append: 3.74ms with fsync, 1.41ms without.
+   *
+   * WHAT IS STILL REAL when this is set: everything except the two fsync
+   * syscalls. The store is a real `createJournalStore`, so the property
+   * still exercises the real seq/prevHash assignment, the real SHA-256
+   * hash chain, the real Zod entry validation, the real ndjson codec, the
+   * real segment layout/rotation, and the real `queryEntries` read path.
+   * Only the crash-durability guarantee is skipped — and no test in THIS
+   * project asserts crash durability, so nothing here loses coverage.
+   */
+  readonly skipFsync?: boolean;
+}
+
+/**
+ * A non-durable `FsPort`: the real node-backed port with `fsync` replaced
+ * by a no-op. Every other operation (open/write/close/readFile/readdir/
+ * stat/rename/unlink/truncate/mkdir) is the genuine article.
+ */
+function createNonDurableFsPort(): FsPort {
+  return { ...createNodeFsPort(), fsync: () => Promise.resolve() };
+}
+
+export async function createTestJournal(
+  options: CreateTestJournalOptions = {},
+): Promise<TestJournal> {
   const sharedJournalDir = process.env["CRABGIC_RELEASE_GATE_JOURNAL_DIR"];
   if (sharedJournalDir !== undefined && sharedJournalDir !== "") {
+    // `skipFsync` is deliberately IGNORED in shared-journal mode: that
+    // directory is a real release run's accumulated evidence, read back by
+    // `../cli.ts` and by other harnesses, and it outlives this process.
+    // Durability is not this helper's to trade away there.
     await mkdir(sharedJournalDir, { recursive: true });
     return {
       store: createJournalStore({ journalDir: sharedJournalDir }),
@@ -50,7 +95,12 @@ export async function createTestJournal(): Promise<TestJournal> {
   }
 
   const journalDir = await mkdtemp(join(tmpdir(), "eo-release-gate-report-test-"));
-  const store = createJournalStore({ journalDir });
+  // A private temp directory this helper deletes in `cleanup()`: nothing
+  // here ever needs to survive a crash.
+  const store = createJournalStore({
+    journalDir,
+    ...(options.skipFsync === true ? { fs: createNonDurableFsPort() } : {}),
+  });
   return {
     store,
     journalDir,
