@@ -58,6 +58,7 @@ editing checkboxes.
 | 21 | `21-connector-evidence-integration.md` | Connector evidence ↔ contracts/verification, drift CI | 14, 18, 20 |
 | 22 | `22-learning-system.md` | Reviewed learning pipeline & local evals | 13, 14 |
 | 23 | `23-release-hardening.md` | E2E matrix, security review, packaging, publication | all |
+| 24 | `24-sealed-acceptance-criteria.md` | Sealed acceptance criteria & requirement persistence | 04, 11, 13, 14 |
 
 ## Dependency graph
 
@@ -83,6 +84,7 @@ graph LR
   P20 --> P21
   P21 --> P23
   P08 & P15 & P19 & P22 --> P23
+  P04 & P11 & P13 & P14 --> P24[24 sealed criteria]
 ```
 
 Critical path: 01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 15 → 23 (00 runs in parallel with 01 and gates 03 via its only edge, 00 → 03). The connector line (16 & 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.
