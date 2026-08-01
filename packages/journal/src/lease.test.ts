@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Lease, LeaseAcquireRaceLostError, LeaseHeldError, LeaseLostError } from "./lease.js";
 import { prepareFixtureRuntime, type FixtureRuntime } from "./lease-fixtures/prepare-runtime.js";
+import { readProcessStartTimeFromProc } from "./lease-proc-stat.js";
 
 describe("Lease.acquire / release — unit (real filesystem, injected clock + process-start-time reader)", () => {
   let dir: string;
@@ -316,10 +317,13 @@ describe("Lease.acquire — INTEGRATION: two real child processes contending for
     readonly finished: Promise<void>;
   }
 
-  function spawnAttempt(pid: number): Contender {
+  function spawnAttempt(): Contender {
     const child = spawn(
       process.execPath,
-      [runtime.entryPath, dir, "proj-real-contention", String(pid)],
+      // NO pid argument: each child uses its OWN, real `process.pid` — see the
+      // block comment on the test below for why a synthetic pid silently
+      // disabled the guarantee this test exists to certify.
+      [runtime.entryPath, dir, "proj-real-contention"],
       // stdin is a PIPE now, not `ignore`: closing it is the release signal.
       { stdio: ["pipe", "pipe", "pipe"] },
     );
@@ -375,10 +379,30 @@ describe("Lease.acquire — INTEGRATION: two real child processes contending for
    *
    * Both children now hold their decision until this test releases them, so the
    * overlap is a fact: neither is allowed to finish until both have decided.
+   *
+   * THE SECOND CAUSE (2026-08-01) — the hold above was necessary and not
+   * sufficient, and this kept flaking in CI with the same `["ACQUIRED",
+   * "ACQUIRED"]`. The children used to be given SYNTHETIC pids (1000001,
+   * 1000002). No such process exists, so `readProcessStartTime` found nothing,
+   * `recordedProcessStillAlive` was permanently false, and `isTakeoverEligible`
+   * fell through to `isLeaseExpired` — meaning the mutual exclusion this test
+   * certifies rested entirely on the contender reaching its check within the
+   * 15s TTL. On a loaded runner two cold Node starts can miss that window, and
+   * the second child then legitimately TOOK OVER what it was entitled to read
+   * as a dead holder's lease. The double acquire was correct behaviour being
+   * asked the wrong question.
+   *
+   * Each child now uses its OWN, real `process.pid`. The holder is genuinely
+   * alive and `/proc` says so with a matching start time, so the contender is
+   * refused by the liveness guarantee itself rather than by a timeout — which
+   * is the production guarantee this exit criterion is supposed to prove, and
+   * it is now timing-independent. (Linux/WSL2: start-time verification is
+   * documented as Linux-only, and off-`/proc` platforms degrade to the TTL
+   * path, as `Lease.acquire`'s own fallback comment records.)
    */
   it("exactly one of two real, concurrently-spawned child processes acquires the lease", async () => {
-    const a = spawnAttempt(1_000_001);
-    const b = spawnAttempt(1_000_002);
+    const a = spawnAttempt();
+    const b = spawnAttempt();
 
     // Both have DECIDED, and neither has released — this is the contended
     // window, and it is now guaranteed rather than hoped for.
@@ -386,6 +410,19 @@ describe("Lease.acquire — INTEGRATION: two real child processes contending for
 
     const outcomes = [outputA, outputB].map((output) => output.trim().split(":")[1]);
     expect(outcomes.sort()).toEqual(["ACQUIRED", "DENIED"]);
+
+    // REGRESSION PIN for the second cause. The denial above is only
+    // timing-independent while the holder's recorded pid is a genuinely LIVE
+    // process — that is what makes `recordedProcessStillAlive` true and stops
+    // `isTakeoverEligible` falling through to the 15s TTL. If a future edit
+    // reintroduces a synthetic pid, the assertion above keeps passing on an
+    // idle machine and silently rots back into a race; this one does not.
+    const holderPid = (
+      JSON.parse(await readFile(join(dir, "proj-real-contention.lease.json"), "utf8")) as {
+        readonly pid: number;
+      }
+    ).pid;
+    expect(await readProcessStartTimeFromProc(holderPid)).toBeDefined();
 
     a.release();
     b.release();

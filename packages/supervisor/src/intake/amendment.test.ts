@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { randomUUID } from "node:crypto";
 import { buildChangeSet } from "@crabgic/testkit";
 import { createChangeSetsRegistry } from "../registries/change-sets-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
@@ -12,7 +13,14 @@ import {
   ChangeSetNotFoundForAmendmentError,
   isMaterialEnvelopeChange,
 } from "./amendment.js";
-import { hashEnvelopeContent, type AuthorizationEnvelopeContent } from "./envelope-builder.js";
+import {
+  buildAuthorizationEnvelope,
+  hashEnvelopeContent,
+  type AuthorizationEnvelopeContent,
+} from "./envelope-builder.js";
+
+const AMEND_CS_ID = "44444444-4444-4444-8444-444444444444";
+const AMEND_CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 let journalDir: string;
 let store: JournalStore;
@@ -190,5 +198,110 @@ describe("isMaterialEnvelopeChange", () => {
   it("is true when the candidate content differs", () => {
     const previous = hashEnvelopeContent(content());
     expect(isMaterialEnvelopeChange(previous, content({ prohibitedActions: ["x"] }))).toBe(true);
+  });
+});
+
+/**
+ * `materialChange` used to be the literal `true`, unconditionally — so the one
+ * question the field exists to answer ("did the content actually change?") was
+ * answered "yes" even when the caller re-submitted byte-identical content.
+ * `isMaterialEnvelopeChange` was exported right beside it and never consulted.
+ *
+ * The DEMOTION is deliberately left unconditional: an amendment against an
+ * approved-looking state demotes whether or not the content moved, because
+ * that is the fail-closed choice and narrowing it is a security decision, not
+ * a reporting fix.
+ */
+describe("amendEnvelope — materialChange reports whether the content actually moved", () => {
+  it("reports false when the amended content is byte-identical to the current envelope", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    const identical = content();
+    const original = buildAuthorizationEnvelope({
+      id: randomUUID(),
+      changeSetId: AMEND_CS_ID,
+      createdAt: AMEND_CREATED_AT,
+      content: identical,
+    });
+    envelopes.put(original);
+    changeSets.put(
+      buildChangeSet({
+        id: AMEND_CS_ID,
+        state: "awaiting_approval",
+        authorizationEnvelopeId: original.id,
+      }),
+    );
+
+    const result = await amendEnvelope({
+      journal: store,
+      changeSets,
+      envelopes,
+      changeSetId: AMEND_CS_ID,
+      newEnvelopeId: randomUUID(),
+      createdAt: AMEND_CREATED_AT,
+      content: identical,
+      reason: "re-submitted identical content",
+    });
+
+    expect(result.materialChange).toBe(false);
+    // Still swapped in, exactly as the field's own doc comment promises.
+    expect(result.changeSet.authorizationEnvelopeId).toBe(result.envelope.id);
+  });
+
+  it("reports true when any field of the content differs", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    const original = buildAuthorizationEnvelope({
+      id: randomUUID(),
+      changeSetId: AMEND_CS_ID,
+      createdAt: AMEND_CREATED_AT,
+      content: content(),
+    });
+    envelopes.put(original);
+    changeSets.put(
+      buildChangeSet({
+        id: AMEND_CS_ID,
+        state: "awaiting_approval",
+        authorizationEnvelopeId: original.id,
+      }),
+    );
+
+    const result = await amendEnvelope({
+      journal: store,
+      changeSets,
+      envelopes,
+      changeSetId: AMEND_CS_ID,
+      newEnvelopeId: randomUUID(),
+      createdAt: AMEND_CREATED_AT,
+      content: content({ ownedPaths: ["src/widened"] }),
+      reason: "widened the owned paths",
+    });
+
+    expect(result.materialChange).toBe(true);
+  });
+
+  it("reports true when the previous envelope cannot be resolved — unknown is never 'nothing changed'", async () => {
+    const changeSets = createChangeSetsRegistry();
+    const envelopes = createAuthorizationEnvelopesRegistry();
+    changeSets.put(
+      buildChangeSet({
+        id: AMEND_CS_ID,
+        state: "awaiting_approval",
+        authorizationEnvelopeId: randomUUID(),
+      }),
+    );
+
+    const result = await amendEnvelope({
+      journal: store,
+      changeSets,
+      envelopes,
+      changeSetId: AMEND_CS_ID,
+      newEnvelopeId: randomUUID(),
+      createdAt: AMEND_CREATED_AT,
+      content: content(),
+      reason: "previous envelope missing from the registry",
+    });
+
+    expect(result.materialChange).toBe(true);
   });
 });

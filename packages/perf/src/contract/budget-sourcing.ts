@@ -28,6 +28,33 @@ export interface ResolvedBudgetSource {
  * "Resolves" means "produces at least one parseable budget entry" — an
  * `acceptanceCriteria` list that is pure prose does NOT resolve source #1,
  * and falls through to #2, exactly as an empty/absent list would.
+ *
+ * ── NOT WIRED, AND WHY (recorded 2026-08-01) ─────────────────────────────
+ *
+ * This function has ZERO production callers. It is correct and tested, and
+ * nothing in the running system consults it: `IntakeRequest` carries
+ * `performanceBudgetSource` and `performanceBudgets` as REQUIRED caller-
+ * supplied fields, and `intake-pipeline.ts` copies both verbatim into the
+ * provisional contract. So the sourcing ORDER roadmap/15 specifies is
+ * implemented here and enforced nowhere, and a caller may declare
+ * `source: "requirement_acceptance_criteria"` beside budgets that were never
+ * derived from any requirement's criteria — the declaration is not checked
+ * against the criteria it names.
+ *
+ * It is not wired because the only site that could call it —
+ * `@crabgic/supervisor`'s intake pipeline, phase 11 — cannot import
+ * `@crabgic/perf` (phase 15): no such edge exists in roadmap/README.md's
+ * dependency graph, and `scripts/check-package-graph-acyclic.mjs` guards the
+ * package graph. Adding an 11 → 15 edge, or relocating this module and
+ * `./acceptance-criteria-parser.ts` into a package intake can reach (the
+ * precedent is `approval/token.ts`, moved into `@crabgic/contracts` to break a
+ * cycle), is a cross-phase interface decision — `docs/interface-ledger.md`'s
+ * territory, not a drive-by.
+ *
+ * DO NOT delete this as dead code on the strength of "no callers". The gap is
+ * the missing wiring, not the function; deleting it would erase the only
+ * implementation of a sourcing order the phase spec still requires, and would
+ * make the unchecked caller declaration above permanent rather than pending.
  */
 export function resolveBudgetSource(options: ResolveBudgetSourceOptions): ResolvedBudgetSource {
   if (options.requirementAcceptanceCriteria !== undefined) {
