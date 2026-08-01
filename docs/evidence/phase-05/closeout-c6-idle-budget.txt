@@ -1,0 +1,36 @@
+# Phase 05 exit criterion 6 — idle budget with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:24Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/idle-budget/idle-budget.integration.test.ts packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts packages/supervisor/src/idle-budget/resource-probe.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/idle-budget/resource-probe.test.ts > sampleResourceUsage > returns a plausible, self-contained sample of this process alone 2ms
+ ✓ |@crabgic/supervisor| src/idle-budget/resource-probe.test.ts > cpuFractionBetween > computes a fraction between two real samples 0ms
+ ✓ |@crabgic/supervisor| src/idle-budget/resource-probe.test.ts > cpuFractionBetween > returns 0 when the wall-clock delta is zero (same instant) 0ms
+ ✓ |@crabgic/supervisor| src/idle-budget/resource-probe.test.ts > cpuFractionBetween > returns 0 when the wall-clock delta is negative (out-of-order samples) 0ms
+ ✓ |@crabgic/supervisor| src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > documents the real HEARTBEAT_INTERVAL_MS constant as exactly 5 seconds 1ms
+stdout | src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler
+[idle-budget] measured over 1500ms: RSS=71MiB (budget <100MiB), cpuFraction=0.3293% of one core (budget <1%)
+
+ ✓ |@crabgic/supervisor| src/idle-budget/idle-budget.integration.test.ts > idle resource budget — sustained no-op window, real 5s-paced heartbeats > RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler 1503ms
+ ✓ |@crabgic/supervisor| src/idle-budget/heartbeat-scheduler.test.ts > heartbeat scheduler — idle CPU budget > stays under <1% of one core while idle over a sustained window, paced (not always-polling) 2004ms
+ ✓ |@crabgic/supervisor| src/idle-budget/heartbeat-scheduler.test.ts > heartbeat scheduler — lifecycle mechanics > invokes onSample and accumulates .samples on each tick, using an injectable sample function 1ms
+ ✓ |@crabgic/supervisor| src/idle-budget/heartbeat-scheduler.test.ts > heartbeat scheduler — lifecycle mechanics > start() is idempotent — calling it twice does not create a second timer 0ms
+ ✓ |@crabgic/supervisor| src/idle-budget/heartbeat-scheduler.test.ts > heartbeat scheduler — lifecycle mechanics > stop() before start() is a safe no-op 1ms
+ ✓ |@crabgic/supervisor| src/idle-budget/heartbeat-scheduler.test.ts > heartbeat scheduler — lifecycle mechanics > stop() is idempotent — calling it twice does not throw 0ms
+
+ Test Files  3 passed (3)
+      Tests  11 passed (11)
+   Start at  23:27:25
+   Duration  2.17s (transform 58ms, setup 0ms, import 101ms, tests 3.52s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

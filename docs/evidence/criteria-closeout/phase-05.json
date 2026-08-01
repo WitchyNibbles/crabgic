@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 1,
+  "phase": "05",
+  "roadmapFile": "roadmap/05-supervisor-daemon.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 1 (phase 05)",
+    "headSha": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Foreign-uid peer refused (unit-tested check; integration where CI permits) — evidence: Test plan's Security suite (foreign-uid peer refused before any request is served) and Property (fast-check) suite's randomized peer-uid sequences.",
+      "textSha256": "497fee7e738eddbf3cc4d75ca34fe7516da691678070dc63c33aee588e5a459a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 848 — '  ✓  @crabgic/supervisor  src/peer-auth/peer-auth-middleware.test.ts (9 tests) 61ms'; line 868 — '  ✓  @crabgic/supervisor  src/peer-auth/peer-auth-middleware.property.test.ts (2 tests) 76ms'; line 839 — '  ✓  @crabgic/supervisor  src/socket/uds-server.test.ts (9 tests) 353ms'; line 870 — '  ✓  @crabgic/supervisor  src/peer-auth/peer-credentials.test.ts (2 tests) 47ms'; run summary ' Test Files  622 passed (622)' / '      Tests  6018 passed | 1 skipped (6019)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:28",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:33-34 — 'expect(result.admitted).toBe(false); expect(result.reason).toBeDefined();' for a reader reporting uid 9999 against invokingUid 1000, in the case named \"refuses a connection from a foreign uid, before any request is served\". This is the criterion's unit-tested check."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:20",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:25 — 'expect(result.admitted).toBe(true);' for a matching uid. The positive control: without it, an authenticatePeer that refused everything would satisfy every refusal assertion in the file."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:37",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts:42 — 'expect(result.admitted).toBe(false);' when the credential bridge THROWS, and :58-59 'expect(result).not.toEqual({ admitted: \"TEST_TIMEOUT\" }); expect((result as { admitted: boolean }).admitted).toBe(false);' when it hangs past its own 50 ms timeout. Fail-closed on bridge failure, which matters because the real reader shells out to python3 (docs/evidence/phase-05/README.md Deviation #2)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts:21",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts:31-35 — 'if (uid === INVOKING_UID) { if (result.admitted !== true) return false; } else { if (result.admitted !== false) return false; }' over fc.array(fc.integer({min:0,max:65535}), {minLength:1,maxLength:50}) at numRuns 1000 — the criterion's named \"randomized peer-uid sequences\" property, asserted as an iff in both directions"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts:44",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts:57-61 — 'const foreign = await authenticatePeer(...readerReturning(foreignUid)...); return foreign.admitted === false;' after 0–20 preceding admitted same-uid connections, numRuns 1000. This is the \"regardless of arrival order\" half the test plan names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/uds-server.test.ts:164",
+          "quotedAssertion": "packages/supervisor/src/socket/uds-server.test.ts:184-189 — the connection is destroyed before any handshake ack: 'const closed = await new Promise<boolean>((resolve) => { client.socket.once(\"close\", () => resolve(true)); ... }); expect(closed).toBe(true);' against a REAL UDS socket in a tmp dir (startSupervisorServer at :168-176). The integration half the criterion scopes as \"where CI permits\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/peer-auth/peer-credentials.test.ts:36",
+          "quotedAssertion": "packages/supervisor/src/peer-auth/peer-credentials.test.ts:55-56 — 'expect(credentials.uid).toBe(process.getuid?.()); expect(credentials.pid).toBe(process.pid);' reading genuine kernel SO_PEERCRED over a real, self-connected UDS socket; :64-66 'await expect(readPeerCredentialsLinux(fakeSocket)).rejects.toBeInstanceOf(PeerCredentialUnavailableError);'. This is what makes the middleware's uid input a real kernel credential and not a test double."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c1-foreign-uid-refused.txt",
+          "quotedAssertion": "'Test Files 4 passed (4) / Tests 22 passed (22)' — scoped local re-run at the closeout commit, command line recorded in the file header"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi2-peer-auth-failing.txt",
+          "quotedAssertion": "The recorded failing-first (RED) capture against a naive fail-open middleware, quoted verbatim: '❯ |@eo/supervisor| src/peer-auth/peer-auth-middleware.test.ts (4 tests | 3 failed) 8ms' / '      Tests  3 failed | 1 passed (4)'. The three named RED cases are '× refuses a connection from a foreign uid, before any request is served', '× fails closed (refuses) when the credential bridge throws' and '× fails closed when the credential bridge hangs past its own timeout (rejects)', the first on 'AssertionError: expected true to be false' at peer-auth-middleware.test.ts:33 — so the fail-open stub satisfied only the same-uid positive control, which is exactly the shape a genuine RED capture should have. Paired with wi2-peer-auth-passing.txt."
+        }
+      ],
+      "notes": "Scope recorded so the tick is not read wider than it is. No test creates a genuinely foreign uid — that needs root, which CI does not grant, and the criterion's own \"(unit-tested check; integration where CI permits)\" clause is exactly this concession. The integration case injects a reader reporting uid 999999 (uds-server.test.ts:173) and proves the SERVER's refusal path over a real socket; the real kernel SO_PEERCRED read is proven separately, in the same-uid direction, by peer-credentials.test.ts:55-56. The two halves are not composed into one foreign-uid-through-the-kernel test, and cannot be without a second uid."
+    },
+    {
+      "index": 2,
+      "text": "Two same-uid local connections (standing in for the CLI and the gateway) both pass the `SO_PEERCRED` check against the identical router and receive identical `run.status`/`run.cancel` responses — proving one handler, two transports — evidence: Test plan's Integration suite, two concurrent same-uid connections both clearing `SO_PEERCRED` against the identical router.",
+      "textSha256": "069c6a9ff9679b1d4b648b20a0150d26d2039003fdb1028a2b2f005f3a22f458",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 850 — '  ✓  @crabgic/supervisor  src/socket/uds-server.concurrent.test.ts (1 test) 98ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:83",
+          "quotedAssertion": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:83-85 — 'const [cliAck, gatewayAck] = await Promise.all([cli.handshake(), gateway.handshake()]); expect(cliAck.accepted).toBe(true); expect(gatewayAck.accepted).toBe(true);' — two independent, concurrent connections to the same socket, both admitted. The server is started with the REAL credential reader (:75 'peerAuth: { reader: readPeerCredentialsLinux }'), so both really clear a kernel SO_PEERCRED read rather than a stub."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:87",
+          "quotedAssertion": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:93 — 'expect(cliStatus.result).toEqual(gatewayStatus.result);' for concurrent run.status calls, and :99-100 'expect(cliCancel.ok).toBe(true); expect(gatewayCancel.ok).toBe(true);' where the cli issues run.cancel while the gateway reads run.status. One router instance (:59 buildSupervisorRouter, passed once to startSupervisorServer at :71-76) serves both — the \"one handler, two transports\" clause."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:104",
+          "quotedAssertion": "packages/supervisor/src/socket/uds-server.concurrent.test.ts:108-109 — 'expect(cliFinal.result).toEqual(gatewayFinal.result); expect((cliFinal.result as { run?: { runState: string } }).run?.runState).toBe(\"cancelled\");'. The anti-vacuity control: the equality on its own would be satisfied by two identically-empty results, so the test also pins the shared post-cancel STATE, which only a real dispatch through the shared registry can produce."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c2-two-same-uid-connections.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 1 passed (1)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "\"Standing in for the CLI and the gateway\" is literal: both connections originate from the test process, which is what makes them same-uid. No @crabgic/cli or @crabgic/gateway code participates — this box evidences the SERVER-side property the criterion states (one router, two admitted connections, identical responses), not that either real client is wired to this socket. The run is transitioned to awaiting_approval before the assertions (:51-57), so run.status returns a populated record rather than {}."
+    },
+    {
+      "index": 3,
+      "text": "kill -9 mid-operation → restart recovers registries via 04's `recover(runId)`; no duplicated side effects — evidence: Test plan's Integration suite, kill -9 mid-operation → restart → registries recovered via 04's `recover(runId)` with no duplicated side effect.",
+      "textSha256": "1a3abcbb680d08e560719d086e2f848829abca5e9fa725966291e33ca25f310a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 857 — '  ✓  @crabgic/supervisor  src/socket/kill-restart-recovery.test.ts (1 test) 291ms'; line 835 — '  ✓  @crabgic/supervisor  src/registries/recovery.test.ts (11 tests) 96ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/kill-restart-recovery.test.ts:87",
+          "quotedAssertion": "packages/supervisor/src/socket/kill-restart-recovery.test.ts:94-96 — 'expect(result?.killedAt).toBe(\"marker-observed\"); expect(result?.recovered).toBe(true); expect(result?.verdict).toBe(\"pass\");' The child is a real spawned process SIGKILLed by 04's own runKillHarness (:88) the instant it signals the fault point BETWEEN two journal appends — a genuine kill -9 mid-operation, not a simulated one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/socket/kill-restart-recovery.test.ts:47",
+          "quotedAssertion": "packages/supervisor/src/socket/kill-restart-recovery.test.ts:51-79 — the in-process verify callback IS the restart: 'const store: JournalStore = createJournalStore({ journalDir }); const runs = createRunsRegistry(); const workers = createWorkersRegistry(); ... await recoverRun(RUN_ID, { journal: store, runs, workers });' over the SAME on-disk journal dir, then 'const noDuplicateSeq = uniqueSeqs.size === seqs.length; const noDuplicatePair = uniquePairs.size === pairs.length;' — the \"no duplicated side effects\" clause, checked on the replayed run_transition chain."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/supervisor/src/registries/recovery.ts:49",
+          "quotedAssertion": "packages/supervisor/src/registries/recovery.ts:49 — 'const result = await options.journal.recover(runId);' — recoverRun delegates to 04's own recover(runId) and never re-implements replay, which is what makes the criterion's \"via 04's `recover(runId)`\" clause true rather than nominal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/registries/recovery.test.ts:40",
+          "quotedAssertion": "packages/supervisor/src/registries/recovery.test.ts:58-63 — 'expect(result.replayed).toHaveLength(2); expect(runs.get(RUN_ID)).toMatchObject({ runId: RUN_ID, changeSetId: CHANGE_SET_ID, runState: \"ready\" });' This is the \"recovers REGISTRIES\" half: the kill-harness test above asserts convergence and non-duplication, this one asserts the registry is actually repopulated from the replay."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/registries/recovery.test.ts:232",
+          "quotedAssertion": "packages/supervisor/src/registries/recovery.test.ts:247 — 'expect(secondState).toEqual(firstState);' after calling recoverRun twice, in the case named \"is idempotent: calling recoverRun twice converges to the same registry state, no duplicated side effect\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/registries/recovery.test.ts:274",
+          "quotedAssertion": "packages/supervisor/src/registries/recovery.test.ts:324 — 'expect(recovered).toBeUndefined();' for a worker that genuinely succeeded through the REAL spawnManagedWorker/recordAttempt path before a simulated restart (:293-313). The negative control against a recovery that classifies everything as crashed — which is the failure mode this case was written to kill."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/registries/recovery.test.ts:266",
+          "quotedAssertion": "packages/supervisor/src/registries/recovery.test.ts:270-271 — 'expect(result.replayed).toEqual([]); expect(runs.get(\"no-such-run-in-journal\")).toBeUndefined();' — recovery of a run with no entries produces nothing rather than a phantom record."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c3-kill-restart-recovery.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 12 passed (12)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi3-kill-restart-recovery-passing.txt",
+          "quotedAssertion": "The phase's own recorded capture of this suite, described in docs/evidence/phase-05/README.md's mapping row for this criterion."
+        }
+      ],
+      "notes": "Two seams recorded rather than glossed. (a) The criterion is discharged by TWO suites, not one: kill-restart-recovery.test.ts proves the kill -9 → restart → converges → no-duplicate half, and its verify callback deliberately does NOT assert the registry is repopulated (it reports runState only in a diagnostic string, kill-restart-recovery.test.ts:82); the repopulation assertion lives in recovery.test.ts:59-63 against the same recoverRun function. (b) Re-verified at this closeout commit because #46 (9057abe, merged today) changed recovery.ts and added 90 lines to recovery.test.ts — it STRENGTHENED this criterion by making a `parked:rate_limit` session no longer classify as an orphan (recovery.test.ts:99-124, :132-160). Every line citation above was re-resolved against the post-#46 tree. Related but out of this criterion's scope: #46's own commit message records that a plain SIGTERM (not kill -9) could previously release the lease under a live writer and produce a JournalTamperedError out of the next recover(); that path is covered by boot-supervisor.test.ts, which no exit criterion in this phase names."
+    },
+    {
+      "index": 4,
+      "text": "Hung fake worker fully reaped within deadline — evidence: Test plan's Integration suite, fake-engine fault injection (hang/crash/log-spam) proving the SIGTERM → grace → SIGKILL ladder and orphan reaping.",
+      "textSha256": "02df1b5eb19cc3074211b352f0f7d7d3e1b116a413da92651f9648d02324339c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 845 — '  ✓  @crabgic/supervisor  src/worker-lifecycle/termination-ladder.test.ts (3 tests) 61ms'; line 851 — '  ✓  @crabgic/supervisor  src/worker-lifecycle/orphan-reaper.test.ts (6 tests) 34ms'; line 842 — '  ✓  @crabgic/supervisor  src/worker-lifecycle/worker-lifecycle-manager.test.ts (6 tests) 75ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:105",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:106-128 — a REAL @crabgic/testkit FakeEngineAdapter driven with 'failure: { kind: \"hang\", atStepIndex: 0 }', then 'const result = await withTimeout(terminateWorker({ adapter, handle, iterator, graceMs: 2_000 }), 3_000, \"terminateWorker\"); expect(result.outcome).toBe(\"graceful\"); const after = await withTimeout(iterator.next(), 500, \"post-terminate iterator.next()\"); expect(after.done).toBe(true);' — the hung fake worker, FULLY reaped (stream done), INSIDE a bounded deadline. This is the criterion, literally."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:76",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:89-94 — 'const result = await withTimeout(terminateWorker({ adapter, handle, iterator, graceMs: 50 }), 3_000, \"terminateWorker\"); expect(result.outcome).toBe(\"forced\");' against NonCooperativeAdapter (:39-73), whose cancel() is a deliberate no-op over a generator that never advances. This is the SIGKILL-equivalent escalation step, which the fake engine's own always-cooperative cancel() cannot exercise; the deadline is enforced by the 3 s withTimeout and the escalation is proven by outcome === \"forced\" under a 50 ms grace."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:131",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts:143 — 'expect(result.outcome).toBe(\"graceful\");' for a default (non-hanging) script. The negative control: without it, a terminateWorker that always reported \"forced\" — or always \"graceful\" — could not be distinguished, and the two outcome assertions above would carry no information."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/orphan-reaper.test.ts:31",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/orphan-reaper.test.ts:43-48 — 'expect(reapedIds).toEqual([\"w1\"]); expect(workers.get(\"w1\")?.status).toBe(\"crashed\"); const attempt = await getLatestAttempt(store, WORK_UNIT_ID); expect(attempt?.status).toBe(\"failed\");' — the startup orphan sweep the criterion's evidence clause names, journaling a real attempt through @crabgic/journal"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/orphan-reaper.test.ts:124",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/orphan-reaper.test.ts:136-137 — 'expect(reapedIds).toEqual([]); expect(workers.get(\"w1\")?.status).toBe(\"terminated\");' for an already-terminated worker. The reaper's negative control: it does not simply mark everything crashed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.test.ts:92",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.test.ts:112-117 — 'expect(outcome).toBe(\"crashed\"); expect(workers.get(managed.workerId)?.status).toBe(\"crashed\"); expect(hookCalls).toEqual([managed.workerId]); ... expect(attempt?.status).toBe(\"failed\");' — the crash half of the evidence clause's \"fake-engine fault injection (hang/crash/…)\": detection → journaled attempt record → recovery hook, against the real fake engine; :143-198 repeats it for a thrown events iterator."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c4-hung-worker-reaped.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 15 passed (15)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi4-termination-ladder-failing.txt",
+          "quotedAssertion": "The recorded failing-first (RED) capture, quoted from the transcript itself rather than from the README's summary of it: ' Test Files  1 failed (1)' / '      Tests  1 failed | 1 passed (2)', on 'AssertionError: expected \\'graceful\\' to be \\'forced\\'' at termination-ladder.test.ts:45. NOTE: docs/evidence/phase-05/README.md's mapping row calls this a \"genuine timeout-based assertion failure\"; it is not — it is an escalation-OUTCOME mismatch against a ladder that never escalates. The RED capture is genuine either way (the naive ladder reports graceful where forced is required), but the README's characterisation of it is imprecise."
+        }
+      ],
+      "notes": "One inaccuracy in the criterion's own evidence clause, recorded rather than corrected because it does not touch the claim being ticked. The clause names fake-engine fault injection \"(hang/crash/log-spam)\"; @crabgic/testkit's fake engine has no log-spam failure mode — its FailureMode union is crash | limitSignal | schemaViolation | hang (packages/testkit/src/fake-engine/scripted-trace.ts:29-32). Hang and crash are both exercised above. The log-spam concern is covered by criterion 5's ring-buffer suite instead, not through the engine adapter. The criterion's assertion — \"Hung fake worker fully reaped within deadline\" — is fully evidenced by termination-ladder.test.ts:105-129, so this is a pointer imprecision, not a gap; no wording correction is filed because nothing in the claim is affected."
+    },
+    {
+      "index": 5,
+      "text": "Slow subscriber never stalls a worker; drops surfaced — evidence: Test plan's Property (fast-check) suite, randomized concurrent-subscriber sequences asserting drops are always counted and never propagate backpressure to the worker pipe.",
+      "textSha256": "3ea66d89a3b90a0641277649f7b33ac20503abdeba275092260373ecea999513",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 843 — '  ✓  @crabgic/supervisor  src/event-bus/ring-buffer.property.test.ts (2 tests) 563ms'; line 854 — '  ✓  @crabgic/supervisor  src/event-bus/ring-buffer-drops.test.ts (6 tests) 11ms'; line 882 — '  ✓  @crabgic/supervisor  src/event-bus/ring-buffer.test.ts (1 test) 7ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/event-bus/ring-buffer.property.test.ts:83",
+          "quotedAssertion": "packages/supervisor/src/event-bus/ring-buffer.property.test.ts:130 — 'if (pushCount > 0 && totalPushElapsedMs / pushCount > 25) return false;' over randomized push/poll sequences with one deliberately rarely-polled subscriber (actionArb weights 5/3/1, :24-28), numRuns 1000 — the \"never propagate backpressure to the worker pipe\" half"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/event-bus/ring-buffer.property.test.ts:141",
+          "quotedAssertion": "packages/supervisor/src/event-bus/ring-buffer.property.test.ts:144-148 — 'if (subs[who].drops !== reference.dropsFor(who)) return false; if (subs[who].drops + survivedCount[who] !== totalPushed) return false;' against an INDEPENDENT reference model (:44-80) that computes drops by a brute-force per-seq loop and never calls into ring-buffer.ts. An exact-count oracle, not \"a non-negative integer\" — the file's own comment at :30-43 records that the weaker prior oracle would have survived a `drops += 1` mutant."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/event-bus/ring-buffer-drops.test.ts:39",
+          "quotedAssertion": "packages/supervisor/src/event-bus/ring-buffer-drops.test.ts:66-72 — 'expect(sub.drops).toBe(11); expect(polled.length).toBe(6); expect(polled).toEqual([\"aaaaa\",\"aaaaa\",\"aaaaa\",\"aaaaa\",\"aaaaa\",\"aaaaa\"]);' — the deterministic exact-drop-count case the mutation record docs/evidence/phase-05/fix-dropcount-mutant-killed.txt was captured against"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/event-bus/ring-buffer-drops.test.ts:75",
+          "quotedAssertion": "packages/supervisor/src/event-bus/ring-buffer-drops.test.ts:82 — 'expect(sub.drops).toBe(0);' for a subscriber that polls after every push. The negative control: a counter that incremented unconditionally would satisfy every \"drops > 0\" assertion in the file but not this one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/event-bus/ring-buffer.test.ts:20",
+          "quotedAssertion": "packages/supervisor/src/event-bus/ring-buffer.test.ts:33-36 — 'expect(lastResult).not.toBe(\"TIMED_OUT\"); expect(received).toBeGreaterThan(0);' — 200 pushes, each raced against a 300 ms timeout, with one subscriber that never polls; the second assertion is the anti-vacuity guard that push() was doing real work rather than being a no-op"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.test.ts:201",
+          "quotedAssertion": "packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.test.ts:217 — 'expect(sub.poll().length).toBeGreaterThan(0);' in the case named \"feeds the ring buffer with every observed engine event\". Together with packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.ts:88 ('const logBuffer = createRingBuffer();', handed to pumpWorkerEvents at :95) this is what makes \"a worker\" in the criterion the real worker path rather than a data structure in isolation."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c5-slow-subscriber-drops.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 9 passed (9)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi5-ring-buffer-failing.txt",
+          "quotedAssertion": "The recorded failing-first (RED) capture, quoted verbatim from the transcript: 'AssertionError: expected \\'TIMED_OUT\\' not to be \\'TIMED_OUT\\' // Object.is equality' at ring-buffer.test.ts:33, ' Test Files  1 failed (1)'. The naive PassThrough-stream-backed buffer really did stall push() past the 300 ms race — which is what gives the property test's 25 ms average-latency bound its discriminating power."
+        }
+      ],
+      "notes": "\"Drops surfaced\" is scoped to what actually exists: drops are exposed as `RingBufferSubscription.drops` (packages/supervisor/src/event-bus/ring-buffer.ts:97-99) to the in-process subscriber, and there is NO UDS operation that reports them — SUPERVISOR_OPERATIONS (router/operations.ts:201-215) carries no log/subscription family at all. That matches the phase's §Log streaming wording (\"drops are counted, never silent\") and its Router-surface bullet, neither of which promises a wire-level log subscription, so nothing in the criterion is unmet; recorded here so the tick is not read as \"a UDS client can see the drop count\"."
+    },
+    {
+      "index": 6,
+      "text": "Idle budget test green with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat) — evidence: Test plan's Integration suite, idle-heartbeat measurement over a sustained no-op window against the documented RSS/CPU numbers.",
+      "textSha256": "41e39693df52733ada0475249394212da9b85d2d00b9de35367edc98b8683ee7",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 884 — '[idle-budget] measured over 1500ms: RSS=74MiB (budget <100MiB), cpuFraction=0.1202% of one core (budget <1%)'; line 886 — '  ✓  @crabgic/supervisor  src/idle-budget/idle-budget.integration.test.ts (2 tests) 1509ms'; line 871 — '  ✓  @crabgic/supervisor  src/idle-budget/heartbeat-scheduler.test.ts (5 tests) 2015ms'. The documented numbers are printed by the run itself, so \"green with documented numbers\" is satisfied IN CI, not only locally."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:23",
+          "quotedAssertion": "packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:45-46 — 'expect(after.rssBytes).toBeLessThan(RSS_BUDGET_BYTES); expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);' with RSS_BUDGET_BYTES = 100*1024*1024 and CPU_BUDGET_FRACTION = 0.01 (:14-15), over a 1500 ms sustained window (:16, :28) driven by the REAL scheduler with no interval override (:25 'const scheduler = createHeartbeatScheduler(); // real HEARTBEAT_INTERVAL_MS, no override')"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:19",
+          "quotedAssertion": "packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:20 — 'expect(HEARTBEAT_INTERVAL_MS).toBe(5_000);' — the third documented number, pinned against the shipped constant rather than a test-local literal"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts:18",
+          "quotedAssertion": "packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts:39 — 'expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);' over a 2 s window; the file's own comment at :29-32 records that an always-polling implementation burns ~2 s of CPU over the same window (fraction ~1.0), which is what gives this bound discriminating power"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi6-heartbeat-scheduler-failing.txt",
+          "quotedAssertion": "The recorded failing-first (RED) capture, quoted verbatim: 'AssertionError: expected 1.1664533333333333 to be less than 0.01' for the case 'stays under <1% of one core while idle over a sustained window, paced (not always-polling)'. The naive setImmediate-recursion always-polling scheduler burned 116.6% of one core — 117x the budget. The negative control for the CPU number, on the record rather than asserted."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi6-idle-budget-measured-numbers.txt",
+          "quotedAssertion": "The phase's own documented numbers as first captured: RSS = 69 MiB (budget <100 MiB), CPU = 0.1083% of one core (budget <1%), over a sustained 1500 ms no-op window using the real 5000 ms HEARTBEAT_INTERVAL_MS."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/release-gate-remediation-plan.md",
+          "quotedAssertion": "'| `supervisor-idle-rss` | `pass` | 66.1 MiB | 100 MiB | 0.00% |' and 'The daemon idles at **0.23% of a core against a 1% budget** — four times under, not over', measured three consecutive times at `a1ae9cc` on a verified-quiet host; Round 2's per-item disposition then records 'Both idle budgets PASS on merit'. SUPPLEMENTARY: this is a REAL BOOTED DAEMON sampled through /proc by e2e/attestation/src/performanceContracts.ts, which is the measurement the in-package test above does not perform (see notes)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c6-idle-budget.txt",
+          "quotedAssertion": "'[idle-budget] measured over 1500ms: RSS=71MiB (budget <100MiB), cpuFraction=0.3293% of one core (budget <1%)' and 'Test Files 3 passed (3) / Tests 11 passed (11)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "The limitation, stated plainly so the tick is not over-read. The criterion's named channel — this phase's own Integration suite — measures the process the TEST runs in (`sampleResourceUsage()` is `process.memoryUsage()`/`process.resourceUsage()` on the vitest worker), not a booted supervisor daemon. The CPU figure is a genuine before/after delta across a real 1500 ms idle window driven by the real 5 s scheduler, so it does measure this phase's idle cost; the RSS figure is the host process's absolute RSS and is therefore a proxy, not the daemon's footprint. The daemon-level number exists and is committed, but it is 23's re-measurement apparatus (e2e/attestation/src/performanceContracts.ts boots a daemon and samples /proc over a 16 s window): 66.1 MiB RSS and 0.23% of a core, quoted above from docs/release-gate-remediation-plan.md. It is cited as supplementary, not as the discharge — the criterion names this phase's own suite and that suite is green with its numbers printed in CI. Worth a follow-up work item, not a defect against this box: nothing in packages/supervisor measures a booted `bootSupervisor` daemon's idle RSS, even though bootSupervisor now exists."
+    },
+    {
+      "index": 7,
+      "text": "A repo-wide check confirms no `change_set.*`-named operation exists anywhere in this package's router or registry surface — evidence: Test plan's Conformance suite, grep-based check over this package's registered router/registry operation names (Gap 1).",
+      "textSha256": "adf2422b7ec779fb0b2f59ca131c19b5e31707ac0dfcf5adeb940a6602ae145c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91418138032, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718490962",
+          "commit": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+          "quotedAssertion": "job log line 862 — '  ✓  @crabgic/supervisor  src/router/no-change-set-operation.test.ts (2 tests) 9ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/router/no-change-set-operation.test.ts:45",
+          "quotedAssertion": "packages/supervisor/src/router/no-change-set-operation.test.ts:46-48 — 'for (const op of SUPERVISOR_OPERATIONS) { expect(op.startsWith(\"change_set.\")).toBe(false); }' against the router's own live registered vocabulary (imported from ./operations.js, the same array every router.register call is fed from)"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/router/no-change-set-operation.test.ts:51",
+          "quotedAssertion": "packages/supervisor/src/router/no-change-set-operation.test.ts:57-61 — 'if (content.includes(\"change_set.\")) { offenders.push(file); } ... expect(offenders).toEqual([]);' over every non-test .ts file under packages/supervisor/src, recursively (listTsFiles, :30-42). A raw-text scan, so even a doc-comment mention fails — which is how it caught two of this package's own comments during development (docs/evidence/phase-05/README.md Deviations #4)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/router/no-change-set-operation.test.ts:52",
+          "quotedAssertion": "packages/supervisor/src/router/no-change-set-operation.test.ts:53 — 'expect(files.length).toBeGreaterThan(0);' The anti-vacuity guard: without it, a listTsFiles that returned an empty array would certify the absence of the literal by scanning nothing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/closeout-c7-no-change-set-operation.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 2 passed (2)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-05/wi2-gap1-conformance-passing.txt",
+          "quotedAssertion": "The phase's own recorded capture of this conformance suite, described in docs/evidence/phase-05/README.md's mapping row for this criterion."
+        }
+      ],
+      "notes": "Breadth, recorded exactly. The check is PACKAGE-wide (packages/supervisor/src), not literally repo-wide as the criterion's first four words say; that fully covers the property the same sentence scopes (\"anywhere in this package's router or registry surface\") and the evidence clause the criterion names (\"over this package's registered router/registry operation names\"), so no guarantee is lost and no wording correction is filed. Confirmed independently at this commit: `grep -rn 'change_set\\.' --include=*.ts packages/ e2e/ scripts/` returns hits only inside this test file, the mirrored gateway-side check (packages/gateway/src/mcp/native-registry.test.ts:60,70 — 'expect(name.startsWith(\"change_set.\")).toBe(false)'), and a doc comment in e2e/attestation/src/performanceContracts.ts:193. Interface-ledger Gap 1 (docs/interface-ledger.md:111, \"There is NO `change_set.*` tool family\") is upheld, not contradicted."
+    }
+  ]
+}

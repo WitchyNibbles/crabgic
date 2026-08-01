@@ -1,0 +1,31 @@
+# Phase 05 exit criterion 5 — slow subscriber never stalls the worker pipe; drops counted exactly
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:23Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/event-bus/ring-buffer.test.ts packages/supervisor/src/event-bus/ring-buffer-drops.test.ts packages/supervisor/src/event-bus/ring-buffer.property.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > evicts the oldest entries once capacity is exceeded 1ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > a subscriber that joins after entries were already evicted counts drops, never throws 0ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > a subscriber that never polls while many entries are pushed accumulates a nonzero drop count once it does poll 0ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > reports the EXACT drop count for a subscriber that has fallen behind — not merely 'greater than 0' 1ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > a subscriber that polls every push never drops anything 0ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer-drops.test.ts > ring buffer — capacity/eviction/drop math > close() makes a subscription stop returning data 0ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer.test.ts > ring buffer — a slow subscriber must never stall the worker pipe > push() completes quickly even when one subscriber never polls/drains 5ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer.property.test.ts > ring buffer — property: push() never blocks, drops are always accounted > push() always resolves promptly, and each subscriber's exact drop count matches an independent reference model 64ms
+ ✓ |@crabgic/supervisor| src/event-bus/ring-buffer.property.test.ts > ring buffer — property: push() never blocks, drops are always accounted > a subscriber that never polls accumulates drops but never crashes or blocks the producer 96ms
+
+ Test Files  3 passed (3)
+      Tests  9 passed (9)
+   Start at  23:27:24
+   Duration  339ms (transform 58ms, setup 0ms, import 135ms, tests 172ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
