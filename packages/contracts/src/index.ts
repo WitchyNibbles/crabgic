@@ -25,6 +25,7 @@
 
 // Shared primitives (Id/Timestamp schemas, schemaVersion field + Migration type).
 export * from "./shared/ids.js";
+export * from "./shared/canonical-hash.js";
 export * from "./shared/schema-version.js";
 
 // State machines: Run lifecycle, WorkUnitAttemptStatus, and the shared
@@ -99,6 +100,7 @@ export * from "./contracts/remote-operation-record.js";
 export * from "./contracts/remote-resource.js";
 export * from "./contracts/rendered-artifact.js";
 export * from "./contracts/requirement.js";
+export * from "./contracts/criteria-seal.js";
 export * from "./contracts/run-snapshot.js";
 export * from "./contracts/stack-evidence.js";
 export * from "./contracts/task-packet.js";

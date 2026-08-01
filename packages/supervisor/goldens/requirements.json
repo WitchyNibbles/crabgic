@@ -9,6 +9,7 @@
     "acceptanceCriteria": [
       "A user can submit valid credentials and reach the dashboard."
     ],
+    "criteriaHash": "sha256:0222abb49f679b7cc8cdc7fabb157eeec011ac50ea9e7cb820a52ffd3b5a1882",
     "workUnitIds": [
       "22222222-1111-4111-8111-111111111111"
     ],
@@ -27,6 +28,7 @@
     "acceptanceCriteria": [
       "The 6th attempt within 60s is rejected with a 429."
     ],
+    "criteriaHash": "sha256:7c9dc8830af818e4efacfcac623b9563e6ca65839c1a248e7267feb00e7cd07c",
     "workUnitIds": [
       "33333333-1111-4111-8111-111111111111"
     ],
