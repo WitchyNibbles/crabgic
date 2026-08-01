@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 1,
+  "generator": "scripts/generate-criteria-baseline.mjs",
+  "description": "sha256 of each roadmap exit criterion's whitespace-normalized wording, read from the phase file as it stood BEFORE any closeout pass annotated it. Frozen: a closeout record's criterion must hash to the entry at its phase and index.",
+  "phases": {
+    "10": {
+      "roadmapFile": "roadmap/10-plugin-and-installer.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "1dd6ef5c5b524094125770dc66c86982d309cfe61f5fec5e9b4c8318eb267e99",
+        "117787b49d3164f9b6883697b5e7fe1d89569d8eb1a1da2975b91939149a530b",
+        "f5639f6c9e344d3b4e9742f8078d5a1d4cd3194303b73a445648fb9a75773e25",
+        "205d2a59796c403ed8382b5f73dd94134c5d14d4e0fe50420c8d67c1f4f44fb0",
+        "ae077ef9b122d7f2839d221bd2c4d5f3409ff6d209a003114861189a596e54e5",
+        "f7a0c2ddba947b8915f86cbf5e25a21d70d4e7860a2bd840ed70a5512c06c25a",
+        "7bf1933ff1660e59ddd3ccf61888f0a93b31b8ab571ea98925b82a811d05abfd",
+        "e37d2fae6fbfacc1c7c5b3a85c6acf7014945bd492febc94b7532a5f56967c2d"
+      ]
+    },
+    "11": {
+      "roadmapFile": "roadmap/11-intake-contract-approval.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "d7f9c45ff577da31c83734b4715b14e582db7159d79d62898e6dc3a38c5fece0",
+        "e7ec6c028aa0dc6f70d31eb085804f058b12408da0d9ffa7da699f3b32c1467e",
+        "b0c619f3ffe3789c43c59370c76832950ec267c1f3dd8d167bcc6d337312e5f3",
+        "5726c6cd3c79d8a2b7bbd7e94710c3fae983444c23009d215367ebbed7837a0b",
+        "cc19bab0541427cde7178f91f1a9410f33f791e428793451037535e678aa1822",
+        "a50a8c19379dd2ffefb80fc220b231a46ba42dd1a96cdcc237252049855a3fa8",
+        "4bc0e9a7e59f091bc04c9f197332d00399f169ff054869d50bd91623898f01cd"
+      ]
+    },
+    "12": {
+      "roadmapFile": "roadmap/12-stack-detection-quarantine.md",
+      "sourceRev": "70d7da73214fe735448d5d97ac7d4b9eb24503d6",
+      "sourceNote": "parent of 65ff0da, the phase-12 closeout (pilot)",
+      "criteria": [
+        "547ad3d0ccfcfada9acf517094c825ae5ab18b2b88af6cddc8b11d82214bcb57",
+        "b54d387b782a34d7e39e3739f78ed2d1ec48396965232c9d17f4509d84d45b74",
+        "56066894880901b8849e750a9966bdc35e589d1864116163323c75f9b5371fca",
+        "e3ceb00501a7cdd7f8a2976d421fe43fa3a5bb5174d7384a066144ff3d1cb12f",
+        "e8b54f58b6b7016c4db5e2da275824bbdb324b198517b0e8a88d3b887c5f68f4",
+        "71d96ff8e2a0b1bfdda584ca61b6d596019d517325f74b2ad2b3cd754cdd3ef8",
+        "b2de2911b9d413ce6debe7134a17083c82fc2fac40b766b934c0d247e4346994"
+      ]
+    },
+    "13": {
+      "roadmapFile": "roadmap/13-scheduler-packets-context.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "7f1c5d5fcd4c28fb917233c9f082e84e30fbc50f2a31bb7166f017d36dcdc09d",
+        "128757b6c93349b0012c3089391c84a12ba7d2cefd2ac88cc5fde86e2f88ba9f",
+        "193db66013bae6ff61d16fb37bebd9c5b431ba6e5e487eeff830551cee22f311",
+        "edde0c5d3cba9d4e94009743cf932e782728cf8d2117557734738be7bd5b54b7",
+        "45d6d6d9689b5757daa583b7359b27a9b247b41565b3a09773ab5c6f0c4760ec",
+        "daa877a136d5dc97095a7ab4e3d3ee93b7f04ceebf576d88d67f2f9d4cb46c26",
+        "e3648205608e1a16a9a38f06099c3a9515d94e2abf3bde625b80a24d973bce9b"
+      ]
+    },
+    "14": {
+      "roadmapFile": "roadmap/14-quality-security-gates.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "1f700a42c0ea7fcdadccc5639d545c006c511d951d5d9b1b380fa0e0aef64062",
+        "dd6ff33029f4ac35b0a38b4375e8c7a66f8d57ae659f2c219f0c596b014db1a8",
+        "cb2f6c628711952b9abbff532caf533c76585a1632b7b82c25cb59e8706d48e4",
+        "68159677de120fc9e839d3419cc25f57f48dbc9886ec6b616398c29541b05edb",
+        "ee5d76ae957ec13019f6cfc6b9459ba91493342ba6b05669f31e94422d2b854b",
+        "32a029c0fc50dec63e72b711e7a126c42588623d83ba71705839e2b3508b23c8",
+        "3292503b12623557cec97546f05cf932723237edb854be879414c5c61a45352e",
+        "2bfe19ebc705cd31eb17ead479596db658054d26f83ef4824db69bdbd56ec378",
+        "07f3076edc9b0ca869289e9ff246c47798d613f2a7982d5f4b51984a1cde8c2f"
+      ]
+    },
+    "15": {
+      "roadmapFile": "roadmap/15-performance-contracts.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "b65ab1a54069639c178e6d56921f416a4c633a3be350ca2a0958bddf82a356dd",
+        "67d572c3336a6133b53cc015642a5054b5f4350e1abcedc66dc372a9919b21e3",
+        "14c63c29f26ed6360214ebb863e687ecd585afae452e89ed97a1b8b1506eaf0f",
+        "bcd71646a943e0bcac26001492d8641e18a40367f16991aa68d1c46ce2af13f2",
+        "cf2a8fe9b6244d76762bba40645ff67612460b7d13b2b3359c88dc261f00a342",
+        "45f8f6830b12a474219addfa899e8ed517376c7465168a83ca9adb3979bf1ff4",
+        "111c56a25a0b4e4c7c6d7369a68983e2cc6c90fae85c3574c3a34ded41fb3a0f"
+      ]
+    },
+    "16": {
+      "roadmapFile": "roadmap/16-gateway-core.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "cc879fcc08d4ed013092f478832fb6cea3e33343b4d4522136616f196b131081",
+        "0a6fa83807d53ba9e5f398a37229efd905ff404efe8e13c77e79ccab98af34a3",
+        "ae532c7e3f38b5ececf978ed9e3b84612f332237cb7c4aa2c76d9ff358c92281",
+        "ab274bd424e5908f717cb56faf7a518defe4a80a87f7ea3292cee7ca67d857c4",
+        "392fffd0c53ae3cb52e7522feb01235aeebc8103730378920ba4f87cfac8809e",
+        "4d3e16f2cdcf0cf3aea47153910e36386e99b8cdee42ceb10d181ad71d0a0110",
+        "2145ba08d77ec72e57eda0ba50675583a6ea791ee98fb18458b91c96ccd90834",
+        "16e599e26c5297306cd594d8057ac60a575f393cae2d7f455941ea55ab1a3a2c",
+        "cb9660b57f0e8709fabbf2b60dc83a7ff96cd2a51294ed9f187cc98b6f39a9d0",
+        "be5cf143fd1a99c388c33b70e7b7cdaca4910b94353d998ea0a454399c270af2",
+        "2b0fc7f082868a190eda3bac136db7bf466373089f023e0ec3b959ffda9be9b3",
+        "f18d37051fc274177794b525800dfc5616eb9e370a91898d93c15f5a833747e5"
+      ]
+    },
+    "17": {
+      "roadmapFile": "roadmap/17-renderer-communication-lint.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "01254a4ae6c19e9c59b05a8dd3ac55bebe7290c6940f59919fd73c6f3a01cd38",
+        "ca1fd31d40e4e54ae413e25992861b58c68250516d0c017746791abbb749eb2a",
+        "f3bd5686d502176e8d768b02afcb2fd40210c5f61f466c54a2cc58b5bc028469",
+        "da1c48d35ccd59adb4887299931438e2d605396ef38b043063e312e4c3a55a32",
+        "5b7c6f10d5c2acfb32476a458c7dd651cbc42d5e8d82713c2705974e9b2d6100",
+        "b961b6cb50a2b1b90f1f27f7412aa7dea132df017d8a89aa09509ebd63355241",
+        "03911579b9fc35ec9868f13a2a7a2001ef573ff2b712528ee8205270eb5e43d7"
+      ]
+    },
+    "18": {
+      "roadmapFile": "roadmap/18-jira-cloud-adapter.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "976092e71c7a50eee602321d3099bead8dacbcbb3d7f55b246019e5e8a0723dc",
+        "a0b06dd34da4ef1c9e944895450ed66f5f9399037737b0e214a90c4d70bef651",
+        "27e491eaf0aa398478a110ed91e1a58691d9e3587205a41e19ecad4b3fd18164",
+        "51f1d5382cdf9f58fd0815a4a18592708201d9caad37897982fb0004ecacc508",
+        "46e11ffa8e3a31e49ff537bb73b54ff1879bc2f2418fab20787579e3f55b6940",
+        "6bbaa2245dd8d5fc294f6ea3ec9fb1a77a69757a78c25e8e1af6dfabb320a26f",
+        "cecb9bb9ebcd0c108b74f1b83202055fcd15b1f3170dceaab23f944e43962461",
+        "47ac4b4500e723a1cb78a3873e1469190beeddb7913a8a555ac347fc68bbb2c5",
+        "7b849faf409178ed0e35171417a8238d6815780444f14e63c74cda0bbb91f174",
+        "3c005380c05eb177054b1b0da7a7177a0f1c3f3d619462ed017357cbe93ca15a"
+      ]
+    },
+    "19": {
+      "roadmapFile": "roadmap/19-jira-datacenter-adapter.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "16079b1e3f404e93c3eb25e1fca534276d68e34bc4db573fb1f778830097730c",
+        "bde5fefa4bf018ec83f5643787aa31379d9ee1c526c6ccf273fb045010c9a817",
+        "beea11a3cced67b815d8e5fe284f3763ae407ce85266a8981a325b2cfe06016b",
+        "e517b4837ec7bd402f76cb571c6fb5f24edbceb00f373769c8804895f5183782",
+        "8e49cad0bb34a10fa047785a7edb7a6829f119a2c2f33361f48e4d15efd1c7ff",
+        "f2057533a8d310cb9d87be9c86845835b4e23aaf522021e440f29293257a13b3",
+        "b7217ec58170fbee8fbaf306f3cbaa9ef4db0dedd67ba26f50b5a426aa0b57e5"
+      ]
+    },
+    "20": {
+      "roadmapFile": "roadmap/20-grafana-adapters.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "ace1ebd991380ad7bf49e5baa9e2b9185e190fe8aa206f065c565065a262b3e9",
+        "b09ab59d0f9085e289e0928be57451023424ffbf4b48870415e804f761244e03",
+        "2ef204549ed5d85ff3e7ce45477ab87f18689de873106fe7ccd69dfde8dcbb3f",
+        "a41e10bdee4a3b8ed9de927d38a13518a5cdf1aa21a515e6638f8fcf84f4b507",
+        "cda55d28a871428a7bb5c9e4ad2d11037776ed3392cba7663d6a3b3fc1e94ade",
+        "61c064a3f7ccfff306ed4e1c46b062c7305d84c94cd7db05b3863832b417ea24",
+        "1405e27d9e2f2d8347c8e126cfca197bc4b2717689c11ea20c3ad11e64d37875",
+        "dce5daf87319d33a88d7e5f62a8a1f105d276e20e6cb3ee810eb0ceb563fc6fd"
+      ]
+    },
+    "21": {
+      "roadmapFile": "roadmap/21-connector-evidence-integration.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "9c8583b24449726593e7d8f9ed49ad09198c34eeaab80754818b20b3f30a5454",
+        "3312a8955c6c057abeb0bcd36255ac1b6205de89aae707a4ac39d52a5f08ff57",
+        "bfeb2ff2f02c7e897597875f7cff6861eac0e2ab65343915eed430fda12ba3cc",
+        "f32d87bb514c7829279907f89d669a3b6cb6b999866b5a14d4196ef5c2f7d47a",
+        "dda4309630e8fe8d3dc3edd5bbf449602743a2f09b006658019a8e1d4748c248",
+        "42d4319d4ed2e66b9f4e305ba893deb20a0c46e231ff724e565f2fe69946bfe3"
+      ]
+    },
+    "22": {
+      "roadmapFile": "roadmap/22-learning-system.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "e5c20b7ea767016d4e1dee41cd0d6aba35fa36512112b550899a40679b34dd31",
+        "7ad31ea8ef80b32d4d49edda947b6ef2510b81b492219e309ba13a6e2e1cbc29",
+        "8a0a7a56b3b3b678249c440de4435784fab7e4d4a65d592c48553059538196b1",
+        "5316f7fbe56bc9b72cc1a9a2bdb603f1340b2adc76b526dbd2e4fac040432812",
+        "ca20d452b0d3e4ee7ceca23dbfb279d706ee3cd59124fc904825d2f7b3423da2",
+        "5d107aa147c5713e27b45626c5ee5eef7b17e88f684ef9cc034c3029fb3c2931",
+        "26c52998cf99f58eba8aa2dc6b7adf3d5650405c6875d570ff93f3632f275139",
+        "2918936ec9e22fa73f6aa9cddf513c52c94b31160964c55f6b1471a5e0d92340"
+      ]
+    },
+    "23": {
+      "roadmapFile": "roadmap/23-release-hardening.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "c4cb972994750ddae9706defe972047dd6b973cda5ecc2f93d2cdc49ad926fe6",
+        "5212bf96a2eb81231651e2122fa851a166c73eb84ed3db8bc65dd5aac8b5a3d1",
+        "d0f06ccbf5e32ac2461dc978f1c305a701fb527c9dd7a29759af8e0cff976047",
+        "fa5c72aba26ed9007c6d928e94dd0fed271491c807a6c23271b89b918a8ba24c",
+        "964be65942516a0498c1150c3bf95feb1fffd08afdae0cefee31b7a5357a2ea0",
+        "0d28cd691b73811b2b54c7c3a5860d3925e841d84210d2eb34116f5611223320",
+        "48dc50dddd3f5f44af5dc6070937d9f4e48b120712b8e4d4d578d05fc6fc2538",
+        "fcbb4aaf97937e97334110bc66ca1b67c142386c9ac843a1612aa35e7cdacdc8",
+        "5cbf03399f94a58938702f22c4f7259b4ef6b2976a9f7ffaaf088b79bd2ca6f5",
+        "98773c44526dfae1246c511fc0eb17d846f3a1b21606db3b985e309e4880b362",
+        "24bf19f5b31154727d997cad3ac88d29a4eddac3a1a7640bc95a28820c7b810c",
+        "342a5c38e322c666f0461d8bb79a08d92e8703e11d416388391fada9755b518f",
+        "891bff97aa37663f83866d4d4c980a55ff2b077066d47ee9de8cbf0faf0b4e91",
+        "68a74fbad0db0c5a297ae70c76739f06f60d0f9582a62afa2821bc86d2480177",
+        "8e68acedb146856b2d670457fec724d42073d4092a0b919db29c5e8d96d5fea5",
+        "52b9965023c0900a4b2e86679a44420cb66d408579d3b9ad3bd90707f0caa92e"
+      ]
+    },
+    "24": {
+      "roadmapFile": "roadmap/24-sealed-acceptance-criteria.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "14dd9ecba24907c32c36ba47dc2cb38a13439fd3eff5db144535b093762756d7",
+        "3164504bfe503b036d542f877ded0f8efbf19988f26c76428fb492e85d72342e",
+        "8ebe6bd790adcf2a08ba8cfe2538b1930fd8e9790c4d30f1cfaa3f51802fd8dd",
+        "92025234edbff8635c2c7d115cfe572a3971a51f134f6e3295ead62c420adeed",
+        "df828499900c5343939f461a438d67b99ed3aba6d76a42602d5e3763f5bcc0a1",
+        "10cbb25d1701183f068403b0b70331adc21b02125aacc4b6ce85b55492e13655",
+        "de78989aa1f9cc1c2223802725294be140f286e35dab0b7dd0bcabdcc07ea681",
+        "103188d50009945c240be534d492f3e0602c76bea0e6d88e23b35babdde62663",
+        "2d03c30a163f0c2f1cc3fd64647bdafbead4901d20264847ef919f2d18288508"
+      ]
+    },
+    "00": {
+      "roadmapFile": "roadmap/00-engine-spikes.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "9f0a60adfbd2fd5b6ec86b199d68ac313ceddd50ef60646fdc7b237535a178ca",
+        "b0130ed7070a5aef46ae905627dec11f7f6be2105a56b1dc3964cd81d20637e0",
+        "19de24f560f86b629f2d8249da1fb8184c9ce058a0a0888540012239645d68cf",
+        "ac5f4b37d0b59e2f6ca2cb79c71fcc6274a7342b3333d1bdeffdb0b6de801d02",
+        "276f611bc7e83b3c8ff36b13befc47e688034ee7b7402d90b64bc9fa31de60d5"
+      ]
+    },
+    "01": {
+      "roadmapFile": "roadmap/01-repo-bootstrap.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "b7b450198bbe3fb8261bf884c585b38048cb1837117c620262478448692dfb20",
+        "c9c4e0607f21c73eb313b3048e542c812335c64b8861d3b448198a782ded1e01",
+        "488f1d0fa2c40412526a77faaa8779f0320cc11d2743086bb69c9aceffeeb5a3",
+        "65040819af685bc15455e73133806e8091af5913a027ff0ed3f5fa9258d0dedf",
+        "e52901f72d4fc51d4b02f64970a08471c4483cae4015d8898864e029eaf33ee4",
+        "deabc017d01cda5d87b0ffb69c5d2cdf175353eee700d41b0295a8d264626ca6",
+        "357af91774f5f1fcb943ad7b566df8496cd6312dab6a6f0b0c41612ce29c7499",
+        "d6ad6f664c61c480eb2fcf3a565e7725664e3a32c6aa1c1f976c7ff1b68cfdc5",
+        "27592a2fca4510833cf8aa97e81cbfe13cc5fbb3dd5540bd446c222c95b90964",
+        "9323355e85a05be6c0b66c9c8f2b37d94187f83a1caec75efbf1e270c71e230d"
+      ]
+    },
+    "02": {
+      "roadmapFile": "roadmap/02-contracts-and-schemas.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "69fe91b443c2d737e523e8d3551d65faa58fc679d2ee955308c97e055322a5ab",
+        "67a152193cef6bd986ebc1eee0ed2b74e2e1761a6e68ca1563cc0c3413e4c168",
+        "4415d1655e0149857faba863d440e07e4b91ef3c8745b25460b3e28b621453d4",
+        "d4fdb48f7826b96be92c8bf7271466d310aa59f78807c8fb687f2c49f6822202",
+        "58d3d4e7526dd35b3d8396dcf8e1e4777ec7b03e3ffba271a1280954e869219b",
+        "e394328df118c3c0d5b388a53d7a9d55118f562f2fdd159a3d29706174c0de19",
+        "7663d7922647eceeffd0ebaaebaf7fdb7f8cc47c2585699f5aa002cc51c3dd87",
+        "9811f179e4599bfc08f1810442a7d1dce180457d800e4326d86e5378acdf690a",
+        "187a98ef8a57a8bd457943d4cd4656d8c3fa0795eeae6ecddb0a4bbd39a117c4",
+        "df93362d3fcd7de8bb8e5103928f1b1099f0e32dac657c1850c815218184fb28",
+        "bdc4f2cf71d5bc410922bb0f98105a52d63103c01c7373d48ce5ba3afb27ffb1",
+        "ca81966f2996fa2ea7f74ab7a1a6619404d189768f3fe4888720f477ea4151c1"
+      ]
+    },
+    "03": {
+      "roadmapFile": "roadmap/03-envelope-compiler-engine-adapter.md",
+      "sourceRev": "97ef18cdaaf78ee3c6154e4c4f74f1ac05c1c6b2",
+      "sourceNote": "parent of af46e00, the phase-03 closeout",
+      "criteria": [
+        "2d22df436cf3ff606c1591212e5b52744c92913787f86655df918e08d40067fc",
+        "51127b540f436c0f75b1e6a92802a5a990fb5f97209950062056862e0844aa73",
+        "d7fe4948a090da161a94f9d5f88c590b8424a4d59527c08a7405ce26f57dcf6b",
+        "7bd493e048692798f647d5544269da5053764d47a9b91b818684aa8eede120f4",
+        "6c989a244d6c0fdcb41db9eda7f2168b65e0a6b28ef5ccf24e5ccae921f2be8f",
+        "4a9e83f425f1a2d5efda80b0a1cb6833928a6089d10185ff702626c4d1915e0b"
+      ]
+    },
+    "04": {
+      "roadmapFile": "roadmap/04-journal-idempotency-leases.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "d142fd31772ab7ba045fab5d8fa4916558c57fc13d117e2886d32d9f104ebb22",
+        "974da1ef5b75ba6b2f7f8276c64efffce063af6c8073cd8f3c7fa2d17e3a45dd",
+        "e8fa5a8d446746964c8ef190b7aa751407d5f758ce7d0a2151f3a29c943b069c",
+        "1b2818fbbb68f74d07bb2d2e0688cd96f212efcef7c863370aedbbc3c22a2b70",
+        "237a724f52f049077a8d00ecb6406484b6c93af5e09144a75694060fe068b6cd",
+        "c604f335cdb6260b2183e437347568e0faf4cce6bbdf86460209b2046d2e9023",
+        "de5dfc62d9dcf48f493eddcc76389d9697555622583a9a17033b7cc23171bc14",
+        "20b3d44701f5f63de0072f901f6c369ddd7a23c22bde596191b6e61e6af45ad4",
+        "2a6b469b02ea67b8a7da1b299ccaecca28b7e08f283983c4cc7fb52015d25320",
+        "f6962f0ccb80e75025aa437ea0cbf87ecfc20248f061b1a525e77d3b2a2b5312",
+        "406f31bbd7525082ab5c8cb87d941956c3349a77102cc0d8b17a67c0cae4318a"
+      ]
+    },
+    "05": {
+      "roadmapFile": "roadmap/05-supervisor-daemon.md",
+      "sourceRev": "d11b05944a0b6e96dda8b468d93234dbb0e93100",
+      "sourceNote": "parent of 97ef18c, the phase-05 closeout",
+      "criteria": [
+        "497fee7e738eddbf3cc4d75ca34fe7516da691678070dc63c33aee588e5a459a",
+        "069c6a9ff9679b1d4b648b20a0150d26d2039003fdb1028a2b2f005f3a22f458",
+        "1a3abcbb680d08e560719d086e2f848829abca5e9fa725966291e33ca25f310a",
+        "02df1b5eb19cc3074211b352f0f7d7d3e1b116a413da92651f9648d02324339c",
+        "3ea66d89a3b90a0641277649f7b33ac20503abdeba275092260373ecea999513",
+        "41e39693df52733ada0475249394212da9b85d2d00b9de35367edc98b8683ee7",
+        "adf2422b7ec779fb0b2f59ca131c19b5e31707ac0dfcf5adeb940a6602ae145c"
+      ]
+    },
+    "06": {
+      "roadmapFile": "roadmap/06-claude-engine-adapter.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "e5a64e99ef88deace7b2a17ae0b0c6ea8907163433ed5b8550ee55bbaed06e48",
+        "195f72260ad6240698743d01d2146514b299c96b6eae12be62a1c54b9ccd76e5",
+        "136f605162af0e043e25869d1a2ae447766add10c16b4c18dd4e03202947ebe2",
+        "c3b9d382cf90c25a758a4e9194c92c489a7436dac0fcc3f75174f90dab7acd4f",
+        "c2f3ad4d4a4f82f889e73f575f8b7f25915a696a00c80f50cdd799ccd88cf427",
+        "cded982882ad18cda65a493c21d03c2000b49b1ec6a41c3a3887c3ef4cdd35e8",
+        "b8d36d3faec1ce4dab7c859076abe883418bf16e1c4e496eadece5de4e6aaacd",
+        "6febc1356fdbb1fb743c29101254581f180fccc2130c3e1ac4d3d8d89ec4c79e",
+        "bf3a36f0485e5cb7ed09353811055443a9a87d86e7e5db2f8bb630f551c8c18b",
+        "3dd8e4a8240f067b2f174f9269cb990eec9a73c5458855ce82d667f694aee7bb"
+      ]
+    },
+    "07": {
+      "roadmapFile": "roadmap/07-git-control-repo-worktrees.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "c558edb59a018b206a1d481600ecda23b11e9d1f02ea8451714e35a997c8c759",
+        "baa98e0293b9a06db1230494a12374d320708b9e2487f9e493dbac6093e0df22",
+        "9b2ef4f9026f3a037ff64bc600bb407d91d97eb95839cbc2b3e7006231636962",
+        "634d7407a01ad56da42f041b36f24f166fd751e03964dc8a38791159acb5341e",
+        "36a0800bb449e0ac9ee4ce3bae00f34419429911e7184db676b639de95a59eb4",
+        "8dde303cb34fda409810a9ab2acd5790b8879334b425b0776cc202594d5f83e6",
+        "9eeb9b8bc68a0deb045381f87c7a495db0f42c627a769ac9a28a09a5d1cbeecb",
+        "d31b1b1242452bcaf20e9fc1d9cd4439cd4ddc4d858a4086ba74662b08e4794a",
+        "e3925cdd056e20733bdcee0159976ea9240c54533b9b759a99645fed98712698"
+      ]
+    },
+    "08": {
+      "roadmapFile": "roadmap/08-integration-publication.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "c5fd77004debd229c41e78f40bfbbe589f6c877a6e64511c8cf2b0d4f1bde819",
+        "0e7a261ba26cd94828cef9dbee69c00ffce64c6337ec7e64941c37a8f32aa016",
+        "6660732361ca322cde57fc1d653173d283d504ccc6345603b5f0dfe333cdab32",
+        "08d767871fa8887d689f11d7961a095878cd3e227a12fe04ffaeea2fd4a73af3",
+        "cad61b30ce2320bc6e895dfe6ae8c2ddbcc06606b4f7ba4e23f179a9f3fb260c",
+        "dd9535754b99ea0747a8a25e310439c2438be1f47444464b16764c063d73b296"
+      ]
+    },
+    "09": {
+      "roadmapFile": "roadmap/09-cli-and-doctor.md",
+      "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+      "sourceNote": "main at baseline creation; no closeout had touched this phase file",
+      "criteria": [
+        "b899cc34e035158c2ad3d342a8d54965a502a66eed0ded601c0b0df4d1416873",
+        "f689fe814af97f7b45f6e13e11545b842d05ed82cbbf7daf1e0876df5b1f3863",
+        "a79668469cfb28118ce928281e809c2d809d4eacfe165a46cd3ae7a59b3a232d",
+        "7e3657ec9364b31e760bfa30fcebd4b12b305b87fdcda5643c20df3bd2474778",
+        "6702dbf710eebe52423a2d678b952eef013deddb625943b87280253f74645c4c",
+        "4a81a5f5ad468964a1adbfd663e60f8111f93778c93ce78955e1a2414f13c123",
+        "17cd4f15a38ae958d3a9221b413cf027c0218bad43d2155da6307c6d36b2e4ce"
+      ]
+    }
+  }
+}

@@ -17,7 +17,7 @@
  * journal entry, or committed artifact." The closeout pass applies that rule
  * to itself, and this check is what keeps the resulting records from becoming
  * the very thing they exist to prevent — a self-reported claim nothing
- * verifies. Concretely it makes four drifts impossible to land quietly:
+ * verifies. Concretely it makes six drifts impossible to land quietly:
  *
  *   1. A criterion's wording being weakened to make it tickable. Each record
  *      pins `sha256(text)` AND requires that verbatim text to still be the
@@ -25,25 +25,45 @@
  *      constrained to the `— **` citation annotation, so a record cannot pin
  *      a harmless opening substring, or stop at the criterion's own internal
  *      em dash, and leave the tail unaccounted for.
- *   2. A checkbox and its record disagreeing. Tick state and checkbox count
- *      are cross-checked against the roadmap file in both directions, and a
- *      phase file that cites a closeout record which was never written is
- *      reported (so ticking boxes and forgetting the JSON is not invisible).
- *   3. A tick with nothing behind it. `ticked` is derived from the
+ *   2. A checkbox and its record being rewritten TOGETHER. Everything in (1)
+ *      compares the record against the phase file in the same commit, so a
+ *      co-edit is self-consistent and used to pass — a reviewer cut phase 03's
+ *      criterion 2 down to "Compiler property suite green in CI." and nothing
+ *      complained. Each criterion is therefore also held against
+ *      `criteria-baseline.json`, one frozen hash per criterion taken from the
+ *      phase file BEFORE its closeout and re-derivable from git history by
+ *      `scripts/generate-criteria-baseline.mjs --check`.
+ *   3. A checkbox and its record disagreeing — or a tick with no record at
+ *      all. Tick state and checkbox count are cross-checked against the roadmap
+ *      file in both directions; a phase file that cites a closeout record which
+ *      was never written is reported; and so is a phase file carrying ticked
+ *      criteria with no record whatsoever, which was the cheapest attack on the
+ *      whole regime (tick everything, write nothing) until it was closed.
+ *   4. A tick with nothing behind it. `ticked` is derived from the
  *      classification (never independently asserted), every tick needs at
- *      least one citation, every `UNMET` needs a defect record that exists on
- *      disk, and every `WORDING-MISMATCH` needs its before/after.
- *   4. A citation that points at nothing. `test` and `artifact` refs are
+ *      least one citation, every `WORDING-MISMATCH` needs a before/after whose
+ *      `before` IS the criterion's own pinned text, and every `UNMET` needs a
+ *      defect record that is a real defect record — not merely a file that
+ *      exists, which a reviewer satisfied by truncating one to zero bytes.
+ *   5. A citation that points at nothing. `test` and `artifact` refs are
  *      repository paths and must resolve to a regular file inside the repo
- *      root. This is not hypothetical: this pass's own phase-12 defect exists
- *      BECAUSE a cited test file was deleted in a refactor and nothing noticed
- *      for months.
+ *      root — and NOT to a symlink, because `existsSync`/`statSync` follow
+ *      links while `path.resolve` does not, so a committed
+ *      `evidence/evil.txt -> /etc/hostname` used to read as evidence. This is
+ *      not hypothetical: this pass's own phase-12 defect exists BECAUSE a
+ *      cited test file was deleted in a refactor and nothing noticed.
+ *   6. A `file:line` that has gone stale. The line span is checked against the
+ *      file's real length. The pilot rebased once and five of its own line
+ *      citations had slid, none catchable, because the files still existed.
  *
- * What it CANNOT catch, stated so nobody over-trusts it: this is a snapshot
- * validator, so a dishonest edit that rewrites a criterion AND its record in
- * the same commit is self-consistent and passes silently. That is visible only
- * in the roadmap diff, to a human — which is what the wording protocol and
- * per-phase review are for.
+ * What it CANNOT catch, stated so nobody over-trusts it: the baseline pins the
+ * WORDS of a criterion, not its meaning, and it says nothing about the roadmap
+ * prose around the checkbox. A phase's Test plan, Definition-of-done or Risks
+ * section can be rewritten to hollow out a criterion whose sentence is
+ * untouched, and a criterion legitimately re-pinned in a later commit is only
+ * as honest as the review of that commit. Both are visible only in the roadmap
+ * diff, to a human — which is what the wording protocol and per-phase review
+ * are for.
  *
  * Deliberately dependency-free (no zod): `meta-checks` runs `npm ci` without
  * `npm run build`, so this must work from source with nothing compiled. The
@@ -51,12 +71,26 @@
  * `checkKeys`.
  */
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Repo-relative home of the closeout index. Exported so the suite and any future tooling agree on one string. */
 export const CLOSEOUT_DIR = "docs/evidence/criteria-closeout";
+
+/**
+ * The frozen original-wording manifest. See `scripts/generate-criteria-baseline.mjs`
+ * for how it is derived and re-verified against git history.
+ */
+export const BASELINE_FILE = `${CLOSEOUT_DIR}/criteria-baseline.json`;
 
 /** The seven closeout classes (plan Part 1 §1.3). */
 export const CLASSIFICATIONS = [
@@ -90,9 +124,27 @@ export const CITATION_KINDS = ["ci-run", "artifact", "test", "journal-export", "
  */
 export const RESOLVABLE_CITATION_KINDS = ["test", "artifact"];
 
-/** `packages/x/y.test.ts:12` / `…:12-18` -> `packages/x/y.test.ts`. */
-function stripLineSuffix(ref) {
-  return ref.replace(/:\d+(?:-\d+)?$/, "");
+/**
+ * `packages/x/y.test.ts:12` / `…:12-18` -> the path plus the line span it
+ * claims. The span used to be stripped and thrown away, which is why
+ * `server-name.test.ts:9999` validated clean; it is now checked against the
+ * file's real length. See `resolveCitationRef`.
+ */
+function parseCitationRef(ref) {
+  const suffix = /:(\d+)(?:-(\d+))?$/.exec(ref);
+  if (suffix === null) return { relPath: ref, start: undefined, end: undefined };
+  return {
+    relPath: ref.slice(0, suffix.index),
+    start: Number(suffix[1]),
+    end: suffix[2] === undefined ? Number(suffix[1]) : Number(suffix[2]),
+  };
+}
+
+/** Physical line count. A trailing newline terminates the last line, it does not add one. */
+function countLines(contents) {
+  const lines = contents.split("\n");
+  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+  return lines.length;
 }
 
 /**
@@ -112,7 +164,7 @@ function stripLineSuffix(ref) {
  * (zero criteria across all phase files contain that sequence), and makes the
  * code match what the error message already promised.
  */
-const ANNOTATION_LEAD = "— **";
+export const ANNOTATION_LEAD = "— **";
 
 const TOP_LEVEL_KEYS = { required: ["schemaVersion", "phase", "roadmapFile", "pass", "criteria"] };
 const PASS_KEYS = { required: ["date", "agent", "headSha"] };
@@ -182,18 +234,198 @@ export function parseExitCriteriaCheckboxes(markdown) {
   }));
 }
 
-const normalize = (value) => value.replace(/\s+/g, " ").trim();
+/**
+ * The one whitespace normalization every wording comparison in this pass uses.
+ * `parseExitCriteriaCheckboxes` already collapses runs of whitespace when it
+ * joins a hard-wrapped criterion's continuation lines, so re-wrapping a
+ * criterion in the phase file must not read as a wording change — here, in the
+ * roadmap cross-check, or in the baseline lookup.
+ */
+export const normalizeCriterionText = (value) => value.replace(/\s+/g, " ").trim();
+const normalize = normalizeCriterionText;
+
+/** `realpathSync` that degrades to the given path rather than throwing. */
+function realpathOr(target) {
+  try {
+    return realpathSync(target);
+  } catch {
+    return target;
+  }
+}
+
+/**
+ * Resolves one `test`/`artifact` citation to a regular file inside the repo,
+ * and checks the line span it names actually exists in that file.
+ *
+ * The symlink half is an adversarial-review finding, round 4, reported
+ * independently by two reviewers: `existsSync` and `statSync` both FOLLOW
+ * symlinks while `path.resolve` never dereferences, so a committed
+ * `docs/evidence/phase-05/evil.txt -> /etc/hostname` passed every part of the
+ * old check — the containment test compared the undereferenced path and the
+ * stat calls reported a regular file at the far end. Two defenses, because
+ * they catch different things: `lstat` catches a symlink cited directly, and
+ * the realpath containment re-check catches one in a PARENT directory.
+ *
+ * The line half is the other round-4 finding: the `:line` suffix was stripped
+ * and discarded, so `server-name.test.ts:9999` validated clean. The pilot's
+ * rebase slid five of its own line citations and none were catchable, because
+ * the files still existed.
+ */
+function resolveCitationRef(errors, cwhere, citation, repoRoot) {
+  const { relPath, start, end } = parseCitationRef(citation.ref);
+  const abs = path.resolve(repoRoot, relPath);
+  const rootPrefix = path.resolve(repoRoot) + path.sep;
+
+  if (!abs.startsWith(rootPrefix)) {
+    // A citation is a repository path. An absolute path or a `..` escape names
+    // something no reviewer of this repo can resolve.
+    errors.push(`${cwhere}: ${citation.kind} ref ${relPath} resolves outside the repository root`);
+    return;
+  }
+  if (!existsSync(abs)) {
+    errors.push(`${cwhere}: ${citation.kind} ref ${relPath} does not exist in the repository`);
+    return;
+  }
+  if (lstatSync(abs).isSymbolicLink()) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${relPath} is a symlink (-> ${readlinkSync(abs)}), not a committed regular file — a citation must name content this repository actually carries`,
+    );
+    return;
+  }
+  const real = realpathOr(abs);
+  if (real !== abs && !real.startsWith(realpathOr(path.resolve(repoRoot)) + path.sep)) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${relPath} resolves outside the repository root, through a symlinked parent directory (-> ${real})`,
+    );
+    return;
+  }
+  if (!statSync(abs).isFile()) {
+    // A directory ref resolves but cites nothing in particular.
+    errors.push(`${cwhere}: ${citation.kind} ref ${relPath} is not a file`);
+    return;
+  }
+  if (start === undefined) return;
+
+  const lineCount = countLines(readFileSync(abs, "utf8"));
+  if (start < 1) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${citation.ref} names line ${String(start)}; files are 1-based`,
+    );
+  } else if (end < start) {
+    errors.push(`${cwhere}: ${citation.kind} ref ${citation.ref} is an inverted line range`);
+  } else if (end > lineCount) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${citation.ref} names line ${String(end)}, but ${relPath} has ${String(lineCount)} lines — the citation is stale. Re-resolve every line citation against the tree you are merging into, immediately before you push.`,
+    );
+  }
+}
+
+/**
+ * Loads the frozen original-wording manifest. Fails closed: a record cannot be
+ * validated without it, because the manifest is the only anchor that lives
+ * outside the commit under review.
+ *
+ * @returns {{ baseline?: object, errors: string[] }}
+ */
+export function loadCriteriaBaseline(repoRoot) {
+  const abs = path.join(repoRoot, BASELINE_FILE);
+  if (!existsSync(abs)) {
+    return {
+      errors: [
+        `${BASELINE_FILE} is missing — it is the frozen record of what each criterion said before its closeout, and the only check that can see a criterion and its record rewritten together. No closeout record can be validated without it.`,
+      ],
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(abs, "utf8"));
+  } catch (cause) {
+    return { errors: [`${BASELINE_FILE}: not parseable JSON — ${String(cause)}`] };
+  }
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.phases)) {
+    return { errors: [`${BASELINE_FILE}: expected an object carrying a "phases" map`] };
+  }
+  return { baseline: parsed, errors: [] };
+}
+
+/** Consecutive `> …` lines, joined per block. Used to find a defect record's verbatim criterion quote. */
+function markdownBlockquotes(markdown) {
+  const quotes = [];
+  let current;
+  for (const line of markdown.split("\n")) {
+    const quoted = /^[ \t]{0,3}>[ \t]?(.*)$/.exec(line);
+    if (quoted !== null) {
+      current = current === undefined ? quoted[1] : `${current} ${quoted[1]}`;
+    } else if (current !== undefined) {
+      quotes.push(current);
+      current = undefined;
+    }
+  }
+  if (current !== undefined) quotes.push(current);
+  return quotes;
+}
+
+const DEFECT_SEVERITY = /^[ \t]*(?:#{1,6}[ \t]*severity\b|\*\*severity\b)/im;
+const DEFECT_REMEDY = /^[ \t]*#{1,6}[ \t]*(?:proposed[ \t]+)?remedy\b/im;
+const DEFECT_SIZING = /\b(?:effort|sizing|size)\b[^\n]{0,40}?\*{0,2}\b(?:XS|XL|S|M|L)\b/i;
+
+/**
+ * A defect record has to be a defect record.
+ *
+ * Adversarial-review finding, round 4: `defectRef` was only required to EXIST.
+ * A reviewer truncated a real one to zero bytes and the check stayed green, so
+ * "an honest partial close files a defect" could be satisfied by an empty
+ * file — precisely the aspirational bookkeeping this pass refuses everywhere
+ * else. The load-bearing element is the verbatim criterion quote: severity,
+ * remedy and sizing headings can be pasted from a template, but the quote ties
+ * THIS file to THIS box, and it is checked against the record's own pinned
+ * text (which the baseline in turn pins to the original wording).
+ */
+function checkDefectRecordShape(errors, where, abs, relPath, criterionText) {
+  const contents = readFileSync(abs, "utf8");
+  if (contents.trim().length === 0) {
+    errors.push(
+      `${where}: defect record ${relPath} is empty — "defect filed" is not satisfied by a file with nothing in it`,
+    );
+    return;
+  }
+  if (!markdownBlockquotes(contents).map(normalize).includes(normalize(criterionText))) {
+    errors.push(
+      `${where}: defect record ${relPath} does not quote the criterion verbatim in a blockquote ("**Criterion (verbatim):**" then "> …"); that quote is what binds the record to this box instead of to a template`,
+    );
+  }
+  if (!DEFECT_SEVERITY.test(contents)) {
+    errors.push(`${where}: defect record ${relPath} states no **Severity:**`);
+  }
+  if (!DEFECT_REMEDY.test(contents)) {
+    errors.push(`${where}: defect record ${relPath} has no "## Proposed remedy" section`);
+  } else if (!DEFECT_SIZING.test(contents)) {
+    errors.push(
+      `${where}: defect record ${relPath}'s remedy carries no S/M/L effort sizing — a defect nobody has sized is not ticket-ready`,
+    );
+  }
+}
 
 /**
  * Validates one closeout record.
  *
  * @param {unknown} record parsed JSON
- * @param {{ repoRoot: string, fileName: string }} ctx
+ * @param {{ repoRoot: string, fileName: string, baseline?: object | null }} ctx
+ *   `baseline` omitted means "load it here"; `null` means "unavailable and
+ *   already reported by the caller", which is how `validateAllCloseoutRecords`
+ *   avoids repeating one missing-manifest error per record.
  * @returns {string[]} every problem found (empty means valid)
  */
 export function validateCloseoutRecord(record, ctx) {
   const errors = [];
   const { repoRoot, fileName } = ctx;
+
+  let baseline = ctx.baseline;
+  if (baseline === undefined) {
+    const loaded = loadCriteriaBaseline(repoRoot);
+    errors.push(...loaded.errors);
+    baseline = loaded.baseline ?? null;
+  }
 
   if (!checkKeys(errors, fileName, record, TOP_LEVEL_KEYS)) return errors;
 
@@ -243,6 +475,26 @@ export function validateCloseoutRecord(record, ctx) {
     return errors;
   }
 
+  // The frozen original wordings for this phase. Unlike every other check in
+  // this function, they do NOT come from the tree under review, which is the
+  // entire point: co-editing a checkbox and its record cannot move them.
+  let frozenCriteria;
+  if (baseline !== null) {
+    const entry = baseline.phases[record.phase];
+    if (!isPlainObject(entry) || !Array.isArray(entry.criteria)) {
+      errors.push(
+        `${fileName}: phase ${record.phase} has no entry in the frozen baseline ${BASELINE_FILE}. A phase cannot be closed before its original wordings are pinned — run scripts/generate-criteria-baseline.mjs.`,
+      );
+    } else {
+      frozenCriteria = entry.criteria;
+      if (frozenCriteria.length !== record.criteria.length) {
+        errors.push(
+          `${fileName}: ${String(record.criteria.length)} criteria recorded but the frozen baseline pins ${String(frozenCriteria.length)} for phase ${record.phase} — criteria were added to or removed from ${record.roadmapFile} after the baseline was taken`,
+        );
+      }
+    }
+  }
+
   const roadmapPath = path.join(repoRoot, record.roadmapFile);
   let checkboxes;
   if (!existsSync(roadmapPath)) {
@@ -274,6 +526,24 @@ export function validateCloseoutRecord(record, ctx) {
     }
     if (criterion.textSha256 !== sha256(criterion.text)) {
       errors.push(`${where}: textSha256 does not hash the recorded text`);
+    }
+
+    // The out-of-commit anchor. Every other wording check compares the record
+    // against the phase file in the same commit, so rewriting both together is
+    // self-consistent — a reviewer demonstrated exactly that on phase 03's
+    // criterion 2. This one compares against wording frozen before the closeout
+    // existed, re-derivable from git history by the baseline generator.
+    if (frozenCriteria !== undefined) {
+      const frozen = frozenCriteria[position];
+      if (frozen === undefined) {
+        errors.push(
+          `${where}: the frozen baseline ${BASELINE_FILE} pins no criterion ${String(position + 1)} for phase ${record.phase}`,
+        );
+      } else if (frozen !== sha256(normalize(criterion.text))) {
+        errors.push(
+          `${where}: recorded text does not hash to the frozen original wording in ${BASELINE_FILE} (phase ${record.phase}, criterion ${String(position + 1)}). The wording protocol preserves a criterion verbatim and appends its annotation, so the checkbox itself must have been rewritten — which the roadmap cross-check cannot see, because it compares against that same rewritten file. Legitimate scope changes re-pin the phase's baseline in their own commit (scripts/generate-criteria-baseline.mjs --write), where the roadmap diff is the review.`,
+        );
+      }
     }
 
     if (!CLASSIFICATIONS.includes(criterion.classification)) {
@@ -316,23 +586,7 @@ export function validateCloseoutRecord(record, ctx) {
           // Adversarial-review finding: nothing resolved a citation, so a
           // fabricated ref validated. This pass's own phase-12 defect exists
           // BECAUSE a cited test file was deleted and nothing noticed.
-          const relPath = stripLineSuffix(citation.ref);
-          const abs = path.resolve(repoRoot, relPath);
-          const rootPrefix = path.resolve(repoRoot) + path.sep;
-          if (!abs.startsWith(rootPrefix)) {
-            // A citation is a repository path. An absolute path or a `..`
-            // escape names something no reviewer of this repo can resolve.
-            errors.push(
-              `${cwhere}: ${citation.kind} ref ${relPath} resolves outside the repository root`,
-            );
-          } else if (!existsSync(abs)) {
-            errors.push(
-              `${cwhere}: ${citation.kind} ref ${relPath} does not exist in the repository`,
-            );
-          } else if (!statSync(abs).isFile()) {
-            // A directory ref resolves but cites nothing in particular.
-            errors.push(`${cwhere}: ${citation.kind} ref ${relPath} is not a file`);
-          }
+          resolveCitationRef(errors, cwhere, citation, repoRoot);
         }
         for (const optional of ["url", "commit", "quotedAssertion"]) {
           if (optional in citation && !isNonEmptyString(citation[optional])) {
@@ -352,8 +606,23 @@ export function validateCloseoutRecord(record, ctx) {
           !criterion.defectRef.endsWith(".md")
         ) {
           errors.push(`${where}: defectRef must be ${expectedPrefix}<slug>.md`);
-        } else if (!existsSync(path.join(repoRoot, criterion.defectRef))) {
-          errors.push(`${where}: defectRef ${criterion.defectRef} does not exist`);
+        } else {
+          const defectAbs = path.join(repoRoot, criterion.defectRef);
+          if (!existsSync(defectAbs)) {
+            errors.push(`${where}: defectRef ${criterion.defectRef} does not exist`);
+          } else if (lstatSync(defectAbs).isSymbolicLink()) {
+            errors.push(
+              `${where}: defectRef ${criterion.defectRef} is a symlink, not a committed defect record`,
+            );
+          } else {
+            checkDefectRecordShape(
+              errors,
+              where,
+              defectAbs,
+              criterion.defectRef,
+              isNonEmptyString(criterion.text) ? criterion.text : "",
+            );
+          }
         }
       }
     } else if ("defectRef" in criterion) {
@@ -370,6 +639,24 @@ export function validateCloseoutRecord(record, ctx) {
           if (!isNonEmptyString(criterion.wordingCorrection[half])) {
             errors.push(`${where}.wordingCorrection: ${half} must be a non-empty string`);
           }
+        }
+        // Adversarial-review finding, round 4: nothing tied `before` to the
+        // criterion it corrects, so a reviewer swapped a real one for the
+        // strawman "Coverage gate exists." and the record passed — the audit
+        // trail of what was corrected was forgeable while the hash-pinned
+        // `text` beside it stayed honest. Under the wording protocol the phase
+        // file KEEPS the original wording and the correction lives in the
+        // annotation, so `before` is, by construction, `text`. Compared
+        // whitespace-normalized, the same way every other wording comparison
+        // here is, so a re-wrapped copy is not a false failure.
+        if (
+          isNonEmptyString(criterion.wordingCorrection.before) &&
+          isNonEmptyString(criterion.text) &&
+          normalize(criterion.wordingCorrection.before) !== normalize(criterion.text)
+        ) {
+          errors.push(
+            `${where}.wordingCorrection: before must be this criterion's own pinned text verbatim — the protocol leaves the original wording in the phase file, so "before" is what the box still says. It disagrees with the recorded text, which makes the correction's audit trail unverifiable.`,
+          );
         }
       }
     } else if ("wordingCorrection" in criterion) {
@@ -419,31 +706,56 @@ export function validateCloseoutRecord(record, ctx) {
 }
 
 /**
- * The reverse direction of every check in `validateCloseoutRecord`, all of
- * which are anchored on a record that exists: a phase file whose exit criteria
- * CITE a closeout record must actually have one. Without this an agent could
- * tick boxes, write the header, forget the JSON, and be invisible.
- *
- * Keyed on the phase file's own citation rather than on "has ticked boxes",
- * because phase 23 was closed before this pass existed and legitimately has
- * sixteen ticks and no record.
+ * Phases whose ticks legitimately predate this pass and so have no closeout
+ * record. Phase 23 was closed and evidenced against `release-e2e` run
+ * 30250453824 before the closeout index existed — see `roadmap/README.md`'s
+ * completion ledger. **Nothing may be added here.** From now on a tick needs a
+ * record; if a phase's ticks cannot be recorded, they should not be ticks.
  */
-function findOrphanedCloseoutHeaders(repoRoot, presentFileNames) {
+export const PRE_INDEX_TICKED_PHASES = ["23"];
+
+/**
+ * The reverse direction of every check in `validateCloseoutRecord`, all of
+ * which are anchored on a record that EXISTS. Two ways a phase can go
+ * unrecorded, and both are reported:
+ *
+ *   1. It cites `phase-NN.json` and the file was never written — an agent that
+ *      ticked boxes, wrote the header, and forgot the JSON.
+ *   2. It has ticked criteria and no record at all. This was the cheapest
+ *      attack on the entire regime, found while reviewing the round-4 fixes and
+ *      demonstrated live: ticking all seven of `roadmap/13`'s boxes and writing
+ *      nothing at all passed, because every other check needs a record to hang
+ *      off. `roadmap/README.md`'s completion ledger already forbids it in
+ *      prose — "ticking them from general confidence would be exactly the
+ *      aspirational bookkeeping that rule forbids" — and this is the prose
+ *      becoming a check.
+ */
+function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
   const roadmapDir = path.join(repoRoot, "roadmap");
   if (!existsSync(roadmapDir)) return [];
-  const orphans = [];
+  const problems = [];
   for (const name of readdirSync(roadmapDir).sort()) {
     const phase = /^(\d{2})-.*\.md$/.exec(name);
     if (phase === null) continue;
     const text = readFileSync(path.join(roadmapDir, name), "utf8");
     const expected = `phase-${phase[1]}.json`;
-    if (text.includes(`${CLOSEOUT_DIR}/${expected}`) && !presentFileNames.includes(expected)) {
-      orphans.push(
+    if (presentFileNames.includes(expected)) continue;
+
+    if (text.includes(`${CLOSEOUT_DIR}/${expected}`)) {
+      problems.push(
         `roadmap/${name} cites ${CLOSEOUT_DIR}/${expected}, but that closeout record does not exist`,
+      );
+      continue;
+    }
+    if (PRE_INDEX_TICKED_PHASES.includes(phase[1])) continue;
+    const ticked = (parseExitCriteriaCheckboxes(text) ?? []).filter((box) => box.checked).length;
+    if (ticked > 0) {
+      problems.push(
+        `roadmap/${name} has ${String(ticked)} ticked exit criteria and no ${CLOSEOUT_DIR}/${expected} — a tick with no closeout record behind it is the aspirational bookkeeping roadmap/README.md's completion ledger refuses`,
       );
     }
   }
-  return orphans;
+  return problems;
 }
 
 /**
@@ -452,10 +764,18 @@ function findOrphanedCloseoutHeaders(repoRoot, presentFileNames) {
  * A present-but-empty directory is an error, not a vacuous pass.
  */
 export function validateAllCloseoutRecords(repoRoot) {
+  // Loaded once here so a missing manifest is one error, not one per record.
+  const loadedBaseline = loadCriteriaBaseline(repoRoot);
+  const baseline = loadedBaseline.baseline ?? null;
+
   const dir = path.join(repoRoot, CLOSEOUT_DIR);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
     return {
-      errors: [`${CLOSEOUT_DIR}/ does not exist`, ...findOrphanedCloseoutHeaders(repoRoot, [])],
+      errors: [
+        `${CLOSEOUT_DIR}/ does not exist`,
+        ...loadedBaseline.errors,
+        ...findUnrecordedPhaseClosures(repoRoot, []),
+      ],
       recordCount: 0,
       fileNames: [],
     };
@@ -468,14 +788,15 @@ export function validateAllCloseoutRecords(repoRoot) {
     return {
       errors: [
         `${CLOSEOUT_DIR}/ contains no phase-NN.json records`,
-        ...findOrphanedCloseoutHeaders(repoRoot, fileNames),
+        ...loadedBaseline.errors,
+        ...findUnrecordedPhaseClosures(repoRoot, fileNames),
       ],
       recordCount: 0,
       fileNames,
     };
   }
 
-  const errors = findOrphanedCloseoutHeaders(repoRoot, fileNames);
+  const errors = [...loadedBaseline.errors, ...findUnrecordedPhaseClosures(repoRoot, fileNames)];
   for (const fileName of fileNames) {
     let parsed;
     try {
@@ -484,7 +805,7 @@ export function validateAllCloseoutRecords(repoRoot) {
       errors.push(`${fileName}: not parseable JSON — ${String(cause)}`);
       continue;
     }
-    errors.push(...validateCloseoutRecord(parsed, { repoRoot, fileName }));
+    errors.push(...validateCloseoutRecord(parsed, { repoRoot, fileName, baseline }));
   }
   return { errors, recordCount: fileNames.length, fileNames };
 }

@@ -9,8 +9,10 @@ map to a CI run, journal entry, or committed artifact." These records apply that
 closeout itself, so a tick's citation is machine-resolvable rather than a claim in prose.
 
 Validated by `scripts/check-criteria-closeout.mjs`
-(`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job). The validator's own
-rejection paths are unit-tested in `scripts/check-criteria-closeout.test.mjs`.
+(`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job), backed by the frozen
+original-wording baseline `criteria-baseline.json`, which `npm run check:criteria-baseline`
+re-derives from git history in the same job. The validator's own rejection paths — 67 cases, almost
+all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`.
 
 ## Layout
 
@@ -19,6 +21,7 @@ rejection paths are unit-tested in `scripts/check-criteria-closeout.test.mjs`.
 | `phase-NN.json` | the agent that closed phase NN |
 | `defects/NN-<slug>.md` | same — one file per criterion left unticked |
 | `defects/INDEX.md` | the closeout integrator (last batch), not individual phase agents |
+| `criteria-baseline.json` | **nobody** — frozen. See "The frozen baseline" below |
 
 Every path is phase-prefixed, so parallel agents never collide.
 
@@ -61,6 +64,23 @@ Every path is phase-prefixed, so parallel agents never collide.
 Unknown keys are rejected at every level. `url`, `commit` and `quotedAssertion` are optional on a
 citation; everything else shown is required.
 
+## Defect record shape (`defects/NN-<slug>.md`)
+
+Checked, not merely required to exist — a reviewer truncated a real one to zero bytes and the old
+validator stayed green. A defect record must carry:
+
+| Element | Recognised as | Why it is checked |
+|---|---|---|
+| the criterion, verbatim | `**Criterion (verbatim):**` then a `> …` blockquote **equal to the record's `text`** | the one part that cannot be boilerplate; it binds this file to this box |
+| the phase | `**Phase:** NN — …` | convention, not enforced |
+| a severity | `**Severity:** …` or `## Severity` | an unrated defect cannot be triaged |
+| a remedy | `## Proposed remedy` (or `## Remedy`) | filing without a way forward is not a deliverable |
+| effort sizing | an `S`/`M`/`L` near the words *effort*/*size*/*sizing* | "how big is this" is what makes it ticket-ready |
+
+Everything else the existing records carry — `**Found:**`, `## Gap`, `### Search trail`, "what
+exists" vs "what is missing" — is strongly expected by review and not machine-checked. Copy
+`defects/12-capability-tools-stub-mcp-client.md`.
+
 ## Classifications
 
 | Class | Ticked | Meaning |
@@ -95,32 +115,95 @@ records do not classify the same situation three different ways.
 3. **Two-way agreement with the roadmap** — checkbox count equals criteria count, and each box's
    `[x]`/`[ ]` state equals its record's `ticked`. Within a phase that has a record, a box ticked
    without a matching entry fails, and so does a record claiming a tick the file does not have.
-   A phase file that *cites* `phase-NN.json` without that file existing is also reported, so
-   ticking boxes and forgetting the JSON is not invisible. (Phase 23 predates this pass and
-   legitimately has ticks and no record, which is why the check keys on the citation rather than
-   on "has ticked boxes".)
-4. **Tick discipline** — `ticked` is derived from the classification; every tick carries ≥1 citation;
-   every `UNMET` names a defect record that exists on disk; every `WORDING-MISMATCH` carries its
-   before/after.
-5. **Citations resolve** — `test` and `artifact` refs are repository paths (an optional
-   `:line` or `:line-line` suffix is stripped) and must resolve to a **regular file inside the
-   repository root** — a directory ref, an absolute path, or a `..` escape all fail. This pass's
-   own phase-12 defect exists *because* a cited test file was deleted in a refactor and nothing noticed;
-   shipping the index with that same hole would defeat its purpose. `ci-run`, `discharge` and
+   A phase file that *cites* `phase-NN.json` without that file existing is reported, so ticking
+   boxes and forgetting the JSON is not invisible — **and so is a phase file with ticked criteria
+   and no record at all.** That last one was the cheapest attack on this whole directory: every
+   other check is anchored on a record existing, so ticking all seven of `roadmap/13`'s boxes and
+   writing nothing passed. Phase **23** is the single grandfathered exemption (closed and evidenced
+   against `release-e2e` run 30250453824 before this index existed); the list is closed.
+4. **The frozen baseline** — every criterion's text must also hash to its entry in
+   `criteria-baseline.json` (see below). Checks 2 and 3 compare the record against the phase file
+   **in the same commit**, so co-editing the checkbox and the record defeated both at once; the
+   baseline is the one anchor that does not move when the commit under review moves.
+5. **Tick discipline** — `ticked` is derived from the classification; every tick carries ≥1 citation;
+   every `WORDING-MISMATCH` carries a before/after whose **`before` is the criterion's own pinned
+   `text`** (whitespace-normalized), because the protocol leaves the original wording in the phase
+   file and puts the correction in the annotation — so `before` is, by construction, what the box
+   still says. Every `UNMET` names a defect record that is a **real defect record**, not merely a
+   file that exists: non-empty, quoting its criterion verbatim in a blockquote, stating a severity,
+   and proposing a remedy with S/M/L sizing.
+6. **Citations resolve** — `test` and `artifact` refs are repository paths (with an optional
+   `:line` or `:line-line` suffix) and must resolve to a **regular file inside the repository
+   root**. A directory ref, an absolute path and a `..` escape all fail; so does a **symlink**,
+   whether cited directly or sitting in a parent directory, because `existsSync`/`statSync` follow
+   links while `path.resolve` does not — a committed `evidence/evil.txt -> /etc/hostname` otherwise
+   reads as evidence. The **line span must exist in the file**: `:9999` on a 200-line file, a `:0`,
+   and an inverted range are all rejected. This pass's own phase-12 defect exists *because* a cited
+   test file was deleted in a refactor and nothing noticed, and the pilot's single rebase slid five
+   of its own `file:line` citations with the files still present. `ci-run`, `discharge` and
    `journal-export` name a run, another phase's criterion, or an exported entry — not local
    files — so they are left unresolved.
 
+## The frozen baseline
+
+`criteria-baseline.json` records `sha256` of every roadmap exit criterion's whitespace-normalized
+wording, **as the phase file carried it before any closeout touched it**. Closed phases are read
+from their closeout commit's parent; the rest from the `main` the baseline was created against
+(`af46e00`). Each phase entry pins the revision its hashes came from.
+
+**It is not edited by closeout agents.** There is deliberately **no in-record escape hatch** — not
+even `WORDING-MISMATCH`. That was the obvious design and it is unsound: the same agent writing the
+record picks the classification, so a self-issued excuse is no excuse. It is also unnecessary,
+because the wording protocol never changes a checkbox's words in the first place: the original is
+preserved verbatim and the correction lives in the appended annotation and in
+`wordingCorrection.after`. A closeout pass that needs the baseline to move has misread the protocol.
+
+A criterion whose wording changes for **legitimate scope reasons** (not a closeout) re-pins that
+phase's `sourceRev` and regenerates, in its **own** commit, reviewed as the roadmap change it is:
+
+```
+node scripts/generate-criteria-baseline.mjs --write   # after editing the pin table
+node scripts/generate-criteria-baseline.mjs --check   # what CI runs
+```
+
+`--check` re-derives every committed hash straight from `git show <sourceRev>:roadmap/NN-*.md`. It
+is a `meta-checks` step (which is why that job checks out with `fetch-depth: 0`). So the baseline is
+not merely "a file somebody committed": forging an entry means rewriting published git history, not
+editing JSON in the same PR.
+
 ## What the validator cannot catch
 
-It is a snapshot validator: it checks a record against the roadmap **as both stand in the same
-commit**. So it will never catch a dishonest edit that rewrites a criterion *and* its record
-together in one PR — the two agree, every hash is self-consistent, and the check is silent. The
-only place that shows up is the **roadmap diff**, read by a human.
+The baseline closed the "rewrite the criterion and its record together" hole. What remains is
+narrower, and still real:
 
-That is not a gap to be closed by more validation; it is the boundary of what this kind of check can
-do, and it is exactly why the wording protocol (original text preserved verbatim, dated annotation,
-before/after recorded) and per-phase review exist. Read the roadmap diff on every closeout PR. Do
-not let a green `meta-checks` stand in for that.
+1. **The prose around the checkbox is unpinned.** The baseline hashes criterion *sentences*. A
+   phase's `## Test plan`, `## Definition of done`, in-scope list or `## Risks` section can be
+   hollowed out — deleting the fixtures, thresholds or named suites a criterion leans on — while
+   every checkbox and hash stays byte-identical and `meta-checks` stays green.
+2. **Words, not meaning.** A criterion can be satisfied by a test that technically asserts its
+   sentence and misses its intent. No hash can see that; only reading the cited test can.
+3. **A re-pin is only as honest as its review.** Re-pinning `sourceRev` is loud — one line, one
+   file, one commit, and `--check` proves the new hashes really come from that revision — but it is
+   the intended way to change a criterion, so it can also be the dishonest way. Treat any diff to
+   `criteria-baseline.json` as the thing to read first.
+4. **`quotedAssertion` is not verified against the file it quotes.** This is the largest remaining
+   hole and it is named here rather than hidden: the citation's *file* must exist, be a real file,
+   and be long enough for the line — but the quoted assertion itself is free text, so a real file
+   plus a real in-range line plus an invented assertion passes. Enforcing it is not a small change:
+   of the 143 citations in the three merged records, only 8 have backticked fragments that appear
+   verbatim in the cited file — the rest paraphrase, reformat, or splice several lines. Closing it
+   means first settling a machine-checkable `quotedAssertion` format, which is a protocol change,
+   not a validator change.
+
+All three surface in exactly one place: the **roadmap diff**, read by a human. That is the boundary
+of what this kind of check can do, and it is why the wording protocol and per-phase review exist.
+Read the roadmap diff on every closeout PR. Do not let a green `meta-checks` stand in for it.
+
+**Not checked, on purpose:** `pass.headSha` is validated as a 40-hex string but never resolved to a
+real commit. Doing so needs `git`, and both places this validator runs — the `meta-checks` job and
+the unit suite's self-test — use a shallow checkout where most object IDs are simply absent, so the
+check would fail on honest records and pass on nothing. The `headSha` is provenance for a reader,
+not a gate.
 
 ## Rules for the agent writing a record
 
@@ -138,7 +221,13 @@ not let a green `meta-checks` stand in for that.
   convenience. **Re-resolve every line citation against the tree you are actually merging into,
   immediately before you push**, and re-capture any transcript whose suites changed. If a rebase
   brings in upstream work that touches your phase's package, re-read the changed tests — it may have
-  strengthened or invalidated what you cited.
+  strengthened or invalidated what you cited. The validator now rejects a line *past the end of the
+  file*, which catches the crudest form of this — but a ref that slid from line 41 to line 12 still
+  resolves, and only re-reading the file catches that.
+- **Never touch `criteria-baseline.json`.** If your record fails against it, the phase file's
+  wording has moved since the baseline was frozen, and the right response is to find out why — not
+  to regenerate. Regenerating to make your own record pass is the exact laundering this file exists
+  to prevent.
 - **A criterion you cannot honestly close stays unticked** and gets a defect record. An honest
   partial close is a successful outcome.
 - **Never weaken a criterion's wording to make it tickable.** Corrections go through the wording
