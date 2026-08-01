@@ -23,7 +23,12 @@
  * `@crabgic/supervisor`'s `createRunDispatcher` hook is synchronous, so the
  * laziness has to live behind `dispatch` rather than in the factory.
  */
-import type { RunDispatcher, RunDispatchOutcome } from "@crabgic/supervisor";
+import type {
+  DrainOptions,
+  DrainOutcome,
+  RunDispatcher,
+  RunDispatchOutcome,
+} from "@crabgic/supervisor";
 import type { RealRunDispatcherOptions } from "./run-dispatcher.js";
 
 /** The slice of `./run-dispatcher.js` this wrapper needs — the seam tests substitute. */
@@ -91,6 +96,24 @@ export function createLazyRunDispatcher(
     },
     async resume(runId: string): Promise<RunDispatchOutcome> {
       return (await resolveReal()).resume(runId);
+    },
+    /**
+     * Drains the real dispatcher IF one was ever built — and never builds one
+     * to do it.
+     *
+     * A daemon that served only status/evidence/registry reads has no drive to
+     * wait for, and importing 40.9 MiB of engine on the way out to ask it
+     * "nothing in flight, right?" would spend the whole idle-footprint budget
+     * at the one moment it can buy nothing. Nothing loaded means nothing
+     * dispatched means nothing to drain; the load being in progress is
+     * awaited, because that load's own dispatch is a drive we WOULD have to
+     * wait for.
+     */
+    async drain(options?: DrainOptions): Promise<DrainOutcome> {
+      if (real === undefined && pending === undefined) {
+        return { settledRunIds: [], cancelledRunIds: [], unsettledRunIds: [] };
+      }
+      return (await resolveReal()).drain(options);
     },
   };
 }

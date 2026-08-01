@@ -28,6 +28,15 @@
  * would hold the UDS request (and the control socket) open for its whole
  * duration. `inFlight` makes dispatch idempotent per run, so a second
  * `run.dispatch` never starts a competing driver over the same work units.
+ *
+ * ...WHICH IS WHY `drain()` EXISTS. Detachment means the process can be told
+ * to exit while a drive is still appending to the journal, and the project
+ * lease is the journal's only single-writer guarantee (`appendEntry` takes no
+ * lock). `drain` closes the door, waits for every detached drive it is
+ * tracking, terminates whatever is still live at the deadline, and reports
+ * precisely what it could not settle — so the boot layer can release the
+ * lease LAST, or not at all. See `@crabgic/supervisor`'s `RunDispatcher.drain`
+ * and `bootSupervisor`'s teardown order.
  */
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -43,6 +52,7 @@ import type { XdgEnv } from "@crabgic/journal";
 import {
   CRABGIC_DIR_NAME,
   findLatestCriteriaSeal,
+  getLatestAttemptForRun,
   resolveXdgCacheHome,
   resolveXdgStateHome,
   type JournalStore,
@@ -54,6 +64,9 @@ import {
   provisionWorkerDirs,
   resolveRequirements,
   transitionRun,
+  DISPATCHER_DRAINING_REASON,
+  type DrainOptions,
+  type DrainOutcome,
   type RunDispatcher,
   type RunDispatchOutcome,
   type SupervisorDependencies,
@@ -205,7 +218,42 @@ type PolicyGate =
   | { readonly ok: true; readonly policy: EnvelopePolicy; readonly digest: string }
   | { readonly ok: false; readonly reason: string };
 
-export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunDispatcher {
+/** Shutdown defaults for a direct caller; the daemon's boot layer passes its own (`bootSupervisor`). */
+const DEFAULT_DRAIN_TIMEOUT_MS = 30_000;
+const DEFAULT_DRAIN_GRACE_MS = 5_000;
+
+/** One detached drive, kept alongside the run so `drain` can wait for it, terminate its workers, and record its end. */
+interface LiveDrive {
+  readonly changeSetId: string;
+  readonly workUnitIds: readonly string[];
+  /** Resolves (never rejects) once the drive AND its settle bookkeeping are finished. */
+  readonly settled: Promise<void>;
+}
+
+const NOTHING_DRAINED: DrainOutcome = {
+  settledRunIds: [],
+  cancelledRunIds: [],
+  unsettledRunIds: [],
+};
+
+/**
+ * The real dispatcher, plus the quiescence primitive `drain` is built from.
+ *
+ * `whenIdle` is NOT on the `RunDispatcher` interface: the production caller
+ * of quiescence is shutdown, and shutdown wants the door-closing `drain`. It
+ * is exposed here because a caller that must wait for a drive and then keep
+ * using the dispatcher (a park-resume across drives) cannot use a one-way
+ * door, and re-deriving the settle point from refusal messages — which is
+ * what the suite did before this — is exactly the kind of hand-rolled
+ * predicate that made the closed-loop e2e delete its own temp directory out
+ * from under a live drive.
+ */
+export interface RealRunDispatcher extends RunDispatcher {
+  /** Resolves when no drive is in flight. Unlike `drain`, it keeps accepting work. */
+  whenIdle(): Promise<void>;
+}
+
+export function createRealRunDispatcher(options: RealRunDispatcherOptions): RealRunDispatcher {
   const { deps, projectDir, xdgEnv, projectHash } = options;
   const serviceEmail = options.serviceEmail ?? DEFAULT_SERVICE_EMAIL;
   const targetRef = options.targetRef ?? DEFAULT_TARGET_REF;
@@ -222,6 +270,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
    */
   const inFlight = new Set<string>();
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
+
+  /**
+   * The detached drives themselves, keyed by runId — the promise half of what
+   * `inFlight` only ever tracked as a claim. `inFlight` answers "is this
+   * change set spoken for"; this answers "is anything still WRITING", which is
+   * the question shutdown has to ask before the single-writer lease can be
+   * handed back. Entries are removed by the same settle path that releases the
+   * claim, so an idle dispatcher holds an empty map.
+   */
+  const liveDrives = new Map<string, LiveDrive>();
+  /** Set by `drain`, never cleared — see `RunDispatcher.drain`'s one-way-door contract. */
+  let draining = false;
 
   // NOTE: this dispatcher briefly constructed an in-memory attempt cache
   // (`AttemptCacheSeam`) so a same-daemon re-drive would reuse succeeded
@@ -645,8 +705,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     const changeSetId = resolved.changeSet.id;
     // Deliberately NOT awaited — see the file-level doc comment. Errors
     // are reported through `onDriveError`, never left as an unhandled
-    // rejection that could take the whole daemon down.
-    void drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
+    // rejection that could take the whole daemon down. The chain IS retained,
+    // though: `drain` has to be able to wait for exactly this promise, and
+    // "not awaited by the request" is a different thing from "unreachable".
+    const settled = drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
       .then(async (result) => {
         // The run's lifecycle state must reflect how its drive ended, or a
         // failed/blocked run stays `running` and blocks every retry (F5).
@@ -664,7 +726,155 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
         await settleRunState(runId, changeSetId, "failed");
         clearRetainedRun(runId);
       })
-      .finally(release);
+      .finally(() => {
+        release();
+        liveDrives.delete(runId);
+      });
+    // Registered synchronously: `settled`'s `finally` cannot run before the
+    // current tick ends, so the delete above can never outrun this set.
+    liveDrives.set(runId, {
+      changeSetId,
+      workUnitIds: resolved.workUnits.map((unit) => unit.id),
+      settled,
+    });
+  }
+
+  /** Resolves when nothing is in flight. Loops because a drive that settles may be replaced by one a concurrent caller started. */
+  async function whenIdle(): Promise<void> {
+    while (liveDrives.size > 0) {
+      await Promise.allSettled([...liveDrives.values()].map((live) => live.settled));
+    }
+  }
+
+  /** `true` iff everything went quiet within `ms`. The timer is unref'd and cleared, so it can neither hold the daemon open nor outlive the race. */
+  async function settlesWithin(ms: number): Promise<boolean> {
+    let timer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), ms);
+      timer.unref?.();
+    });
+    try {
+      return await Promise.race([whenIdle().then(() => true), deadline]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Drives every live worker of the cut-off runs through the SAME
+   * `terminate(graceMs)` closure the control plane's `worker.terminate`
+   * operation calls (`run-driver.ts` registers it as the attempt starts and
+   * retires it in `finally`), which asks the adapter to cancel with a grace
+   * deadline. A worker that refuses to die is not this function's problem to
+   * force — it surfaces as an unsettled run, which is a stronger, honest
+   * answer than pretending the ladder always wins.
+   */
+  async function terminateWorkersOf(
+    cutOff: ReadonlyMap<string, LiveDrive>,
+    graceMs: number,
+  ): Promise<void> {
+    await Promise.all(
+      [...cutOff].flatMap(([runId, live]) =>
+        live.workUnitIds.map(async (workUnitId) => {
+          const worker = deps.liveWorkers.get(workUnitId);
+          if (worker === undefined) return;
+          try {
+            await worker.terminate(graceMs);
+          } catch (err) {
+            // Best effort: a terminate that throws must not abort the drain of
+            // every other run, and the run it belonged to will be reported
+            // unsettled if this really left it writing.
+            onDriveError(runId, err);
+          }
+        }),
+      ),
+    );
+  }
+
+  async function drain(drainOptions?: DrainOptions): Promise<DrainOutcome> {
+    // Shut the door FIRST, before the first await: a dispatch admitted while
+    // we are waiting would be a drive started after the caller decided the
+    // daemon was quiescing.
+    draining = true;
+    const timeoutMs = drainOptions?.timeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS;
+    const graceMs = drainOptions?.graceMs ?? DEFAULT_DRAIN_GRACE_MS;
+
+    const atEntry = [...liveDrives.keys()];
+    if (atEntry.length === 0) return NOTHING_DRAINED;
+    if (await settlesWithin(timeoutMs)) {
+      return { settledRunIds: atEntry, cancelledRunIds: [], unsettledRunIds: [] };
+    }
+
+    // THE DEADLINE. Snapshot before terminating: the entries are removed by
+    // the very settle path we are about to provoke, and their changeSetId is
+    // the only way to journal the run's end afterwards.
+    const cutOff = new Map(liveDrives);
+    await terminateWorkersOf(cutOff, graceMs);
+    await settlesWithin(graceMs);
+
+    const cancelledRunIds: string[] = [];
+    const unsettledRunIds: string[] = [];
+    for (const [runId, live] of cutOff) {
+      if (liveDrives.has(runId)) {
+        // STILL WRITING. Journal nothing for it — a second appender beside a
+        // live one is precisely the duplicate-`seq` corruption this whole
+        // mechanism exists to prevent, and `appendEntry` has no lock to make
+        // it safe. Reporting it is what lets the boot layer keep the lease.
+        unsettledRunIds.push(runId);
+        continue;
+      }
+      // Cut off, but quiet now: record how it actually ended. Without this the
+      // run stays `running` with every unit terminal — a run nothing can
+      // finish, whose change set nothing can re-dispatch, and which restart
+      // recovery replays as though a drive were still going.
+      await settleRunState(runId, live.changeSetId, "cancelled");
+      clearRetainedRun(runId);
+      cancelledRunIds.push(runId);
+    }
+
+    return {
+      settledRunIds: atEntry.filter((runId) => !cutOff.has(runId)),
+      cancelledRunIds,
+      unsettledRunIds,
+    };
+  }
+
+  /**
+   * Whether re-driving `runId` could accomplish anything, or whether every
+   * unit it could touch is parked on a session this process no longer has.
+   *
+   * THE WEDGE THIS ANSWERS. Park records are durable; the adapters that own
+   * their sessions are not (`retainedByRun` is same-daemon by construction).
+   * After a restart the driver therefore found a parked unit, asked
+   * `resumeParkedUnit` for it, was declined — correctly, resuming into a
+   * read-only fallback session would be worse — and left it parked. The drive
+   * ended `parked`, which keeps the run `running` so a LATER resume can reach
+   * it, and `resume` answered `{accepted: true}` to the whole no-op. Repeat
+   * forever, with the change set un-dispatchable the entire time.
+   *
+   * A unit whose adapter IS still retained is resumable, and a still-`pending`
+   * unit is real work, so either makes the resume worth accepting. Only when
+   * neither exists and something is parked is the answer "this cannot work".
+   */
+  async function findUnresumableParks(
+    runId: string,
+    workUnits: readonly WorkUnit[],
+  ): Promise<readonly string[]> {
+    const retained = retainedByRun.get(runId);
+    const stranded: string[] = [];
+    for (const unit of workUnits) {
+      // The same run-scoped seed `driveRun` itself starts from, so this asks
+      // the question the drive is about to answer, not a different one.
+      const latest = await getLatestAttemptForRun(deps.journal, unit.id, runId);
+      const status = latest?.status ?? unit.attemptStatus;
+      if (status === "parked:rate_limit") {
+        if (retained?.has(unit.id) === true) return [];
+        stranded.push(unit.id);
+      } else if (status === "pending") {
+        return [];
+      }
+    }
+    return stranded;
   }
 
   return {
@@ -680,6 +890,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
      * set `ready`, so fixing the cause and dispatching again just works.
      */
     async dispatch(changeSetId: string): Promise<RunDispatchOutcome> {
+      // Checked before the claim: a draining daemon takes no new work at all,
+      // and admitting one here would start a drive the shutdown sequence has
+      // already stopped waiting for.
+      if (draining) return { accepted: false, reason: DISPATCHER_DRAINING_REASON };
       // CLAIM THE CHANGE SET SYNCHRONOUSLY, before any `await`. Roast round 2
       // (F1) proved the read-then-await-then-write form: both guards were
       // read before the first await and `inFlight.add` happened after it, so
@@ -789,30 +1003,33 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
     },
 
     /** Re-drives a run that already exists — crash recovery and limit-park re-dispatch. */
-    resume(runId: string): Promise<RunDispatchOutcome> {
+    async resume(runId: string): Promise<RunDispatchOutcome> {
+      if (draining) return { accepted: false, reason: DISPATCHER_DRAINING_REASON };
       // Free adapters pinned by runs that ended out-of-band while parked.
       sweepStaleRetention();
       const run = deps.runs.get(runId);
       if (run === undefined) {
-        return Promise.resolve({ accepted: false, reason: `unknown run "${runId}"` });
+        return { accepted: false, reason: `unknown run "${runId}"` };
       }
       if (isRunLifecycleAbsorbing(run.runState)) {
         // The sweep above already dropped this run's adapters (it is
         // absorbing); refuse the resume itself.
-        return Promise.resolve({
+        return {
           accepted: false,
           reason: `run "${runId}" is ${run.runState} and cannot be resumed`,
-        });
+        };
       }
       // Claimed synchronously, for the same reason `dispatch` does it (F1):
-      // this method has no `await` before the claim today, and must not grow
-      // one without keeping the claim first.
+      // an `async` body still runs to its FIRST `await` synchronously, so
+      // every guard above and the claim below are one atomic step with respect
+      // to the event loop — the property F1's fix depends on. Anything that
+      // awaits must therefore stay BELOW this line, and must release.
       if (inFlight.has(run.changeSetId)) {
-        return Promise.resolve({ accepted: false, reason: "run is already being dispatched" });
+        return { accepted: false, reason: "run is already being dispatched" };
       }
 
       const resolved = resolveChangeSet(run.changeSetId);
-      if (!resolved.ok) return Promise.resolve({ accepted: false, reason: resolved.reason });
+      if (!resolved.ok) return { accepted: false, reason: resolved.reason };
 
       // Resume runs the SAME gate. A run that was authorized once must not
       // keep executing under an authorization the owner has since narrowed --
@@ -820,18 +1037,49 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): RunD
       // already in flight, and "re-drive after a crash" would become a way
       // around it.
       const gate = resolvePolicyGate(resolved.envelope);
-      if (!gate.ok) return Promise.resolve({ accepted: false, reason: gate.reason });
+      if (!gate.ok) return { accepted: false, reason: gate.reason };
 
       inFlight.add(run.changeSetId);
       let released = false;
-      beginDriving(runId, resolved, gate.policy, () => {
+      const release = (): void => {
         if (!released) {
           released = true;
           inFlight.delete(run.changeSetId);
         }
-      });
-      return Promise.resolve({ accepted: true });
+      };
+
+      // ANSWER HONESTLY BEFORE TAKING OWNERSHIP. A resume whose every
+      // reachable unit is parked on a session this daemon no longer holds
+      // cannot move the run one step — it would re-park and report success, as
+      // it did for every restart before this. Say so, and name the only exit
+      // that works, rather than leaving the operator to infer it from a run
+      // that never changes.
+      let stranded: readonly string[];
+      try {
+        stranded = await findUnresumableParks(runId, resolved.workUnits);
+      } catch (err) {
+        release();
+        throw err;
+      }
+      if (stranded.length > 0) {
+        release();
+        return {
+          accepted: false,
+          reason:
+            `run "${runId}" cannot be resumed: its remaining work (${stranded.join(", ")}) is ` +
+            `parked on a rate limit, and the session context needed to continue those sessions ` +
+            `did not survive a daemon restart. Nothing else in the run can advance, so waiting ` +
+            `will not help — cancel the run (\`crabgic cancel ${runId}\`) and dispatch the ` +
+            `change set again.`,
+        };
+      }
+
+      beginDriving(runId, resolved, gate.policy, release);
+      return { accepted: true };
     },
+
+    drain,
+    whenIdle,
   };
 }
 

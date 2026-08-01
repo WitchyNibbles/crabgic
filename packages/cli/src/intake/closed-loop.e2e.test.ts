@@ -24,7 +24,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   EnvelopePolicySchema,
@@ -44,6 +44,7 @@ import {
   createArtifactIndexRegistry,
   createWorkUnitsRegistry,
   type IntakeRequest,
+  type RunDispatcher,
 } from "@crabgic/supervisor";
 import { FakeEngineAdapter, buildFakeEngineScript, buildWorkerResult } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
@@ -66,37 +67,36 @@ afterEach(async () => {
 });
 
 /**
- * Waits until the dispatched drive has stopped writing to the journal.
+ * Settles the dispatched drive through the dispatcher's own `drain()` seam,
+ * then asserts it really finished the work.
  *
  * `beginDriving` is deliberately not awaited (`../daemon/run-dispatcher.ts`
  * says so in as many words), so `dispatch` answers while the drive is still
- * running. These tests used to wait only for the FIRST `work_unit_transition`
- * and then return — which let `afterEach` delete the temp directory out from
- * under a drive that was still journaling into it, and the suite failed
- * intermittently with `ENOTEMPTY` while passing in isolation, because the
- * race only opens under full-suite load.
+ * running. This used to be a `vi.waitFor` poll for a terminal
+ * `work_unit_transition` — a settle predicate hand-derived from the drive's
+ * expected LAST WRITE, which is only correct for as long as nothing is ever
+ * journaled after it, and which had already been wrong once: an earlier
+ * version waited for the FIRST transition and let `afterEach` delete the temp
+ * directory out from under a live drive (`ENOTEMPTY`, only under full-suite
+ * load).
  *
- * A TERMINAL attempt status is the deterministic settle point for these
- * fixtures: they dispatch exactly one work unit, `driveRun`'s `finish` is a
- * pure result constructor that journals nothing, and the completed branch of
- * `terminalStateFor` writes no run transition either — so the terminal
- * `work_unit_transition` really is the drive's last write. Waiting for it is
- * also a strictly stronger assertion than "some transition happened": the
- * unit now has to actually reach a terminal status.
+ * `drain` waits for the drive PROMISE, including the run-state bookkeeping
+ * that runs after `driveRun` returns, so there is no last-write to guess at
+ * and no timeout to tune. The journal assertion below is then made with no
+ * polling at all: if `drain` resolved early it fails.
  */
-async function waitForDriveToSettle(): Promise<void> {
-  await vi.waitFor(
-    async () => {
-      const statuses: WorkUnitAttemptStatus[] = [];
-      for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
-        // `queryEntries`' filter is a runtime narrowing the compiler cannot
-        // see, so the discriminant is re-checked here to reach `payload`.
-        if (entry.type === "work_unit_transition") statuses.push(entry.payload.status);
-      }
-      expect(statuses.some((status) => isWorkUnitAttemptStatusTerminal(status))).toBe(true);
-    },
-    { timeout: 10_000 },
-  );
+async function drainAndAssertDriven(dispatcher: RunDispatcher): Promise<void> {
+  const outcome = await dispatcher.drain({ timeoutMs: 30_000 });
+  expect(outcome.unsettledRunIds).toEqual([]);
+  expect(outcome.cancelledRunIds).toEqual([]);
+
+  const statuses: WorkUnitAttemptStatus[] = [];
+  for await (const entry of journal.queryEntries({ type: "work_unit_transition" })) {
+    // `queryEntries`' filter is a runtime narrowing the compiler cannot see,
+    // so the discriminant is re-checked here to reach `payload`.
+    if (entry.type === "work_unit_transition") statuses.push(entry.payload.status);
+  }
+  expect(statuses.some((status) => isWorkUnitAttemptStatusTerminal(status))).toBe(true);
 }
 
 function intakeRequest(): IntakeRequest {
@@ -354,7 +354,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
 
     // A real run exists, and real work actually ran under it.
     expect(runs.get(parsed.dispatch.runId!)?.runState).toBe("running");
-    await waitForDriveToSettle();
+    await drainAndAssertDriven(dispatcher);
   });
 });
 
@@ -370,7 +370,7 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
     expect(outcome.runId).toMatch(/^[0-9a-f-]{36}$/);
     expect(runs.get(outcome.runId!)?.runState).toBe("running");
 
-    await waitForDriveToSettle();
+    await drainAndAssertDriven(dispatcher);
   });
 
   /**

@@ -105,8 +105,20 @@ async function main(): Promise<void> {
               }),
           }
         : {}),
-      onShutdown: () => {
+      onShutdown: (info) => {
         process.exitCode = EXIT_OK;
+        // Say so when the drain could not finish. The lease is deliberately
+        // left held in that case (`bootSupervisor`'s teardown), which an
+        // operator watching the next `crabgic` invocation take over a
+        // "stale-looking" lease deserves to have been told about rather than
+        // discover.
+        if (!info.leaseReleased) {
+          process.stderr.write(
+            `supervisord: ${String(info.unsettledRunIds.length)} run(s) were still writing at ` +
+              `shutdown (${info.unsettledRunIds.join(", ")}); the project lease is NOT released ` +
+              `— the next daemon reclaims it once this process is gone\n`,
+          );
+        }
       },
     });
     if (projectDir === undefined || projectDir.length === 0) {

@@ -13,7 +13,24 @@
  *   2. compose + serve — and if composition throws, release the lease so the
  *      project is never left wedged behind a held-but-dead lease;
  *   3. install signal handlers (SIGTERM/SIGINT) that gracefully close the
- *      control plane and release the lease on the way down.
+ *      control plane, DRAIN the run dispatcher, and only then release the
+ *      lease.
+ *
+ * SHUTDOWN ORDER IS A DATA-INTEGRITY PROPERTY, not politeness. `run.dispatch`
+ * resolves on ownership and leaves its drive detached (see
+ * `../router/run-dispatcher.ts`), and the project lease is the journal's ONLY
+ * single-writer guarantee — `appendEntry` takes no lock of its own. This
+ * layer used to unregister signals, close the server and release the lease
+ * with a live appender still running, so an ordinary SIGTERM mid-run freed
+ * the lease, the next CLI call spawned a second daemon that acquired it, and
+ * two writers on one hash chain produced the duplicate `seq`/`prevHash` that
+ * `repairJournal` classifies as TAMPER rather than a torn tail —
+ * `JournalTamperedError` on the next `recover()`. The order is now: stop
+ * accepting (close the server) -> `dispatcher.drain(deadline)` -> release the
+ * lease LAST, and NOT AT ALL if the drain could not settle a writer. A lease
+ * left held by an exiting process is reclaimed safely by the next daemon's
+ * PID/start-time takeover; a lease released under a live writer is not
+ * reclaimed at all, it is shared.
  *
  * The process-level seams (`registerSignal`/`unregisterSignal`, `onShutdown`,
  * and `compose` itself) are all injectable so the real-process shim
@@ -47,6 +64,31 @@ export class SupervisorAlreadyRunningError extends Error {
 
 const DEFAULT_SIGNALS: readonly NodeJS.Signals[] = ["SIGTERM", "SIGINT"];
 
+/**
+ * How long a shutdown waits for in-flight drives before terminating their
+ * workers. Chosen to sit inside systemd's own 90s `TimeoutStopSec` default
+ * with room for the grace window below, so the daemon reaches its own
+ * deadline — where it can journal a terminal state and decide about the lease
+ * — rather than being SIGKILLed halfway through by the supervisor above it.
+ */
+const DEFAULT_DRAIN_TIMEOUT_MS = 30_000;
+/** The grace window handed to each live worker at the deadline, and allowed for its drive to unwind afterwards. */
+const DEFAULT_DRAIN_GRACE_MS = 5_000;
+
+/** What the shutdown actually did — reported to `onShutdown` so the bin can log the lease decision instead of assuming it. */
+export interface SupervisorShutdownInfo {
+  readonly signal?: NodeJS.Signals;
+  /**
+   * Whether the project lease was handed back. `false` means a drive was
+   * still appending when the drain gave up, so the lease is deliberately left
+   * held for the next daemon's PID/start-time takeover — see the file-level
+   * doc comment.
+   */
+  readonly leaseReleased: boolean;
+  /** The runs whose drives outlived the drain. Non-empty exactly when `leaseReleased` is false. */
+  readonly unsettledRunIds: readonly string[];
+}
+
 export interface BootSupervisorConfig extends ComposeSupervisorConfig {
   /** The leases directory. Defaults to `resolveLeasesDir(env, projectHash)` — 04's pinned leases subpath. */
   readonly leaseDir?: string;
@@ -64,8 +106,12 @@ export interface BootSupervisorConfig extends ComposeSupervisorConfig {
     signal: NodeJS.Signals,
     handler: (signal: NodeJS.Signals) => void,
   ) => void;
-  /** Invoked once, after the control plane is closed and the lease released. The bin uses it to set the process exit code. */
-  readonly onShutdown?: (info: { readonly signal?: NodeJS.Signals }) => void;
+  /** Invoked once, after the control plane is closed, the dispatcher drained and the lease decided. The bin uses it to set the process exit code. */
+  readonly onShutdown?: (info: SupervisorShutdownInfo) => void;
+  /** Shutdown's wait for in-flight drives before their workers are terminated. Defaults to `DEFAULT_DRAIN_TIMEOUT_MS`; injected in tests so no case waits on a real clock. */
+  readonly drainTimeoutMs?: number;
+  /** Grace window forwarded to the drain's termination step. Defaults to `DEFAULT_DRAIN_GRACE_MS`. */
+  readonly drainGraceMs?: number;
   /** The compose implementation. Defaults to `composeSupervisor`; injected in tests to drive the compose-failure path. */
   readonly compose?: (config: ComposeSupervisorConfig) => Promise<ComposedSupervisor>;
 }
@@ -128,9 +174,30 @@ export async function bootSupervisor(config: BootSupervisorConfig): Promise<Boot
   let shutdownPromise: Promise<void> | undefined;
   const runShutdown = async (signal?: NodeJS.Signals): Promise<void> => {
     for (const s of signals) unregisterSignal(s, signalHandler);
+    // (a) STOP ACCEPTING. Closing the control plane first means no new
+    //     `run.dispatch` can arrive while we are draining the old ones.
     await composed.close();
-    await lease.release();
-    config.onShutdown?.(signal !== undefined ? { signal } : {});
+    // (b) DRAIN. Wait for every detached drive to stop writing to the
+    //     journal; at the deadline, terminate its workers and journal the
+    //     run's own end. A daemon composed without a dispatcher (the control
+    //     plane serves fine without one) has nothing to drain.
+    const drained = await composed.deps.runDispatcher?.drain({
+      timeoutMs: config.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS,
+      graceMs: config.drainGraceMs ?? DEFAULT_DRAIN_GRACE_MS,
+    });
+    // (c) RELEASE THE LEASE LAST — and only if nothing is still writing. See
+    //     the file-level doc comment: handing a freed lease to the next
+    //     daemon while an appender is live is the corruption; leaving it held
+    //     by a process that is about to exit is not, because the lease
+    //     validates its holder's pid and start time before honouring it.
+    const unsettledRunIds = drained?.unsettledRunIds ?? [];
+    const leaseReleased = unsettledRunIds.length === 0;
+    if (leaseReleased) await lease.release();
+    config.onShutdown?.({
+      ...(signal !== undefined ? { signal } : {}),
+      leaseReleased,
+      unsettledRunIds,
+    });
   };
   const shutdown = (signal?: NodeJS.Signals): Promise<void> =>
     (shutdownPromise ??= runShutdown(signal));

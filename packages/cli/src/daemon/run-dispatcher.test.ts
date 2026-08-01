@@ -26,13 +26,14 @@ import {
   RUN_LIFECYCLE_STATES,
   EnvelopePolicySchema,
 } from "@crabgic/contracts";
-import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createJournalStore, recordAttempt, type JournalStore } from "@crabgic/journal";
 import {
   createArtifactIndexRegistry,
   createFileRegistry,
   createRunsRegistry,
   createWorkersRegistry,
   transitionRun,
+  DISPATCHER_DRAINING_REASON,
   type SupervisorDependencies,
   type TerminableWorker,
 } from "@crabgic/supervisor";
@@ -409,19 +410,16 @@ describe("createRealRunDispatcher — dispatch", () => {
     const runId = first.runId;
     if (runId === undefined) throw new Error("dispatch accepted without a runId");
 
-    // Barrier: wait until the first drive has SETTLED — released its in-flight
-    // claim — while the run persists as a live, parked-and-`running` run. A
-    // probing dispatch refuses with the LIVE-RUN reason only once the drive is
-    // out of flight; until then it refuses with "already being dispatched".
-    // The probe starts no drive (a live run exists) and never mutates the
-    // clock, so advancing it afterwards cannot race the first drive.
-    await vi.waitFor(
-      async () => {
-        const probe = await dispatcher.dispatch(CHANGE_SET_ID);
-        expect(probe.accepted).toBe(false);
-        expect(probe.reason).toMatch(/already has run .* in flight/i);
-      },
-      { timeout: 10_000 },
+    // Barrier: the first drive has SETTLED, while the run persists as a live,
+    // parked-and-`running` run. This used to be a probing-dispatch poll that
+    // re-derived the settle point from a refusal message; `whenIdle()` is the
+    // dispatcher's own seam for it — no polling, no timeout, and advancing the
+    // clock afterwards cannot race a drive that has already resolved. (Its
+    // door-closing sibling `drain()` cannot be used here: this case must go on
+    // to `resume` the very run it just waited for.)
+    await dispatcher.whenIdle();
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).reason).toMatch(
+      /already has run .* in flight/i,
     );
 
     // The first drive parked the unit and never resumed it.
@@ -1191,5 +1189,279 @@ describe("createRealRunDispatcher — a transient policy failure", () => {
 
     expect(result.accepted).toBe(false);
     expect(result.reason).not.toMatch(/retry/i);
+  });
+});
+
+/** Every `parked:rate_limit` work_unit_transition status this journal holds, in seq order. */
+async function attemptStatuses(store: JournalStore): Promise<readonly string[]> {
+  const statuses: string[] = [];
+  for await (const entry of store.queryEntries({ type: "work_unit_transition" })) {
+    if (entry.type === "work_unit_transition") statuses.push(entry.payload.status);
+  }
+  return statuses;
+}
+
+/**
+ * `drain()` — the shutdown seam roadmap/05 §Lifecycle has always specified
+ * ("clean shutdown drains workers before exit") and nothing implemented.
+ *
+ * It is not politeness. `dispatch` resolves on OWNERSHIP and leaves the drive
+ * detached, so the daemon's old teardown released the journal's single-writer
+ * lease with an appender still running; the next CLI call then spawned a
+ * second daemon that acquired the freed lease, and two writers on an unlocked
+ * hash chain produce a duplicate `seq`/`prevHash` that `repairJournal`
+ * classifies as TAMPER rather than a torn tail. `drain` is the mechanism that
+ * lets the lease be released last, or not at all.
+ */
+describe("createRealRunDispatcher — drain", () => {
+  it("resolves only once the detached drive has settled — the terminal transition is already durable", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    const outcome = await dispatcher.drain({ timeoutMs: 60_000, graceMs: 1_000 });
+
+    expect(outcome.settledRunIds).toEqual([runId]);
+    expect(outcome.cancelledRunIds).toEqual([]);
+    expect(outcome.unsettledRunIds).toEqual([]);
+    // Asserted with NO polling: if `drain` resolved while the drive was still
+    // running, this read finds no terminal status at all.
+    expect(await attemptStatuses(deps.journal)).toContain("succeeded");
+  });
+
+  it("refuses new work while draining, with one shared, recognisable reason", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    await dispatcher.dispatch(CHANGE_SET_ID);
+    await dispatcher.drain({ timeoutMs: 60_000 });
+
+    // The door stays shut. Re-opening it would let a dispatch start a drive
+    // AFTER the boot layer has released the lease — the exact race drain exists
+    // to close.
+    expect(await dispatcher.dispatch(CHANGE_SET_ID)).toEqual({
+      accepted: false,
+      reason: DISPATCHER_DRAINING_REASON,
+    });
+    expect(await dispatcher.resume(RUN_ID)).toEqual({
+      accepted: false,
+      reason: DISPATCHER_DRAINING_REASON,
+    });
+  });
+
+  it("is idempotent — a second drain reports the same quiescent state", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+    await dispatcher.dispatch(CHANGE_SET_ID);
+
+    await dispatcher.drain({ timeoutMs: 60_000 });
+    expect(await dispatcher.drain({ timeoutMs: 60_000 })).toEqual({
+      settledRunIds: [],
+      cancelledRunIds: [],
+      unsettledRunIds: [],
+    });
+  });
+
+  it("drains cleanly when nothing was ever dispatched", async () => {
+    const dispatcher = newDispatcher(buildDeps({ ...fullySeeded(), run: false }));
+    expect(await dispatcher.drain()).toEqual({
+      settledRunIds: [],
+      cancelledRunIds: [],
+      unsettledRunIds: [],
+    });
+  });
+
+  /**
+   * At the deadline the daemon cannot wait any longer, so it terminates the
+   * live workers through the SAME closure `worker.terminate` uses, then records
+   * the run as `cancelled`. Without that record restart recovery replays a
+   * phantom `running` run whose units are all terminal — a run nothing can ever
+   * finish, blocking every fresh dispatch of its change set.
+   */
+  it("terminates live workers at the deadline and journals the cut-off run cancelled", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      // Hangs until `cancel()` opens its gate — so the drive settles if and
+      // only if the deadline path really terminates the worker.
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(buildFakeEngineScript({ failure: { kind: "hang" } })),
+        ),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    await vi.waitFor(() => expect(deps.liveWorkers.size).toBe(1), { timeout: 10_000 });
+
+    const outcome = await dispatcher.drain({ timeoutMs: 25, graceMs: 10_000 });
+
+    expect(outcome.cancelledRunIds).toEqual([runId]);
+    expect(outcome.unsettledRunIds).toEqual([]);
+    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
+    expect(deps.liveWorkers.size).toBe(0);
+  });
+
+  /**
+   * The honest floor. An adapter that ignores `cancel` leaves a writer live
+   * past both the deadline and the grace window — and this drain writes NOTHING
+   * for it, because a second appender beside a live one is the very corruption
+   * it exists to prevent. It reports the run instead, and the boot layer keeps
+   * the lease rather than handing the journal to the next daemon.
+   */
+  it("reports a drive that outlives the ladder as unsettled, and journals nothing over it", async () => {
+    class IgnoresCancel extends FakeEngineAdapter {
+      override cancel(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(new IgnoresCancel(buildFakeEngineScript({ failure: { kind: "hang" } }))),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    await vi.waitFor(() => expect(deps.liveWorkers.size).toBe(1), { timeout: 10_000 });
+
+    const outcome = await dispatcher.drain({ timeoutMs: 25, graceMs: 25 });
+
+    expect(outcome.unsettledRunIds).toEqual([runId]);
+    expect(outcome.cancelledRunIds).toEqual([]);
+    expect(deps.runs.get(runId)?.runState).toBe("running");
+  });
+});
+
+/**
+ * RESTART HONESTY. A daemon restart loses the retained per-session adapters
+ * (documented, and disclosed in 1.5.0) — but the run's park record is durable,
+ * so a re-drive found a parked unit, could not resume it, declined, and left it
+ * parked. `resume` answered `{accepted: true}` to all of that: the CLI printed
+ * success, nothing moved, the run stayed `running`, and the change set could
+ * never be dispatched again. The only exit was `run.cancel`, which the success
+ * message gave the operator no reason to reach for.
+ */
+describe("createRealRunDispatcher — resume after a restart lost the session context", () => {
+  const OTHER_UNIT_ID = "55555555-5555-4555-8555-555555555555";
+  const SESSION_ID = "66666666-6666-4666-8666-666666666666";
+
+  function parkedRun(): ReturnType<typeof buildDeps> {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-31T00:00:00.000Z",
+    });
+    return deps;
+  }
+
+  it("refuses, names the lost session context and the remedy, and starts no drive", async () => {
+    const deps = parkedRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "parked:rate_limit", RUN_ID);
+
+    // A FRESH dispatcher is exactly what a restarted daemon has: the run's
+    // park record survived in the journal, its adapters did not.
+    let adaptersCreated = 0;
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return new Promise(() => undefined);
+      },
+    });
+
+    const result = await dispatcher.resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/session context/i);
+    expect(result.reason).toMatch(/restart/i);
+    expect(result.reason).toMatch(/cancel/i);
+    expect(result.reason).toContain(RUN_ID);
+    expect(adaptersCreated).toBe(0);
+  });
+
+  /** The refusal must release its in-flight claim, or the refusal itself wedges the change set. */
+  it("releases the claim it took, so the run stays reachable to `run.cancel` and a later resume", async () => {
+    const deps = parkedRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "parked:rate_limit", RUN_ID);
+    const dispatcher = newDispatcher(deps);
+
+    const first = await dispatcher.resume(RUN_ID);
+    const second = await dispatcher.resume(RUN_ID);
+
+    expect(second.reason).toBe(first.reason);
+    expect(second.reason).not.toMatch(/already being dispatched/i);
+  });
+
+  /**
+   * It must refuse ONLY when there is genuinely nothing to drive. A run
+   * carrying a second, still-pending unit can make real progress, so the
+   * unresumable park is the driver's problem to leave parked, not grounds to
+   * refuse the whole resume.
+   */
+  it("still accepts when another unit is pending — there is work the drive can do", async () => {
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      workUnits: [
+        ...(seeded.workUnits ?? []),
+        buildWorkUnit({
+          id: OTHER_UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-31T00:00:00.000Z",
+    });
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "parked:rate_limit", RUN_ID);
+
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
   });
 });
