@@ -72,6 +72,66 @@ export const CONTROL_CONTEXT_ENV: Readonly<Record<string, string>> = Object.free
 });
 
 /**
+ * Ambient-git-LOCATION isolation, removed from the inherited environment of
+ * EVERY spawn this package makes (see `../plumbing.ts`'s
+ * `createNodeGitSpawn`). Distinct from `CONTROL_CONTEXT_ENV` above, which
+ * neutralizes ambient CONFIG: these variables decide WHICH REPOSITORY git
+ * operates on, and git consults them BEFORE it consults the process's
+ * working directory. An inherited `GIT_DIR` therefore silently overrides
+ * every `cwd` this package so carefully computes — `ensureControlClone`'s
+ * clone, `createWorktree`'s `worktree add -b`, `configureGitIdentity`'s
+ * `config --local user.email`, `applyCasUpdate`'s `update-ref`,
+ * `publishLocal`'s ref creation and its `update-ref -d` cleanup, and
+ * `neutralizeHooksPath`'s `config core.hooksPath ""` would all land in the
+ * ambient repository instead of the control clone or worktree named by
+ * `cwd`. Nothing in this package ever WANTS to be steered by ambient git
+ * location state: every call site passes an explicit `cwd`.
+ *
+ * Not theoretical (2026-08-01): git exports `GIT_DIR` into every hook it
+ * runs, and this repository's own `pre-push` hook runs the full test suite,
+ * so the suite executes with `GIT_DIR` pointing at the repository being
+ * pushed. Unsanitized fixture spawns re-initialized the real repository,
+ * overwrote its committer identity, and landed junk commits on the branch
+ * being pushed.
+ *
+ * The names are `git rev-parse --local-env-vars` (git 2.43.0) — git's own
+ * authoritative list of what it treats as repository-local — plus four it
+ * omits but that redirect resolution just as effectively: `GIT_NAMESPACE`,
+ * `GIT_QUARANTINE_PATH` (git sets this for `pre-receive`/`update` hooks, and
+ * it redirects object writes), `GIT_CEILING_DIRECTORIES`, and
+ * `GIT_DISCOVERY_ACROSS_FILESYSTEM`.
+ *
+ * Deliberately does NOT include `GIT_CONFIG_GLOBAL`/`GIT_CONFIG_SYSTEM`:
+ * those are ambient CONFIG, whose neutralization is `CONTROL_CONTEXT_ENV`'s
+ * job at the call sites that need it and is deliberately NOT applied to
+ * reads against the user's own checkout (see that constant's note on
+ * overreach).
+ */
+export const GIT_LOCATION_ENV_VARS: readonly string[] = Object.freeze([
+  // `git rev-parse --local-env-vars`, git 2.43.0.
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CONFIG",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_COUNT",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_GRAFT_FILE",
+  "GIT_INDEX_FILE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_PREFIX",
+  "GIT_SHALLOW_FILE",
+  "GIT_COMMON_DIR",
+  // Not in git's own list, but equally redirecting.
+  "GIT_NAMESPACE",
+  "GIT_QUARANTINE_PATH",
+  "GIT_CEILING_DIRECTORIES",
+  "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+]);
+
+/**
  * Fix for MINOR 4: a read against the USER's checkout (freeze/validate)
  * must never mutate `.git/index` as a side effect (git's "racy git" stat-
  * cache refresh, empirically confirmed to rewrite `.git/index` bytes on a

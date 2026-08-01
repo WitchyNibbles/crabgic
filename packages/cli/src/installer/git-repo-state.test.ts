@@ -1,12 +1,28 @@
-import { execFile } from "node:child_process";
+import { GIT_FIXTURE_IDENTITY_ENV, runFixtureGit } from "@crabgic/testkit";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { detectGitRepoState, detectMonorepo, performGitInit } from "./git-repo-state.js";
 
-const execFileAsync = promisify(execFile);
+/**
+ * Every git call below goes through `runFixtureGit`, never a bare
+ * `execFile("git", ...)`. `{ cwd: dir }` does NOT isolate a git subprocess:
+ * git resolves its repository from `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`
+ * before it consults the working directory, and git exports `GIT_DIR` into
+ * every hook it runs — including this repo's `pre-push` hook, which runs the
+ * whole suite. Until 2026-08-01 the `init`/`config`/`commit` sequence here
+ * re-initialized the real repository, overwrote its committer identity, and
+ * landed junk commits on the branch being pushed. Identity now comes from
+ * `GIT_FIXTURE_IDENTITY_ENV` rather than `git config`, so there is no
+ * config-writing command left to mis-aim at all. See
+ * `@crabgic/testkit`'s `git-env.ts`.
+ */
+
+/** `git <args>` in a fixture dir: scrubbed environment, identity by env, no config writes. */
+function git(dir: string, args: readonly string[]): void {
+  runFixtureGit(dir, args, { env: GIT_FIXTURE_IDENTITY_ENV });
+}
 
 const dirs: string[] = [];
 function makeTmpDir(): string {
@@ -33,29 +49,25 @@ describe("detectGitRepoState", () => {
 
   it('reports "unborn-head" for a freshly-initialized repo with zero commits', async () => {
     const dir = makeTmpDir();
-    await execFileAsync("git", ["init"], { cwd: dir });
+    git(dir, ["init"]);
     expect(await detectGitRepoState(dir)).toBe("unborn-head");
   });
 
   it('reports "clean" for a repo with one commit and no working-tree changes', async () => {
     const dir = makeTmpDir();
-    await execFileAsync("git", ["init"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.email", "test@example.invalid"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.name", "Test"], { cwd: dir });
+    git(dir, ["init"]);
     writeFileSync(join(dir, "a.txt"), "a");
-    await execFileAsync("git", ["add", "a.txt"], { cwd: dir });
-    await execFileAsync("git", ["commit", "-m", "init"], { cwd: dir });
+    git(dir, ["add", "a.txt"]);
+    git(dir, ["commit", "-m", "init", "--no-verify"]);
     expect(await detectGitRepoState(dir)).toBe("clean");
   });
 
   it('reports "dirty" for a repo with uncommitted working-tree changes', async () => {
     const dir = makeTmpDir();
-    await execFileAsync("git", ["init"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.email", "test@example.invalid"], { cwd: dir });
-    await execFileAsync("git", ["config", "user.name", "Test"], { cwd: dir });
+    git(dir, ["init"]);
     writeFileSync(join(dir, "a.txt"), "a");
-    await execFileAsync("git", ["add", "a.txt"], { cwd: dir });
-    await execFileAsync("git", ["commit", "-m", "init"], { cwd: dir });
+    git(dir, ["add", "a.txt"]);
+    git(dir, ["commit", "-m", "init", "--no-verify"]);
     writeFileSync(join(dir, "a.txt"), "modified");
     expect(await detectGitRepoState(dir)).toBe("dirty");
   });

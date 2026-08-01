@@ -23,6 +23,27 @@
  */
 
 import { spawn } from "node:child_process";
+import { GIT_LOCATION_ENV_VARS } from "./git-arg-guard.js";
+
+/**
+ * `process.env` with every ambient git-LOCATION variable removed, then the
+ * caller's `env` layered on top. See `GIT_LOCATION_ENV_VARS` for why the
+ * removal is mandatory: those variables outrank `cwd` when git decides which
+ * repository to operate on, so without this every spawn below is steerable by
+ * whatever `GIT_DIR` the parent process happened to inherit — including the
+ * `GIT_DIR` git itself exports into every hook it runs.
+ *
+ * Layering order matters: the scrub happens FIRST, so a caller that genuinely
+ * wants one of these variables set (no current call site does) can still pass
+ * it in `request.env` and have it survive.
+ */
+function sanitizedSpawnEnv(
+  overrides: Readonly<Record<string, string>> | undefined,
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const name of GIT_LOCATION_ENV_VARS) delete env[name];
+  return overrides === undefined ? env : { ...env, ...overrides };
+}
 
 export interface GitSpawnRequest {
   readonly command: string;
@@ -59,13 +80,18 @@ export class GitCommandError extends Error {
  * and the shell option is explicitly disabled below (never omitted, never
  * enabled), so a metacharacter-laden argv element is delivered to the
  * `execve()` syscall verbatim, with no shell ever in the invocation path.
+ *
+ * The child's environment is `sanitizedSpawnEnv()`, never a bare
+ * `process.env`: argv hygiene alone does not make a spawn safe when an
+ * ambient `GIT_DIR` can redirect the whole command at a different
+ * repository. See `GIT_LOCATION_ENV_VARS`.
  */
 export function createNodeGitSpawn(): GitSpawnFn {
   return (request) =>
     new Promise<GitSpawnResult>((resolve, reject) => {
       const child = spawn(request.command, [...request.args], {
         cwd: request.cwd,
-        env: request.env === undefined ? process.env : { ...process.env, ...request.env },
+        env: sanitizedSpawnEnv(request.env),
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
       });
