@@ -59,8 +59,6 @@ function baseRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
       prohibitedActions: [],
     },
     rollbackStrategy: "Revert the integration commit.",
-    performanceBudgetSource: "ecosystem_research",
-    performanceBudgets: [{ metric: "latency", percentile: 95, threshold: 200, unit: "ms" }],
     ...overrides,
   };
 }
@@ -223,5 +221,118 @@ describe("runIntake", () => {
       }),
     );
     expect(outcome.status).toBe("created");
+  });
+});
+
+/**
+ * BUDGET PROVENANCE IS DERIVED, NOT DECLARED (ledger Gap 21).
+ *
+ * `IntakeRequest` used to carry `performanceBudgetSource` AND
+ * `performanceBudgets` as required caller-supplied fields, copied verbatim into
+ * the provisional contract — so the sourcing order roadmap/15 specifies was
+ * implemented in `packages/perf` and enforced nowhere, and a caller could
+ * declare `requirement_acceptance_criteria` beside budgets no criterion ever
+ * produced. The repo's OWN golden fixture did exactly that.
+ *
+ * Intake now runs the rule itself against the requirements it just built, so a
+ * declaration that disagrees with its criteria is unrepresentable rather than
+ * policed — the same posture as `contract.approve` deriving the expected digest
+ * server-side instead of trusting the caller.
+ */
+describe("runIntake — derived budget provenance", () => {
+  function withRequirements(
+    requirements: IntakeRequest["requirements"],
+    overrides: Partial<IntakeRequest> = {},
+  ): IntakeRequest {
+    return baseRequest({ requirements, ...overrides });
+  }
+
+  const perfRequirement = {
+    section: "performance" as const,
+    title: "Login submit latency budget",
+    description: "The login submit round trip stays inside its budget.",
+    acceptanceCriteria: ["latency p95 <= 200ms"],
+    workUnitIds: [WU_ID],
+  };
+
+  it("derives source #1 from the performance-section requirement's criteria", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(deps, withRequirements([perfRequirement]));
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const contract = outcome.artifacts.provisionalPerformanceContract;
+    expect(contract.budgetSource).toBe("requirement_acceptance_criteria");
+    expect(contract.budgets).toStrictEqual([
+      { metric: "latency", percentile: 95, threshold: 200, unit: "ms" },
+    ]);
+  });
+
+  it("does NOT resolve source #1 from a parseable criterion on a non-performance section", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(
+      deps,
+      withRequirements([{ ...perfRequirement, section: "scope" as const }]),
+    );
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    // Scope-section criteria are not budget sources, however parseable.
+    expect(outcome.artifacts.provisionalPerformanceContract.budgetSource).not.toBe(
+      "requirement_acceptance_criteria",
+    );
+  });
+
+  it("falls through to the pinned ecosystem table when no performance criterion parses (source #2)", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(
+      deps,
+      withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }], {
+        ecosystem: "node",
+      }),
+    );
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const contract = outcome.artifacts.provisionalPerformanceContract;
+    expect(contract.budgetSource).toBe("ecosystem_research");
+    expect(contract.budgets.length).toBeGreaterThan(0);
+  });
+
+  it("yields an empty set tagged base_revision_measurement when neither source resolves (source #3)", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(
+      deps,
+      withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }]),
+    );
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const contract = outcome.artifacts.provisionalPerformanceContract;
+    expect(contract.budgetSource).toBe("base_revision_measurement");
+    expect(contract.budgets).toStrictEqual([]);
+  });
+
+  it("treats the ecosystem as request content — a different one is a conflict, never a silent second ChangeSet", async () => {
+    const deps = freshDeps();
+    const request = withRequirements([perfRequirement], { ecosystem: "node" });
+    await runIntake(deps, request);
+
+    const second = await runIntake(deps, { ...request, ecosystem: "python" });
+    expect(second.status).toBe("conflict");
+  });
+
+  it("anchors the DERIVED provisional contract in the intake idempotency record", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(deps, withRequirements([perfRequirement]));
+    if (outcome.status === "conflict") throw new Error("unreachable");
+
+    let anchored = false;
+    for await (const entry of store.queryEntries({ type: "remote_operation_record" })) {
+      if (entry.type !== "remote_operation_record") continue;
+      const applied = entry.payload.appliedRevision;
+      if (applied !== undefined && applied.includes("requirement_acceptance_criteria")) {
+        anchored = true;
+      }
+    }
+    // 15's `findJournalAnchoredBudgetSnapshot` reads this entry; the provenance
+    // it pins must be the derived one, not a caller's claim.
+    expect(anchored).toBe(true);
   });
 });

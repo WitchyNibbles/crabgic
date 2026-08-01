@@ -155,8 +155,6 @@ function intakeRequest(): IntakeRequest {
       prohibitedActions: [],
     },
     rollbackStrategy: "Revert the integration commit.",
-    performanceBudgetSource: "requirement_acceptance_criteria",
-    performanceBudgets: [{ metric: "latency", percentile: 95, threshold: 200, unit: "ms" }],
     capabilityManifest: {
       engineEntry: {
         kind: "engine",

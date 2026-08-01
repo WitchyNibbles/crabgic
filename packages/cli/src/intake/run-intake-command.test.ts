@@ -56,8 +56,6 @@ function fixtureRequest(overrides: Partial<IntakeRequest> = {}): IntakeRequest {
       prohibitedActions: [],
     },
     rollbackStrategy: "Revert the integration commit.",
-    performanceBudgetSource: "ecosystem_research",
-    performanceBudgets: [],
     ...overrides,
   };
 }

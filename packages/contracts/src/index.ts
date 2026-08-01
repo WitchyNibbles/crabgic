@@ -94,6 +94,11 @@ export * from "./contracts/external-connection.js";
 export * from "./contracts/intent-contract.js";
 export * from "./contracts/learning-proposal.js";
 export * from "./contracts/performance-contract.js";
+// roadmap/15's budget-sourcing rule, relocated from packages/perf (ledger Gap 21):
+// phase 11 executes it and phase 15 consumes it, and 11 cannot depend on 15.
+export * from "./contracts/acceptance-criteria-parser.js";
+export * from "./contracts/ecosystem-research-table.js";
+export * from "./contracts/budget-sourcing.js";
 export * from "./contracts/project-profile.js";
 export * from "./contracts/remote-mutation-plan.js";
 export * from "./contracts/remote-operation-record.js";

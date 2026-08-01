@@ -43,6 +43,10 @@ const REQ_RATE_LIMIT = computeRequirementId(INTENT_CONTRACT_ID, {
   section: "security",
   title: "Rate-limit login attempts",
 });
+const REQ_LATENCY_BUDGET = computeRequirementId(INTENT_CONTRACT_ID, {
+  section: "performance",
+  title: "Login submit latency budget",
+});
 
 /**
  * A minimal, real `EngineAdapter`-shaped fixture — standing in for 06's own
@@ -97,12 +101,22 @@ export const FIXTURE_INTAKE_REQUEST: IntakeRequest = {
       acceptanceCriteria: ["The 6th attempt within 60s is rejected with a 429."],
       workUnitIds: [WU_RATE_LIMIT],
     },
+    // The budget the provisional contract carries is DERIVED from this
+    // criterion (ledger Gap 21). Before that it was declared beside criteria
+    // none of which parse to a budget — this fixture was the smoking gun.
+    {
+      section: "performance",
+      title: "Login submit latency budget",
+      description: "The login submit round trip stays inside its latency budget.",
+      acceptanceCriteria: ["latency p95 <= 200ms"],
+      workUnitIds: [WU_LOGIN_FORM],
+    },
   ],
   workUnits: [
     {
       id: WU_LOGIN_FORM,
       title: "Implement login form",
-      requirementIds: [REQ_LOGIN_FORM],
+      requirementIds: [REQ_LOGIN_FORM, REQ_LATENCY_BUDGET],
       dependsOn: [],
       role: "implementation",
       ownedPaths: ["packages/example/src/login/"],
@@ -127,8 +141,6 @@ export const FIXTURE_INTAKE_REQUEST: IntakeRequest = {
     prohibitedActions: ["force-push main"],
   },
   rollbackStrategy: "Revert the integration commit; the login form is additive-only.",
-  performanceBudgetSource: "requirement_acceptance_criteria",
-  performanceBudgets: [{ metric: "latency", percentile: 95, threshold: 200, unit: "ms" }],
   capabilityManifest: {
     engineAdapter: FIXTURE_ENGINE_ADAPTER,
   },

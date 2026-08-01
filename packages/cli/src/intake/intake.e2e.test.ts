@@ -102,8 +102,6 @@ function e2eRequest(requestKey: string, changeSetId: string): IntakeRequest {
       prohibitedActions: [],
     },
     rollbackStrategy: "Revert the integration commit.",
-    performanceBudgetSource: "requirement_acceptance_criteria",
-    performanceBudgets: [{ metric: "latency", percentile: 95, threshold: 200, unit: "ms" }],
     capabilityManifest: {
       // Stand-in for 06's real EngineAdapter.capabilities() — 03's fake
       // engine shape, per this phase's own documented risk note.
