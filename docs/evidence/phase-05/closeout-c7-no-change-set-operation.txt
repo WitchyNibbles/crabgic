@@ -1,0 +1,24 @@
+# Phase 05 exit criterion 7 — no change_set.*-named operation anywhere in packages/supervisor
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:27Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/router/no-change-set-operation.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/router/no-change-set-operation.test.ts > Gap 1 conformance — no change_set.* operation anywhere in @crabgic/supervisor > SUPERVISOR_OPERATIONS (the router's own registered vocabulary) contains no change_set.*-prefixed name 2ms
+ ✓ |@crabgic/supervisor| src/router/no-change-set-operation.test.ts > Gap 1 conformance — no change_set.* operation anywhere in @crabgic/supervisor > no source (non-test) .ts file under packages/supervisor/src contains the literal string "change_set." 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:27:28
+   Duration  445ms (transform 218ms, setup 0ms, import 329ms, tests 6ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

@@ -1,0 +1,37 @@
+# Phase 05 exit criterion 4 — hung fake worker fully reaped within deadline (ladder + orphan reaper)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:14Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/worker-lifecycle/termination-ladder.test.ts packages/supervisor/src/worker-lifecycle/orphan-reaper.test.ts packages/supervisor/src/worker-lifecycle/worker-lifecycle-manager.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > journals a failed attempt and marks a non-terminal worker crashed 17ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > invokes the recovery-hook call site for each reaped orphan 7ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > does nothing for an empty WorkersRegistry — no throw 2ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > attributes the failed attempt to the recovered run, so run-scoped readers can see it 6ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > still journals an unattributed failure for a session no recovered run claims 6ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/orphan-reaper.test.ts > reapOrphansAtStartup > leaves an already-terminated worker untouched 1ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/termination-ladder.test.ts > terminateWorker — SIGTERM -> grace -> SIGKILL ladder > reaps a worker whose adapter fails to honor cancel() within the grace deadline (forced escalation), never staying stuck forever 52ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/termination-ladder.test.ts > terminateWorker — SIGTERM -> grace -> SIGKILL ladder > reaps a hung fake-engine worker gracefully once its adapter's own cancel() cooperates (the fake engine's real hang-mode behavior) 2ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/termination-ladder.test.ts > terminateWorker — SIGTERM -> grace -> SIGKILL ladder > reports graceful when the worker's own events stream ends on its own inside the grace window 1ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > journals session_assignment before consuming events, registers the worker, and records a dispatched attempt 24ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > settles 'succeeded' and marks the worker terminated for a clean successful script 13ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > settles 'crashed' and fires the recovery hook for an abrupt (no-result) stream end 13ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > settles 'succeeded' for a worker that self-reports 'cancelled' via structuredOutput.outcome 16ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > treats a thrown events iterator identically to an abrupt (crashed) end 12ms
+ ✓ |@crabgic/supervisor| src/worker-lifecycle/worker-lifecycle-manager.test.ts > spawnManagedWorker > feeds the ring buffer with every observed engine event 11ms
+
+ Test Files  3 passed (3)
+      Tests  15 passed (15)
+   Start at  23:27:15
+   Duration  893ms (transform 1.27s, setup 0ms, import 1.90s, tests 187ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

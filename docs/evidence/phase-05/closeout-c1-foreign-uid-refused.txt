@@ -1,0 +1,44 @@
+# Phase 05 exit criterion 1 — foreign-uid peer refused (unit + property + real-socket integration)
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:02Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts packages/supervisor/src/peer-auth/peer-credentials.test.ts packages/supervisor/src/socket/uds-server.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.property.test.ts > authenticatePeer — property: only the invoking uid is ever admitted > admits iff the peer uid equals the invoking uid, for any randomized uid sequence 28ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.property.test.ts > authenticatePeer — property: only the invoking uid is ever admitted > never admits a foreign uid regardless of how many invoking-uid connections preceded it 10ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer > admits a connection whose peer uid matches the invoking uid 1ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer > refuses a connection from a foreign uid, before any request is served 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer > fails closed (refuses) when the credential bridge throws 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer > fails closed when the credential bridge hangs past its own timeout (rejects) 51ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer — explicitly allowed additional uids (writer-identity separation) > still refuses a foreign uid when no additional uids are configured 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer — explicitly allowed additional uids (writer-identity separation) > admits a uid the operator explicitly allowed 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer — explicitly allowed additional uids (writer-identity separation) > still refuses a uid that is not in the allow-set 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer — explicitly allowed additional uids (writer-identity separation) > names the whole allow-set in its refusal, so an operator can see what WAS allowed 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-auth-middleware.test.ts > authenticatePeer — explicitly allowed additional uids (writer-identity separation) > an empty allow-set behaves exactly like no allow-set at all 0ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-credentials.test.ts > readPeerCredentialsLinux (real SO_PEERCRED, real UDS socket) > reads back this process's own uid when connecting to itself 108ms
+ ✓ |@crabgic/supervisor| src/peer-auth/peer-credentials.test.ts > readPeerCredentialsLinux (real SO_PEERCRED, real UDS socket) > fails closed (rejects PeerCredentialUnavailableError) for a socket-like object with no native fd 2ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — handshake version skew > accepts a matching protocol version 102ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — handshake version skew > rejects a mismatched protocol version BEFORE serving any request 91ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — router dispatch over the real socket > dispatches run.status/run.cancel through the router and returns typed responses 96ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — router dispatch over the real socket > returns a structured error response for an unknown operation, never crashing the connection 93ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — router dispatch over the real socket > silently ignores a malformed/non-request line after the handshake, keeping the connection alive 93ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — router dispatch over the real socket > connecting and closing immediately (no handshake line ever sent) never crashes the server 94ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — foreign-uid peer refused before any request is served > destroys the connection before the handshake, for a peer whose credential reader reports a foreign uid 5ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — MAX_LINE_BYTES cap on the real socket read path > disconnects an admitted (same-uid) peer that sends more than MAX_LINE_BYTES with no newline 104ms
+ ✓ |@crabgic/supervisor| src/socket/uds-server.test.ts > UDS server — MAX_LINE_BYTES cap on the real socket read path > still parses a normal framed request whose line size is large but under the cap, and the connection stays alive afterward 116ms
+
+ Test Files  4 passed (4)
+      Tests  22 passed (22)
+   Start at  23:27:03
+   Duration  1.50s (transform 476ms, setup 0ms, import 724ms, tests 1.00s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

@@ -1,0 +1,23 @@
+# Phase 05 exit criterion 2 — two same-uid connections, one router, identical run.status/run.cancel responses
+#
+# Produced by the criteria-closeout pass (batch 1, phase 05), 2026-08-01T21:27:11Z.
+# Repository HEAD at capture: 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/socket/uds-server.concurrent.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p05
+
+ ✓ |@crabgic/supervisor| src/socket/uds-server.concurrent.test.ts > two concurrent same-uid connections (CLI + gateway stand-ins) — one handler, two transports > both clear SO_PEERCRED against the identical router and receive identical run.status/run.cancel responses 123ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:27:11
+   Duration  1.04s (transform 577ms, setup 0ms, import 802ms, tests 124ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
