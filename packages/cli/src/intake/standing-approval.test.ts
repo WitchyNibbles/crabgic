@@ -8,7 +8,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createJournalStore, findLatestCriteriaSeal, type JournalStore } from "@crabgic/journal";
 import {
   createChangeSetsRegistry,
   createIntentContractsRegistry,
@@ -17,9 +17,11 @@ import {
 } from "@crabgic/supervisor";
 import {
   EnvelopePolicySchema,
+  verifyCriteriaSeal,
   type AuthorizationEnvelope,
   type ChangeSet,
   type EnvelopePolicy,
+  type Requirement,
 } from "@crabgic/contracts";
 import {
   buildAuthorizationEnvelope,
@@ -58,6 +60,8 @@ interface Seeded {
   readonly deps: StandingApprovalDeps;
   readonly changeSet: ChangeSet;
   readonly envelope: AuthorizationEnvelope;
+  /** The single `Requirement` record this ChangeSet declares — returned so a test can assert the SEALED hash set, not merely that a seal exists (roadmap/24 exit criterion 4). */
+  readonly requirement: Requirement;
 }
 
 /** A ChangeSet awaiting approval, its envelope, and a contract whose single requirement IS owned by a WorkUnit. */
@@ -85,7 +89,12 @@ function seed(
   // The record behind the declared id — roadmap/24. Approval seals the
   // criteria, so a contract declaring a requirement whose record is missing is
   // now refused rather than approved-with-nothing-sealed.
-  requirements.put(buildRequirement({ id: requirementId, intentContractId: contract.id }));
+  const requirement = buildRequirement({
+    id: requirementId,
+    intentContractId: contract.id,
+    acceptanceCriteria: ["The login form submits", "The login form rejects an empty password"],
+  });
+  requirements.put(requirement);
   const changeSet = buildChangeSet({
     id: randomUUID(),
     state: "awaiting_approval",
@@ -106,6 +115,7 @@ function seed(
   return {
     changeSet,
     envelope,
+    requirement,
     deps: { journal: store, changeSets, workUnits, intentContracts, requirements, loadPolicy },
   };
 }
@@ -143,6 +153,37 @@ describe("applyStandingApproval", () => {
       "criteria_sealed",
     ]);
     expect(recorded[0]!.rationale).toContain("sha256:pol");
+
+    // roadmap/24 exit criterion 4, THE STANDING-APPROVAL PATH. The
+    // `criteria_sealed` LABEL above is not the criterion — the criterion is
+    // that the seal itself is journaled, so assert the full
+    // requirement-to-criteriaHash SET, read back through the same
+    // `findLatestCriteriaSeal` the dispatcher uses at completion time. A seal
+    // that silently dropped this requirement would read as `no_approval_seal`
+    // mid-run, which is exactly the failure this path must not be able to
+    // produce.
+    const seal = await findLatestCriteriaSeal(store, seeded.changeSet.id);
+    expect(seal).toBeDefined();
+    expect(seal!.changeSetId).toBe(seeded.changeSet.id);
+    expect(seal!.criteriaHashes).toStrictEqual({
+      [seeded.requirement.id]: seeded.requirement.criteriaHash,
+    });
+    expect(verifyCriteriaSeal(seeded.requirement, seal).ok).toBe(true);
+  });
+
+  /**
+   * The other half of the same criterion: "absence of a seal for a
+   * post-phase approval is impossible to produce through either path." An
+   * escalated (refused) standing approval must leave no seal behind.
+   */
+  it("leaves no seal behind when the standing policy refuses (roadmap/24 exit criterion 4)", async () => {
+    const loaded: LoadPolicyResult = { status: "loaded", policy: policy(), digest: "sha256:pol" };
+    const seeded = seed(() => loaded, { ownedPaths: ["infra/secrets"] });
+
+    const outcome = await applyStandingApproval(seeded.changeSet, seeded.envelope, seeded.deps);
+
+    expect(outcome.status).toBe("escalate");
+    expect(await findLatestCriteriaSeal(store, seeded.changeSet.id)).toBeUndefined();
   });
 
   it("escalates an envelope reaching outside the policy, naming EVERY escaping dimension", async () => {

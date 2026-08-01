@@ -560,6 +560,42 @@ describe("dispatchAttempt — acceptance-criteria seal enforcement", () => {
     );
   }
 
+  /**
+   * Every seal-refusal adjudication this journal recorded — roadmap/24's
+   * "the typed reason ... is journaled" clause. Read back out of the real
+   * file-backed store, not off the in-memory outcome, because an outcome a
+   * caller drops on the floor is not evidence.
+   */
+  async function sealRefusals(filter: { readonly runId?: string } = {}): Promise<
+    readonly {
+      readonly rationale: string;
+      readonly subjectId?: string;
+      readonly workUnitId?: string;
+      readonly runId?: string;
+    }[]
+  > {
+    const found: {
+      rationale: string;
+      subjectId?: string;
+      workUnitId?: string;
+      runId?: string;
+    }[] = [];
+    for await (const entry of store.queryEntries({
+      type: "adjudication_decision",
+      ...filter,
+    })) {
+      if (entry.type !== "adjudication_decision") continue;
+      if (entry.payload.decision !== "criteria_seal_refused") continue;
+      found.push({
+        rationale: entry.payload.rationale,
+        ...(entry.payload.subjectId !== undefined ? { subjectId: entry.payload.subjectId } : {}),
+        ...(entry.workUnitId !== undefined ? { workUnitId: entry.workUnitId } : {}),
+        ...(entry.runId !== undefined ? { runId: entry.runId } : {}),
+      });
+    }
+    return found;
+  }
+
   it("accepts a success whose criteria still match what was approved", async () => {
     const requirement = sealedRequirement();
     const outcome = await dispatchAttempt({
@@ -580,6 +616,8 @@ describe("dispatchAttempt — acceptance-criteria seal enforcement", () => {
 
     expect(outcome.kind).toBe("succeeded");
     expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe("succeeded");
+    // A clean pass journals no refusal — the entry exists only when the bar was broken.
+    expect(await sealRefusals()).toHaveLength(0);
   });
 
   it("REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded", async () => {
@@ -610,6 +648,21 @@ describe("dispatchAttempt — acceptance-criteria seal enforcement", () => {
     // The journal must not carry a `succeeded` for a unit that rewrote its bar.
     const latest = await getLatestAttempt(store, WORK_UNIT_ID);
     expect(latest?.status).toBe("failed");
+
+    // roadmap/24 exit criterion: the TYPED REASON is journaled, not merely
+    // returned. A `failed` with no recorded reason is indistinguishable from
+    // an ordinary flaky worker, which is exactly what the tamper fixture is
+    // supposed to make impossible to confuse.
+    const refusals = await sealRefusals();
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]!.rationale).toContain("approval_seal_mismatch");
+    expect(refusals[0]!.rationale).toContain(REQ_ID);
+    expect(refusals[0]!.subjectId).toBe(WORK_UNIT_ID);
+    expect(refusals[0]!.workUnitId).toBe(WORK_UNIT_ID);
+    // Security bullet: ids and hashes only. The criteria TEXT — the very
+    // thing the tamperer wrote — never enters the journal.
+    expect(refusals[0]!.rationale).not.toContain("Anything at all is acceptable");
+    expect(refusals[0]!.rationale).not.toContain("The login form submits");
   });
 
   it("REFUSES a success when the change set was never sealed — fail-closed, not fail-open", async () => {
@@ -627,6 +680,50 @@ describe("dispatchAttempt — acceptance-criteria seal enforcement", () => {
     if (outcome.kind !== "failed") throw new Error("unreachable");
     expect(outcome.diagnostics.join(" ")).toContain("no_approval_seal");
     expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe("failed");
+
+    // Same clause, the fail-closed half: "never approved" is journaled with
+    // its own typed reason, distinguishable from "approved and then edited".
+    const refusals = await sealRefusals();
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]!.rationale).toContain("no_approval_seal");
+    expect(refusals[0]!.rationale).toContain(REQ_ID);
+    expect(refusals[0]!.subjectId).toBe(WORK_UNIT_ID);
+  });
+
+  /**
+   * The refusal entry carries `runId` for exactly the reason `recordAttempt`
+   * was fixed to: `@crabgic/journal`'s `recover(runId)` replays only entries
+   * matching an EXACT `runId` filter, so an entry written without one is
+   * invisible to the run that produced it. A tamper refusal nobody can find
+   * when reconstructing the run is not much better than one never written.
+   */
+  it("scopes the journaled refusal to the run, so a runId-filtered replay can still find it", async () => {
+    const runId = "88888888-8888-4888-8888-888888888888";
+    const approved = sealedRequirement(["The login form submits"]);
+    const widened = sealedRequirement(["Anything at all is acceptable"]);
+
+    const outcome = await dispatchAttempt({
+      adapter: succeedingAdapter(),
+      journal: store,
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+      runId,
+      criteriaSeal: {
+        requirements: [widened],
+        approvalSeal: {
+          changeSetId: "22222222-2222-4222-8222-222222222222",
+          criteriaHashes: { [REQ_ID]: approved.criteriaHash },
+        },
+      },
+    });
+
+    expect(outcome.kind).toBe("failed");
+    const scoped = await sealRefusals({ runId });
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0]!.runId).toBe(runId);
+    expect(scoped[0]!.rationale).toContain("approval_seal_mismatch");
   });
 
   it("a unit with no requirements of its own is accepted — the seal constrains, it does not invent work", async () => {
