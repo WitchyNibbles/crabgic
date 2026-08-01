@@ -394,6 +394,20 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   currently fire. They are deliberately NOT removed: an engine version that honors them is
   strictly better, and the sandbox's own `denyRead`/`denyWrite` lists are a separate
   mechanism that does bind for shell-issued writes. Write tool only, one engine version.
+
+  **Version-attribution correction, 2026-08-01.** The recorded determination says the
+  measurement was taken at the tested engine version; strictly, that was _asserted rather
+  than verified_ at the time. This probe — and the two other load-bearing permission probes,
+  `builtin-allow-rule-shadowing.live.test.ts` (§4.7/§4.8) and
+  `mcp-adjudication-shadowing.live.test.ts` — called `assertLiveEnabled()` but not
+  `ensureCanary()`, while the suite finalizer stamps the run record with
+  `engineVersion: TESTED_ENGINE_VERSION` unconditionally. Nothing compared the engine that
+  actually answered against that pin. All three now call `ensureCanary()` in `beforeAll`, so
+  a future re-run fails closed on drift instead of mislabelling it; the canary is memoized
+  per suite run, so this costs no extra engine invocations. The already-recorded verdicts are
+  not restated as verified-at-version by this change — re-running them under the canary is
+  what would do that, and it has not been done.
+
 - **Bash compound-command splitting is quote-unaware (§2, worker runtime).** An allowed
   command whose quoted argument contains an operator character can be over-split and
   false-denied. Confirmed by trace to fail only in the safe direction (over-denial, never a
@@ -404,10 +418,25 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   to a minimal read-only profile with a hardcoded 20-turn cap
   (`packages/engine-claude/src/adapter.ts`) — since the turn budget became an authority
   dimension (2026-07-30), this is the sole turn constant outside the containment gate.
-  Latent today: `resumeAttempt` has no production caller and the daemon's `resume` rebuilds
-  packets from the envelope; the fallback profile is read-only, so exposure is bounded.
-  Noted so the cross-process durable-cache reconciliation (phase 06's carry-forward) closes
-  it rather than rediscovers it.
+  **Corrected 2026-08-01 — the previous wording here ("`resumeAttempt` has no production
+  caller") was false.** It has one: `resumeParkedUnit` in
+  `packages/cli/src/daemon/run-dispatcher.ts` calls it on every park-resume. Exposure is
+  bounded for a different and better reason — a **decline guard at that caller**. The
+  fallback context is reached only when the adapter has no retained `SpawnContext` for the
+  session id, and `resumeParkedUnit` refuses to call `resumeAttempt` at all in exactly that
+  case: it looks the session up in the daemon's per-run retained-adapter map first and
+  returns `undefined` when there is no entry ("Decline rather than resume into a read-only
+  fallback session"), leaving the unit parked. Every call that does reach `resumeAttempt`
+  therefore carries a session this same adapter instance spawned, whose real spawn context
+  is still in `spawnContexts` — so `FALLBACK_SPAWN_CONTEXT`, and with it
+  `FALLBACK_MAX_TURNS`, is unreachable in production **by guard, not by caller absence**.
+  The guard is pinned by `packages/scheduler/src/run-driver.test.ts`, "leaves a parked-ready
+  unit parked when the seam declines (undefined) — the daemon-restart case". The residual is
+  that the invariant rests on a caller-side check rather than on the containment gate;
+  governing the constant today would govern a path nothing can reach, so this stays open for
+  the cross-process durable-cache reconciliation (phase 06's carry-forward) to close
+  structurally — persisting spawn context makes the fallback unnecessary rather than merely
+  unreachable — rather than be rediscovered there.
 - **Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member (§7).**
   Only the subsequent approval-token mint is centrally journaled; the audit pass/fail verdict
   itself lives only in the capability store's own artifact. `JournalEntryType` is deliberately
@@ -417,10 +446,23 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
 - **Stage-5 sandboxed-test harness invocation API is an unverified build-time spike (§7).**
   12's own risk text names this directly; not yet closed by an `engine-baseline.md`-style
   probe.
-- **Optional upstream-MCP-client wrap's quarantine status is unresolved (§5/§6).** 16's own
-  text states this is "addressed by neither file" between 16 and 12; this flag is modeled but
-  disabled by default and not exercised against a real upstream server by any phase's exit
-  criteria.
+- **Optional upstream-MCP-client wrap's quarantine status is unresolved (§5/§6) — but the
+  wrap is structurally unenableable, not merely disabled by default (sharpened 2026-08-01).**
+  16's own text states the quarantine question is "addressed by neither file" between 16 and 12. The previous wording here said the flag is "disabled by default," which understates the
+  containment: a default is one edit away from changing, and this is not what bounds the
+  risk. What bounds it is that there is no way to turn the wrap on. The feature is 35 lines
+  of policy bookkeeping (`packages/gateway/src/mcp/upstream-mcp-client-policy.ts`) with (1)
+  no production caller of `setEnabled` and no production construction of the store, (2) **no
+  MCP client anywhere in shipped source** — the gateway imports the SDK's server surface
+  only, (3) no field for the flag on `ExternalConnectionSchema`, which is `.strict()`, so a
+  config file declaring one is _rejected_ rather than ignored, (4) no environment variable,
+  and (5) a `buildSimulatedWorkerMcpServers()` that takes no policy argument, so no second
+  server can ever become worker-visible. Enabling it therefore requires new code **plus** a
+  coordinated phase-02 schema change. All five facts are pinned by
+  `packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts`, which fails CI the
+  moment any of them stops holding — so enablement cannot land without first settling the
+  16/12 quarantine ruling, which `roadmap/16-gateway-core.md` §Risks now records as an
+  explicit precondition on that work.
 - **Renderer (17) and quality/security gates (14) maintain independent secret-pattern sets**
   with no shared dependency edge — both phases state this as a deliberate scope boundary.
 - **Performance-budget tamper-evidence is journal-anchored, not signature-bound (15).** The

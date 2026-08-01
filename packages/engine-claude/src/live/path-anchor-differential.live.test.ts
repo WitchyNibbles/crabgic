@@ -55,6 +55,7 @@ import {
   assertLiveEnabled,
   assertSanitized,
   createLiveScratch,
+  ensureCanary,
   resolveWorkerAuthMaterial,
   runDirectQuery,
   transcriptText,
@@ -250,8 +251,16 @@ async function runArm(params: {
   }
 }
 
-beforeAll(() => {
+// `ensureCanary()` added 2026-08-01. Without it this file measured its five
+// arms and the suite finalizer then stamped the run record with
+// `engineVersion: TESTED_ENGINE_VERSION` regardless of what actually answered —
+// so §14.4's determination, one of the three most load-bearing permission facts
+// in `docs/engine-baseline.md`, carried an ASSERTED rather than a verified
+// version pin. The canary is memoized per suite run, so this costs zero extra
+// engine invocations when the rest of the live suite runs alongside it.
+beforeAll(async () => {
   assertLiveEnabled();
+  await ensureCanary();
 });
 
 describe("path-anchor differential — which setup difference is causal", () => {
