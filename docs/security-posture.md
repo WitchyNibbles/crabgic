@@ -381,12 +381,19 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   Pre→Post `tool_input` stability is measured for `Bash` and `Write` by
   `adjudication-bridge.live.test.ts`, not for `Edit`.
 
-- **Worktree-anchor (`//<worktree>/…/**`) matching semantics are unprobed on the live engine
-  (§3).** `docs/engine-baseline.md` has no path-anchor probe covering this exact substituted
-  form; 03's own compiler commits to it as its confinement mechanism, but its real-engine
-  matching behavior is owed to phase 06's `@live` suite, per the same pattern
-  `docs/engine-baseline.md` §3's Bash colon-spacing probe already resolved for a different
-  fact (`docs/evidence/phase-03/README.md`, "Engine-fact-drift gap recorded by this round").
+- **Worktree-anchor (`//<worktree>/…/**`) matching semantics — MEASURED 2026-08-01, and the
+  answer splits by channel (§3).** The differential probe
+  (`packages/engine-claude/src/live/path-anchor-differential.live.test.ts`, artifact
+  `docs/evidence/phase-06/path-anchor-differential-determination.json`, recorded as
+  `docs/engine-baseline.md` §14.4) ruled out path depth, rule count and permission-object
+  scaffolding, and localized the earlier disagreement to the channel: **a path-scoped rule is
+  honored as an ALLOW rule and is NOT honored as a DENY rule.** Owned-path confinement
+  therefore works — allow-scoping plus `dontAsk` auto-deny, both measured — while the
+  compiler's sensitive-root DENY triplets (journal/control state, cache, `~/.ssh`, `~/.aws`)
+  are inert on the permission layer and must be read as defense-in-depth that does not
+  currently fire. They are deliberately NOT removed: an engine version that honors them is
+  strictly better, and the sandbox's own `denyRead`/`denyWrite` lists are a separate
+  mechanism that does bind for shell-issued writes. Write tool only, one engine version.
 - **Bash compound-command splitting is quote-unaware (§2, worker runtime).** An allowed
   command whose quoted argument contains an operator character can be over-split and
   false-denied. Confirmed by trace to fail only in the safe direction (over-denial, never a

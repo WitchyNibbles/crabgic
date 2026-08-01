@@ -495,7 +495,7 @@ All fixtures pass the sanitization scan (`sk-ant-*` token shapes, OAuth `accessT
 
 ---
 
-## 14. Path-scoped permission rules — an ISOLATED rule did not match; the compiler's OWN full permission object DOES scope. Setup-dependent; the causal difference is UNDETERMINED (2026-07-25)
+## 14. Path-scoped permission rules — honored as ALLOW, NOT honored as DENY. The channel is the causal variable (differential, 2026-08-01; §14.4 supersedes §14.3's "undetermined")
 
 **Added 2026-07-25 (narrow re-baseline). CORRECTED the same day, before any downstream phase consumed it.** This section as first published (commit `30881aa`) drew a single, over-broad conclusion from the first of the two probes below — "the engine honors NO path-anchored form of a `Write(...)` rule, in either channel; the compiler's `//<worktree>/…/**` anchoring is INERT at runtime". A second, independently-built probe run the same day falsifies the generalization: under the compiler's own full permission object the triple-slash owned-path rule demonstrably SCOPES. **Both probes' data stand — neither is retracted; the generalization drawn from the first one is what was wrong.** The two were measured under different setups, and which difference is causal has NOT been established (§14.3).
 
@@ -505,6 +505,27 @@ All fixtures pass the sanitization scan (`sk-ant-*` token shapes, OAuth `accessT
 
 - `docs/evidence/phase-06/path-anchor-determination.json` — observation A (§14.1), probe `packages/engine-claude/src/live/path-anchor.live.test.ts`.
 - `docs/evidence/phase-06/sandbox-containment-determination.json` — observation B (§14.2), probe `packages/engine-claude/src/live/sandbox-containment.live.test.ts`.
+
+### 14.4 Observation C — the DIFFERENTIAL: the causal variable is the CHANNEL (allow vs deny), measured 2026-08-01
+
+**Probe:** `packages/engine-claude/src/live/path-anchor-differential.live.test.ts`. **Artifact:** `docs/evidence/phase-06/path-anchor-differential-determination.json`. Every arm starts from §14.2's own no-sandbox configuration — the one known to scope — and changes exactly ONE thing toward §14.1's setup, so a lost verdict names its own cause. All arms are executed-call-guarded (`insideAttempted` and `oneUpAttempted` both true), and every arm carries a same-run control.
+
+**Ruled OUT as the cause of §14.1's non-match — each still scopes on the allow side:**
+
+- **Path depth.** `single-segment-owned-path`: the owned path reduced to one segment (§14.1's shape). Note this also reproduces §14.1's target geometry — with a single-segment owned path, "one directory up" IS the worktree root. Still scopes.
+- **Rule count.** `lone-rule-full-shape`: `permissions.allow` carrying ONLY the owned-path `Write` rule, with tool enablement supplied separately through `allowedTools` so it cannot fail for §14.1's documented tool-disabled reason. Still scopes.
+- **Permission-object scaffolding.** `minimal-permission-object`: `permissions` reduced to `{allow:[rule]}` — no `defaultMode`, no `disableBypassPermissionsMode`, no populated `deny`. Still scopes.
+
+**What DID reproduce the non-match — the channel.** `path-scoped-deny`: the compiler's own full permission object plus an explicit path-scoped `Write(///abs/…/inside.txt)` DENY naming a target the allow rule permits. Deny-wins, so an honored deny must refuse it. It recorded `insideDenied: false` — **the deny rule did nothing**, in the same object and the same run where the allow-side control scoped correctly.
+
+**Therefore:** §14.1 and §14.2 do not conflict about anchor FORM at all. A path-scoped rule is honored as an **allow** rule and was not honored as a **deny** rule. That is one finding, consistent with both prior observations, and it localizes the variable §14.3 left undetermined.
+
+**Consequence, and it is a production one.** The compiler emits path-scoped DENY triplets over the sensitive roots — journal/control state, cache, `~/.ssh`, `~/.aws` (`permission-profile.ts`'s `mandatoryPathDeny`). On this engine version those entries appear **inert on the permission layer**. What actually keeps a worker out of those paths is the OTHER half of the profile: writes are allow-scoped to the owned path, and under `dontAsk` a tool call matching no allow rule is auto-denied (§3) — which every arm above measured working. Two things follow:
+
+1. The sensitive-root denies are defense-in-depth that currently does not fire. They must NOT be deleted on the strength of this — an engine version that starts honoring them is strictly better, and the sandbox's own `denyRead`/`denyWrite` lists are a **different** mechanism that does bind for shell-issued writes (§14.2's `sandbox-bash` arm).
+2. Any claim that the journal is protected _by a deny rule_ is wrong. It is protected by allow-scoping plus auto-deny.
+
+**Limits.** Write tool only; one engine version; these shapes; the deny arm is a single sample corroborating §14.1's 20. It does not measure `Read`, `Edit`, `Bash`, or the `disallowedTools` channel.
 
 ### 14.1 Observation A — a LONE, hand-written path-scoped rule did not match (20 recorded results)
 
