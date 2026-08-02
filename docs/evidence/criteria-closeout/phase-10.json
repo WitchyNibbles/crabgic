@@ -5,7 +5,7 @@
   "pass": {
     "date": "2026-08-02",
     "agent": "criteria-closeout pass, batch 3 (phase 10)",
-    "headSha": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625"
+    "headSha": "bdb8f4780a0e19bc7684103aa98b77ad27ab921f"
   },
   "criteria": [
     {
@@ -292,8 +292,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/doctor/run-doctor.ts:113",
-          "quotedAssertion": "packages/cli/src/doctor/run-doctor.ts:113-115 — 'createChecksumDriftCheck({ targetDir: options.installer.targetDir }),' / 'createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),' / 'createCapabilityManifestFreshnessCheck({' — the three checks are registered into `buildDefaultDoctorChecks`, so the criterion's \"Doctor reports\" is the shipped doctor and not a test-only assembly"
+          "ref": "packages/cli/src/doctor/run-doctor.ts:121-123",
+          "quotedAssertion": "packages/cli/src/doctor/run-doctor.ts:121-123 — 'createChecksumDriftCheck({ targetDir: options.installer.targetDir }),' / 'createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),' / 'createCapabilityManifestFreshnessCheck({' — the three checks are registered into `buildDefaultDoctorChecks`, so the criterion's \"Doctor reports\" is the shipped doctor and not a test-only assembly"
         },
         {
           "kind": "artifact",
@@ -301,7 +301,7 @@
           "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  3 passed (3)' — scoped local re-run at the closeout commit"
         }
       ],
-      "notes": "The phase's fourth doctor contribution — the standing-`EnvelopePolicy` check added by the 2026-07-28 Gap 18 scope amendment — lives in `packages/cli/src/doctor/checks/standing-policy.ts` with its own suite. It is deliberately not cited here: this criterion enumerates three faults and predates that amendment, so widening the box to four would be reading it as more than it says."
+      "notes": "The phase's fourth doctor contribution — the standing-`EnvelopePolicy` check added by the 2026-07-28 Gap 18 scope amendment — lives in `packages/cli/src/doctor/checks/standing-policy.ts` with its own suite. It is deliberately not cited here: this criterion enumerates three faults and predates that amendment, so widening the box to four would be reading it as more than it says. Re-resolved 2026-08-02 after merging `origin/main`: `2ea3689` (PR #66) rewrote a doc comment higher up in `run-doctor.ts`, sliding this criterion's registration citation from `:113-115` to `:121-123` with the three lines byte-unchanged. Caught by this pass's citation resolver, not by the validator, which cannot see a ref that slid but still resolves. The `closeout-c5-*` transcript was re-captured at the merge commit rather than left at the branch point."
     },
     {
       "index": 6,
