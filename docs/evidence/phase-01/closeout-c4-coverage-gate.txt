@@ -1,0 +1,70 @@
+Closeout supplementary — phase 01 exit criterion 4 (the 80% line+branch coverage gate
+FAILS below threshold, and passes once corrected).
+
+Captured 2026-08-01 by the criteria-closeout pass. Verbatim output; the only edit is the
+marked elision of the ~380-line per-file coverage table between the report header and
+the summary, and that elision is marked in place.
+
+THE CRITERION'S OWN CHANNEL IS A REAL CI RUN AND BOTH HALVES NOW EXIST.
+  * FAILING: `CI` run 30720815771, job `unit-test+coverage (ubuntu-latest)` 91424161915,
+    step "test with 80% line+branch coverage gate", **failed** on scratch PR #59 at
+    commit `a4f88bd`.
+  * PASSING: `CI` run 30718972881, job `unit-test+coverage (ubuntu-latest)` 91419417946,
+    green at 65ff0da — `All files | 94.54 | 87.38 | 96.05 | 95.48`.
+
+The run below is the same seeded tree executed locally, and it is recorded because it
+shows the whole suite PASSING (623 files / 6061 tests) while the run still exits 1: the
+gate, and only the gate, is what failed. The seed is
+`packages/testkit/src/_fixture-coverage-temp.ts` — 1200 untested `if`/`else` functions
+that nothing imports, so `coverage.include`'s `packages/*/src/**/*.ts` puts them in the
+denominator at 0% covered. `vitest.config.ts` is untouched; the thresholds it declares
+are reproduced at the bottom.
+
+Why the seed is not phase 01's original fixture: `packages/_fixture-coverage-temp` was
+deleted at phase 01 once its transcript was captured, and it was the WHOLE denominator
+in a then-empty workspace. Today the workspace measures ~95% lines / ~87% branches over
+~12.6k lines, so the same demonstration needs enough uncovered surface to move the
+global figure.
+
+$ cd <scratch worktree at a4f88bd, scratch PR #59> && npm test
+
+> crabgic-monorepo@0.0.0 test
+> vitest run --coverage
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-red
+      Coverage enabled with v8
+
+(node:35473) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:41275) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  623 passed (623)
+      Tests  6061 passed (6061)
+   Start at  00:14:01
+   Duration  136.10s (transform 439.86s, setup 0ms, import 945.29s, tests 407.74s, environment 120ms)
+
+ % Coverage report from v8
+
+   [ ~380 lines of the per-file coverage table elided — the summary below is what the gate acts on ]
+
+=============================== Coverage summary ===============================
+Statements   : 74.78% ( 12901/17250 )
+Branches     : 66.1% ( 6531/9880 )
+Functions    : 69.49% ( 3018/4343 )
+Lines        : 74.29% ( 12064/16237 )
+================================================================================
+ERROR: Coverage for lines (74.29%) does not meet global threshold (80%)
+ERROR: Coverage for functions (69.49%) does not meet global threshold (80%)
+ERROR: Coverage for statements (74.78%) does not meet global threshold (80%)
+ERROR: Coverage for branches (66.1%) does not meet global threshold (80%)
+exit=1
+
+$ sed -n "138,143p" vitest.config.ts   # the thresholds the ERROR lines above were checked against; unchanged by the seed
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },

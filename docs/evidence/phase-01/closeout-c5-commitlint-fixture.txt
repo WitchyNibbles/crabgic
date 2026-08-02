@@ -1,0 +1,37 @@
+Closeout supplementary — phase 01 exit criterion 5 (commitlint rejects the work-item-4
+malformed-message fixture in CI).
+
+Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Every `$ ` line below is the exact command
+that produced the output beneath it, and the output is unedited.
+
+THE CRITERION'S OWN CHANNEL IS A REAL CI RUN AND IT NOW EXISTS. `CI` run 30720815771,
+job `commitlint` 91424161887, step "lint PR commits", **failed** on scratch PR #59 at
+commit `a4f88bd`, whose message is verbatim this fixture. That run is the primary
+evidence; this file is supplementary and shows the same config rejecting the same
+fixture locally, plus the two cases CI's single commit could not cover — the
+out-of-enum `build:` type, and the well-formed control that must be ACCEPTED.
+
+$ echo "this is a malformed commit message with no type prefix" | npx commitlint
+⧗   --- input ---
+this is a malformed commit message with no type prefix
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+
+✖   found 2 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "build: bump deps" | npx commitlint   # a conventional-commit default type OUTSIDE the narrowed feat|fix|refactor|docs|test|chore|perf|ci set
+⧗   --- input ---
+build: bump deps
+✖   type must be one of [feat, fix, refactor, docs, test, chore, perf, ci] [type-enum]
+
+✖   found 1 problems, 0 warnings
+ⓘ   Get help: https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+
+exit=1
+
+$ echo "feat: add commitlint config" | npx commitlint   # control case: a well-formed message must be ACCEPTED
+exit=0

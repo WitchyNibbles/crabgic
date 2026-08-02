@@ -1,0 +1,402 @@
+{
+  "schemaVersion": 1,
+  "phase": "01",
+  "roadmapFile": "roadmap/01-repo-bootstrap.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 1 (foundations) — phase 01",
+    "headSha": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`npm ci && npm run build && npm test` exits 0 on a clean checkout, and the CI `lint` and `typecheck` jobs are separately green — evidenced by a passing required CI run, on Linux x86-64.",
+      "textSha256": "b7b450198bbe3fb8261bf884c585b38048cb1837117c620262478448692dfb20",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, steps \"Run npm ci\" -> \"Run npm run build\" -> \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417946 log line 1035 — ' Test Files  623 passed (623)'; line 1044 — 'All files          |   94.54 |    87.38 |   96.05 |   95.48 |'. The three steps are the criterion's three commands, in order, against a fresh `actions/checkout@v4` — i.e. literally a clean checkout, not a warm working tree."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / lint (ubuntu-latest), job 91419417929, steps \"Run npm run lint\" + \"Run npm run format\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417929",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job conclusion 'success'; step list 'Run npm ci [success] / Run npm run lint [success] / Run npm run format [success]' — a SEPARATE job from `test`, which is what the criterion's word \"separately\" requires."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91419417975, steps \"tsc -b (cold)\" + \"tsc -b (incremental, no-op expected)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417975",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417975 log line 156 '##[group]Run npm run typecheck' / line 162 '> tsc -b', then line 164 '##[group]Run npm run typecheck' / line 170 '> tsc -b' — both green."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/exit-criteria-clean-state-full-gate.txt",
+          "quotedAssertion": "the phase's own 2026-07-15 clean-room transcript: 'rm -rf node_modules packages/*/dist coverage' then '$ npm ci … exit=0', '$ npm run build … exit=0', '$ npm test … exit=0', '$ npm run lint … exit=0'. Supplementary — the CI run above is the criterion's named channel."
+        }
+      ],
+      "notes": "Scope disclosure that the tick should not be read past. `main` carries NO GitHub branch-protection rule — `gh api repos/WitchyNibbles/crabgic/branches/main/protection` returns 404 'Branch not protected' — so the word \"required\" is not enforced as a merge gate today. What is true is that `CI` triggers automatically on every push to `main` and every pull request (`.github/workflows/ci.yml` `on: push: branches: [main]` / `pull_request:`), and the cited run is the automatic push-triggered one at head. Recorded here rather than corrected in the wording, because the criterion's substantive claim — the three commands exit 0 on a clean checkout and lint/typecheck are separately green — is fully and literally evidenced; the missing branch protection is a repository-configuration gap, not a phase-01 exit-criterion gap, and is flagged to the closeout integrator instead."
+    },
+    {
+      "index": 2,
+      "text": "The same (build/test/lint/typecheck) is green on ARM64, or an explicit deferral is recorded in this file's Risks section and closed by phase 23's real-hardware (or documented-substitute) verification.",
+      "textSha256": "c9c4e0607f21c73eb313b3048e542c812335c64b8861d3b448198a782ded1e01",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91419417937, steps \"Run npm ci\" -> \"Run npm run build\" -> \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417937 log line 1016 — ' Test Files  623 passed (623)'; line 1017 — '      Tests  6060 passed | 1 skipped (6061)'; lines 1912-1919 — the job's own emitted record: '\"jobName\": \"unit-test+coverage (ubuntu-24.04-arm)\"', '\"commitSha\": \"65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e\"', '\"arch\": \"aarch64\"', '\"kernel\": \"Linux 6.17.0-1020-azure\"', '\"conclusion\": \"success\"'. The arch is OBSERVED (`$(uname -m)` expanded at runtime, line 1900 shows the unexpanded heredoc), so the record proves aarch64 hardware rather than a job merely named \"arm\"."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-24.04-arm), job 91419417938",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417938",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "step list 'tsc -b (cold) [success] / tsc -b (incremental, no-op expected) [success]', job conclusion 'success'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / lint (ubuntu-24.04-arm), job 91419417951",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417951",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "step list 'Run npm run lint [success] / Run npm run format [success]', job conclusion 'success'."
+        },
+        {
+          "kind": "discharge",
+          "ref": "phase 23 exit criterion \"ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate\" (roadmap/23-release-hardening.md:155, ticked), `release-e2e` run 30250453824 at RC 2435cb955809a5420f396043e5bc7003282491fa",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824",
+          "quotedAssertion": "roadmap/23-release-hardening.md §Exit criteria header — 'scored the archived `e2e/release-gate-report.json` at release candidate `2435cb955809a5420f396043e5bc7003282491fa` in **`final`** mode … and returned **15 PASS / 0 FAIL, `overallVerdict: PASS`**'. This discharges the criterion's SECOND disjunct (the deferral clause, \"closed by phase 23's real-hardware (or documented-substitute) verification\")."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/README.md",
+          "quotedAssertion": "§Deviations — 'ARM64 is untested on real hardware. This development environment is `x86_64`/`linux` … the `ubuntu-24.04-arm` leg has never actually executed — there is no ARM64 host available here to run it on.' This is where the phase's deferral was actually recorded; it is cited so the record shows what the second disjunct rested on at the time."
+        }
+      ],
+      "notes": "Classified EVIDENCE-EXISTS rather than SUPERSEDED-DISCHARGED, deliberately, and the reasoning is recorded because the difference matters. The criterion is a disjunction. Its FIRST disjunct — build/test/lint/typecheck green on ARM64 — is now satisfied outright and directly: `ci.yml` declares a `[ubuntu-latest, ubuntu-24.04-arm]` matrix on all three jobs and every ARM64 leg is green at head on observed aarch64 hardware. That is stronger evidence than a discharge, so it is the primary citation. The SECOND disjunct is imperfectly satisfied on its own terms and would not have carried the box alone: it requires \"an explicit deferral … recorded in this file's Risks section\", and roadmap/01's Risks section contains only a conditional mitigation plan (\"if unavailable/flaky here, record the gap explicitly (this file's Exit criteria) rather than block\") — the actual deferral statement lives in docs/evidence/phase-01/README.md, not in the Risks section. Phase 23's ticked box does discharge the deferral's closing half, and is cited above for completeness."
+    },
+    {
+      "index": 3,
+      "text": "All 18 packages (Gap 3) — the 17 originally enumerated plus `packages/engine-core` — compile empty via `tsc -b`, cold and incremental, zero circular project references — evidenced by the CI typecheck job log.",
+      "textSha256": "488f1d0fa2c40412526a77faaa8779f0320cc11d2743086bb69c9aceffeeb5a3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91419417975, steps \"tsc -b (cold)\" + \"tsc -b (incremental, no-op expected)\" — the criterion's named channel",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417975 log lines 156-170 — '##[group]Run npm run typecheck' / '> tsc -b' twice, both green; `.github/workflows/ci.yml` names the two steps 'tsc -b (cold)' and 'tsc -b (incremental, no-op expected)'. `tsc -b` IS the circular-project-reference detector: a cycle is error TS6202 and aborts the build, so a green `tsc -b` over the solution file is the zero-cycles assertion."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / meta-checks, job 91419417950, step \"workspace enumeration returns exactly 18\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417950",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417950 log line 185 — 'check-workspace-count: PASS — exactly 18 workspaces declared.' This is the \"all 18 packages\" clause: `scripts/check-workspace-count.mjs` fails on 17 or 19 (`EXPECTED = 18`), so the count is asserted, not counted by eye."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi2-tsc-cold-build-passing.txt",
+          "quotedAssertion": "'$ tsc -b --clean && tsc -b --verbose   # cold build, from clean state, all 18 packages + root solution' followed by the verbatim 'Projects in this build:' list naming all 18 `packages/*/tsconfig.json` including `packages/engine-core/tsconfig.json`, ending 'exit=0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi2-tsc-incremental-build-passing.txt",
+          "quotedAssertion": "'$ tsc -b --verbose   # re-run immediately after, no source changes -> incremental no-op' … 'Project ... is up to date because newest input ... is older than output ...' for every package, 'exit=0' — the \"incremental\" half."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi2-tsc-cycle-failing.txt",
+          "quotedAssertion": "'error TS6202: Project references may not form a circular graph. Cycle detected: … pkg-a/tsconfig.json … pkg-b/tsconfig.json' / 'exit=4'. The negative control: without it, a green `tsc -b` would not show that cycles are actually detectable rather than tolerated."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c3-tsc-18-packages.txt",
+          "quotedAssertion": "captured at this commit: 'check-workspace-count: PASS — exactly 18 workspaces declared.'; 'check-package-graph-acyclic: PASS — 18 workspace packages, dependency graph is a DAG.'; and the git-history check for the one clause CI cannot re-evidence — all 18 `git show e6aa458:packages/*/src/index.ts` are the single line 'export {};'."
+        }
+      ],
+      "notes": "The word \"empty\" is the only clause the named CI channel cannot re-evidence, and that is stated rather than glossed: the 18 stubs stopped being empty in phase 02, so no CI log at head can show them compiling empty and none ever will. It is a statement about the bootstrap state, and it is checked against git instead — every `packages/*/src/index.ts` at e6aa458 ('feat: bootstrap 18-package strict-TS monorepo, toolchain, and CI skeleton (phase 01)') is 11 bytes, `export {};`. Everything else in the criterion — 18 packages, `tsc -b`, cold, incremental, zero circular references — is evidenced by the named CI job at head plus the phase's own transcripts. Ledger check: Gap 3 pins the roster at 18 with `packages/engine-core` counted and `renderer-core` explicitly NOT a 19th package; the count check and the transcripts agree with it."
+    },
+    {
+      "index": 4,
+      "text": "Coverage gate fails CI against the work-item-3 fixture below 80% line+branch, and passes once corrected — evidenced by the recorded before/after CI run.",
+      "textSha256": "65040819af685bc15455e73133806e8091af5913a027ff0ed3f5fa9258d0dedf",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91424161927, step \"test with 80% line+branch coverage gate\" — the BEFORE half: FAILED, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161927 log line 1024 — ' Test Files  623 passed (623)'; line 1025 — '      Tests  6060 passed | 1 skipped (6061)'; then lines 1900-1904 — 'ERROR: Coverage for lines (74.31%) does not meet global threshold (80%)' / 'ERROR: Coverage for functions (69.51%) …' / 'ERROR: Coverage for statements (74.81%) …' / 'ERROR: Coverage for branches (66.16%) …' / '##[error]Process completed with exit code 1.' EVERY TEST PASSED and the job still failed — the failure is attributable to the coverage gate and to nothing else. In the same run `lint`, `typecheck` and `meta-checks` were all green (only `commitlint` and `engine-pin-lint`, this PR's other two deliberate seeds, joined it in red)."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91424161915, step \"test with 80% line+branch coverage gate\" — the BEFORE half on the x86-64 leg of the same red run",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161915 log line 1043 — ' Test Files  623 passed (623)'; lines 1919-1923 — 'ERROR: Coverage for lines (74.31%) does not meet global threshold (80%)' / '… functions (69.51%) …' / '… statements (74.8%) …' / '… branches (66.12%) …' / '##[error]Process completed with exit code 1.' Both architectures reject it, so the gate is not an artefact of one runner."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91419417946, step \"test with 80% line+branch coverage gate\" — the AFTER half, in CI",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417946 log line 1044 — 'All files          |   94.54 |    87.38 |   96.05 |   95.48 |' (stmts/branch/funcs/lines) over line 1035 ' Test Files  623 passed (623)'. `npm test` is `vitest run --coverage`, and `vitest.config.ts:138-143` sets lines/branches/functions/statements = 80, so a green step means the gate was evaluated and satisfied."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi3-coverage-gate-failing.txt",
+          "quotedAssertion": "the original work-item-3 fixture: 'Statements   : 53.33% ( 8/15 ) / Branches     : 50% ( 5/10 )' then 'ERROR: Coverage for lines (53.33%) does not meet global threshold (80%)' … 'ERROR: Coverage for branches (50%) does not meet global threshold (80%)' / 'exit=1'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi3-coverage-gate-passing-restored.txt",
+          "quotedAssertion": "'$ vitest run --coverage   # after removing packages/_fixture-coverage-temp' … 'exit=0' — the phase's own before/after pair."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c4-coverage-gate.txt",
+          "quotedAssertion": "the same seeded tree run locally as a full `npm test`: ' Test Files  623 passed (623)' / '      Tests  6061 passed (6061)' and then 'Statements   : 74.78% ( 12901/17250 ) / Branches     : 66.1% ( 6531/9880 ) / Functions    : 69.49% ( 3018/4343 ) / Lines        : 74.29% ( 12064/16237 )' followed by the four 'ERROR: Coverage for … does not meet global threshold (80%)' lines and 'exit=1'. Supplementary to the CI run above; recorded because a locally GREEN suite exiting 1 isolates the gate as the cause even more plainly than the CI log does."
+        },
+        {
+          "kind": "artifact",
+          "ref": "vitest.config.ts:138-143",
+          "quotedAssertion": "vitest.config.ts:138-143 — 'thresholds: { lines: 80, branches: 80, functions: 80, statements: 80, },' — the configured gate both halves above were measured against."
+        }
+      ],
+      "notes": "The failing CI run was PRODUCED DELIBERATELY for this criterion, and the whole method is on the record so nobody mistakes it for an accident. This closeout originally ticked the box on local transcripts with a wording correction downgrading the channel; the phase-01 review rejected that — the named channel was not wrong, only unproduced and still producible — and ruled: produce it. Scratch PR #59 (`chore/redrun-phase-01-scratch`, base af46e00, head a4f88bd) seeds `packages/testkit/src/_fixture-coverage-temp.ts`, 1200 untested `if`/`else` functions that nothing imports, so `coverage.include`'s `packages/*/src/**/*.ts` puts ~4.8k uncovered lines and ~2.4k uncovered branches into the gate's denominator. `vitest.config.ts` was NOT touched: the unmodified thresholds are what rejected it. The seed lives inside an existing package rather than as a new `packages/*` directory precisely so `meta-checks`' workspace-count step would stay green and the red set would be exactly the three deliberate seeds. Scratch PR #59 is closed unmerged; the run and its job logs persist. Phase 01's ORIGINAL fixture (`packages/_fixture-coverage-temp`, ~53% covered) was deleted at phase 01 and was the whole denominator in a then-empty workspace, which is why the reproduction had to be scaled rather than restored — `wi3-coverage-gate-failing.txt` remains the record of the original."
+    },
+    {
+      "index": 5,
+      "text": "Commitlint rejects the work-item-4 malformed-message fixture in CI — evidenced by the recorded failing CI run.",
+      "textSha256": "e52901f72d4fc51d4b02f64970a08471c4483cae4015d8898864e029eaf33ee4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / commitlint, job 91424161887, step \"lint PR commits\" — FAILED; the recorded failing CI run this criterion names, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161887 log line 216 — 'Run npx commitlint --from af46e007c1363d4838d74e2eea0d531e4d6bb4f3 --to a4f88bdba67d3a64b1373915082176e45c4a748e --verbose'; line 220 '⧗   --- input ---'; line 221 — 'this is a malformed commit message with no type prefix' (the work-item-4 fixture, verbatim, as the commit's real message); lines 222-223 — '✖   subject may not be empty [subject-empty]' / '✖   type may not be empty [type-empty]'; line 225 '✖   found 2 problems, 0 warnings'; line 228 '##[error]Process completed with exit code 1.'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c5-commitlint-fixture.txt",
+          "quotedAssertion": "re-captured at this commit against today's `commitlint.config.js`: the malformed fixture yields '✖   subject may not be empty [subject-empty]' / '✖   type may not be empty [type-empty]' / 'exit=1'; 'build: bump deps' yields '✖   type must be one of [feat, fix, refactor, docs, test, chore, perf, ci] [type-enum]' / 'exit=1'; and the CONTROL 'feat: add commitlint config' yields 'exit=0' — without which a config that rejected everything would satisfy the criterion vacuously."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi4-commitlint-rejecting-passing.txt",
+          "quotedAssertion": "the phase's original 2026-07-15 capture of the same three cases, byte-identical in outcome — the fixture rejected on [subject-empty]+[type-empty], the out-of-enum `build:` type rejected on [type-enum], the well-formed control accepted."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi4-commitlint-noconfig-failing.txt",
+          "quotedAssertion": "'✖   Please add rules to your `commitlint.config.js`' / 'exit=9' with the config temporarily moved aside — the failing-test-first record showing the assertion could not be made meaningfully before the config landed."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / commitlint, job 91419417974, step \"lint pushed commit\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417974 log line 201 — 'Run npx commitlint --from 70d7da73214fe735448d5d97ac7d4b9eb24503d6 --to 65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e --verbose'; line 353 — '✔   found 0 problems, 0 warnings'. This is the CI job that enforces the same config on every push and pull request — the green direction only."
+        },
+        {
+          "kind": "artifact",
+          "ref": "commitlint.config.js:8",
+          "quotedAssertion": "commitlint.config.js:8 — '\"type-enum\": [2, \"always\", [\"feat\", \"fix\", \"refactor\", \"docs\", \"test\", \"chore\", \"perf\", \"ci\"]],' over 'extends: [\"@commitlint/config-conventional\"]'. This is the source of the [type-enum] rejection quoted above: stock config-conventional ACCEPTS `build:`, and the file's own comment says so — 'Notably excludes conventional-commit's own defaults `build` and `revert`'."
+        }
+      ],
+      "notes": "The failing CI run was PRODUCED DELIBERATELY for this criterion; scratch PR #59 exists only to carry a commit whose message IS the work-item-4 fixture, and it is closed unmerged. An earlier draft of this record ticked the box on local transcripts and justified it with the claim that a red commitlint run 'would mean a malformed commit had reached main'. THAT CLAIM WAS FALSE and is retracted here rather than quietly deleted: `.github/workflows/ci.yml`'s `commitlint` job has a `lint PR commits` step gated on `github.event_name == 'pull_request'` which lints the PR branch's own commit range, so a malformed commit on any PR branch produces the red run with `main` untouched — which is exactly what job 91424161887 is. An impossibility claim that does not survive reading the workflow it cites is the defect class this pass exists to eliminate. The local transcript is retained as supplementary because CI's single commit can only exercise one case, while the criterion's fixture family also needs the out-of-enum `build:` type and the well-formed control that must be ACCEPTED. `commitlint.config.js` was not modified on the scratch branch: the unmodified config is what rejected the message."
+    },
+    {
+      "index": 6,
+      "text": "`LICENSE` (Apache-2.0), `NOTICE`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and issue/PR templates exist at repo root, non-empty — evidenced by the work-item-5 repo-hygiene check passing in CI.",
+      "textSha256": "deabc017d01cda5d87b0ffb69c5d2cdf175353eee700d41b0295a8d264626ca6",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / meta-checks (workspace-count, repo-hygiene, release-notes, criteria-closeout), job 91419417950, step \"repo-hygiene (required top-level files present, non-empty)\" — the criterion's named channel",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417950 log lines 194-203 — 'check-repo-hygiene: OK — LICENSE (11357 bytes)', 'OK — NOTICE (767 bytes)', 'OK — SECURITY.md (2338 bytes)', 'OK — CONTRIBUTING.md (3424 bytes)', 'OK — CODE_OF_CONDUCT.md (2952 bytes)', 'OK — README.md (15636 bytes)', 'OK — .github/PULL_REQUEST_TEMPLATE.md (448 bytes)', 'OK — .github/ISSUE_TEMPLATE/bug_report.md (454 bytes)', 'OK — .github/ISSUE_TEMPLATE/feature_request.md (431 bytes)', 'check-repo-hygiene: PASS — all required top-level files exist and are non-empty.' Every file the criterion names appears with a nonzero byte count, so \"non-empty\" is measured rather than assumed."
+        },
+        {
+          "kind": "artifact",
+          "ref": "scripts/check-repo-hygiene.mjs:11-20",
+          "quotedAssertion": "scripts/check-repo-hygiene.mjs:11-20 — the REQUIRED_FILES roster, which contains exactly the files the criterion names plus README.md; :35-38 'if (!stat.isFile()) { … NOT A FILE … }' and :40-43 'if (stat.size === 0) { … EMPTY … }' are the two rejections that make the check more than an existence glob."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi5-repo-hygiene-failing.txt",
+          "quotedAssertion": "the negative control: 'check-repo-hygiene: MISSING — NOTICE' / 'MISSING — SECURITY.md' / 'MISSING — CONTRIBUTING.md' / 'MISSING — CODE_OF_CONDUCT.md' / 'check-repo-hygiene: FAIL — one or more required files missing/empty.' / 'exit=1'. Without it, the PASS above would not show the check can fail."
+        },
+        {
+          "kind": "artifact",
+          "ref": "LICENSE:1-3",
+          "quotedAssertion": "LICENSE:1-3 — '                                 Apache License' / '                           Version 2.0, January 2004' / '                        http://www.apache.org/licenses/'. Cited separately because the hygiene check asserts existence and non-emptiness only; the criterion's parenthetical \"(Apache-2.0)\" is evidenced by the file's own preamble, not by the check."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi5-repo-hygiene-passing.txt",
+          "quotedAssertion": "the phase's original 2026-07-15 passing capture of the same check."
+        }
+      ],
+      "notes": "One clause of this criterion is NOT covered by the check its own wording names: \"(Apache-2.0)\". `scripts/check-repo-hygiene.mjs` never inspects LICENSE's contents. That gap is closed by direct citation of the file's preamble rather than by widening the criterion or by claiming the check proves more than it does."
+    },
+    {
+      "index": 7,
+      "text": "Changesets skeleton produces a valid (if empty) `CHANGELOG.md` entry from a trial `changeset add` + `changeset version` dry run — evidenced by the committed dry-run output.",
+      "textSha256": "357af91774f5f1fcb943ad7b566df8496cd6312dab6a6f0b0c41612ce29c7499",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi5-changesets-trial.txt",
+          "quotedAssertion": "the criterion's named channel, verbatim: '$ changeset add --empty' -> '🦋  Empty Changeset added!'; '$ changeset status --verbose' -> 'info Packages to be bumped at patch / - @eo/contracts 0.0.1'; '$ changeset version' -> '🦋  All files have been updated'; then the generated file itself — '=== resulting packages/contracts/CHANGELOG.md ===' / '# @eo/contracts' / '## 0.0.1' / '### Patch Changes' — and the version diff '\"version\": \"0.0.0\"' -> '\"0.0.1\"'. Footer records why this is the dry-run equivalent: 'changesets CLI has no --dry-run flag for `version`', so the trial was run for real and reverted."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c7-changesets-live.txt",
+          "quotedAssertion": "captured at this commit: '$ npx changeset status --verbose' -> 'info Packages to be bumped at minor / - crabgic 1.6.0' resolving the three pending `.changeset/*.md` entries; and 'head -12 packages/cli/CHANGELOG.md' -> '# crabgic' / '## 1.5.0' / '### Patch Changes'. Supplementary: it shows the skeleton is a live tool at head, not only a 2026-07-15 transcript."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".changeset/config.json",
+          "quotedAssertion": "the committed skeleton the trial exercised — '\"changelog\": \"@changesets/cli/changelog\"', '\"access\": \"public\"', '\"baseBranch\": \"main\"'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/cli/CHANGELOG.md",
+          "quotedAssertion": "the real generated output of the same `add` + `version` pair, produced by phase 23 for the shipped release — '# crabgic' / '## 1.5.0' / '### Patch Changes' / '- bfba6b8: …'. This is what makes \"produces a valid CHANGELOG.md entry\" more than a one-off trial."
+        }
+      ],
+      "notes": "No `changeset version` was executed by this pass — that mutates package versions and would be a source change, not evidence. The named channel is the committed 2026-07-15 dry-run output, which is on disk and unmodified."
+    },
+    {
+      "index": 8,
+      "text": "`docs/release-notes-prep.md` records a timestamped `npm view crabgic` name-availability verdict — evidenced by the committed doc.",
+      "textSha256": "d6ad6f664c61c480eb2fcf3a565e7725664e3a32c6aa1c1f976c7ff1b68cfdc5",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/release-notes-prep.md",
+          "quotedAssertion": "the criterion's named channel: '## npm package name availability — `crabgic`' / '**Verdict: available (unclaimed) as of 2026-07-26T18:11:17Z.**' followed by the verbatim probe — '$ npm view crabgic' / 'npm error code E404' / 'npm error 404 Not Found - GET https://registry.npmjs.org/crabgic - Not found'. The doc also records that the verdict was RE-PROBED, not search-and-replaced, when the project was renamed: 'Search-and-replacing the old name inside the previous transcript would have produced a record claiming npm returned output it never returned — fabricated evidence'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / meta-checks, job 91419417950, step \"release-notes-prep records the npm-name verdict\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417950 log line 212 — 'check-release-notes: PASS — docs/release-notes-prep.md records a timestamped npm-name verdict.'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "scripts/check-release-notes.mjs:28-30",
+          "quotedAssertion": "scripts/check-release-notes.mjs:28-30 — 'const hasPackageName = /crabgic/.test(contents);' / 'const hasTimestamp = /\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z/.test(contents);' / 'const hasVerdict = /\\b(available|taken)\\b/i.test(contents);'. All three of the criterion's parts — the exact package name, a timestamp, and a verdict — are asserted separately, so the PASS is not a mere file-exists check."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi6-release-notes-failing.txt",
+          "quotedAssertion": "the negative control: 'check-release-notes: MISSING — /home/eimi/projects/crabgic/docs/release-notes-prep.md' / 'exit=1'."
+        }
+      ],
+      "notes": "Name check: the criterion says `npm view crabgic`, and the recorded verdict is for `crabgic`. The 2026-07-15 original recorded the pre-rename name `engineering-orchestrator`; the doc states plainly that the current entry is a real re-probe at 2026-07-26T18:11:17Z and that the superseded verdict is preserved in git history. No `npm view` was re-run by this pass — the criterion's channel is the committed doc, and re-probing would change nothing it asserts."
+    },
+    {
+      "index": 9,
+      "text": "`engine-pin-lint` CI check rejects the work-item-7 fixture manifest declaring a `^`-ranged `@anthropic-ai/claude-agent-sdk` and passes on the real workspace (which declares no engine dependency at this phase) — evidenced by the recorded failing/passing CI runs; 06's SDK dependency is the first real enforcement target.",
+      "textSha256": "27592a2fca4510833cf8aa97e81cbfe13cc5fbb3dd5540bd446c222c95b90964",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / engine-pin-lint, job 91424161909 — FAILED; the recorded failing CI run this criterion names, deliberately produced on scratch PR #59",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720815771",
+          "commit": "a4f88bdba67d3a64b1373915082176e45c4a748e",
+          "quotedAssertion": "job 91424161909 log line 174 — 'engine-pin-lint: FAIL'; line 175 — '  - /home/runner/work/crabgic/crabgic/packages/engine-claude/package.json: dependencies[\"@anthropic-ai/claude-agent-sdk\"] = \"^0.3.218\" is not an exact pin (no ^/~/range/wildcard/tag allowed — engine-bundling dependencies must be pinned exactly)'; line 176 — '##[error]Process completed with exit code 1.'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / engine-pin-lint, job 91419417923, step \"engine-pin-lint (fails on any ^/~/range specifier for the pinned engine dependency)\" — the PASSING half, in CI",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30718972881",
+          "commit": "65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e",
+          "quotedAssertion": "job 91419417923 log line 165 — 'engine-pin-lint: PASS — checked 18 manifest(s), no range-specified engine-bundling dependency found (watched: @anthropic-ai/claude-agent-sdk).'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c9-engine-pin-fixture.txt",
+          "quotedAssertion": "re-captured at this commit: the fixture manifest is quoted in full ('\"@anthropic-ai/claude-agent-sdk\": \"^2.1.0\"'), then 'engine-pin-lint: FAIL' / '… dependencies[\"@anthropic-ai/claude-agent-sdk\"] = \"^2.1.0\" is not an exact pin (no ^/~/range/wildcard/tag allowed …)' / 'exit=1'; then the real workspace 'engine-pin-lint: PASS — checked 18 manifest(s) …' / 'exit=0'; then the real targets — 'packages/cli/package.json:49:    \"@anthropic-ai/claude-agent-sdk\": \"0.3.218\"' and 'packages/engine-claude/package.json:28: … \"0.3.218\"'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi7-engine-pin-lint-fixture-and-real.txt",
+          "quotedAssertion": "the phase's original 2026-07-15 pair, same two verdicts: 'engine-pin-lint: FAIL … \"^2.1.0\" is not an exact pin' / 'exit=1', and 'engine-pin-lint: PASS — checked 18 manifest(s) …' / 'exit=0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi7-engine-pin-lint-noexist-failing.txt",
+          "quotedAssertion": "the failing-test-first record: \"Error: Cannot find module '/home/eimi/projects/crabgic/scripts/check-engine-pin.mjs'\" / 'exit=1' — the assertion made before the check existed."
+        },
+        {
+          "kind": "artifact",
+          "ref": "scripts/check-engine-pin.mjs:39",
+          "quotedAssertion": "scripts/check-engine-pin.mjs:39 — 'const EXACT_SEMVER = /^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-.]+)?(\\+[0-9A-Za-z-.]+)?$/;', applied at :64 'if (!EXACT_SEMVER.test(specifier))' across `dependencies`/`devDependencies`/`peerDependencies`/`optionalDependencies` (:28-33). Anchored at both ends, so `^`, `~`, `>=`, `*`, tags and `workspace:*` all fail — the rejection is a property of the pattern, not of one hard-coded string."
+        }
+      ],
+      "notes": "Both halves are now real CI runs of the named job. The failing one was PRODUCED DELIBERATELY: scratch PR #59 changes `packages/engine-claude/package.json` from the exact pin `\"0.3.218\"` to `\"^0.3.218\"` — one character — with the matching one-line `package-lock.json` specifier update so `npm ci` still succeeds and the job fails at its own check rather than at install. `scripts/check-engine-pin.mjs` was NOT touched. The scratch PR is closed unmerged. An earlier draft argued the red run was impossible because the work-item-7 fixture manifest sits outside `packages/*/package.json`; that was true of THAT fixture and irrelevant — the criterion is about the check rejecting a `^`-ranged engine dependency, and seeding it where the CI job does look proves exactly that. The standalone-manifest form is retained as supplementary in `closeout-c9-engine-pin-fixture.txt`. One scope note that is NOT a wording correction: the parenthetical \"(which declares no engine dependency at this phase)\" was true on 2026-07-15 and no longer is, because phase 06 added the SDK to `packages/engine-claude` and `packages/cli` at the exact pin `0.3.218`. That is the criterion's own predicted successor state (\"06's SDK dependency is the first real enforcement target\"), and it makes the green half stronger than when written — it now passes against real targets instead of vacuously."
+    },
+    {
+      "index": 10,
+      "text": "`engine-live` CI job exists, manually-triggered, and its description names the `@live`-tagged suite phase 06 will wire it to (Gap 15) — evidenced by the committed workflow YAML; the job itself remains inert (no engine invoked) at this phase.",
+      "textSha256": "9323355e85a05be6c0b66c9c8f2b37d94187f83a1caec75efbf1e270c71e230d",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/engine-live.yml",
+          "quotedAssertion": "the criterion's named channel, at 65ff0da. Job exists: 'jobs:' / '  engine-live:' / '    name: engine-live (@live conformance suite vs pinned engine)'. Manually-triggered, and nothing else: 'on:' / '  workflow_dispatch: {}' — no `push`, no `pull_request`, no `schedule`. Description names the suite: 'this job runs the `@live`-tagged conformance suite — `packages/engine-claude/src/live/*.live.test.ts` via `vitest.live.config.ts`' and 'Trigger stays manual (`workflow_dispatch`): live runs consume the owner's subscription and are started deliberately, never as a push side effect.'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/closeout-c10-engine-live-yaml.txt",
+          "quotedAssertion": "captured at this commit. Holds the HEAD file verbatim, and — for the criterion's trailing \"remains inert … at this phase\" clause — `git show e6aa458:.github/workflows/engine-live.yml`, which is headed '# INERT PLACEHOLDER (Phase 01, Gap 15).' / '# This workflow exists only as a manually-triggered stub. No engine is invoked here' with a single step 'Inert placeholder — no engine invoked'. Also records '$ gh run list --workflow engine-live.yml --limit 10' returning nothing: the job has zero runs and none was triggered by this pass."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-01/wi4-ci-workflows-schema-valid.txt",
+          "quotedAssertion": "'$ npx @action-validator/cli .github/workflows/engine-live.yml' / 'exit=0' — the file is schema-valid GitHub Actions YAML, not merely present."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "Gap 15 ruling — 'Phase 01's CI bullet states the placeholder job by name and states that Phase 06 wires it to run the `@live`-tagged conformance suite; Phase 06's own work item performs that wiring.' Ledger check: the tick agrees with the ruling and contradicts no part of it."
+        }
+      ],
+      "notes": "Two things stated so the tick is not read wider than it is. (1) NO `engine-live` RUN AND NO `@live` SUITE WAS TRIGGERED by this pass. That job is owner-gated and consumes the owner's subscription; the criterion does not require a run — its named channel is the committed YAML — and `gh run list --workflow engine-live.yml` remains empty. (2) The trailing clause 'the job itself remains inert (no engine invoked) at this phase' was true at phase 01 and is no longer true at head: commit 55874d8 (phase 06) replaced the echo-only placeholder with `npm run test:live`. That is the criterion's own predicted transition, not a drift, so it is recorded here and evidenced against git rather than treated as a wording problem — the three requirements the criterion actually places on the artifact (job exists, manually-triggered, description names the `@live` suite) all hold at head as well as at e6aa458."
+    }
+  ]
+}

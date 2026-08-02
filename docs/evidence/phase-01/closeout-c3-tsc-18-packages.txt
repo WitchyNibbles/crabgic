@@ -1,0 +1,66 @@
+Closeout re-verification — phase 01 exit criterion 3 (all 18 packages compile empty via
+`tsc -b`, cold and incremental, zero circular project references).
+
+Captured 2026-08-01 by the criteria-closeout pass, in a worktree at
+65ff0da0fec2c6c3f3526758ee765eeb8cbe6d6e. Every `$ ` line below is the exact command
+that produced the output beneath it, and the output is unedited.
+
+The criterion's named channel — "the CI typecheck job log" — is satisfied at head by
+`CI / typecheck (ubuntu-latest)` job 91419417975 (and `typecheck (ubuntu-24.04-arm)`
+job 91419417938), whose two steps are literally "tsc -b (cold)" and
+"tsc -b (incremental, no-op expected)", both green at 65ff0da. `tsc -b` is itself the
+circular-reference detector: a cycle is TS6202, which is exactly what
+`wi2-tsc-cycle-failing.txt` recorded against a deliberately circular fixture.
+
+The one clause that CI cannot re-evidence today is "compile EMPTY": the 18 packages
+stopped being empty stubs in phase 02. That clause is a statement about the bootstrap
+commit, and it is checked below against git rather than asserted.
+
+$ node scripts/check-workspace-count.mjs
+check-workspace-count: found 18 workspace(s):
+  - @crabgic/connectors-grafana
+  - @crabgic/connectors-jira
+  - @crabgic/contracts
+  - @crabgic/detect
+  - @crabgic/engine-claude
+  - @crabgic/engine-core
+  - @crabgic/gates
+  - @crabgic/gateway
+  - @crabgic/git-engine
+  - @crabgic/journal
+  - @crabgic/learning
+  - @crabgic/perf
+  - @crabgic/plugin
+  - @crabgic/renderer
+  - @crabgic/scheduler
+  - @crabgic/supervisor
+  - @crabgic/testkit
+  - crabgic
+check-workspace-count: PASS — exactly 18 workspaces declared.
+exit=0
+
+$ node scripts/check-package-graph-acyclic.mjs   # manifest-level DAG guard (the sibling of tsc -b TS6202)
+check-package-graph-acyclic: PASS — 18 workspace packages, dependency graph is a DAG.
+exit=0
+
+$ # e6aa458 = "feat: bootstrap 18-package strict-TS monorepo, toolchain, and CI skeleton (phase 01)"
+$ for p in contracts testkit engine-core journal supervisor engine-claude git-engine gateway renderer connectors-jira connectors-grafana detect scheduler gates perf learning cli plugin; do echo -n "packages/$p/src/index.ts: "; git show e6aa458:packages/$p/src/index.ts; done
+packages/contracts/src/index.ts: export {};
+packages/testkit/src/index.ts: export {};
+packages/engine-core/src/index.ts: export {};
+packages/journal/src/index.ts: export {};
+packages/supervisor/src/index.ts: export {};
+packages/engine-claude/src/index.ts: export {};
+packages/git-engine/src/index.ts: export {};
+packages/gateway/src/index.ts: export {};
+packages/renderer/src/index.ts: export {};
+packages/connectors-jira/src/index.ts: export {};
+packages/connectors-grafana/src/index.ts: export {};
+packages/detect/src/index.ts: export {};
+packages/scheduler/src/index.ts: export {};
+packages/gates/src/index.ts: export {};
+packages/perf/src/index.ts: export {};
+packages/learning/src/index.ts: export {};
+packages/cli/src/index.ts: export {};
+packages/plugin/src/index.ts: export {};
+exit=0
