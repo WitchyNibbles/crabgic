@@ -136,8 +136,8 @@ directory contains SEVEN rows below 100% on some metric, not the four the scoped
 above lists. Three of them are absent here — acceptance-criteria-parser.ts and
 budget-sourcing.ts (both 0/0/0/0, added in 4f2b33b) and metric-direction.ts (0%
 statements/functions/lines, added in bddac4c). Nothing in the @crabgic/contracts vitest
-project imports them, so v8 never loads them into this scoped run's file set at all;
-in CI they are loaded by suites in other packages. Verified rather than assumed:
+project imports them, so v8 never loads them into this scoped run's file set at all.
+Verified rather than assumed:
 
 $ npx vitest run --project @crabgic/contracts --coverage.include="packages/contracts/src/contracts/**/*.ts" \
     --coverage.reporter=json-summary --coverage.thresholds.{lines,branches,functions,statements}=0
@@ -152,3 +152,76 @@ None of the three is one of this criterion's 21, and the enumeration above resol
 21 by name and asserts each is present, so an absent file cannot hide a member. Recorded
 here because their 0% coverage is a genuine repo-health item — invisible under the global
 80% gate — reported to the closeout integrator and out of this pass's write set.
+
+----------------------------------------------------------------------
+ADDENDUM 2026-08-02 — correcting one clause of the addendum above
+----------------------------------------------------------------------
+The clause "in CI they are loaded by suites in other packages" was wrong, mechanically.
+A loaded ES module cannot sit at 0% statements: importing it executes its top level, so
+any loaded file reports above zero. The three sit at 0% in CI's table precisely BECAUSE
+nothing loads those `src` files anywhere — the same reason they are absent here. Two
+separate facts produce the difference, and both were measured, not reasoned about:
+
+(a) WHY THEY APPEAR IN CI'S TABLE AT ALL — v8 "discovered untested file" rows.
+    v8 does two different things. Files actually LOADED are reported if their real path
+    matches coverage.include. Files never loaded are found by WALKING the include globs,
+    and that walk is rooted at the run's coverage root — which is the repo root for a
+    whole-suite run, but the project directory when `--project` narrows the run. CI runs
+    `npm test` = `vitest run --coverage`, whole-suite, no `--project`: the root
+    vitest.config.ts's coverage.include = ["packages/*/src/**/*.ts", ...] is walked from
+    the repo root and emits a 0% row for every match it never loaded. The scoped run
+    above passed `--project @crabgic/contracts`, so the walk was rooted at
+    packages/contracts and the repo-root-relative glob matched nothing to walk; the 30
+    rows it did produce are exactly its loaded files. That is the whole of the "absent
+    here, present there" difference — not loading. Reproduced four ways at 1d7083e:
+
+    $ npx vitest run --project @crabgic/contracts \
+        --coverage.include="packages/contracts/src/contracts/**/*.ts" \
+        --coverage.reporter=json-summary --coverage.thresholds.{lines,branches,functions,statements}=0
+      -> 30 files in coverage-summary.json; the three ABSENT (reproduces the run above)
+
+    same, but only change-set.test.ts, to isolate loaded-vs-discovered:
+      -> 1 file (change-set.ts, loaded). No discovered rows at all, though 29 unloaded
+         siblings match the glob by absolute path. The walk found none of them.
+
+    same again, with the glob written PROJECT-root-relative instead:
+    $ npx vitest run --project @crabgic/contracts packages/contracts/src/contracts/change-set.test.ts \
+        --coverage.include="src/contracts/budget-sourcing.ts" --coverage.include="src/contracts/change-set.ts" ...
+      -> budget-sourcing.ts   0 | 0 | 0 | 0   (0/9 stmts). Now the walk finds it. The
+         glob's base, not the file's reachability, is what decided.
+
+    and the whole-suite shape, which is CI's:
+    $ npx vitest run packages/perf/src/contract/budget-sourcing.test.ts \
+        --coverage.include="packages/contracts/src/contracts/budget-sourcing.ts" \
+        --coverage.thresholds.{lines,branches,functions,statements}=0
+      -> 11 tests pass, and the file is nonetheless reported:
+         budget-sourcing.ts   0 | 0 | 0 | 0   (0/9 stmts, 0/10 branches)  Uncovered: 60-74
+
+(b) THE CODE IS EXECUTED IN CI — the execution just attributes to no `src` path.
+    The second command above is the proof of both halves at once: 11 tests exercising
+    `resolveBudgetSource` pass while `packages/contracts/src/contracts/budget-sourcing.ts`
+    reports 0/9. The tests reach it through `@crabgic/perf`'s re-export shims
+    (packages/perf/src/contract/{budget-sourcing,acceptance-criteria-parser}.ts,
+    packages/perf/src/stats/metric-direction.ts), which the ledger-Gap-21 relocation left
+    behind as `export … from "@crabgic/contracts"`. That specifier resolves through the
+    workspace symlink to packages/contracts/package.json "exports" -> ./dist/index.js, so
+    the module that actually runs is packages/contracts/dist/contracts/budget-sourcing.js
+    — and `**/dist/**` is in coverage.exclude. Same run, include pointed at dist with the
+    exclude relaxed:
+
+    $ npx vitest run packages/perf/src/contract/budget-sourcing.test.ts \
+        --coverage.include="packages/contracts/dist/contracts/budget-sourcing.js" \
+        --coverage.exclude="**/node_modules/**" --coverage.thresholds.{lines,branches,functions,statements}=0
+      -> Statements 100% (9/9), Branches 100% (10/10), Functions 100% (1/1)
+
+    Nine statements and ten branches, the exact denominators the src row reports as 0/9
+    and 0/10. Same code, counted twice, credited to the copy that is excluded.
+
+THE LESSON IS STRONGER THAN THE ONE FIRST RECORDED, NOT WEAKER. The original note's point
+was that absence from a scoped table does not mean absence from the repo. The corrected
+mechanism adds the sharper half: PRESENCE in a whole-suite table does not mean loaded
+either, and a 0% row is ambiguous between "dead code" and "live code whose execution was
+attributed to an excluded path." The repo-health item stands and is unchanged in
+substance — nothing covers these three modules' `src` form, so no coverage gate can ever
+bite on them — but the reason is a dist-attribution artifact of the Gap 21 shims, not an
+absence of exercise. Still out of this pass's write set; reported to the integrator.

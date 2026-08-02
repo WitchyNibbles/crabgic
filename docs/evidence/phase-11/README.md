@@ -308,6 +308,29 @@ the only planned consumer and has not landed).
   still return the typed `NOT_IMPLEMENTED` shape in `dispatch.ts`, unchanged by this
   phase.
 
+  **Annotated 2026-08-02 — the last clause was true on 2026-07-24 and is not true at
+  HEAD.** The wiring this bullet declined to do landed the next day in `01ae7aa`
+  (2026-07-25): `dispatch.ts`'s `trust-review`/`trust-approve`/`trust-revoke` branches
+  delegate to `@crabgic/detect`'s real backends whenever `deps.trust` is supplied, and
+  `buildRealCliDependencies` supplies that bag by default (`packages/cli/src/bootstrap.ts:302`),
+  so the shipped binary does not answer `NOT_IMPLEMENTED` for any of the three. It is ticked
+  as phase 12's exit criterion 6 on `packages/cli/src/commands/trust-dispatch.test.ts` — which
+  also keeps the `deps.trust`-absent case asserted at `EXIT_NOT_IMPLEMENTED` (`:126`), so what
+  this bullet describes is still the *default*, just no longer the shipped one — and is pinned
+  through the real composition root by `packages/cli/src/bootstrap.test.ts`'s "runs
+  `trust review|approve|revoke` end-to-end through the SHIPPED wiring" case.
+  `docs/evidence/phase-12/README.md` is the evidence record for the wiring itself. The
+  bullet's actual finding — that the wiring was *not phase 11's
+  job* and belonged to whichever phase owned the CLI-surface decision — was correct and is
+  what happened; only the "still returns" status report has expired. Original text kept
+  verbatim above, per this directory's convention: this file records what was true when it
+  was written.
+
+  Downstream note: `docs/operator-guide.md` §5 cited this bullet as its source and
+  therefore inherited the stale claim, telling operators a working feature was
+  unavailable. That was corrected in `6dd211b` (2026-08-01). This annotation closes the
+  same defect at the source the guide was reading.
+
 ## Deferred root-config / dependency changes (none made; described here)
 
 - **`.prettierignore`** should gain a `packages/supervisor/goldens/` entry, mirroring
@@ -333,6 +356,18 @@ the only planned consumer and has not landed).
   same shared working directory.
 
 ## Gate results
+
+**Annotated 2026-08-02 — these are a 2026-07-24 snapshot, not a current reading.** Every
+number below was measured at this phase's own build and is kept as the record of what that
+build produced; none of it has been re-measured since, and the tree has moved under this
+phase's own code in ways that guarantee the counts no longer match. The largest movement is
+ledger **Gap 21** (`4f2b33b`, then `bddac4c`, both 2026-08-01), which lands squarely inside
+the surfaces measured here: `packages/supervisor/src/intake/intake-pipeline.ts` now *derives*
+`(budgetSource, budgets)` from the requirements it has just built, and
+`performanceBudgetSource`/`performanceBudgets` are gone from `IntakeRequest` entirely, so both
+`packages/supervisor/src/intake` and `packages/cli/src/intake` gained tests and changed shape
+after this paragraph was written. The current, gating numbers are whatever the whole-suite CI
+coverage job reports at HEAD; the per-directory figures below are historical.
 
 - `npx tsc -b packages/supervisor packages/cli packages/plugin` — clean, no errors.
 - `npx vitest run packages/supervisor packages/plugin packages/cli --coverage.enabled=false`
