@@ -83,6 +83,8 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  ANNOTATION_LABELS,
+  ANNOTATION_LEAD,
   BASELINE_FILE,
   CLOSEOUT_DIR,
   PRE_INDEX_TICKED_PHASES,
@@ -214,8 +216,12 @@ function fixtureRoot({
     "utf8",
   );
   // Citation targets must RESOLVE, so the fixture repo really contains them.
+  // The transcript lives under `docs/evidence/phase-NN/`, where the real
+  // records file theirs — NOT inside the closeout directory, which is the
+  // claim-space and may not be cited as evidence for anything (bypass 21).
   writeFileSync(join(root, "packages", "x", "src", "frob.test.ts"), FIXTURE_TEST_FILE, "utf8");
-  writeFileSync(join(root, CLOSEOUT_DIR, "closeout-c1.txt"), "transcript\n", "utf8");
+  mkdirSync(join(root, "docs", "evidence", "phase-99"), { recursive: true });
+  writeFileSync(join(root, "docs", "evidence", "phase-99", "closeout-c1.txt"), "transcript\n");
   return root;
 }
 
@@ -929,7 +935,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
     const errors = errorsFor((r) => {
       r.criteria[0].citations.push({
         kind: "artifact",
-        ref: `${CLOSEOUT_DIR}/closeout-never-written.txt`,
+        ref: "docs/evidence/phase-99/closeout-never-written.txt",
       });
     });
     expect(errors.join("\n")).toContain("does not exist");
@@ -953,7 +959,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
       errorsFor((r) => {
         r.criteria[0].citations.push({
           kind: "artifact",
-          ref: `${CLOSEOUT_DIR}/closeout-c1.txt`,
+          ref: "docs/evidence/phase-99/closeout-c1.txt",
           quotedAssertion: "the transcript line that matters",
         });
       }),
@@ -1092,15 +1098,100 @@ describe("validateCloseoutRecord — citations may not be symlinks", () => {
     expect(errors.join("\n")).toContain("closeout record");
   });
 
+  /**
+   * Adversarial-review finding, round 8 (bypass 21), demonstrated live and
+   * needing NO path games at all — it is the sibling of the dot-segment
+   * self-citation, aimed one directory to the side. `CLOSEOUT_RECORD_REF`
+   * blocked `phase-NN.json` and that filename shape ALONE, so a reviewer
+   * appended to a ticked criterion, each with wholly forged `quotedAssertion`
+   * text: an `artifact` citation of the pass's OWN defect record, an `artifact`
+   * citation of this directory's README, and a `journal-export` citation of
+   * `criteria-baseline.json`. The validator passed.
+   *
+   * The principle the old check already stated — "a record is the claim, never
+   * the evidence for it" — covers the whole tree, not one filename: a defect
+   * record, the README and the baseline are all written by the same pass in the
+   * same PR as the record citing them. Measured first: across the merged
+   * records, ZERO of 774 citations resolve into this directory (the single ref
+   * mentioning it is a `ci-run` job NAME, not a path), so the whole claim-space
+   * is refused rather than one shape of it.
+   */
+  it("rejects an artifact citation of the pass's own defect record", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "artifact",
+        ref: `${CLOSEOUT_DIR}/defects/99-red-drift-check.md`,
+        quotedAssertion: "totally-forged free text that no file contains",
+      });
+    });
+    expect(errors.join("\n")).toContain("a record is the claim, never the evidence for it");
+  });
+
+  it("rejects an artifact citation of the closeout directory's own README", () => {
+    const root = fixtureRoot();
+    writeFileSync(join(root, CLOSEOUT_DIR, "README.md"), "# index\n", "utf8");
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: `${CLOSEOUT_DIR}/README.md`,
+          quotedAssertion: "totally-forged free text that no file contains",
+        });
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  it("rejects a journal-export citation of the frozen baseline", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "journal-export",
+        ref: BASELINE_FILE,
+        quotedAssertion: "totally-forged free text that no file contains",
+      });
+    });
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  it("rejects the claim-space reached through a symlinked parent, like any other laundering", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "docs", "evidence"), { recursive: true });
+    symlinkSync(join(root, CLOSEOUT_DIR), join(root, "docs", "evidence", "cs"));
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: "docs/evidence/cs/defects/99-red-drift-check.md",
+          quotedAssertion: "the long way round",
+        });
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  it("still accepts an evidence transcript filed where real records file them", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: "docs/evidence/phase-99/closeout-c1.txt",
+          quotedAssertion: "the transcript line that matters",
+        });
+      }),
+    ).toEqual([]);
+  });
+
   it("rejects a symlink even when it points at a file inside the repository — a citation names a real committed file", () => {
     const root = fixtureRoot();
     symlinkSync(
       join(root, "packages", "x", "src", "frob.test.ts"),
-      join(root, CLOSEOUT_DIR, "alias.test.ts"),
+      join(root, "docs", "evidence", "phase-99", "alias.test.ts"),
     );
     const errors = errorsFor(
       (r) => {
-        r.criteria[0].citations[0].ref = `${CLOSEOUT_DIR}/alias.test.ts`;
+        r.criteria[0].citations[0].ref = "docs/evidence/phase-99/alias.test.ts";
       },
       { root },
     );
@@ -2028,6 +2119,51 @@ describe("validateAllCloseoutRecords — this repository's own committed records
    * already there when their closeout lands, rather than generating it against
    * whatever the file says by then.
    */
+  /**
+   * `ANNOTATION_LABELS` is measured from the corpus, so it goes stale as
+   * closeouts land — and it did, mid-review: phase 16 merged carrying
+   * `Open defect (…)`, the rule caught it, and the ENUMERATION was the
+   * incomplete thing rather than the rule. That must fail HERE, in the suite,
+   * where it reads as "add the form deliberately", rather than surprising the
+   * next closeout PR at the last moment.
+   *
+   * The second half is the one that keeps the rule honest: the ticked and
+   * unticked vocabularies must stay DISJOINT. That disjointness is the entire
+   * bite — it is what stops an annotation contradicting the box beside it — and
+   * widening either list to fit a record would silently destroy it.
+   */
+  it("the annotation labels cover every merged record, and the two vocabularies stay disjoint", () => {
+    expect(
+      ANNOTATION_LABELS.ticked.filter((label) => ANNOTATION_LABELS.unticked.includes(label)),
+      "a label legal for both a ticked and an unticked box removes the whole point of the check",
+    ).toEqual([]);
+
+    const dir = join(REPO_ROOT, CLOSEOUT_DIR);
+    const unrecognised = [];
+    for (const name of readdirSync(dir).filter((n) => /^phase-\d{2}\.json$/.test(n))) {
+      const record = JSON.parse(readFileSync(join(dir, name), "utf8"));
+      const { items } = parseExitCriteriaCheckboxes(
+        readFileSync(join(REPO_ROOT, record.roadmapFile), "utf8"),
+      );
+      items?.forEach((box, index) => {
+        const criterion = record.criteria[index];
+        const at = box.text.indexOf(ANNOTATION_LEAD);
+        if (at < 0 || criterion === undefined) return;
+        const closed = /^— \*\*(.+?)\*\*/s.exec(box.text.slice(at));
+        const allowed = criterion.ticked ? ANNOTATION_LABELS.ticked : ANNOTATION_LABELS.unticked;
+        if (closed === null || !allowed.some((label) => closed[1].trim().startsWith(label))) {
+          unrecognised.push(
+            `${name} criterion ${String(index + 1)}: ${box.text.slice(at, at + 70)}`,
+          );
+        }
+      });
+    }
+    expect(
+      unrecognised,
+      "a merged record uses an annotation label ANNOTATION_LABELS does not list — add it there deliberately, and re-check the disjointness above",
+    ).toEqual([]);
+  });
+
   it("the frozen baseline covers every roadmap phase, at that phase's current checkbox count", () => {
     const baseline = JSON.parse(readFileSync(join(REPO_ROOT, BASELINE_FILE), "utf8"));
     const phaseFiles = readdirSync(join(REPO_ROOT, "roadmap"))

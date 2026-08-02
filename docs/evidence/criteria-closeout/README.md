@@ -11,9 +11,9 @@ closeout itself, so a tick's citation is machine-resolvable rather than a claim 
 Validated by `scripts/check-criteria-closeout.mjs`
 (`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job), backed by the frozen
 original-wording baseline `criteria-baseline.json`, which `npm run check:criteria-baseline`
-re-derives from git history in the same job. The validator's own rejection paths — 132 cases, almost
+re-derives from git history in the same job. The validator's own rejection paths — 139 cases, almost
 all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`; the baseline generator
-(11) and the run resolver (22) add 33 more, for 165 across the three suites.
+(11) and the run resolver (22) add 33 more, for 172 across the three suites.
 
 ## Layout
 
@@ -147,8 +147,11 @@ records do not classify the same situation three different ways.
    validated green, while the validator's own error message already claimed the tail was "the
    `— **Evidence …**` citation annotation". Four things are now checked — the bold span must
    **close**; the bold head must lead with a **recognised label** (`Evidence` when the box is
-   ticked, `Left unticked` or `UNMET` when it is not); the label must therefore **agree with the
-   tick**; and the head must carry a **date**. Two stronger rules were measured against all 105
+   ticked, `Left unticked` / `Open defect` / `UNMET` when it is not); the label must therefore
+   **agree with the tick**; and the head must carry a **date**. The two vocabularies are **disjoint**
+   and the suite asserts they stay so — that disjointness is the whole bite, and the enumeration is
+   asserted to still cover every merged record, so it fails in the suite rather than surprising the
+   next closeout PR. Two stronger rules were measured against all 132
    annotated criteria and **rejected because honest records fail them**: a strict
    `— **<Label> (<date>):**` shape fails 7 criteria across 5 honest forms, and requiring the
    annotation's date to equal the record's `pass.date` fails 14 in phases 01 and 11. **This does not
@@ -200,7 +203,17 @@ records do not classify the same situation three different ways.
    of its own `file:line` citations with the files still present. A ref into **`node_modules/` or
    `.git/`** fails — `npm ci` runs before the validator in every CI job, so `node_modules` always
    resolves while being precisely *not* content this repository carries. A ref naming a **closeout
-   record** (`phase-NN.json`) fails too: a record is the claim, never the evidence for itself.
+   record** (`phase-NN.json`) fails too: a record is the claim, never the evidence for itself —
+   **and so does anything else in this directory.** That refusal matched the `phase-NN.json`
+   filename shape *alone*, so a reviewer appended to a ticked criterion, each with wholly forged
+   `quotedAssertion` text, an `artifact` citation of the pass's **own defect record**, an `artifact`
+   citation of **this README**, and a `journal-export` citation of **`criteria-baseline.json`** — and
+   the validator passed. No path games were needed; it simply aimed one directory to the side. A
+   defect record, this README and the baseline are all written by the same pass, in the same PR, as
+   the record that would be citing them, so the whole **claim-space** is refused. Measured before
+   enforcing: across the merged records, **zero of 774** citations resolve into this directory.
+   Evidence transcripts belong under `docs/evidence/phase-NN/`, which is where the real records
+   already file them.
 
    **A ref must already be its own normal form**, and this was a live bypass:
    `docs/evidence/criteria-closeout/./phase-14.json:1-5` validated **green** as an `artifact`

@@ -281,13 +281,29 @@ const DISCHARGE_ROADMAP_FILE = /roadmap\/\d{2}-[a-z0-9-]+\.md/;
 const DISCHARGE_QUOTED_CRITERION = /"([^"]+)"/;
 
 /**
- * A closeout record is the claim. It is never the evidence for itself.
+ * The closeout CLAIM-SPACE: this whole directory, not one filename in it.
+ *
+ * Round-6 finding, and round-8 finding (bypass 21) which generalised it. The
+ * refusal matched `phase-NN.json` and that shape ALONE, so a reviewer appended
+ * to a ticked criterion — each with wholly forged `quotedAssertion` text — an
+ * `artifact` citation of the pass's OWN defect record, an `artifact` citation
+ * of this directory's README, and a `journal-export` citation of
+ * `criteria-baseline.json`, and the validator passed. No path games were
+ * needed; it simply aimed one directory to the side.
+ *
+ * The principle the old error message already stated covers the whole tree: a
+ * defect record, the README and the baseline are all written by the same pass,
+ * in the same PR, as the record citing them. Measured before enforcing —
+ * across the merged records ZERO of 774 citations resolve into this directory
+ * (the one ref mentioning it is a `ci-run` job NAME, not a path), so refusing
+ * the claim-space costs nothing and closes the class rather than one shape.
  *
  * Case-insensitive: macOS and Windows checkouts resolve paths without regard
  * to case, so `…/Phase-14.json` opens the record there while reading as an
  * unrelated path to a case-sensitive regex. No honest ref differs from another
  * only by case, so closing it costs nothing.
  */
+const CLOSEOUT_CLAIM_SPACE = new RegExp(`^${CLOSEOUT_DIR}/`, "i");
 const CLOSEOUT_RECORD_REF = new RegExp(`^${CLOSEOUT_DIR}/phase-\\d{2}\\.json$`, "i");
 
 /** Segments a citation may never name, compared case-insensitively for the same reason. */
@@ -386,9 +402,18 @@ export const ANNOTATION_LEAD = "— **";
  * `— **Evidence (2026-08-02), WAIVED for all cases except empty dir; the suite
  * is advisory only:** …` validated green.
  *
- * ENUMERATED FROM THE CORPUS, not guessed — all 105 annotated criteria in the
- * merged roadmap plus the two open closeout PRs. Adding a form is a deliberate
- * edit here, which is the point.
+ * ENUMERATED FROM THE CORPUS, not guessed — all 132 annotated criteria across
+ * the 16 merged records plus both open closeout PRs. Adding a form is a
+ * deliberate edit here, which is the point, and the suite asserts the
+ * enumeration still covers every merged record so drift fails loudly here
+ * rather than surprising the next closeout PR. (`Open defect` was added exactly
+ * that way: phase 16 merged mid-review carrying it, the rule caught it, and the
+ * ENUMERATION was the incomplete thing, not the rule.)
+ *
+ * THE INVARIANT THAT MAKES THIS BITE is that the two vocabularies are
+ * DISJOINT — no label may be legal for both a ticked and an unticked box — so
+ * an annotation cannot contradict the box beside it. The suite asserts that
+ * too; widening either list without checking it would quietly hollow the rule.
  *
  * Two stronger rules were measured and REJECTED because honest records fail
  * them, and a rule that fails an honest record is the rule being wrong:
@@ -409,7 +434,7 @@ export const ANNOTATION_LEAD = "— **";
  */
 export const ANNOTATION_LABELS = {
   ticked: ["Evidence"],
-  unticked: ["Left unticked", "UNMET"],
+  unticked: ["Left unticked", "Open defect", "UNMET"],
 };
 
 const ANNOTATION_DATE = /\d{4}-\d{2}-\d{2}/;
@@ -689,6 +714,9 @@ const normalize = normalizeCriterionText;
 function forbiddenContentProblem(relPath) {
   if (CLOSEOUT_RECORD_REF.test(relPath)) {
     return "is a closeout record — a record is the claim, never the evidence for it";
+  }
+  if (CLOSEOUT_CLAIM_SPACE.test(relPath)) {
+    return `is inside the closeout claim-space ${CLOSEOUT_DIR}/ — a record is the claim, never the evidence for it, and neither is anything filed beside it. A defect record, this directory's README and the frozen baseline are all written by the same pass, in the same PR, as the record that would be citing them.`;
   }
   if (relPath.split(/[\\/]/).some((segment) => FORBIDDEN_SEGMENTS.has(segment.toLowerCase()))) {
     return "is not content the repository carries — node_modules/ is installed by every CI job and .git/ is not source";
