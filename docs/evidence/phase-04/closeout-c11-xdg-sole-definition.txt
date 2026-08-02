@@ -1,0 +1,36 @@
+# Phase 04 exit criterion 11 — XDG state/cache roots defined exactly once, repo-wide scan
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:59Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/layout/xdg-sole-definition.test.ts packages/journal/src/layout/xdg-layout.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > falls back to ~/.local/state and ~/.cache when XDG_* are unset 2ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > honors explicit XDG_STATE_HOME / XDG_CACHE_HOME overrides 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > pins the state root at $XDG_STATE_HOME/crabgic/<project-hash>/ 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > pins the cache root at $XDG_CACHE_HOME/crabgic/<project-hash>/ (Gap 14) 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > nests journal/, journal/segments/, journal/snapshots/, and leases/ under the state root 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > keeps <project-hash> immediately under crabgic/, subpaths nested beneath it (Gap 14 path-segment order) 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > xdg-layout > is a pure function of its explicit env parameter — same input, same output, no ambient process.env influence 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > readXdgEnvFromProcess — the one impure boundary function > reads HOME/XDG_STATE_HOME/XDG_CACHE_HOME from process.env when all are set 1ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > readXdgEnvFromProcess — the one impure boundary function > omits XDG_STATE_HOME/XDG_CACHE_HOME entirely (not undefined-valued) when unset 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > readXdgEnvFromProcess — the one impure boundary function > throws when HOME is unset 1ms
+ ✓ |@crabgic/journal| src/layout/xdg-layout.test.ts > readXdgEnvFromProcess — the one impure boundary function > throws when HOME is an empty string 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-sole-definition.test.ts > XDG root sole-definition-site check (roadmap/04 exit criterion 11) > no package outside packages/journal/src reimplements env-var-based XDG state/cache root resolution 46ms
+ ✓ |@crabgic/journal| src/layout/xdg-sole-definition.test.ts > XDG root sole-definition-site check (roadmap/04 exit criterion 11) > sanity: this check's own detection rule actually fires against a synthetic reimplementation fixture 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-sole-definition.test.ts > XDG root sole-definition-site check (roadmap/04 exit criterion 11) > sanity: a correct importer that only MENTIONS the env var (doc comment, re-export, XdgEnv fixture key) is NOT flagged 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-sole-definition.test.ts > XDG root sole-definition-site check (roadmap/04 exit criterion 11) > sanity: a tilde-anchored literal default with no XDG env-var read does NOT trigger the check (the engine-core seam) 0ms
+ ✓ |@crabgic/journal| src/layout/xdg-sole-definition.test.ts > XDG root sole-definition-site check (roadmap/04 exit criterion 11) > keeps every allowlisted file honest: none of them actually reads process.env.XDG_STATE_HOME/XDG_CACHE_HOME (only mentions the names in prose/literals) 1ms
+
+ Test Files  2 passed (2)
+      Tests  16 passed (16)
+   Start at  00:18:00
+   Duration  321ms (transform 113ms, setup 0ms, import 151ms, tests 56ms, environment 0ms)
+

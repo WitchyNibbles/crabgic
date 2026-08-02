@@ -1,0 +1,34 @@
+# Phase 04 exit criterion 3 — idempotency semantics (replay byte-identical; typed conflict, never a silent overwrite)
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:02Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/idempotency.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — basic recording > a brand-new (operationId, contentHash) pair calls compute() and records the result 38ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > the SAME (operationId, contentHash) replays a byte-identical result and does NOT re-execute compute 23ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > replay survives a brand-new IdempotencyRegistry instance against the same journal (genuinely journal-backed, not just an in-memory cache) 18ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — replay semantics (roadmap/04 work item 5) > persists a remote_operation_record journal entry keyed on (operationId, contentHash) 14ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > VALIDATION ROUND (2026-07-18) — MINOR 3 regression: the RECORDED call's result must already be JSON-round-tripped, byte-identical to what replay later returns > a non-JSON-safe compute() result (Date, NaN, undefined member) is coerced identically on the FIRST (recorded) call and every later (replayed) call 21ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > the SAME operationId with a DIFFERENT contentHash returns a typed conflict, and never re-executes compute 19ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > a conflicting write never mutates the originally recorded result — a later call with the ORIGINAL hash still replays the original value 12ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — conflict semantics (never a silent overwrite) > only ONE remote_operation_record entry is ever persisted for an operationId that later conflicts 14ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry.checkOrRecord — independent operationIds > different operationIds with the same contentHash are recorded independently 50ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > property: randomized (operationId, contentHash) sequences never produce a silent overwrite > matches a reference model across randomized sequential call sequences 1457ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > assertRemoteOperationRecordEntry — defensive type guard > throws when given a JournalEntry that is NOT a remote_operation_record (should never happen via this module's own appendEntry calls, guarded defensively) 1ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry — defensive branches (hand-crafted fixtures, per this module's own doc comment: 'should never happen via this module, but defensive against hand-crafted fixtures') > skips a non-remote_operation_record entry even if it somehow reaches the index-building scan (queryEntries filter bypassed by a fake store) 14ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry — defensive branches (hand-crafted fixtures, per this module's own doc comment: 'should never happen via this module, but defensive against hand-crafted fixtures') > keeps the FIRST entry authoritative when more than one remote_operation_record entry somehow exists for the same operationId 34ms
+ ✓ |@crabgic/journal| src/idempotency.test.ts > IdempotencyRegistry — defensive branches (hand-crafted fixtures, per this module's own doc comment: 'should never happen via this module, but defensive against hand-crafted fixtures') > throws (rather than silently returning garbage) when replaying a hand-crafted record with no appliedRevision 12ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  00:17:03
+   Duration  3.48s (transform 1.04s, setup 0ms, import 1.43s, tests 1.73s, environment 0ms)
+

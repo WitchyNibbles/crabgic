@@ -1,0 +1,502 @@
+{
+  "schemaVersion": 1,
+  "phase": "04",
+  "roadmapFile": "roadmap/04-journal-idempotency-leases.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 2 (phase 04)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "1k randomized kill-iteration run (`runKillHarness` over the append/chain/snapshot path): zero undetected corruption; recovery always converges to the last valid chained entry — evidence: `journal-crash-suite` CI job artifact.",
+      "textSha256": "d142fd31772ab7ba045fab5d8fa4916558c57fc13d117e2886d32d9f104ebb22",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/crash-fixtures/crash-suite.test.ts:112",
+          "quotedAssertion": "packages/journal/src/crash-fixtures/crash-suite.test.ts:108-113 — 'expect(failed, `crash-suite failures: …`).toHaveLength(0); expect(report.allConverged).toBe(true); expect(report.results).toHaveLength(ITERATION_COUNT);'. PARTIAL: the substance is proven, the named channel is not. `:29` reads `CRABGIC_CRASH_SUITE_ITERATIONS` and DEFAULTS TO 25 — nothing in `ci.yml` sets it, so every CI execution runs 25 iterations, 2.5% of the criterion's named scale."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/crash-fixtures/crash-suite.test.ts:135",
+          "quotedAssertion": "packages/journal/src/crash-fixtures/crash-suite.test.ts:135-136 — 'expect(report.allConverged).toBe(false); expect(report.results.some((r) => r.verdict === \"fail\")).toBe(true);' against a seeded truncate+rewrite append variant (`CRABGIC_CRASH_FIXTURE_BROKEN=1`, :128). The anti-vacuity control: without it, a harness that converged on everything would satisfy the positive case."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c1-crash-suite-1k.txt",
+          "quotedAssertion": "'✓ … recovery always converges with zero undetected corruption across randomized real kill iterations over the append/snapshot path 256305ms' / 'Tests 2 passed (2)' — this pass's own 1000-iteration re-run at af46e00 with CRABGIC_CRASH_SUITE_ITERATIONS=1000, exit status 0, 258.35s. LOCAL, not the CI artifact the criterion names."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/exit-criteria-crash-suite.txt",
+          "quotedAssertion": "the 2026-07-18 build-time capture, 1000/1000 iterations. Also local."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/04-journal-crash-suite-ci-job-absent.md",
+      "notes": "The named channel — a `journal-crash-suite` CI job artifact — has never existed. `git log --all -S\"journal-crash-suite\" -- .github/` is empty; the string appears in exactly two commits, `7bb4065` (the repository's FIRST commit, which introduced the roadmap file, at a point where `git ls-tree -r 7bb4065 --name-only | grep '^\\.github'` returns nothing) and `3602ae6` (which copied the criterion verbatim into the test's doc comment). `git log -L84,84:roadmap/04-journal-idempotency-leases.md` shows one commit: the wording has never been edited. So this is an ORIGINAL OVERCLAIM in the plan, not drift — there is no earlier state in which the criterion was satisfiable. A nonexistent job name is not a synonym for the `test` job that runs the same suite at 25 iterations, so the box stays unticked. Full search trail and the smallest honest remedy (one new workflow + one dispatch, effort S) are in the defect record."
+    },
+    {
+      "index": 2,
+      "text": "All 13 `JournalEntryType` members and every `WorkUnitAttemptStatus` member round-trip through the codec with full schema-branch coverage — evidence: codec round-trip suite + coverage report.",
+      "textSha256": "974da1ef5b75ba6b2f7f8276c64efffce063af6c8073cd8f3c7fa2d17e3a45dd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 696 — '  ✓  @crabgic/journal  src/codec/journal-entry.test.ts (41 tests) 54ms'; line 718 — '  ✓  @crabgic/journal  src/codec/ndjson-codec.test.ts (6 tests) 11ms'; line 714 — '  ✓  @crabgic/journal  src/codec/hash-chain.test.ts (12 tests) 17ms'; run summary line 1032-1033 ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-entry.test.ts:87",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.test.ts:81-88 — a `for (const type of JOURNAL_ENTRY_TYPES)` loop whose body asserts 'expect(line.endsWith(\"\\n\")).toBe(true); const decoded = decodeLine(line.slice(0, -1)); expect(decoded).toEqual(entry);' — the round trip, once per member, over a hash-consistent fixture built by `buildSampleEntry` (:56-73). `:77-78` 'expect(JOURNAL_ENTRY_TYPES).toHaveLength(13); expect(Object.keys(SAMPLE_PAYLOADS)).toHaveLength(13);' is the anti-vacuity pin: a shrunk union or a fixture table that stopped covering it fails here rather than silently looping fewer times."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-entry.test.ts:185",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.test.ts:178-186 — the same loop over `WORK_UNIT_ATTEMPT_STATUSES`, asserting 'expect(decoded).toEqual(entry); … expect(decoded.payload.status).toBe(status);'. `:168-175` pins the membership itself: 'expect(WORK_UNIT_ATTEMPT_STATUSES).toEqual([\"pending\",\"dispatched\",\"succeeded\",\"failed\",\"cancelled\",\"parked:rate_limit\"]);' — i.e. \"every member\" is six, enumerated, not asserted in the abstract."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-entry.test.ts:100",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.test.ts:90-101 — the negative control, also once per member: 'expect(() => JournalEntrySchema.parse({ ...draft, hash })).toThrow();' for a payload that matches no member's schema. Plus `:104` (a type outside the 13), `:117` (an extra unknown payload key, `.strict()`), `:130` (non-hex prevHash/hash) and `:150-163` (a `run_transition` whose `to` is not a run-lifecycle state). Without these, a codec that accepted anything would pass all 13 round trips."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c2-codec-coverage.txt",
+          "quotedAssertion": "the \"coverage report\" half, enumerated per file because v8's text reporter prints only files BELOW 100% (an empty table is an absence, not evidence): 'packages/journal/src/codec/error-message.ts lines 100 branches 100 funcs 100 stmts 100' and the same four 100s for `hash-chain.ts`, `journal-entry.ts`, `journal-payloads.ts`, `ndjson-codec.ts`; 'TOTAL lines 100 branches 100 funcs 100 stmts 100' over 69 statements / 20 branches / 11 functions / 66 lines. Exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c2-codec-roundtrip.txt",
+          "quotedAssertion": "'Test Files 4 passed (4) / Tests 61 passed (61)' — scoped local re-run of the four codec suites at the closeout commit, exit status 0."
+        }
+      ],
+      "notes": "Recorded because the mapping table is wrong here and a reader should not trust it: `docs/evidence/phase-04/README.md`'s row 2 cites \"coverage in `exit-criteria-package-gate.txt`\" for the coverage-report half, but that file's own recorded command is `npx vitest run --coverage.enabled=false packages/journal` — it contains no coverage numbers at all. The coverage half therefore had NO committed artifact before this pass; `closeout-c2-codec-coverage.txt` supplies it. The round-trip half is executed by CI, so the class is EVIDENCE-EXISTS with the coverage run as a supplement. Scope: the coverage figures above are for the five `codec/` production files the criterion is about, not the whole package."
+    },
+    {
+      "index": 3,
+      "text": "Idempotency semantics proven: same `(operationId, contentHash)` replays a byte-identical result; changed content fails a typed conflict, never silently overwrites — evidence: idempotency property-test suite.",
+      "textSha256": "e8fa5a8d446746964c8ef190b7aa751407d5f758ce7d0a2151f3a29c943b069c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 685 — '  ✓  @crabgic/journal  src/idempotency.test.ts (14 tests) 316ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/idempotency.test.ts:165",
+          "quotedAssertion": "packages/journal/src/idempotency.test.ts:165-231 — the property suite the criterion names by channel ('property: randomized (operationId, contentHash) sequences never produce a silent overwrite', fast-check, `numRuns: 40` at :228). It runs a reference model beside the registry: `:199` 'expect(outcome.status).toBe(\"recorded\")' first time, `:205-209` 'expect(outcome.status).toBe(\"replayed\"); expect(outcome.result).toEqual(existing.result);' for the same hash, `:211-212` 'expect(outcome.status).toBe(\"conflict\"); expect(outcome.result).toBeUndefined();' for a different hash, and `:218-225` a final sweep replaying every operationId's ORIGINAL hash and asserting the ORIGINAL result survives every intervening call."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/idempotency.test.ts:50",
+          "quotedAssertion": "packages/journal/src/idempotency.test.ts:45-50 — 'expect(first.status).toBe(\"recorded\"); expect(second.status).toBe(\"replayed\"); expect(second.result).toEqual(first.result); … expect(compute).toHaveBeenCalledTimes(1);' — the \"replays\" clause is proven to be a replay, not a recomputation that happens to agree."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/idempotency.test.ts:104",
+          "quotedAssertion": "packages/journal/src/idempotency.test.ts:100-104 — the BYTE-IDENTICAL clause, at its hardest case: a `Date`/`NaN`/`undefined`-member result gives 'expect(first.result).toEqual(second.result); expect(first.result).toEqual({ when: \"2026-01-01T00:00:00.000Z\", n: null, kept: 1 });' — the recorded call is JSON-round-tripped so the first return equals every later replay (validation-round MINOR 3)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/idempotency.test.ts:134",
+          "quotedAssertion": "packages/journal/src/idempotency.test.ts:117-120 'expect(second.status).toBe(\"conflict\"); expect(second.result).toBeUndefined(); expect(computeB).not.toHaveBeenCalled();' and :134-135 'expect(replay.status).toBe(\"replayed\"); expect(replay.result).toEqual({ value: \"original\" });' AFTER a conflicting write — the \"never silently overwrites\" clause asserted on the stored value, not just on the returned status. `:149` 'expect(entries).toHaveLength(1);' proves it at the journal level too: three conflicting calls append exactly one `remote_operation_record`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/idempotency.test.ts:62",
+          "quotedAssertion": "packages/journal/src/idempotency.test.ts:53-64 — 'expect(outcome.status).toBe(\"replayed\"); expect(outcome.result).toEqual({ value: \"durable\" }); expect(compute).not.toHaveBeenCalled();' from a BRAND-NEW registry instance over the same journal: the replay is genuinely journal-backed, not an in-memory cache."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c3-idempotency.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 14 passed (14)' — scoped local re-run at the closeout commit, exit status 0."
+        }
+      ],
+      "notes": "Scope, recorded so the tick is not read wider than it is: `checkOrRecord` is proven correct for SEQUENTIAL call sequences only. `packages/journal/src/idempotency.ts`'s own CONCURRENCY doc-comment section, and `docs/evidence/phase-04/README.md` Deviation 2, record that two truly concurrent FIRST-time calls for the same never-before-seen `operationId` can both observe \"no prior record\". This criterion makes no concurrency claim, and the phase's §Out of scope assigns the atomic-claim primitive elsewhere — but the limitation is real and named here rather than left to be discovered."
+    },
+    {
+      "index": 4,
+      "text": "Two-process lease contention resolves to exactly one holder; takeover fires only on expiry **and** start-time mismatch, never against a live process — evidence: lease-contention integration test.",
+      "textSha256": "1b2818fbbb68f74d07bb2d2e0688cd96f212efcef7c863370aedbbc3c22a2b70",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 686 — '  ✓  @crabgic/journal  src/lease.test.ts (17 tests) 709ms'; line 688 — '  ✓  @crabgic/journal  src/lease-acquire.test.ts (7 tests) 41ms'; line 707 — '  ✓  @crabgic/journal  src/lease-record.test.ts (14 tests) 523ms'; line 719 — '  ✓  @crabgic/journal  src/lease-fixtures/lease-acquire-attempt.test.ts (2 tests) 179ms'. This run is green at `af46e00`, this pass's own base commit. `git diff 70d7da7 af46e00 -- packages/journal` is also EMPTY, i.e. nothing has touched this package since the lease fix described in the notes below."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease.test.ts:437",
+          "quotedAssertion": "packages/journal/src/lease.test.ts:428-437 — the integration test the criterion names: two real, concurrently-spawned child processes, each holding its decision until the test releases them (`:434` 'const [outputA, outputB] = await Promise.all([a.announced, b.announced]);' — the contended window is enforced, not hoped for), then 'expect(outcomes.sort()).toEqual([\"ACQUIRED\", \"DENIED\"]);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease.test.ts:450",
+          "quotedAssertion": "packages/journal/src/lease.test.ts:445-450 — the anti-vacuity pin that makes the denial mean the right thing: it reads the winner's pid back off disk and asserts 'expect(await readProcessStartTimeFromProc(holderPid)).toBeDefined();'. Without it, the children could be denied by the 15s TTL rather than by liveness, and the test would keep passing on an idle machine while certifying nothing (this is the second of three historical causes, named in the test's own :383-401 comment block)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease.test.ts:97",
+          "quotedAssertion": "packages/journal/src/lease.test.ts:88-97 — the \"never against a live process\" clause, isolated: the clock advances 50s past a 1s TTL, `readProcessStartTime` still reports a matching start time, and a second acquire 'rejects.toThrow(LeaseHeldError)'. `:115-123` is the paired positive: with `readProcessStartTime` returning `undefined`, the same setup yields 'expect(second.pid).toBe(222); expect(second.held).toBe(true);' — takeover fires only once BOTH conditions hold."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease-record.test.ts:150",
+          "quotedAssertion": "packages/journal/src/lease-record.test.ts:141-155 — the exact truth table as a fast-check property at `numRuns: 5000`: 'const expired = nowMs >= forgedRecord.expiresAtMs; expect(eligible).toBe(!recordedProcessStillAlive && expired);' for any record/clock/liveness combination. `:128-139` is the forged-record half at another 5000 runs: 'expect(isTakeoverEligible(forgedRecord, nowMs, true)).toBe(false);'. `packages/journal/src/lease-acquire.ts:249-251` is what feeds it: `recordedProcessStillAlive = currentStartTime !== undefined && currentStartTime === existingRecord.startTimeTicks` — i.e. a genuine start-time COMPARISON, which is what makes \"start-time mismatch\" the right phrase for the eligible branch."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease-acquire.test.ts:130",
+          "quotedAssertion": "packages/journal/src/lease-acquire.test.ts:113-134 — the deterministic pin for the defect that made this criterion FALSE until 2026-08-01: an acquirer paused between staking its claim and publishing its record, forced through a `TryAcquireHooks` DI seam rather than raced for, gives 'expect([a.status, b.status].sort()).toEqual([\"acquired\", \"denied\"]); … expect(onDisk).toEqual(winner);'. `:181-182` pins that a contended read finding the holder gone must not clobber a third process's fresh lease ('expect(acquired).toHaveLength(1); expect(parseLeaseRecord(await readFile(leasePath, \"utf8\"))).toEqual(acquired[0]?.record);'), and `:204-208` that the bounded retry gives up claiming nothing ('expect(outcome.status).toBe(\"denied\"); expect(outcome.error).toBeInstanceOf(LeaseAcquireRaceLostError); expect(outcome.record).toBeUndefined(); expect([publishes, contendedReads]).toEqual([3, 3]);')."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/lease-acquire.test.ts:261",
+          "quotedAssertion": "packages/journal/src/lease-acquire.test.ts:257-264 — the publish is atomic in content, not merely in creation: 'expect(outcome).toBe(\"published\"); expect(await readFile(path, \"utf8\")).toBe(\"the-whole-payload\"); expect((await stat(path)).mode & 0o777).toBe(0o600); expect(await readdir(dir)).toEqual([basename(path)]);' — the last clause proves no `*.stage-*` residue survives. `:273-275` is the loser's path: 'expect(outcome).toBe(\"exists\"); expect(await readFile(path, \"utf8\")).toBe(\"the-incumbent\");'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c4-lease-contention.txt",
+          "quotedAssertion": "TWO captures, both kept. First: 'Test Files 6 passed (6) / Tests 53 passed (53)', exit status 0. Second, appended in the same pass because it DISAGREES: the identical command later in the session exits 1 with 'Test Files 1 failed | 5 passed (6) / Tests 1 failed | 52 passed (53)' — the known-flaky `onLeaseLost` heartbeat arm. In BOTH captures the load-bearing test passes: '✓ … exactly one of two real, concurrently-spawned child processes acquires the lease'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/fix3-lease-publish-toctou-passing.txt",
+          "quotedAssertion": "the GREEN half of the 2026-08-01 fix that made this criterion true; `fix3-lease-publish-toctou-failing.txt` is its RED counterpart, recording `[\"acquired\",\"acquired\"]` against the unfixed publish path."
+        }
+      ],
+      "notes": "DATED HONESTY NOTE, and the most important thing in this record. This criterion was NOT held by the shipped code until `70d7da7` (#51, 2026-08-01). The evidence the phase originally filed for it — `wi6-lease-failing.txt`/`wi6-lease-passing.txt`, 2026-07-17 — certified a guarantee the code did not have: `writeExclusive` did `open(path,\"wx\")` and then a SEPARATE write, so the lease path was briefly observable EMPTY; a contender read `\"\"`, `parseLeaseRecord(\"\")` returned `undefined`, and `isTakeoverEligible(undefined, …)` returns `true` UNCONDITIONALLY (lease-record.ts:104) without ever consulting pid liveness. Measured at 9 double acquires in 11,000 two-process races. That was the THIRD distinct cause of the same intermittent failure in this very test (the earlier two: a fixed 300ms hold that let the race not happen at all, fixed 2026-07-30; synthetic pids that made liveness permanently false, fixed in #43/`16fb82f`). Every citation above is post-`70d7da7`. RESIDUAL, stated rather than papered over: the `record === undefined` branch of `isTakeoverEligible` still takes over unconditionally, including against a live process — `lease-record.test.ts:96` asserts exactly that ('expect(isTakeoverEligible(undefined, Number.MAX_SAFE_INTEGER, true)).toBe(true);'). It is sound only because, after `70d7da7`, no correct process can leave a present-but-unparseable lease file: publication stages the complete record under a private name and `link()`s it into place. The criterion's \"never against a live process\" therefore rests on the producer side, not on the eligibility predicate. W4's separate takeover-rename TOCTOU residual (evidence README Deviation 3) also remains open with a sharpened precondition. FLAKE, measured rather than waved at. Two arms of `lease.test.ts` are separately tracked as real-timer races in the tests' OWN choreography: `onLeaseLost` and the `autoRenew` heartbeat-renewal arm. Both passed in the cited CI run at `af46e00` and in this pass's first scoped capture, but `onLeaseLost` then failed 5/5 when `lease.test.ts` was run alone and 3/3 in the six-file form, and once in the full `npm test` (1 failed | 6060 passed). The mechanism is visible in the test: A holds with a 10ms heartbeat, the lease file is unlinked out-of-band, and B re-acquires — if A's heartbeat fires in the window between the unlink and B's publish, A correctly reports `missing` where the test asserts `ownership_mismatch` (`lease.test.ts:579`). It is not this pass's doing (`git diff origin/main -- packages/` is empty here) and it is not attributed to `70d7da7` either — that is speculation this pass did not test. It does NOT touch this criterion: the two-real-child-process contention test passes in every capture, including the failing one, which is committed alongside the passing one in `closeout-c4-lease-contention.txt` rather than re-rolled until green."
+    },
+    {
+      "index": 5,
+      "text": "fsync ordering (`write → fsync(file) → fsync(dir)`) asserted on the real append path — evidence: strace-based CI assertion (Linux), or an injected fs-shim equivalent where strace is unavailable.",
+      "textSha256": "237a724f52f049077a8d00ecb6406484b6c93af5e09144a75694060fe068b6cd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 697 — '  ✓  @crabgic/journal  src/store/durable-io.test.ts (10 tests) 32ms'; line 698 — '  ✓  @crabgic/journal  src/store/append-entry.test.ts (11 tests) 222ms'. The fs-shim assertion is therefore a CI assertion, executed on every push, not only a local one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/durable-io.test.ts:57",
+          "quotedAssertion": "packages/journal/src/store/durable-io.test.ts:40-63, 'performs write -> fsync(file) -> fsync(dir), in exactly that order, on the real fs port' — ':54' 'expect(firstWriteIndex).toBeGreaterThanOrEqual(0);', ':55' 'expect(fsyncIndexes.length).toBeGreaterThanOrEqual(2);', ':57' 'expect(firstWriteIndex).toBeLessThan(fsyncIndexes[0]!);', ':61-62' 'expect(fileFsync.path).toBe(filePath); expect(dirFsync.path).toBe(base);'. The two length guards are the anti-vacuity controls: an implementation that never called `write`, or fsynced fewer than twice, fails before the ordering assertions are reached."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/durable-io.test.ts:43",
+          "quotedAssertion": "packages/journal/src/store/durable-io.test.ts:43 — 'const recording = wrapWithRecording(createNodeFsPort());'. The port under observation is the REAL node fs port; the shim only records call order around it. `packages/journal/src/store/append-entry.ts:145` ('await durablyAppendLine(config.fs, targetPath, config.segmentsDir, line, config.fileMode);') and `store-config.ts:46` ('fs: options.fs ?? createNodeFsPort()') are what make this the real append path rather than a parallel one: production `appendEntry` calls the same `durablyAppendLine` with the same port."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/durable-io.test.ts:94",
+          "quotedAssertion": "packages/journal/src/store/durable-io.test.ts:82-97 — the snapshot path's own ordering, asserted the same way: 'expect(writeIndex).toBeLessThan(firstFsyncIndex); expect(firstFsyncIndex).toBeLessThan(renameIndex); expect(renameIndex).toBeLessThan(secondFsyncIndex);'. `:109-124` does the same for truncate. Not required by this criterion, cited because it shows the ordering discipline is uniform rather than special-cased for the one asserted path."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c5-fsync-ordering.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 21 passed (21)' — scoped local re-run at the closeout commit, exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/wi2-fsync-append-passing.txt",
+          "quotedAssertion": "the phase's original work-item-2 capture, paired with `wi2-fsync-append-failing.txt`'s RED against a naive buffered writer."
+        }
+      ],
+      "notes": "Which disjunct, and the one thing this pass could NOT verify. The criterion offers two channels; the repository implements the second. There is no `strace` anywhere in `.github/workflows/` (grep: zero hits) and no strace-based assertion in the tree — the only two `strace` mentions in the whole repository are in `packages/journal/src/store/testing/recording-fs-port.ts:5-6`, restating this criterion. `which strace` on the development machine returns nothing (re-verified 2026-08-02), which is the fallback's stated precondition there. What this pass did NOT establish is whether `ubuntu-latest` ships `strace`; no CI job installs it, and nothing was dispatched to find out. Stated plainly because it is the one soft edge in this tick: if the runner does carry strace, the criterion's FIRST disjunct would be the applicable one and no implementation of it exists. The substantive guarantee — the ordering asserted on the real append path, in CI — is met either way. Scope: the shim observes the fs-PORT call sequence, not kernel syscalls; that is what \"an injected fs-shim equivalent\" means, and `docs/evidence/phase-04/README.md` Deviation 6 already records that the crash suite's real SIGKILLs do NOT exercise fsync ordering, which is precisely why this assertion exists separately."
+    },
+    {
+      "index": 6,
+      "text": "Snapshot+replay recovery reconstructs state identical to a full replay-from-genesis across randomized snapshot points — evidence: snapshot-equivalence property suite.",
+      "textSha256": "c604f335cdb6260b2183e437347568e0faf4cce6bbdf86460209b2046d2e9023",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 692 — '  ✓  @crabgic/journal  src/store/journal-recovery-properties.test.ts (2 tests) 395ms'; line 699 — '  ✓  @crabgic/journal  src/store/snapshot-io.test.ts (9 tests) 61ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/journal-recovery-properties.test.ts:197",
+          "quotedAssertion": "packages/journal/src/store/journal-recovery-properties.test.ts:144-208, 'property: snapshot+replay reconstructs identical state to full replay-from-genesis' — ':197' 'expect(recoveredState).toBe(fullReplayState);' where `fullReplayState` is folded from a genuine full `queryEntries` scan (:188-191) and `recoveredState` from `recover(config, runId)` seeded at the snapshot's own `runState` (:193-195). Randomization is over walk length 1-6, snapshot point 0-5 and a pick seed (:148-150), and the walk itself is a legal traversal of `RUN_LIFECYCLE_TRANSITIONS` (:61-75), so the states compared are real run-lifecycle states, not synthetic tokens. `numRuns: 20` (:206), real filesystem per run."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/journal-recovery-properties.test.ts:203",
+          "quotedAssertion": "packages/journal/src/store/journal-recovery-properties.test.ts:199-203 — the anti-vacuity half, and the one that makes 'identical' mean something stronger than 'the folded value agreed': 'const expectedReplayed = fullReplayEntries.filter((e) => e.seq > floor); expect(recovered.replayed).toEqual(expectedReplayed);' — the replayed SET is exactly the entries after the snapshot's sequence number, never more, never fewer, never reordered. A `recover()` that replayed from genesis every time would produce the same final state and fail here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/journal-recovery-properties.test.ts:123",
+          "quotedAssertion": "packages/journal/src/store/journal-recovery-properties.test.ts:122-136 — the neighbouring torn-write property, cited because `recover()` now runs `repairJournal` before replaying: ':123' 'expect(beforeRepair.firstIssue).toBeDefined();' (the injected cut is genuinely corrupting — see the :104-118 comment on why the cut range is capped so a newline-only strip cannot masquerade as one), then ':131-133' 'expect(afterRepair.firstIssue).toBeUndefined(); expect(afterRepair.validEntries.slice(0, entries.length)).toEqual(entries); expect(afterRepair.validEntries).toHaveLength(entries.length + 1);'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c6-snapshot-equivalence.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 11 passed (11)' — scoped local re-run at the closeout commit, exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/wi3-chain-snapshot-passing.txt",
+          "quotedAssertion": "the phase's original work-item-3 capture, paired with `wi3-chain-snapshot-failing.txt`'s RED against a corrupted-tail fixture."
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "text": "Evidence query surface returns the exact `EvidenceRecord` set filtered by run/change-set/work-unit ID against a fixture journal spanning all 13 entry types — evidence: query-surface integration test.",
+      "textSha256": "de5dfc62d9dcf48f493eddcc76389d9697555622583a9a17033b7cc23171bc14",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 693 — '  ✓  @crabgic/journal  src/store/query-entries.test.ts (9 tests) 134ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/query-entries.test.ts:100",
+          "quotedAssertion": "packages/journal/src/store/query-entries.test.ts:93-101 — the \"fixture journal spanning all 13 entry types\" clause, built by appending one schema-valid representative of every member (`SAMPLE_INPUTS`, :31-84) and asserted as 'expect(all).toHaveLength(13); expect(all.map((e) => e.type)).toEqual([...JOURNAL_ENTRY_TYPES]);' — by type AND in order, so a journal that dropped or reordered a member fails. `:199-207` repeats it with `segmentMaxBytes: 1`, i.e. across 13 rotated segments."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/query-entries.test.ts:133",
+          "quotedAssertion": "packages/journal/src/store/query-entries.test.ts:124-134 — the change-set filter over an `evidence_pointer`: a matching evidence_pointer and a non-matching `fanout_rationale` are both present, and 'expect(filtered).toHaveLength(1); expect(filtered[0]!.type).toBe(\"evidence_pointer\");'. This is literally \"the exact EvidenceRecord set filtered by change-set ID\", with a discriminating decoy."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/query-entries.test.ts:171",
+          "quotedAssertion": "packages/journal/src/store/query-entries.test.ts:166-173 — the \"as EvidenceRecord\" clause: 'expect(entry.payload.command).toBe(\"npm test\"); expect(entry.payload.artifactDigests).toEqual([\"sha256:artifact\"]);' after narrowing on `entry.type !== \"evidence_pointer\"`, i.e. the 02 `EvidenceRecord` fields are read off the deserialized payload, not merely present as JSON."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/query-entries.test.ts:120",
+          "quotedAssertion": "packages/journal/src/store/query-entries.test.ts:113-122 (runId: three entries, one matching, one for another run, one with no runId at all → 'expect(runAOnly).toHaveLength(1); expect(runAOnly[0]!.runId).toBe(RUN_A);'), :137-144 (workUnitId, same shape), and :147-163 (both together → 'expect(filtered).toHaveLength(1);', AND semantics). Each has a decoy that a non-discriminating filter would return."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/query-entries.test.ts:195",
+          "quotedAssertion": "packages/journal/src/store/query-entries.test.ts:175-197 — the negative-space control: a segment reported by `readdir` but unreadable is skipped rather than thrown on, and 'expect(all).toHaveLength(1); expect(all[0]!.payload).toEqual({ rationale: \"readable\" });' — the surviving result is still asserted by content, so \"skips\" cannot degenerate into \"returns nothing\"."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c7-query-surface.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 9 passed (9)' — scoped local re-run at the closeout commit, exit status 0."
+        }
+      ],
+      "notes": "Composition, stated because the criterion reads as one sentence and the suite proves it in pieces. No single `it()` filters the 13-type fixture journal by run/change-set/work-unit ID: the 13-type journal is exercised unfiltered (:93) and by type (:103), while the three ID filters are exercised on purpose-built two- and three-entry journals with decoys (:113, :124, :137, :147). The decomposition is sound rather than convenient because the filter is type-agnostic by construction — `packages/journal/src/store/query-entries.ts:31-34` compares `entry.type`, `entry.runId`, `entry.changeSetId`, `entry.workUnitId` as four independent envelope-level predicates, so proving the runId filter discriminates over `fanout_rationale` entries proves the same code path for `evidence_pointer` entries. Also recorded: the runId and workUnitId cases return non-`evidence_pointer` entries, so the \"exact EvidenceRecord set\" phrasing is literally exercised only for the change-set filter (:133), which is also the filter 09's `evidence <change-set-id>` command actually uses."
+    },
+    {
+      "index": 8,
+      "text": "A `parked:rate_limit` attempt record retains its `session_id` across a simulated crash+recover cycle — evidence: targeted crash-recovery test (the property §0's pause-and-resume policy depends on).",
+      "textSha256": "20b3d44701f5f63de0072f901f6c369ddd7a23c22bde596191b6e61e6af45ad4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 690 — '  ✓  @crabgic/journal  src/attempts.test.ts (11 tests) 83ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/attempts.test.ts:206",
+          "quotedAssertion": "packages/journal/src/attempts.test.ts:159-209, the describe block named 'EXIT CRITERION: a parked:rate_limit attempt retains session_id across a simulated crash+recover cycle' — ':206-207' 'expect(recovered?.status).toBe(\"parked:rate_limit\"); expect(recovered?.sessionId).toBe(sessionId);' read back through `getLatestAttempt` AFTER the repair."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/attempts.test.ts:191",
+          "quotedAssertion": "packages/journal/src/attempts.test.ts:182-199 — the crash is real corruption, not a no-op: a subsequent entry's bytes are cut mid-line (':188' `writeFileSync(path, full.slice(0, lastNewline + 1 + 3))`), then ':191' 'expect(beforeRepair.firstIssue).toBeDefined();' proves `verifyChain` sees a torn write, and ':199' 'expect(afterRepair.firstIssue).toBeUndefined();' proves `repairJournal()` resolved it. Without :191 the test would pass over an intact file and prove nothing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/attempts.test.ts:124",
+          "quotedAssertion": "packages/journal/src/attempts.test.ts:114-125 — the read-back path is proven to be latest-wins, not first-wins: 'expect(latest?.status).toBe(\"dispatched\"); expect(latest?.seq).toBe(third.seq);' over three attempts. `:128-139` proves it ignores other work units. These matter because `getLatestAttempt` is the function the exit-criterion test relies on; the phase's RED capture (`wi5-attempts-failing.txt`) records a stub that returned the FIRST attempt."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/attempts.test.ts:52",
+          "quotedAssertion": "packages/journal/src/attempts.test.ts:49-53 — the `session_id` is persisted to the journal entry itself, not only returned in memory: 'expect(entries).toHaveLength(1); … expect(entries[0].payload.sessionId).toBe(sessionId); expect(entries[0].payload.status).toBe(\"dispatched\");' read back through `queryEntries`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-entry.test.ts:198",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.test.ts:189-199 — the codec-level counterpart: 'expect(decoded.payload.status).toBe(\"parked:rate_limit\"); expect(decoded.payload.sessionId).toBe(SAMPLE_ID);' after an encode/decode round trip, so the retention survives serialization as well as repair."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c8-parked-session-id.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 11 passed (11)' — scoped local re-run at the closeout commit, exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/wi5-attempts-failing.txt",
+          "quotedAssertion": "the RED capture: a stub `recordAttempt` that drops `sessionId` and a `getLatestAttempt` that returns the FIRST attempt, both failing at the assertion level including this exit-criterion test itself."
+        }
+      ],
+      "notes": "Scope: \"simulated crash\" is the criterion's own word and is what the test does — a hand-injected torn tail, not a real `SIGKILL`. That is the honest boundary, and it is the right one here: `docs/evidence/phase-04/README.md` Deviation 6 records that a real SIGKILL does not exercise durability ordering at all (the kernel page cache outlives process death), so a kill-harness variant of this test would prove less about the byte-level survival of the payload field, not more."
+    },
+    {
+      "index": 9,
+      "text": "Append p50 latency documented with a CI regression gate — evidence: benchmark output committed, gate wired into CI.",
+      "textSha256": "2a6b469b02ea67b8a7da1b299ccaecca28b7e08f283983c4cc7fb52015d25320",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 711 — '  ✓  @crabgic/journal  src/store/append-benchmark.test.ts (5 tests) 695ms'. This is the \"gate wired into CI\" clause, confirmed from the job log rather than inferred from the workflow: the gate really executes on every push, inside `ci.yml`'s `test` job (`npm test` = `vitest run --coverage`). No dedicated benchmark job is named by the criterion, and none exists."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/append-benchmark.test.ts:90",
+          "quotedAssertion": "packages/journal/src/store/append-benchmark.test.ts:81-91, describe 'REGRESSION GATE: append p50 latency over 300 real appends stays under a generous documented threshold' — 'expect(stats.p50Ms, `p50 append latency ${stats.p50Ms.toFixed(3)}ms exceeded the ${P50_THRESHOLD_MS}ms regression-gate threshold …`).toBeLessThan(P50_THRESHOLD_MS);' with `P50_THRESHOLD_MS = 100` (:27) over `BENCHMARK_COUNT = 300` (:28) REAL appends (`measureAppendLatencies` against a fresh tmp dir, :83-84)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/append-benchmark.test.ts:48",
+          "quotedAssertion": "packages/journal/src/store/append-benchmark.test.ts:45-67 — the statistic itself is pinned, not trusted: 'expect(percentile(values, 50)).toBe(3);' on a known sample, ':51' 'expect(values).toEqual(copy);' (no mutation of the caller's array), ':55-56' 'expect(() => percentile([], 50)).toThrow(RangeError);' so an empty sample cannot silently produce a passing p50, and ':63' 'expect(stats.p50Ms).toBe(5);'. `:71-78` asserts `measureAppendLatencies` returns exactly `count` non-negative samples — without it, a measurement that produced nothing would pass the gate."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/exit-criteria-append-benchmark.txt",
+          "quotedAssertion": "the \"benchmark output committed\" clause: 1000 real appends, '\"p50Ms\": 2.30982199999994' (2026-07-18, WSL2)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c9-append-p50-remeasured.txt",
+          "quotedAssertion": "re-derived at af46e00 because the 2026-07-18 runner (`zz-bench-capture.test.ts`) was deleted after that capture, so the documented number was no longer reproducible from the tree. Two verbatim captures, both kept: '\"p50Ms\": 13.335670000000391' while the 1000-iteration crash suite ran concurrently on the same box, and '\"p50Ms\": 2.7037610000002132' on an idle machine. Exit status 0 for both."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c9-append-benchmark-gate.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 5 passed (5)' — scoped local re-run of the gate at the closeout commit, exit status 0."
+        }
+      ],
+      "notes": "SENSITIVITY, quantified so the tick is not read as more than it is. Both clauses the criterion names are real — a committed benchmark output, and a gate that this pass confirmed executing in CI from the job log. What the gate will NOT catch is most of what \"regression\" usually means: the threshold is 100ms against a p50 this pass re-measured at 2.70ms idle, i.e. ~37x headroom, and 13.34ms under heavy concurrent load, i.e. ~7.5x. A 5x append-latency regression passes it silently. The margin is deliberate and documented (`append-benchmark.test.ts:16-25` cites roadmap/04's own §Risks note that \"fsync semantics differ on WSL2 9p mounts\"; this repo's dev environment is WSL2, and the two captures above differ by 4.9x on one machine within five minutes, which is the variance that reasoning is about). The criterion states no sensitivity requirement, so this is a scope note rather than a defect — but a reader should treat this box as evidencing a catastrophic-regression smoke gate, not a tuned p50 budget. 15's `PerformanceContract`/`perf-conformance` machinery is where a tuned budget would belong."
+    },
+    {
+      "index": 10,
+      "text": "`runKillHarness` ships as a stable, independently unit-tested export (parameterized fault points → structured report) — evidence: harness unit tests plus the exported signature 07's test plan names as \"the phase-04 kill harness.\"",
+      "textSha256": "f6962f0ccb80e75025aa437ea0cbf87ecfc20248f061b1a525e77d3b2a2b5312",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 703 — '  ✓  @crabgic/journal  src/kill-harness.test.ts (10 tests) 1216ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/kill-harness.test.ts:71",
+          "quotedAssertion": "packages/journal/src/kill-harness.test.ts:50-87 — the pair that proves the harness discriminates rather than reports: against `unsafe-writer.mjs` (in-place buffered write, no fsync/rename) ':63' 'expect(beforeWrite?.verdict).toBe(\"pass\");' but ':69' 'expect(halfWritten?.verdict).toBe(\"fail\");' and ':71' 'expect(report.allConverged).toBe(false);'; against `safe-writer.mjs` (temp+rename) ':87' 'expect(report.allConverged).toBe(true);' at every fault point. Both directions, on the same two fault points — a harness that always passed, or always failed, fails one of these."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/kill-harness.test.ts:57",
+          "quotedAssertion": "packages/journal/src/kill-harness.test.ts:57-70 — the \"parameterized fault points → structured report\" clause, field by field: 'expect(report.results).toHaveLength(2);' then per result `faultPoint`, `killedAt`, `recovered` and `verdict` are each asserted ('expect(beforeWrite?.faultPoint).toBe(\"before-write\"); expect(beforeWrite?.killedAt).toBe(\"marker-observed\");' …), i.e. the report's shape is pinned, not just its boolean summary."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/kill-harness.test.ts:112",
+          "quotedAssertion": "packages/journal/src/kill-harness.test.ts:105-124 — the two non-happy terminal states, which is what makes the harness trustworthy when reused: ':112' 'expect(report.results[0]?.killedAt).toBe(\"natural-exit\");' when the operation exits without ever signalling the fault point, and ':124' 'expect(report.results[0]?.killedAt).toBe(\"timeout-kill\");' when it hangs past `spawnTimeoutMs`. A harness that silently reported \"pass\" for a child that never reached the fault point would certify nothing; :101 also pins the operation-factory form ('expect(seenContexts).toEqual([\"before-write\"]);'), and :140 that an unspawnable command rejects rather than passing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:5",
+          "quotedAssertion": "packages/git-engine/src/worktree-lifecycle.crash.test.ts:5 — 'import { createJournalStore, runKillHarness } from \"@crabgic/journal\";', with :49 and :179 calling it. This is phase 07's own package consuming the export ACROSS the package boundary, which is the \"stable export\" half of the criterion; `packages/supervisor/src/socket/kill-restart-recovery.test.ts:13` does the same for 05. The export is barrel-public at `packages/journal/src/index.ts:144` ('export { runKillHarness, signalFaultPoint, FAULT_POINT_MARKER_PREFIX } from \"./kill-harness.js\";') together with all seven report/option types (:146-153)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c10-kill-harness.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 10 passed (10)' — scoped local re-run at the closeout commit, exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/wi7-kill-harness-passing.txt",
+          "quotedAssertion": "the phase's original work-item-7 capture, paired with `wi7-kill-harness-failing.txt`."
+        }
+      ],
+      "notes": "One wording detail, recorded rather than corrected because it changes nothing: the criterion attributes the phrase \"the phase-04 kill harness\" to 07's test plan, and 07 does not use that exact string. `roadmap/07-git-control-repo-worktrees.md:67` (§Test plan) says \"crash tests reusing 04's kill harness\" and `:49` (§Interfaces consumed) says \"04's crash/kill-harness test utility, reused directly for this phase's own crash tests\". The referent is unambiguous and the reuse is real and cross-package, so this is a paraphrase in the criterion, not a claim about a missing artifact."
+    },
+    {
+      "index": 11,
+      "text": "`$XDG_STATE_HOME`/`$XDG_CACHE_HOME` crabgic roots are defined exactly once in this package — evidence: repo-wide lint/grep CI check fails if another package reimplements the root instead of importing it.",
+      "textSha256": "406f31bbd7525082ab5c8cb87d941956c3349a77102cc0d8b17a67c0cae4318a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 689 — '  ✓  @crabgic/journal  src/layout/xdg-sole-definition.test.ts (5 tests) 51ms'. The scan runs in CI on every push, which is the criterion's \"CI check\" clause."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/layout/xdg-sole-definition.test.ts:125",
+          "quotedAssertion": "packages/journal/src/layout/xdg-sole-definition.test.ts:101-126 — the scan itself: every production `.ts` under `packages/*/src` except `journal`'s, flagged when it contains BOTH the `\"crabgic\"` namespace literal AND a real `process.env.XDG_STATE_HOME`/`XDG_CACHE_HOME` READ (:78's regex, dot- or bracket-access), asserted as ').toEqual([]);' with a failure message naming the offenders."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/layout/xdg-sole-definition.test.ts:137",
+          "quotedAssertion": "packages/journal/src/layout/xdg-sole-definition.test.ts:128-137 — the check's own teeth, and the reason an empty violations list is evidence rather than an absence: a synthetic reimplementation fixture ('const stateHome = process.env.XDG_STATE_HOME ?? …; const root = join(stateHome, \"crabgic\", projectHash);') gives 'expect(hasNamespaceLiteral && readsXdgEnv).toBe(true);'. :151 and :158 are the two false-positive controls (a correct importer that only mentions the env var; a tilde-anchored literal default), and :171 keeps the single allowlist entry honest — 'expect(XDG_ENV_READ_PATTERN.test(content), `allowlisted file … now reads XDG env vars directly`).toBe(false);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/layout/xdg-layout.test.ts:37",
+          "quotedAssertion": "packages/journal/src/layout/xdg-layout.test.ts:37 — 'expect(resolveStateRoot(env, HASH)).toBe(`/state/${CRABGIC_DIR_NAME}/${HASH}`);' and :42 'expect(resolveCacheRoot(env, HASH)).toBe(`/cache/${CRABGIC_DIR_NAME}/${HASH}`);'; :48-51 pin the four subpaths (`journal/`, `journal/segments`, `journal/snapshots`, `leases/`) and :58 pins 07's `git-control` nesting under the SAME cache root, which is the Gap-14 sibling-constant shape. :21-22 vs :31-32 are the `~`-anchored-default vs env-override pair. Cited so the tick means \"defined once AND correct\", not merely \"defined once\"; executed in CI at job-log line 709 ('src/layout/xdg-layout.test.ts (11 tests) 15ms')."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/closeout-c11-xdg-sole-definition.txt",
+          "quotedAssertion": "'Test Files 2 passed (2) / Tests 16 passed (16)' — scoped local re-run at the closeout commit, exit status 0."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-04/exit-criteria-xdg-sole-definition.txt",
+          "quotedAssertion": "the phase's original capture of this check."
+        }
+      ],
+      "notes": "Independently verified rather than taken from the check, because the check's glob is narrower than \"repo-wide\": it walks `packages/*/src` only, skips `.test.ts`, and skips `dist`/`node_modules` — so `e2e/**`, `scripts/`, `packages/*/hooks/*.mjs` and `packages/*/statusline/*.mjs` are outside it. This pass ran the wider grep itself: `grep -rnE 'process\\.env(\\s*\\[\\s*[\"'\\''`]|\\.)\\s*(XDG_STATE_HOME|XDG_CACHE_HOME)' --include=*.ts --include=*.mjs --include=*.js .` over the whole tree (excluding `node_modules`/`dist`) returns exactly SIX files, of which exactly ONE is production: `packages/journal/src/layout/xdg-layout.ts` (4 hits, lines 140-144). The other five are all `.test.ts` fixtures — `packages/cli/src/doctor/checks/sandbox-selftest.test.ts` (20), `packages/gates/src/drift/cli.test.ts` (8), `packages/journal/src/layout/xdg-sole-definition.test.ts` (5), `packages/journal/src/layout/xdg-layout.test.ts` (4), `packages/journal/src/lease-project.test.ts` (4). Correction, 2026-08-02: this enumeration originally named only four of the five test files. `packages/gates/src/drift/cli.test.ts` was missing because the grep that produced the first list was piped through `head -30` and truncated. The conclusion is unaffected — the omitted file is a test fixture, and the count of PRODUCTION definition sites is still one — but the search trail is the evidence here, so the list is now the complete `grep -rl` output with per-file hit counts. So the criterion's claim — defined exactly once, in this package — holds as a fact about the tree at `af46e00`, and not only within the scan's own narrower window. Ledger: `docs/interface-ledger.md` Gap 14 pins `$XDG_CACHE_HOME/crabgic/<project-hash>/` as 04's sibling constant and quotes this criterion's current wording at line 712 — no conflict. (Gap 14's quotation of roadmap/04 §In scope line 22 still carries the pre-rename `engineering-orchestrator` spelling; the ledger is out of this pass's write set and was not touched.)"
+    }
+  ]
+}

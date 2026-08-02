@@ -1,0 +1,41 @@
+# Phase 04 exit criterion 2 — schema-branch coverage report for the journal codec (the committed exit-criteria-package-gate.txt was captured with --coverage.enabled=false and carries no coverage numbers)
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:18:47Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   bash ../covrun.sh
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+      Coverage enabled with v8
+
+
+ Test Files  4 passed (4)
+      Tests  61 passed (61)
+   Start at  00:18:48
+   Duration  1.53s (transform 1.21s, setup 0ms, import 1.82s, tests 92ms, environment 0ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 69/69 )
+Branches     : 100% ( 20/20 )
+Functions    : 100% ( 11/11 )
+Lines        : 100% ( 66/66 )
+================================================================================
+
+--- per-file enumeration from coverage/coverage-summary.json (v8's text reporter prints only files BELOW 100%, so an empty table is an absence, not evidence) ---
+packages/journal/src/codec/error-message.ts          lines   100 branches   100 funcs   100 stmts   100
+packages/journal/src/codec/hash-chain.ts             lines   100 branches   100 funcs   100 stmts   100
+packages/journal/src/codec/journal-entry.ts          lines   100 branches   100 funcs   100 stmts   100
+packages/journal/src/codec/journal-payloads.ts       lines   100 branches   100 funcs   100 stmts   100
+packages/journal/src/codec/ndjson-codec.ts           lines   100 branches   100 funcs   100 stmts   100
+TOTAL                                                lines   100 branches   100 funcs   100 stmts   100

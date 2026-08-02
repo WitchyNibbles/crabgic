@@ -1,0 +1,25 @@
+# Phase 04 exit criterion 9 — append p50 latency and its regression gate
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:51Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/store/append-benchmark.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/store/append-benchmark.test.ts > percentile / summarizeLatencies — pure math > computes the nearest-rank percentile without mutating the input array 3ms
+ ✓ |@crabgic/journal| src/store/append-benchmark.test.ts > percentile / summarizeLatencies — pure math > throws on an empty sample rather than returning a misleading value 1ms
+ ✓ |@crabgic/journal| src/store/append-benchmark.test.ts > percentile / summarizeLatencies — pure math > summarizes count/p50/p90/p99/mean/min/max correctly for a known sample 1ms
+ ✓ |@crabgic/journal| src/store/append-benchmark.test.ts > measureAppendLatencies — real filesystem > returns exactly `count` non-negative latency samples, in call order, for real appends 104ms
+ ✓ |@crabgic/journal| src/store/append-benchmark.test.ts > REGRESSION GATE: append p50 latency over 300 real appends stays under a generous documented threshold > p50 < 100ms (see file-level doc comment for why this threshold is deliberately generous) 2930ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  00:17:52
+   Duration  4.11s (transform 613ms, setup 0ms, import 861ms, tests 3.04s, environment 0ms)
+

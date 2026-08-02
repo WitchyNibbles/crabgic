@@ -1,0 +1,81 @@
+# Phase 04 exit criterion 2 — codec round-trip over all 13 JournalEntryType members and every WorkUnitAttemptStatus member
+#
+# Produced by the criteria-closeout pass (batch 2, phase 04), 2026-08-01T22:17:17Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/codec/journal-entry.test.ts packages/journal/src/codec/ndjson-codec.test.ts packages/journal/src/codec/hash-chain.test.ts packages/journal/src/codec/error-message.test.ts
+# Exit status: 0
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p04
+
+ ✓ |@crabgic/journal| src/codec/error-message.test.ts > toErrorMessage > returns .message for a real Error 3ms
+ ✓ |@crabgic/journal| src/codec/error-message.test.ts > toErrorMessage > returns String(err) for a non-Error thrown value 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > GENESIS_PREV_HASH is 64 lowercase hex zero characters 8ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize sorts object keys ascending regardless of insertion order 1ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize sorts nested object keys too 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize preserves array element order 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize omits undefined-valued keys, matching JSON.stringify's default 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize renders a top-level or array-nested null/undefined as the literal null 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize rejects non-finite numbers (NaN, Infinity) 1ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > canonicalize rejects unsupported value types (functions, symbols) 0ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > sha256Hex is deterministic and matches a known vector 2ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > omitHashField strips only the hash key 2ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > computeEntryHash is stable for the same logical entry regardless of key order 1ms
+ ✓ |@crabgic/journal| src/codec/hash-chain.test.ts > hash-chain > computeEntryHash changes when any non-hash field changes 0ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > encodeEntryToLine emits exactly one JSON object terminated by a single newline 7ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > decodeLine parses and validates a well-formed line 1ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > decodeLine throws on malformed JSON 1ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > decodeLine throws on well-formed JSON that fails schema validation 1ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > tryDecodeLine never throws — reports ok:false with an error message on failure 0ms
+ ✓ |@crabgic/journal| src/codec/ndjson-codec.test.ts > ndjson-codec > tryDecodeLine reports ok:true with the decoded entry on success 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > JOURNAL_ENTRY_TYPES really has 13 members (sanity on the fixture table above) 9ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "run_transition" entry through encode -> decode 5ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "run_transition" entry whose payload doesn't match its own schema 2ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "work_unit_transition" entry through encode -> decode 2ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "work_unit_transition" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "adjudication_decision" entry through encode -> decode 3ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "adjudication_decision" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "remote_operation_record" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "remote_operation_record" entry whose payload doesn't match its own schema 2ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "evidence_pointer" entry through encode -> decode 2ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "evidence_pointer" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "session_assignment" entry through encode -> decode 4ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "session_assignment" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "git_freeze" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "git_freeze" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "worktree_quarantine" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "worktree_quarantine" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "cas_ref_update" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "cas_ref_update" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "approval_token_mint" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "approval_token_mint" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "fanout_rationale" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "fanout_rationale" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "milestone_sync" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "milestone_sync" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "learning_transition" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "learning_transition" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects an entry whose type is not one of the 13 members 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a payload with an extra unknown key (.strict() enforcement) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects prevHash/hash values that aren't 64-char lowercase hex 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > evidence_pointer payload deserializes as a full EvidenceRecord shape (02) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > remote_operation_record payload deserializes as a full RemoteOperationRecord shape (02) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > run_transition payload carries a (from,to) pair typed against the run-lifecycle enum 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > WORK_UNIT_ATTEMPT_STATUSES really has all documented members 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "pending" 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "dispatched" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "succeeded" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "failed" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "cancelled" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "parked:rate_limit" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > a parked:rate_limit entry retains its sessionId in the round-tripped payload 0ms
+
+ Test Files  4 passed (4)
+      Tests  61 passed (61)
+   Start at  00:17:19
+   Duration  1.59s (transform 1.62s, setup 0ms, import 2.60s, tests 95ms, environment 1ms)
+
