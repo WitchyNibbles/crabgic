@@ -1,0 +1,23 @@
+# Captured 2026-08-02T10:12:03Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/installer/mcp-entry.golden.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > the merged .mcp.json entry, keyed GATEWAY_MCP_SERVER_NAME, is byte-for-byte the ledger's literal shape 2ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > buildGatewayMcpServerEntry() is exactly {command, args} with no extra fields 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > is idempotent and preserves other configured MCP servers, add-only 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > never overwrites an already-present entry under GATEWAY_MCP_SERVER_NAME, even a different one 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24, CONFIRMED): never clobbers a present-but-non-object mcpServers value (a string) 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-non-object mcpServers value (an array) 0ms
+ ✓ |crabgic| src/installer/mcp-entry.golden.test.ts > mcp-entry.golden.test > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-null mcpServers value 0ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  12:12:04
+   Duration  451ms (transform 224ms, setup 0ms, import 338ms, tests 4ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

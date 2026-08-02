@@ -1,0 +1,19 @@
+# Captured 2026-08-02T10:54:04Z UTC
+# HEAD: bdb8f4780a0e19bc7684103aa98b77ad27ab921f
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/doctor/doctor.plugin-faults.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/doctor/doctor.plugin-faults.test.ts > doctor.plugin-faults.test — all three seeded faults are reported with non-destructive repair steps > reports drift, an unpinned plugin source, and a stale CapabilityManifest digest simultaneously 25ms
+ ✓ |crabgic| src/doctor/doctor.plugin-faults.test.ts > doctor.plugin-faults.test — all three seeded faults are reported with non-destructive repair steps > reports all-clear when none of the three faults are present 9ms
+ ✓ |crabgic| src/doctor/doctor.plugin-faults.test.ts > doctor.plugin-faults.test — all three seeded faults are reported with non-destructive repair steps > runs the FULL check set against the REAL packages/plugin source and reports no faults 8ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  12:54:05
+   Duration  1.66s (transform 852ms, setup 0ms, import 1.28s, tests 44ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

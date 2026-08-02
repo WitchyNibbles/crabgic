@@ -1,0 +1,26 @@
+# Captured 2026-08-02T10:12:00Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/installer/install.matrix.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > empty dir: no .git at all — installs after the confirmGitInit gate approves, and git init actually runs 36ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > empty dir: git init declined — no artifacts are written at all 5ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > invalid .git: a corrupt .git directory does not block file installation 15ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > unborn HEAD: a freshly `git init`-ed repo with zero commits installs cleanly 28ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > dirty repo: uncommitted working-tree changes do not block installation 44ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > monorepo: a nested package.json is detected and does not disrupt root-level installation 25ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > config drift: an externally-mutated CLAUDE.md is picked back up cleanly by upgrade (a fresh, well-formed managed block is restored; add-only semantics never delete the drifted text itself) 36ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > interrupted upgrade: a kill-mid-write marker is fully recovered (no torn state) before the next operation proceeds 27ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > rollback: runUpgrade itself recovers a lingering interrupted-upgrade marker before proceeding, restoring pre-upgrade content 30ms
+ ✓ |crabgic| src/installer/install.matrix.test.ts > install.matrix.test > uninstall preserving user edits: a user-edited agent file survives uninstall untouched, unedited artifacts are removed 30ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  12:12:01
+   Duration  1.38s (transform 656ms, setup 0ms, import 1.00s, tests 275ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

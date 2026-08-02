@@ -1,0 +1,30 @@
+# Captured 2026-08-02T10:12:11Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/plugin/src/marketplace-schema.test.ts packages/cli/src/installer/vendored-install.digest.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — valid fixture > accepts a well-formed, SHA-pinned marketplace listing 3ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — work item 8's first failing test: unpinned (branch-ref) entry must fail > rejects a plugin entry pinned to a branch ref instead of a full commit SHA 1ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — work item 8's first failing test: unpinned (branch-ref) entry must fail > rejects a plugin entry pinned to a short/abbreviated SHA 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — work item 8's first failing test: unpinned (branch-ref) entry must fail > rejects the all-zero NULL object ID — 40 hex zeros is a syntactically-valid SHA that can never resolve to a commit (an unpinned placeholder, not a pin) 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — work item 8's first failing test: unpinned (branch-ref) entry must fail > rejects a missing digest field 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > MarketplaceSchema — unknown-key rejection (.strict()) > rejects an unknown plugin-entry key 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > UnpinnedMarketplaceSchema / loadUnpinnedMarketplace — identity-only read > accepts the all-zero placeholder (identity fields are readable before the release pin is cut) 1ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > UnpinnedMarketplaceSchema / loadUnpinnedMarketplace — identity-only read > still rejects a branch ref — leniency is scoped to the placeholder, never to an unpinnable ref 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > loadMarketplace — this package's own real, committed marketplace.json > is SHA-pinned to a real release commit, not the all-zero placeholder 2ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > loadMarketplace — this package's own real, committed marketplace.json > still REJECTS the all-zero placeholder, so the pin cannot regress to it 0ms
+ ✓ |@crabgic/plugin| src/marketplace-schema.test.ts > loadMarketplace — this package's own real, committed marketplace.json > its recorded digest matches a fresh recomputation from this package's own on-disk files (freshness) 3ms
+ ✓ |crabgic| src/installer/vendored-install.digest.test.ts > vendored-install.digest.test > a --plugin-dir vendored copy of the plugin resolves to the identical digest as the marketplace listing 88ms
+ ✓ |crabgic| src/installer/vendored-install.digest.test.ts > vendored-install.digest.test > the marketplace listing's own recorded digest matches a fresh recomputation from the source plugin directory itself (freshness) 1ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  12:12:12
+   Duration  983ms (transform 534ms, setup 0ms, import 882ms, tests 104ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

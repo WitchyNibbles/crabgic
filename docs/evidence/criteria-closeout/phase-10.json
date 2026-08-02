@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "phase": "10",
+  "roadmapFile": "roadmap/10-plugin-and-installer.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 3 (phase 10)",
+    "headSha": "bdb8f4780a0e19bc7684103aa98b77ad27ab921f"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Installation matrix passes end-to-end: empty dir, invalid `.git`, unborn HEAD, dirty repo, monorepo, config drift, interrupted upgrade, rollback, uninstall preserving user edits — suite `install.matrix.test`.",
+      "textSha256": "1dd6ef5c5b524094125770dc66c86982d309cfe61f5fec5e9b4c8318eb267e99",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 950 — '  ✓  crabgic  src/installer/install.matrix.test.ts (10 tests) 265ms'; run summary ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:67",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:67-71 — 'expect(asked).toBe(true);' / 'expect(result.repoState).toBe(\"not-a-repo\");' / 'expect(result.gitInitPerformed).toBe(true);' / 'expect(result.status).toBe(\"installed\");' / 'expect(existsSync(join(dir, \".git\"))).toBe(true);' — the empty-dir case, with the roadmap's own \"`git init` only after explicit approval\" gate asserted to have been asked, not assumed"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:79",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:79-81 — 'expect(result.status).toBe(\"aborted-git-init-declined\");' / 'expect(existsSync(join(dir, \"CLAUDE.md\"))).toBe(false);' / 'expect(existsSync(join(dir, \".git\"))).toBe(false);' — the negative half of the same gate: declining it writes nothing at all, so the approval is load-bearing rather than cosmetic"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:89",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:89-91 — 'expect(result.repoState).toBe(\"invalid-git\");' / 'expect(result.status).toBe(\"installed\");' / 'expect(existsSync(join(dir, \"CLAUDE.md\"))).toBe(true);' against a real corrupt `.git/HEAD` seeded at :86-87 — the invalid-`.git` case"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:98",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:98 — 'expect(result.repoState).toBe(\"unborn-head\");' against a real `git init`-ed, zero-commit repo (:96). The four repo-state assertions in this file return four DIFFERENT values, which is what stops a detector that always answers one thing from satisfying them all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:111",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:111 — 'expect(result.repoState).toBe(\"dirty\");' after a real `git init` / `add` / `commit` and then an uncommitted edit (:104-108) — the dirty-repo case"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:121",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:121-123 — 'expect(result.monorepoDetected).toBe(true);' / 'expect(result.status).toBe(\"installed\");' / 'expect(existsSync(join(dir, \"CLAUDE.md\"))).toBe(true);' against a nested `packages/sub/package.json` (:117-118) — the monorepo case"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:139",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:137-143 — after a real install whose `CLAUDE.md` is then wholly overwritten with 'EXTERNALLY MUTATED, drifted content' (:134): 'expect(upgradeResult.status).toBe(\"upgraded\");' / 'expect(content).toContain(\"BEGIN ENGINEERING ORCHESTRATOR MANAGED BLOCK\");' / 'expect(second.status).toBe(\"up-to-date\");' — the config-drift case, including that the state store is reconciled so a second upgrade is a no-op"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:166",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:166-168 — 'expect(recovery.recovered).toBe(true);' / 'expect(await readFile(join(dir, \"CLAUDE.md\"), \"utf8\")).toBe(original);' / 'expect(await readUpgradeMarker(dir)).toBeUndefined();' against a genuinely torn fixture (backup taken, marker written, 'TORN, PARTIAL' on disk, :153-163) — the interrupted-upgrade case, asserting the recovered bytes equal the pre-upgrade bytes, not merely that recovery ran"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:188",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:188 — 'expect(result.recoveredFromInterruptedUpgrade).toBe(true);' — the rollback case: `runUpgrade` itself, not a separate recovery entry point, clears a lingering marker before proceeding"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:202-205",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:202-205 — 'expect(explore?.action).toBe(\"preserved-drifted\");' followed by the byte assertion 'expect(await readFile(join(dir, \".claude\", \"agents\", \"eo-explore.md\"), \"utf8\")).toBe(' whose expected value at :204 is the user's own edit string seeded at :196 — the uninstall-preserving-user-edits case, read back off disk rather than inferred from the outcome enum"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.matrix.test.ts:208",
+          "quotedAssertion": "packages/cli/src/installer/install.matrix.test.ts:208-209 — 'expect(reviewer?.action).toBe(\"removed\");' / 'expect(existsSync(join(dir, \".claude\", \"agents\", \"eo-reviewer.md\"))).toBe(false);' in the SAME uninstall. This is the anti-vacuity control for the line above: an uninstall that preserved everything would satisfy the preservation assertion and remove nothing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c1-install-matrix.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  10 passed (10)' — scoped local `--reporter=verbose` re-run at the closeout commit; the header records UTC time, HEAD `eabb65a`, the verbatim command and exit status 0, and the body names each of the nine matrix cases by `it()` title"
+        }
+      ],
+      "notes": "Nine named cases, ten `it()`s — the empty-dir case is split into approve/decline. Scope recorded so the tick is not read wider than it is: \"uninstall preserving user edits\" is implemented by whole-file checksum drift detection plus a verbatim pre-install snapshot restore, both disclosed carry-forwards (`docs/evidence/phase-10/README.md` §Deviations 7 and 8, `docs/upgrade-guide.md` lines 99-107 and 132-141). The imprecision runs only in the over-preservation direction — an unrelated edit elsewhere in a merged file makes uninstall leave that whole artifact in place — so it never weakens this criterion's preservation clause; it means \"removes only unchanged owned content\" is enforced at whole-file, not per-managed-region, granularity."
+    },
+    {
+      "index": 2,
+      "text": "Add-only merge property test passes: user keys byte-preserved, security keys never loosened, over a fuzzed fixture corpus — suite `merge.monotonic.property`.",
+      "textSha256": "117787b49d3164f9b6883697b5e7fe1d89569d8eb1a1da2975b91939149a530b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 947 — '  ✓  crabgic  src/installer/merge.monotonic.property.test.ts (5 tests) 199ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:124",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:124 — 'expect(result.settings[fixture.userKeyName]).toEqual(fixture.userKeyValue);' over a fuzzed key NAME (:96-98, any string but the three the installer owns) and a fuzzed scalar VALUE (:20, boolean/integer/string/null) — the criterion's \"user keys byte-preserved\" clause"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:127",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:127 — 'expect(result.settings.attribution).toEqual(fixture.attribution);' and :130 'expect(result.settings.sessionUrl).toBe(fixture.sessionUrl);' — whenever the fixture already carried either key, the merge is asserted to have left the user's own value alone"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:137",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:137-139 — 'expect((result.settings.enabledPlugins as Record<string, unknown>)[PLUGIN]).toBe(' / 'ep.ownValue,' / ');' — a pre-existing `enabledPlugins[<plugin>]` is never re-widened, including when it is `false` (the user's explicit disable). This is the \"security keys never loosened\" clause at its sharpest point."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:146",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:146 — 'expect(result.settings.enabledPlugins).toEqual(ep.value);' for the `non-object` arm of `mapLikeFixtureArbitrary` (:82-85, fuzzing string/integer/boolean/null/array) — the 2026-07-24 adversarial-review regression: a present-but-wrong-typed value used to be read as absent and clobbered"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:134-141",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:134 — 'expect(result.settings.enabledPlugins).toEqual({ [PLUGIN]: true });' for the `absent` arm, and :141 'expect(result.settings.enabledPlugins).toEqual({ ...ep.otherEntries, [PLUGIN]: true });' for `object-without-own`. These are the non-degenerate control: without them, a merge that returned its input unchanged would satisfy every preservation assertion above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:45-57",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:45 — 'expect(result.content.includes(userContent) || userContent.length === 0).toBe(true);' over `fc.string()` user content — the same byte-preservation property for the `CLAUDE.md` text merge, not only for JSON; :57 'expect(second.changed).toBe(false);' pins idempotence, which is what makes `install` twice diff clean"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:214",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:214 — 'expect(result.mcpJson.mcpServers).toEqual(ms.value);' — the same fuzzed corpus applied to `mergeMcpJson`, so the property covers all three merged artifacts rather than settings alone"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/merge.monotonic.property.test.ts:149",
+          "quotedAssertion": "packages/cli/src/installer/merge.monotonic.property.test.ts:149 — '{ numRuns: 500 },' (and :217 the same for `.mcp.json`, :48/:60/:167 200 runs for the text-merge and idempotence properties) — the criterion's \"fuzzed fixture corpus\" is 500 fast-check cases per monotonicity property, not a handful of examples"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/settings-merge.ts:59",
+          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:59 — 'if (!(\"enabledPlugins\" in merged)) {' — the implementation the property fuzzes: presence-guarded, so the monotonicity rule is \"a key present as ANY value, of ANY type, is never touched\", which is why the wrong-typed arm above is a real branch and not a hypothetical"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c2-merge-monotonic.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  17 passed (17)' — scoped local re-run at the closeout commit of `merge.monotonic.property.test.ts` plus the unit-level `settings-merge.test.ts` that carries the same regression as worked examples"
+        }
+      ],
+      "notes": "Scope, recorded rather than implied. The criterion's clause is \"add-only merge property test\", and that is what is evidenced: the properties run against `mergeManagedTextBlock`/`mergeSettingsJson`/`mergeMcpJson` directly. The phase's §Test plan states the stronger `install→upgrade→uninstall` round-trip form of the same property; that lifecycle shape is covered by worked examples in `install.matrix.test.ts` (criterion 1) rather than by a fuzzer, so this box evidences the merge-level property the criterion names and nothing wider. One further detail a reader should not have to rediscover: `install` also writes a `statusLine` key (`settings-merge.ts:45-48`) on the same add-only terms, and it is deliberately NOT in the `userKeyName` exclusion filter at :96-98 — a generated fixture naming it therefore exercises the present-key-untouched path, which is correct behaviour, not a hole."
+    },
+    {
+      "index": 3,
+      "text": "`.mcp.json` project-scope entry key equals `GATEWAY_MCP_SERVER_NAME` and its command equals `crabgic gateway mcp`, byte-for-byte — golden test `mcp-entry.golden.test`.",
+      "textSha256": "f5639f6c9e344d3b4e9742f8078d5a1d4cd3194303b73a445648fb9a75773e25",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 985 — '  ✓  crabgic  src/installer/mcp-entry.golden.test.ts (7 tests) 12ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:34",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:34-37 — 'const expectedJson = JSON.stringify({' / '[GATEWAY_MCP_SERVER_NAME]: { command: \"crabgic\", args: [\"gateway\", \"mcp\"] },' / '});' / 'expect(JSON.stringify(result.mcpJson.mcpServers)).toBe(expectedJson);' — the byte-for-byte comparison the criterion names, with the key taken from the imported constant rather than a hand-typed literal"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:45",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:45 — 'expect(Object.keys(buildGatewayMcpServerEntry())).toEqual([\"command\", \"args\"]);' — \"byte-for-byte\" is asserted in both directions: no extra field may creep into the entry and still pass"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:65",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:65 — 'expect(result.changed).toBe(false);' when a DIFFERENT entry already sits under the same key (:61-63, `{ command: \"custom\", args: [\"x\"] }`), with :66-71 asserting that value survives. The golden shape is what a fresh merge produces, never something that overwrites a user's own server."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/install.ts:153",
+          "quotedAssertion": "packages/cli/src/installer/install.ts:153 — 'const mcp = mergeMcpJson(existingMcp);' inside `buildDesiredArtifacts`, whose result is written to `.mcp.json` at :181-184. The golden test drives the production merge, not a test-local reimplementation of it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md, Gap 11 — '`GATEWAY_MCP_SERVER_NAME`: `{\"crabgic_gateway\": {\"command\": \"crabgic\", \"args\": [\"gateway\",' / '\"mcp\"]}}`'. The golden shape asserted above is byte-identical to the ledger's own pinned literal; the ledger is the settled authority and this box does not restate it independently."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c3-mcp-entry-golden.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  7 passed (7)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Evidence-README drift, recorded because the walk hit it: `docs/evidence/phase-10/README.md` row 3 still spells this criterion's command `engineering-orchestrator gateway mcp` and its key `\"eo_gateway\"`, and its §Interfaces-consumed section repeats both. Those are pre-rename artifacts of the 2026-07-24 build; the roadmap criterion, ledger Gap 11, `@crabgic/contracts`' constant and the cited test all agree on `crabgic_gateway` / `crabgic gateway mcp`. The stale README text is not this pass's to fix and nothing here rests on it."
+    },
+    {
+      "index": 4,
+      "text": "Drift detector flags every seeded single-artifact mutation across `CLAUDE.md`, `settings.json`, `.mcp.json`, and `eo-*.md` — fixture suite `drift.fixtures`.",
+      "textSha256": "205d2a59796c403ed8382b5f73dd94134c5d14d4e0fe50420c8d67c1f4f44fb0",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 987 — '  ✓  crabgic  src/installer/drift.fixtures.test.ts (7 tests) 47ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift.fixtures.test.ts:24-29",
+          "quotedAssertion": "packages/cli/src/installer/drift.fixtures.test.ts:24-29 — the fixture set is exactly the four artifacts the criterion names: 'const TRACKED_ARTIFACTS: ReadonlyArray<{ relPath: string; content: string }> = [' / '{ relPath: \"CLAUDE.md\",' / '{ relPath: join(\".claude\", \"settings.json\"),' / '{ relPath: \".mcp.json\",' / '{ relPath: join(\".claude\", \"agents\", \"eo-explore.md\"),' — each seeded with real content and a real recorded checksum by `seedInstalledProject` (:31-51)"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift.fixtures.test.ts:54",
+          "quotedAssertion": "packages/cli/src/installer/drift.fixtures.test.ts:54 — 'it.each(TRACKED_ARTIFACTS.map((a) => a.relPath))(' — the \"every\" in the criterion is a parameterization over that same list, so a fifth tracked artifact would automatically get a case rather than needing one written"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift.fixtures.test.ts:70",
+          "quotedAssertion": "packages/cli/src/installer/drift.fixtures.test.ts:70 — 'expect(findings).toEqual([{ relPath: mutatedRelPath, kind: \"modified\" }]);' after appending exactly one byte ('X', :63-67) to the artifact under test. `toEqual` on the whole array, not `toContain`, so a detector that flagged every artifact on any mutation would fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift.fixtures.test.ts:86",
+          "quotedAssertion": "packages/cli/src/installer/drift.fixtures.test.ts:86 — 'expect(await detectDrift(dir, state)).toEqual([]);' with nothing changed. The anti-vacuity control: without it, a detector that always reported drift would satisfy all four seeded cases."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift.fixtures.test.ts:80-94",
+          "quotedAssertion": "packages/cli/src/installer/drift.fixtures.test.ts:80 — 'expect(findings).toEqual([{ relPath: \"CLAUDE.md\", kind: \"missing\" }]);' for a deleted artifact, and :94 'expect(await detectDrift(dir, state)).toEqual([]);' for a CRLF/LF-only rewrite — deletion is distinguished from modification, and line-ending normalization is asserted not to be drift (the phase's §Test plan \"checksum/drift hash stability across line-ending normalization\" unit)"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/drift-detector.ts:50",
+          "quotedAssertion": "packages/cli/src/installer/drift-detector.ts:50-52 — 'return computeChecksum(content) === artifact.installedChecksum' / '? undefined' / ': { relPath: artifact.relPath, kind: \"modified\" };' — whole-file comparison, which is what makes the criterion's \"every seeded single-artifact mutation\" claim hold: a whole-file checksum is strictly more sensitive than a per-region one"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c4-drift-fixtures.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  7 passed (7)' — scoped local --reporter=verbose re-run at the closeout commit; the body names all four artifact cases individually: 'flags a single-byte mutation of CLAUDE.md' / 'flags a single-byte mutation of .claude/settings.json' / 'flags a single-byte mutation of .mcp.json' / 'flags a single-byte mutation of .claude/agents/eo-explore.md'"
+        }
+      ],
+      "notes": "Direction of the disclosed carry-forward, stated because it is easy to misread as a caveat on this box. `docs/evidence/phase-10/README.md` §Deviations 7 and `docs/upgrade-guide.md` lines 99-107 record that drift detection is whole-file rather than per-managed-region, so an unrelated user edit elsewhere in `settings.json` or `CLAUDE.md` is indistinguishable from drift in the installer's own content. That is an over-flagging (false-positive) imprecision. This criterion claims SENSITIVITY — every seeded mutation is flagged — and whole-file checksums make that claim easier, not harder, to satisfy. The imprecision's real cost lands on criterion 1's uninstall clause, where it is recorded."
+    },
+    {
+      "index": 5,
+      "text": "Doctor reports each seeded plugin/installer fault (drift, unpinned source, stale digest) with a non-destructive repair plan — suite `doctor.plugin-faults.test`.",
+      "textSha256": "ae077ef9b122d7f2839d221bd2c4d5f3409ff6d209a003114861189a596e54e5",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 956 — '  ✓  crabgic  src/doctor/doctor.plugin-faults.test.ts (3 tests) 22ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:92",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:92-94 — 'expect(byId[\"installer.checksum-drift\"]?.passed).toBe(false);' / 'expect(byId[\"installer.plugin-trust-pin\"]?.passed).toBe(false);' / 'expect(byId[\"installer.capability-manifest-freshness\"]?.passed).toBe(false);' — all three of the criterion's named faults, seeded simultaneously in one run and each identified by its own check id"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:97",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:97-101 — 'expect(repairPlan).toHaveLength(3);' / 'for (const step of repairPlan) {' / 'expect(step).not.toMatch(' followed by a destructive-verb regex covering delete / force / rm -rf, case-insensitively — the \"with a non-destructive repair plan\" clause. The length assertion is what stops the loop being vacuous: an empty plan would pass the regex trivially."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/framework.ts:58",
+          "quotedAssertion": "packages/cli/src/doctor/framework.ts:58-61 — 'export function buildRepairPlan(report: DoctorReport): readonly string[] {' / 'return report.findings' / '.filter((f) => !f.passed && f.repairStep !== undefined)' / '.map((f) => `[${f.id}] ${f.repairStep!}`);' — 09's own framework, so `toHaveLength(3)` above proves each of the three failing checks actually supplied a repair step rather than merely failing"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:122",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:122-123 — 'expect(report.allPassed).toBe(true);' / 'expect(buildRepairPlan(report)).toEqual([]);' against a seeded fault-free source. The negative control: without it, three checks that always failed would satisfy every positive assertion above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:146",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.plugin-faults.test.ts:146-148 — 'expect(report.findings.filter((f) => !f.passed).map((f) => f.id)).toEqual([]);' / 'expect(report.allPassed).toBe(true);' / 'expect(buildRepairPlan(report)).toEqual([]);' against the REAL shipped `packages/plugin` directory (:138), so the fault-free arm is not confined to a synthetic fixture"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/run-doctor.ts:121-123",
+          "quotedAssertion": "packages/cli/src/doctor/run-doctor.ts:121-123 — 'createChecksumDriftCheck({ targetDir: options.installer.targetDir }),' / 'createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),' / 'createCapabilityManifestFreshnessCheck({' — the three checks are registered into `buildDefaultDoctorChecks`, so the criterion's \"Doctor reports\" is the shipped doctor and not a test-only assembly"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c5-doctor-plugin-faults.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  3 passed (3)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "The phase's fourth doctor contribution — the standing-`EnvelopePolicy` check added by the 2026-07-28 Gap 18 scope amendment — lives in `packages/cli/src/doctor/checks/standing-policy.ts` with its own suite. It is deliberately not cited here: this criterion enumerates three faults and predates that amendment, so widening the box to four would be reading it as more than it says. Re-resolved 2026-08-02 after merging `origin/main`: `2ea3689` (PR #66) rewrote a doc comment higher up in `run-doctor.ts`, sliding this criterion's registration citation from `:113-115` to `:121-123` with the three lines byte-unchanged. Caught by this pass's citation resolver, not by the validator, which cannot see a ref that slid but still resolves. The `closeout-c5-*` transcript was re-captured at the merge commit rather than left at the branch point."
+    },
+    {
+      "index": 6,
+      "text": "`marketplace.json` is SHA-pinned and schema-valid; a vendored `--plugin-dir` install resolves to the identical digest as the marketplace listing — `marketplace.schema.test` + `vendored-install.digest.test`.",
+      "textSha256": "f7a0c2ddba947b8915f86cbf5e25a21d70d4e7860a2bd840ed70a5512c06c25a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 779 — '  ✓  @crabgic/plugin  src/marketplace-schema.test.ts (12 tests) 24ms'; line 1010 — '  ✓  crabgic  src/installer/vendored-install.digest.test.ts (2 tests) 112ms' — both of the two suites the criterion names, in one run"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/marketplace-schema.test.ts:111",
+          "quotedAssertion": "packages/plugin/src/marketplace-schema.test.ts:111-113 — 'expect(raw.plugins).toHaveLength(1);' / 'expect(raw.plugins[0]!.commit).not.toBe(NULL_GIT_OBJECT_ID);' / 'expect(raw.plugins[0]!.commit).toMatch(/^[0-9a-f]{40}$/);' against this package's OWN committed `marketplace.json`, not a fixture — the \"is SHA-pinned\" clause"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/marketplace-schema.test.ts:44-61",
+          "quotedAssertion": "packages/plugin/src/marketplace-schema.test.ts:44 — 'expect(MarketplaceSchema.safeParse(invalid).success).toBe(false);' for a `commit: \"main\"` branch ref, :49 the same for a short SHA, and :57-61 for the all-zero null object ID with 'expect(parsed.error?.issues.map((issue) => issue.message).join(\" \")).toContain(' / '\"all-zero placeholder\",' / ');'. These are what make \"SHA-pinned\" mean something: 40-hex alone would accept the placeholder."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/marketplace-schema.test.ts:37",
+          "quotedAssertion": "packages/plugin/src/marketplace-schema.test.ts:37 — 'expect(MarketplaceSchema.safeParse(validMarketplace()).success).toBe(true);' plus :73 and :77 rejecting an unknown top-level and an unknown plugin-entry key under `.strict()`. The positive case is the control for the rejections above; the strictness cases are the \"schema-valid\" clause in both directions."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/vendored-install.digest.test.ts:41-46",
+          "quotedAssertion": "packages/cli/src/installer/vendored-install.digest.test.ts:41-46 — 'await cp(PLUGIN_ROOT, vendoredDir, { recursive: true });' / 'const vendoredDigest = computeContentDigest(vendoredDir);' / 'const marketplace = loadUnpinnedMarketplace(PLUGIN_ROOT);' / 'expect(vendoredDigest).toBe(marketplace.plugins[0]!.digest);' — a real on-disk copy at a different absolute path digests to the listing's recorded value"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/marketplace-schema.test.ts:143",
+          "quotedAssertion": "packages/plugin/src/marketplace-schema.test.ts:141-143 — 'const marketplace = loadUnpinnedMarketplace(resolvePluginRoot());' / 'const fresh = computeContentDigest(resolvePluginRoot());' / 'expect(marketplace.plugins[0]!.digest).toBe(fresh);'. This freshness assertion is the load-bearing half of the digest clause and it demonstrably bites: `2ff3bce` edited `packages/plugin/statusline/crabgic-statusline.mjs` and had to refresh `marketplace.json`'s recorded digest in the same commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/content-digest.ts:21-28",
+          "quotedAssertion": "packages/plugin/src/content-digest.ts:21-28 — 'const EXCLUDED_ENTRIES: ReadonlySet<string> = new Set([' / '\"src\",' / '\"dist\",' / '\"node_modules\",' / '\"package.json\",' / '\"tsconfig.json\",' / '\".claude-plugin\", // contains marketplace.json, which cites this digest — excluded to avoid self-reference.' — the exact scope of \"identical digest\": `skills/`, `agents/`, `hooks/`, `statusline/` and `.mcp.json` are covered; `.claude-plugin/plugin.json` is not"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c6-marketplace-vendored-digest.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  14 passed (14)' — scoped local `--reporter=verbose` re-run of both named suites at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c6b-marketplace-pin-resolves.txt",
+          "quotedAssertion": "'39ef7d192d9098c1258681d33441093bc53381c7' then 'commit' from `git cat-file -t`, then '39ef7d192d9098c1258681d33441093bc53381c7 2026-07-30 fix(release): parse multi-line exit criteria; poll for the arm64 record (#33)' — the one thing the cited test says it does not do, resolved by hand at the closeout commit"
+        }
+      ],
+      "notes": "Two scope boundaries, both recorded rather than glossed. (a) `packages/cli/src/installer/vendored-install.digest.test.ts:36`'s first assertion is weaker than it looks in isolation: `computeContentDigest` is a pure function of relative paths and normalized contents, so a `cp` of the same tree necessarily agrees. What it genuinely proves is path-independence — that vendoring to an arbitrary directory does not move the digest — and the assertion that actually guards against drift is the freshness pair cited above. Recorded so a later reader does not mistake the copy assertion for the check that bites. (b) `docs/evidence/phase-10/README.md` §Deviations 3 records that `crabgic install` has no `--plugin-dir`/`--plugin-url` argv flag of its own; it resolves the plugin source through Node module resolution (`real-installer-dependencies.ts`). `--plugin-dir` is the ENGINE's flag (adaptation §2 row 1, and `packages/plugin/src/live/plugin-load.live.test.ts:67` invokes `claude --plugin-dir`), and the criterion's clause is about digest identity for a vendored copy, which is what is proven. What is not proven, by anything at HEAD, is an installer command that accepts a vendored directory as an argument. Stale-README note: that same §Deviations 5 still describes the marketplace `commit` as the all-zero placeholder, and `vendored-install.digest.test.ts:16-20`'s own comment repeats it; both were overtaken by the v1.5.0 pin, as the c6b artifact shows."
+    },
+    {
+      "index": 7,
+      "text": "`@live`: plugin loads in a real session on the 06 baseline range — skills visible, gateway MCP tools listed, subagents spawnable — `@live` suite `plugin.live-smoke`.",
+      "textSha256": "7bf1933ff1660e59ddd3ccf61888f0a93b31b8ab571ea98925b82a811d05abfd",
+      "classification": "EVIDENCE-NEEDS-LIVE",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/live/plugin-load.live.test.ts:44-51",
+          "quotedAssertion": "packages/plugin/src/live/plugin-load.live.test.ts:44-51 — 'expect(inventory.found).toBe(true);' / 'for (const name of REQUIRED_SKILL_NAMES) {' / 'expect(inventory.skills).toContain(name);' / '}' / 'for (const name of REQUIRED_SUBAGENT_NAMES) {' / 'expect(inventory.agents).toContain(name);' / '}' / 'expect(inventory.mcpServers).toContain(GATEWAY_MCP_SERVER_NAME);' — the suite that WOULD close this criterion exists and asserts all three of its clauses; it has simply not been executed against the current plugin inventory"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/live/plugin-load.live.test.ts:31",
+          "quotedAssertion": "packages/plugin/src/live/plugin-load.live.test.ts:31 — 'assertLiveEnabled();' as the first statement of every it() in the file (also :39 and :55). The suite fails red rather than skipping, so it can never be silently counted as passed by a default-gate run."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/live/live-gate.ts:22-25",
+          "quotedAssertion": "packages/plugin/src/live/live-gate.ts:22-25 — 'export function assertLiveEnabled(env: NodeJS.ProcessEnv = process.env): void {' / 'if (env.CRABGIC_LIVE !== \"1\") {' / 'throw new LiveEnvNotEnabledError();' / '}' — the gate the line above calls, quoted in its own citation so both refs resolve"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/plugin-manifest.ts:45-51",
+          "quotedAssertion": "packages/plugin/src/plugin-manifest.ts:45-51 — 'export const REQUIRED_SUBAGENT_NAMES = [' / '\"eo-explore\",' / '\"eo-reviewer\",' / '\"eo-roaster\",' / '\"eo-architect\",' / '\"eo-planner\",' / '] as const;'. Five subagents at HEAD. `eo-architect` and `eo-planner` were added by `3210730` on 2026-07-29, AFTER the only recorded live run of this suite, so the assertion above has never been evaluated in its current form."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/gap-18/live-verification.md",
+          "quotedAssertion": "docs/evidence/gap-18/live-verification.md, section \"Live engine verification (2026-07-28, addendum)\" — '`packages/plugin/src/live/` — **4/4 green**. The plugin loads via `--plugin-dir` in a real' / 'session; the negative-space assertions hold; and a subagent is genuinely spawnable through' / 'protocol block — against the real engine rather than a fixture.' The line between those two dates the run to a three-subagent plugin in its own words: 'the third subagent, the'. Same section, one paragraph up: 'The sanctioned `@live` suite (`CRABGIC_LIVE=1`, `vitest.live.config.ts`) run against the' — this is the closest thing to a live record that exists for these files."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c7-live-suite-not-in-default-gate.txt",
+          "quotedAssertion": "'No test files found, exiting with code 0' / 'exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts' for every project, and an EMPTY `gh run list --workflow engine-live.yml --limit 20`. No live engine was invoked to produce this: vitest matched zero files and never loaded the suite. Recorded so that no green `CI`/`npm test` run can be misread as covering this box."
+        }
+      ],
+      "notes": "THIS IS THE PHASE'S ONE OWNER-GATED BOX. Handoff record: `docs/evidence/criteria-closeout/defects/10-plugin-live-smoke-unrun.md` (not a `defectRef` — that field is reserved for UNMET, and this is a channel that has never been exercised rather than a claim that is false). Three separate facts keep it unticked, and only the first is about this pass's own prohibition. (1) Running an `@live` suite or dispatching `engine-live` spends the owner's subscription and is owner-gated; this pass did neither. (2) `engine-live.yml` has ZERO recorded runs, so there is no CI channel to cite even though the phase's §Test plan names that job. (3) The one recorded live execution of these files — `docs/evidence/gap-18/live-verification.md`, 2026-07-28, `claude` 2.1.220, inside the accepted 2.1.207–2.1.220 range of `docs/engine-baseline.md` — predates `3210730` (2026-07-29), which added `eo-architect` and `eo-planner` to `REQUIRED_SUBAGENT_NAMES`, and `2ff3bce` (2026-08-01), which changed `statusline/crabgic-statusline.mjs` and the plugin's recorded content digest. Two of the five subagents the HEAD assertion enumerates have therefore never been seen by a real engine. A live run would settle exactly that: whether `claude plugin details --plugin-dir <packages/plugin>` still lists all six skills, all five subagents and `crabgic_gateway` after those changes, and whether a subagent is still spawnable through the `Task` tool."
+    },
+    {
+      "index": 8,
+      "text": "A post-install commit made from the manager session carries no attribution (empty `commit`/`pr`, `sessionUrl: false`) — assertion `attribution.none.test`, cross-checked against 17's renderer lint.",
+      "textSha256": "e37d2fae6fbfacc1c7c5b3a85c6acf7014945bd492febc94b7532a5f56967c2d",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 990 — '  ✓  crabgic  src/installer/attribution.none.test.ts (4 tests) 58ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/attribution.none.test.ts:45",
+          "quotedAssertion": "packages/cli/src/installer/attribution.none.test.ts:43-46 — 'await runInstall(deps(dir), { dryRun: false });' / 'const settings = JSON.parse(await readFile(join(dir, \".claude\", \"settings.json\"), \"utf8\"));' / 'expect(settings.attribution).toEqual({ commit: \"\", pr: \"\" });' / 'expect(settings.sessionUrl).toBe(false);' — the criterion's parenthetical, read back off disk after a real `runInstall`, not off the merge function's return value"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/attribution.none.test.ts:62",
+          "quotedAssertion": "packages/cli/src/installer/attribution.none.test.ts:62-63 — 'const outcome = lint(commitBody, \"commit_body\", policy);' / 'expect(outcome.ok).toBe(true);' against a synthetic post-install commit subject+body (:58-60) — the criterion's \"cross-checked against 17's renderer lint\" clause, run through `@crabgic/renderer`'s real `lint()` rather than a copy of its rules"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/attribution.none.test.ts:68",
+          "quotedAssertion": "packages/cli/src/installer/attribution.none.test.ts:68-69 — 'const outcome = lint(\"feat: install the CLAUDE.md managed block\", \"commit_body\", policy);' / 'expect(outcome.ok).toBe(false);' — the cross-check's own sensitivity control: a bare engine-vendor name, with no trailer at all, is still caught, so the passing case above is not a lint that passes everything"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/attribution.none.test.ts:74-79",
+          "quotedAssertion": "packages/cli/src/installer/attribution.none.test.ts:74-79 — 'const outcome = lint(' with a body carrying both the generated-with line and the canonical Co-Authored-By trailer (:75), then 'expect(outcome.ok).toBe(false);' — the second sensitivity control, on the trailer form the renderer must never emit"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/settings-merge.ts:31-38",
+          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:31-38 — 'if (!(\"attribution\" in merged)) {' / 'merged.attribution = { commit: \"\", pr: \"\" };' / 'changed = true;' / '}' / 'if (!(\"sessionUrl\" in merged)) {' / 'merged.sessionUrl = false;' / 'changed = true;' / '}' — the production writer behind the on-disk assertion, add-only so a project that already set either key keeps its own value"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/claude-code-adaptation.md",
+          "quotedAssertion": "docs/claude-code-adaptation.md §5.4 — 'The blocking artifact lint from the plan remains the final gate for *all* surfaces (branch names, commit bodies, PR text, Jira/Grafana payloads)'; the same sentence then limits the settings half to the engine own additions. That split is why the criterion names BOTH channels: the settings suppress what the engine adds, and 17 lint is the gate that does not depend on the engine honouring them."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-10/closeout-c8-attribution-none.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  4 passed (4)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "The one thing this box does NOT evidence, named rather than left for a reader to notice. No real Claude Code session makes a commit anywhere in this evidence: what is proven is (a) a real `runInstall` writes exactly the three settings values the criterion's parenthetical enumerates, and (b) 17's real `lint()`, with two sensitivity controls, passes a post-install commit body and fails an attributed one. The remaining link — that the engine actually honours `attribution: {\"commit\": \"\", \"pr\": \"\"}` and `sessionUrl: false` at commit time — rests on Anthropic's settings documentation via adaptation §2 row 15 / §5.4 and is NOT recorded in `docs/engine-baseline.md`. Stated exactly, because it is the kind of claim this regime expects to be byte-checkable: grepping that document for `sessionUrl` returns zero hits, and `attribution` returns exactly three, none of them the settings key — :445 \"That is a layer attribution, not a containment verdict\" and :567 \"Layer attribution, as far as it goes:\" are §14's sandbox-vs-permission analysis, and :571 \"This attribution is **enforced, not inferred**\" is the engine-version note. So the settings key appears nowhere in the baseline. It is not this criterion's named channel (the criterion names `attribution.none.test` and 17's lint, both of which are satisfied), and adaptation §5.4 deliberately makes the lint, not the settings, the final gate — but a reader should know the engine-side half is doc-derived rather than probed. Closing that would be a phase-00/23 baseline addition, not a phase-10 test."
+    }
+  ]
+}
