@@ -1,0 +1,364 @@
+{
+  "schemaVersion": 1,
+  "phase": "15",
+  "roadmapFile": "roadmap/15-performance-contracts.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 3 (phase 15)",
+    "headSha": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`perf-conformance` fixture matrix green: 20% CPU regression blocked; 3% noise-level change passes; noisy-critical fixture → inconclusive-blocking (CI job).",
+      "textSha256": "b65ab1a54069639c178e6d56921f416a4c633a3be350ca2a0958bddf82a356dd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91480517302, step \"perf-conformance fixture matrix (4 independent fixtures) decides correctly\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826024",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 195 — 'npx vitest run packages/perf/src/conformance/perf-conformance.test.ts --coverage.enabled=false'; line 201 — ' ✓  @crabgic/perf  src/conformance/perf-conformance.test.ts (5 tests) 65ms'; lines 203-204 — ' Test Files  1 passed (1)' / '      Tests  5 passed (5)'. This is the criterion's own named CI channel, and the step log shows the named suite really executed rather than a green workflow that skipped it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/conformance/perf-conformance.test.ts:104-113",
+          "quotedAssertion": "packages/perf/src/conformance/perf-conformance.test.ts:104-113 — 'fixture 1: a 20% CPU regression on a sensitive path BLOCKS' / 'const base = Array(12).fill(100); // zero-variance base -> noise bound 0' / 'const candidate = Array(12).fill(120); // +20%, beyond the 10% sensitive-path threshold' / 'expect(results[0]?.verdict.passed).toBe(false); expect(EvidenceRecordSchema.safeParse(results[0]?.evidence).success).toBe(true);'. The zero-variance base makes the 20% figure exact rather than approximate — the bootstrap noise bound is provably 0 for a constant sample set (bootstrap-ci.test.ts:6-9)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/conformance/perf-conformance.test.ts:115-123",
+          "quotedAssertion": "packages/perf/src/conformance/perf-conformance.test.ts:115-123 — the anti-vacuity control: 'fixture 2: a 3% regression (within noise/threshold) on a critical path PASSES' / 'const candidate = Array(12).fill(103); // +3%, within the 5% critical-path threshold' / 'expect(results[0]?.verdict.passed).toBe(true);'. Without it a block-everything decision engine satisfies fixtures 1 and 3."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/conformance/perf-conformance.test.ts:125-135",
+          "quotedAssertion": "packages/perf/src/conformance/perf-conformance.test.ts:125-135 — 'fixture 3: a noisy critical-path measurement is INCONCLUSIVE and BLOCKING (never quarantined-as-passing)' / 'const noisyBase = [1, 300, 5, 250, 10, 200, 20, 180, 30, 160, 40, 140];' / 'expect(results[0]?.verdict.passed).toBe(false); const detail = JSON.parse(results[0]!.verdict.detail) as { outcome: string }; expect(detail.outcome).toBe(\"inconclusive_blocking\");'. Asserting the specific outcome, not merely a block, is what makes 'inconclusive-blocking' a distinct verdict rather than a relabelled block."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/conformance/perf-conformance.test.ts:62-101",
+          "quotedAssertion": "packages/perf/src/conformance/perf-conformance.test.ts:62-101 — the shared fireOnce helper gives every fixture a FRESH journal and a FRESH registry, and drives the real handler: :73-77 `const registry = createGateRegistry(); registry.register( \"performance\", \"eo-perf-twin-worktree-benchmark\", createPerformanceGateHandler({` and :95-100 `return registry.fireByTag(\"performance\", { stage: \"final_verifying\", changeSetId: provisional.changeSetId, objectId: \"integrated-candidate-obj\", journal: tj.store, });`. Cited because it is what makes the three fixtures independent — no fixture pass or block can mask another."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/stats/decision-engine.test.ts:19-104",
+          "quotedAssertion": "packages/perf/src/stats/decision-engine.test.ts:19-104 — the boundaries the three fixtures sit either side of, pinned to 0.0001%. :20 `a regression of EXACTLY 5% on a critical path PASSES (not 'beyond')` against :32 `a regression of 5.0001% on a critical path BLOCKS`; :44 `a regression of EXACTLY 10% on a sensitive path PASSES` against :56 `a regression of 10.0001% on a sensitive path BLOCKS`; :68 `noise of EXACTLY 15% on a critical path is NOT inconclusive — falls through to max(15,5)=15% block-threshold logic` against :81 `noise of 15.0001% on a critical path IS inconclusive-and-blocking`; and :92 `high noise on a SENSITIVE path (not critical) is never inconclusive — only critical-path gets that rule`. Cited because the criterion names three points on a curve and these are what stop those three from being satisfied by a coarse implementation."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c1-perf-conformance-matrix.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  5 passed (5)' — supplementary scoped local re-run at the closeout commit, verbose reporter so all five fixture titles appear individually; UTC timestamp, HEAD sha, verbatim command and exit status 0 in the file header"
+        }
+      ],
+      "notes": "Two things a reader should not have to reconstruct. (a) The workflow step is captioned '4 independent fixtures' while the suite has five `it()` blocks — the methodology fixture was split into 4a (too-few-reps) and 4b (no-interleave). A stale caption on a step name, not on an assertion; left unedited per the pass rule against fixing findings in the same pass. (b) This criterion's three named outcomes are produced by the registered gate handler fired through 14's real registry, which is exercised by tests and by the `perf-conformance` job only — `createPerformanceGateHandler` has no production caller (see criterion 5's notes and docs/interface-ledger.md Gap 21). The matrix is a real decision by the real engine; it is not a decision any shipped run has made."
+    },
+    {
+      "index": 2,
+      "text": "Methodology violations (too few reps, no interleave) refuse to produce a verdict (unit test).",
+      "textSha256": "67d572c3336a6133b53cc015642a5054b5f4350e1abcedc66dc372a9919b21e3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91480517302, step \"methodology-violation unit tests (too-few-reps, no-interleave — typed refusal)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826024",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 209 — 'npx vitest run packages/perf/src/runner/methodology.test.ts --coverage.enabled=false'; line 215 — ' ✓  @crabgic/perf  src/runner/methodology.test.ts (6 tests) 5ms'; lines 217-218 — ' Test Files  1 passed (1)' / '      Tests  6 passed (6)'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 757 — ' ✓  @crabgic/perf  src/runner/twin-worktree-runner.test.ts (4 tests) 33ms'; line 751 — ' ✓  @crabgic/perf  src/gate/performance-gate.test.ts (8 tests) 165ms'; run summary lines 1036-1037 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. Cited for the two layers the perf-conformance job's methodology step does not itself cover."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/runner/methodology.test.ts:35-88",
+          "quotedAssertion": "packages/perf/src/runner/methodology.test.ts:35-88 — :35 `REFUSES (typed error) when there are too few repetitions`, driving `assertMethodologySound(alternatingSchedule(MIN_INTERLEAVED_REPETITIONS - 1));` and asserting :42 `expect(caught).toBeInstanceOf(MethodologyViolationError);` then :43-45 `expect((caught as InstanceType<typeof MethodologyViolationError>).reason).toBe( \"too_few_repetitions\", );`. :48-69 is the block-design half, ending in the same assertion with reason \"not_interleaved\". :71-76 breaks alternation exactly ONCE inside an otherwise-valid schedule — :74 `schedule.splice(1, 0, { kind: \"base\", phase: \"measured\" });` — so the check cannot be a coarse first-vs-last comparison. :78-88 asserts an empty schedule reports \"too_few_repetitions\", never a false \"not_interleaved\" pass."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/runner/methodology.test.ts:19-33",
+          "quotedAssertion": "packages/perf/src/runner/methodology.test.ts:19-33 — the two positive controls: :19 `accepts a strictly-alternating schedule with exactly the minimum repetitions` and :25 `accepts warmup steps preceding the measured schedule, and ignores them for both checks`, the latter asserting :32 `expect(() => assertMethodologySound(schedule)).not.toThrow();`. Without these a refuse-everything implementation satisfies every assertion above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/runner/twin-worktree-runner.test.ts:11-27",
+          "quotedAssertion": "packages/perf/src/runner/twin-worktree-runner.test.ts:11-27 — 'REFUSES (typed error) when repetitions is below the minimum — no dispatch/measure call ever happens': the injected `dispatchWorktree` increments `dispatchCalls`, and after '.rejects.toThrow(MethodologyViolationError)' the test asserts 'expect(dispatchCalls).toBe(0);'. This is the difference between refusing and aborting halfway — a partially dispatched benchmark discarded silently would satisfy the typed-error assertion alone."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.test.ts:238-259",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.test.ts:238-259 — 'MINOR-1 (defense-in-depth): fewer than the methodology floor's samples per side REFUSES (rejects, no verdict), never returns a normal pass/block': 'baseSamples: Array(5).fill(10), // below MIN_INTERLEAVED_REPETITIONS (10)' then 'await expect(handler(makeContext())).rejects.toThrow(/too_few_repetitions/);'. The registered handler consumes pre-computed samples and never sees a schedule, so without this floor the runner's own enforcement is bypassable by any caller that does not use the runner."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.ts:52-131",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.ts:52-131 — assertGateInputMeetsMethodologyFloor throws at :77-78 `throw new MethodologyViolationError( \"too_few_repetitions\",`, and :129 `assertGateInputMeetsMethodologyFloor(measurements.entries);` runs BEFORE the decide() map that begins at :131. Its own doc comment states the deliberate asymmetry this phase relies on elsewhere, :63-64 `THROWS (rejects the whole firing, no verdict, no evidence)`, against a hash-link failure which :102-110 says is caught and converted into an ordinary BLOCKING GateVerdict so the registry still journals an evidence_pointer entry."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c2-methodology-refusal.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  10 passed (10)' — scoped local re-run of methodology.test.ts + twin-worktree-runner.test.ts at the closeout commit, verbose reporter, exit status 0"
+        }
+      ],
+      "notes": "`MIN_INTERLEAVED_REPETITIONS = 10` is read as ten PER SIDE (10 base + 10 candidate), which is this phase's own documented interpretation of \"≥10 interleaved repetitions\" — stated in `packages/perf/src/runner/methodology.ts:3-12` and in the evidence README's Deviation 4, not silently assumed. The criterion says 'refuse to produce a verdict' and all three layers throw rather than returning a verdict object, which is the strong reading."
+    },
+    {
+      "index": 3,
+      "text": "Enforced budgets are hash-linked to the approved envelope; a tampered post-approval edit fails closed (integration test + journal entry).",
+      "textSha256": "14c63c29f26ed6360214ebb863e687ecd585afae452e89ed97a1b8b1506eaf0f",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/authorization-envelope.ts:73-104",
+          "quotedAssertion": "packages/contracts/src/contracts/authorization-envelope.ts:73-104 — `AuthorizationEnvelopeSchema` is `.strict()` and its members are schemaVersion, id, changeSetId, createdAt, canonicalHash, ownedPaths, commands, networkDestinations, credentialReferences, dependencies, remoteResourceAuthorizations, temporaryServices, prohibitedActions, maxTurnsPerAttempt. There is no budget field and no budget hash, so the envelope's own `canonicalHash` cannot cover a performance budget. This is the fact the criterion's first clause asserts the opposite of."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/approval/token.ts:45",
+          "quotedAssertion": "packages/contracts/src/approval/token.ts:45 — 'export type ApprovalTokenSubjectKind = \"envelope_hash\" | \"capability_digest\" | \"learning_review\";'. The human approval token's subject is one of three digests, none of which is a performance budget — so no signature the approver produces covers the enforced figure."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/criteria-seal.ts:6-22",
+          "quotedAssertion": "packages/contracts/src/contracts/criteria-seal.ts:6-22 — roadmap/24 states the same fact from its own side: 'the `AuthorizationEnvelope` content hash covers authority fields only (never criteria), the approval token signs that envelope hash' and 'Evidence has to be bound to something the tamperer cannot rewrite — for budgets that is the append-only hash-chained journal, and it is the same anchor here.' Cited because ledger Gap 21 offers roadmap/24's seal as a transitive binding for criteria-sourced budgets; this shows that seal is journal-anchored too, so it does not supply the envelope binding the criterion names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/performance-contract.ts:157-167",
+          "quotedAssertion": "packages/contracts/src/contracts/performance-contract.ts:157-167 — `EnforcedPerformanceContractSchema` carries `budgetHash` and `provisionalBudgetHash` and nothing else hash-shaped; no envelope id, no envelope hash. `packages/contracts/src/contracts/change-set.ts:67` and `:77` reference the two performance contracts by bare id, and nothing in packages/perf reads `authorizationEnvelopeId`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/contract/hash-link.ts:71-90",
+          "quotedAssertion": "packages/perf/src/contract/hash-link.ts:71-90 — what DOES exist, recorded so the tick is withheld only from the clause that fails: three ordered checks, self_consistency_mismatch / no_journal_anchor / journal_anchor_mismatch. The second is fail-closed — :80-83 `const anchor = await findJournalAnchoredBudgetSnapshot(journal, provisional.id); if (anchor === undefined) { return { ok: false, recomputedHash, reason: \"no_journal_anchor\" }; }` — and the third compares against the journal-committed snapshot, :85 `if (anchor.budgetHash !== provisional.budgetHash) {`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/contract/contract-builder.test.ts:45-202",
+          "quotedAssertion": "packages/perf/src/contract/contract-builder.test.ts:45-202 — the second clause, non-vacuously. :93-132 is the real vector: a widening from 200ms to 2000ms that ALSO recomputes its own budgetHash, caught as journal_anchor_mismatch. :113-115 is the inline control that makes it non-vacuous — `expect(canonicalHash(deliberatelyTampered.budgets.map((b) => ({ ...b })))).toBe( deliberatelyTampered.budgetHash, );` — proving the self-consistency check alone would have passed the same fixture. :67-91 is the naive vector, :134-147 the no-anchor fail-closed case throwing BudgetJournalAnchorMissingError, and :45-65 plus :187-202 the untampered positive controls."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.e2e.test.ts:105-157",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.e2e.test.ts:105-157 — the same vector through 14's real registry and 04's real journal, with the block recorded rather than thrown away: :152-156 `expect(results[0]?.verdict.passed).toBe(false); expect(results[0]?.verdict.detail).toMatch( /hash-link check failed \\(journal_anchor_mismatch\\)/, ); expect(EvidenceRecordSchema.safeParse(results[0]?.evidence).success).toBe(true);`. This is the integration-test-plus-journal-entry channel the criterion names, and it is satisfied — for the second clause."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:407-422",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:407-422 — 'anchors the DERIVED provisional contract in the intake idempotency record': iterates the real journal's `remote_operation_record` entries after a real `runIntake` and asserts 'expect(anchored).toBe(true);' on an `appliedRevision` containing the derived provenance, with the comment '15's `findJournalAnchoredBudgetSnapshot` reads this entry'. Cited so the anchor is not read as a test-fixture-only construct — but note it string-matches the payload rather than calling phase 15's finder, so the two halves are bound by shape, not by an end-to-end assertion."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/README.md",
+          "quotedAssertion": "docs/evidence/phase-15/README.md, §Carry-forwards, 'HIGH PRIORITY' — 'the HUMAN APPROVAL TOKEN itself (11's HMAC ...) is minted over the `AuthorizationEnvelope`'s content hash ONLY — the performance budget sits entirely OUTSIDE what the human approver's own signature covers ... the journal anchor proves \"this is what got committed at intake time,\" not \"this is what a human actually approved.\"' This phase's own build reached the same conclusion and routed it to the reconciler; the closeout is recording it against the criterion rather than discovering it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c3-hash-link-tamper.txt",
+          "quotedAssertion": "' Test Files  4 passed (4)' / '      Tests  23 passed (23)' — scoped local re-run of contract-builder / journal-anchor / performance-gate / performance-gate.e2e at the closeout commit, exit status 0. Recorded even though the box stays unticked: the second clause's evidence is real and a future pass should not have to re-derive it."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/15-enforced-budget-not-bound-to-approved-envelope.md",
+      "notes": "Why UNMET and not WORDING-MISMATCH, stated plainly because it is the judgement call in this record. The criterion has two clauses; the second ('a tampered post-approval edit fails closed (integration test + journal entry)') is fully and non-vacuously evidenced by the citations above. The first ('hash-linked to the approved envelope') names a binding that does not exist anywhere in the tree. A wording correction would have to read 'hash-linked to the provisional contract 11 committed at approval time, anchored in 04's append-only journal' — and that is not merely more precise, it is weaker on exactly the axis the original words carry: the journal anchor cannot detect a budget that was already wrong when intake journaled it, i.e. one the approver never actually sanctioned. The pass's own rule is that a correction losing a guarantee is UNMET, not a wording fix, so the box stays unticked and the defect carries the coordinated 02/11 remedy. Two dated notes for whoever picks it up: ledger Gap 21 (2026-08-01) offers roadmap/24's criteria seal as a transitive binding for criteria-sourced budgets, but `criteria-seal.ts`'s own header shows that seal is journal-anchored on the same principle, so it does not close this; and the enforcement path this criterion describes has no production caller at all (Gap 21: '`createPerformanceGateHandler` still has no production caller'), so today the gap is latent rather than live. Resolver note: four citations in this record quote prose rather than code and are therefore not line-anchored by the closeout citation resolver — three of them are here (authorization-envelope.ts:73-104 and performance-contract.ts:157-167, which enumerate a .strict() schema member list, and criteria-seal.ts:6-22, whose sentence contains a backtick and so is not extractable as a quoted span). All three were byte-verified by hand against the files at the closeout commit: the two member lists were read off the schema literals, and the criteria-seal sentence was matched whitespace-normalized after stripping JSDoc markers."
+    },
+    {
+      "index": 4,
+      "text": "Verdicts reproducible from archived samples alone, byte-identical on re-derivation (determinism test).",
+      "textSha256": "bcd71646a943e0bcac26001492d8641e18a40367f16991aa68d1c46ce2af13f2",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91480517302, step \"decision-engine boundary + property tests (5%/10%/15% exact boundaries, order-independence, monotonicity)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826024",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 229 — ' ✓  @crabgic/perf  src/stats/bootstrap-ci.test.ts (11 tests) 71ms'; line 231 — ' ✓  @crabgic/perf  src/stats/decision-engine.property.test.ts (2 tests) 3225ms'; line 232 — '     ✓ a GENUINE RANDOM PERMUTATION of the base and/or candidate sample arrays never changes the resulting outcome/regressionPct/noiseBoundPct  1283ms'; lines 235-236 — ' Test Files  3 passed (3)' / '      Tests  24 passed (24)'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 759 — ' ✓  @crabgic/perf  src/runner/twin-worktree-runner.e2e.test.ts (2 tests) 871ms'. The runner-level determinism test is not one of the four perf-conformance steps, so this is where it executed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/stats/decision-engine.property.test.ts:40-65",
+          "quotedAssertion": "packages/perf/src/stats/decision-engine.property.test.ts:40-65 — the verdict-level re-derivation: two `decide()` calls, the second over a GENUINELY RANDOM full-length permutation of both sample arrays, then 'expect(b).toEqual(a);' at { numRuns: 150 }. `b` and `a` are whole `DecisionResult` objects, so outcome, regressionPct and noiseBoundPct are all compared. Re-deriving from a permutation is strictly stronger than re-deriving from the identical array, which is what the criterion literally asks for."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/stats/decision-engine.property.test.ts:17-35",
+          "quotedAssertion": "packages/perf/src/stats/decision-engine.property.test.ts:17-35 — the anti-vacuity control on the permutation itself: :33 `.shuffledSubarray([...arr], { minLength: arr.length, maxLength: arr.length })`, with the doc comment at :21-24 recording why the previous reverse-only form was replaced — `A bug depending on which specific element sits in the MIDDLE of the array (rather than merely \"first vs last\") could slip past a reverse-only check undetected.`"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/stats/bootstrap-ci.test.ts:6-31",
+          "quotedAssertion": "packages/perf/src/stats/bootstrap-ci.test.ts:22-25 — 'is deterministic: two calls over the identical sample array produce byte-identical output' / 'expect(computeNoiseBoundPct(samples)).toBe(computeNoiseBoundPct(samples));'; :27-31 'is order-independent: shuffling the input array produces the identical noise bound'. The two controls that stop a constant-returning implementation from satisfying both: :6-9 'a constant (zero-variance) sample set has a noise bound of exactly 0' and :11-15 'a higher-variance sample set has a strictly larger noise bound than a lower-variance one of the same mean'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/stats/bootstrap-ci.ts:54-57",
+          "quotedAssertion": "packages/perf/src/stats/bootstrap-ci.ts:54 — 'const sorted = [...baseSamples].sort((a, b) => a - b);' and :57 'const rng = createDeterministicRng(options.seed ?? DEFAULT_BOOTSTRAP_SEED);'. The mechanism behind the assertions above: sorting makes the result a function of the sample MULTISET and the fixed seed removes wall-clock entropy, so re-derivation needs nothing but the samples. `stats/deterministic-rng.ts:1-12` records the same reasoning and quotes this criterion by name."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/runner/twin-worktree-runner.e2e.test.ts:108-131",
+          "quotedAssertion": "packages/perf/src/runner/twin-worktree-runner.e2e.test.ts:108-131 — 'DETERMINISM: running the identical twin-worktree benchmark twice produces a byte-identical schedule and sample set (excluding wall-clock timestamps)': two full runs through `@crabgic/scheduler`'s real `dispatchAttempt` with 'nowMs: () => 0, // pin wall-clock so timestamps don't differ across runs', then 'expect(second).toEqual(first);' over the schedule and both sample value arrays."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c4-determinism.txt",
+          "quotedAssertion": "' Test Files  4 passed (4)' / '      Tests  26 passed (26)' — scoped local re-run of bootstrap-ci, decision-engine, decision-engine.property and twin-worktree-runner.e2e at the closeout commit, exit status 0"
+        }
+      ],
+      "notes": "Two scope facts, so the tick is not read wider than it is. (a) 'ARCHIVED' is exercised as 'the same sample values, handed to `decide()` with no benchmark, no worktree and no journal in the loop' — no test reads samples back from a persisted archive, because `packages/perf` writes none: `PerformanceGateMeasurements.artifactDigests` are caller-supplied strings (literally 'sha256:conformance-fixture' in the matrix, and an empty array in two gate tests), and archival into an `EvidenceRecord` is 14's seam, which this phase's §Out of scope assigns away ('The generic gate framework ... EvidenceRecord schema ... — 14'). What the criterion needs and gets is that re-derivation requires no benchmark re-run; what it does not get is a round trip through bytes on disk. (b) 'VERDICT' is read as the decision — outcome/regressionPct/noiseBoundPct — not as the enforced-contract record, whose `id` and `createdAt` default to `randomUUID()` and `new Date()` and are therefore NOT byte-stable across re-derivations. `CreatePerformanceGateHandlerOptions` exposes `contractIdFactory` and `now` (gate/performance-gate.ts:41-42) for exactly that, and the phase's own evidence README already discloses it as a NIT. This reading matches the roadmap's own gloss of the criterion in §Interfaces produced: '23 can re-derive a verdict without re-running the benchmark'."
+    },
+    {
+      "index": 5,
+      "text": "Performance gate fires through 14's risk-tag-keyed registry at `final_verifying` and emits a schema-valid EvidenceRecord (integration test against 14's gate harness).",
+      "textSha256": "cf2a8fe9b6244d76762bba40645ff67612460b7d13b2b3359c88dc261f00a342",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91480517302, step \"hash-link tamper fixture (fail-closed) + gate registration E2E\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826024",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 241 — 'npx vitest run packages/perf/src/gate --coverage.enabled=false'; line 248 — ' ✓  @crabgic/perf  src/gate/performance-gate.e2e.test.ts (2 tests) 49ms'; lines 250-251 — ' Test Files  2 passed (2)' / '      Tests  10 passed (10)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.e2e.test.ts:49-103",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.e2e.test.ts:49-103 — the integration test the criterion names, against 14’s real registry and 04’s real journal, no fakes on either side. :55-59 `const registry = createGateRegistry(); registry.register( \"performance\", \"eo-perf-twin-worktree-benchmark\", createPerformanceGateHandler({` then :77-82 `const results = await registry.fireByTag(\"performance\", { stage: \"final_verifying\", changeSetId, objectId: \"integrated-candidate-obj\", journal: tj.store, });`. :84-86 `expect(results).toHaveLength(1);` and `expect(results[0]?.tag).toBe(\"performance\");` — the tag-keyed dispatch really resolved this handler and no other."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.e2e.test.ts:88-93",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.e2e.test.ts:88-93 — the schema-valid half against 02's own schema, not a hand-rolled shape check: 'expect(evidence).toBeDefined(); expect(EvidenceRecordSchema.safeParse(evidence).success).toBe(true); expect(evidence?.gateTag).toBe(\"performance\"); expect(evidence?.objectId).toBe(\"integrated-candidate-obj\"); expect(evidence?.changeSetId).toBe(changeSetId);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/gate/performance-gate.e2e.test.ts:98-102",
+          "quotedAssertion": "packages/perf/src/gate/performance-gate.e2e.test.ts:98-102 — emission is journaled, not merely returned: `for await (const entry of tj.store.queryEntries({ type: \"evidence_pointer\" })) { entries.push(entry); } expect(entries).toHaveLength(1);` against a real journal store. An exact length of one also rules out a double emission, which a greater-than-zero assertion would not."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/evidence.ts:11-48",
+          "quotedAssertion": "packages/gates/src/evidence.ts:11-48 — the record is minted by 14's single emission path, not by this phase: :17-18 `Called exactly once per gate firing by ./registry.ts's fireByTag/fireAll — individual gate modules never journal their own EvidenceRecord directly`, and the record is built through the contracts schema at :28 `const record: EvidenceRecord = EvidenceRecordSchema.parse({`. Cited because it is what makes 'emits a schema-valid EvidenceRecord' a property of the framework the criterion names rather than of a shape this phase constructed to match."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/risk-tags.ts:22-26",
+          "quotedAssertion": "packages/gates/src/risk-tags.ts:22-26 — the closed GateRiskTag vocabulary reserves the tag this phase registers under: `security` is explicitly SHARED (14 own scanners register under it alongside 21 connector-security fixtures); `performance` is used exclusively by 15 registered gate — this phase contributes nothing under it, but the tag itself is still part of the closed vocabulary every registrant (including 15) dispatches against. Quote located by hand (it carries no code punctuation, so the closeout citation resolver classifies it as prose and does not line-anchor it); byte-verified against the file at the closeout commit."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c5-gate-registry-final-verifying.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  2 passed (2)' — scoped local re-run of performance-gate.e2e.test.ts at the closeout commit, verbose reporter, exit status 0"
+        }
+      ],
+      "notes": "Two precisions a reader should not have to reconstruct, both narrowing what the tick means. (a) `final_verifying` is a caller-supplied `GateContext` field on this path, not an enforced or recorded property: `packages/gates/src/registry.ts:72-82`'s `fireByTag` never inspects `context.stage`, this phase's handler never reads it, and `EvidenceRecordSchema` has no stage member — so the cited test would pass identically with `stage: \"verifying\"`. What is evidenced is that the handler dispatches through the tag-keyed registry and emits a schema-valid, journaled `EvidenceRecord` when fired at that stage. The guard that a firing really is a final-candidate one lives in 14, at `packages/gates/src/final-candidate.ts:45-47` ('fireFinalCandidateVerification must be called with stage: \"final_verifying\"'), and this phase's handler is not exercised through it. (b) Registration is test-only. `createPerformanceGateHandler` is referenced at `eabb65a` by `packages/perf/src/index.ts:130`'s barrel and by this package's own three test files, and by nothing else in the repository; no package depends on `@crabgic/perf` at all (the only non-perf mentions of the name are two prose comments in `e2e/attestation`, one of which is a scan asserting the ABSENCE of such an import). `docs/interface-ledger.md` Gap 21 states it outright: 'createPerformanceGateHandler still has no production caller'. The criterion's own channel is '(integration test against 14's gate harness)', which is what is cited; it is not evidence of shipped enforcement, and this record does not claim it as such. Resolver note: the risk-tags.ts citation is the fourth of this record four prose citations the closeout citation resolver does not line-anchor; it was byte-verified by hand against the file at the closeout commit. Every other test/artifact citation in this record — 69 code-shaped quoted assertions across all seven criteria — was located mechanically, all 69 matching exactly and within four lines of their cited span."
+    },
+    {
+      "index": 6,
+      "text": "Resource-capture artifacts contain no environment/argv content (security test).",
+      "textSha256": "45f8f6830b12a474219addfa899e8ed517376c7465168a83ca9adb3979bf1ff4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 767 — ' ✓  @crabgic/perf  src/measurement/secret-leakage.test.ts (4 tests) 165ms'; line 774 — ' ✓  @crabgic/perf  src/measurement/rusage.test.ts (3 tests) 107ms'; run summary lines 1036-1037 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/measurement/secret-leakage.test.ts:12-36",
+          "quotedAssertion": "packages/perf/src/measurement/secret-leakage.test.ts:12-36 — the schema half. :12-23 feeds an otherwise-valid artifact carrying `env: { SECRET_TOKEN: \"sk-should-never-appear\" },` and asserts :22 `expect(ResourceCaptureArtifactSchema.safeParse(withEnv).success).toBe(false);`; :25-36 does the same for `argv: [\"node\", \"--secret-flag=sk-should-never-appear\"],` with :35 `expect(ResourceCaptureArtifactSchema.safeParse(withArgv).success).toBe(false);`. The strict() schema makes the field unrepresentable rather than merely absent by convention — a future contributor cannot add one without a red test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/measurement/secret-leakage.test.ts:38-48",
+          "quotedAssertion": "packages/perf/src/measurement/secret-leakage.test.ts:38-48 — the behavioural half against a REAL spawned process, not a shim: a secret is injected via 'env: { ...process.env, CRABGIC_PERF_TEST_SECRET: secret }' and the serialized artifact is asserted to contain neither the value nor the key — 'expect(serialized).not.toContain(secret); expect(serialized).not.toContain(\"CRABGIC_PERF_TEST_SECRET\");'. Both operands are strings, and the value is genuinely present in the child's environment, so neither assertion is true by construction."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/measurement/secret-leakage.test.ts:50-61",
+          "quotedAssertion": "packages/perf/src/measurement/secret-leakage.test.ts:50-61 — the generalisation beyond one planted name: the whole ambient environment is swept, 'for (const [key, value] of Object.entries(process.env))' then 'expect(serialized.includes(value)).toBe(false); expect(serialized.includes(key)).toBe(false);'. In CI that is a large, uncontrolled set, so the guarantee is not limited to the fixture's own variable."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/measurement/rusage.test.ts:29-32",
+          "quotedAssertion": "packages/perf/src/measurement/rusage.test.ts:29-32 — 'the returned object contains no environment/argv-shaped keys (secret-leakage guard)' / 'expect(Object.keys(sample).sort()).toEqual([\"cpuSystemMs\", \"cpuUserMs\", \"maxRssKb\"]);'. An exact key-set equality rather than a `not.toHaveProperty` list, so an env/argv field cannot be added to `captureSelfRusage`'s return without failing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c6-secret-leakage.txt",
+          "quotedAssertion": "' Test Files  3 passed (3)' / '      Tests  15 passed (15)' — scoped local re-run of secret-leakage, rusage and proc-parser at the closeout commit, verbose reporter, exit status 0"
+        }
+      ],
+      "notes": "One narrow scope note. The ambient sweep at secret-leakage.test.ts:57 does 'if (value === undefined || value.length < 6) continue;' before either assertion, so an env entry whose VALUE is shorter than six characters has neither its value nor its key checked — the length filter exists to avoid coincidental substring matches against a short value, but it gates the key check too. The two schema rejections and the exact-key-set assertion are what carry the guarantee for those entries; the sweep is the broad supplementary control. The criterion says 'resource-capture artifacts', and the artifact under test is `ResourceCaptureArtifactSchema`'s output from `runCommandWithResourceCapture` — the same shape the twin-worktree runner's measurement path produces."
+    },
+    {
+      "index": 7,
+      "text": "`perf-conformance` runs as a standalone, named CI job invocable without the full release harness — the exact entry point 23 re-runs.",
+      "textSha256": "111c56a25a0b4e4c7c6d7369a68983e2cc6c90fae85c3574c3a34ded41fb3a0f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91480517302 — the standalone job itself, push-triggered at main, no release harness in the run",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826024",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 32 — 'Complete job name: perf-conformance (ubuntu-latest)'; line 195 — 'npx vitest run packages/perf/src/conformance/perf-conformance.test.ts --coverage.enabled=false'. The run's four steps are checkout, setup-node, npm ci, npm run build and the four vitest invocations — nothing from `release-e2e.yml` participates, which is the 'without the full release harness' half."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/perf-conformance.yml",
+          "quotedAssertion": ".github/workflows/perf-conformance.yml — 'name: perf-conformance' with job id `perf-conformance` and 'name: perf-conformance (${{ matrix.os }})' over [ubuntu-latest, ubuntu-24.04-arm], triggered 'on: push: branches: [main]' / 'pull_request'. Its own header states the scope honestly: 'Entirely fixture-based (no live twin-worktree runs, no real ProjectProfile benchmark commands) — runs on every push/PR like the main CI job, unlike `engine-live`/`jira-datacenter-smoke`'s manual-dispatch-only pattern'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/perfContractRerun.ts:55-146",
+          "quotedAssertion": "e2e/attestation/src/perfContractRerun.ts:55-146 — :59 `export const PERF_CONFORMANCE_SUITE = \"packages/perf/src/conformance/perf-conformance.test.ts\";`, whose doc comment at :58 calls it the standalone entry point `roadmap/15:112` names as the one 23 re-runs, and whose real runner at :128 is captioned as invoking the suite exactly as `perf-conformance.yml` does. The invocation itself, :132-135: `[\"vitest\", \"run\", PERF_CONFORMANCE_SUITE, \"--coverage.enabled=false\"],` — byte-for-byte the array the workflow step runs. This is what makes \"the exact entry point 23 re-runs\" a binding rather than a claim."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/perfContractRerun.test.ts:184-205",
+          "quotedAssertion": "e2e/attestation/src/perfContractRerun.test.ts:184-205 — the drift guard: 'const suite = readFileSync(join(REPO_ROOT, PERF_CONFORMANCE_SUITE), \"utf-8\");' then, per declared contract, ':193' 'expect(suite).toContain(contract.fixtureTitle);', with ':202-203' 'expect(PERF_CONFORMANCE_FIXTURES.length).toBeGreaterThan(0);' as the empty-set floor and ':197-200' asserting distinct contract ids. A renamed or deleted fixture reddens here instead of quietly shrinking what the release re-runs."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/perfContractRerun.test.ts:213-243",
+          "quotedAssertion": "e2e/attestation/src/perfContractRerun.test.ts:237-242 — 'is wired as an npm script, so the workflow and a developer run the same thing' / 'expect(pkg.scripts[\"probe:perf-contract-rerun\"]).toContain(\"perfContractRerunCli.ts\");', reading the real root package.json. :213-243 additionally binds `release-e2e.yml` to the producer ('expect(workflow).toContain(\"probe:perf-contract-rerun\");') and to Gap 16's `$CRABGIC_PERF_CONTRACT_RERUN_RECORD` override outside the checkout."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md, Gap 16 §Phases affected — '**15** owns the `PerformanceContract` decision engine and twin-worktree A/B runner whose re-run produces `perf-contract-rerun.json` (`23-release-hardening.md:75` …)', and §Verified in — 'e2e/attestation/src/performanceContracts.ts:657-659 — PERFORMANCE_RERUN_RECORD_PATH = \"docs/evidence/phase-23/perf-contract-rerun.json\", PERFORMANCE_RERUN_RECORD_ENV = \"CRABGIC_PERF_CONTRACT_RERUN_RECORD\"'. Checked because the criterion touches the 15↔23 seam the ledger governs; the phase file, the workflow and the attestation constants agree, so there is no ledger conflict to escalate."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/closeout-c7-standalone-entry-point.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  24 passed (24)' — scoped local run of e2e/attestation/src/perfContractRerun.test.ts under its own `e2e/attestation/vitest.config.ts`, at the closeout commit, exit status 0. This file is NOT in the default `npm test` fan-out (the root config enumerates `packages/*`, `e2e/report` and `scripts` only), so no green `CI` run covers it and this transcript is its execution evidence."
+        }
+      ],
+      "notes": "Three notes. (a) The first capture of this transcript exited 1 on `e2e/attestation`'s own 80% coverage threshold while all 24 tests passed — an honest transcript that reads as a failure. Re-captured with `--coverage.enabled=false` per the pass's tooling guidance; the committed file is the second run and its header records the command that produced it. (b) `e2e/attestation` runs in CI only via `release-e2e.yml`, whose most recent recorded run is 30280854089 (2026-07-27, RC `56e237e9`) — well before this closeout's base — so it is deliberately NOT cited: the criterion names `perf-conformance` as its CI job, and that job is green at `eabb65a`. (c) Recorded rather than claimed away: `perf-conformance` is fixture-based by its own header and produces no release-candidate verdicts, which `e2e/attestation/src/performanceContracts.ts:823-828` emits as a standing blocking reason on 23's `performance-contracts` checklist item. That is roadmap/23:75's separate obligation, not this criterion's — this box asks only that the entry point exist, be named, and be invocable standalone, and all three are evidenced above."
+    }
+  ]
+}
