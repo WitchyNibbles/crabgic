@@ -1,0 +1,37 @@
+# captured: 2026-08-02T10:35:02Z (UTC)
+# HEAD: 30f931eab97b8360102498d4b766513be67241d0
+# cwd:  repository root (git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run --coverage.enabled=false --reporter=verbose packages/gates/src/remote-verification-gate.test.ts packages/gates/src/remote-evidence-pointer.test.ts
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p21
+
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > findRemoteResourcePointersForRequirement — failing-first: empty journal > returns [] against a completely empty journal, never throws 23ms
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > findRemoteResourcePointersForRequirement — failing-first: empty journal > returns [] for an untracked requirement even once OTHER requirements have pointers 64ms
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > findRequirementsForRemoteResource — failing-first: empty journal > returns [] against a completely empty journal, never throws 3ms
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > findRemoteResourcePointersForRequirement / findRequirementsForRemoteResource — ignore ordinary (non-pointer) evidence_pointer entries > an ordinary gate-firing EvidenceRecord for the same requirement (not this module's pointer-command encoding) is skipped, not misread as a pointer 33ms
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > findRemoteResourcePointersForRequirement / findRequirementsForRemoteResource — ignore ordinary (non-pointer) evidence_pointer entries > an entry whose command matches the pointer-encoding prefix but whose gateTag is NOT remote_verification is rejected, not misread as a pointer 50ms
+ ✓ |@crabgic/gates| src/remote-evidence-pointer.test.ts > bidirectional requirement <-> RemoteResource pointer round-trip (3 requirements: 2 Jira, 1 Grafana) > resolves forward (requirement -> RemoteResource) and reverse (RemoteResource -> requirement) for every tracked requirement 188ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — failing-first: unbound pointer fails the gate > fails when a requirement declares a required RemoteResource id with NO recorded pointer 7ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — pass path (bound pointer) > passes once the required RemoteResource id has a recorded pointer 16ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — pass path (bound pointer) > a bound pointer with NO confirmed revision yet does not emit a confirmed-revision digest for it 14ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — pass path (bound pointer) > passes trivially when the requirement tracks nothing remote (empty requiredRemoteResourceIds) 1ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > blocks when connectorOutcome is canonical unsupported, regardless of pointer state 11ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > blocks when connectorOutcome is canonical ambiguous_write, regardless of pointer state 13ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (authentication) 3ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (permission) 4ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (not_found) 2ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (conflict) 1ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (rate_limited) 3ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (validation) 1ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (transient) 1ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > remote_verification gate — canonical-error fault matrix (never a silent pass) > does NOT block on the other 8 canonical outcomes by itself (policy_blocked) 1ms
+ ✓ |@crabgic/gates| src/remote-verification-gate.test.ts > enum-disjointness — Jira's own `done` workflow stage (18) and the Run lifecycle's final_verifying/published_local (02) share no member string > JIRA_WORKFLOW_STAGES and RUN_LIFECYCLE_STATES intersect only on the unrelated, independently-documented 'blocked' spelling coincidence — never on final_verifying/published_local/done 14ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  12:35:04
+   Duration  5.71s (transform 5.75s, setup 0ms, import 7.31s, tests 473ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

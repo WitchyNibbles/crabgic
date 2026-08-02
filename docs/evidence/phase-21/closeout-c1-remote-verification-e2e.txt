@@ -1,0 +1,20 @@
+# captured: 2026-08-02T10:34:58Z (UTC)
+# HEAD: 30f931eab97b8360102498d4b766513be67241d0
+# cwd:  repository root (git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run --coverage.enabled=false --reporter=verbose packages/gates/src/remote-verification-e2e.test.ts
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p21
+
+ ✓ |@crabgic/gates| src/remote-verification-e2e.test.ts > E2E — remote_verification fired THROUGH the real GateRegistry for a multi-requirement ChangeSet > a run completes (every requirement's gate PASSES) only once every tracked requirement's EvidenceRecord carries a confirmed remote revision 214ms
+ ✓ |@crabgic/gates| src/remote-verification-e2e.test.ts > E2E — remote_verification fired THROUGH the real GateRegistry for a multi-requirement ChangeSet > unsupported/ambiguous_write connector outcomes block final_verifying->published_local through the SAME real registry, per requirement, never a silent pass 22ms
+ ✓ |@crabgic/gates| src/remote-verification-e2e.test.ts > E2E — a seeded mid-run material field edit halts BEFORE final_verifying completes > classifyMateriality (fed 18's real customfield-id diff shape) -> buildMaterialAmendmentSignal -> throwIfMaterialAmendment halts before the requirement's final_verifying gate ever fires 39ms
+ ✓ |@crabgic/gates| src/remote-verification-e2e.test.ts > E2E — a seeded mid-run material field edit halts BEFORE final_verifying completes > a non-tracked-field-only mid-run edit (e.g. Jira watchers) does NOT halt — final_verifying proceeds normally 49ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:35:00
+   Duration  2.21s (transform 1.30s, setup 0ms, import 1.66s, tests 325ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0
