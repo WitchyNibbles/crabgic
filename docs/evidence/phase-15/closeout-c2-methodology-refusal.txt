@@ -1,0 +1,26 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:34:12Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run packages/perf/src/runner/methodology.test.ts packages/perf/src/runner/twin-worktree-runner.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15
+
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > accepts a strictly-alternating schedule with exactly the minimum repetitions 2ms
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > accepts warmup steps preceding the measured schedule, and ignores them for both checks 0ms
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > REFUSES (typed error) when there are too few repetitions 1ms
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > REFUSES (typed error) when the schedule is a block design (all base, then all candidate) rather than interleaved 0ms
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > REFUSES when even a single pair of consecutive same-kind measured reps appears in an otherwise-fine schedule 0ms
+ ✓ |@crabgic/perf| src/runner/methodology.test.ts > assertMethodologySound > empty schedule is too few repetitions, not a false 'not_interleaved' pass 0ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.test.ts > runTwinWorktreeBenchmark > REFUSES (typed error) when repetitions is below the minimum — no dispatch/measure call ever happens 2ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.test.ts > runTwinWorktreeBenchmark > runs the default warmup (1 per side) followed by exactly MIN_INTERLEAVED_REPETITIONS measured reps per side, strictly alternating 2ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.test.ts > runTwinWorktreeBenchmark > never runs concurrently: base and candidate dispatch/measure calls never overlap in wall-clock time 23ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.test.ts > runTwinWorktreeBenchmark > respects a custom repetition/warmup count 0ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  11:34:13
+   Duration  208ms (transform 84ms, setup 0ms, import 109ms, tests 33ms, environment 0ms)

@@ -4,6 +4,36 @@ Governing spec: `roadmap/13-scheduler-packets-context.md`. This note maps each e
 criterion to its test/artifact, records deviations from the source material, and lists
 carry-forwards for reconcile.
 
+**Annotated 2026-08-02 — two things below are stale, and neither is rewritten in place.**
+This is an evidence file: what was true when it was written has value, so the original text
+is kept verbatim and the corrections live here.
+
+1. **Package names predate the rename.** Every `@eo/*` reference in this file — `@eo/journal`
+   (including "real `@eo/journal` `JournalStore`" under exit criterion 3), `@eo/contracts`,
+   `@eo/engine-core`, `@eo/engine-claude`, `@eo/git-engine`, `@eo/supervisor`, `@eo/testkit`
+   and `@eo/scheduler` — was the package's actual name on 2026-07-24. `3e74cc7` (2026-07-26)
+   renamed the project from `engineering-orchestrator` to `crabgic` and every scope with it;
+   read `@eo/x` as `@crabgic/x` throughout. Nothing else about those citations changed: the
+   modules, paths and tests they name are the same ones. The one `@eo/scheduler` occurrence
+   (§Carry-forwards for reconcile, the "09's `resume <run-id>` CLI backend, limit-parked
+   half" bullet — second of that section's four) is a **quotation** of this phase's own
+   brief, so it is doubly not rewritten: it is a record of what the brief said.
+
+   Locators in this note name a section and a bullet rather than a line, deliberately.
+   Inserting an annotation shifts every line beneath it, so a line number written *inside*
+   the annotation invalidates itself the moment the annotation grows — which is exactly how
+   the first two drafts of this sentence got it wrong, twice.
+
+2. **The `resume <run-id>` limit-parked carry-forward has since been discharged.** That
+   bullet says wiring a `packages/cli` handler to call `resumeAttempt`/`getParkStatus`/
+   `parkWorkUnit` "is explicitly NOT done here". It was correct for this phase, and it is no
+   longer the state of the tree: `packages/cli/src/daemon/run-dispatcher.ts:650` calls
+   `resumeAttempt` from the driver's `resumeParkedUnit` hook, under `trigger:
+   { kind: "parkResume" }`, against a retained per-run adapter. One limit is worth carrying
+   forward honestly rather than declaring the bullet simply closed: the resume declines
+   (leaving the unit parked) when no retained adapter exists, i.e. after a daemon restart —
+   see the `retained === undefined` branch and its comment at `:637-640`.
+
 ## Adversarial-validation repair pass (2026-07-24)
 
 Independent adversarial validation of the initial build returned FAIL on one MAJOR plus

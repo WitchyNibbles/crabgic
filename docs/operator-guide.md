@@ -3,7 +3,8 @@
 **Status:** Phase 23 (release hardening) work item 9. Every command below is cited from the
 real, shipped CLI surface (`packages/cli/src/commands/`, `packages/cli/src/argv/types.ts`) —
 not aspirational syntax. Where a command still returns the typed `NOT_IMPLEMENTED` shape at
-this repository's current build (no backend wired for this pass), that is stated explicitly.
+this repository's current build, that is stated explicitly, along with what specifically is
+missing. Exactly one command is in that state today: `connection capabilities` (§6).
 
 ## 1. Installing
 
@@ -240,12 +241,53 @@ crabgic connection doctor <connection-id>
 crabgic connection capabilities <connection-id>
 ```
 
-**`NOT_IMPLEMENTED`** at this repository's current build — these commands are declared on the
-argv surface (`packages/cli/src/argv/types.ts`) but have no wired backend in this pass. Once
-wired, `connection doctor` runs the gateway's reachability probe (custom-CA validation
-included) against a stored connection end-to-end without performing a mutating call — the
-same probe 16's connection-doctor implements and 18/19/20 extend
-(`docs/security-posture.md`, "6. Connectors").
+**Three of the four are wired and functional in the shipped binary; `connection capabilities`
+is not.** `add`/`list`/`doctor` dispatch to `packages/cli/src/connection/connection-commands.ts`
+(`packages/cli/src/commands/dispatch.ts`), and `buildRealCliDependencies` supplies that bag by
+default (`packages/cli/src/bootstrap.ts`), so none of those three returns 09's
+`NOT_IMPLEMENTED` stub.
+
+> **Correction (2026-08-02).** This section previously said all four commands were
+> `NOT_IMPLEMENTED` with "no wired backend in this pass". The backend for three of them landed
+> in `c720433` (2026-07-25), one day after this section was written, and the guide was never
+> updated — so, exactly as in §5, the guide told operators a working feature was unavailable.
+> Only the fourth claim was still true, and it is kept below. Both halves are pinned:
+> `packages/cli/src/commands/connection-dispatch.test.ts` asserts that the three reach real
+> backends with the bag present and that `connection capabilities` stays `NOT_IMPLEMENTED`
+> with the bag but no discoverer, and `packages/cli/src/bootstrap.test.ts`'s "wires the real,
+> DURABLE connection backend by default — a connection added in one process survives into the
+> next" case proves the shipped composition root supplies it.
+
+- **`crabgic connection add jira|grafana`** stores the connection in a durable, file-backed
+  `ExternalConnection` store under the project's XDG **state** root (not cache — a configured
+  connection is durable state, not a regenerable artifact). Credentials are stored as
+  **references only**, never literal values: the argv forms that have a faithful representation
+  in 02's `SecretReferenceSchema` (`env:NAME`, `file:///abs/path`) are converted, and every
+  other form (`op://…`, `vault://…`, `ref:id`) is refused loudly rather than silently coerced
+  into a resolution mechanism you did not ask for.
+- **`crabgic connection list`** prints one line per stored connection (id, provider, base URL,
+  secret **locator**), or `no external connections configured`. The reference is rendered as its
+  locator — the env var name or file path — and is never resolved, so stdout never carries a
+  credential. `--json` returns the same redacted projection.
+- **`crabgic connection doctor <connection-id>`** runs the gateway's reachability probe
+  (`probeConnectionReachability`) against the stored connection end-to-end — a single,
+  deliberately GET-only request through the gateway's real transport stack, so the SSRF guard,
+  custom-CA-aware HTTPS agent and redirect revalidation are all exercised, and nothing is
+  mutated. It never crashes on an unreachable host: a refused SSRF preflight, a TLS failure, a
+  timeout, or an unreadable custom CA each come back as an informative `UNREACHABLE` line and a
+  non-zero exit, never a raw provider body. The same probe 18/19/20's own doctor checks build on
+  (`docs/security-posture.md`, "6. Connectors").
+- **`crabgic connection capabilities <connection-id>`** is the one that still returns
+  **`NOT_IMPLEMENTED`** at this repository's current build. The backend exists
+  (`packages/cli/src/connection/connection-capabilities.ts`); what is missing is the injected
+  discovery function, and `bootstrap.ts` deliberately does not supply one because neither
+  connector can be completed without inventing something: Jira has no storage for the OAuth
+  client-credentials _pair_ (`ExternalConnection` carries exactly one `secretRef`, by a
+  roadmap/19 ruling), and Grafana's `buildinfo` response shape is fixture data pending live
+  verification against a real server. Leaving it undefined keeps the command visible to
+  `e2e/live`'s `NOT_IMPLEMENTED` sweep rather than shipping a command that merely looks wired
+  and always fails. It is recorded in that sweep's deferral allowlist
+  (`e2e/live/src/knownDeferredAllowlist.ts`).
 
 ## 7. Reviewing and approving learning proposals
 

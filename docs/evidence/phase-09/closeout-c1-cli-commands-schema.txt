@@ -1,0 +1,78 @@
+# Phase 09 exit criterion 1 — every plan CLI command exists as a typed command with stable exit codes; --json validates against 05's published schemas
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:22:47Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/cli/src/commands/cli.commands.schema.test.ts packages/cli/src/argv/parse-command.test.ts packages/cli/src/cli-entry.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09
+
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses install with --dry-run --json 2ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses doctor with --repair-plan 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses status with an optional run-id and --watch 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses status with no run-id 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses resume, requiring run-id 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses cancel, requiring run-id|task-id 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses evidence, requiring change-set-id 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses approve, requiring the envelope digest 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses connection add with a valid secret reference, defaulting the redirect origin to the base URL's own origin 1ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > requires --base-url on connection add — ExternalConnectionSchema has no default for it 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects a non-https --base-url at the parse boundary, before it can reach the HTTP client 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses the comma-separated list flags and an explicit discovery TTL 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects a non-positive or non-integer --discovery-ttl 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects connection add with a literal secret value 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects connection add with an unknown provider 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses connection list/doctor/capabilities 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses trust review|approve|revoke 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses learn list|approve|reject|rollback 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses upgrade and uninstall 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses gateway mcp with no user-facing flags 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects gateway with an unknown sub-command 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > parses no-argv / help / -h / --help as help 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects an unknown top-level command 0ms
+ ✓ |crabgic| src/argv/parse-command.test.ts > parseCommand > rejects a malformed flag 0ms
+ ✓ |crabgic| src/cli-entry.test.ts > runCliEntry > maps a CliUsageError from parsing to EXIT_USAGE_ERROR with a stderr diagnostic 3ms
+ ✓ |crabgic| src/cli-entry.test.ts > runCliEntry > maps a SecretValueRejectedError from parsing to EXIT_SECRET_REJECTED 1ms
+ ✓ |crabgic| src/cli-entry.test.ts > runCliEntry > boots gateway mcp via the injected runGatewayMcp, never touching buildDependencies 2ms
+ ✓ |crabgic| src/cli-entry.test.ts > runCliEntry > dispatches a normal command through buildDependencies and writes stdout 1ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — --json validates against 05's PUBLISHED schemas (adversarial-review fix, 2026-07-24, finding #7) > status <run-id> --json is real, published-schema-valid RunStatusResultSchema output, not merely snapshot-stable 182ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — --json validates against 05's PUBLISHED schemas (adversarial-review fix, 2026-07-24, finding #7) > cancel <target-id> --json is real, published-schema-valid RunCancelResultSchema output 153ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > status <run-id>: unknown run renders gracefully, exit OK 183ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > status with no run-id lists every run over registry.runs.list — empty but valid on a fresh daemon 130ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > resume reaches run.dispatch and surfaces the daemon's refusal reason 153ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > status with no run-id renders a human-readable empty state in non-json mode 137ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > cancel: an unknown run is reported as not-accepted, exit OK, --json shape 120ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > evidence: a fresh ChangeSet with zero records returns an empty-but-valid report, exit OK 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > doctor --json: returns a well-formed report 2148ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — real backends > help: renders the command table 5ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'install' returns the typed NOT_IMPLEMENTED shape 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'run' returns the typed NOT_IMPLEMENTED shape 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'approve' returns the typed NOT_IMPLEMENTED shape 5ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'connection-add' returns the typed NOT_IMPLEMENTED shape 5ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'connection-list' returns the typed NOT_IMPLEMENTED shape 5ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'connection-doctor' returns the typed NOT_IMPLEMENTED shape 5ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'connection-capabilities' returns the typed NOT_IMPLEMENTED shape 6ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'trust-review' returns the typed NOT_IMPLEMENTED shape 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'trust-approve' returns the typed NOT_IMPLEMENTED shape 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'trust-revoke' returns the typed NOT_IMPLEMENTED shape 4ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'learn-list' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'learn-approve' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'learn-reject' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'learn-rollback' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'upgrade' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > 'uninstall' returns the typed NOT_IMPLEMENTED shape 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — NOT_IMPLEMENTED stubs > NOT_IMPLEMENTED never crashes and never echoes internal errors — human (non-json) mode also works 3ms
+ ✓ |crabgic| src/commands/cli.commands.schema.test.ts > dispatchCommand — supervisor unavailable > maps SupervisorUnavailableError to a stable exit code and stderr diagnostic 4ms
+
+ Test Files  3 passed (3)
+      Tests  56 passed (56)
+   Start at  00:22:48
+   Duration  8.27s (transform 7.14s, setup 0ms, import 9.88s, tests 3.31s, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

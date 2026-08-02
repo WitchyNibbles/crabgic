@@ -1,0 +1,21 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:34:10Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run packages/perf/src/conformance/perf-conformance.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15
+
+ ✓ |@crabgic/perf| src/conformance/perf-conformance.test.ts > perf-conformance fixture matrix > fixture 1: a 20% CPU regression on a sensitive path BLOCKS 29ms
+ ✓ |@crabgic/perf| src/conformance/perf-conformance.test.ts > perf-conformance fixture matrix > fixture 2: a 3% regression (within noise/threshold) on a critical path PASSES 26ms
+ ✓ |@crabgic/perf| src/conformance/perf-conformance.test.ts > perf-conformance fixture matrix > fixture 3: a noisy critical-path measurement is INCONCLUSIVE and BLOCKING (never quarantined-as-passing) 17ms
+ ✓ |@crabgic/perf| src/conformance/perf-conformance.test.ts > perf-conformance fixture matrix > fixture 4a: methodology violation (too few repetitions) REFUSES to produce a verdict 2ms
+ ✓ |@crabgic/perf| src/conformance/perf-conformance.test.ts > perf-conformance fixture matrix > fixture 4b: methodology violation (no interleave — a block design) REFUSES to produce a verdict 1ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  11:34:10
+   Duration  1.90s (transform 1.24s, setup 0ms, import 1.70s, tests 77ms, environment 0ms)

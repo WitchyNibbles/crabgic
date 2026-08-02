@@ -207,21 +207,197 @@ only a validity verdict, never the resolved token value.
 
 ## Exit criteria
 
-- [ ] Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates
-      against published schemas — suite `cli.commands.schema.test`.
-- [ ] `gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client — the
+**Closeout pass 2026-08-02:** 6/7 ticked against recorded evidence; the 1 unticked box below is an
+open defect — see `docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md` and
+that box's own note. Machine-readable index: `docs/evidence/criteria-closeout/phase-09.json`.
+
+Shared citations reused by several boxes below. **`CI` run
+[30720547145](https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145)**, green at
+`af46e00` — its `unit-test+coverage (ubuntu-latest)` job
+([91423926933](https://github.com/WitchyNibbles/crabgic/actions/jobs/91423926933)), step "test with
+80% line+branch coverage gate", executed 623 test files / 6060 tests, and the step log names every
+suite cited below individually. Two suites cited here live in `e2e/live`'s **offline** default
+project (`src/gatewayFamilyCompleteness.test.ts`, `src/cliNotImplementedSweep.test.ts`) and are
+therefore NOT part of `npm test`'s fan-out; they were re-run locally at the closeout commit. Scoped
+local re-runs of every criterion's own suites, captured verbatim, are committed as
+`docs/evidence/phase-09/closeout-c<k>-*.txt`.
+
+Two notes a reader of this section needs. (a) `docs/evidence/phase-09/README.md` pre-dates the
+`@eo/*` → `@crabgic/*` rename, a relocation and a deletion, so **five** of the `packages/cli` test
+paths it names no longer resolve — `src/approval/token.test.ts` and
+`src/approval/approval-token.property.test.ts` (moved verbatim to `@crabgic/contracts` in `5c21a0f`),
+`src/gateway-mcp/gateway-mcp.boot.test.ts` and `src/gateway-mcp/registry.test.ts` (deleted in
+`c39292c`), and `src/commands/dispatch.test.ts` (renamed to `cli.commands.schema.test.ts`, which the
+README's own table records but its §Deviations item 5 still cites under the old name). Each box
+below cites the path at HEAD, and every relocation is recorded in this pass's index.
+(b) This phase's §In scope `NOT_IMPLEMENTED` machinery is still real, but its surface has shrunk to
+one command — see the note under criterion 1.
+
+- [x] Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates
+      against published schemas — suite `cli.commands.schema.test`. — **Evidence (2026-08-02):**
+      `packages/cli/src/argv/parse-command.test.ts` parses every command §In scope names, one case
+      per family (`:249` `expect(parseCommand(["gateway", "mcp"])).toEqual({ command: "gateway-mcp" })`,
+      plus `install`/`doctor`/`status`/`resume`/`cancel`/`evidence`/`approve`/`connection *`/`trust *`/
+      `learn *`/`upgrade`/`uninstall`), and `:269`/`:273` reject an unknown command and a malformed
+      flag so the union is not open. `packages/cli/src/commands/cli.commands.schema.test.ts` drives
+      the real `dispatchCommand` against a **real supervisor** started in a tmp dir (`:65-70`
+      `startSupervisorServer`): `:98` `expect(() => RunStatusResultSchema.parse(JSON.parse(result.stdout!))).not.toThrow()`
+      and `:107` the same for `RunCancelResultSchema` — 05's own **published** zod schemas, not
+      snapshots; `:230-236` asserts the typed `NOT_IMPLEMENTED` shape and `EXIT_NOT_IMPLEMENTED` for
+      all 16 unwired-bag command variants; `:262` maps an unreachable supervisor to
+      `EXIT_SUPERVISOR_UNAVAILABLE`; `:148-151` proves `resume` genuinely round-trips to the daemon
+      (`expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED)` and the refusal names the missing
+      dispatcher) rather than short-circuiting in the CLI. The stable set itself is
+      `packages/contracts/src/cli-surface/exit-codes.ts`, re-exported verbatim by
+      `packages/cli/src/exit-codes.ts`. `CI` run 30720547145 green at `af46e00`;
+      `docs/evidence/phase-09/closeout-c1-cli-commands-schema.txt`.
+      **Wording corrected 2026-08-02.** The clause read "exists as a typed **UDS request**". Most of
+      this surface is not a UDS request and never was: `doctor` runs local host probes, `evidence`
+      reads 04's journal directly through `JournalStore`, and every family wired after this phase
+      (`trust *`, `connection *`, `learn *`, `install`/`upgrade`/`uninstall`) has a local backend.
+      `status`/`cancel`/`resume` are the UDS-backed commands, and those are exactly the ones the
+      suite round-trips against a real supervisor. The corrected claim is *more precise, not weaker*:
+      the guarantee the box carries — every plan command exists, is typed, returns one of the stable
+      exit codes rather than crashing or an untyped error, and its `--json` validates against a
+      published schema wherever one exists — is fully evidenced above. The checks are unchanged.
+      Scope note on the `NOT_IMPLEMENTED` surface, recorded because this phase owns it: in the
+      *shipped* binary only `connection capabilities` still returns it. `packages/cli/src/bootstrap.ts`
+      supplies `installer`/`intake`/`trust`/`connection`/`learning`, asserted against the real
+      composition root by `e2e/live/src/cliNotImplementedSweep.test.ts:99-106`, and `:208-247` folds
+      the dispatch-level sweep with that real wiring to `expect(realGaps).toEqual(["connection-capabilities"])`.
+- [x] `gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client — the
       exact process 10's `.mcp.json` entry (`crabgic gateway mcp`) invokes; full 8-family
-      completeness remains a phase-23 release gate — suite `gateway-mcp.boot.test`.
-- [ ] Doctor detects each seeded fault (wrong engine version, missing bwrap, rogue settings, bad socket
-      perms, torn journal) with a correct repair plan — suite `doctor.fault-matrix.test`.
-- [ ] Secret value in argv rejected with guidance, never echoed in output or evidence — suite
-      `secret-ref.rejection.test`.
-- [ ] Approval token verifies once, expires, and binds to the exact digest it was minted against — suite
-      `approval-token.property.test`.
-- [ ] `evidence <change-set-id>` returns every journaled `EvidenceRecord` for that ChangeSet, including
+      completeness remains a phase-23 release gate — suite `gateway-mcp.boot.test`. — **Evidence
+      (2026-08-02):** `packages/gateway/src/mcp/server.test.ts:106-121` spawns a **real child
+      process** over stdio (`StdioClientTransport`, `command: process.execPath`) and connects the
+      **real MCP SDK `Client`** as the stub client, then asserts
+      `expect(tools.map((t) => t.name).sort()).toEqual([...NATIVE_TOOL_NAMES].sort())` — *exactly*
+      the resolved set, and `:123-140` re-runs it with one externally-registered tool to prove the
+      set tracks the registry rather than a constant. `packages/gateway/src/mcp/stdio-boot.test.ts`
+      covers the boot itself: `:82` `expect(result.serverInfo.name).toBe(GATEWAY_MCP_SERVER_NAME)`,
+      `:91` `expect(listed.map((t) => t.name)).toEqual(["probe.echo"])`, `:134` an empty registry
+      lists `[]` without crashing, `:99-111` a real `tools/call` round-trip.
+      `packages/contracts/src/gateway/tool-registry.test.ts:23` keeps duplicate-name registration
+      rejected. The *resolved production* set is pinned at
+      `packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138`
+      (`expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort())`) and
+      re-derived behaviourally over the real MCP stdio server by
+      `e2e/live/src/gatewayFamilyCompleteness.test.ts:23-29`/`:125-130`. The "exact process" clause is
+      byte-compared at `packages/cli/src/installer/mcp-entry.golden.test.ts:37`
+      (`expect(JSON.stringify(result.mcpJson.mcpServers)).toBe(expectedJson)` against
+      `{"crabgic_gateway":{"command":"crabgic","args":["gateway","mcp"]}}`) and
+      `packages/cli/src/commands/cli.snapshots.test.ts:68`/`:74`/`:80`. The 8-family clause is
+      discharged by phase 23's ticked "Full 8-family gateway MCP tool surface + full CLI surface
+      return real behavior" box. `CI` run 30720547145 green at `af46e00`;
+      `docs/evidence/phase-09/closeout-c2-gateway-mcp-boot.txt`,
+      `docs/evidence/phase-09/closeout-c2-family-completeness.txt`.
+      **Wording corrected 2026-08-02.** The named suite `gateway-mcp.boot.test` no longer exists:
+      `c39292c` ("retire the hand-rolled MCP server") deleted
+      `packages/cli/src/gateway-mcp/{protocol,stdio-server}.ts` and their tests when production
+      stopped booting them. The evidence channel is now `packages/gateway/src/mcp/server.test.ts` +
+      `packages/gateway/src/mcp/stdio-boot.test.ts`, and the substitution is *strictly stronger*, not
+      a downgrade: the retired suite drove a hand-rolled ndjson subset over in-process streams that
+      answered every `tools/call` with `METHOD_NOT_FOUND` and replied to notifications it should have
+      ignored; the replacements drive a real OS child process, the real MCP SDK client, and a real
+      `tools/call`. The criterion's own claim is unchanged and remains fully asserted.
+- [x] Doctor detects each seeded fault (wrong engine version, missing bwrap, rogue settings, bad socket
+      perms, torn journal) with a correct repair plan — suite `doctor.fault-matrix.test`. —
+      **Evidence (2026-08-02):** `packages/cli/src/doctor/doctor.fault-matrix.test.ts` seeds all five
+      named faults and asserts `passed:false` on each: `:58-66` wrong engine version (evidence names
+      the observed `1.0.0`, `repairStep` defined); `:68-78` missing bwrap
+      (`expect(finding.repairStep).toContain("bubblewrap")`); `:80-91` rogue settings
+      (`expect(finding.evidence).toContain("influenced the run")`); `:115-136` bad UDS socket perms —
+      a **real** UDS socket bound at `resolveSupervisorSocketPath`'s exact path, mis-chmodded to
+      0755, run through `buildDefaultDoctorChecks`'s own production wiring, asserting the evidence
+      names the path, `0755` and `0600`; `:139-166` and `:168-191` torn journal, both variants,
+      pinning that the tail case offers `repairJournal` while the mid-journal case says
+      "NOT a safe auto-repair" **and** that neither classification's evidence string can be swapped
+      for the other's. The anti-vacuity controls are explicit: `:193-197` asserts each fixture yields
+      *no* finding before its check is registered, and `packages/cli/src/doctor/framework.test.ts:57-67`
+      pins that `buildRepairPlan` lists only failing checks carrying a repair step, in order, and
+      never executes anything. The hermeticity probe — the one previously found vacuous — is now
+      structurally pinned by `packages/cli/src/doctor/checks/hermeticity-selftest.test.ts:71-99`,
+      which asserts the exact `cwd`/`env` reaching the spawn
+      (`expect(Object.keys(capturedEnv!).sort()).toEqual(["CLAUDE_CONFIG_DIR", "HOME", "PATH"])`, so
+      the real ambient env cannot be merged in and the planted `CLAUDE.md` is genuinely in scope).
+      `CI` run 30720547145 green at `af46e00`;
+      `docs/evidence/phase-09/closeout-c3-doctor-fault-matrix.txt`. Scope note: the fault-matrix cases
+      pin the `repairStep` string for bwrap, both journal variants, and (via
+      `:239-259`) the xdg-permissions check that owns the socket case; the engine-version case asserts
+      only that a repair step exists, and the rogue-settings case asserts the evidence rather than its
+      repair step. Both repair steps exist in the checks; they are simply less tightly pinned.
+- [x] Secret value in argv rejected with guidance, never echoed in output or evidence — suite
+      `secret-ref.rejection.test`. — **Evidence (2026-08-02):**
+      `packages/cli/src/argv/secret-ref.rejection.test.ts:45-55` — a `ghp_`-shaped literal throws
+      `SecretValueRejectedError` with `expect((err as Error).message).not.toContain(secret)` and
+      `expect((err as Error).message).toContain("--token")`, i.e. rejected *with guidance* and never
+      echoed; `:34-43` covers a high-entropy token and a bare JWT; `:57-61` closes the default —
+      only recognised reference forms are accepted at all. `:6-32` is the negative control: all five
+      reference forms (`env:`, `op://`, `vault://`, `file:///`, `ref:`) parse, so a rejector that
+      rejected everything would fail. `packages/cli/src/argv/secret-reference.property.test.ts` runs
+      the same three properties under fast-check at 500 runs each, including `:45`
+      `expect((err as Error).message).not.toContain(candidate)` over every known-provider prefix.
+      The boundary is end-to-end: `packages/cli/src/argv/parse-command.test.ts:174` rejects
+      `connection add` carrying a literal secret, and `packages/cli/src/cli-entry.test.ts:36-44`
+      maps that to `EXIT_SECRET_REJECTED` through the real `runCliEntry`. For "never echoed in
+      **evidence**", `doctor.fault-matrix.test.ts:381-386` asserts the auth probe's passing evidence
+      is exactly `"subscription auth is valid"` with no `repairStep` and nothing about the credential.
+      `CI` run 30720547145 green at `af46e00`;
+      `docs/evidence/phase-09/closeout-c4-secret-ref-rejection.txt`.
+- [x] Approval token verifies once, expires, and binds to the exact digest it was minted against — suite
+      `approval-token.property.test`. — **Evidence (2026-08-02):**
+      `packages/contracts/src/approval/approval-token.property.test.ts` — the suite named by this
+      criterion, relocated verbatim from `packages/cli/src/approval/` to `@crabgic/contracts` in
+      `5c21a0f` to break a `cli → learning → gates → detect → cli` cycle. All three clauses are
+      fast-check properties at 200 runs each over randomised `(subjectKind, digest)`: `:19-35`
+      single-use (the first `verify` is *un*-caught, so a token that never verified at all would fail
+      the test — that is the positive control the "never again" assertion needs); `:37-59`
+      digest-binding, with `fc.pre` excluding only the exact minted pair so every other
+      `(kind, digest)` must fail; `:61-87` expiry under an injected clock. Deterministic companions in
+      `packages/contracts/src/approval/token.test.ts`: `:59-78` a tampered signature and a
+      cross-minter key both fail closed, `:80-93` minting twice against the same pending digest does
+      not double-journal, `:96-110` re-minting after consumption does. `CI` run 30720547145 green at
+      `af46e00`; `docs/evidence/phase-09/closeout-c5-approval-token.txt`.
+- [x] `evidence <change-set-id>` returns every journaled `EvidenceRecord` for that ChangeSet, including
       rendered PR-title/PR-body/review-comment artifacts once 17 populates them, and an empty-but-valid
-      report before any exist — suite `evidence.query.test`.
+      report before any exist — suite `evidence.query.test`. — **Evidence (2026-08-02):**
+      `packages/cli/src/evidence/evidence.query.test.ts:28-34` — a fresh ChangeSet yields
+      `expect(report).toEqual({ changeSetId: "…", records: [] })`, an empty-but-valid report rather
+      than a throw; `:36-51` returns the journaled record for the queried ChangeSet **and none for a
+      second one**; `:67-77` returns multiple records in journal order; `:53-65` proves the entry-type
+      filter is real (a `run_transition` entry yielded under the same filter is still excluded), which
+      is what makes the admit-set exactly `evidence_pointer`. The command path is exercised
+      end-to-end in `packages/cli/src/commands/cli.commands.schema.test.ts:169-179` against a real
+      journal. The "including rendered PR-title/PR-body/review-comment artifacts" clause is the
+      mechanism interface-ledger Gap 6 rules on — 08 "wraps each lint-passed `RenderedArtifact` in an
+      `EvidenceRecord`, and journals an `evidence_pointer` entry against the ChangeSet; a human
+      retrieves them via Phase 09's `evidence <change-set-id>` command — there is no other delivery
+      path" — and both halves are asserted: `packages/git-engine/src/evidence-attachment.test.ts:53-85`
+      attaches exactly one `EvidenceRecord` per `pr_title`/`pr_body`/`review_comment`, each with the
+      queried `changeSetId` and a distinct artifact digest, and confirms three `evidence_pointer`
+      entries are journaled against it, while `queryEvidence` applies no filter beyond that type and
+      ChangeSet id. The composed claim is separately discharged live by phase 23's ticked "evidence
+      bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via
+      `evidence <change-set-id>`)" box. `CI` run 30720547145 green at `af46e00`;
+      `docs/evidence/phase-09/closeout-c6-evidence-query.txt`.
 - [ ] Help text and every `--json` output schema are snapshot-stable — suite `cli.snapshots.test`.
+      — **Left unticked 2026-08-02, defect filed:**
+      `docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md`. The help half is
+      fully met: `packages/cli/src/commands/cli.snapshots.test.ts:19-40` snapshots top-level help in
+      both human and `--json` form plus a per-topic snapshot for every key of `COMMAND_HELP` (14
+      topics in the committed `.snap`; 2 top-level + 14 topic + 3 non-help = 19 entries in total).
+      The "every `--json` output schema" half
+      is not: the committed
+      snapshot file holds exactly three non-help entries — the `NOT_IMPLEMENTED` shape and two
+      `gateway mcp` tool-listing shapes — and no snapshot exists for `doctor --json`,
+      `evidence --json`, or any of the `--json` outputs of the command families wired after this phase.
+      This is original, not drift: the same three entries are all that `d0f29c8` (this phase's own
+      landing commit) committed. `docs/evidence/phase-09/README.md`'s claim that snapshot stability is
+      the conformance mechanism "for those three" (`evidence`/`doctor`/`NOT_IMPLEMENTED`) overstates
+      what the suite does. Correcting the wording here would delete the word "every", which is a lost
+      guarantee rather than a clarification, so the wording protocol does not apply. Adjacent
+      (non-snapshot) pins that limit the blast radius are recorded in the defect. Remedy is S-sized
+      and needs neither CI nor the live engine.
 
 ## Risks & open questions
 

@@ -1,0 +1,53 @@
+# closeout transcript — phase 14, criteria 3-8 — the eight test files those six criteria name or lean on
+# captured (UTC): 2026-08-02T09:35:33Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/gates/src/requirement-resolution.test.ts packages/gates/src/flake-gate.test.ts packages/gates/src/flake/quarantine-registry.test.ts packages/gates/src/tdd-gate.test.ts packages/gates/src/registry.test.ts packages/gates/src/conformance.test.ts packages/gates/src/final-candidate.test.ts packages/gates/src/final-candidate.e2e.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# verbatim stdout+stderr of that command follows; nothing edited
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p14
+
+ ✓ |@crabgic/gates| src/conformance.test.ts > JournalEntryType exhaustiveness > JOURNAL_ENTRY_TYPE_USAGE declares exactly the 13 members 02 owns, one boolean each 4ms
+ ✓ |@crabgic/gates| src/conformance.test.ts > JournalEntryType exhaustiveness > this package journals a nonempty, strict subset of JournalEntryType — never a member outside the closed union 1ms
+ ✓ |@crabgic/gates| src/final-candidate.test.ts > fireFinalCandidateVerification — work item 6: never trusts a cached per-work-unit result > rejects a context whose stage is not 'final_verifying' 6ms
+ ✓ |@crabgic/gates| src/flake/quarantine-registry.test.ts > flake quarantine registry > a never-quarantined test has no active quarantine 4ms
+ ✓ |@crabgic/gates| src/conformance.test.ts > every emitted EvidenceRecord round-trips as an evidence_pointer entry > fires a gate, then reads the SAME EvidenceRecord back from the journal as a schema-valid evidence_pointer entry 136ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > fails closed when no red baseline has ever been captured for the requirement 126ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > a clean first-attempt pass is green and NOT unstable 125ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > registers a stub handler under a tag and fires it via fireByTag, emitting one EvidenceRecord 141ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > list() returns every registered gate, optionally filtered by tag 2ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > firing a tag with zero registered handlers is a no-op by default 1ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > requireAtLeastOne throws NoGatesRegisteredError when nothing is registered under the tag 2ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > fireAll's requireAtLeastOne throws NoGatesRegisteredError when the registry is completely empty 1ms
+ ✓ |@crabgic/gates| src/flake/quarantine-registry.test.ts > flake quarantine registry > an active (unexpired) quarantine is returned 151ms
+ ✓ |@crabgic/gates| src/requirement-resolution.test.ts > Requirement -> EvidenceRecord -> exact object ID resolves in both directions > resolves forward (Requirement.evidenceRecordIds -> EvidenceRecord.objectId) and in reverse (requirementId -> journal -> EvidenceRecord -> objectId) 142ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > a rerun-then-pass result is marked unstable AND blocks when not quarantined — never silently green 139ms
+ ✓ |@crabgic/gates| src/final-candidate.test.ts > fireFinalCandidateVerification — work item 6: never trusts a cached per-work-unit result > a per-work-unit gate that already passed against a STALE object id does NOT make the final-candidate re-verification pass against a REGRESSED integrated object id 262ms
+ ✓ |@crabgic/gates| src/final-candidate.test.ts > fireFinalCandidateVerification — work item 6: never trusts a cached per-work-unit result > MINOR-1 (adversarial-validation round): an EMPTY registry must fail CLOSED, never silently pass having fired zero gates 2ms
+ ✓ |@crabgic/gates| src/flake/quarantine-registry.test.ts > flake quarantine registry > an EXPIRED quarantine reverts to blocking (returns undefined) 138ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > passes once a red baseline was journaled first and the candidate run is green 344ms
+ ✓ |@crabgic/gates| src/flake/quarantine-registry.test.ts > flake quarantine registry > returns the LATEST entry when a test was quarantined more than once 343ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > fireAll fires every registered handler across every tag 473ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > a rerun-then-pass result is marked unstable but ALLOWED THROUGH when an active quarantine exists 343ms
+ ✓ |@crabgic/gates| src/final-candidate.test.ts > fireFinalCandidateVerification — work item 6: never trusts a cached per-work-unit result > fires the FULL registered gate set (every tag), never a subset 484ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > an EXPIRED quarantine reverts to blocking even for a rerun-then-pass result 144ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > a genuine failure (failed, failed again on rerun) blocks and is NOT marked unstable 9ms
+ ✓ |@crabgic/gates| src/flake-gate.test.ts > flake gate — failing-first: a scripted flaky-then-passing fixture is marked unstable, never silently green > a failure with no rerun evidence at all blocks 7ms
+ ✓ |@crabgic/gates| src/registry.test.ts > createGateRegistry — work item 1: a stub gate registers and fires before any real check exists > multiple handlers may register under the same tag (e.g. 'security' shared between 14's own scanners and 21's connector fixtures) and all fire 144ms
+ ✓ |@crabgic/gates| src/registry.test.ts > external extensibility — work item 6 / registry-extensibility conformance test > a stub EXTERNAL gate registers and fires at final_verifying with zero code change inside this package's own modules 16ms
+ ✓ |@crabgic/gates| src/final-candidate.e2e.test.ts > E2E: final-candidate re-verification dispatched as its own TaskPacket through 13's executor > a per-work-unit gate already passed against an earlier object id, but the final-candidate TaskPacket's own outcome reflects ONLY the rerun against the truly-integrated object id 580ms
+ ✓ |@crabgic/gates| src/final-candidate.e2e.test.ts > E2E: final-candidate re-verification dispatched as its own TaskPacket through 13's executor > a genuinely clean integrated candidate dispatches to a succeeded TaskPacket outcome 33ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > reports the candidate as still failing (passed=false) if a red baseline exists but the candidate run itself has not gone green yet 276ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > captureRedBaseline refuses a 'red' baseline that already passes (exitStatus 0) 2ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > captureRedBaseline reports no gateVerdict — a pre-dispatch capture is not a firing 8ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > captureRedBaseline carries workUnitId through to the journal entry when supplied 8ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > hasRedBaseline respects the beforeSeq cutoff — a red baseline recorded AFTER beforeSeq does not count 15ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > NIT-2 (adversarial-validation round): the gate's OWN prior failing verdict must NOT retroactively satisfy its own red-baseline precondition on a later firing, when both firings share the same dispatch-boundary cutoff 11ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > a red baseline captured strictly BEFORE the supplied dispatch boundary DOES satisfy a later green firing for the same candidate 8ms
+ ✓ |@crabgic/gates| src/tdd-gate.test.ts > TDD gate — failing-first: rejects an attempt missing a red-baseline EvidenceRecord > a red baseline for a DIFFERENT requirement does not satisfy this requirement's TDD gate 8ms
+
+ Test Files  8 passed (8)
+      Tests  38 passed (38)
+   Start at  11:35:34
+   Duration  1.70s (transform 3.78s, setup 0ms, import 6.00s, tests 4.65s, environment 1ms)

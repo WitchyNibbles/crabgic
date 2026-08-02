@@ -47,7 +47,15 @@ export interface RunDoctorOptions {
    * (checksum-drift, plugin-trust-pin, CapabilityManifest-digest-freshness)
    * are registered ONLY when this is supplied — kept optional so every
    * pre-existing roadmap/09 caller/test (which never supplies it) keeps
-   * observing the exact same 8-check default set unchanged.
+   * observing the exact same default set unchanged.
+   *
+   * That set is **10** checks today, not the 8 this comment claimed until
+   * 2026-08-02: `journal.head-anchor` and `journal.writer-separation` were
+   * added to `buildDefaultDoctorChecks` after phase 10 wrote the original
+   * note, and nothing updated the count. The invariant the number was there
+   * to express is unchanged and is the one actually pinned — by
+   * `./run-doctor.test.ts`'s `expect(report.findings).toHaveLength(10)`,
+   * which fails on any silent change to the default set.
    */
   readonly installer?: { readonly targetDir: string; readonly pluginSourceDir: string };
   /**

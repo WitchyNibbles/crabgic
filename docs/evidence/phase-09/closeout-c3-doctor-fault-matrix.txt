@@ -1,0 +1,91 @@
+# Phase 09 exit criterion 3 — doctor detects each seeded fault with a repair plan
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:22:57Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/cli/src/doctor/doctor.fault-matrix.test.ts packages/cli/src/doctor/framework.test.ts packages/cli/src/doctor/run-doctor.test.ts packages/cli/src/doctor/checks/hermeticity-selftest.test.ts packages/cli/src/doctor/process-probe.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09
+
+ ✓ |crabgic| src/doctor/framework.test.ts > runDoctorChecks > runs zero checks cleanly (a seeded fault fixture produces no finding when its check isn't registered yet) 3ms
+ ✓ |crabgic| src/doctor/framework.test.ts > runDoctorChecks > aggregates multiple passing checks 1ms
+ ✓ |crabgic| src/doctor/framework.test.ts > runDoctorChecks > a failing check is reflected in allPassed 0ms
+ ✓ |crabgic| src/doctor/framework.test.ts > runDoctorChecks > a check that throws is recorded as a failing finding rather than aborting the run 1ms
+ ✓ |crabgic| src/doctor/framework.test.ts > buildRepairPlan > is empty when every check passed 0ms
+ ✓ |crabgic| src/doctor/framework.test.ts > buildRepairPlan > lists only failing checks that carry a repair step, in order 0ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createHermeticitySelftestCheck > passes when the probe executed and the marker did not leak 2ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createHermeticitySelftestCheck > fails when the probe never executed (no sound absence evidence) 1ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createHermeticitySelftestCheck > fails when the marker leaked 0ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createRealHermeticitySelftestProbe > plants a rogue CLAUDE.md, spawns via the injected probe, and reports no leak on a clean stdout 11ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createRealHermeticitySelftestProbe > reports a leak when the spawned probe's stdout contains the planted marker 8ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createRealHermeticitySelftestProbe > reports not-executed when the spawned probe itself fails 4ms
+ ✓ |crabgic| src/doctor/checks/hermeticity-selftest.test.ts > createRealHermeticitySelftestProbe > adversarial-review regression guard: the planted CLAUDE.md is actually in scope — cwd is the scratch dir, env is isolated/allowlisted with CLAUDE_CONFIG_DIR set, PATH present, and the real ambient env NOT merged in 8ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe > runs the spawned process in the supplied cwd 63ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe > replaces the spawned process's env with exactly the supplied object when env is given 58ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe > inherits this process's own cwd/env when options are omitted (backward compatible default) 63ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > settles a process that would otherwise never exit, and fails closed 416ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > does not truncate a process that finishes inside its ceiling 11ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > keeps the output the process managed to emit before the ceiling 610ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > actually kills the process it gave up on, rather than orphaning it 1770ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > wrong engine-version string: fails with a repair step naming the accepted range 5ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > missing bwrap: fails with a repair step to install it 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > rogue settings file present (planted CLAUDE.md leaks its marker): fails 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > bad UDS socket permissions > fails naming the exact offending socket path and both the wrong and expected modes 31ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > torn journal segment: fails and distinguishes tail-position (safe-repair) from mid-journal corruption 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > torn journal segment (mid-journal corruption variant): repair step refuses auto-repair 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > doctor fault-fixture matrix > every fixture above would produce NO finding at all before its check is registered (work item 4's own failing-first framing) 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > xdg-permissions — cannot look is not the same as not there > FAILS when a path could not be inspected, rather than reporting absence 3ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > xdg-permissions — cannot look is not the same as not there > still treats a genuinely missing path as nothing to check 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > xdg-permissions — cannot look is not the same as not there > reports a real mode violation ahead of an uninspectable path 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > wsl2-warnings — every Windows drive mount, not just C > warns for /mnt/d/wsl-state 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > wsl2-warnings — every Windows drive mount, not just C > warns for /mnt/C/Users/me/state 0ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > wsl2-warnings — every Windows drive mount, not just C > warns for /mnt/e/wslhome/.local/state 0ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > wsl2-warnings — every Windows drive mount, not just C > still passes for a genuinely Linux-side root 0ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > realStatMode — absence versus inability to look > reports a genuinely missing path as absent 2ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > realStatMode — absence versus inability to look > reports an unreadable parent as unknown, NOT as absent 4ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > realStatMode — absence versus inability to look > reports a real mode for a path it can read 2ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > auth-probe — the diagnosis must match its remedy > says auth is absent, and offers to obtain one 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > auth-probe — the diagnosis must match its remedy > says auth is present but bad, and offers to re-authenticate 0ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > auth-probe — the diagnosis must match its remedy > reports valid auth without leaking anything about the credential 1ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > realStatMode — errno shapes that mean the path cannot exist > treats a non-directory path component as absence 2ms
+ ✓ |crabgic| src/doctor/doctor.fault-matrix.test.ts > realStatMode — errno shapes that mean the path cannot exist > treats an unrepresentable name as absence 2ms
+ ✓ |crabgic| src/doctor/run-doctor.test.ts > buildDefaultDoctorChecks > wires every named doctor check exactly once 5ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > kills the whole process tree, not just the direct child 2072ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > leaves no handle holding the event loop open after a timeout 569ms
+ ✓ |crabgic| src/doctor/run-doctor.test.ts > runDoctor > runs to completion against real (possibly-absent) host binaries without crashing 2734ms
+ ✓ |crabgic| src/doctor/run-doctor.test.ts > buildDefaultDoctorChecks — real supervisor control socket permission wiring (adversarial-review fix, 2026-07-24) > the xdg.permissions check catches a real, mis-permissioned (0755) UDS control socket 12ms
+ ✓ |crabgic| src/doctor/run-doctor.test.ts > buildDefaultDoctorChecks — real supervisor control socket permission wiring (adversarial-review fix, 2026-07-24) > the xdg.permissions check passes when the real UDS control socket has the correct 0600 mode 9ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — timeoutMs > waits indefinitely when no ceiling is given, preserving the default 1210ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a bounded child must not outlive the CLI > registers a bounded child and releases it once settled 6ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a bounded child must not outlive the CLI > releases a child that had to be killed on expiry, not only a clean one 255ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a bounded child must not outlive the CLI > never registers an UNBOUNDED child, which is not detached and dies with the CLI already 6ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a bounded child must not outlive the CLI > installs a signal handler, exactly once, however many probes run 12ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a group-escaping descendant must not hold the loop > releases the pipes even when a descendant escapes the process group 656ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > killProcessTree — a live child's group is the kill target > uses the group form for a child still running at expiry 255ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — detachment follows the ceiling, and only the ceiling > puts a BOUNDED child in its own group, and an UNBOUNDED one in ours 36ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > killProcessTree — the group is always the target while pipes may be held > targets the group for a child that still running 2ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > killProcessTree — the group is always the target while pipes may be held > targets the group for a child that exited normally 1ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > killProcessTree — the group is always the target while pipes may be held > targets the group for a child that exited non-zero 1ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > killProcessTree — the group is always the target while pipes may be held > targets the group for a child that killed by a signal 1ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — SIGINT to the CLI must take the probe with it > kills a detached probe child when the process is interrupted 3566ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a reaped child must not shelter its children > kills the grandchild when the direct child has already exited (reaped) 2909ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — a reaped child must not shelter its children > kills the grandchild when the direct child is still running 2911ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — the signal handler must not evict other handlers > leaves a pre-existing listener installed and lets it decide the exit 7ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — the signal handler must not evict other handlers > forwards SIGQUIT too, which Ctrl-\ generates exactly like SIGINT 5ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — who owns termination is decided at install > only sweeps, and keeps its handler, when someone was already listening 6ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — who owns termination is decided at install > still owns termination when nobody else is listening — the CLI case 6ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > createRealProcessProbe — an interrupted run must exit as interrupted > re-raises the signal so the exit status is 128+signum 555ms
+ ✓ |crabgic| src/doctor/process-probe.test.ts > resetSignalHandlersForTest — leaves no registration behind > does not accumulate exit listeners across install/reset cycles 24ms
+
+ Test Files  5 passed (5)
+      Tests  69 passed (69)
+   Start at  00:22:58
+   Duration  18.42s (transform 4.95s, setup 0ms, import 7.16s, tests 20.94s, environment 1ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

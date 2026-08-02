@@ -1,0 +1,39 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:34:13Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run packages/perf/src/contract/contract-builder.test.ts packages/perf/src/contract/journal-anchor.test.ts packages/perf/src/gate/performance-gate.e2e.test.ts packages/perf/src/gate/performance-gate.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15
+
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > finds a journaled approval-time snapshot by provisional contract id 18ms
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > returns undefined when no entry was ever journaled for this id 2ms
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > returns undefined when the journal has entries for OTHER ids only 7ms
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > first writer wins: the EARLIEST journaled entry for an id is authoritative 12ms
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > gracefully skips a remote_operation_record entry with malformed JSON in appliedRevision 14ms
+ ✓ |@crabgic/perf| src/contract/journal-anchor.test.ts > findJournalAnchoredBudgetSnapshot > ignores remote_operation_record entries with no appliedRevision at all 9ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > builds a schema-valid enforced contract, carrying measuredValue + hash-linking to a journal-anchored provisional 17ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > FAIL-CLOSED (naive vector): budgets edited without recomputing budgetHash throws BudgetHashLinkMismatchError with reason self_consistency_mismatch 7ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > MAJOR FIX — FAIL-CLOSED (deliberate widening vector): a post-approval budget widening that ALSO recomputes its own budgetHash consistently is now caught via the journal anchor (reason journal_anchor_mismatch) 8ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > FAIL-CLOSED: no journal anchor exists at all for this provisional id throws BudgetJournalAnchorMissingError 3ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > throws MissingMeasurementError when a budget entry has no corresponding measured value 6ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > the base-revision-measurement fallback: an empty, journal-anchored provisional budget set is populated from baseRevisionFallbackBudgets 9ms
+ ✓ |@crabgic/perf| src/contract/contract-builder.test.ts > buildEnforcedPerformanceContract > an untampered, journal-anchored empty-base-revision-measurement provisional still passes the integrity check (canonicalHash([]) is self-consistent AND anchor-matched) 9ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > passes when the candidate is well within budget 30ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > blocks on a proven statistical regression 21ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > blocks on an absolute-budget breach even with negligible statistical regression 10ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > FAIL-CLOSED (naive vector): a tampered provisional (budgets changed, hash left stale) blocks via the hash-link check, and still returns a recordable verdict (never throws out of the handler) 11ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > MAJOR FIX — FAIL-CLOSED (deliberate widening vector): a widened budget with a consistently-recomputed hash still blocks via the journal anchor 9ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > FAIL-CLOSED: no journal anchor at all for this ChangeSet's provisional contract blocks the verdict rather than throwing 4ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > critical-path noise >15% produces an inconclusive-blocking (passed: false) verdict 12ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.test.ts > createPerformanceGateHandler > MINOR-1 (defense-in-depth): fewer than the methodology floor's samples per side REFUSES (rejects, no verdict), never returns a normal pass/block 7ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.e2e.test.ts > E2E: performance gate registered into 14's registry, fired at final_verifying > fires through the registry's fireByTag('performance', ...) and emits a schema-valid EvidenceRecord 26ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.e2e.test.ts > E2E: performance gate registered into 14's registry, fired at final_verifying > MAJOR FIX — a deliberate post-approval budget widening that ALSO recomputes its own budgetHash consistently still fails the journal-anchored hash-link check and BLOCKS, with the block itself journaled as evidence 27ms
+
+ Test Files  4 passed (4)
+      Tests  23 passed (23)
+   Start at  11:34:14
+   Duration  1.79s (transform 2.36s, setup 0ms, import 3.42s, tests 284ms, environment 0ms)

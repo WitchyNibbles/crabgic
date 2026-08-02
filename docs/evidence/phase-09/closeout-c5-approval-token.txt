@@ -1,0 +1,35 @@
+# Phase 09 exit criterion 5 — approval token verifies once, expires, and binds to the exact digest it was minted against
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:23:30Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --coverage.enabled=false --reporter=verbose packages/contracts/src/approval/approval-token.property.test.ts packages/contracts/src/approval/token.test.ts
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09
+
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > mints a token and verifies it exactly once 3ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > verifying with the wrong digest fails closed 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > verifying with the wrong subject kind fails closed even with the same digest 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > replay: verifying the same token twice fails closed on the second attempt 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > expires after the TTL 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > a tampered token fails signature verification 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > a token minted by one minter never verifies against a different minter's key 0ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > minting twice against the same still-pending digest does not double-journal 1ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > re-minting after the prior token was consumed DOES journal again (new token) 1ms
+ ✓ |@crabgic/contracts| src/approval/token.test.ts > ApprovalTokenMinter > verifying an unknown token (never minted by this minter's in-memory state) fails closed 0ms
+ ✓ |@crabgic/contracts| src/approval/approval-token.property.test.ts > ApprovalTokenMinter property suite > single-use: a token verified once never verifies again, for any randomized (subjectKind, digest) 42ms
+ ✓ |@crabgic/contracts| src/approval/approval-token.property.test.ts > ApprovalTokenMinter property suite > digest-binding: a token only ever verifies against the exact (subjectKind, digest) it was minted for 28ms
+ ✓ |@crabgic/contracts| src/approval/approval-token.property.test.ts > ApprovalTokenMinter property suite > expiry: a token never verifies once the clock has passed its expiresAt, for any randomized ttl/digest 25ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  00:23:31
+   Duration  277ms (transform 60ms, setup 0ms, import 109ms, tests 106ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0

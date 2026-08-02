@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "phase": "14",
+  "roadmapFile": "roadmap/14-quality-security-gates.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 2 (phase 14)",
+    "headSha": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`gates-conformance` CI job blocks correctly on all seven seeded fixtures independently: coverage regression, flaky-then-passing test, planted secret, vulnerable dependency, SAST finding, disabled-check diff, missing green `engine-live` record.",
+      "textSha256": "1f700a42c0ea7fcdadccc5639d545c006c511d951d5d9b1b380fa0e0aef64062",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance (ubuntu-latest), job 91480518492, step \"seeded-fault matrix (7 independent fixtures) blocks correctly\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826035",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 195 — 'npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false'; line 201 — '✓  @crabgic/gates  src/gates-conformance.test.ts (7 tests) 48ms'; lines 203-204 — ' Test Files  1 passed (1)' / '      Tests  7 passed (7)'. This is the job the criterion names, at this record's own base commit, and the step log shows it really executed this suite rather than merely being green."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/gates-conformance.yml:43",
+          "quotedAssertion": ".github/workflows/gates-conformance.yml:18-21 — 'on:\\n  push:\\n    branches: [main]\\n  pull_request:'; :27-28 'jobs:\\n  gates-conformance:'; :43-44 '- name: seeded-fault matrix (7 independent fixtures) blocks correctly\\n        run: npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false'. The job name the criterion cites exists, is standalone-runnable, and fires on every push and PR — not a manual-dispatch-only workflow like engine-live/jira-datacenter-smoke."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/gates-conformance.test.ts:56-213",
+          "quotedAssertion": "One `it()` per named fixture, each asserting the BLOCK rather than the pass: :57 '1. coverage regression: a recorded floor of 82% followed by a 79% run BLOCKS' / :79 'expect(result?.verdict.passed).toBe(false);'; :82 '2. flaky-then-passing test' / :94-95 'expect(result?.verdict.unstable).toBe(true); expect(result?.verdict.passed).toBe(false);'; :98 '3. planted secret' (a 20-char `AKIA`-prefixed fixture key at :115, not reproduced here — this repository's own pre-commit secret scanner rejects the literal even inside prose) / :121; :127 '4. vulnerable dependency' (`CVE-2024-22222`, CRITICAL, at :147) / :157; :163 '5. SAST finding' (`javascript.lang.security.audit.sqli`, severity ERROR, at :178-180) / :187; :193 '6. disabled-check diff' ('+  // assert(result === expected);' at :198) / :201; :204 '7. missing green engine-live record' / :212. Seven fixtures, seven independent assertions, in the order the criterion lists them."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/gates-conformance.test.ts:35-42",
+          "quotedAssertion": "packages/gates/src/gates-conformance.test.ts:35-42 — 'beforeEach(async () => { tj = await createTestJournal(); baseContext = { changeSetId: randomUUID(), journal: tj.store }; }); afterEach(async () => { await tj.cleanup(); });'. This is the 'independently' clause: every fixture gets a fresh on-disk journal, and each `it()` builds its own `createGateRegistry()` (:58, :69, :83, :103, :132, :169, :194, :205), with fixtures 3-5 additionally each mkdtemp'ing their own `CapabilityStore` root (:99, :128, :164). No fixture's pass or failure can mask another's."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/security-gate.test.ts:289-323",
+          "quotedAssertion": "The anti-vacuity control for fixtures 3-5. :289 'a clean run across every registered scanner passes overall' registers semgrep, gitleaks and osv-scanner against clean reports and :323 asserts 'expect(results.every((r) => r.verdict.passed)).toBe(true);'. Without it, three gates that always returned `passed: false` would satisfy the criterion's three security fixtures."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/security-gate.test.ts:156-168",
+          "quotedAssertion": "The anti-vacuity control for fixture 6. :156 'root-cause detector stays advisory (non-blocking) by default' fires the SAME diff text the blocking fixture uses ('+  // assert(result === expected);', :161) with no `blocking: true`, and :168 asserts 'expect(result?.verdict.passed).toBe(true);'. So fixture 6's block is caused by the configured policy, not by the detector refusing everything."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/coverage-gate.test.ts:23-38",
+          "quotedAssertion": "The anti-vacuity control for fixture 1. :23 'passes a greenfield project at/above the 80% minimum on both axes' / :38 'expect(result?.verdict.passed).toBe(true);'. Paired with :118-149, where the 82% run is asserted to pass first (:133) before the 79% run blocks (:149), so the block is the regression's doing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake-gate.test.ts:22-36",
+          "quotedAssertion": "The anti-vacuity control for fixture 2. :22 'a clean first-attempt pass is green and NOT unstable' / :34-35 'expect(result?.verdict.passed).toBe(true); expect(result?.verdict.unstable).toBeUndefined();'. The `unstable` flag is therefore a discriminating signal, not a constant."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/engine-conformance-binding.test.ts:74-100",
+          "quotedAssertion": "The anti-vacuity control for fixture 7. :74 'a matching green engine-live record's run ID round-trips into the ChangeSet's EvidenceRecord' / :94 'expect(result?.verdict.passed).toBe(true);'. The engine-conformance gate can pass, so fixture 7's fail-closed is caused by the absent record."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c1-c9-gates-conformance-matrix.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  11 passed (11)' — supplementary scoped local re-run of the two suites this workflow runs, at `eabb65a`, with each of the seven fixture names printed individually by `--reporter=verbose`. Header records the UTC timestamp, HEAD sha, verbatim command and exit status 0."
+        }
+      ],
+      "notes": "Scope, stated plainly because the criterion's word 'blocks' invites an overread. Every one of the seven fixtures is a PARSER/POLICY fixture, not a tool invocation: no semgrep, gitleaks or osv-scanner binary is executed anywhere in this phase (`docs/evidence/phase-14/README.md` §'What is fixture-modeled vs live'). What the seven assertions prove is that a seeded finding of each named shape produces a blocking `GateVerdict` — which is what a gate registry can be responsible for — not that the real scanners detect these things. The digest-pin half IS real: fixtures 3-5 resolve against an actual temp-directory-backed `@crabgic/detect` `CapabilityStore` (`createCapabilityStore`, :101/:130/:167), and `security-gate.test.ts:247-284` proves resolution fails closed on a digest mismatch and on a missing pinned entry. Later phases (21, 24) added gates to `packages/gates` without extending this matrix; the criterion enumerates exactly seven fixtures and makes no exhaustiveness claim over the registry's whole gate set, so that is not drift."
+    },
+    {
+      "index": 2,
+      "text": "Coverage ratchet floor is monotonic non-decreasing across a simulated multi-`ChangeSet` history (fast-check property report, CI-archived).",
+      "textSha256": "dd6ff33029f4ac35b0a38b4375e8c7a66f8d57ae659f2c219f0c596b014db1a8",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "notes": "Left unticked on the CHANNEL, not the claim. The monotonicity property itself is proven non-vacuously and executed on every push — `packages/gates/src/coverage/ratchet.property.test.ts:61-85` asserts `floorAfter >= priorFloor` on both axes after every single observation over 30 randomized histories, with the order-independence property at :20-53 as its anti-vacuity control, and `CI` run 30741826008's job-log line 565 shows the suite really ran. But the criterion names 'fast-check property report, CI-archived' as its channel, and no workflow archives any report from this suite: `gates-conformance.yml` uploads nothing and does not run the property suite at all, and the five `actions/upload-artifact` steps in the repository belong to phases 21, 23 and 06. Per the pass rule against reinterpreting a named channel, and following the merged precedent of `defects/04-journal-crash-suite-ci-job-absent.md`, the box stays unticked. Full search trail, the remedy (S), and one related observation — `recordCoverageObservation` carries no `changeSetId`, so the 'multi-ChangeSet history' is simulated by a sequence of coverage observations — are in the defect record.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/14-ratchet-property-report-not-ci-archived.md"
+    },
+    {
+      "index": 3,
+      "text": "`Requirement → EvidenceRecord → exact object ID` resolves in both directions for a fixture `ChangeSet` (named integration test).",
+      "textSha256": "cb2f6c628711952b9abbff532caf533c76585a1632b7b82c25cb59e8706d48e4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 575 — '✓  @crabgic/gates  src/requirement-resolution.test.ts (1 test) 21ms'; run summary line 1036 — ' Test Files  625 passed (625)' / line 1037 — '      Tests  6155 passed | 1 skipped (6156)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/requirement-resolution.test.ts:65-66",
+          "quotedAssertion": "packages/gates/src/requirement-resolution.test.ts:65-66 — 'expect(evidence!.objectId).toBe(\"exact-object-under-test\"); expect(evidence!.requirementId).toBe(requirement.id);'. This is the EvidenceRecord→Requirement and EvidenceRecord→objectId half: the record fired for this `Requirement` carries both identities, so an object ID resolves back to the requirement that demanded it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/requirement-resolution.test.ts:70-73",
+          "quotedAssertion": "packages/gates/src/requirement-resolution.test.ts:70-73 — 'const foundViaJournal = await findEvidenceForRequirement(tj.store, requirement.id); expect(foundViaJournal).toHaveLength(1); expect(foundViaJournal[0]?.id).toBe(evidence!.id); expect(foundViaJournal[0]?.objectId).toBe(\"exact-object-under-test\");'. This is the Requirement→EvidenceRecord→objectId half, resolved from the requirement id ALONE against the journal — no `Requirement` record needed. `toHaveLength(1)` is what makes it a resolution rather than a scan that happened to hit."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/evidence.ts:71-83",
+          "quotedAssertion": "packages/gates/src/evidence.ts:76-80 — 'for await (const entry of journal.queryEntries({ type: \"evidence_pointer\" })) { if (entry.type !== \"evidence_pointer\") continue; if (entry.payload.requirementId === requirementId) { results.push(entry.payload); } }'. The reverse resolution is a real journal scan on a real field, not a lookup table the test populated; `requirementId` reaches the record from `GateContext` at :33 and is written by the single `emitEvidence` path."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`, including '✓ |@crabgic/gates| src/requirement-resolution.test.ts > Requirement -> EvidenceRecord -> exact object ID resolves in both directions > resolves forward (Requirement.evidenceRecordIds -> EvidenceRecord.objectId) and in reverse (requirementId -> journal -> EvidenceRecord -> objectId)'."
+        }
+      ],
+      "notes": "One assertion in this test is VACUOUS and is deliberately NOT cited above, recorded here rather than silently dropped. :63-64 builds `const requirementWithEvidence = { ...requirement, evidenceRecordIds: [evidence!.id] };` and then asserts `expect(requirementWithEvidence.evidenceRecordIds).toContain(evidence!.id);` — a tautology over a literal the line above just wrote. It cannot fail, and it evidences nothing. The test's own comment is honest about why (\"as 11 would, once it assembles the bidirectional mapping\"): NOTHING in `packages/gates` populates `Requirement.evidenceRecordIds`. Grepping the whole tree, the only writers of that field are `packages/supervisor/src/intake/contract-builder.ts:84` (11's own intake) and `packages/learning/src/proposal-store/registry.ts:159` for the separate `LearningProposal` shape. That is consistent with this phase's declared boundary — roadmap/14 §Out of scope, \"`IntentContract`/`Requirement` authoring and section structure (11)\" — so the criterion is met by the two REAL directions the cited assertions carry (requirementId→journal→EvidenceRecord→objectId, and EvidenceRecord→requirementId), not by the field-population half the vacuous line gestures at. A reader who assumed the `evidenceRecordIds` round-trip was under test here would be wrong, which is why it is written down."
+    },
+    {
+      "index": 4,
+      "text": "A rerun-until-pass result is marked `unstable`; an explicit quarantine suppresses blocking until its recorded expiry, after which it reverts to blocking (flake-registry expiry test).",
+      "textSha256": "68159677de120fc9e839d3419cc25f57f48dbc9886ec6b616398c29541b05edb",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 563 — '✓  @crabgic/gates  src/flake-gate.test.ts (6 tests) 71ms'; line 582 — '✓  @crabgic/gates  src/flake/quarantine-registry.test.ts (4 tests) 35ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake-gate.test.ts:38-56",
+          "quotedAssertion": "packages/gates/src/flake-gate.test.ts:38 'a rerun-then-pass result is marked unstable AND blocks when not quarantined — never silently green' / :54-55 'expect(result?.verdict.unstable).toBe(true); expect(result?.verdict.passed).toBe(false);' against a gate built with 'initialOutcome: \"failed\", rerunOutcome: \"passed\"' (:45-46). Clause one of the criterion, with the block asserted alongside the mark."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake-gate.test.ts:58-82",
+          "quotedAssertion": "packages/gates/src/flake-gate.test.ts:59-63 quarantines 'suite/flaky.test' with 'expiresAt: \"2099-01-01T00:00:00Z\"', fires with an injected 'now: () => new Date(\"2026-01-01T00:00:00Z\")' (:78), and :80-81 asserts 'expect(result?.verdict.unstable).toBe(true); expect(result?.verdict.passed).toBe(true);'. Clause two: the quarantine suppresses BLOCKING while leaving the `unstable` mark intact — it does not launder the result into a clean pass."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake-gate.test.ts:84-107",
+          "quotedAssertion": "packages/gates/src/flake-gate.test.ts:84 'an EXPIRED quarantine reverts to blocking even for a rerun-then-pass result' — same fixture, same injected clock, only 'expiresAt: \"2020-01-01T00:00:00Z\"' (:88) differs from the previous case, and :106 asserts 'expect(result?.verdict.passed).toBe(false);'. Clause three. Because the two cases differ ONLY in the expiry timestamp, the reversion is attributable to expiry and nothing else."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake/quarantine-registry.test.ts:32-44",
+          "quotedAssertion": "The named 'flake-registry expiry test' at the registry primitive itself: :32 'an EXPIRED quarantine reverts to blocking (returns undefined)' / :43 'expect(afterExpiry).toBeUndefined();', with the paired positive at :22-30 ('an active (unexpired) quarantine is returned' / :29 'expect(active?.testIdentifier).toBe(\"suite/flaky.test\");') and :46-59 ('returns the LATEST entry when a test was quarantined more than once' / :58 'expect(active?.reason).toBe(\"re-quarantined\");'). Both entries are journaled through the real on-disk `@crabgic/journal` store."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/flake-gate.test.ts:109-127",
+          "quotedAssertion": "The anti-vacuity control that keeps `unstable` meaningful: :109 'a genuine failure (failed, failed again on rerun) blocks and is NOT marked unstable' / :125-126 'expect(result?.verdict.passed).toBe(false); expect(result?.verdict.unstable).toBeUndefined();'. Paired with :22-36 (a clean first pass is also not unstable), `unstable` is set on exactly the rerun-then-pass shape and nothing else."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`; the verbose output names all six flake-gate cases and all four quarantine-registry cases individually."
+        }
+      ],
+      "notes": "Both halves of the expiry behaviour are exercised with an INJECTED clock (`context.now`, `getActiveQuarantine`'s explicit `asOf` argument) rather than by waiting, so the test is deterministic and the expiry boundary is genuinely crossed rather than approximated. The quarantine entries are journaled as `adjudication_decision` — see criterion 7's note for why that is correct and not a contradiction of this phase's `evidence_pointer` posture."
+    },
+    {
+      "index": 5,
+      "text": "TDD gate rejects a fixture attempt lacking a red-before-green `EvidenceRecord` pair for the same `Requirement`.",
+      "textSha256": "ee5d76ae957ec13019f6cfc6b9459ba91493342ba6b05669f31e94422d2b854b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 541 — '✓  @crabgic/gates  src/tdd-gate.test.ts (10 tests) 66ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/tdd-gate.test.ts:23-49",
+          "quotedAssertion": "packages/gates/src/tdd-gate.test.ts:23 'fails closed when no red baseline has ever been captured for the requirement' / :47-48 'expect(result?.verdict.passed).toBe(false); expect(result?.verdict.detail).toMatch(/no red-baseline/i);' — note the gate is handed 'exitStatus: 0' (:34), i.e. a GREEN candidate, so the rejection is caused by the missing red half and not by a failing test run."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/tdd-gate.test.ts:314-348",
+          "quotedAssertion": "The 'for the same `Requirement`' clause: :314 'a red baseline for a DIFFERENT requirement does not satisfy this requirement's TDD gate' — a genuine `captureRedBaseline` is journaled for `otherRequirementId` (:318-325), the candidate is green (:334), and :347 asserts 'expect(result?.verdict.passed).toBe(false);'. Without this, requirement-scoping would be untested and any red baseline anywhere would pass the gate."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/tdd-gate.test.ts:215-271",
+          "quotedAssertion": "The 'red-BEFORE-green' clause, and the subtlest bearer in the file: :215 'the gate's OWN prior failing verdict must NOT retroactively satisfy its own red-baseline precondition on a later firing, when both firings share the same dispatch-boundary cutoff'. Firing #1 runs with no `captureRedBaseline` call anywhere in the test and journals its own tdd-tagged, nonzero-exit EvidenceRecord at seq 1; firing #2 reports green ('exitStatus: 0,' at :264) and :270 asserts 'expect(secondResult?.verdict.passed).toBe(false);'. The ordering belt is `beforeSeq` — :229 'const DISPATCH_BOUNDARY = 1;' — and :183-213 proves the cutoff is strict: :211 'expect(await hasRedBaseline(tj.store, requirementId, beforeSeq)).toBe(false);' against :212 'expect(await hasRedBaseline(tj.store, requirementId, (beforeSeq ?? 0) + 100)).toBe(true);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/tdd-gate.test.ts:51-86",
+          "quotedAssertion": "The anti-vacuity control: :51 'passes once a red baseline was journaled first and the candidate run is green' / :84-85 'expect(result?.verdict.passed).toBe(true); expect(result?.verdict.detail).toMatch(/red-baseline confirmed/i);'. Reinforced by :273-312, which passes only because the red baseline sits strictly before the supplied boundary ('beforeSeq: (redSeq ?? 0) + 1', :300). The gate is therefore capable of passing, so its rejections carry information."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/tdd-gate.test.ts:88-135",
+          "quotedAssertion": "The two remaining edges of the 'pair': :88-122 reports the candidate as still failing when a red baseline exists but the candidate has not gone green — :120-121 'expect(result?.verdict.passed).toBe(false);' / 'expect(result?.verdict.detail).toMatch(/still failing/i);' — so a green candidate is genuinely required, not just a red predecessor; and :124-135 'captureRedBaseline refuses a \"red\" baseline that already passes (exitStatus 0)', :134 ').rejects.toThrow(RedBaselineNotFailingError);' — the red half cannot be forged by journaling a passing run and calling it a baseline."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`; the verbose output names all ten tdd-gate cases individually."
+        }
+      ],
+      "notes": "`docs/evidence/phase-14/README.md`'s row for this box says '8 tests'; the file at HEAD has 10 (two were added later — the `gateVerdict` shape test at :148-159 and one more from the adversarial round). The README's list is otherwise accurate. Quoted the tests, not the README, per the pass rule."
+    },
+    {
+      "index": 6,
+      "text": "A stub external gate registers into the registry and fires at `final_verifying` with zero code change inside `packages/gates` (registry-extensibility conformance test).",
+      "textSha256": "32a029c0fc50dec63e72b711e7a126c42588623d83ba71705839e2b3508b23c8",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 556 — '✓  @crabgic/gates  src/registry.test.ts (8 tests) 58ms'; line 577 — '✓  @crabgic/gates  src/registry.property.test.ts (1 test) 275ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/registry.test.ts:115-142",
+          "quotedAssertion": "packages/gates/src/registry.test.ts:115 'external extensibility — work item 6 / registry-extensibility conformance test'; :122-126 'function registerExternalGate(target: GateRegistry): void {' / 'target.register(\"performance\", \"15-external-perf-gate\", async () =>' / 'stubVerdict(true, \"external gate ran\"),'; fired with :131 'stage: \"final_verifying\",' and asserted at :135-137 'expect(results).toHaveLength(1);' / 'expect(results[0]?.name).toBe(\"15-external-perf-gate\");' / 'expect(results[0]?.evidence.gateTag).toBe(\"performance\");'. The `performance` tag is 15's, which nothing in this package registers under, so the firing cannot be another gate's."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/registry.test.ts:139-141",
+          "quotedAssertion": "packages/gates/src/registry.test.ts:140-141 — 'const allResults = await registry.fireAll({ ...context, objectId: \"integrated-obj-2\" }); expect(allResults.some((r) => r.name === \"15-external-perf-gate\")).toBe(true);'. The external gate is reachable through the final-candidate re-verification path (`fireAll`), not only through the tag it was registered under — which is what makes criterion 8's 'full registered gate set' claim include external registrants."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/registry.ts:53-63",
+          "quotedAssertion": "The mechanism the test exercises is the same one this package's own gates use: :60-63 'register(tag, name, handler) {' / 'const existing = byTag.get(tag) ?? [];' / 'byTag.set(tag, [...existing, { tag, name, handler }]);' and :53-56 'async function fireOne(gate: RegisteredGate, context: GateContext): Promise<GateFireResult> {' / 'const verdict = await gate.handler(context);' / 'const evidence = await emitEvidence(context.journal, context, gate.tag, verdict);'. There is no allowlist of registrant identities and no branch on `gate.name` anywhere in the file — a registrant is a `(tag, name, handler)` triple and nothing else."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/criteria-seal-gate.ts:43-47",
+          "quotedAssertion": "Real-world corroboration, not a stub: phase 24's acceptance-criteria seal gate is registered through this exact public API — :43 'export function registerCriteriaSealGate(' and :47 'registry.register(\"acceptance\", \"criteria-seal\", async (context): Promise<GateVerdict> => {' — under the EXISTING `acceptance` tag (:24-26 'Registered under the EXISTING `acceptance` risk tag — one of the 13' / '`GATE_RISK_TAGS`, itself derived from the IntentContract's own section' / 'keys. No new tag'). `git show --stat 663dd08 -- packages/gates/src/registry.ts packages/gates/src/risk-tags.ts packages/gates/src/types.ts` is EMPTY: that PR added 195 lines across `criteria-seal-gate.ts`, its test, four barrel lines in `index.ts` and two lines in `final-candidate.e2e.test.ts`, and changed nothing in the registry, the tag vocabulary or the handler type. A later phase really did register a new gate with zero change to the registry."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`, whose verbose output names 'external extensibility — work item 6 / registry-extensibility conformance test > a stub EXTERNAL gate registers and fires at final_verifying with zero code change inside this package's own modules'."
+        }
+      ],
+      "notes": "Two boundaries a reader should not have to infer. (a) 'External' is SIMULATED — `registerExternalGate` is defined inside `registry.test.ts`, in `packages/gates` itself, and no package outside `packages/gates` imports `createGateRegistry` at HEAD (grepped across `packages/*/src` and `e2e/*/src`). What the test proves is that the public API suffices; the phase-24 citation above is the closest thing to a real out-of-phase registrant, and it lives in the same package. 15's performance gate and 21's connector-security fixtures are named in the roadmap as the intended external registrants; 21's material actually landed INSIDE `packages/gates` (`materiality-*.ts`, `remote-verification-*.ts`, `traceability-view.ts`, `security-fixture-manifest.ts`, all added in `74bed14`), so the cross-package half of the aggregation pattern has never been exercised by a real caller. (b) The 'zero code change' guarantee holds for a gate registered under one of the 13 EXISTING tags. A registrant wanting a NEW tag would need `risk-tags.ts` edited, because `GATE_RISK_TAGS` is `as const` and `register`'s `tag` parameter is typed `GateRiskTag` — the criterion claims only the former, and phase 24 is the worked example of it."
+    },
+    {
+      "index": 7,
+      "text": "Every emitted `EvidenceRecord` round-trips as a `JournalEntryType.evidence_pointer` entry through 02's discriminated-union exhaustiveness check.",
+      "textSha256": "3292503b12623557cec97546f05cf932723237edb854be879414c5c61a45352e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 572 — '✓  @crabgic/gates  src/conformance.test.ts (3 tests) 40ms'; line 562 — '✓  @crabgic/gates  src/evidence.test.ts (5 tests) 52ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/conformance.test.ts:60-92",
+          "quotedAssertion": "The round-trip itself: :61 'fires a gate, then reads the SAME EvidenceRecord back from the journal as a schema-valid evidence_pointer entry'; :85-91 'expect(journaled).toHaveLength(1);' / 'expect(entry.type).toBe(\"evidence_pointer\");' / 'const reparsed = EvidenceRecordSchema.parse(entry.payload);' / 'expect(reparsed).toEqual(result?.evidence);'. `queryEntries({ type: \"evidence_pointer\" })` (:82) is the read side, `EvidenceRecordSchema` is 02's own schema, and `toEqual(result?.evidence)` pins the journaled payload to what `fireByTag` returned — so it is a round-trip, not two independent constructions."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/conformance.test.ts:21-57",
+          "quotedAssertion": "The exhaustiveness half: :21 'const JOURNAL_ENTRY_TYPE_USAGE: Readonly<Record<JournalEntryType, boolean>>' — the `tsc -b`-enforced mechanism (a missing or stray key fails the build) — plus the two runtime guards, :49 'expect(Object.keys(JOURNAL_ENTRY_TYPE_USAGE).sort()).toEqual([...JOURNAL_ENTRY_TYPES].sort());' and :56 'expect(used.sort()).toEqual([\"adjudication_decision\", \"evidence_pointer\"].sort());'. The second is the one that bites: it pins the exact set of members this package writes, so adding a third would fail here."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/evidence.ts:22-58",
+          "quotedAssertion": "Why 'EVERY emitted EvidenceRecord' is a structural claim and not a sample: :29 'const record: EvidenceRecord = EvidenceRecordSchema.parse({' and :51-56 'await journal.appendEntry({' / 'type: \"evidence_pointer\",' / 'payload: record,'. There is exactly one construction site and exactly one append, and the file-level comment at :16-20 states the invariant — 'gate firing by `./registry.ts`'s `fireByTag`/`fireAll` — individual gate' / 'modules never journal their own `EvidenceRecord` directly, so there is' / 'exactly one emission code path for every registrant'. `registry.ts:53-56`'s `fireOne` is the sole caller, so an EvidenceRecord that is not an `evidence_pointer` cannot be produced by a firing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/coverage/ratchet-store.ts:138-144",
+          "quotedAssertion": "The one thing that could make the criterion read as false, checked and cleared. `ratchet-store.ts:138-144` — 'await journal.appendEntry({' / 'type: \"adjudication_decision\",' / 'payload: {' / 'decision: RATCHET_DECISION,' / 'rationale: JSON.stringify(observation),' — and `flake/quarantine-registry.ts` (next citation) do write a DIFFERENT member, which is exactly what interface-ledger Gap 5's Resolution (2026-08-01) records. But their payloads are `RatchetObservation`/quarantine entries, NOT `EvidenceRecord`s: the schema is `RatchetObservationSchema` at :44-51, four fields ('projectId: z.string().min(1),' / 'linePct: z.number().min(0).max(100),' / 'branchPct: z.number().min(0).max(100),' / 'observedAt: z.string(),'), none of them `objectId`/`command`/`exitStatus`. So the criterion's subject — emitted `EvidenceRecord`s — is untouched by that correction."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/flake/quarantine-registry.ts:54-57",
+          "quotedAssertion": "packages/gates/src/flake/quarantine-registry.ts:54-57 — 'await journal.appendEntry({' / 'type: \"adjudication_decision\",' / 'payload: { decision: QUARANTINE_DECISION, rationale: JSON.stringify(record) },'. The second of this phase's two `adjudication_decision` writers named in interface-ledger Gap 5's Resolution. Its payload is a quarantine entry (`testIdentifier`/`reason`/`expiresAt`), not an `EvidenceRecord`, so criterion 7's subject is unaffected."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/tdd-gate.ts:74-80",
+          "quotedAssertion": "The two OTHER EvidenceRecord writers in this package, checked so 'every' is not just 'every one the conformance test fires'. `tdd-gate.ts:74-76` — 'await journal.appendEntry({' / 'type: \"evidence_pointer\",' / 'changeSetId: input.changeSetId,' (`captureRedBaseline`, a pre-dispatch capture) — and `remote-evidence-pointer.ts:132-134` (phase 21, same three lines) both journal EvidenceRecords, and both use `evidence_pointer`. A repo-wide grep of `appendEntry` under `packages/gates/src` returns exactly five non-test sites: these two, `evidence.ts`, `ratchet-store.ts` and `quarantine-registry.ts`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`, whose verbose output names all three conformance.test.ts cases individually."
+        }
+      ],
+      "notes": "This is the phase the interface ledger's Gap 5 Resolution (2026-08-01) leans on, so the relationship is worth stating exactly. The ledger's 'Verified in' bullet still lists phase 14 against `evidence_pointer` alone; its own Resolution paragraph corrects that — '`coverage/ratchet-store.ts` and `flake/quarantine-registry.ts` write real `adjudication_decision` entries, carrying a discriminator in `payload.decision` and the structured record JSON-encoded in `payload.rationale`' — and `roadmap/14:88` already carries the matching dated annotation ('Mirror citation corrected 2026-08-01'). Both statements are true simultaneously because they are about different objects: this criterion is about `EvidenceRecord`s, which are all `evidence_pointer`; the ratchet and quarantine records are not `EvidenceRecord`s. Re-read `roadmap/14:88` against the ledger's Resolution as instructed: the discriminator prefix it names for 12 (`capability_audit:`), the JSON-in-`rationale` shape, and the 2026-08-01 date all match, and the file `audit-journal.ts` the ledger cites exists. No correction needed and none made — the ledger and the phase file agree at HEAD. Separately, the ledger's `Verified in` pointer says '14-quality-security-gates.md (`evidence_pointer`, line 87 …)' while the quoted phrase now sits at line 88; that is a one-line drift in a pointer inside a file this pass is forbidden to edit, so it is reported here and not touched."
+    },
+    {
+      "index": 8,
+      "text": "Final-candidate re-verification fires against the truly-integrated object ID rather than trusting a cached per-work-unit result (integration test with a deliberately stale per-work-unit pass).",
+      "textSha256": "2bfe19ebc705cd31eb17ead479596db658054d26f83ef4824db69bdbd56ec378",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 560 — '✓  @crabgic/gates  src/final-candidate.test.ts (4 tests) 51ms'; line 557 — '✓  @crabgic/gates  src/final-candidate.e2e.test.ts (2 tests) 51ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/final-candidate.test.ts:45-99",
+          "quotedAssertion": "The criterion's own scenario, and the real bearer. A stateful handler passes ONLY for the stale id — :52-56 'const passingObjectIds = new Set([STALE_PER_WORK_UNIT_OBJECT_ID]);' / 'registry.register(\"tdd\", \"stateful-tdd-check\", async (context) =>' / 'verdictFor(passingObjectIds.has(context.objectId)),'. Step 1 fires at `verifying` against the stale id and :67 asserts 'expect(perWorkUnitResults[0]?.verdict.passed).toBe(true);'. Step 2 fires `fireFinalCandidateVerification` against `REGRESSED_INTEGRATED_OBJECT_ID` and :82-84 assert 'expect(allGatesPassed(finalResults)).toBe(false);' / 'expect(finalResults[0]?.verdict.passed).toBe(false);' / 'expect(finalResults[0]?.evidence.objectId).toBe(REGRESSED_INTEGRATED_OBJECT_ID);'. The third assertion is the one that pins 'fires against the truly-integrated object ID' rather than merely 'reports failure'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/final-candidate.test.ts:86-98",
+          "quotedAssertion": "The control that distinguishes 'never trusts the cached result' from 'destroys the cached result': :89-98 scans the journal for the stale record and asserts 'expect(stalePassingStillExists).toBe(true);' after checking 'entry.payload.exitStatus === 0'. The earlier passing EvidenceRecord is still there, untouched — so the final failure comes from a genuine re-fire, not from history being erased."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/final-candidate.test.ts:101-128",
+          "quotedAssertion": "Two structural guards on the same primitive: :101 'an EMPTY registry must fail CLOSED, never silently pass having fired zero gates' / :110 'rejects.toThrow(/zero registered handlers/i)' — because `allGatesPassed([])` is vacuously true, this is what stops the whole criterion from being satisfiable by a mis-wired registry; and :113 'fires the FULL registered gate set (every tag), never a subset' / :126 'expect(results.map((r) => r.name).sort()).toEqual([\"a\", \"b\", \"c\", \"d\"]);' across four different tags."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/final-candidate.test.ts:32-43",
+          "quotedAssertion": "packages/gates/src/final-candidate.test.ts:32 'rejects a context whose stage is not final_verifying' / :40-42 'await expect(fireFinalCandidateVerification(registry, context)).rejects.toThrow(' / '/final_verifying/,' — the primitive cannot be misused as a per-work-unit firing, so 'final-candidate re-verification' names a distinct code path rather than a convention."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/final-candidate.e2e.test.ts:80-87",
+          "quotedAssertion": "The '(integration test)' half — the same scenario carried through 13's real executor. :80-86 'const finalResults = await fireFinalCandidateVerification(registry, {' / 'stage: \"final_verifying\",' / 'objectId: INTEGRATED_OBJECT_ID,' / 'const overallPassed = allGatesPassed(finalResults);' and :87 'expect(overallPassed).toBe(false); // the integrated candidate regressed', after :76 asserted the earlier per-work-unit firing against the stale id passed. The dispatch that follows uses `@crabgic/scheduler`'s real `dispatchAttempt` with `@crabgic/testkit`'s `FakeEngineAdapter` (:104-117)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c3-c8-core-suites.txt",
+          "quotedAssertion": "'Test Files  8 passed (8)' / '      Tests  38 passed (38)' — supplementary scoped local re-run at `eabb65a`; the verbose output names all four final-candidate.test.ts cases and both e2e cases individually."
+        }
+      ],
+      "notes": "One assertion in the E2E is weaker than it looks and is cited only for what it does prove. `final-candidate.e2e.test.ts:121` 'expect(outcome.kind).toBe(\"failed\");' follows from the fake engine's own script, which is built at :94-103 from `overallPassed` — the value computed by the line above it. It therefore evidences that the gate outcome propagates through a real `dispatchAttempt`/`TaskPacket` round trip, NOT independently that the integrated candidate failed; the load-bearing assertion for the criterion is :87, and the unit test at `final-candidate.test.ts:82-84` is the primary bearer. This split is deliberate in the design, not an accident of the test: `final-candidate.ts` has no `@crabgic/scheduler` dependency (evidence README, Deviation 5) so as not to invert the 13→14 dependency direction, which means the dispatch half can only ever be demonstrated by composing the two."
+    },
+    {
+      "index": 9,
+      "text": "`engine-conformance` gate fails closed on the missing-green-record fixture, and a matching green `engine-live` record's run ID round-trips into the fixture `ChangeSet`'s `EvidenceRecord` — named test `engine-conformance-binding.test`, run in the `gates-conformance` CI job.",
+      "textSha256": "07f3076edc9b0ca869289e9ff246c47798d613f2a7982d5f4b51984a1cde8c2f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance (ubuntu-latest), job 91480518492, step \"engine-conformance-binding.test — fails closed / runId round-trip\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826035",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 209 — 'npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false'; line 215 — '✓  @crabgic/gates  src/engine-conformance-binding.test.ts (4 tests) 25ms'; lines 217-218 — ' Test Files  1 passed (1)' / '      Tests  4 passed (4)'. The criterion names both the test and the job; this is that named test executing as its own named step of that named job."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/engine-conformance-binding.test.ts:58-72",
+          "quotedAssertion": "Clause one: :58 'FAILS the gate when no green engine-live record exists for the attempt's engine version' / :70-71 'expect(result?.verdict.passed).toBe(false); expect(result?.verdict.detail).toMatch(/failing closed/i);' against an empty journal. The detail match is what distinguishes 'failed closed' from 'failed for some other reason'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/engine-conformance-binding.test.ts:74-100",
+          "quotedAssertion": "Clause two, the round-trip: a fixture green record is journaled at :77, then :96-98 'expect(result?.evidence.artifactDigests).toContain(`engine-live-run-id:${runId}`); expect(result?.evidence.artifactDigests).toContain(`engine-live-suite-digest:${suiteDigest}`); expect(result?.evidence.objectId).toBe(\"integrated-obj\");' — the run ID reaches the fired gate's OWN emitted `EvidenceRecord`, bound to the ChangeSet's object id. :81 'expect(found).toEqual({ engineVersion: ENGINE_VERSION, runId, suiteDigest });' checks the lookup helper independently first."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/engine-conformance-binding.test.ts:102-138",
+          "quotedAssertion": "Two negative controls that make 'matching' mean something: :102 'a green record for a DIFFERENT engine version does not satisfy this attempt's gate' / :115 'expect(result?.verdict.passed).toBe(false);', and :118 'a non-green (exitStatus != 0) record never satisfies the gate' / :137 'expect(found).toBeUndefined();' — the second record is byte-identical to the passing fixture except for 'exitStatus: 1' (:129)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/src/engine-conformance-gate.ts:31-56",
+          "quotedAssertion": "The lookup is a real four-way match against the record shape 06 produces, not a flag read: :31 'export const ENGINE_LIVE_COMMAND = \"engine-claude:@live conformance suite\";' and :50-55 'if (record.command !== ENGINE_LIVE_COMMAND) continue;' / 'if (record.exitStatus !== 0) continue; // green only' / 'if (!record.toolchainFingerprint.endsWith(` engine ${engineVersion}`)) continue;' / 'const suiteDigestEntry = record.artifactDigests.find((d) => d.startsWith(SUITE_DIGEST_PREFIX));' / 'if (suiteDigestEntry === undefined) continue;'. The evidence README records this magic-string coupling to `@crabgic/engine-claude` as a named carry-forward (Deviation 2); the drift check for this closeout is the next citation."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/engine-claude/src/live/live-harness.ts:874",
+          "quotedAssertion": "Drift check performed for this closeout, against the producer side: packages/engine-claude/src/live/live-harness.ts:874 — 'command: \"engine-claude:@live conformance suite\",' — byte-identical to `engine-conformance-gate.ts:31`'s locally re-declared `ENGINE_LIVE_COMMAND`. The two packages have no shared constant (this phase may not edit `packages/engine-claude`), so this equality is what makes the gate's lookup able to see 06's records at all. Not drifted as of `eabb65a`."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/gates-conformance.yml:45",
+          "quotedAssertion": ".github/workflows/gates-conformance.yml:45-46 — '- name: engine-conformance-binding.test — fails closed / runId round-trip\\n        run: npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false'. The criterion's 'run in the `gates-conformance` CI job' clause is wired as its own named step, not folded into the matrix step."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-14/closeout-c1-c9-gates-conformance-matrix.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  11 passed (11)' — supplementary scoped local re-run at `eabb65a` of exactly the two suites this workflow runs, with all four engine-conformance-binding cases named individually by `--reporter=verbose`."
+        }
+      ],
+      "notes": "Fixture-modeled, and the criterion is worded for that: it says a green `engine-live` RECORD, and `journalFixtureGreenEngineLiveRecord` (:35-55) appends that record directly. No `@live` suite runs here and none was run for this closeout — `packages/gates` never imports `@crabgic/engine-claude`. The gate is a binding gate by design (roadmap/14 §Risks, 'Engine conformance stays version-grain by design'), so the absence of a live run is the specified behaviour, not a gap. Consistent with that, the four-way match at `engine-conformance-gate.ts:50-55` is what the record's authenticity rests on, plus the journal's own hash chain; a forged `evidence_pointer` entry with the right command string and fingerprint would satisfy the gate, which is a property of the journal's trust model (see `docs/threat-model.md`) rather than of this criterion."
+    }
+  ]
+}
