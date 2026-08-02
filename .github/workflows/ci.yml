@@ -207,6 +207,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, for the criteria-baseline re-derivation below: it
+          # reads each phase file at the revision that phase's baseline was
+          # frozen at, and those revisions are older than a shallow clone.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -221,19 +226,39 @@ jobs:
       # The criteria-closeout index (`docs/evidence/criteria-closeout/
       # phase-NN.json`) is where each roadmap phase's ticked exit criteria
       # record their citations. Validated here so a record cannot drift from
-      # the phase file it describes: the check re-hashes every criterion's
+      # the phase file it describes: it requires exactly one `## Exit criteria`
+      # section per phase file (located fence-aware — a decoy section made every
+      # other check below read the wrong criteria entirely), re-hashes every criterion's
       # verbatim text and requires that text to account for the WHOLE checkbox
       # item (prefix match, with the remainder constrained to the `— **`
       # citation annotation — a bare prefix match would let a record pin a
       # harmless opening substring, and a bare em-dash lead would let it stop
       # at the criterion's OWN internal em dash, either way leaving a softened
       # tail invisible), cross-checks tick state and checkbox count in both
-      # directions, and resolves every `test`/`artifact` citation to a real
-      # file inside the repo. A criterion quietly reworded to make it tickable,
-      # or a citation pointing at a file that no longer exists, fails this
-      # step. It cannot catch a criterion and its record rewritten together in
-      # one commit — that is what reading the roadmap diff is for. Runs on
-      # `npm ci` alone: the validator is dependency-free precisely because this
-      # job does not build.
+      # directions, holds every criterion against the frozen original-wording
+      # baseline, resolves every `test`/`artifact` citation to a real
+      # non-symlink file inside the repo at a line that exists, and requires
+      # each UNMET's defect record to be a real defect record. A criterion
+      # quietly reworded to make it tickable, a stale `file:line`, or a defect
+      # record truncated to nothing all fail this step. Runs on `npm ci` alone:
+      # the validator is dependency-free precisely because this job does not
+      # build.
       - name: criteria-closeout index matches its roadmap phase files
         run: npm run check:criteria-closeout
+      # The baseline is the only anchor that lives outside the commit under
+      # review, so it must not be forgeable by editing one more file in the
+      # same PR. This step re-derives every frozen hash straight from
+      # `git show <pinned-rev>:roadmap/NN-*.md`, which makes laundering it a
+      # matter of rewriting published history rather than editing JSON.
+      - name: criteria baseline re-derives from git history
+        run: npm run check:criteria-baseline
+      # The offline validator can only check that a `ci-run` citation NAMES a
+      # run in this repository. This step makes the run have to EXIST: a
+      # reviewer built a wholly forged phase closeout whose every baseline hash
+      # matched and whose every citation was `job 00000000000` / `runs/1`, and
+      # CI went green. Only a definitive 404 fails here — "could not ask the
+      # API" warns and passes, so a GitHub blip cannot red an honest PR.
+      - name: cited CI runs actually exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run check:citation-runs
