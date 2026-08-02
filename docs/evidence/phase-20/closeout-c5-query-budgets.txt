@@ -1,0 +1,38 @@
+# criteria-closeout pass, phase 20 — criterion 5 (query-layer aggregation/redaction inside 16's 32 KiB item / 256 KiB result budgets)
+# UTC:      2026-08-02T11:27:51Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/query/query-layer.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > validateQueryTimeRange — required time-range scoping > rejects an absent time range 2ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > validateQueryTimeRange — required time-range scoping > rejects an empty from/to 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > validateQueryTimeRange — required time-range scoping > accepts a well-formed range 1ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > keeps only allowlisted fields when fields is provided 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > keeps every field when no allowlist is given 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > redacts a secret-shaped field even when explicitly allowlisted by the caller 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > redacts common secret-shaped key spellings 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > adversarial-review LOW fix: redacts a secret-shaped key NESTED under a non-secret-named parent, not just top-level keys 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > scopeAndRedactRow — field scoping + secret redaction > recurses into arrays of objects when redacting 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > truncateRowToItemBudget — exit criterion: a fixture row exceeding 32 KiB item pre-aggregation is truncated, never passed through raw > passes a small row through unchanged 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > truncateRowToItemBudget — exit criterion: a fixture row exceeding 32 KiB item pre-aggregation is truncated, never passed through raw > shrinks an oversized row until it satisfies the item budget 1ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > truncateRowToItemBudget — exit criterion: a fixture row exceeding 32 KiB item pre-aggregation is truncated, never passed through raw > throws rather than silently passing through a row that cannot be shrunk under budget 160ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > downsampleToResultBudget — exit criterion: results stay within the 256 KiB result budget > passes a small result set through unchanged 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > downsampleToResultBudget — exit criterion: results stay within the 256 KiB result budget > downsamples an oversized result set (many rows, each individually within budget) until it fits 20ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > downsampleToResultBudget — exit criterion: results stay within the 256 KiB result budget > adversarial-review LOW fix: the non-converging-filter collapse path (e.g. a 2-row oversized result) still satisfies the result budget explicitly, never skips the check 1ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > processGrafanaQueryResult — the full pipeline, before data leaves packages/connectors-grafana > rejects a query with no time range before touching any row 0ms
+ ✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > processGrafanaQueryResult — the full pipeline, before data leaves packages/connectors-grafana > scopes, redacts, truncates, and downsamples in one pass, always ending within both budgets 36ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  13:27:52
+   Duration  918ms (transform 353ms, setup 0ms, import 578ms, tests 225ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0

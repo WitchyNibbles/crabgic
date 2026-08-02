@@ -1,0 +1,35 @@
+# criteria-closeout pass, phase 20 — criterion 3 (rollback-restore canonical identity + cleanup report, never an auto-delete)
+# UTC:      2026-08-02T11:27:43Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/mutation/rollback.test.ts packages/connectors-grafana/src/mutation/cleanup-report.test.ts packages/connectors-grafana/src/mutation/snapshot-store.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/mutation/snapshot-store.test.ts > GrafanaRollbackSnapshotStore > captures and retrieves a snapshot keyed by plan id 2ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/snapshot-store.test.ts > GrafanaRollbackSnapshotStore > returns undefined for an uncaptured plan id 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/snapshot-store.test.ts > GrafanaRollbackSnapshotStore > clear removes a captured snapshot 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/snapshot-store.test.ts > GrafanaRollbackSnapshotStore > captures independently per plan id, never cross-contaminating 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > restores successfully when the read-back matches the snapshot exactly 3ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > blocks (never assumes success) when the initial read fails 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > blocks when the restore write itself fails 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > blocks when the post-restore read-back GET itself fails 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > blocks when the post-restore read-back does not actually match the snapshot (never a false-positive restore) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/cleanup-report.test.ts > buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted > produces a report for a failed create 3ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/cleanup-report.test.ts > buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted > produces a report for a blocked create (ambiguous_write) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/cleanup-report.test.ts > buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted > returns undefined for a successfully recorded create (nothing to clean up) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/cleanup-report.test.ts > buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted > returns undefined for a replayed create 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/cleanup-report.test.ts > buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted > returns undefined for a failed UPDATE (cleanup-report is create-specific; updates roll back instead — see ./rollback.js) 0ms
+
+ Test Files  3 passed (3)
+      Tests  14 passed (14)
+   Start at  13:27:44
+   Duration  480ms (transform 301ms, setup 0ms, import 469ms, tests 14ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0
