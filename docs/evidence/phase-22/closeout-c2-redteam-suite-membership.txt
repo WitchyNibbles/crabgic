@@ -1,0 +1,45 @@
+# 2026-08-02T10:16:16Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: bash ./cl2.tmp.sh
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
++ git grep -l @learning-redteam -- 'packages/learning/src/**'
+packages/learning/src/red-team/grader-isolation.redteam.test.ts
+packages/learning/src/red-team/no-bypass.redteam.test.ts
+packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts
+packages/learning/src/red-team/no-promptfoo-dependency.redteam.test.ts
+packages/learning/src/red-team/self-promotion.redteam.test.ts
++ echo '--- what CI step 1 actually selects ---'
+--- what CI step 1 actually selects ---
++ npx vitest list packages/learning/src/red-team --coverage.enabled=false
++ tail -30
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a fresh observation-stage proposal cannot be promoted directly, at all, no matter the (real) approvals supplied
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a proposal that reached independent_review cannot be promoted with ZERO approvals (the proposer's own silent 'confirmation' never counts)
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > THE FLAGSHIP CASE (previously vacuous): a proposal genuinely AT independent_review, 'approved' with two FABRICATED (never-minted) distinct token strings, is REJECTED — fabrication no longer promotes
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a token genuinely minted for a DIFFERENT proposal cannot promote THIS one (confused-deputy guard)
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a token genuinely minted for the WRONG subject kind cannot count toward independent review
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > the SAME genuinely-minted token replayed twice never counts as two distinct approvals
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > two GENUINELY minted, correctly-subject-kinded, this-proposal-bound, distinct tokens DO promote — the real path still works
+[@crabgic/learning] src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > no sequence of direct calls, of any length, ever reaches 'promoted' without genuinely 2 distinct, this-proposal-bound, correctly-subject-kinded approvals — property over a fixed attack matrix
+[@crabgic/learning] src/red-team/no-bypass.redteam.test.ts > @learning-redteam no-bypass — a promoted lesson's ChangeSet clears the SAME @crabgic/gates registry as any human change > fires the identical GateRegistry.fireAll against the promoted proposal's ChangeSet, journaling real EvidenceRecords under its changeSetId — no special-cased path
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > before sealing: the held-out store accepts a legitimate write (sanity — the boundary isn't vacuously 'always fails')
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: a hostile process calling node:fs DIRECTLY (bypassing this package entirely) cannot write a new file into the held-out directory
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: a hostile process cannot OVERWRITE the existing sealed cases file either
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: this package's OWN write() method also refuses (in-process guard, layered on top of the OS boundary)
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: reads still succeed — sealing blocks writes only, never reads
+[@crabgic/learning] src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > the dev-case store and held-out store are independent instances over disjoint directories — one being sealed never affects the other
+[@crabgic/learning] src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > this scanner's target directory actually resolves (sanity: the scan is not vacuous)
+[@crabgic/learning] src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > no registered MCP tool name anywhere begins with the 'learning.' prefix
+[@crabgic/learning] src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > the bare literal 'learning.' never appears as a STRING LITERAL in any non-test registration source (stronger, whole-substring form; test files are exempt since 16's own suite legitimately asserts this same absence in prose/assertions)
+[@crabgic/learning] src/red-team/no-promptfoo-dependency.redteam.test.ts > @learning-redteam no promptfoo third-party dependency > package.json declares no 'promptfoo' dependency (dependencies or devDependencies)
+[@crabgic/learning] src/red-team/no-promptfoo-dependency.redteam.test.ts > @learning-redteam no promptfoo third-party dependency > no source file imports the 'promptfoo' package
++ echo '--- where the other four named behaviours live ---'
+--- where the other four named behaviours live ---
++ git grep -ln ContaminationDetectedError -- 'packages/learning/src/**/*.test.ts'
+packages/learning/src/eval/contamination.test.ts
++ git grep -ln 'rejected: changes nothing else' -- 'packages/learning/src/**/*.test.ts'
+packages/learning/src/proposal-store/registry.test.ts
++ git grep -ln sweepExpiredProposals -- 'packages/learning/src/**/*.test.ts'
+packages/learning/src/expiry/expiry-sweeper.test.ts
++ git grep -ln rollbackProposal -- 'packages/learning/src/**/*.test.ts'
+packages/learning/src/rollback/rollback.test.ts
+# ---8<--- end ---8<---
+# exit status: 0

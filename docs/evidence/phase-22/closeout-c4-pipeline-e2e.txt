@@ -1,0 +1,28 @@
+# 2026-08-02T10:15:21Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/learning/src/pipeline.e2e.test.ts packages/cli/src/learning/learn-command-backend.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22
+
+ ✓ |@crabgic/learning| src/pipeline.e2e.test.ts > E2E: observation -> reproducer -> candidate -> dev_eval -> held_out_eval -> shadow_run -> independent_review -> promoted -> rolled_back > carries a seeded recurring failure all the way through to a journaled promotion and a rollback that restores the baseline 85ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnListCommand > reports no proposals when the registry is empty 4ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnListCommand > lists proposals with state and content, --json included 7ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnApproveCommand > fails closed for an unknown proposal id 3ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnApproveCommand > refuses a proposal not yet in independent_review 4ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnApproveCommand > records exactly one approval and does NOT promote after a single 'learn approve' call 60ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnApproveCommand > promotes on the SECOND distinct 'learn approve' call — two real, distinct tokens, journaled 59ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnApproveCommand > declining at the terminal prompt mints no token and records no approval 27ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRejectCommand > fails closed for an unknown proposal id 1ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRejectCommand > rejects a known proposal at any stage 8ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRejectCommand > --json reports the rejected proposal 8ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRollbackCommand > fails closed for an unknown proposal id 1ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRollbackCommand > refuses rollback on a proposal that was never promoted 3ms
+ ✓ |crabgic| src/learning/learn-command-backend.test.ts > runLearnRollbackCommand > rolls back a fully-promoted proposal end-to-end via two real 'learn approve' calls 59ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  12:15:22
+   Duration  2.67s (transform 3.34s, setup 0ms, import 4.54s, tests 331ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0

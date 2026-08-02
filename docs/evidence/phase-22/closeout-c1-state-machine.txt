@@ -1,0 +1,144 @@
+# 2026-08-02T10:15:12Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/learning/src/state-machine.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22
+
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > declares every one of the 11 union members as a table key 1ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> reproducer is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> candidate is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > reproducer -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> dev_eval is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> held_out_eval is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> shadow_run is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > held_out_eval -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> independent_review is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> promoted is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> rejected is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > independent_review -> expired is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> rejected is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> rolled_back is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > promoted -> expired is LEGAL 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> rejected is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected -> expired is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> rejected is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rolled_back -> expired is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> observation is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> reproducer is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> candidate is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> dev_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> held_out_eval is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> shadow_run is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> independent_review is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> promoted is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> rejected is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> rolled_back is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > expired -> expired is illegal (throws) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > observation -> promoted (skipping the whole review pipeline) throws 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > candidate -> independent_review (skipping both eval stages) throws 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > dev_eval -> shadow_run (skipping held_out_eval) throws 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > shadow_run -> promoted (skipping independent_review) throws 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > rejected/rolled_back/expired are absorbing; every other state has outgoing edges 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState transition table — exhaustive > the error identifies the exact offending (machine, from, to) 0ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState — fast-check: no random walk ever reaches an undeclared edge > every transition the pure function accepts is present in the table, and vice versa (10k cases) 157ms
+ ✓ |@crabgic/learning| src/state-machine.test.ts > LearningProposalState — fast-check: no random walk ever reaches an undeclared edge > no random walk of any length ever lands on 'promoted' without passing through dev_eval, held_out_eval, shadow_run, and independent_review in that order 391ms
+
+ Test Files  1 passed (1)
+      Tests  130 passed (130)
+   Start at  12:15:13
+   Duration  1.06s (transform 249ms, setup 0ms, import 381ms, tests 561ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0

@@ -1,0 +1,29 @@
+# 2026-08-02T10:17:25Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run --config e2e/live/vitest.config.ts e2e/live/src/cliNotImplementedSweep.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22/e2e/live
+
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > finds every dispatch-level NOT_IMPLEMENTED command among the 18 probes, absent any optional dependency 2ms
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > SWEEP_COMMAND_PROBES covers exactly the 18 command variants this sweep is designed to probe 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > never mistakes an unreachable supervisor for an unimplemented command 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies) > reflects today's real production wiring: every optional bag is now supplied 5ms
+ ✓ src/cliNotImplementedSweep.test.ts > checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies) > reports capability discovery as NOT wired — the one remaining connection-bag gap 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks an unconditional stub (no gating dependency) as a real gap 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks the gateway-mcp dead branch as NOT a real gap regardless of wiring 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks a dependency-gated command as NOT a real gap when its dependency IS wired 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks connection-capabilities a real gap: its bag is wired but its discoverer is not 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks a dependency-gated command as a real gap when its dependency is NOT wired (run/intake today) 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > genuine integration: folding today's real dispatch-level findings with today's real production wiring yields exactly the accurate gap list 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > connectClient throws SupervisorUnavailableError if ever actually called 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > journal.queryEntries throws if ever actually iterated 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > journal.verifyJournal throws if ever actually called 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > exit code sanity > EXIT_NOT_IMPLEMENTED is distinct from EXIT_OK 0ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  12:17:26
+   Duration  1.04s (transform 500ms, setup 0ms, import 904ms, tests 14ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0
