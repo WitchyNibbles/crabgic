@@ -1,0 +1,26 @@
+# Captured (UTC): 2026-08-02T10:14:33Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: bash /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/c2b.sh
+# ---- verbatim output below ----
+== git log --oneline $A..$B ==
+eabb65a test(journal): close the lease heartbeat ordering race that gates every push (#69)
+5f892e0 fix(closeout): close sixteen validator bypasses, anchored on a frozen wording baseline (#65)
+
+== git diff --stat $A $B -- packages/renderer packages/contracts  (must be EMPTY) ==
+(no lines above == the renderer and its only dependency are byte-identical across the two builds)
+
+== full list of paths that DID change between the two builds ==
+.github/workflows/ci.yml
+docs/evidence/criteria-closeout/README.md
+docs/evidence/criteria-closeout/criteria-baseline.json
+package.json
+packages/journal/src/lease.test.ts
+scripts/check-citation-runs.mjs
+scripts/check-citation-runs.test.mjs
+scripts/check-criteria-closeout.mjs
+scripts/check-criteria-closeout.test.mjs
+scripts/generate-criteria-baseline.mjs
+scripts/generate-criteria-baseline.test.mjs
+# ---- end of output ----
+# exit status: 0

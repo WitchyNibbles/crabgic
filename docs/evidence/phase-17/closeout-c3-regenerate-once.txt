@@ -1,0 +1,22 @@
+# Captured (UTC): 2026-08-02T10:13:37Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: npx vitest run packages/renderer/src/render-with-regeneration.test.ts --coverage.enabled=false --reporter=verbose
+# ---- verbatim output below ----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p17
+
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > renders on the first attempt when the candidate is already clean 6ms
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > scripted fail-then-pass generator yields status:'rendered' (work item 8 failing-first) 3ms
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > always-fails generator blocks on exactly the second attempt, never a third 1ms
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > supports a synchronous (non-Promise) generator 0ms
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > lints the exact bytes it stores — normalizes BEFORE linting, not after (L2 adversarial-review fixture) 0ms
+ ✓ |@crabgic/renderer| src/render-with-regeneration.test.ts > renderWithRegeneration > uses the injected clock for renderedAt 0ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  12:13:38
+   Duration  632ms (transform 352ms, setup 0ms, import 508ms, tests 12ms, environment 0ms)
+
+# ---- end of output ----
+# exit status: 0

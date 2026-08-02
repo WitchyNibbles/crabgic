@@ -1,0 +1,66 @@
+# Captured (UTC): 2026-08-02T10:14:46Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: bash /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/c5.sh
+# ---- verbatim output below ----
+== 1. every tracked file that mentions toWikiMarkup (dist/ excluded) ==
+docs/evidence/phase-17/README.md
+docs/evidence/phase-19/README.md
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.ts
+packages/renderer/src/__snapshots__/golden.test.ts.snap
+packages/renderer/src/artifact-kind.ts
+packages/renderer/src/golden.test.ts
+packages/renderer/src/index.ts
+packages/renderer/src/wiki-markup.test.ts
+packages/renderer/src/wiki-markup.ts
+roadmap/17-renderer-communication-lint.md
+
+== 2. of those, which also import or call lint() ? ==
+CALLS lint(): docs/evidence/phase-17/README.md
+CALLS lint(): docs/evidence/phase-19/README.md
+CALLS lint(): packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts
+no lint() : packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.ts
+no lint() : packages/renderer/src/__snapshots__/golden.test.ts.snap
+CALLS lint(): packages/renderer/src/artifact-kind.ts
+no lint() : packages/renderer/src/golden.test.ts
+CALLS lint(): packages/renderer/src/index.ts
+no lint() : packages/renderer/src/wiki-markup.test.ts
+no lint() : packages/renderer/src/wiki-markup.ts
+CALLS lint(): roadmap/17-renderer-communication-lint.md
+
+== 3. every lint( call in the one file that has both, with 3 lines of context ==
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:105:    const outcome = lint(candidate, "jira_milestone_comment", DEFAULT_COMMUNICATION_POLICY);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-106-    expect(outcome.ok).toBe(true);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-107-
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-108-    const wikiMarkup = adfDocumentToWikiMarkup(toADF(candidate));
+--
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:168:    const outcome = lint(candidate, "jira_milestone_comment", DEFAULT_COMMUNICATION_POLICY);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-169-    expect(outcome.ok).toBe(true);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-170-
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-171-    const wiki = adfDocumentToWikiMarkup(toADF(candidate));
+--
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:389:    const outcome = lint(candidate, "pr_body", DEFAULT_COMMUNICATION_POLICY);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-390-    expect(outcome.ok).toBe(true);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-391-
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts-392-    const wiki = adfDocumentToWikiMarkup(toADF(candidate));
+
+== 4. does any tracked test read the corpus directory AND call toWikiMarkup ? ==
+docs/evidence/criteria-closeout/phase-08.json: does NOT mention toWikiMarkup
+docs/evidence/phase-08/README.md: does NOT mention toWikiMarkup
+docs/evidence/phase-17/README.md: mentions toWikiMarkup
+packages/git-engine/src/renderer-corpus-shared.test.ts: does NOT mention toWikiMarkup
+packages/renderer/src/corpus.test.ts: does NOT mention toWikiMarkup
+roadmap/08-integration-publication.md: does NOT mention toWikiMarkup
+roadmap/17-renderer-communication-lint.md: mentions toWikiMarkup
+
+== 5. phase 19's own exit criterion, verbatim ==
+20:- **Rendering:** `wikiMarkupRenderProfile` — DC has no ADF, so `RenderedArtifact` (P02/17) content is serialized to Jira wiki markup instead; built here, golden-corpus tested, required to pass 17's blocking-artifact lint unchanged.
+44:- **`wikiMarkupRenderProfile`** — new: `RenderedArtifact` → Jira wiki-markup serializer, plus its golden corpus.
+66:4. `wikiMarkupRenderProfile` + golden corpus. Failing test first: a `RenderedArtifact` golden fixture run through the not-yet-built profile fails 17's lint corpus before the serializer strips prohibited content/attribution correctly.
+86:- [ ] `wikiMarkupRenderProfile` output passes 17's blocking-artifact-lint corpus — golden-file diff test, zero exceptions.
+
+== 6. phase 17's own Test plan sentence for this criterion, verbatim ==
+70:- **Integration**: `renderWithRegeneration` against scripted fail-then-pass and always-fail generators; `toADF` output checked against the same safe-subset whitelist 18 validates incoming payloads with; `toWikiMarkup` output checked against 19's own stated exit criterion ("wiki rendering passes the 17 lint corpus").
+# ---- end of output ----
+# exit status: 0

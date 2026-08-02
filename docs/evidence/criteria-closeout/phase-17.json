@@ -1,0 +1,387 @@
+{
+  "schemaVersion": 1,
+  "phase": "17",
+  "roadmapFile": "roadmap/17-renderer-communication-lint.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 3 (phase 17)",
+    "headSha": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Every attack in `packages/renderer/fixtures/corpus/` is blocked: bidi/zero-width smuggling, confusable domain, secret/credential leak, remote image, HTML/script/data-URL injection, attribution/engine-name leak, over-length payload, unevidenced completion claim — proven by the corpus suite passing red-then-green.",
+      "textSha256": "01254a4ae6c19e9c59b05a8dd3ac55bebe7290c6940f59919fd73c6f3a01cd38",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 801 — '  ✓  @crabgic/renderer  src/corpus.test.ts (34 tests) 24ms' (33 fixtures + the fixture-count/kind-coverage guard); line 789 — '  ✓  @crabgic/renderer  src/unicode-defense.test.ts (17 tests) 177ms'; line 793 — '  ✓  @crabgic/renderer  src/secret-scan.test.ts (15 tests) 10ms'; line 800 — '  ✓  @crabgic/renderer  src/url-policy.test.ts (9 tests) 10ms'; line 798 — '  ✓  @crabgic/renderer  src/attribution-neutral.test.ts (9 tests) 15ms'; line 799 — '  ✓  @crabgic/renderer  src/evidence-claims.test.ts (10 tests) 13ms'; line 802 — '  ✓  @crabgic/renderer  src/length-limits.test.ts (7 tests) 10ms'; run summary ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/corpus.test.ts:51-70",
+          "quotedAssertion": "packages/renderer/src/corpus.test.ts — the criterion's \"every attack\" is a real universal quantifier, not a hand-listed set: :51 'for (const fixture of fixtures) {' / :56 'const outcome = lint(fixture.candidate, fixture.kind, DEFAULT_COMMUNICATION_POLICY);' / :61 'expect(outcome.ok).toBe(false);' / :65 'expect(stages.has(expectedStage)).toBe(true);'. Every one of the 25 `attack-*.json` fixtures declares `expectedStages`, so each is asserted blocked BY THE NAMED STAGE, not merely blocked by something."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/corpus.test.ts:36-39",
+          "quotedAssertion": "packages/renderer/src/corpus.test.ts:36-39 — 'return readdirSync(CORPUS_DIR)' / '.filter((name) => name.endsWith(\".json\"))' / '.map((name) => JSON.parse(readFileSync(join(CORPUS_DIR, name), \"utf8\")) as CorpusFixture)'. The suite enumerates the directory at run time, so a fixture added to `packages/renderer/fixtures/corpus/` is covered automatically — which is why the corpus growing from 22 to 33 during adversarial remediation strengthened this box rather than escaping it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/corpus.test.ts:45-49",
+          "quotedAssertion": "packages/renderer/src/corpus.test.ts:46 — 'expect(fixtures.length).toBeGreaterThanOrEqual(21);' and :48 — 'expect(validKinds.size).toBe(8);'. The empty-glob anti-vacuity floor: a broken CORPUS_DIR path would yield zero fixtures and the universal quantifier above would certify nothing. This phase's own floor is 21 plus a per-`ArtifactKind` completeness check; see the next citation for the weaker floor on the phase-08 side."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:66-68",
+          "quotedAssertion": "packages/git-engine/src/renderer-corpus-shared.test.ts:67 — 'expect(fixtures.length).toBeGreaterThan(0);'. Cited as a CONTRAST, not as evidence for this box: phase 08 consumes this phase's corpus directory at run time (:28-35 walks '..', '..', 'renderer', 'fixtures', 'corpus') and its merged closeout leans on it, but its empty-glob guard is only '> 0' where this phase's is '>= 21' plus per-kind completeness. A phase-08-side path break would therefore be caught here and not there. Recorded so the two floors are not conflated by a reader of either record."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/unicode-defense.test.ts:42-73",
+          "quotedAssertion": "packages/renderer/src/unicode-defense.test.ts:48 — 'expect(findings[0]!.message).toMatch(/bidi-override/i);' with :49 'expect(findings[0]!.span).toEqual({ start: 10, end: 11 });' pinning the offset; :68 — 'expect(findings.some((f) => f.message.match(/bidi-override/i))).toBe(true);' over EVERY codepoint in U+202A–U+202E and U+2066–U+2069 at 500 runs. Negative control at :52-53 — 'expect(unicodeDefenseStage(stageInput(\"perfectly normal text\"))).toEqual([]);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/unicode-defense.test.ts:83-151",
+          "quotedAssertion": "packages/renderer/src/unicode-defense.test.ts:93 — 'expect(findings.some((f) => f.message.match(/zero-width/i))).toBe(true);' over U+200B/200C/200D/FEFF/2060 at 500 runs; :117 — 'expect(findings.some((f) => f.message.match(/confusable\\/homograph/i))).toBe(true);' on a Cyrillic-а PayPal homograph inside a markdown link; :140 the same over 25 confusable codepoints. Two negative controls that make the confusable detector non-degenerate: :121 'expect(unicodeDefenseStage(stageInput(\"привет\"))).toEqual([]);' (all-one-script token) and :125 'expect(unicodeDefenseStage(stageInput(\"see https://paypal.com/reset\"))).toEqual([]);' (Latin-only domain)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/secret-scan.test.ts:11-40",
+          "quotedAssertion": "packages/renderer/src/secret-scan.test.ts:18 — 'expect(findings[0]!.message).toMatch(/AWS-style access key/i);' (the fixture key literal is REDACTED here: the repo's pre-commit secret scanner rejects an AKIA-prefixed string in a committed file, so it is cited by pattern name rather than reproduced); :23 — 'expect(findings.some((f) => f.message.match(/PEM private-key/i))).toBe(true);'; :35 — 'expect(findings.some((f) => f.message.match(/connection string/i))).toBe(true);' on a postgres URL with embedded credentials. :91-97 is the clean-text control."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/url-policy.test.ts:11-56",
+          "quotedAssertion": "packages/renderer/src/url-policy.test.ts:15 — 'expect(findings[0]!.message).toMatch(/raw HTML tag/i);' (a `<script>` tag in a PR body); :24 — 'expect(findings.some((f) => f.message.match(/disallowed URL scheme \"data:\"/i))).toBe(true);' in a Grafana annotation; :36 — 'expect(findings.some((f) => f.message.match(/embedded remote image/i))).toBe(true);'. Negative control at :55 — 'expect(urlPolicyStage(stageInput(\"Outcome: see https://example.com/evidence/123\"))).toEqual([]);', so the stage is not simply rejecting every URL."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/attribution-neutral.test.ts:11-21",
+          "quotedAssertion": "packages/renderer/src/attribution-neutral.test.ts:19-20 — 'expect(findings.some((f) => f.message.match(/Generated with/i))).toBe(true);' / 'expect(findings.some((f) => f.message.match(/Co-Authored-By/i))).toBe(true);' on the seeded fixture 08 also asserts from its side. Engine-name leak at :37 — 'expect(findings.some((f) => f.message.match(/engine\\/vendor name/i))).toBe(true);'. Negative control at :53 — 'attributionNeutralStage(stageInput(\"Corrects the off-by-one error in the pagination loop.\"))).toEqual([])', plus :62-70, two cases proving an unified-diff header and a markdown horizontal rule are NOT false-blocked."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/length-limits.test.ts:12-25",
+          "quotedAssertion": "packages/renderer/src/length-limits.test.ts:15 — 'expect(lengthLimitsStage(stageInput(subject, \"commit_subject\"))).toEqual([]);' at exactly 72 chars, and :24 — 'expect(findings[0]!.message).toMatch(/73 chars exceeds the 72-char limit/);' at 73. The over-length corpus fixture is a `review_comment`, whose 6-pass/7-fail line boundary is at :29 and :35. :57 proves the limits come from the policy argument — 'expect(findings.some((f) => f.message.match(/6 chars exceeds the 5-char limit/))).toBe(true);' under a custom policy — which is roadmap/17's \"read from `CommunicationPolicy` at call time, never hardcoded\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/evidence-claims.test.ts:11-33",
+          "quotedAssertion": "packages/renderer/src/evidence-claims.test.ts:15-17 — 'expect(findings.length).toBe(1);' / 'expect(findings[0]!.stage).toBe(STAGE_NAME_EVIDENCE_CLAIMS);' / 'expect(findings[0]!.severity).toBe(\"block\");' on an unevidenced \"fixed\" claim; :22-24 repeats it for all five claim words. Negative control at :28-30 — a claim carrying an https URL yields '[]'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c1b-corpus-red-probe.txt",
+          "quotedAssertion": "'Test Files  1 failed (1)' / '      Tests  25 failed | 9 passed (34)' — the anti-vacuity probe this closeout ran: `STAGE_PIPELINE` emptied in the working tree, `corpus.test.ts` re-run, and EXACTLY the 25 attack fixtures go red while the 8 valid fixtures and the fixture-count guard stay green. The file is restored byte-for-byte afterwards and this PR contains no change under `packages/`; the deliberate mutation is stated in the transcript's own header. See this entry's notes for what this probe does and does NOT evidence."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c1-corpus-suite.txt",
+          "quotedAssertion": "' Test Files  8 passed (8)' / '      Tests  107 passed (107)' — scoped local re-run of the corpus suite plus every stage suite the criterion's eight named vectors land in, at the closeout commit; command line and exit status in the file header, `--reporter=verbose` so each `it()` is named."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/README.md",
+          "quotedAssertion": "docs/evidence/phase-17/README.md, §Adversarial-review remediation (round 2) — 'Each was fixed with a failing test/corpus fixture added FIRST (confirmed red against the pre-fix code), then the minimal fix, then confirmed green', with an 11-row table naming the file fixed, the tests added and the corpus fixture added for each. This is the phase's own contemporaneous record of the red half for the 11 round-2 fixtures."
+        }
+      ],
+      "notes": "Corpus composition at HEAD: 33 fixtures — 25 `attack-*` (every one carrying `expectedStages`) and 8 `valid-*`, one per `ArtifactKind`. All eight vectors the criterion names are present, several more than once: bidi (attack-bidi-override), zero-width (attack-zero-width, plus attack-lrm-rlm-direction-marks and attack-line-paragraph-separator), confusable (attack-confusable-domain, attack-confusable-greek-alpha), secret/credential (8 fixtures: aws, pem, connection-string, anthropic, openai-project, gcp, github-fine-grained-pat, raw-jwt), remote image (attack-remote-image), HTML/script/data-URL (attack-html-injection, attack-html-injection-slash-attribute, attack-script-url, attack-data-url, attack-adf-link-javascript-href), attribution/engine-name (attack-attribution-leak, attack-engine-name-leak), over-length (attack-over-length), unevidenced claim (attack-unevidenced-claim, attack-unevidenced-claim-standard-token). Two honest scope statements. (a) RED-THEN-GREEN PROVENANCE. Unlike phases 01-05/07, phase 17 committed no `wiN-*-failing.txt` transcripts, so the ORIGINAL red-then-green is evidenced only by the phase README's own remediation record quoted above, not by a captured failing run from the build. What the closeout adds is a different and weaker-scoped thing, and is labelled as such: closeout-c1b is a mutation probe run TODAY proving the corpus suite is a real gate capable of failing, not a reconstruction of the 2026-07 red. The substantive guarantee the box carries — every attack fixture in the directory is blocked — is fully evidenced by the CI run, the universal-quantifier assertion and the local re-run. (b) SCOPE OF \"secret/credential leak\", stated so the tick is not read wider than it is: `docs/evidence/phase-17/README.md` §Documented deviations 12 records that `SECRET_PATTERNS` is 'a fixed, curated list, expanded but not made exhaustive'. This is 17's OWN pattern set; roadmap/17 §Out of scope states that 14's source-diff secret scanning and this stage 'are maintained independently, with no dependency edge between 14 and 17', so nothing in phase 14's coverage backs this box and nothing in this box backs 14's. (c) Stale-evidence flag, not a defect in the criterion: `docs/evidence/phase-17/README.md`'s exit-criterion-1 mapping row still says the corpus holds '22 fixtures: 14 attack + 8 valid' and lists 14 attack files — a pre-remediation count contradicted by the same README's own section above it ('Corpus grew from 22 to 33 fixtures'). At HEAD it is 33/25/8. Left unedited per the pass rule against fixing findings in the same pass."
+    },
+    {
+      "index": 2,
+      "text": "Every valid `ArtifactKind` × fixture pair renders byte-identical across two consecutive CI builds (empty golden diff).",
+      "textSha256": "ca1fd31d40e4e54ae413e25992861b58c68250516d0c017746791abbb749eb2a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "BUILD 1 — CI / unit-test+coverage (ubuntu-latest), job 91479495615, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741432036",
+          "commit": "aa953e71f1baf4bee1634e2a115b0c3e356ef0da",
+          "quotedAssertion": "job log line 793 — '2026-08-02T09:19:26.0512135Z  ✓  @crabgic/renderer  src/golden.test.ts (10 tests) 11ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6077 passed | 1 skipped (6078)'. All 10 snapshots matched the committed `golden.test.ts.snap`."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "BUILD 2 — CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 797 — '2026-08-02T09:31:27.7289115Z  ✓  @crabgic/renderer  src/golden.test.ts (10 tests) 12ms'; run summary ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. Ordering claim, phrased so it cannot rot: as of `main` @ `eabb65a` — this pass's base — these were the two most recent SUCCESSFUL `CI` runs on `main`, in that order. `main` has since advanced (it was at `30f931e` when this record was written), so the integrator's merge base is later than `eabb65a`; the emptiness proof below covers exactly the `aa953e71`..`eabb65a` interval the two cited builds span, and the one intervening commit `5f892e0` is listed in it. Nothing here claims those are the newest runs at merge time."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c2b-ci-build-pair-emptiness.txt",
+          "quotedAssertion": "'== git diff --stat $A $B -- packages/renderer packages/contracts  (must be EMPTY) ==' followed by no diff lines, then '(no lines above == the renderer and its only dependency are byte-identical across the two builds)'. Without this, \"two consecutive CI builds\" would be two runs of possibly different code. The transcript also lists every path that DID change between `aa953e71` and `eabb65a` — eleven files, all under `.github/`, `docs/evidence/criteria-closeout/`, `scripts/`, `package.json` and `packages/journal/src/lease.test.ts`; none of them is reachable from `packages/renderer`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/src/__snapshots__/golden.test.ts.snap",
+          "quotedAssertion": "144 lines, 10 committed snapshots — one per `ArtifactKind` plus `toADF`/`toWikiMarkup`. Line 26 — 'exports[`golden byte-stability — one valid fixture per ArtifactKind > pr_title 1`] = `\"feat(renderer): add blocking lint pipeline\"`;'. This file IS the golden the criterion's \"empty golden diff\" is measured against; the two CI builds above both compared against it, and neither rewrote it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/golden.test.ts:21-87",
+          "quotedAssertion": "packages/renderer/src/golden.test.ts:21 — 'describe(\"golden byte-stability — one valid fixture per ArtifactKind\", () => {' with one `it()` per member of the closed 8-member union (branch_name :22, commit_subject :26, commit_body :32, pr_title :38, pr_body :44, review_comment :55, jira_milestone_comment :65, grafana_annotation :77), each ending in 'toMatchSnapshot()'. :101-107 adds the `toADF` and `toWikiMarkup` snapshots."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c2-golden-byte-stability.txt",
+          "quotedAssertion": "supplementary local reproduction: the same command run twice back to back under `CI=true` (so vitest can never write a snapshot), '      Tests  10 passed (10)' then 'build 1 exit status: 0', '      Tests  10 passed (10)' then 'build 2 exit status: 0', with the snapshot file's sha256 printed BEFORE and AFTER both runs and '== git diff of the snapshot file (empty golden diff) ==' emitting nothing."
+        }
+      ],
+      "notes": "Three scope statements so the tick is not read wider than it is. (a) \"fixture pair\" is ONE valid input per `ArtifactKind`, which is what this phase's own §Test plan asks for ('byte-stable snapshot per `ArtifactKind` × valid-input pair'). Those inputs are golden.test.ts's own, NOT the eight `valid-*.json` files in `fixtures/corpus/` — the corpus fixtures are lint inputs (criterion 1), the goldens are render outputs. Both sets cover all 8 kinds. (b) Two of the eight kinds — `branch_name` (:22-24) and `commit_body` (:32-36) — snapshot a string literal, because roadmap/17 defines no template for those kinds (the §Templates list is Jira comment, Grafana annotation, PR title, PR body, review comment). Their byte-stability is therefore true by construction rather than by exercising a renderer, and the `it()` names say so ('plain string, no template'). The other six go through a real render function, as do `toADF`/`toWikiMarkup`. Recorded because a reader counting '8 kinds covered' should know two of them are identity renders. (c) `commit_subject` (:26-30) and `pr_title` (:38-42) call `renderPrTitle` with identical arguments and so have byte-identical snapshots; that duplication is not an accident — it is the same-convention claim criterion 6 makes, visible in the golden file itself."
+    },
+    {
+      "index": 3,
+      "text": "Regenerate-once proven: fail-then-pass generator yields a `status: \"rendered\"` `RenderedArtifact`; always-fail generator returns `status: \"blocked\"`/`policy_blocked` on exactly the second attempt.",
+      "textSha256": "f3bd5686d502176e8d768b02afcb2fd40210c5f61f466c54a2cc58b5bc028469",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 794 — '  ✓  @crabgic/renderer  src/render-with-regeneration.test.ts (6 tests) 22ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/render-with-regeneration.test.ts:23-42",
+          "quotedAssertion": "packages/renderer/src/render-with-regeneration.test.ts:33-37 — 'expect(outcome.status).toBe(\"rendered\");' / 'expect(outcome.artifact.content).toBe(\"fix: correct the off-by-one error\");' / 'expect(generate).toHaveBeenCalledTimes(2);' against a generator scripted to emit '🤖 Generated with Claude Code' first and a clean subject second. :39-41 additionally proves the second call was FED the first attempt's findings — 'const secondCallArgs = generate.mock.calls[1]!;' / 'expect(Array.isArray(secondCallArgs[0])).toBe(true);' / 'expect((secondCallArgs[0] as unknown[]).length).toBeGreaterThan(0);' — i.e. it is a regeneration, not a blind retry."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/render-with-regeneration.test.ts:44-57",
+          "quotedAssertion": "packages/renderer/src/render-with-regeneration.test.ts:51-56 — 'expect(outcome.status).toBe(\"blocked\");' / 'expect(outcome.error).toBe(\"policy_blocked\");' / 'expect(outcome.findings.length).toBeGreaterThan(0);' / 'expect(generate).toHaveBeenCalledTimes(2);'. The last line is the criterion's \"on exactly the second attempt\": a third call would fail it, and so would blocking after one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/render-with-regeneration.test.ts:6-21",
+          "quotedAssertion": "packages/renderer/src/render-with-regeneration.test.ts:19-20 — 'expect(generate).toHaveBeenCalledTimes(1);' / 'expect(generate).toHaveBeenCalledWith();' on an already-clean candidate. The anti-vacuity control on the other side: an implementation that always regenerated once would satisfy both cases above and fail here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/render-with-regeneration.test.ts:69-96",
+          "quotedAssertion": "packages/renderer/src/render-with-regeneration.test.ts:91-95 — 'expect(outcome.status).toBe(\"rendered\");' / 'expect(outcome.artifact.content).toBe(normalized);' / 'expect(generate).toHaveBeenCalledTimes(1);' for the L2 adversarial-review case (65 raw decomposed chars, 33 once NFC-composed, against a 64-char `branch_name` limit). Cited because it is what makes the returned `RenderedArtifact` the bytes that were actually linted, rather than a differently-normalized string."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c3-regenerate-once.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  6 passed (6)' — scoped local re-run at the closeout commit, `--reporter=verbose`, so the transcript names 'scripted fail-then-pass generator yields status:'rendered' (work item 8 failing-first)' and 'always-fails generator blocks on exactly the second attempt, never a third' individually."
+        }
+      ],
+      "notes": "`policy_blocked` is 02's canonical connector-error member, not a string this package invents; the criterion's `status: \"rendered\"` / `status: \"blocked\"` union is the `RenderOutcome` shape roadmap/17 §Interfaces produced declares verbatim. Nothing here touches a network, a git repo or a provider API — roadmap/17 §In scope is explicit that 17 never performs the downstream write, and the `generate` callback is caller-supplied, so the whole contract is exercisable with `vi.fn()` mocks and no fake engine."
+    },
+    {
+      "index": 4,
+      "text": "`toADF` output validates against the safe-subset whitelist for every ADF fixture; zero disallowed nodes/marks appear in any snapshot.",
+      "textSha256": "da1c48d35ccd59adb4887299931438e2d605396ef38b043063e312e4c3a55a32",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 788 — '  ✓  @crabgic/renderer  src/adf.test.ts (20 tests) 17ms'; line 797 — '  ✓  @crabgic/renderer  src/golden.test.ts (10 tests) 12ms'; line 362 — '  ✓  @crabgic/connectors-jira  src/resource-client/datacenter/wiki-markup-render-profile.test.ts (34 tests) 88ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/adf.test.ts:222-248",
+          "quotedAssertion": "packages/renderer/src/adf.test.ts:241 — 'expect(validateAdfSafeSubset(doc)).toEqual([]);' over a markdown fixture exercising every construct the converter knows (heading, paragraph with bold/italic/code/link, bullet list, ordered list, blockquote, fenced code block); :246-247 — 'expect(validateAdfSafeSubset(doc)).toEqual([]);' / 'expect(doc.content.every((node) => !node.type.startsWith(\"table\"))).toBe(true);' for an unrecognized construct (a markdown table), i.e. `toADF` degrades rather than emitting a disallowed node."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/adf.test.ts:14-40",
+          "quotedAssertion": "packages/renderer/src/adf.test.ts:26-27 — 'expect(findings.length).toBeGreaterThan(0);' / 'expect(findings[0]!.message).toMatch(/layoutSection.*not in the safe-subset whitelist/);' and :39 — 'expect(findings.some((f) => f.message.match(/mark type \"mention\"/))).toBe(true);'. The validator is proven capable of rejecting, so the '[]' results above mean something."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/adf.test.ts:251-267",
+          "quotedAssertion": "packages/renderer/src/adf.test.ts:253 'expect(ADF_ALLOWED_NODE_TYPES).toEqual([' then the ten node names one per line, :254-263 — '\"doc\",' / '\"paragraph\",' / '\"text\",' / '\"heading\",' / '\"bulletList\",' / '\"orderedList\",' / '\"listItem\",' / '\"codeBlock\",' / '\"blockquote\",' / '\"hardBreak\",' — closed at :264 ']);'; and :265 'expect(ADF_ALLOWED_MARK_TYPES).toEqual([\"link\", \"strong\", \"em\", \"code\"]);'. The whitelist is pinned to roadmap/17 §Interfaces produced's exact list, so \"the safe-subset whitelist\" cannot be quietly widened to make an output validate."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/adf.test.ts:42-135",
+          "quotedAssertion": "packages/renderer/src/adf.test.ts:60-62, three source lines quoted verbatim and spliced — 'expect(findings.some((f) => f.message.match(/href/i) && f.message.match(/javascript/i))).toBe(' / 'true,' / ');'; :83 'expect(findings.some((f) => f.message.match(/href/i))).toBe(true);' with :103 and :114 the same shape for plain `http:` and a missing href. Negative control at :134 — 'expect(validateAdfSafeSubset(doc)).toEqual([]);' for a safe `https:` href. This is the M2 adversarial-review fix: mark ATTRIBUTES, not just mark types, which matters because phase 18 runs this validator standalone with no url-policy stage ahead of it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/adf-guard.ts:80",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/adf-guard.ts:80 — 'const findings = validateAdfSafeSubset(candidate);', imported at :2 from `@crabgic/renderer`. Cited because roadmap/17's §Test plan phrases this criterion as `toADF` output checked 'against the same safe-subset whitelist 18 validates incoming payloads with' — 18 does not maintain a second list, it calls this one, and its own doc comment at :28-30 says so ('`@crabgic/renderer`'s own `validateAdfSafeSubset` — never re-derived here')."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/src/__snapshots__/golden.test.ts.snap",
+          "quotedAssertion": "the `toADF` snapshot at :34-133 is the phase's only committed ADF snapshot; its final three content lines, :130-132, are '\"type\": \"doc\",' / '\"version\": 1,' / '}'. Every distinct type value inside it, enumerated by mechanical scan of the block: bulletList, doc, heading, link, listItem, paragraph, strong, text — six nodes and two marks, all inside `ADF_ALLOWED_NODE_TYPES`/`ADF_ALLOWED_MARK_TYPES`. Zero disallowed nodes or marks, which is the criterion's second clause read literally against the artifact."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/fixtures/corpus/attack-adf-link-javascript-href.json",
+          "quotedAssertion": "the corpus fixture that drives the ADF stage from inside the full `lint()` pipeline. Its three load-bearing fields, verbatim — '\"kind\": \"jira_milestone_comment\",' / '\"expect\": \"blocked\",' / '\"expectedStages\": [\"url-policy\", \"adf-safe-subset\"]' — mean the corpus suite's expectedStages loop requires this candidate to be blocked BY the adf-safe-subset stage, not merely blocked."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c4-adf-safe-subset.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  30 passed (30)' — scoped local re-run of `adf.test.ts` + `golden.test.ts` at the closeout commit."
+        }
+      ],
+      "notes": "One correction to the phase's own evidence README, recorded rather than fixed (pass rule: no fixing findings in the same pass). `docs/evidence/phase-17/README.md`'s exit-criterion-4 row claims `validateAdfSafeSubset` is exercised 'against every `toADF` output in the golden suite (`golden.test.ts`'s `toADF` snapshot)'. It is not: `golden.test.ts:101-103` is 'expect(toADF(markdown)).toMatchSnapshot();' with no validator call anywhere in that file. The clause is nonetheless evidenced, by two independent routes rather than the one the README names — (i) the committed snapshot is a static artifact and every type value in it is enumerated above and is whitelisted, and (ii) `adf.test.ts:222-248` asserts `validateAdfSafeSubset(toADF(x)).toEqual([])` over a broader markdown fixture than the golden's, plus the table-degradation case. Scope note: 'every ADF fixture' means every fixture in this package that produces an `AdfDocument` — the hand-built disallowed-node/mark fixtures in `adf.test.ts`, the markdown fixtures fed to `toADF` there and in `golden.test.ts`, and the one corpus fixture routed through the `adf-safe-subset` lint stage. There is no separate `fixtures/adf/` directory to have missed."
+    },
+    {
+      "index": 5,
+      "text": "`toWikiMarkup` output passes the same corpus subset phase 19 names as its own exit criterion.",
+      "textSha256": "5b7c6f10d5c2acfb32476a458c7dd651cbc42d5e8d82713c2705974e9b2d6100",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/wiki-markup.test.ts:40-57",
+          "quotedAssertion": "packages/renderer/src/wiki-markup.test.ts:40 — 'it(\"passes the same corpus subset toADF validates (roadmap/17 Test plan)\", () => {' — the only test whose NAME matches this criterion. Its body neither reads `fixtures/corpus/` nor calls `lint()`: :49 'const out = toWikiMarkup(markdown);' then six substring assertions over a hand-written six-line markdown string declared at :41-48 — :50 'expect(out).toContain(\"h1. Heading\");' through :56 'expect(out).toContain(\"* bullet two\");'. Conversion fidelity, not lint conformance. NOT evidence for this box."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:64-71",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:67-69 — 'const viaAdf = adfDocumentToWikiMarkup(toADF(markdown));' / 'const viaMarkdown = toWikiMarkup(markdown);' / 'expect(viaAdf).toBe(viaMarkdown);' over the 7-item `GOLDEN_CORPUS` declared at :44-61 INSIDE this test file. Real and useful — 17's `toWikiMarkup` and 19's serializer agree byte-for-byte — but it is a parity proof between two converters, over a corpus that is not `packages/renderer/fixtures/corpus/`, with no `lint()` in it. PARTIAL at best; not the criterion."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:105",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:105-108 — 'const outcome = lint(candidate, \"jira_milestone_comment\", DEFAULT_COMMUNICATION_POLICY);' / 'expect(outcome.ok).toBe(true);' / (blank) / 'const wikiMarkup = adfDocumentToWikiMarkup(toADF(candidate));'. This is the shape of all three `lint()` call sites in the only file in the tree that imports both `lint` and `toWikiMarkup` (the others are :168 and :389): the INPUT candidate is linted and the output is then produced and checked with `toContain`. The converter's output is never fed back through `lint()`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c5-wiki-corpus-search-trail.txt",
+          "quotedAssertion": "six-step search trail, verbatim, exit status 0. Step 4's output — 'packages/git-engine/src/renderer-corpus-shared.test.ts: does NOT mention toWikiMarkup' / 'packages/renderer/src/corpus.test.ts: does NOT mention toWikiMarkup' — is the load-bearing negative: the two suites that read `fixtures/corpus/` never touch the wiki converter, and the one file that touches both never lints its output."
+        },
+        {
+          "kind": "artifact",
+          "ref": "roadmap/19-jira-datacenter-adapter.md",
+          "quotedAssertion": "roadmap/19-jira-datacenter-adapter.md:86 — '- [ ] `wikiMarkupRenderProfile` output passes 17's blocking-artifact-lint corpus — golden-file diff test, zero exceptions.' This is the criterion phase 19 names as its own, and the corpus it names is 17's blocking-artifact-lint corpus. Its work item 4 says the same at :66 — 'Failing test first: a `RenderedArtifact` golden fixture run through the not-yet-built profile fails 17's lint corpus before the serializer strips prohibited content/attribution correctly.' Note the box is UNTICKED in phase 19 too, so there is nothing on that side to lean on either."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/17-wiki-markup-lint-corpus-untested.md",
+      "notes": "Why this is UNMET and not a wording correction. Phase 17's own §Test plan (roadmap/17:70) fixes the reading beyond argument — '`toWikiMarkup` output checked against 19's own stated exit criterion (\"wiki rendering passes the 17 lint corpus\")' — so the criterion is about the CONVERTER'S OUTPUT surviving 17's lint corpus, and no test at HEAD does that. Restating the box as 'toWikiMarkup is byte-identical to 19's serializer over a 7-item in-file golden corpus' would be a strictly weaker guarantee, which the wording protocol forbids; per the closeout README, a correction that loses a guarantee is UNMET. Recorded for the fixer's benefit and NOT cited by any tick: an ad-hoc probe run during this pass (throwaway script, not committed) fed all eight `valid-*.json` corpus fixtures through `lint(toWikiMarkup(candidate), kind, DEFAULT_COMMUNICATION_POLICY)` and every one returned `{ ok: true }` — so the property is true today and only the regression guard is missing, which is why the defect is sized S and rated evidence-channel-only rather than blocking-guarantee."
+    },
+    {
+      "index": 6,
+      "text": "PR-title template enforces ≤72 chars and `type(scope): outcome`, golden-proven against 08's commit-subject convention.",
+      "textSha256": "b961b6cb50a2b1b90f1f27f7412aa7dea132df017d8a89aa09509ebd63355241",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 795 — '  ✓  @crabgic/renderer  src/templates/templates.test.ts (11 tests) 21ms'; line 796 — '  ✓  @crabgic/renderer  src/schema-validation.test.ts (12 tests) 12ms'; line 802 — '  ✓  @crabgic/renderer  src/length-limits.test.ts (7 tests) 10ms'; line 797 — '  ✓  @crabgic/renderer  src/golden.test.ts (10 tests) 12ms'; line 670 — '  ✓  @crabgic/git-engine  src/commit-renderer.test.ts (7 tests) 23ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/templates/templates.test.ts:66-75",
+          "quotedAssertion": "packages/renderer/src/templates/templates.test.ts:72-74 — 'expect(text).toBe(\"feat(renderer): add blocking lint pipeline\");' / 'expect(lint(text, \"pr_title\", DEFAULT_COMMUNICATION_POLICY)).toEqual({ ok: true });' / 'expect(lint(text, \"commit_subject\", DEFAULT_COMMUNICATION_POLICY)).toEqual({ ok: true });'. The last line is the criterion's 'against 08's commit-subject convention', asserted rather than asserted-by-comment: the SAME rendered title is required to pass the commit-subject kind's own lint."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/templates/templates.test.ts:83-86",
+          "quotedAssertion": "packages/renderer/src/templates/templates.test.ts:84-85 — 'const text = renderPrTitle({ type: \"feat\", scope: \"x\", outcome: \"a\".repeat(100) });' / 'expect(lint(text, \"pr_title\", DEFAULT_COMMUNICATION_POLICY).ok).toBe(false);'. The over-length path is exercised on the `pr_title` kind directly, not only on `commit_subject`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/length-limits.test.ts:12-25",
+          "quotedAssertion": "packages/renderer/src/length-limits.test.ts:14-15 — 'expect(subject.length).toBe(72);' / 'expect(lengthLimitsStage(stageInput(subject, \"commit_subject\"))).toEqual([]);' and :20-24 — 'expect(subject.length).toBe(73);' / 'expect(findings[0]!.message).toMatch(/73 chars exceeds the 72-char limit/);'. The ≤72 boundary, exact on both sides. Written against `commit_subject`; `prTitle` and `commitSubject` are the same `FormattedLengthLimitSchema` shape carrying the same two values (see the contracts citations below), and the stage reads the limit out of the policy argument rather than a per-kind literal, which :48-57 proves by driving it with a custom 5-char policy — :50 'limits: { ...DEFAULT_COMMUNICATION_POLICY.limits, branchName: { maxChars: 5 } },'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/schema-validation.test.ts:24-33",
+          "quotedAssertion": "packages/renderer/src/schema-validation.test.ts:25-27, three source lines quoted verbatim and spliced — 'const findings = schemaValidationStage(stageInput(\"added the lint pipeline\", \"commit_subject\"));' / 'expect(findings.length).toBe(1);' / 'expect(findings[0]!.stage).toBe(STAGE_NAME_SCHEMA_VALIDATION);' — a subject carrying no conventional-commit prefix at all; :31-32 — 'const findings = schemaValidationStage(stageInput(\"feat: a\\nsecond line\", \"pr_title\"));' / 'expect(findings.some((f) => f.message.match(/single line/))).toBe(true);'. Two acceptance controls keep the format check from being reject-everything: :14 'schemaValidationStage(stageInput(\"feat(renderer): add lint pipeline\", \"commit_subject\")),' and :19 'expect(schemaValidationStage(stageInput(\"feat: add lint pipeline\", \"commit_subject\"))).toEqual('."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.ts:102-112",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.ts:102-105 — 'commitSubject: {' / 'maxChars: 72,' / 'format: \"type(scope): outcome\",' and :109-112 the byte-identical `prTitle` entry. :82 records the intent — '`prTitle` shares the `commitSubject` shape (`maxChars` + `format`)'. This is where 'same convention as the commit subject' actually lives; 17 reads it, it does not restate it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/communication-policy.test.ts:78-88",
+          "quotedAssertion": "packages/contracts/src/contracts/communication-policy.test.ts:87-88 — 'expect(COMMUNICATION_POLICY_LIMITS.prTitle.maxChars).toBe(72);' / 'expect(COMMUNICATION_POLICY_LIMITS.prTitle.format).toBe(\"type(scope): outcome\");', with :78-79 the same pair for `commitSubject`. Cited to RECONCILE with phase 02's merged closeout rather than re-derive: `docs/evidence/criteria-closeout/phase-02.json` criterion 10 already ticks the whole-object `CommunicationPolicy` golden (`:143`) and its `/dashboard/i` recursive key sweep. This box leans on 02's constant, it does not re-litigate it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/commit-renderer.test.ts:31-68",
+          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:33-35 — 'expect(assembleCommitSubject(baseInput())).toBe(' / '\"fix(parser): correct the off-by-one in the tokenizer\",' / ');' and :56-60 — 'it(\"renders a clean subject+body through 17's renderWithRegeneration()\", async () => {' / 'const result = await renderCommit(baseInput());' / 'expect(result).toEqual({' / 'status: \"rendered\",' / 'subject: \"fix(parser): correct the off-by-one in the tokenizer\",'. This is 08's OWN commit-subject convention, produced independently of `renderPrTitle` and routed through 17's `renderWithRegeneration`/`lint()` — the other end of the 'against 08's convention' comparison."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/src/__snapshots__/golden.test.ts.snap",
+          "quotedAssertion": "line 7 — 'exports[`golden byte-stability — one valid fixture per ArtifactKind > commit_subject 1`] = `\"feat(renderer): add blocking lint pipeline\"`;' and line 26 — 'exports[`golden byte-stability — one valid fixture per ArtifactKind > pr_title 1`] = `\"feat(renderer): add blocking lint pipeline\"`;'. The 'golden-proven' half of the criterion, visible in the committed golden itself: the two kinds' snapshots are the same 41-character string."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c6-pr-title-template.txt",
+          "quotedAssertion": "' Test Files  4 passed (4)' / '      Tests  37 passed (37)' — scoped local re-run of the template, schema-validation, length-limit and 08-side commit-renderer suites at the closeout commit."
+        }
+      ],
+      "notes": "How the two halves of the criterion are split across stages, since neither is in the template function itself: `renderPrTitle` assembles the string, `schemaValidationStage` enforces `type(scope): outcome` (single line, `type` or `type(scope)` prefix, non-empty description — `schema-validation.ts:28`'s CONVENTIONAL_FORMAT_PATTERN, driven by `policy.limits.prTitle.format`), and `lengthLimitsStage` enforces ≤72 from `policy.limits.prTitle.maxChars`. So 'the PR-title template enforces' is true of the render-then-lint pipeline the template is used inside, which is how every phase-17 template is specified (roadmap/17 §Templates: 'length/section enforcement pulled from `CommunicationPolicy`'). One residual worth naming rather than hiding: the exact 72/73-char boundary pair is written for `commit_subject`, not `pr_title`; the `pr_title` over-length case at templates.test.ts:83-86 is well past the boundary rather than one char over it. Because both kinds resolve to the same policy entry through the same stage, this is a duplicate-coverage gap, not a guarantee gap — an S-sized addition if a reviewer wants the literal boundary pair on `pr_title` too."
+    },
+    {
+      "index": 7,
+      "text": "`packages/renderer`'s `package.json` carries no HTTP-client or VCS-host SDK dependency — a static manifest check proving the Goal's \"never calls a PR/hosting API\" claim structurally, not just by test absence.",
+      "textSha256": "03911579b9fc35ec9868f13a2a7a2001ef573ff2b712528ee8205270eb5e43d7",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 803 — '  ✓  @crabgic/renderer  src/manifest.test.ts (2 tests) 8ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/manifest.test.ts:41-43",
+          "quotedAssertion": "packages/renderer/src/manifest.test.ts:42 — 'expect(Object.keys(manifest.dependencies ?? {})).toEqual([\"@crabgic/contracts\"]);'. This exact-equality on the whole runtime dependency list is the load-bearing assertion, and it is stronger than the criterion asks for: ANY added runtime dependency fails it, whether or not its name matches a denylisted substring."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/manifest.test.ts:45-56",
+          "quotedAssertion": "packages/renderer/src/manifest.test.ts:50-54 — 'for (const name of allDependencyNames) {' / 'const lowerName = name.toLowerCase();' / 'for (const disallowed of DISALLOWED_DEPENDENCY_SUBSTRINGS) {' / 'expect(lowerName.includes(disallowed)).toBe(false);' across `dependencies` AND `devDependencies`, with the denylist at :21-33 ('axios', 'node-fetch', 'undici', 'got', 'superagent', 'octokit', '@octokit', 'gitlab', 'bitbucket', 'github', '@modelcontextprotocol'). Vacuity note: this loop asserts nothing if the name list is empty — it is not, because :42 pins `dependencies` to exactly one entry, so the loop always executes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/manifest.test.ts:16",
+          "quotedAssertion": "packages/renderer/src/manifest.test.ts:16 — 'const PACKAGE_JSON_PATH = join(dirname(fileURLToPath(import.meta.url)), \"..\", \"package.json\");' with :36 'const manifest = JSON.parse(readFileSync(PACKAGE_JSON_PATH, \"utf8\")) as {'. The check reads the real on-disk manifest, never a copy of its contents embedded in the test — the difference between a static manifest check and a restatement of what the manifest was expected to say."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/renderer/package.json",
+          "quotedAssertion": "'\"dependencies\": {' / '\"@crabgic/contracts\": \"0.0.0\"' / '},' / '\"devDependencies\": {' / '\"fast-check\": \"4.9.0\"' / '}' — the whole dependency surface, two entries. Transitive check done for this closeout and recorded because the manifest test cannot see it: `packages/contracts/package.json`, the sole runtime dependency, declares only `zod` 4.4.3 and `zod-to-json-schema` 3.25.2 (plus `fast-check` as a devDependency), so no HTTP client reaches `packages/renderer` by that route either."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md:400-402 (Gap 6's ruling) — '**No VCS-host (GitHub/GitLab/Bitbucket) connector exists or will ever be added**; `packages/renderer` carries no HTTP-client or VCS-host SDK dependency, enforced by a static manifest-check exit criterion.' Ledger and criterion agree verbatim; this box is the ruling's named enforcement point, and the ruling lists 17 among the phases it binds."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-17/closeout-c7-manifest-check.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  2 passed (2)' — scoped local re-run at the closeout commit, `--reporter=verbose`, naming both cases."
+        }
+      ],
+      "notes": "Two limits of the check, stated so the tick is not read as more than it is. (a) It is a NAME-substring denylist over this package's own manifest; it cannot see a transitive HTTP client. That hole is closed here by inspection rather than by the test — `@crabgic/contracts` is the only runtime dependency and it pulls only `zod`/`zod-to-json-schema` — and the inspection is recorded above rather than left implicit. (b) It is a manifest check, not a call-graph check: it proves no HTTP/VCS SDK is DECLARED, which is exactly what the criterion's words ask ('a static manifest check … structurally, not just by test absence'), and it does not by itself prove the package makes no `node:https` call. Stale-evidence flag, not a defect: `docs/evidence/phase-17/README.md`'s exit-criterion-7 row still quotes the manifest as `dependencies: { \"@eo/contracts\": \"0.0.0\" }` — a pre-rename artifact from the original build; at HEAD it is `@crabgic/contracts`, and the test asserts the current name. Left unedited per the pass rule against fixing findings in the same pass."
+    }
+  ]
+}

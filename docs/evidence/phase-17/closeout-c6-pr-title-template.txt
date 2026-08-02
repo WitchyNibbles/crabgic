@@ -1,0 +1,53 @@
+# Captured (UTC): 2026-08-02T10:13:40Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: npx vitest run packages/renderer/src/templates/templates.test.ts packages/renderer/src/schema-validation.test.ts packages/renderer/src/length-limits.test.ts packages/git-engine/src/commit-renderer.test.ts --coverage.enabled=false --reporter=verbose
+# ---- verbatim output below ----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p17
+
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows a commit subject at exactly the 72-char boundary 3ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks a commit subject one char over the 72-char boundary 1ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows a review comment at exactly the 6-line boundary 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks a review comment one line over the 6-line boundary 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks trailing whitespace on a line 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows text with no trailing whitespace 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > reads limits from the policy argument, not a hardcoded constant 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — commit_subject / pr_title format > allows a well-formed conventional commit subject 2ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — commit_subject / pr_title format > allows a scopeless conventional subject 1ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — commit_subject / pr_title format > blocks a subject with no colon separator 1ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — commit_subject / pr_title format > blocks a multi-line pr_title 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — pr_body sections > allows a fully-shaped pr_body 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — pr_body sections > blocks an unknown section label 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — pr_body sections > blocks a missing required section 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — jira_milestone_comment sections > allows a fully-shaped milestone comment 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — jira_milestone_comment sections > blocks an unknown field 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — review_comment shape > allows a fully-shaped review comment 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — review_comment shape > blocks a missing shape component 0ms
+ ✓ |@crabgic/renderer| src/schema-validation.test.ts > schemaValidationStage — structural no-op kinds > is a no-op for branch_name, commit_body, grafana_annotation 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderJiraMilestoneComment > assembles the Outcome/Evidence/Risk/Next/Ref shape and passes lint 7ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderJiraMilestoneComment > over-length fixture is blocked by lint (work item 6 failing-first) 1ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderGrafanaAnnotation > assembles the pipe-delimited shape and passes lint 1ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderGrafanaAnnotation > over-length fixture is blocked by lint 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderPrTitle > enforces ≤72 chars and 'type(scope): outcome', golden-proven against the commit-subject convention 1ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderPrTitle > renders without a scope 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderPrTitle > over-length fixture is blocked by lint 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderPrBody > assembles the Outcome/Validation/Risk/Tracking shape and passes lint 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderPrBody > over-length fixture is blocked by lint 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderReviewComment > assembles the finding/evidence/action shape and passes lint 0ms
+ ✓ |@crabgic/renderer| src/templates/templates.test.ts > renderReviewComment > over-length fixture is blocked by lint 0ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles type(scope): outcome 2ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > omits the scope parens when scope is absent 0ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles a 4-line Why/Risk/Compat/Verification body 1ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > renders a clean subject+body through 17's renderWithRegeneration() 7ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks on an over-long subject (never reaches the body render at all) 1ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body carries an attribution leak, even though the subject alone is clean 1ms
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body exceeds the 5-line limit 0ms
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  12:13:41
+   Duration  955ms (transform 1.80s, setup 0ms, import 2.70s, tests 43ms, environment 1ms)
+
+# ---- end of output ----
+# exit status: 0
