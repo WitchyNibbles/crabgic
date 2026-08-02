@@ -251,8 +251,13 @@ above, so its test counts and coverage figures are historical.
       — **Evidence (2026-08-02):** `packages/supervisor/src/intake/envelope-builder.test.ts:41`
       (two-build byte-identical), `:127` (the named fast-check property, 200 runs, stability +
       perturbation-sensitivity), `:58` (one-field mutation);
-      `packages/supervisor/src/intake/amendment.test.ts:54` (distinct hash, ChangeSet repointed, envelope
-      durably stored); `packages/cli/src/approval/durable-approval-ledger.test.ts:77` (the phase's own
+      `packages/supervisor/src/intake/amendment.test.ts:251` (the distinct-hash bearer —
+      `materialChange === true` against a resolvable previous envelope, which by `amendment.ts:154`/`:200`
+      is `hashEnvelopeContent(candidate) !== previous.canonicalHash`), `:246` (its falsifying
+      counterpart: byte-identical content reports `false`), `:193` (the hash-to-hash unit pair), `:72`
+      (ChangeSet repointed, new envelope durably stored). The originally-cited `:71` was dropped on
+      review as a vacuous bearer — it compares a `sha256:` hash against a testkit UUID and so cannot
+      fail; see the index's notes. `packages/cli/src/approval/durable-approval-ledger.test.ts:77` (the phase's own
       "envelope-tamper / amendment fixture" — the prior token fails against the amended digest);
       `packages/cli/src/intake/contract-approve-handler.test.ts:242` (the digest is re-derived from the
       ChangeSet's current envelope, which is what makes a repoint invalidate the token in the real call

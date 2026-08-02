@@ -3,7 +3,7 @@
   "phase": "11",
   "roadmapFile": "roadmap/11-intake-contract-approval.md",
   "pass": {
-    "date": "2026-08-02",
+    "date": "2026-08-01",
     "agent": "criteria-closeout pass, batch 2 (phase 11)",
     "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
   },
@@ -45,7 +45,7 @@
         {
           "kind": "test",
           "ref": "packages/cli/src/intake/intake.e2e.test.ts:153",
-          "quotedAssertion": "packages/cli/src/intake/intake.e2e.test.ts:153-155 — 'expect(commandResult.outcome.artifacts.changeSet.state).toBe(\"awaiting_approval\"); expect(commandResult.standing?.status).toBe(\"approved\"); expect(changeSets.get(changeSetId)?.state).toBe(\"ready\");' — the request → contract → approval leg over the STANDING-approval path (ledger Gap 18). :203-218 exercises the other activation path in the same file, minting a real token and putting it through `runContractApprove`."
+          "quotedAssertion": "packages/cli/src/intake/intake.e2e.test.ts:153-155 — 'expect(commandResult.outcome.artifacts.changeSet.state).toBe(\"awaiting_approval\"); expect(commandResult.standing?.status).toBe(\"approved\"); expect(changeSets.get(changeSetId)?.state).toBe(\"ready\");' — the request → contract → approval leg over the STANDING-approval path (ledger Gap 18). :203-218 exercises the other activation path in the same file, minting a real token and putting it through `runContractApprove` — as the replay-REFUSAL fixture, so it evidences that the token path is wired and guarded, not a successful token approval. The positive token-path evidence is unit-level: contract-approve-handler.test.ts:274 (approves to `ready`) and :318 (the seal it journals). The criterion does not demand a per-path E2E."
         },
         {
           "kind": "artifact",
@@ -133,8 +133,23 @@
         },
         {
           "kind": "test",
-          "ref": "packages/supervisor/src/intake/amendment.test.ts:54",
-          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:54-76 — 'produces a new, distinctly-hashed envelope and repoints the ChangeSet's authorizationEnvelopeId': 'expect(result.envelope.canonicalHash).not.toBe(seed.authorizationEnvelopeId); expect(changeSets.get(seed.id)?.authorizationEnvelopeId).toBe(result.envelope.id); expect(envelopes.get(result.envelope.id)).toEqual(result.envelope);'"
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:251",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:251-280 — 'reports true when any field of the content differs': a previous envelope is really built and stored (`envelopes.put(original)`) with the ChangeSet pointing at it, then amended with `content({ ownedPaths: [\"src/widened\"] })`, giving ':280 expect(result.materialChange).toBe(true);'. By `amendment.ts:154-155` that flag is `isMaterialEnvelopeChange(previous.canonicalHash, options.content)`, i.e. `hashEnvelopeContent(candidate) !== previousHash` (amendment.ts:200-205) — and the new envelope's own `canonicalHash` IS `hashEnvelopeContent(content)`. So this asserts, one named two-line indirection away, that the amended envelope's hash differs from the prior envelope's hash. This is the criterion's 'distinct hash' bearer."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:246",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:216-246 — the falsifying counterpart, same fixture shape with a resolvable previous envelope: re-submitting byte-identical content gives ':246 expect(result.materialChange).toBe(false);'. This is what makes :280 mean something — the flag tracks the content, and is not stuck at true."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:193",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:193-201 — the indirection's own unit pair, comparing hash to hash directly: ':195 expect(isMaterialEnvelopeChange(hashEnvelopeContent(c), c)).toBe(false);' and ':200 expect(isMaterialEnvelopeChange(previous, content({ prohibitedActions: [\"x\"] }))).toBe(true);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:72",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:72-76 — the repointing half, cited ONLY for that: 'expect(changeSets.get(seed.id)?.authorizationEnvelopeId).toBe(result.envelope.id); expect(envelopes.get(result.envelope.id)).toEqual(result.envelope);' — the ChangeSet now names the new envelope and that envelope is durably resolvable, which is what lets `contract.approve` re-derive the digest server-side. See this criterion's notes for why the `:71` line of the same test is NOT cited."
         },
         {
           "kind": "test",
@@ -162,7 +177,7 @@
           "quotedAssertion": "'Test Files 3 passed (3) / Tests 27 passed (27)' — scoped local re-run at the closeout base commit"
         }
       ],
-      "notes": "Honest seam: the two clauses are asserted separately rather than composed into one amend-then-replay test. 'Distinct hash' is amendment.test.ts:71; 'invalidates the prior token' is durable-approval-ledger.test.ts:77, the phase's own named amendment fixture, which supplies the amended digest directly instead of obtaining it from `amendEnvelope`. What links them in production is asserted too, at contract-approve-handler.test.ts:242: the digest a token is checked against is re-derived from the ChangeSet's CURRENT envelope, so a repointed `authorizationEnvelopeId` (amendment.test.ts:73) mechanically invalidates any token bound to the old hash. Recorded rather than glossed."
+      "notes": "CITATION CORRECTED 2026-08-02, after review of PR #60. This record first cited `amendment.test.ts:71` — 'expect(result.envelope.canonicalHash).not.toBe(seed.authorizationEnvelopeId)' — as the 'distinct hash' bearer. That assertion is VACUOUS and has been dropped as a bearer: it compares a `sha256:<hex64>` against a testkit UUID (`buildChangeSet` draws `authorizationEnvelopeId` from the fixture id provider, packages/testkit/src/fixtures/change-set.ts:12), so the two values can never be equal and the expectation cannot fail whatever amendment does. It is also the wrong pair — an envelope hash against a ChangeSet's envelope ID field. The clause is genuinely evidenced, so this is a citation correction and not an UNMET: the bearers are now :251-280 (with :246 as its falsifying counterpart) and the :193-201 unit pair. Generalised by the reviewer into a wave-wide rule: a cross-type `.not.toBe` — hash vs UUID, id vs digest — is a silent vacuity pattern, because an inequality between values of different formats always passes. `amendment.test.ts:71` is left unchanged in the tree (fixing it is not this pass's job); strengthening it to compare against the PREVIOUS envelope's `canonicalHash` is a suggested follow-up.\n\nHonest seam, unchanged: the criterion's two clauses are asserted separately rather than composed into one amend-then-replay test. 'Invalidates the prior token' is durable-approval-ledger.test.ts:77, the phase's own named amendment fixture, which supplies the amended digest directly instead of obtaining it from `amendEnvelope`. What links the two in production is asserted at contract-approve-handler.test.ts:242: the digest a token is checked against is re-derived from the ChangeSet's CURRENT envelope, so the repoint at amendment.test.ts:72-73 mechanically invalidates any token bound to the old hash."
     },
     {
       "index": 4,
