@@ -226,7 +226,9 @@ jobs:
       # The criteria-closeout index (`docs/evidence/criteria-closeout/
       # phase-NN.json`) is where each roadmap phase's ticked exit criteria
       # record their citations. Validated here so a record cannot drift from
-      # the phase file it describes: the check re-hashes every criterion's
+      # the phase file it describes: it requires exactly one `## Exit criteria`
+      # section per phase file (located fence-aware — a decoy section made every
+      # other check below read the wrong criteria entirely), re-hashes every criterion's
       # verbatim text and requires that text to account for the WHOLE checkbox
       # item (prefix match, with the remainder constrained to the `— **`
       # citation annotation — a bare prefix match would let a record pin a

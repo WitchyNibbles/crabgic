@@ -115,7 +115,10 @@ export function deriveBaseline() {
   for (const file of phaseFiles(DEFAULT_REVISION)) {
     const phase = /^roadmap\/(\d{2})-/.exec(file)[1];
     const pin = PRE_CLOSEOUT_REVISIONS[phase] ?? { rev: DEFAULT_REVISION, note: DEFAULT_NOTE };
-    const checkboxes = parseExitCriteriaCheckboxes(showBlob(pin.rev, file));
+    const { items: checkboxes, problems } = parseExitCriteriaCheckboxes(showBlob(pin.rev, file));
+    if (problems.length > 0) {
+      throw new Error(`${file} at ${pin.rev} ${problems.join("; ")}`);
+    }
     if (checkboxes === undefined || checkboxes.length === 0) {
       throw new Error(`${file} at ${pin.rev} has no "## Exit criteria" checkbox items`);
     }

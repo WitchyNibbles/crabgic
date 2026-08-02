@@ -71,6 +71,7 @@ validator stayed green. A defect record must carry:
 
 | Element | Recognised as | Why it is checked |
 |---|---|---|
+| a real file | not a directory, not a symlink | `existsSync` alone let a **directory** named `NN-slug.md` pass — and then reading it threw `EISDIR` and took the validator down |
 | the criterion, verbatim | `**Criterion (verbatim):**` then a `> …` blockquote **equal to the record's `text`** | the one part that cannot be boilerplate; it binds this file to this box |
 | the phase | `**Phase:** NN — …` | convention, not enforced |
 | a severity | `**Severity:** …` or `## Severity` | an unrated defect cannot be triaged |
@@ -103,7 +104,16 @@ records do not classify the same situation three different ways.
 ## What the validator enforces
 
 1. **Strictness** — unknown or missing keys fail. A typo'd `citation` cannot silently record nothing.
-2. **The wording pin** — `sha256(text)` must match, *and* `text` must account for the **whole**
+2. **One real `## Exit criteria` section** — a phase file must contain **exactly one**, and the
+   parser blanks fenced code blocks before looking, so a `## Exit criteria` line inside a ```
+   example is not mistaken for it. Criterion-shaped `- [ ]` lines outside the section fail too.
+   This sits first among the content checks because everything below is downstream of it: the
+   parser used to read only the **first** such section, so a decoy inserted earlier in the file —
+   mirroring the record exactly — let the **real** section be fraudulently ticked and wholly
+   rewritten with the validator reporting **zero errors**. One duplicated heading bypassed the
+   baseline manifest, the wording pin, tick discipline and the two-way cross-check at the same
+   time, because none of them ever looked at the real section.
+3. **The wording pin** — `sha256(text)` must match, *and* `text` must account for the **whole**
    checkbox item in the phase file: it must be that item's prefix, and whatever follows must be
    empty or start with `— **` (the citation annotation, `— **Evidence …**`). Both halves are
    load-bearing. A bare prefix match would let a record pin a harmless opening substring and leave
@@ -112,7 +122,7 @@ records do not classify the same situation three different ways.
    it (`— suite \`install.matrix.test\``) escaped the hash — 95 of the roadmap's 211 criteria
    contain an internal em dash, and zero contain `— **`. A criterion reworded to make it tickable
    fails here.
-3. **Two-way agreement with the roadmap** — checkbox count equals criteria count, and each box's
+4. **Two-way agreement with the roadmap** — checkbox count equals criteria count, and each box's
    `[x]`/`[ ]` state equals its record's `ticked`. Within a phase that has a record, a box ticked
    without a matching entry fails, and so does a record claiming a tick the file does not have.
    A phase file that *cites* `phase-NN.json` without that file existing is reported, so ticking
@@ -121,18 +131,18 @@ records do not classify the same situation three different ways.
    other check is anchored on a record existing, so ticking all seven of `roadmap/13`'s boxes and
    writing nothing passed. Phase **23** is the single grandfathered exemption (closed and evidenced
    against `release-e2e` run 30250453824 before this index existed); the list is closed.
-4. **The frozen baseline** — every criterion's text must also hash to its entry in
+5. **The frozen baseline** — every criterion's text must also hash to its entry in
    `criteria-baseline.json` (see below). Checks 2 and 3 compare the record against the phase file
    **in the same commit**, so co-editing the checkbox and the record defeated both at once; the
    baseline is the one anchor that does not move when the commit under review moves.
-5. **Tick discipline** — `ticked` is derived from the classification; every tick carries ≥1 citation;
+6. **Tick discipline** — `ticked` is derived from the classification; every tick carries ≥1 citation;
    every `WORDING-MISMATCH` carries a before/after whose **`before` is the criterion's own pinned
    `text`** (whitespace-normalized), because the protocol leaves the original wording in the phase
    file and puts the correction in the annotation — so `before` is, by construction, what the box
    still says. Every `UNMET` names a defect record that is a **real defect record**, not merely a
    file that exists: non-empty, quoting its criterion verbatim in a blockquote, stating a severity,
    and proposing a remedy with S/M/L sizing.
-6. **Citations resolve** — `test` and `artifact` refs are repository paths (with an optional
+7. **Citations resolve** — `test` and `artifact` refs are repository paths (with an optional
    `:line` or `:line-line` suffix) and must resolve to a **regular file inside the repository
    root**. A directory ref, an absolute path and a `..` escape all fail; so does a **symlink**,
    whether cited directly or sitting in a parent directory, because `existsSync`/`statSync` follow

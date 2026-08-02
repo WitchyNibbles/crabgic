@@ -17,8 +17,15 @@
  * journal entry, or committed artifact." The closeout pass applies that rule
  * to itself, and this check is what keeps the resulting records from becoming
  * the very thing they exist to prevent — a self-reported claim nothing
- * verifies. Concretely it makes six drifts impossible to land quietly:
+ * verifies. Concretely it makes seven drifts impossible to land quietly:
  *
+ *   0. A phase file with more than one `## Exit criteria` section. Listed
+ *      first because every check below is downstream of a single parse: it
+ *      read only the FIRST such section, so a decoy inserted earlier in the
+ *      file let the REAL section be fraudulently ticked and wholly rewritten
+ *      with nothing reported at all. The heading match is fenced-code aware
+ *      too, so a `## Exit criteria` inside a ``` example is not mistaken for
+ *      the real one, and criterion-shaped lines outside the section fail.
  *   1. A criterion's wording being weakened to make it tickable. Each record
  *      pins `sha256(text)` AND requires that verbatim text to still be the
  *      prefix of a real checkbox item in the phase file — with the remainder
@@ -205,19 +212,87 @@ function checkKeys(errors, where, value, spec) {
 }
 
 /**
+ * Blanks the contents of fenced code blocks, keeping the line count intact.
+ *
+ * Adversarial-review finding, round 5: the heading match was not fence-aware,
+ * so a `## Exit criteria` line inside a ``` block could be picked up as the
+ * section start and the illustrative checkbox lines under it read as real
+ * criteria. Phase files legitimately contain fenced markdown examples, so this
+ * has to be handled rather than banned.
+ */
+function blankFencedBlocks(markdown) {
+  let openFence;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const fence = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+      if (openFence === undefined) {
+        if (fence === null) return line;
+        openFence = fence[1];
+        return "";
+      }
+      if (fence !== null && fence[1][0] === openFence[0] && fence[1].length >= openFence.length) {
+        openFence = undefined;
+      }
+      return "";
+    })
+    .join("\n");
+}
+
+const EXIT_CRITERIA_HEADING = /^##\s+Exit criteria\s*$/;
+const CHECKBOX_ITEM = /^\s*-\s+\[([ xX])\]\s?(.*)$/;
+
+/**
  * Splits a phase file's `## Exit criteria` section into one entry per
  * checkbox item, joining wrapped continuation lines and collapsing runs of
  * whitespace so a hard-wrapped criterion compares equal to its one-line
- * source. Returns `[{ checked, text }]` in file order.
+ * source.
+ *
+ * @returns {{ items: {checked: boolean, text: string}[] | undefined, problems: string[] }}
+ *   `items` is undefined when the section is missing OR when the file's
+ *   structure cannot be trusted — the caller must not fall back to "no section
+ *   found, carry on".
+ *
+ * THE SECTION MUST BE UNIQUE, and that is the load-bearing part. This used to
+ * be `split(/^## Exit criteria$/m)[1]`, which reads only the FIRST such
+ * section. A reviewer inserted a decoy section earlier in the phase file,
+ * mirroring the record exactly, and then fraudulently ticked and wholly
+ * rewrote the REAL section's `UNMET` criterion — the validator reported zero
+ * errors. Every other defense in this file (the baseline manifest, the wording
+ * pin, tick discipline, the two-way cross-check) is downstream of this parse,
+ * so all of them were bypassed at once by one duplicated heading. A decoy
+ * placed AFTER the real section is the same attack mirrored, and a
+ * criterion-shaped line outside the section is its weaker cousin; both are
+ * rejected too.
  */
 export function parseExitCriteriaCheckboxes(markdown) {
-  const afterHeading = markdown.split(/^##\s+Exit criteria\s*$/m)[1];
-  if (afterHeading === undefined) return undefined;
-  const section = afterHeading.split(/^##\s+/m)[0];
+  const problems = [];
+  const lines = blankFencedBlocks(markdown).split("\n");
+
+  const headings = [];
+  lines.forEach((line, index) => {
+    if (EXIT_CRITERIA_HEADING.test(line)) headings.push(index);
+  });
+  if (headings.length === 0) return { items: undefined, problems };
+  if (headings.length > 1) {
+    problems.push(
+      `has ${String(headings.length)} "## Exit criteria" headings (lines ${headings.map((i) => String(i + 1)).join(", ")}); exactly one is allowed — a duplicate section is a decoy that this parser would read INSTEAD of the real one, which silently bypasses every other check in this validator`,
+    );
+    return { items: undefined, problems };
+  }
+
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^##\s+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
 
   const items = [];
-  for (const rawLine of section.split("\n")) {
-    const checkbox = /^\s*-\s+\[([ xX])\]\s?(.*)$/.exec(rawLine);
+  for (const rawLine of lines.slice(start, end)) {
+    const checkbox = CHECKBOX_ITEM.exec(rawLine);
     if (checkbox !== null) {
       items.push({ checked: checkbox[1].toLowerCase() === "x", text: checkbox[2] });
       continue;
@@ -228,10 +303,25 @@ export function parseExitCriteriaCheckboxes(markdown) {
       items[items.length - 1].text += ` ${rawLine.trim()}`;
     }
   }
-  return items.map((item) => ({
-    checked: item.checked,
-    text: item.text.replace(/\s+/g, " ").trim(),
-  }));
+
+  const strays = [];
+  lines.forEach((line, index) => {
+    if ((index < start || index >= end) && CHECKBOX_ITEM.test(line)) strays.push(index + 1);
+  });
+  if (strays.length > 0) {
+    problems.push(
+      `has ${String(strays.length)} checkbox item(s) outside its "## Exit criteria" section (line(s) ${strays.map(String).join(", ")}) — a criterion-shaped line elsewhere in the file is either a decoy or a criterion nobody is recording`,
+    );
+    return { items: undefined, problems };
+  }
+
+  return {
+    items: items.map((item) => ({
+      checked: item.checked,
+      text: normalizeCriterionText(item.text),
+    })),
+    problems,
+  };
 }
 
 /**
@@ -500,9 +590,15 @@ export function validateCloseoutRecord(record, ctx) {
   if (!existsSync(roadmapPath)) {
     errors.push(`${fileName}: roadmapFile ${record.roadmapFile} does not exist`);
   } else {
-    checkboxes = parseExitCriteriaCheckboxes(readFileSync(roadmapPath, "utf8"));
+    const parsed = parseExitCriteriaCheckboxes(readFileSync(roadmapPath, "utf8"));
+    for (const problem of parsed.problems) {
+      errors.push(`${fileName}: ${record.roadmapFile} ${problem}`);
+    }
+    checkboxes = parsed.items;
     if (checkboxes === undefined) {
-      errors.push(`${fileName}: ${record.roadmapFile} has no "## Exit criteria" section`);
+      if (parsed.problems.length === 0) {
+        errors.push(`${fileName}: ${record.roadmapFile} has no "## Exit criteria" section`);
+      }
     } else if (checkboxes.length !== record.criteria.length) {
       errors.push(
         `${fileName}: ${String(record.criteria.length)} criteria recorded but ${String(checkboxes.length)} checkbox items in ${record.roadmapFile}`,
@@ -614,6 +710,12 @@ export function validateCloseoutRecord(record, ctx) {
             errors.push(
               `${where}: defectRef ${criterion.defectRef} is a symlink, not a committed defect record`,
             );
+          } else if (!statSync(defectAbs).isFile()) {
+            // Round-5 finding: this check was `existsSync` alone, unlike the
+            // citation path check beside it, so a DIRECTORY named `NN-slug.md`
+            // satisfied "the defect record exists" — and then reading it threw
+            // EISDIR and took the whole validator down.
+            errors.push(`${where}: defectRef ${criterion.defectRef} is not a file`);
           } else {
             checkDefectRecordShape(
               errors,
@@ -741,6 +843,12 @@ function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
     const expected = `phase-${phase[1]}.json`;
     if (presentFileNames.includes(expected)) continue;
 
+    // Records get their own structural report from `validateCloseoutRecord`;
+    // this is the only place a phase file WITHOUT one is examined at all, and a
+    // decoy section planted before a phase is closed must not lie in wait.
+    const parsed = parseExitCriteriaCheckboxes(text);
+    for (const problem of parsed.problems) problems.push(`roadmap/${name} ${problem}`);
+
     if (text.includes(`${CLOSEOUT_DIR}/${expected}`)) {
       problems.push(
         `roadmap/${name} cites ${CLOSEOUT_DIR}/${expected}, but that closeout record does not exist`,
@@ -748,7 +856,7 @@ function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
       continue;
     }
     if (PRE_INDEX_TICKED_PHASES.includes(phase[1])) continue;
-    const ticked = (parseExitCriteriaCheckboxes(text) ?? []).filter((box) => box.checked).length;
+    const ticked = (parsed.items ?? []).filter((box) => box.checked).length;
     if (ticked > 0) {
       problems.push(
         `roadmap/${name} has ${String(ticked)} ticked exit criteria and no ${CLOSEOUT_DIR}/${expected} — a tick with no closeout record behind it is the aspirational bookkeeping roadmap/README.md's completion ledger refuses`,

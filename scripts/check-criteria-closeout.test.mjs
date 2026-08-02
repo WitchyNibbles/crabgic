@@ -11,6 +11,10 @@
  *
  * The validator's teeth, and why each one is here:
  *
+ * - Exactly one `## Exit criteria` section per phase file, located
+ *   fence-aware. Everything else here is downstream of that one parse: a
+ *   decoy section inserted earlier in the file let the REAL section be
+ *   fraudulently ticked and wholly rewritten, with zero errors reported.
  * - `.strict()` at every level. A typo'd key (`citation` for `citations`,
  *   `defect` for `defectRef`) would otherwise be silently dropped and the
  *   record would validate having recorded nothing.
@@ -163,6 +167,7 @@ function fixtureRoot({
   tickedB = false,
   criterionAText = CRITERION_A,
   baselineTexts,
+  phaseFileLines,
 } = {}) {
   const root = mkdtempSync(join(tmpdir(), "closeout-meta-"));
   tmpDirs.push(root);
@@ -171,19 +176,21 @@ function fixtureRoot({
   mkdirSync(join(root, "packages", "x", "src"), { recursive: true });
   writeFileSync(
     join(root, "roadmap", "99-fixture-phase.md"),
-    [
-      "# Phase 99 — fixture",
-      "",
-      "## Exit criteria",
-      "",
-      `- [${tickedA ? "x" : " "}] ${criterionAText} — **Evidence (2026-08-01):** cited.`,
-      `- [${tickedB ? "x" : " "}] ${CRITERION_B}`,
-      "",
-      "## Risks & open questions",
-      "",
-      "- none",
-      "",
-    ].join("\n"),
+    (
+      phaseFileLines ?? [
+        "# Phase 99 — fixture",
+        "",
+        "## Exit criteria",
+        "",
+        `- [${tickedA ? "x" : " "}] ${criterionAText} — **Evidence (2026-08-01):** cited.`,
+        `- [${tickedB ? "x" : " "}] ${CRITERION_B}`,
+        "",
+        "## Risks & open questions",
+        "",
+        "- none",
+        "",
+      ]
+    ).join("\n"),
     "utf8",
   );
   writeBaseline(root, baselineTexts);
@@ -424,6 +431,138 @@ describe("validateCloseoutRecord — the criterion-text pin", () => {
       r.criteria[1].index = 5;
     });
     expect(errors.join("\n")).toContain("index");
+  });
+});
+
+/**
+ * Adversarial-review finding, round 5 — the severe one. Everything the
+ * validator knows about a phase file comes through
+ * `parseExitCriteriaCheckboxes`, and it read only the FIRST `## Exit criteria`
+ * section. So a decoy section, inserted earlier in the file and mirroring the
+ * record exactly, made the parser stop looking before it ever reached the real
+ * one: a reviewer then fraudulently ticked and wholly rewrote the real
+ * section's UNMET criterion and the validator reported ZERO errors. One
+ * `split()[1]` defeated the baseline manifest, the wording pin, tick
+ * discipline and the two-way cross-check simultaneously, because none of them
+ * ever looked at the real section.
+ *
+ * Reported independently by a second reviewer in its fence-blind form: the
+ * heading match was not fenced-code aware either, so a `## Exit criteria` line
+ * inside a ``` block could be picked up as the section start. Same root, so
+ * they are fixed together — the parser now blanks fenced blocks first, then
+ * requires exactly one heading.
+ */
+describe("parseExitCriteriaCheckboxes — one real section, and only one", () => {
+  const decoySection = [
+    "## Exit criteria",
+    "",
+    `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+    `- [ ] ${CRITERION_B}`,
+    "",
+  ];
+  const forgedRealSection = [
+    "## Exit criteria",
+    "",
+    `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+    "- [x] Someone decided this one was fine actually.",
+    "",
+  ];
+
+  it("rejects a decoy `## Exit criteria` section placed BEFORE the real one", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "# Phase 99 — fixture",
+        "",
+        ...decoySection,
+        "## Notes",
+        "",
+        ...forgedRealSection,
+        "## Risks & open questions",
+        "",
+        "- none",
+        "",
+      ],
+    });
+    const errors = errorsFor(() => {}, { root });
+    expect(errors.join("\n")).toContain("Exit criteria");
+    expect(errors.join("\n")).toContain("heading");
+  });
+
+  it("rejects a decoy section placed AFTER the real one — the mirror-image attack", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "# Phase 99 — fixture",
+        "",
+        ...decoySection,
+        "## Notes",
+        "",
+        "## Exit criteria",
+        "",
+        "- [x] A second section nobody parses.",
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("heading");
+  });
+
+  it("rejects checkbox items smuggled outside the `## Exit criteria` section", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "# Phase 99 — fixture",
+        "",
+        "## Test plan",
+        "",
+        "- [x] A criterion-shaped line pretending to be evidence of something.",
+        "",
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("outside");
+  });
+
+  it("ignores a `## Exit criteria` heading and checkbox lines inside a fenced code block", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "# Phase 99 — fixture",
+        "",
+        "The closeout format looks like this:",
+        "",
+        "```markdown",
+        "## Exit criteria",
+        "",
+        "- [x] An illustrative example, not a criterion.",
+        "```",
+        "",
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+        "## Risks & open questions",
+        "",
+        "- none",
+        "",
+      ],
+    });
+    // The fenced heading must be neither the parsed section nor a duplicate.
+    expect(errorsFor(() => {}, { root })).toEqual([]);
+  });
+
+  it("still parses a plain, single-section phase file", () => {
+    const { items, problems } = parseExitCriteriaCheckboxes(
+      ["## Exit criteria", "", "- [x] One.", "- [ ] Two.", "", "## Risks", "", "- none", ""].join(
+        "\n",
+      ),
+    );
+    expect(problems).toEqual([]);
+    expect(items).toEqual([
+      { checked: true, text: "One." },
+      { checked: false, text: "Two." },
+    ]);
   });
 });
 
@@ -856,6 +995,21 @@ describe("validateCloseoutRecord — a defect record must be a defect record", (
     expect(withDefect(noSizing)).toContain("sizing");
   });
 
+  /**
+   * Adversarial-review finding, round 5: the `defectRef` check was `existsSync`
+   * only, unlike the citation path check beside it, so a DIRECTORY named
+   * `NN-slug.md` satisfied "the defect record exists". Worse than passing —
+   * reading it threw `EISDIR` and took the whole validator down with it.
+   */
+  it("rejects a defectRef that resolves to a directory rather than a file", () => {
+    const root = fixtureRoot();
+    const asDir = join(root, CLOSEOUT_DIR, "defects", "99-red-drift-check.md");
+    rmSync(asDir);
+    mkdirSync(asDir, { recursive: true });
+    writeFileSync(join(asDir, "README.md"), defectRecordFor(CRITERION_B), "utf8");
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("not a file");
+  });
+
   it("rejects a defect record that is a symlink — the same escape citations get", () => {
     const root = fixtureRoot();
     const outside = mkdtempSync(join(tmpdir(), "closeout-outside-"));
@@ -927,9 +1081,10 @@ describe("validateAllCloseoutRecords — this repository's own committed records
       expect(entry, `baseline is missing phase ${phase}`).toBeDefined();
       expect(entry.roadmapFile).toBe(`roadmap/${name}`);
       expect(entry.sourceRev).toMatch(/^[0-9a-f]{40}$/);
-      const checkboxes = parseExitCriteriaCheckboxes(
+      const { items: checkboxes, problems } = parseExitCriteriaCheckboxes(
         readFileSync(join(REPO_ROOT, "roadmap", name), "utf8"),
       );
+      expect(problems, `roadmap/${name}: ${problems.join("; ")}`).toEqual([]);
       expect(
         entry.criteria.length,
         `phase ${phase}: baseline records ${String(entry.criteria.length)} criteria, roadmap/${name} now has ${String(checkboxes?.length)}`,
