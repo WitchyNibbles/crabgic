@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 1,
+  "phase": "18",
+  "roadmapFile": "roadmap/18-jira-cloud-adapter.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 4 (connectors)",
+    "headSha": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Plan's Jira flow passes on fakes + cassettes: board → sprint → epic → issue → link → worklog → attachment; ADF/text conversion; transitions; concurrent-edit conflicts.",
+      "textSha256": "976092e71c7a50eee602321d3099bead8dacbcbb3d7f55b246019e5e8a0723dc",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:107-186",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:113 — 'expect(boardOutcome.status).toBe(\"recorded\");' / :123 'expect(sprintOutcome.appliedRevision).toBe(\"10\");' / :132 'expect(epicOutcome.appliedRevision).toBe(\"PROJ-1\");' / :141 'expect(issueOutcome.appliedRevision).toBe(\"PROJ-2\");' / :149 'expect(linkOutcome.status).toBe(\"recorded\");' / :171 'expect(worklogOutcome.appliedRevision).toBe(\"30001\");' / :186 'expect(attachmentOutcome.appliedRevision).toBe(\"40001\");'. PARTIAL evidence: the whole named chain, each step applied through the REAL @crabgic/gateway executeMutationPlan against a real temp-dir JournalStore — on FAKES only."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:151-161",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:152 — 'const markdown = \"Outcome: **linked** the story to its epic.\";' then :153-158 'const commentPlan = resourceClient.comments.planCreate(' / '      \"PROJ-2\",' / '      toADF(markdown),' and :161 'expect(commentOutcome.appliedRevision).toBe(\"50001\");' — the \"ADF/text conversion\" clause, markdown in and a recorded Jira comment out."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:14",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:14 — 'import { toADF } from \"@crabgic/renderer\";'. Cited separately from the assertion above so the provenance is resolvable on its own line: the converter is phase 17's. Phase 18 is the CONSUMER — the safe-subset whitelist is pinned by phase 17's own closeout, and this package's guard calls 17's validator rather than re-deriving it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:190-286",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:245 — 'expect(outcome.status).toBe(\"recorded\");' for the transition (whose target status is resolved server-side from the scripted `transitions` read at :192-198), and :284-285 — 'expect(outcome.status).toBe(\"failed\");' / 'expect(outcome.errorKind).toBe(\"conflict\");' for the 412 `preconditionFailedResponse()` on `issue.update`. The \"transitions\" and \"concurrent-edit conflicts\" clauses — again on fakes."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 368 — ' ✓  @crabgic/connectors-jira  src/testkit/jira-flow.integration.test.ts (3 tests) 78ms'; line 369 — ' ✓  @crabgic/connectors-jira  src/testkit/parameterized-conformance.integration.test.ts (6 tests) 169ms'; run summary ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c1-c2-flow-and-conformance.txt",
+          "quotedAssertion": "'Test Files  4 passed (4)' / '      Tests  99 passed (99)' — scoped local re-run at the closeout base commit; command line and exit status recorded in the file header"
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/18-flow-never-replayed-on-a-cassette.md",
+      "notes": "The fakes half is fully and non-vacuously evidenced — every resource in the named chain, plus ADF conversion, transitions and the 412 conflict, applied through the real mutation pipeline. The \"+ cassettes\" half has no bearer: the only Cloud cassette in the repository (`packages/connectors-jira/src/testkit/fixtures/read-scenario.cassette.json`) is a 7-call READ scenario — projects/boards/sprints/search/get/comments/worklogs — containing no create, no link, no worklog write, no attachment, no transition and no 412. No test replays this flow, or any mutation, from a cassette. Search trail and the alternative reading of \"fakes + cassettes\" are in the defect record. Same root cause as criterion 9's defect, recorded separately because the two criteria fail for different reasons (here: no cassette covers the flow; there: the parity assertion is a tautology)."
+    },
+    {
+      "index": 2,
+      "text": "`JiraResourceClient` conformance suite green against fake-Jira for every in-scope resource.",
+      "textSha256": "a0b06dd34da4ef1c9e944895450ed66f5f9399037737b0e214a90c4d70bef651",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 363 — ' ✓  @crabgic/connectors-jira  src/resource-client/jira-resource-client.test.ts (38 tests) 70ms'; line 366 — ' ✓  @crabgic/connectors-jira  src/resource-client/jira-provider-client.test.ts (22 tests) 41ms'; line 364 — ' ✓  @crabgic/connectors-jira  src/resource-client/jira-mutation-apply-client.test.ts (36 tests) 34ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:40-166",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:53 — 'expect(list).toEqual([{ id: \"10000\", key: \"PROJ\", name: \"Project\" }]);' (projects) / :70 'expect(boards).toEqual([{ id: 1, name: \"Board 1\", type: \"scrum\", projectKey: \"PROJ\" }]);' (boards) / :87 'expect(sprints[0]?.name).toBe(\"Sprint 1\");' (sprints) / :135 'expect(search.issues[0]?.issueType).toBe(\"Epic\");' (epics-as-issues search) / :137 'expect(issue.status.name).toBe(\"To Do\");' / :163 'expect(comments[0]?.properties).toEqual({ marker: \"m1\" });' / :165 'expect(worklogs[0]?.timeSpentSeconds).toBe(3600);'. Typed values are asserted, not merely that a call returned."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:138-146",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:139-146 — 'expect(transitions).toEqual([' / '      {' / '        id: \"31\",' / '        name: \"Start\",' / '        toStatusName: \"In Progress\",' / '        toStatusCategoryKey: \"indeterminate\",' / '      },' / '    ]);' — the transitions read, whose exact projected shape is what criterion 7's server-side done-resolution depends on."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:168-203",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:178 — 'await expect(client.projects.list()).rejects.toMatchObject({ kind: \"validation\" });' on a malformed body, and :201-202 — 'await expect(client.projects.list()).rejects.toBeInstanceOf(ConnectorError);' / 'expect(fake.calls).toHaveLength(0);' on a token-fetch failure. The negative controls: a client that coerced anything into a typed result, or that hit the wire before authenticating, would fail these."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:206-566",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:252-253 — 'expect(plan.requiredCapabilityFlags).toEqual([\"issue creation\"]);' / 'expect(calls).toHaveLength(0);' (plan building is local, no I/O); :386 'expect(plan.requiredCapabilityFlags).toEqual([\"sprint completion\"]);'; :396 'expect(plan.requiredCapabilityFlags).toEqual([\"attachments\"]);'; :262 'expect(assigned.requiredCapabilityFlags).toEqual([\"assignment\"]);'; :270 'expect(reporterChanged.requiredCapabilityFlags).toEqual([\"reporter change\"]);' — the plan-builder half of the surface, per resource, with the P02 capability-flag labels byte-identical to the ledger's Gap 10 ruling."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-provider-client.test.ts:43-165",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-provider-client.test.ts:71 — 'expect(plan.action).toBe(\"issue.create\");' / :84 'expect(plan.action).toBe(\"issue.link\");' / :96 'expect(plan.action).toBe(\"sprint.start\");' / :106 'expect(plan.action).toBe(\"issue.bulkTransition\");' / :130 'expect(plan.action).toBe(\"comment.create\");' — the same resource surface reached through the generic `tracker.*` dispatch adapter 16 registers, not only through the typed interface. :140-143 'await expect(client.get?.({ resource: \"comment\" })).rejects.toMatchObject({' … 'unsupported' is the negative control."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-mutation-apply-client.test.ts:120-133",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-mutation-apply-client.test.ts:130-132 — 'expect(spec.url.pathname).toBe(\"/rest/api/3/issue/PROJ-1/attachments\");' / 'const body = JSON.parse(spec.body ?? \"{}\");' / 'expect(Buffer.from(body.contentBase64, \"base64\").toString()).toBe(\"pdf-bytes\");' — the per-action apply half (`buildRequest`/`parseResponse`/`verify`/`reconcileAmbiguous`) for the attachment resource, whose bytes travel by the staging side channel rather than inside the plan."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts:53-147",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts:87 — 'expect((await apply(boardPlan)).status).toBe(\"recorded\");' / :101 'expect(epicOutcome.appliedRevision).toBe(\"PROJ-1\");' / :132 'expect((await apply(worklogPlan)).appliedRevision).toBe(\"30001\");' — the same conformance chain re-run at :53 under 'describe.each([\"cloud\", \"datacenter\"] as const satisfies readonly JiraDeploymentType[])(', so the Cloud implementation is proven against the interface both 18 and 19 implement."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c1-c2-flow-and-conformance.txt",
+          "quotedAssertion": "'Test Files  4 passed (4)' / '      Tests  99 passed (99)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Scope, recorded so the tick is not read as wider than it is. (a) \"fake-Jira\" is not a separate double class in this package: it is 16's `createFakeProviderTransport` (`@crabgic/gateway`) scripted with Jira REST v3 / Agile payloads, plus `src/testkit/fault-matrix.ts`'s injectable faults — which is what roadmap/18 §Interfaces produced asks for (\"extending 16's fake-provider harness\"), but a reader expecting a `fake-jira.ts` module will not find one. (b) \"every in-scope resource\" is checked against roadmap/18 §In scope's own list: projects, boards (incl. ranking), sprints (incl. start/complete/moveIssues), epics/issues (search/read/create/update/link/rank/transition), comments, links, worklogs, attachments — all present above; epics are issues with `issueType: \"Epic\"`, not a separate namespace (`docs/evidence/phase-18/README.md` §Public interface names). No admin/delete surface exists to conform to, by construction — see criterion 4."
+    },
+    {
+      "index": 3,
+      "text": "Exactly-once via entity-property markers proven under injected POST timeout (no duplicate comments/issues).",
+      "textSha256": "27e491eaf0aa398478a110ed91e1a58691d9e3587205a41e19ecad4b3fd18164",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 367 — ' ✓  @crabgic/connectors-jira  src/resource-client/exactly-once.integration.test.ts (3 tests) 49ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:191-273",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:272 — 'expect(fake.calls.filter((c) => c.method === \"POST\")).toHaveLength(1);' after a `midPostTimeoutFault()` on `comment.create` — the criterion's literal \"no duplicate comments\" clause, counted on the wire. :268-269 'expect(outcome.status).toBe(\"recorded\");' / 'expect(outcome.appliedRevision).toBe(\"60002\");' proves the landed comment was recovered rather than the write being abandoned."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:204-253",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:244 — 'expect(plan.idempotencyKey).toBe(expectedIdempotencyKey);' and :251-252 'commentMarkerReconciler: (key) =>' / '          createJiraEntityPropertyMarkerReconciler(ctx, \"comment\", key),' — the REAL entity-property reconciler, not a stubbed `findByMarker`. This is what makes the recovery non-vacuous: the marker the request stamps and the marker the search looks for are the same string, proven end-to-end. The scripted recovery body at :215 carries an unrelated comment ('{ id: \"60001\", body: {}, properties: {} }, // an unrelated comment — must not match') so a reconciler that returned the first comment it saw would fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:138-180",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:178-179 — 'expect(outcome.status).toBe(\"blocked\");' / 'expect(outcome.errorKind).toBe(\"ambiguous_write\");' when NO marker is found. The fail-closed control: without it, a pipeline that simply retried the POST would satisfy the found-marker case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:106-135",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:119-120 — 'expect(outcome.status).toBe(\"recorded\");' / 'expect(outcome.appliedRevision).toBe(\"PROJ-500\");' for `issue.create`, then :134-135 'expect(replay.status).toBe(\"replayed\");' / 'expect(replay.appliedRevision).toBe(\"PROJ-500\");' — the second identical call resolves from the journal without re-entering the network, i.e. \"no duplicate issues\" across process restarts as well as within one."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c3-c4-exactly-once-and-forged.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  37 passed (37)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "The `issue.create` case at :68-136 overrides `findByMarker` on a real reconciler instance (:95-96 'issueMarkerReconciler.findByMarker = async (marker) =>' / '      marker === plan.idempotencyKey ? \"PROJ-500\" : undefined;'), so on its own it would prove the pipeline's handling rather than the Jira marker mechanism. The `comment.create` case (cited first above) is the one that closes that gap by wiring the real `createJiraEntityPropertyMarkerReconciler` against a scripted `listComments` body; both are cited so the reader can see which half each carries. Both use `@crabgic/gateway`'s real `executeMutationPlan` and a real temp-dir journal, never a mock of the pipeline."
+    },
+    {
+      "index": 4,
+      "text": "Forged delete/admin/impersonation calls fail before network I/O.",
+      "textSha256": "51f1d5382cdf9f58fd0815a4a18592708201d9caad37897982fb0004ecacc508",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 400 — ' ✓  @crabgic/connectors-jira  src/security/preflight-capability-guard.test.ts (34 tests) 15ms'; line 364 — ' ✓  @crabgic/connectors-jira  src/resource-client/jira-mutation-apply-client.test.ts (36 tests) 34ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/security/preflight-capability-guard.test.ts:14-40",
+          "quotedAssertion": "packages/connectors-jira/src/security/preflight-capability-guard.test.ts:32 — 'expect(() => assertAllowedJiraOperation(action)).toThrow(ConnectorError);' and :38 'expect((err as ConnectorError).kind).toBe(\"policy_blocked\");' over the 16-member forged table at :15-30, which includes the criterion's three named families verbatim: '\"issue.delete\",' / '\"user.impersonate\",' / '\"admin.settings.update\",' plus '\"permission-scheme.update\",' / '\"workflow-scheme.update\",' / '\"security-scheme.update\",' / '\"automation-rule.create\",' / '\"raw.request\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/security/preflight-capability-guard.test.ts:42-62",
+          "quotedAssertion": "packages/connectors-jira/src/security/preflight-capability-guard.test.ts:61 — 'expect(() => assertAllowedJiraOperation(action)).not.toThrow();' over the 17 in-scope actions at :43-59. The negative control: a guard that rejected everything would satisfy the forged table while breaking the connector, and this is what forbids that reading."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-mutation-apply-client.test.ts:135-140",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-mutation-apply-client.test.ts:139 — 'expect(() => createJiraMutationApplyClient(deps).buildRequest(plan)).toThrow(ConnectorError);' for a plan carrying a forged `issue.delete`. This is the \"before network I/O\" half made structural rather than incidental: buildRequest is called by the mutation pipeline strictly before its single outbound request call, which is cited on its own line below (packages/gateway/src/mutation-pipeline/mutation-pipeline.ts:213), so a forged action cannot reach the wire even when the typed plan builders are bypassed entirely."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.ts:210-220",
+          "quotedAssertion": "packages/gateway/src/mutation-pipeline/mutation-pipeline.ts:213 — '    response = await deps.httpClient.request({' with :216-217 '      resource: plan.canonicalTarget,' / '      isWrite: true,'. Cited on its own so the ordering claim above is resolvable: this is the single call site the apply-boundary guard sits in front of."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c3-c4-exactly-once-and-forged.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  37 passed (37)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "The \"before network I/O\" clause is evidenced two ways, deliberately. Structurally: `preflight-capability-guard.test.ts` constructs no transport at all (there is no `createFakeProviderTransport` in that file), so nothing in it could have reached a network even if the guard were absent — which on its own would be weak evidence, since a test with no transport proves nothing about a call path that has one. The load-bearing half is therefore the apply-boundary case, where a real `MutationApplyClient` throws inside `buildRequest`, upstream of the pipeline's only `httpClient.request` call. `assertAllowedJiraOperation` additionally gates plan CONSTRUCTION in `src/resource-client/plan-builder.ts`, so the forged action is refused at whichever boundary it reaches first."
+    },
+    {
+      "index": 5,
+      "text": "`JiraWorkflowStage` never-guess proven: fuzzed/unrecognized workflow-status names always resolve to `blocked`, never `done`.",
+      "textSha256": "46e11ffa8e3a31e49ff537bb73b54ff1879bc2f2418fab20787579e3f55b6940",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 374 — ' ✓  @crabgic/connectors-jira  src/workflow/workflow-stage.test.ts (28 tests) 71ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:131-138",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:134-136 — 'fc.property(fc.string(), (statusName) => {' / '        fc.pre(!knownStatusNames.has(statusName.trim().toLowerCase()));' / '        expect(mapJiraStatusToWorkflowStage(statusName, undefined)).toBe(\"blocked\");' — the criterion's clause exactly, for every fuzzed name with no category hint: not merely \"never done\" but positively \"blocked\"."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:109-120",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:113-116 — 'fc.constantFrom<\"new\" | \"indeterminate\" | undefined>(\"new\", \"indeterminate\", undefined),' / '        (statusName, categoryKey) => {' / '          fc.pre(!knownStatusNames.has(statusName.trim().toLowerCase()));' / '          expect(mapJiraStatusToWorkflowStage(statusName, categoryKey)).not.toBe(\"done\");' — the \"never done\" clause extended across every non-done category hint."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:122-129",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:126 — 'expect(mapJiraStatusToWorkflowStage(statusName, \"done\")).toBe(\"done\");' — the ONE case in which an unrecognized name does resolve to `done`, asserted explicitly rather than excluded from the proof. This assertion is the reason this box is a WORDING-MISMATCH and not an unqualified tick; see wordingCorrection."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:27-45",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.test.ts:37 — 'it.each([\"__proto__\", \"constructor\", \"toString\", \"hasOwnProperty\", \"valueOf\"])(' with :41-44 'expect(typeof result).toBe(\"string\");' / 'expect([\"planned\", \"in_progress\", \"blocked\", \"done\"]).toContain(result);' / 'expect(result).toBe(\"blocked\");' — the regression guard for the prototype-chain bug the property test found (a plain-object lookup returned `Object.prototype` for these keys, so `known !== undefined` passed and never-guess was broken by construction). Fixed by making the table a `Map`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:374-381",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:378-380 — 'const plan = await c.issues.planTransition(\"PROJ-1\", \"rev-1\", \"77\", ENVELOPE_ID);' / 'expect(plan.requiredCapabilityFlags).toBeUndefined();' / 'expect(plan.impactClass).toBe(\"reversible\");' against a server-reported transition to the unrecognized status name \"Frobnicating\" with no category. The never-guess rule proven at the CONNECTOR level, not only on the mapper in isolation: an unrecognized name does not become a closing transition."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.ts:8-39",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.ts:20-22 — ' *  - an EXACT known-name match (`KNOWN_STATUS_NAME_TO_STAGE`) always' / ' *    wins, regardless of any category hint.' and :28-34 ' *    transition safety gate (HIGH H2, adversarial-review) depends on' / ' *    this: a real closing transition to a SITE-CUSTOM status name (e.g.' / ' *    \"Ready for Prod\") with Jira'\\''s own `done` category MUST still be' / ' *    recognized as closing — trusting only known NAMES would let exactly' / ' *    that transition bypass the done-evidence gate while still closing' / ' *    the issue for real on the wire.' — the documented rationale the correction rests on."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c5-c6-never-guess-and-comparator.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  34 passed (34)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "wordingCorrection": {
+        "before": "`JiraWorkflowStage` never-guess proven: fuzzed/unrecognized workflow-status names always resolve to `blocked`, never `done`.",
+        "after": "`JiraWorkflowStage` never-guess proven: a fuzzed/unrecognized workflow-status NAME never resolves to `done` on the name alone — with no category hint it always resolves to `blocked`, and with a `new`/`indeterminate` hint it resolves to `planned`/`in_progress`. There is exactly one case in which an unrecognized name resolves to `done`: when Jira's own `statusCategory.key` is `done`. That is deliberate and is the safer direction, not the weaker one — `statusCategory.key` is a fixed, Jira-computed three-value enum chosen by a workflow admin, not attacker-shaped free text, and criterion 7's closing-transition gate depends on it: a real closing transition to a site-custom status name (\"Ready for Prod\") must still be recognized as closing, or it would bypass the done-evidence gate while closing the issue for real. The correction matches roadmap/18 §In scope's own phrasing of the rule — \"an unrecognized remote status always resolves to `blocked`, never SILENTLY to `done`\" — which the exit criterion restates without the word \"silently\"."
+      },
+      "notes": "Why this is a precision correction and not a lost guarantee, stated plainly because the protocol forbids the latter. Implementing the criterion's literal words would make the system LESS safe, not more: `mapJiraStatusToWorkflowStage` feeds `issues.planTransition`'s done-ness resolution, so mapping a Jira-classified `done` status with a site-custom NAME to `blocked` would drop both the `closing transitions` capability flag and `assertDoneTransitionHasEvidence`, while the POST still closed the issue. The guarantee the box actually carries — this connector never invents `done` out of a name it does not recognize — is fully proven above, at both the mapper and the connector level. The phase file's own §In scope sentence carries the word \"silently\"; the exit criterion drops it. The check was not changed to fit the words, and the words in the phase file are preserved verbatim with the correction appended as a dated annotation."
+    },
+    {
+      "index": 6,
+      "text": "Revision comparator detects a seeded material remote edit between two milestone polls and produces the amendment-review signal (evidence: property + integration fixture).",
+      "textSha256": "6bbaa2245dd8d5fc294f6ea3ec9fb1a77a69757a78c25e8e1af6dfabb320a26f",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/intake/revision-comparator.test.ts:57-67",
+          "quotedAssertion": "packages/connectors-jira/src/intake/revision-comparator.test.ts:59-64 — 'fc.property(nonBlankString, nonBlankString, (revisionA, revisionB) => {' / '        fc.pre(revisionA.trim() !== revisionB.trim());' / '        const previous = buildRemoteResource({ externalId: \"PROJ-1\", revision: revisionA });' / '        const current = buildRemoteResource({ externalId: \"PROJ-1\", revision: revisionB });' / '        const signal = compareRemoteResourceRevisions(previous, current);' / '        expect(signal.material).toBe(true);' — the criterion's \"property\" half, satisfied. :69-78 is its non-vacuity partner (identical revisions are always non-material), so a comparator that flagged everything would fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/intake/revision-comparator.test.ts:30-37",
+          "quotedAssertion": "packages/connectors-jira/src/intake/revision-comparator.test.ts:31-36 — 'const previous = buildRemoteResource({ externalId: \"PROJ-1\", revision: \"rev-1\" });' / 'const current = buildRemoteResource({ externalId: \"PROJ-1\", revision: \"rev-2\" });' / 'const signal = compareRemoteResourceRevisions(previous, current);' / 'expect(signal.material).toBe(true);' — the seeded rev-1→rev-2 edit. PARTIAL: this is a unit fixture over two hand-built stamps, not the \"integration fixture\" the criterion names, and no poll produced either stamp."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 389 — ' ✓  @crabgic/connectors-jira  src/intake/revision-comparator.test.ts (6 tests) 61ms'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c5-c6-never-guess-and-comparator.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  34 passed (34)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/18-revision-comparator-no-integration-fixture.md",
+      "notes": "Two of the criterion's four clauses have no bearer. (a) \"between two milestone polls\": no milestone polling loop exists — `git grep -in poll -- packages/connectors-jira/src` outside `.test.ts` returns only the two doc-comment lines in `revision-comparator.ts` that quote the roadmap, and `planMilestoneSync` neither polls nor stamps a revision. (b) \"integration fixture\": `compareRemoteResourceRevisions` has ZERO production callers repository-wide — `git grep` finds it only in its own module, the package barrel, and its own unit test. The evidence README's claim that \"`src/intake/milestone-sync.test.ts`'s dedup-marker tests are the companion integration evidence for the polling/sync loop this comparator feeds\" does not survive reading that file: it never imports or calls the comparator. Note the near miss — `stampJiraRemoteResource`, the comparator's sibling, IS consumed in production by phase 21's `packages/gates/src/remote-resource-binding.ts:131`; the comparator is not."
+    },
+    {
+      "index": 7,
+      "text": "Milestone sync yields ≤1 status comment per milestone, edited in place; Jira `done` only with 21's verification evidence attached.",
+      "textSha256": "cecb9bb9ebcd0c108b74f1b83202055fcd15b1f3170dceaab23f944e43962461",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 383 — ' ✓  @crabgic/connectors-jira  src/intake/milestone-sync.test.ts (4 tests) 24ms'; line 363 — ' ✓  @crabgic/connectors-jira  src/resource-client/jira-resource-client.test.ts (38 tests) 70ms'; line 404 — ' ✓  @crabgic/connectors-jira  src/evidence/done-transition-verification.test.ts (7 tests) 10ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/intake/milestone-sync.test.ts:75-104",
+          "quotedAssertion": "packages/connectors-jira/src/intake/milestone-sync.test.ts:99-101 — 'expect(outcome.commentAction).toBe(\"update\");' / 'expect(outcome.plan.action).toBe(\"comment.update\");' / 'expect(outcome.plan.canonicalTarget).toBe(\"issue:PROJ-1:comment:77\");' when a comment already carries the (issue, kind) marker. The \"edited in place\" clause, targeting the existing comment id 77 rather than minting a second comment."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/intake/milestone-sync.test.ts:57-73",
+          "quotedAssertion": "packages/connectors-jira/src/intake/milestone-sync.test.ts:67-69 — 'expect(outcome.commentAction).toBe(\"create\");' / 'expect(outcome.plan.action).toBe(\"comment.create\");' / 'expect(outcome.marker).toBe(\"milestone-sync:PROJ-1:start\");' with no existing marker. The control for the edit-in-place case: without it, an implementation that always issued a comment.update plan would satisfy the dedup test while never being able to post a first comment."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/intake/milestone-sync.test.ts:106-127",
+          "quotedAssertion": "packages/connectors-jira/src/intake/milestone-sync.test.ts:125 — 'expect(new Set(markers).size).toBe(3);' over start / material_blocker / verified_completion. This is what makes \"≤1 per MILESTONE\" mean per milestone rather than per issue: the three kinds cannot collide onto one comment slot."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:309-318",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:315-317 — 'await expect(c.issues.planTransition(\"PROJ-1\", \"rev-1\", \"31\", ENVELOPE_ID)).rejects.toThrow(' / '      ConnectorError,' / '    );' against a SERVER-reported closing transition ('{ id: \"31\", name: \"Close\", toStatusName: \"Done\", toStatusCategoryKey: \"done\" }', :312) with no verification evidence. The \"Jira `done` only with 21's verification evidence attached\" clause — and note the done-ness is not caller-suppliable: `planTransition`'s parameter list has no `targetStageIsDone`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:325-363",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:340-342 — 'await expect(' / '      c.issues.planTransition(\"PROJ-1\", \"rev-1\", \"31\", ENVELOPE_ID),' / '    ).resolves.toBeDefined();' when a `resolveVerificationPointer` dep returns 'confirmedRevision: \"rev-1\"' (:337), versus :360-362 'await expect(c.issues.planTransition(\"PROJ-1\", \"rev-1\", \"31\", ENVELOPE_ID)).rejects.toThrow(' / '      ConnectorError,' / '    );' when it returns 'confirmedRevision: \"stale-rev\"' (:357). The gate is satisfied by 21's EXACT-revision pointer and by nothing weaker."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/connectors-jira/src/resource-client/issue-plans.ts:26-38",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/issue-plans.ts:30-33 — '  if (targetStageIsDone && !hasVerificationEvidence) {' / '    throw ConnectorError.policyBlocked({' / '      message:' / '        \"a Jira issue may only transition to a done-mapped status with 21'\\''s exact-revision verification evidence attached\",' — the gate itself, cited so the assertions above resolve to a single named enforcement point."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c7-c8-milestone-and-attachment.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / '      Tests  27 passed (27)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Scope. \"≤1 status comment per milestone\" is proven at the PLAN level: `planMilestoneSync` consults the marker reconciler and emits either a `comment.create` or a `comment.update` plan, never two plans. It is not proven by counting POSTs on a wire across two real sync cycles — the closest thing to that is criterion 3's exactly-once evidence, which is about a different failure mode (an ambiguous write), not about dedup. A reader wanting \"two sync cycles, one comment on the wire\" should read this box as the plan-level guarantee plus 16's pipeline, not as an end-to-end count. `planMilestoneSync` also fails closed rather than posting an over-long comment (:137 'expect(outcome.status).toBe(\"blocked\");' after 17's regenerate-once protocol gives up), which is 17's lint doing its job on this phase's only comment shape."
+    },
+    {
+      "index": 8,
+      "text": "Attachment pipeline rejects oversized/spoofed-MIME/secret-embedded fixtures before any byte reaches a prompt.",
+      "textSha256": "47ac4b4500e723a1cb78a3873e1469190beeddb7913a8a555ac347fc68bbb2c5",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 373 — ' ✓  @crabgic/connectors-jira  src/attachments/attachment-pipeline.test.ts (16 tests) 20ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:30-53",
+          "quotedAssertion": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:31 — 'const content = Buffer.alloc(MAX_ATTACHMENT_BYTES + 1, 0x41);' then :37-40 'expect(result.ok).toBe(false);' / 'expect(result.error).toBeInstanceOf(ConnectorError);' / 'expect(result.reason).toMatch(/size/i);' (oversized); and :51-52 'expect(result.ok).toBe(false);' / 'if (!result.ok) expect(result.reason).toMatch(/mime|signature/i);' for a body claimed as `image/png` whose magic bytes are plain text (spoofed MIME)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:90-114",
+          "quotedAssertion": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:99-100 — 'expect(result.ok).toBe(false);' / 'if (!result.ok) expect(result.reason).toMatch(/secret/i);' for an AWS-key-shaped body (secret redacted in this quote — the fixture's literal key is in the file), and :112-113 the same for a '-----BEGIN RSA PRIVATE KEY-----' body. The secret-embedded clause, both pattern families."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:116-125",
+          "quotedAssertion": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:124 — 'expect(JSON.stringify(result)).not.toContain(secretPayload);' — the \"before any byte reaches a prompt\" clause, made checkable: the rejection verdict carries no content field, so serializing the whole result cannot surface the payload. Non-vacuous by construction, because the preceding cases prove this same input IS rejected, so `result` is a populated rejection whose `reason` could have echoed it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:131-153",
+          "quotedAssertion": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:132-133 — 'const padding = Buffer.alloc(100_000, 0x41); // 100 KB of '\\''A'\\'' padding' at :132, whose next line concatenates an AWS-key-shaped literal after that padding — not reproduced here, because the pre-commit secret scanner rejects an AKIA-prefixed fixture key inside this record; it is verbatim in the file at :133. With :140 'if (!result.ok) expect(result.reason).toMatch(/secret/i);', and :144-152 the same shape for an EICAR marker past the old 4 KiB window. Without these two, the scan could have covered only a prefix of a 10 MiB-capped file and still passed every other case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:20-28",
+          "quotedAssertion": "packages/connectors-jira/src/attachments/attachment-pipeline.test.ts:27 — 'expect(result.ok).toBe(true);' for a small, correctly-typed, clean PNG. The negative control: a validator that rejected everything would satisfy all eight rejection cases above."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c7-c8-milestone-and-attachment.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / '      Tests  27 passed (27)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Two quoted assertions above redact an `AKIA`-prefixed test key that appears verbatim in the fixture; the repository's pre-commit secret scanner rejects reproducing it inside this record, and the redaction is marked in place. Scope: \"before any byte reaches a prompt\" is proven as \"the validator's own result carries no content, and rejection happens before staging\" — `validateAttachmentBeforeStaging` is the gate in front of `AttachmentStagingRegistry`, and the plan builder carries only a `stagingId` (criterion 2's citation of `jira-resource-client.test.ts:397`, 'expect(plan.redactedDiff).not.toContain(\"/\");'). It is not a proof about any specific prompt-assembly code path, which lives outside this package."
+    },
+    {
+      "index": 9,
+      "text": "Fake-Jira/cassette parity proven: the scripted scenario set replayed against both fake and recorded cassette yields identical typed results.",
+      "textSha256": "7b849faf409178ed0e35171417a8238d6815780444f14e63c74cda0bbb91f174",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/fake-cassette-parity.test.ts:16-27",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/fake-cassette-parity.test.ts:20 — 'expect(fromCassette).toEqual(fromFake);' — the parity assertion. Immediately below it, :26 — 'expect(cassette.responses).toEqual(HAND_AUTHORED_READ_SCENARIO.responses);' — the suite's own \"sanity\" test asserts the two sources are element-wise EQUAL. Given :26, :20 compares the output of one deterministic function applied twice to equal inputs: it cannot fail. The parity claim is a tautology."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/connectors-jira/src/testkit/scripted-read-scenario.ts:23-31",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/scripted-read-scenario.ts:23-31 — ' * `HAND_AUTHORED_READ_SCENARIO` (\"the fake\") and' / ' * `./fixtures/read-scenario.cassette.json` (\"the recorded cassette\") are' / ' * deliberately kept as two INDEPENDENT sources for the SAME 7-call' / ' * scripted scenario … which is only meaningful if the two sources' / ' * are maintained independently rather than one being derived from the' / ' * other at runtime.' The doc comment states the exact condition the suite's own second test then forbids."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/connectors-jira/src/testkit/fixtures/read-scenario.cassette.json",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/fixtures/read-scenario.cassette.json:5 — '\"bodyText\": \"{\\\"values\\\":[{\\\"id\\\":\\\"10000\\\",\\\"key\\\":\\\"PROJ\\\",\\\"name\\\":\\\"Project\\\"}]}\"' — byte-identical to the JSON serialization of the object literal at scripted-read-scenario.ts:37 (that file is cited separately above), and so for all seven entries. The file carries no capture metadata: no timestamp, no request URLs, no response headers, no instance identity — nothing a recording of real Cloud traffic would carry."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 409 — ' ✓  @crabgic/connectors-jira  src/testkit/fake-cassette-parity.test.ts (2 tests) 24ms'. The suite is green; greenness is not the issue."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c9-c10-parity-and-rate-limit.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  5 passed (5)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/18-cassette-parity-is-a-tautology.md",
+      "notes": "This is the \"oracle derived from the subject\" shape the closeout brief warns about, in its purest form: the cassette is not an independent oracle for the fake, it is a serialization of the fake, and the suite asserts that it is. `runScriptedReadScenario` is deterministic (fixed base URL, fixed token, no clock, no randomness in the returned `ScenarioResults`), so with equal inputs the outputs are equal by construction. The one residual thing the assertion could catch — nondeterminism inside the read path — is real but is not what the criterion claims. `e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts:100-104` repeats the same assertion (and the same \"independently-maintained\" wording) in the release-e2e matrix, so it adds coverage of the same tautology rather than independent evidence. Note the repository elsewhere already discloses this honestly for the sibling connectors — `e2e/attestation/src/traceabilityEvidence.ts:11-12` records that Grafana's cassettes \"are HAND-AUTHORED, not recorded\", and `fake-cassette-parity-dc.test.ts:16-22` says the same for the Data Center cassettes. The Cloud side is the one place the disclosure is missing and the doc comment asserts the opposite."
+    },
+    {
+      "index": 10,
+      "text": "Rate-limit fixture: `Retry-After` honored; per-issue write order preserved.",
+      "textSha256": "3c005380c05eb177054b1b0da7a7177a0f1c3f3d619462ed017357cbe93ca15a",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:22-57",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:52-55 — 'await client.projects.list();' / '' / 'expect(sleepCalls).toEqual([2000]);' / 'expect(attempt).toBe(2);' against a first response of '{ status: 429, headers: { \"retry-after\": \"2\" }, bodyText: \"\" }' (:30). The `Retry-After` half, fully evidenced and driven through the REAL `JiraResourceClient` — exactly one sleep, of exactly the header's duration, then a successful retry."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:60-106",
+          "quotedAssertion": "packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:82-98 — 'await Promise.all([' / '      httpClient.request({' / '        connectionId: connection.id,' / '        tenant: connection.id,' / '        resource: \"issue:PROJ-1\",' … and :101 'expect(events).not.toContain(\"OVERLAP-DETECTED\");'. PARTIAL, and not in the way the file's own doc comment claims: no `JiraResourceClient`, no `RemoteMutationPlan` and no `executeMutationPlan` appear in this test — the `resource` key is a string literal typed by the test. It evidences 16's transport serializing two requests that share a resource key, which is phase 16's guarantee, not this connector's wiring."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c10-write-order-probe.txt",
+          "quotedAssertion": "'PROBE canonicalTarget issue.update  = issue:PROJ-1' / 'PROBE canonicalTarget comment.create = issue:PROJ-1:comment' / 'PROBE maxInFlight = 2' / 'PROBE events = [\"start:PUT:/rest/api/3/issue/PROJ-1\",\"start:POST:/rest/api/3/issue/PROJ-1/comment\",\"end:PUT:/rest/api/3/issue/PROJ-1\",\"end:POST:/rest/api/3/issue/PROJ-1/comment\"]' / 'PROBE control maxInFlight = 1'. Two writes to the SAME issue, built by the real resource client and applied through the real `executeMutationPlan`, OVERLAP on the wire; the control (two `issue.update` plans, identical `canonicalTarget`) does not. Deliberately RED transcript; probe source reproduced verbatim in the file."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 376 — ' ✓  @crabgic/connectors-jira  src/testkit/rate-limit-and-write-order.test.ts (3 tests) 49ms'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-18/closeout-c9-c10-parity-and-rate-limit.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  5 passed (5)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/18-per-issue-write-order-not-preserved.md",
+      "notes": "The box has two clauses and they land differently. `Retry-After` is closed on its own merits and would be ticked alone. \"Per-issue write order preserved\" is not: the serialization key is `RemoteMutationPlan.canonicalTarget` (packages/gateway/src/mutation-pipeline/mutation-pipeline.ts:216, 'resource: plan.canonicalTarget'), and this connector deliberately mints DIFFERENT canonicalTargets for different resource kinds on the same issue — `issue:PROJ-1`, `issue:PROJ-1:comment`, `issue:PROJ-1:worklog`, `issue:PROJ-1:attachment` (packages/connectors-jira/src/resource-client/canonical-target.ts). Measured, not inferred: the probe above shows an `issue.update` and a `comment.create` on PROJ-1 in flight simultaneously. Ticking this box would assert a guarantee a two-line probe disproves."
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+UTC:  2026-08-02T11:29:03Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/workflow/workflow-stage.test.ts packages/connectors-jira/src/intake/revision-comparator.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps To Do -> planned 2ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps Open -> planned 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps Backlog -> planned 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps In Progress -> in_progress 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps In Review -> in_progress 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps Done -> done 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps Closed -> done 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > maps Resolved -> done 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > is case-insensitive and trims whitespace 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > never returns a non-string/inherited value for the dangerous key "__proto__" — always a real JiraWorkflowStage 1ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > never returns a non-string/inherited value for the dangerous key "constructor" — always a real JiraWorkflowStage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > never returns a non-string/inherited value for the dangerous key "toString" — always a real JiraWorkflowStage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > never returns a non-string/inherited value for the dangerous key "hasOwnProperty" — always a real JiraWorkflowStage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — known status names > never returns a non-string/inherited value for the dangerous key "valueOf" — always a real JiraWorkflowStage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > an unrecognized status with no category hint resolves to blocked, never done 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > an unrecognized status uses the done status-category hint 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > an unrecognized status uses the new status-category hint 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > an unrecognized status uses the indeterminate status-category hint 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > property: any status name absent from the known table and with no category hint never resolves to done 7ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > property: an unrecognized status name NEVER resolves to done when the category hint is absent or non-done 4ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > property: an unrecognized status name with Jira's own done CATEGORY hint always resolves to done — documented, intentional, not a guess 3ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > mapJiraStatusToWorkflowStage — never-guess rule > property: an unrecognized status name never resolves to planned/in_progress unless the category hint says so 2ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > is the exact 4-member closed union 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > recognizes planned as a valid stage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > recognizes in_progress as a valid stage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > recognizes blocked as a valid stage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > recognizes done as a valid stage 0ms
+ ✓ |@crabgic/connectors-jira| src/workflow/workflow-stage.test.ts > JIRA_WORKFLOW_STAGES / isJiraWorkflowStage > rejects an unrelated string 0ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > stampJiraRemoteResource > builds a valid RemoteResource stamp for a tracked issue 2ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > compareRemoteResourceRevisions > flags a material change when the revision differs between two stamps of the same resource 1ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > compareRemoteResourceRevisions > reports no material change when the revision is identical across two polls 0ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > compareRemoteResourceRevisions > throws when the two stamps reference different resources — never silently compares unrelated resources 1ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > compareRemoteResourceRevisions > property: any pair of distinct revision strings for the same resource is always flagged material — never silently dropped 14ms
+ ✓ |@crabgic/connectors-jira| src/intake/revision-comparator.test.ts > compareRemoteResourceRevisions > property: an identical revision string, however arbitrary, is always non-material 6ms
+
+ Test Files  2 passed (2)
+      Tests  34 passed (34)
+   Start at  13:29:04
+   Duration  762ms (transform 435ms, setup 0ms, import 668ms, tests 49ms, environment 0ms)
+
+----- end of output -----
+EXIT: 0

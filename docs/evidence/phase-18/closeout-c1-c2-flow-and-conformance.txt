@@ -1,0 +1,115 @@
+UTC:  2026-08-02T11:28:54Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/testkit/jira-flow.integration.test.ts packages/connectors-jira/src/resource-client/jira-resource-client.test.ts packages/connectors-jira/src/resource-client/jira-provider-client.test.ts packages/connectors-jira/src/resource-client/jira-mutation-apply-client.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.create POSTs to /rest/api/3/issue with the staged payload + an entity-property marker 5ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.update PUTs to the issue's endpoint with a precondition when expectedRemoteRevision is set 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.transition POSTs to the transitions sub-resource 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > attachment.upload resolves the staged bytes through the payload registry + attachment staging registry, base64-encoded 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > rejects a plan carrying a forged out-of-scope action before building any request 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest rejects an unsafe (javascript:-href) ADF comment.create payload at the apply boundary 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest rejects a secret-bearing ADF comment.create payload at the apply boundary 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > comment.create stamps plan.idempotencyKey (never the bare caller-supplied marker) as the entity property value 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest rejects an unsafe ADF comment.update payload at the apply boundary 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest rejects an unsafe ADF issue.create summaryAdf payload at the apply boundary 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest rejects an unsafe ADF issue.update fields.description payload at the apply boundary 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > buildRequest still allows an issue.update with no description field at all 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.link builds the expected issue:PROJ-1 POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.rank builds the expected board:1 PUT request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.bulkUpdate builds the expected bulk:PROJ-1,PROJ-2 POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > issue.bulkTransition builds the expected bulk:PROJ-1,PROJ-2 POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > board.create builds the expected project:PROJ:new-board POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > board.update builds the expected board:1 PUT request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > sprint.create builds the expected board:1:new-sprint POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > sprint.moveIssues builds the expected sprint:5 POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > worklog.create builds the expected issue:PROJ-1:worklog POST request 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > comment.update PUTs to the comment's own sub-resource with a precondition 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — buildRequest > sprint.start PUTs with state=active 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — parseResponse > extracts the created issue key as appliedRevision for issue.create 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — parseResponse > falls back to the plan's own content hash when the response carries no stable id (e.g. a 204 update) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — parseResponse > extracts a numeric id (board/sprint create) as a string appliedRevision 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — parseResponse > attachment.upload falls back to a sentinel when the response carries no id at all 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — parseResponse > falls back to a sentinel for issue.create when the response has no key/id at all 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > issue.update verifies via read-back: the issue's revision must differ from the pre-write expectedRemoteRevision 4ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > defaults to true for actions with no cheap read-back handle (e.g. comment.create) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > returns false when the read-back itself fails 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > issue.update with no expectedRemoteRevision at all is trivially verified 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > sprint.start / sprint.complete verify against the sprint's own state field 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — verify > board.update verifies via a read-back existence check 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — reconcileAmbiguous > issue.create resolves via the issue marker reconciler 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-mutation-apply-client.test.ts > createJiraMutationApplyClient — reconcileAmbiguous > an action with no reconciliation mapping resolves to undefined (fails closed) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > search: issue resource dispatches to JQL search 4ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > search: project resource dispatches to projects.list 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > get: board resource dispatches to boards.get 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planCreate: issue resource builds an issue.create plan 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: issue resource with op=link builds an issue.link plan 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: sprint resource with op=start builds a sprint.start plan 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planTransition: bulk issueKeys array dispatches to bulk transition 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planTransition: single issueKey dispatches to single transition, resolving done-ness server-side (not from a caller-supplied flag) 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planComment builds a comment.create plan 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > dispatch with a missing resource selector rejects with a validation error 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > dispatch for an unsupported resource rejects with an unsupported error 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > search: sprint/comment/worklog resources all dispatch correctly 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > search: unsupported resource rejects 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > get: issue, project, and sprint resources all dispatch correctly 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planCreate: board, sprint, worklog, and attachment resources all dispatch correctly 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planCreate: unsupported resource rejects 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: issue op=bulkUpdate and op=rank dispatch correctly 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: board resource dispatches to board.update 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: sprint op=complete and op=moveIssues dispatch correctly 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: sprint resource with an unrecognized op rejects 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: comment resource dispatches to comment.update 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-provider-client.test.ts > createJiraProviderClient — generic dispatch > planUpdate: unsupported resource rejects 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > projects: list + get 4ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > boards: list + get 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > sprints: list + get 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > issues: search + get + transitions (epic is just an issue with issueType Epic) 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > comments + worklogs: list 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > a malformed response fails boundary validation with a validation-kind ConnectorError, never a silent coercion 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — conformance suite (reads) > an authentication failure rejects before any resource call succeeds 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planCreate builds a valid plan tagged with the issue-creation capability flag, with no network call 2ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planUpdate tags assignment/reporter-change flags only when those fields are touched 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planUpdate rejects an undiscovered custom field before building a plan 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planTransition tags closing-transitions only when the SERVER-reported target stage is done 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planTransition refuses a SERVER-reported closing transition with no verification evidence attached, even though the caller supplies none of the done-ness signal anymore 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > failing-first: a resolveVerificationPointer dep resolving an exact-match pointer satisfies planTransition's done-guard with NO hand-passed hasVerificationEvidence 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > a resolveVerificationPointer dep resolving a DIFFERENT revision still refuses (not an exact match) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planTransition refuses (never guesses) a transitionId absent from the server's reported transitions 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planTransition also treats an unrecognized target status name with no done category hint as never-done (never-guess, consistent with mapJiraStatusToWorkflowStage) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > sprints.planComplete tags sprint-completion 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > attachments.planUpload tags attachments and never embeds file bytes/path 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > attachments.planUpload rejects a secret-shaped filename before it can enter redactedDiff (M2 defense-in-depth) 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planBulkUpdate / planBulkTransition tag bulk-mutations 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planLink builds a valid, unflagged plan 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > comments.planCreate / planUpdate build valid plans 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > comments.planCreate rejects a javascript:-href ADF payload before any network I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > comments.planCreate rejects a secret-bearing ADF payload before any network I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > comments.planUpdate rejects a javascript:-href / secret-bearing ADF payload before any network I/O 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planCreate rejects a javascript:-href / secret-bearing summaryAdf before any network I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planUpdate rejects a javascript:-href / secret-bearing fields.description before any network I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > issues.planUpdate still accepts an update that doesn't touch description at all 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > worklogs.planCreate builds a valid plan 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > boards.planCreate / planUpdate / planRankIssues build valid plans 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — plan builders (local, no I/O) > sprints.planCreate / planStart / planMoveIssues build valid plans 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > projects.list pages across multiple pages of exactly 50 items 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > boards.list omits projectKey when the board carries no location 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > sprints.get omits startDate/endDate when the sprint carries neither 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > issues.get omits statusCategoryKey and defaults revision to 'unknown' when Jira reports neither 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > issues.transitions omits toStatusCategoryKey when Jira reports none 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > comments.list defaults properties to {} and worklogs.list omits comment when absent 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/jira-resource-client.test.ts > JiraResourceClient — pagination and optional-field branch coverage > issues.search omits nextPageToken when Jira reports none, and passes a supplied pageToken through 0ms
+ ✓ |@crabgic/connectors-jira| src/testkit/jira-flow.integration.test.ts > board → sprint → epic → issue → link → comment(ADF) → worklog → attachment > every step in the chain applies through the real mutation pipeline and records successfully 67ms
+ ✓ |@crabgic/connectors-jira| src/testkit/jira-flow.integration.test.ts > transitions > issue.transition applies and its read-back verify confirms the status actually changed 10ms
+ ✓ |@crabgic/connectors-jira| src/testkit/jira-flow.integration.test.ts > concurrent-edit conflicts > a 412 precondition-failed response on issue.update fails as a typed conflict, never a silent overwrite 8ms
+
+ Test Files  4 passed (4)
+      Tests  99 passed (99)
+   Start at  13:28:55
+   Duration  1.20s (transform 2.53s, setup 0ms, import 3.98s, tests 166ms, environment 0ms)
+
+----- end of output -----
+EXIT: 0
