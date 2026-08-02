@@ -1,0 +1,52 @@
+# 2026-08-02T10:16:04Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: node ./closeout-fuzz-reach.tmp.mjs
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+fast-check cases executed: 50000
+cases where current === "promoted" (assertion body entered): 0
+per-5000-run execution, mean assertion-body entries: 0.000
+# ---8<--- end ---8<---
+# exit status: 0
+
+# ---8<--- the probe script, verbatim (run from the repo root, then deleted) ---8<---
+/*
+ * Closeout probe: how often does packages/learning/src/state-machine.test.ts's
+ * "no random walk of any length ever lands on 'promoted' ..." fast-check
+ * property actually ENTER its `if (current === "promoted")` assertion body?
+ *
+ * The walk loop and arbitraries below are transcribed verbatim from that test
+ * (:95-122) and the table from src/state-machine.ts (:52-64). Ten independent
+ * repetitions of the test's own { numRuns: 5_000 }.
+ */
+import fc from "fast-check";
+const T = {
+  observation: ["reproducer", "rejected", "expired"],
+  reproducer: ["candidate", "rejected", "expired"],
+  candidate: ["dev_eval", "rejected", "expired"],
+  dev_eval: ["held_out_eval", "rejected", "expired"],
+  held_out_eval: ["shadow_run", "rejected", "expired"],
+  shadow_run: ["independent_review", "rejected", "expired"],
+  independent_review: ["promoted", "rejected"],
+  promoted: ["rolled_back", "expired"],
+  rejected: [], rolled_back: [], expired: [],
+};
+const ALL = Object.keys(T);
+const stateArb = fc.constantFrom(...ALL);
+let hits = 0, cases = 0;
+for (let trial = 0; trial < 10; trial++) {
+  fc.assert(
+    fc.property(fc.array(stateArb, { minLength: 1, maxLength: 12 }), (walk) => {
+      cases++;
+      let current = "observation";
+      for (const next of walk) {
+        if (!T[current].includes(next)) continue;
+        current = next;
+      }
+      if (current === "promoted") hits++;
+      return true;
+    }),
+    { numRuns: 5000 },
+  );
+}
+console.log(`fast-check cases executed: ${cases}`);
+console.log(`cases where current === "promoted" (assertion body entered): ${hits}`);
+console.log(`per-5000-run execution, mean assertion-body entries: ${(hits / 10).toFixed(3)}`);

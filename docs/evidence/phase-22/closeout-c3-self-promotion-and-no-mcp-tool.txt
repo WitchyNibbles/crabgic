@@ -1,0 +1,25 @@
+# 2026-08-02T10:15:14Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/learning/src/red-team/self-promotion.redteam.test.ts packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22
+
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > this scanner's target directory actually resolves (sanity: the scan is not vacuous) 4ms
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > no registered MCP tool name anywhere begins with the 'learning.' prefix 6ms
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > the bare literal 'learning.' never appears as a STRING LITERAL in any non-test registration source (stronger, whole-substring form; test files are exempt since 16's own suite legitimately asserts this same absence in prose/assertions) 1ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a fresh observation-stage proposal cannot be promoted directly, at all, no matter the (real) approvals supplied 12ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a proposal that reached independent_review cannot be promoted with ZERO approvals (the proposer's own silent 'confirmation' never counts) 32ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > THE FLAGSHIP CASE (previously vacuous): a proposal genuinely AT independent_review, 'approved' with two FABRICATED (never-minted) distinct token strings, is REJECTED — fabrication no longer promotes 30ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a token genuinely minted for a DIFFERENT proposal cannot promote THIS one (confused-deputy guard) 54ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > a token genuinely minted for the WRONG subject kind cannot count toward independent review 27ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > the SAME genuinely-minted token replayed twice never counts as two distinct approvals 31ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > two GENUINELY minted, correctly-subject-kinded, this-proposal-bound, distinct tokens DO promote — the real path still works 36ms
+ ✓ |@crabgic/learning| src/red-team/self-promotion.redteam.test.ts > @learning-redteam self-promotion — an active run cannot promote its own policy > no sequence of direct calls, of any length, ever reaches 'promoted' without genuinely 2 distinct, this-proposal-bound, correctly-subject-kinded approvals — property over a fixed attack matrix 175ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  12:15:15
+   Duration  1.12s (transform 454ms, setup 0ms, import 639ms, tests 409ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0

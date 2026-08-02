@@ -1,0 +1,23 @@
+# 2026-08-02T10:15:25Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/learning/src/red-team/grader-isolation.redteam.test.ts packages/learning/src/store/layout.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22
+
+ ✓ |@crabgic/learning| src/store/layout.test.ts > learning layout — nests under 04's pinned state root > resolveLearningDir nests directly under the state root 1ms
+ ✓ |@crabgic/learning| src/store/layout.test.ts > learning layout — nests under 04's pinned state root > resolveRegistryDir/resolveGraderDir are disjoint siblings under learning/ 1ms
+ ✓ |@crabgic/learning| src/store/layout.test.ts > learning layout — nests under 04's pinned state root > resolveDevCasesDir/resolveHeldOutCasesDir are disjoint siblings under grader/ 0ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > before sealing: the held-out store accepts a legitimate write (sanity — the boundary isn't vacuously 'always fails') 8ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: a hostile process calling node:fs DIRECTLY (bypassing this package entirely) cannot write a new file into the held-out directory 4ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: a hostile process cannot OVERWRITE the existing sealed cases file either 3ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: this package's OWN write() method also refuses (in-process guard, layered on top of the OS boundary) 4ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > after sealing: reads still succeed — sealing blocks writes only, never reads 3ms
+ ✓ |@crabgic/learning| src/red-team/grader-isolation.redteam.test.ts > @learning-redteam grader isolation — real OS-level enforcement, not a convention > the dev-case store and held-out store are independent instances over disjoint directories — one being sealed never affects the other 8ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  12:15:25
+   Duration  739ms (transform 775ms, setup 0ms, import 1.14s, tests 35ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0
