@@ -1,0 +1,124 @@
+# Captured 2026-08-02T10:12:43Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# Purpose: show that the `plugin.live-smoke` files are NOT executed by the default
+#          gate, so no green `npm test`/CI run can be read as evidence for criterion 7.
+#          NO live engine was invoked: the default config excludes '**/*.live.test.ts',
+#          so vitest matches zero files and never loads the suite.
+# ---------------------------------------------------------------
+# cmd:  npx vitest run packages/plugin/src/live/plugin-load.live.test.ts packages/plugin/src/live/plugin-negative-space.live.test.ts --reporter=verbose --coverage.enabled=false
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+No test files found, exiting with code 0
+
+filter: packages/plugin/src/live/plugin-load.live.test.ts, packages/plugin/src/live/plugin-negative-space.live.test.ts
+
+|crabgic| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/connectors-grafana| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/connectors-jira| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/contracts| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/detect| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/engine-claude| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/engine-core| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/gates| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/gateway| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/git-engine| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/journal| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/learning| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/perf| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/plugin| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/renderer| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/scheduler| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/supervisor| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|@crabgic/testkit| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|e2e-report| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+|scripts| 
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/dist/**, **/node_modules/**, **/.git/**, **/*.live.test.ts
+
+# exit status: 0
+# ---------------------------------------------------------------
+# cmd:  grep -n 'exclude' vitest.config.ts
+101:    exclude: ["**/dist/**", "**/node_modules/**", "**/.git/**", "**/*.live.test.ts"],
+130:      exclude: [
+# ---------------------------------------------------------------
+# cmd:  gh run list --workflow engine-live.yml --limit 20
+# exit status: 0

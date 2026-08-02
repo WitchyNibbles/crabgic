@@ -1,0 +1,33 @@
+# Captured 2026-08-02T10:12:02Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/installer/merge.monotonic.property.test.ts packages/cli/src/installer/settings-merge.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — add-only defaults > adds attribution, sessionUrl, statusLine, and enabledPlugins to a brand-new (empty) settings object 2ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — add-only defaults > is idempotent: merging twice in a row is a no-op the second time 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > never overwrites a pre-existing attribution value, even a non-empty one 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > never replaces a status line the user already configured 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > never revives a status line the user deliberately blanked out or disabled 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > never overwrites a pre-existing sessionUrl value 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > preserves other plugins already present in enabledPlugins 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > never re-enables this plugin's own enabledPlugins entry if the user explicitly disabled it (security: a crafted attempt to widen enabledPlugins is rejected) 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > ADVERSARIAL-REVIEW REGRESSION (2026-07-24, CONFIRMED): never clobbers a present-but-non-object enabledPlugins value (a string) 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-non-object enabledPlugins value (an array) 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > ADVERSARIAL-REVIEW REGRESSION (2026-07-24): never clobbers a present-but-null enabledPlugins value 0ms
+ ✓ |crabgic| src/installer/settings-merge.test.ts > mergeSettingsJson — monotonicity: never touches a key already present > preserves every unrelated user-added top-level key untouched 0ms
+ ✓ |crabgic| src/installer/merge.monotonic.property.test.ts > merge.monotonic.property — CLAUDE.md text merge > byte-preserves arbitrary pre-existing user content across a merge (add-only, never mutates user text) 11ms
+ ✓ |crabgic| src/installer/merge.monotonic.property.test.ts > merge.monotonic.property — CLAUDE.md text merge > is always idempotent: merging the same desired content twice never changes the result a second time 8ms
+ ✓ |crabgic| src/installer/merge.monotonic.property.test.ts > merge.monotonic.property — settings.json add-only, security keys never loosened > never loosens attribution/sessionUrl/enabledPlugins once already present, over a fuzzed presence/absence/value/TYPE corpus 47ms
+ ✓ |crabgic| src/installer/merge.monotonic.property.test.ts > merge.monotonic.property — settings.json add-only, security keys never loosened > is always idempotent: merging twice in a row never changes anything the second time, across every enabledPlugins shape 8ms
+ ✓ |crabgic| src/installer/merge.monotonic.property.test.ts > merge.monotonic.property — .mcp.json add-only, mcpServers never loosened/clobbered > never clobbers a present mcpServers value regardless of its type, over a fuzzed corpus 19ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  12:12:03
+   Duration  559ms (transform 261ms, setup 0ms, import 401ms, tests 99ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

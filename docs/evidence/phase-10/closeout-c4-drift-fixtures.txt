@@ -1,0 +1,23 @@
+# Captured 2026-08-02T10:12:04Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/installer/drift.fixtures.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > flags a single-byte mutation of CLAUDE.md 9ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > flags a single-byte mutation of .claude/settings.json 5ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > flags a single-byte mutation of .mcp.json 5ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > flags a single-byte mutation of .claude/agents/eo-explore.md 5ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > flags a missing artifact (deleted after install) distinctly from a modified one 4ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > reports zero findings when nothing has changed since install 4ms
+ ✓ |crabgic| src/installer/drift.fixtures.test.ts > drift.fixtures — single-byte mutation of each tracked artifact is flagged > is unaffected by a CRLF/LF-only line-ending change (not real drift) 5ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  12:12:05
+   Duration  189ms (transform 28ms, setup 0ms, import 43ms, tests 38ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

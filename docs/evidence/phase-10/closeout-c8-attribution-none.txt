@@ -1,0 +1,20 @@
+# Captured 2026-08-02T10:12:13Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# cmd:  npx vitest run packages/cli/src/installer/attribution.none.test.ts --reporter=verbose --coverage.enabled=false
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p10
+
+ ✓ |crabgic| src/installer/attribution.none.test.ts > attribution.none.test > a fresh install's settings.json carries empty commit/pr attribution and sessionUrl: false 37ms
+ ✓ |crabgic| src/installer/attribution.none.test.ts > attribution.none.test > cross-check (17's renderer lint): a synthetic post-install commit body carries no attribution/engine-credit tokens 2ms
+ ✓ |crabgic| src/installer/attribution.none.test.ts > attribution.none.test > cross-check (17's renderer lint): a vendor/engine name alone (no co-author trailer) is ALSO caught — sanity-checks the cross-check's own sensitivity 1ms
+ ✓ |crabgic| src/installer/attribution.none.test.ts > attribution.none.test > cross-check (17's renderer lint): a commit body carrying an attribution token IS caught by 17's own lint (sanity-checks the cross-check itself) 0ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:12:13
+   Duration  1.18s (transform 684ms, setup 0ms, import 1.02s, tests 42ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

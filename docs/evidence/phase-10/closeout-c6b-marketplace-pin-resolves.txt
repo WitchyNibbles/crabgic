@@ -1,0 +1,20 @@
+# Captured 2026-08-02T10:15:00Z UTC
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd:  <repo root>
+# Purpose: the cited test asserts the marketplace `commit` is 40 hex and not the all-zero
+#          placeholder — a SHAPE check, by its own comment. This records the one thing
+#          that check deliberately does not do: resolve the pin against this repository.
+# ---------------------------------------------------------------
+# cmd:  node -pe 'require("./packages/plugin/.claude-plugin/marketplace.json").plugins[0].commit'
+39ef7d192d9098c1258681d33441093bc53381c7
+# exit status: 0
+# cmd:  git cat-file -t 39ef7d192d9098c1258681d33441093bc53381c7
+commit
+# exit status: 0
+# cmd:  git log -1 --format='%H %ad %s' --date=short 39ef7d192d9098c1258681d33441093bc53381c7
+39ef7d192d9098c1258681d33441093bc53381c7 2026-07-30 fix(release): parse multi-line exit criteria; poll for the arm64 record (#33)
+# exit status: 0
+# ---------------------------------------------------------------
+# cmd:  node -pe 'require("./packages/plugin/.claude-plugin/marketplace.json").plugins[0].digest'
+983414f02e44d2776ebcf748c745a185fe8875e837d42b395377857d49503010
+# exit status: 0
