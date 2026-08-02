@@ -16,18 +16,23 @@ is kept verbatim and the corrections live here.
    read `@eo/x` as `@crabgic/x` throughout. Nothing else about those citations changed: the
    modules, paths and tests they name are the same ones. The one `@eo/scheduler` occurrence
    (§Carry-forwards for reconcile, the "09's `resume <run-id>` CLI backend, limit-parked
-   half" bullet — second of that section's four, `:456`) is a **quotation** of this phase's
-   own brief, so it is doubly not rewritten: it is a record of what the brief said.
+   half" bullet — second of that section's four) is a **quotation** of this phase's own
+   brief, so it is doubly not rewritten: it is a record of what the brief said.
+
+   Locators in this note name a section and a bullet rather than a line, deliberately.
+   Inserting an annotation shifts every line beneath it, so a line number written *inside*
+   the annotation invalidates itself the moment the annotation grows — which is exactly how
+   the first two drafts of this sentence got it wrong, twice.
 
 2. **The `resume <run-id>` limit-parked carry-forward has since been discharged.** That
    bullet says wiring a `packages/cli` handler to call `resumeAttempt`/`getParkStatus`/
    `parkWorkUnit` "is explicitly NOT done here". It was correct for this phase, and it is no
-   longer the state of the tree: `packages/cli/src/daemon/run-dispatcher.ts:608` calls
+   longer the state of the tree: `packages/cli/src/daemon/run-dispatcher.ts:650` calls
    `resumeAttempt` from the driver's `resumeParkedUnit` hook, under `trigger:
    { kind: "parkResume" }`, against a retained per-run adapter. One limit is worth carrying
    forward honestly rather than declaring the bullet simply closed: the resume declines
    (leaving the unit parked) when no retained adapter exists, i.e. after a daemon restart —
-   see the `retained === undefined` branch and its comment at `:594-598`.
+   see the `retained === undefined` branch and its comment at `:637-640`.
 
 ## Adversarial-validation repair pass (2026-07-24)
 

@@ -370,7 +370,7 @@ The largest *semantic* movement in that window is ledger **Gap 21** (`4f2b33b`, 
 *derives* `(budgetSource, budgets)` from the requirements it has just built, and
 `performanceBudgetSource`/`performanceBudgets` are gone from `IntakeRequest` entirely.
 Attributed precisely, because it is easy to overstate: those two commits added their tests to
-`packages/supervisor/src/intake/intake-pipeline.test.ts` (+203) and to
+`packages/supervisor/src/intake/intake-pipeline.test.ts` (+200) and to
 `packages/cli/src/commands/intake-dispatch.test.ts` (+66, a file outside every directory
 scored below); their entire footprint inside `packages/cli/src/intake` is **six deleted
 lines**, the removed caller-supplied fields. So Gap 21 is why the *shape* of what these
