@@ -1,0 +1,26 @@
+captured (UTC): 2026-08-01T22:16:38Z
+HEAD:           af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+cwd:            <repo root> (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run packages/git-engine/src/publish-local.test.ts --coverage.enabled=false --reporter=verbose
+exit status:    0
+----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p08
+
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > creates the destination branch in the user's repo, pointing at the integrated object id 263ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > never checks out, never touches HEAD/index/working tree — byte-identical user checkout before/after 253ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > zero remote interaction — no spawn call ever includes a push subcommand 249ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > reports blocked (never throws) when the source ref doesn't exist in the control repo 222ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > reports blocked when the fetch itself reports success but the destination ref never resolves 203ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > throws PublishLocalInvarianceViolationError when HEAD/index/working-tree change during the fetch 226ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > 2026-07-24 MEDIUM fix — fails closed (throws, removes the branch) when a published commit carries attribution 287ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > 2026-07-24 MEDIUM fix — never flags a PRE-EXISTING commit already in the user's history, only NEWLY introduced ones 258ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > 2026-07-24 MEDIUM fix — gracefully treats a for-each-ref/rev-list read failure as 'nothing to scan' rather than throwing 252ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > 2026-07-24 MEDIUM fix — a single unreadable commit message (log failure) is skipped, not fatal, and scanning continues 299ms
+ ✓ |@crabgic/git-engine| src/publish-local.test.ts > publishLocal > rejects a flag-shaped branchName before ever spawning git 226ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  00:16:39
+   Duration  4.60s (transform 1.23s, setup 0ms, import 1.63s, tests 2.75s, environment 0ms)
+

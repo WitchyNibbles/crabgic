@@ -1,0 +1,51 @@
+captured (UTC): 2026-08-01T22:17:16Z
+HEAD:           af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+cwd:            <repo root> (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run packages/git-engine/src/renderer-corpus-shared.test.ts packages/git-engine/src/commit-renderer.test.ts --coverage.enabled=false --reporter=verbose -t attribution
+exit status:    0
+----------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p08
+
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > this suite actually found fixtures for at least one of 08's kinds (sanity guard against an empty/broken path)
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > the seeded attribution-leak fixture is present and scoped to commit_body — the exact fixture this phase's own belt-and-suspenders assertion reuses 2ms
+ ✓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-attribution-leak (commit_body): Generated-with/Co-Authored-By attribution trailer leaked into a commit body (shared with 08's belt-and-suspenders assertion). 6ms
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-bidi-override (commit_body): Trojan Source bidi-override (CVE-2021-42574) smuggled into a commit body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-confusable-domain (review_comment): Cyrillic а (U+0430) homograph inside an otherwise-Latin domain, in a link.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-confusable-greek-alpha (review_comment): Greek lowercase alpha (U+03B1) homograph in a domain-in-link fixture — M4 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-engine-name-leak (pr_body): Engine-name credit line leaked into a PR body (adaptation §9 Neutrality test-matrix item).
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-html-injection (pr_body): Raw <script> HTML tag injected into a PR body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-html-injection-slash-attribute (pr_body): Slash-delimited-attribute XSS tag with no whitespace before attrs (<svg/onload=...>) in a PR body — M1 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-line-paragraph-separator (review_comment): LINE SEPARATOR (U+2028) smuggled into a review comment to bypass newline-based line counting — L3 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-lrm-rlm-direction-marks (commit_body): LEFT-TO-RIGHT MARK (U+200E) smuggled into a commit body — L3 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-over-length (review_comment): Over-length payload exceeding the review comment's 6-line CommunicationPolicy limit.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-remote-image (pr_body): Embedded remote image in a PR body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-script-url (review_comment): javascript: URL injected into a review comment.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-anthropic-key (review_comment): Hyphenated Anthropic-style API key (sk-ant-*) leaked in a review comment — C1 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-aws-key (review_comment): AWS-style access key leaked in a review comment.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-connection-string (pr_body): Database connection string with embedded credentials leaked in a PR body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-github-fine-grained-pat (commit_body): Modern GitHub fine-grained personal access token (github_pat_*) leaked in a commit body — H2 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-openai-project-key (pr_body): Hyphenated OpenAI-style project API key (sk-proj-*) leaked in a PR body — C1 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-pem-key (commit_body): PEM private-key header leaked in a commit body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-secret-raw-jwt (review_comment): Raw JWT with no Bearer prefix leaked in a review comment — H2 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-unevidenced-claim (review_comment): Unevidenced completion claim ('fixed') with no evidence reference anywhere in the text.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > attack-unevidenced-claim-standard-token (review_comment): Unevidenced completion claim next to a standard/hash token (SHA-256) that must not count as a ticket-key evidence reference — M3 adversarial-review fixture.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-branch-name (branch_name): A clean branch name within the 64-char limit.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-commit-body (commit_body): A clean, short commit body within the 5-line limit.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-commit-subject (commit_subject): A clean conventional-commit subject.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-pr-body (pr_body): A clean, fully-shaped PR body.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-pr-title (pr_title): A clean PR title matching the commit-subject convention.
+ ↓ |@crabgic/git-engine| src/renderer-corpus-shared.test.ts > 17's shared renderer corpus, reused (not forked) for 08's own 6 ArtifactKinds > valid-review-comment (review_comment): A clean, fully-shaped review comment with evidence.
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles type(scope): outcome
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > omits the scope parens when scope is absent
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > assembleCommitSubject / assembleCommitBody > assembles a 4-line Why/Risk/Compat/Verification body
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > renders a clean subject+body through 17's renderWithRegeneration()
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks on an over-long subject (never reaches the body render at all)
+ ✓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body carries an attribution leak, even though the subject alone is clean 14ms
+ ↓ |@crabgic/git-engine| src/commit-renderer.test.ts > renderCommit > blocks when the body exceeds the 5-line limit
+
+ Test Files  2 passed (2)
+      Tests  3 passed | 33 skipped (36)
+   Start at  00:17:18
+   Duration  1.88s (transform 2.12s, setup 0ms, import 3.17s, tests 27ms, environment 0ms)
+
