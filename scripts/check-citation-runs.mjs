@@ -68,6 +68,7 @@ export async function auditCiRunCitations(records, resolve) {
   const warnings = [];
   const cache = new Map();
   let checked = 0;
+  let verified = 0;
 
   for (const { fileName, record } of records) {
     const criteria = Array.isArray(record?.criteria) ? record.criteria : [];
@@ -87,7 +88,9 @@ export async function auditCiRunCitations(records, resolve) {
         checked += 1;
         if (outcome.unavailable !== undefined) {
           warnings.push(`${where}: could not resolve ${citation.url} — ${outcome.unavailable}`);
-        } else if (!outcome.found) {
+        } else if (outcome.found) {
+          verified += 1;
+        } else {
           errors.push(
             `${where}: ${citation.url} does not exist in ${REPO_SLUG}'s Actions history — a cited run that is not there is a fabricated citation`,
           );
@@ -95,7 +98,7 @@ export async function auditCiRunCitations(records, resolve) {
       }
     }
   }
-  return { errors, warnings, checked };
+  return { errors, warnings, checked, verified };
 }
 
 /** The real resolver. Distinguishes "not there" (404) from "could not ask" (everything else). */
@@ -140,7 +143,7 @@ async function main() {
     );
     return;
   }
-  const { errors, warnings, checked } = await auditCiRunCitations(
+  const { errors, warnings, checked, verified } = await auditCiRunCitations(
     readRecords(repoRoot),
     githubResolver(token),
   );
@@ -150,8 +153,19 @@ async function main() {
     console.error(`check-citation-runs: FAIL — ${String(errors.length)} fabricated citation(s).`);
     process.exit(1);
   }
+  // A dead check reporting PASS is the exact failure mode this whole effort
+  // exists to prevent. Tolerating individual unresolvable citations is the
+  // intended asymmetry; resolving NONE of them means the check has silently
+  // stopped working — a bad token, a blocked network — and it must say so
+  // rather than print a green line it has not earned.
+  if (checked > 0 && verified === 0) {
+    console.error(
+      `check-citation-runs: FAIL — verified NOTHING: all ${String(checked)} ci-run citation(s) were unresolvable, so this check proved nothing. Fix the token or the network rather than reading this as a pass.`,
+    );
+    process.exit(1);
+  }
   console.log(
-    `check-citation-runs: PASS — ${String(checked)} ci-run citation(s) resolve to real runs${warnings.length > 0 ? `, ${String(warnings.length)} unresolvable (not a failure)` : ""}.`,
+    `check-citation-runs: PASS — ${String(verified)}/${String(checked)} ci-run citation(s) resolve to real runs${warnings.length > 0 ? `, ${String(warnings.length)} unresolvable (tolerated)` : ""}.`,
   );
 }
 

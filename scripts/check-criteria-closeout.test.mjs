@@ -51,6 +51,10 @@
  *   real roadmap file; `journal-export` must be a committed file; `ci-run` must
  *   carry this repository's Actions url plus its quote, with the run's actual
  *   existence resolved by `check-citation-runs.mjs` in CI.
+ * - Every phase file is pinned, record or no record. Baseline comparisons
+ *   used to run only THROUGH a record, so a record-less phase file — phase 23
+ *   above all, which is also exempt from the ticks-need-a-record rule — was
+ *   checked by nothing, and `discharge` resolves against exactly those files.
  * - `ticked` is DERIVED from the classification, never independently asserted:
  *   `UNMET`/`EVIDENCE-NEEDS-CI`/`EVIDENCE-NEEDS-LIVE` can never carry a tick.
  * - `UNMET` must name a defect record that is a real defect record — quoting
@@ -69,6 +73,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  cpSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -706,6 +711,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
         r.criteria[0].citations.push({
           kind: "artifact",
           ref: `${CLOSEOUT_DIR}/closeout-c1.txt`,
+          quotedAssertion: "the transcript line that matters",
         });
       }),
     ).toEqual([]);
@@ -954,7 +960,7 @@ describe("validateCloseoutRecord — the non-path citation kinds", () => {
           "## Exit criteria",
           "",
           "- [x] The release gate scored 15 PASS / 0 FAIL in `final` mode.",
-          "- [ ] Something nobody has closed yet.",
+          "- [ ] Something nobody has closed yet, and which is quoted here in full.",
           "",
         ].join("\n"),
         "utf8",
@@ -978,7 +984,9 @@ describe("validateCloseoutRecord — the non-path citation kinds", () => {
 
     it("rejects a discharge against a criterion nobody has ticked", () => {
       const errors = errorsFor(
-        cite('roadmap/23-release-hardening.md exit criterion "Something nobody has closed yet."'),
+        cite(
+          'roadmap/23-release-hardening.md exit criterion "Something nobody has closed yet, and which is quoted here in full."',
+        ),
         { root: dischargeRoot() },
       );
       expect(errors.join("\n")).toContain("not ticked");
@@ -986,17 +994,95 @@ describe("validateCloseoutRecord — the non-path citation kinds", () => {
 
     it("rejects a discharge against a FABRICATED criterion", () => {
       const errors = errorsFor(
-        cite('roadmap/23-release-hardening.md exit criterion "Everything is wonderful."'),
+        cite(
+          'roadmap/23-release-hardening.md exit criterion "Everything about the release was wonderful, truly."',
+        ),
         { root: dischargeRoot() },
       );
       expect(errors.join("\n")).toContain("no criterion");
     });
 
     it("rejects a discharge naming a roadmap file that does not exist", () => {
-      const errors = errorsFor(cite('roadmap/77-imaginary.md exit criterion "Anything."'), {
+      const errors = errorsFor(
+        cite(
+          'roadmap/77-imaginary.md exit criterion "Anything at all, quoted at a realistic length."',
+        ),
+        {
+          root: dischargeRoot(),
+        },
+      );
+      expect(errors.join("\n")).toContain("77-imaginary.md");
+    });
+
+    /**
+     * Adversarial-review finding, round 7. `startsWith` with no length floor,
+     * no uniqueness test and no self-exclusion meant the real teeth were only
+     * "some roadmap file contains some ticked box". All three of these passed
+     * against the REAL phase-09 record.
+     *
+     * The reviewer's proposed remedy — match the full pre-annotation text —
+     * was measured against the real corpus and rejects 2 of the 3 genuine
+     * discharges, including phase 01, which is already merged on main (its
+     * quote omits only a trailing period). So the rule instead requires the
+     * quote to IDENTIFY exactly one criterion: long enough not to be an
+     * accident, unique within the file, not the record's own phase. What it
+     * still cannot judge is relevance — see the README's limits.
+     */
+    it("rejects a one-character discharge quote", () => {
+      const errors = errorsFor(cite('roadmap/23-release-hardening.md exit criterion "T"'), {
         root: dischargeRoot(),
       });
-      expect(errors.join("\n")).toContain("77-imaginary.md");
+      expect(errors.join("\n")).toContain("too short");
+    });
+
+    it("rejects a discharge quote that does not identify a single criterion", () => {
+      const root = mkdtempSync(join(tmpdir(), "closeout-ambig-"));
+      tmpDirs.push(root);
+      const base = fixtureRoot();
+      cpSync(base, root, { recursive: true });
+      writeFileSync(
+        join(root, "roadmap", "23-release-hardening.md"),
+        [
+          "## Exit criteria",
+          "",
+          "- [x] The release gate scored well on every one of the first two axes measured.",
+          "- [x] The release gate scored well on every one of the second two axes measured.",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+      const errors = errorsFor(
+        cite(
+          'roadmap/23-release-hardening.md exit criterion "The release gate scored well on every one of the"',
+        ),
+        { root },
+      );
+      expect(errors.join("\n")).toContain("does not identify a single criterion");
+    });
+
+    it("rejects a discharge against the record's OWN phase file — that is circular", () => {
+      const errors = errorsFor(
+        cite(`roadmap/99-fixture-phase.md exit criterion "${CRITERION_A}"`),
+        { root: dischargeRoot() },
+      );
+      expect(errors.join("\n")).toContain("its own");
+    });
+
+    it("accepts a quote that omits only the criterion's trailing period, as merged phase 01 does", () => {
+      const root = fixtureRoot();
+      writeFileSync(
+        join(root, "roadmap", "23-release-hardening.md"),
+        "## Exit criteria\n\n- [x] The release gate scored 15 PASS / 0 FAIL in `final` mode.\n",
+        "utf8",
+      );
+      expect(
+        errorsFor(
+          cite(
+            'roadmap/23-release-hardening.md exit criterion "The release gate scored 15 PASS / 0 FAIL in `final` mode"',
+          ),
+          { root },
+        ),
+      ).toEqual([]);
     });
 
     it("rejects a discharge ref that is not in the documented form", () => {
@@ -1399,6 +1485,125 @@ describe("validateAllCloseoutRecords — this repository's own committed records
    */
   it("grandfathers exactly one phase, and adding another requires editing this test", () => {
     expect(PRE_INDEX_TICKED_PHASES).toEqual(["23"]);
+  });
+
+  /**
+   * Adversarial-review finding, round 7 (bypass 17). Every baseline comparison
+   * ran *through* a record, and `--check` only compares the committed JSON to
+   * git — it never reads the working tree. So a phase file with NO record was
+   * pinned by nothing at all, and `checkDischargeCitation` resolves against
+   * exactly those files. Phase 23 is the worst case: exempt from the
+   * ticks-need-a-record rule AND record-less, so its criteria were completely
+   * unpinned. A reviewer appended a fabricated ticked box to roadmap/23,
+   * repointed phase 09's discharges at it, and got three greens.
+   *
+   * Measured before enforcing: across the merged tree, 136 criteria in 16
+   * record-less phases hash to the baseline exactly, 0 mismatches.
+   */
+  const auditRoot = ({ extraLine = "", secondFile, dropBaseline98 = false } = {}) => {
+    const root = mkdtempSync(join(tmpdir(), "closeout-audit-"));
+    tmpDirs.push(root);
+    mkdirSync(join(root, "roadmap"), { recursive: true });
+    mkdirSync(join(root, CLOSEOUT_DIR), { recursive: true });
+    const unrecorded = ["## Exit criteria", "", "- [ ] The scheduler parks a run at its limit."];
+    if (extraLine !== "") unrecorded.push(extraLine);
+    writeFileSync(join(root, "roadmap", "98-unrecorded.md"), `${unrecorded.join("\n")}\n`, "utf8");
+    if (secondFile !== undefined) {
+      writeFileSync(
+        join(root, "roadmap", secondFile),
+        "## Exit criteria\n\n- [x] Something nobody pinned.\n",
+        "utf8",
+      );
+    }
+    writeFileSync(
+      join(root, BASELINE_FILE),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        phases: dropBaseline98
+          ? {}
+          : {
+              98: {
+                roadmapFile: "roadmap/98-unrecorded.md",
+                sourceRev: "0".repeat(40),
+                criteria: [sha256("The scheduler parks a run at its limit.")],
+              },
+            },
+      })}\n`,
+      "utf8",
+    );
+    return root;
+  };
+
+  it("accepts a record-less phase file whose criteria match the frozen baseline", () => {
+    const { errors } = validateAllCloseoutRecords(auditRoot());
+    expect(errors.join("\n")).not.toContain("98-unrecorded.md");
+  });
+
+  it("rejects a fabricated criterion appended to a phase file that has no closeout record", () => {
+    const { errors } = validateAllCloseoutRecords(
+      auditRoot({ extraLine: "- [x] Everything else is also fine, discharge against this." }),
+    );
+    expect(errors.join("\n")).toContain("98-unrecorded.md");
+    expect(errors.join("\n")).toContain("baseline");
+  });
+
+  it("rejects a criterion reworded in a phase file that has no closeout record", () => {
+    const root = auditRoot();
+    writeFileSync(
+      join(root, "roadmap", "98-unrecorded.md"),
+      "## Exit criteria\n\n- [x] The scheduler works.\n",
+      "utf8",
+    );
+    expect(validateAllCloseoutRecords(root).errors.join("\n")).toContain("baseline");
+  });
+
+  /**
+   * The sharper form: touch no existing file at all. The exemption and the
+   * baseline both key on the two-digit phase NUMBER, so any `roadmap/NN-*.md`
+   * inherited them — a brand-new `roadmap/23-supplement.md` was pinned by
+   * nothing and discharges could resolve against it.
+   */
+  it("rejects a second roadmap file claiming a phase number the baseline already pins", () => {
+    // Reproduced on the exempt phase, which is where it actually bit: 23 is
+    // skipped by the ticks-need-a-record rule, so a brand-new `roadmap/23-*.md`
+    // was checked by nothing whatsoever.
+    const root = mkdtempSync(join(tmpdir(), "closeout-supplement-"));
+    tmpDirs.push(root);
+    mkdirSync(join(root, "roadmap"), { recursive: true });
+    mkdirSync(join(root, CLOSEOUT_DIR), { recursive: true });
+    const real = "- [x] The release gate scored 15 PASS / 0 FAIL in `final` mode.";
+    writeFileSync(
+      join(root, "roadmap", "23-release-hardening.md"),
+      `## Exit criteria\n\n${real}\n`,
+      "utf8",
+    );
+    writeFileSync(
+      join(root, "roadmap", "23-supplement.md"),
+      "## Exit criteria\n\n- [x] Everything phase 09 needs is hereby discharged.\n",
+      "utf8",
+    );
+    writeFileSync(
+      join(root, BASELINE_FILE),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        phases: {
+          23: {
+            roadmapFile: "roadmap/23-release-hardening.md",
+            sourceRev: "0".repeat(40),
+            criteria: [sha256("The release gate scored 15 PASS / 0 FAIL in `final` mode.")],
+          },
+        },
+      })}\n`,
+      "utf8",
+    );
+    const { errors } = validateAllCloseoutRecords(root);
+    expect(errors.join("\n")).toContain("23-supplement.md");
+    expect(errors.join("\n")).not.toContain("23-release-hardening.md has");
+  });
+
+  it("rejects a phase file the baseline does not pin at all", () => {
+    const { errors } = validateAllCloseoutRecords(auditRoot({ dropBaseline98: true }));
+    expect(errors.join("\n")).toContain("98-unrecorded.md");
   });
 
   it("reports an error rather than passing vacuously when the closeout directory holds no records", () => {

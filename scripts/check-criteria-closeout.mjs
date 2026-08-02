@@ -17,7 +17,7 @@
  * journal entry, or committed artifact." The closeout pass applies that rule
  * to itself, and this check is what keeps the resulting records from becoming
  * the very thing they exist to prevent — a self-reported claim nothing
- * verifies. Concretely it makes seven drifts impossible to land quietly:
+ * verifies. Concretely it makes eight drifts impossible to land quietly:
  *
  *   0. A phase file with more than one `## Exit criteria` section. Listed
  *      first because every check below is downstream of a single parse: it
@@ -62,9 +62,23 @@
  *   6. A `file:line` that has gone stale. The line span is checked against the
  *      file's real length. The pilot rebased once and five of its own line
  *      citations had slid, none catchable, because the files still existed.
+ *   7. A criterion invented in a phase file that has NO closeout record.
+ *      Every baseline comparison used to run THROUGH a record, and `--check`
+ *      only compares the committed JSON against git — never the working
+ *      tree — so a record-less phase file was pinned by nothing, while
+ *      `discharge` citations resolve against exactly those files. Phase 23
+ *      was the worst case: exempt from the ticks-need-a-record rule AND
+ *      record-less. Every phase file is now held against its baseline entry,
+ *      and a second `roadmap/NN-*.md` sharing a pinned phase number — which
+ *      inherited the exemption and was pinned by neither — is rejected.
  *
- * What it CANNOT catch, stated so nobody over-trusts it: the baseline pins the
- * WORDS of a criterion, not its meaning, and it says nothing about the roadmap
+ * What it CANNOT catch, stated so nobody over-trusts it. A `discharge` can
+ * name a real, ticked, unambiguously-quoted criterion that is simply
+ * IRRELEVANT to the one it discharges: relevance is a judgement about two
+ * sentences' meanings and no hash makes it, which is why
+ * `SUPERSEDED-DISCHARGED` is the tick that most needs a human to read both
+ * criteria side by side. More generally the baseline pins the WORDS of a
+ * criterion, not its meaning, and it says nothing about the roadmap
  * prose around the checkbox. A phase's Test plan, Definition-of-done or Risks
  * section can be rewritten to hollow out a criterion whose sentence is
  * untouched, and a criterion legitimately re-pinned in a later commit is only
@@ -156,6 +170,14 @@ const CI_RUN_URL =
  * check needs; insisting on one phrasing would have failed honest records
  * while adding no teeth, since the teeth are entirely in resolving the quote.
  */
+/**
+ * A discharge quote must be long enough to be a deliberate identification
+ * rather than an accident. The three genuine discharges in the corpus quote
+ * 128, 155 and 279 characters, so this floor is far below every honest use and
+ * far above the one-character quote a reviewer got to pass.
+ */
+const MIN_DISCHARGE_QUOTE = 40;
+
 const DISCHARGE_ROADMAP_FILE = /roadmap\/\d{2}-[a-z0-9-]+\.md/;
 const DISCHARGE_QUOTED_CRITERION = /"([^"]+)"/;
 
@@ -203,6 +225,17 @@ function countLines(contents) {
  * code match what the error message already promised.
  */
 export const ANNOTATION_LEAD = "— **";
+
+/**
+ * A checkbox item's criterion wording, with any closeout annotation removed —
+ * `<criterion> — **Evidence (date):** …` -> `<criterion>`. This is the text the
+ * baseline pins, so it is what both the record path and the record-less
+ * phase-file audit must hash.
+ */
+function criterionWording(boxText) {
+  const lead = boxText.indexOf(ANNOTATION_LEAD);
+  return lead < 0 ? boxText : boxText.slice(0, lead);
+}
 
 const TOP_LEVEL_KEYS = { required: ["schemaVersion", "phase", "roadmapFile", "pass", "criteria"] };
 const PASS_KEYS = { required: ["date", "agent", "headSha"] };
@@ -526,7 +559,7 @@ function checkCiRunCitation(errors, cwhere, citation) {
  * wording must really be one of its criteria, and that criterion must actually
  * be TICKED — an unticked one has discharged nothing.
  */
-function checkDischargeCitation(errors, cwhere, citation, repoRoot) {
+function checkDischargeCitation(errors, cwhere, citation, repoRoot, ownRoadmapFile) {
   const file = DISCHARGE_ROADMAP_FILE.exec(citation.ref);
   const quotedMatch = DISCHARGE_QUOTED_CRITERION.exec(citation.ref);
   if (file === null || quotedMatch === null) {
@@ -537,6 +570,24 @@ function checkDischargeCitation(errors, cwhere, citation, repoRoot) {
   }
   const roadmapFile = file[0];
   const quoted = quotedMatch[1];
+
+  // Round-7 findings. `startsWith` with no floor, no uniqueness test and no
+  // self-exclusion meant the real teeth were "some roadmap file contains some
+  // ticked box": quoting "A" passed, so did discharging against an unrelated
+  // phase, so did a phase discharging against ITSELF.
+  if (roadmapFile === ownRoadmapFile) {
+    errors.push(
+      `${cwhere}: this discharges against its own phase file ${roadmapFile} — a criterion cannot be discharged by its own phase`,
+    );
+    return;
+  }
+  if (normalize(quoted).length < MIN_DISCHARGE_QUOTE) {
+    errors.push(
+      `${cwhere}: the discharged criterion's quoted wording is too short (${String(normalize(quoted).length)} chars, minimum ${String(MIN_DISCHARGE_QUOTE)}) to identify a criterion`,
+    );
+    return;
+  }
+
   const abs = path.resolve(repoRoot, roadmapFile);
   if (!abs.startsWith(path.resolve(repoRoot) + path.sep) || !existsSync(abs)) {
     errors.push(`${cwhere}: discharge ref names ${roadmapFile}, which does not exist`);
@@ -550,13 +601,20 @@ function checkDischargeCitation(errors, cwhere, citation, repoRoot) {
     return;
   }
   const wanted = normalize(quoted);
-  const match = items.find((box) => normalize(box.text).startsWith(wanted));
-  if (match === undefined) {
+  const matches = items.filter((box) => normalize(criterionWording(box.text)).startsWith(wanted));
+  if (matches.length === 0) {
     errors.push(
       `${cwhere}: ${roadmapFile} has no criterion beginning ${JSON.stringify(quoted.slice(0, 60))} — a discharge cannot cite a criterion that does not exist`,
     );
     return;
   }
+  if (matches.length > 1) {
+    errors.push(
+      `${cwhere}: the quoted wording does not identify a single criterion in ${roadmapFile} — it matches ${String(matches.length)}. Quote enough of the criterion to name exactly one.`,
+    );
+    return;
+  }
+  const [match] = matches;
   if (!match.checked) {
     errors.push(
       `${cwhere}: the criterion this discharges against is not ticked in ${roadmapFile}, so it has discharged nothing`,
@@ -837,10 +895,19 @@ export function validateCloseoutRecord(record, ctx) {
           // fabricated ref validated. This pass's own phase-12 defect exists
           // BECAUSE a cited test file was deleted and nothing noticed.
           resolveCitationRef(errors, cwhere, citation, repoRoot);
+          // Line numbers drift and files move; the quoted text is the citation
+          // that survives. All 466 test/artifact citations across the eleven
+          // records already carry one, so requiring it costs nothing today and
+          // stops the next one being written without it.
+          if (!isNonEmptyString(citation.quotedAssertion)) {
+            errors.push(
+              `${cwhere}: ${citation.kind === "artifact" ? "an" : "a"} ${citation.kind} citation must carry a quotedAssertion — the file and line drift, the quoted text is what a reader can still check`,
+            );
+          }
         } else if (citation.kind === "ci-run") {
           checkCiRunCitation(errors, cwhere, citation);
         } else if (citation.kind === "discharge") {
-          checkDischargeCitation(errors, cwhere, citation, repoRoot);
+          checkDischargeCitation(errors, cwhere, citation, repoRoot, record.roadmapFile);
         }
         for (const optional of ["url", "commit", "quotedAssertion"]) {
           if (optional in citation && !isNonEmptyString(citation[optional])) {
@@ -990,7 +1057,7 @@ export const PRE_INDEX_TICKED_PHASES = ["23"];
  *      aspirational bookkeeping that rule forbids" — and this is the prose
  *      becoming a check.
  */
-function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
+function findUnrecordedPhaseClosures(repoRoot, presentFileNames, baseline) {
   const roadmapDir = path.join(repoRoot, "roadmap");
   if (!existsSync(roadmapDir)) return [];
   const problems = [];
@@ -999,12 +1066,55 @@ function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
     if (phase === null) continue;
     const text = readFileSync(path.join(roadmapDir, name), "utf8");
     const expected = `phase-${phase[1]}.json`;
-    if (presentFileNames.includes(expected)) continue;
+    const hasRecord = presentFileNames.includes(expected);
 
     // Records get their own structural report from `validateCloseoutRecord`;
-    // this is the only place a phase file WITHOUT one is examined at all, and a
-    // decoy section planted before a phase is closed must not lie in wait.
-    const parsed = parseExitCriteriaCheckboxes(text);
+    // for a phase file WITHOUT one this is the only place it is examined at
+    // all, so a decoy section planted before a phase is closed must not lie in
+    // wait — and, since round 7, its criteria must be pinned too.
+    const parsed = hasRecord ? undefined : parseExitCriteriaCheckboxes(text);
+
+    // Round-7 finding (bypass 17). Every baseline comparison ran THROUGH a
+    // record, and `generate-criteria-baseline.mjs --check` only compares the
+    // committed JSON against git — it never reads the working tree. So a phase
+    // file with no record was pinned by nothing, and `checkDischargeCitation`
+    // resolves against exactly those files. Phase 23 was the worst case: exempt
+    // from the ticks-need-a-record rule AND record-less. A reviewer appended a
+    // fabricated ticked criterion to roadmap/23, repointed phase 09's
+    // discharges at it, and every check went green.
+    if (baseline !== null) {
+      const entry = baseline.phases[phase[1]];
+      if (!isPlainObject(entry) || !Array.isArray(entry.criteria)) {
+        problems.push(
+          `roadmap/${name} has no entry in the frozen baseline ${BASELINE_FILE} — every phase file must be pinned, whether or not it has a closeout record`,
+        );
+      } else if (entry.roadmapFile !== `roadmap/${name}`) {
+        // The sharper form of the same attack: touch no existing file, just add
+        // a new one. The phase NUMBER is what the baseline and the exemption
+        // key on, so `roadmap/23-supplement.md` inherited both and was pinned
+        // by neither.
+        problems.push(
+          `roadmap/${name} is not the file the frozen baseline pins for phase ${phase[1]} (that is ${entry.roadmapFile}) — a second file sharing a phase number is pinned by nothing`,
+        );
+      } else if (parsed !== undefined && parsed.items !== undefined) {
+        if (parsed.items.length !== entry.criteria.length) {
+          problems.push(
+            `roadmap/${name} has ${String(parsed.items.length)} exit criteria but the frozen baseline pins ${String(entry.criteria.length)} — criteria were added or removed in a phase that has no closeout record to account for them`,
+          );
+        }
+        parsed.items.forEach((box, index) => {
+          const frozen = entry.criteria[index];
+          if (frozen !== undefined && frozen !== sha256(normalize(criterionWording(box.text)))) {
+            problems.push(
+              `roadmap/${name} criterion ${String(index + 1)} does not hash to the frozen original wording in ${BASELINE_FILE} — this phase has no closeout record, so nothing else pins it`,
+            );
+          }
+        });
+      }
+    }
+
+    if (hasRecord) continue;
+
     for (const problem of parsed.problems) problems.push(`roadmap/${name} ${problem}`);
     if (parsed.items === undefined && parsed.problems.length === 0) {
       // Renaming the heading (`## Exit criteria (final)`) and ticking
@@ -1050,7 +1160,7 @@ export function validateAllCloseoutRecords(repoRoot) {
       errors: [
         `${CLOSEOUT_DIR}/ does not exist`,
         ...loadedBaseline.errors,
-        ...findUnrecordedPhaseClosures(repoRoot, []),
+        ...findUnrecordedPhaseClosures(repoRoot, [], baseline),
       ],
       recordCount: 0,
       fileNames: [],
@@ -1065,14 +1175,17 @@ export function validateAllCloseoutRecords(repoRoot) {
       errors: [
         `${CLOSEOUT_DIR}/ contains no phase-NN.json records`,
         ...loadedBaseline.errors,
-        ...findUnrecordedPhaseClosures(repoRoot, fileNames),
+        ...findUnrecordedPhaseClosures(repoRoot, fileNames, baseline),
       ],
       recordCount: 0,
       fileNames,
     };
   }
 
-  const errors = [...loadedBaseline.errors, ...findUnrecordedPhaseClosures(repoRoot, fileNames)];
+  const errors = [
+    ...loadedBaseline.errors,
+    ...findUnrecordedPhaseClosures(repoRoot, fileNames, baseline),
+  ];
   for (const fileName of fileNames) {
     let parsed;
     try {

@@ -11,8 +11,9 @@ closeout itself, so a tick's citation is machine-resolvable rather than a claim 
 Validated by `scripts/check-criteria-closeout.mjs`
 (`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job), backed by the frozen
 original-wording baseline `criteria-baseline.json`, which `npm run check:criteria-baseline`
-re-derives from git history in the same job. The validator's own rejection paths — 67 cases, almost
-all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`.
+re-derives from git history in the same job. The validator's own rejection paths — 99 cases, almost
+all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`; the baseline generator
+and the run resolver add 21 more, for 120 across the three suites.
 
 ## Layout
 
@@ -163,11 +164,15 @@ records do not classify the same situation three different ways.
    frozen baseline hash matched; all seven criteria `EVIDENCE-EXISTS`; every citation
    `job 00000000000` / `runs/1` — and got a green validator, a green baseline `--check` and green
    CI.
-   - **`discharge`** is fully checkable offline, and now is: the ref must name a
+   - **`discharge`** is the one kind that resolves offline, and now does: the ref must name a
      `roadmap/NN-<slug>.md` **and** quote the discharged criterion's wording; that criterion must
      really exist in that file; and it must be **ticked** — an unticked one has discharged nothing.
      A phase-09 reviewer discharged a tick against a completely fabricated phase-23 criterion and
-     it passed. It no longer does.
+     it passed. It no longer does. The quote must also be **at least 40 characters**, must match
+     **exactly one** criterion in that file, and must not name the record's **own** phase file —
+     without those, a one-character quote, an unrelated phase's criterion, and a phase discharging
+     against itself all passed. This identifies a criterion; it does not establish that the
+     criterion is *relevant*. See limit 6.
    - **`journal-export`** is a committed file like any other, and resolves as one.
    - **`ci-run`** cannot be resolved from a checkout, so offline it must carry a `url` in this
      repository's `actions/runs/` (or `actions/jobs/`) space, plus a `quotedAssertion` — logs
@@ -218,10 +223,12 @@ narrower, and still real:
    every checkbox and hash stays byte-identical and `meta-checks` stays green.
 2. **Words, not meaning.** A criterion can be satisfied by a test that technically asserts its
    sentence and misses its intent. No hash can see that; only reading the cited test can.
-3. **A re-pin is only as honest as its review.** Re-pinning `sourceRev` is loud — one line, one
-   file, one commit, and `--check` proves the new hashes really come from that revision — but it is
-   the intended way to change a criterion, so it can also be the dishonest way. Treat any diff to
-   `criteria-baseline.json` as the thing to read first.
+3. **A re-pin is only as honest as its review.** Re-pinning is loud — and note the lever is
+   `PRE_CLOSEOUT_REVISIONS` in `scripts/generate-criteria-baseline.mjs`, **not**
+   `criteria-baseline.json`: `--check` verifies the committed JSON against the pin table's
+   revisions, so editing the table and regenerating in one PR is internally consistent and passes.
+   That is by design — it is the intended way to change a criterion, so it is also the dishonest
+   way. Treat any diff to **either** the pin table or the baseline JSON as the first thing to read.
 4. **`quotedAssertion` is not verified against the file it quotes.** This is the largest remaining
    hole and it is named here rather than hidden: the citation's *file* must exist, be a real
    non-symlink file, and be long enough for the line — but the quoted assertion itself is free
@@ -242,6 +249,11 @@ narrower, and still real:
    resolution proves the run exists; it does not read the log, so it cannot tell whether the quoted
    line is really in it, or whether that job exercised this criterion's suite. This is the residue
    of the forged-closeout hole rather than its closure.
+6. **A `discharge` can name a real, ticked, correctly-quoted criterion that is simply not relevant.**
+   The checks establish that the discharging criterion *exists*, is *closed*, and is *identified
+   unambiguously* — not that it actually covers the criterion being discharged. Relevance is a
+   judgement about two sentences' meanings, and no hash makes it. `SUPERSEDED-DISCHARGED` is
+   therefore the tick that most needs a human to read both criteria side by side.
 
    Note the division of labour, because it matters for anyone running the check locally: the
    **offline** validator still passes a forged closeout whose fabricated citations merely *look*

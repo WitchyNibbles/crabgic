@@ -126,6 +126,43 @@ describe("auditCiRunCitations", () => {
     expect(checked).toBe(0);
   });
 
+  /**
+   * Adversarial-review finding, round 7 (optional 1). With a bad token or an
+   * unreachable API every citation warns and the script printed
+   * "PASS — N resolve, N unresolvable". A dead check reporting PASS is the
+   * exact failure mode this whole effort exists to prevent, so verifying
+   * NOTHING is now its own outcome rather than a pass with footnotes.
+   */
+  it("reports that it verified nothing when every citation was unresolvable", async () => {
+    const { errors, warnings, checked, verified } = await auditCiRunCitations(
+      recordWith([{ kind: "ci-run", url: RUN_URL }]),
+      async () => ({ found: false, unavailable: "HTTP 401" }),
+    );
+    expect(errors).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(checked).toBe(1);
+    expect(verified).toBe(0);
+  });
+
+  it("counts how many citations it actually verified", async () => {
+    const { checked, verified } = await auditCiRunCitations(
+      [
+        {
+          fileName: "phase-03.json",
+          record: {
+            criteria: [
+              { index: 1, citations: [{ kind: "ci-run", url: RUN_URL }] },
+              { index: 2, citations: [{ kind: "ci-run", url: JOB_URL }] },
+            ],
+          },
+        },
+      ],
+      async (t) => (t.kind === "run" ? { found: true } : { found: false, unavailable: "HTTP 502" }),
+    );
+    expect(checked).toBe(2);
+    expect(verified).toBe(1);
+  });
+
   it("does not require a run to have SUCCEEDED — phase 01 cites red runs as evidence a gate bites", async () => {
     const { errors } = await auditCiRunCitations(
       recordWith([{ kind: "ci-run", url: RUN_URL }]),
