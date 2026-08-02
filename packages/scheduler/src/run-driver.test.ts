@@ -77,9 +77,12 @@ class RecordingLiveWorkers extends Map<string, LiveWorker> {
 
 type LiveWorkerMap = Map<string, LiveWorker>;
 
+/** What a scripted unit does: report one of the three terminal `WorkerResult` outcomes, or hit a rate limit. */
+type ScriptedOutcome = "succeeded" | "failed" | "cancelled" | "limit";
+
 /** A per-unit outcome map -> the injected seams `driveRun` needs. Records dispatch order and live-worker observations as it goes. */
 function buildDeps(
-  outcomeByUnit: ReadonlyMap<string, "succeeded" | "failed" | "limit">,
+  outcomeByUnit: ReadonlyMap<string, ScriptedOutcome>,
   observed: Observed,
   liveWorkers: LiveWorkerMap,
 ): RunDriverDependencies {
@@ -127,6 +130,13 @@ function chain(): readonly WorkUnit[] {
     buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID, dependsOn: [], attemptStatus: "pending" }),
     buildWorkUnit({ id: B, changeSetId: CHANGE_SET_ID, dependsOn: [A], attemptStatus: "pending" }),
   ];
+}
+
+/** Independent units, no edges — every one of them is ready in the first round. */
+function independent(...ids: readonly string[]): readonly WorkUnit[] {
+  return ids.map((id) =>
+    buildWorkUnit({ id, changeSetId: CHANGE_SET_ID, dependsOn: [], attemptStatus: "pending" }),
+  );
 }
 
 describe("driveRun — the DAG dispatch loop", () => {
@@ -533,6 +543,35 @@ describe("driveRun — re-drive/resume seeds status from the journal (supersedes
    * halves of the cross-run isolation are now in place: the prior run drove
    * both units to completion; a fresh runId re-dispatches both from scratch.
    */
+  /**
+   * The same shape as the wedge below, seen from the scheduler: a re-drive of
+   * an all-FAILED run has nothing left to dispatch, and must report that as
+   * `failed` rather than as a completion. (Its blocked sibling is pinned
+   * directly above; that one keeps a pending unit and so classifies
+   * `blocked`.)
+   */
+  it("a futile re-drive of an all-failed single-unit run reports failed, dispatching nothing", async () => {
+    const units = independent(A);
+    const first = newObserved();
+    const firstResult = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: units },
+      buildDeps(new Map([[A, "failed"]]), first, new Map()),
+    );
+    expect(firstResult.stopped).toBe("failed");
+    expect(first.dispatchOrder).toEqual([A]);
+
+    const second = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: units },
+      buildDeps(new Map(), second, new Map()),
+    );
+    // Journal-seeded `failed`, so nothing is re-selected — and the drive says
+    // so honestly instead of reporting a completion that never happened.
+    expect(result.stopped).toBe("failed");
+    expect(result.statusById.get(A)).toBe("failed");
+    expect(second.dispatchOrder).toEqual([]);
+  });
+
   it("a different run over the same units re-dispatches to completion — no cross-run inheritance", async () => {
     const OTHER_RUN = "99999999-9999-4999-8999-999999999999";
     const first = newObserved();
@@ -551,5 +590,143 @@ describe("driveRun — re-drive/resume seeds status from the journal (supersedes
     // Genuinely re-ran both units under its own runId — not skipped as
     // "already succeeded", not refused at the repair gate.
     expect(second.dispatchOrder).toEqual([A, B]);
+  });
+});
+
+/**
+ * THE IDLE-RUN WEDGE, at its source. `classifyIdleRun` used to answer
+ * `"completed"` for ANY all-terminal status set — it checked only for parked
+ * and pending units, never whether the terminals were `succeeded`. So an
+ * ordinary single-unit failure reported a completion, its one production
+ * consumer (`packages/cli`'s dispatcher) mapped `completed` to "no run
+ * transition — the verifying successor is not wired yet", and the run sat in
+ * `running` with every unit terminal: un-finishable, its change set
+ * un-dispatchable, and `resume` answering `accepted: true` to a re-drive that
+ * could not dispatch anything. Only `run.cancel` escaped.
+ *
+ * The stop reason is the only place that knows the DAG's real shape, so it is
+ * where the truth belongs: `completed` now means every unit SUCCEEDED, and a
+ * set carrying a failure or a cancellation says so.
+ */
+describe("driveRun — an all-terminal DAG reports how it actually ended", () => {
+  it("reports failed when its only unit failed, never completed", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: independent(A) },
+      buildDeps(new Map([[A, "failed"]]), observed, new Map()),
+    );
+
+    expect(result.statusById.get(A)).toBe("failed");
+    expect(result.stopped).toBe("failed");
+  });
+
+  /**
+   * The blast radius beyond the single-unit case: independent units whose
+   * failure strands no dependent still leave the DAG all-terminal, so the old
+   * classification called a half-failed run complete.
+   */
+  it("reports failed for a mixed succeeded+failed set — a partial failure is not a completion", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: independent(A, B),
+        concurrencyCap: 2,
+      },
+      buildDeps(new Map([[B, "failed"]]), observed, new Map()),
+    );
+
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(result.statusById.get(B)).toBe("failed");
+    expect(result.stopped).toBe("failed");
+  });
+
+  /**
+   * A unit `worker.terminate`d out from under a run (or one whose worker
+   * self-reports `cancelled`) is terminal too. It gets its own stop reason
+   * rather than being folded into `failed`, because the run-level transition
+   * the dispatcher writes from it is an audit record: `running → cancelled`
+   * is a legal edge and the honest one, and calling it a failure would
+   * misattribute how the run ended.
+   */
+  it("reports cancelled when every terminal unit ended cancelled", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: independent(A) },
+      buildDeps(new Map([[A, "cancelled"]]), observed, new Map()),
+    );
+
+    expect(result.statusById.get(A)).toBe("cancelled");
+    expect(result.stopped).toBe("cancelled");
+  });
+
+  /** A failure anywhere outranks a cancellation: the run did not merely stop, some of its work broke. */
+  it("reports failed when a cancelled unit sits beside a failed one", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: independent(A, B),
+        concurrencyCap: 2,
+      },
+      buildDeps(
+        new Map([
+          [A, "cancelled" as const],
+          [B, "failed" as const],
+        ]),
+        observed,
+        new Map(),
+      ),
+    );
+
+    expect(result.stopped).toBe("failed");
+  });
+
+  /**
+   * The precedence the old classification already had, kept exactly: a parked
+   * unit is retained and resumable, so a run holding one is `parked` even
+   * when everything else failed; a pending-but-never-ready unit is `blocked`.
+   * Neither is a dead end, and neither may be reclassified as one.
+   */
+  it("keeps parked ahead of failed — a retained, resumable unit is not a dead end", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: independent(A, B),
+        concurrencyCap: 2,
+      },
+      buildDeps(
+        new Map([
+          [A, "limit" as const],
+          [B, "failed" as const],
+        ]),
+        observed,
+        new Map(),
+      ),
+    );
+
+    expect(result.statusById.get(A)).toBe("parked:rate_limit");
+    expect(result.stopped).toBe("parked");
+  });
+
+  /** And `completed` now MEANS all-succeeded — the guarantee the rest of the system reads it as. */
+  it("still reports completed when — and only when — every unit succeeded", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: independent(A, B),
+        concurrencyCap: 2,
+      },
+      buildDeps(new Map(), observed, new Map()),
+    );
+
+    expect([...result.statusById.values()]).toEqual(["succeeded", "succeeded"]);
+    expect(result.stopped).toBe("completed");
   });
 });

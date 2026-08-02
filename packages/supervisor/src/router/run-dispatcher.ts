@@ -127,6 +127,16 @@ export interface DrainOutcome {
    * to the end shutdown imposed on it, and a run recorded as merely `parked`
    * would keep its change set un-dispatchable while waiting for a session no
    * daemon holds.
+   *
+   * Nor is it decided by WHICH WRITER recorded the end. A drive whose
+   * terminated workers left it all-terminal settles itself — typically
+   * `running → failed` — before the drain's own write, which then becomes an
+   * illegal edge from an absorbing state and is swallowed. Membership of this
+   * list is unchanged by that; the run's recorded state may be `failed` rather
+   * than `cancelled`, which is the drive reporting how it actually ended and
+   * is strictly better evidence than the shutdown's coarser account. The
+   * guarantee this list carries is "cut off at the deadline, and left in an
+   * absorbing state", never "recorded as `cancelled`".
    */
   readonly cancelledRunIds: readonly string[];
   /**

@@ -123,7 +123,7 @@ crabgic status [run-id] [--watch] [--json]
   through `crabgic evidence`, or the ruling can be asked for.
 
 - `--watch`: streams subsequent status-change events until the process is interrupted
-  (Ctrl+C) or the run reaches a terminal state.
+  (Ctrl+C) or the run reaches a terminal state. Which runs actually reach one is §3.1.
 - Without a `run-id` (listing every run): **wired** — `registry.runs.list` landed on the supervisor's
   router 2026-07-25 and `runStatusAllCommand` consumes it, printing one line per run or `no runs`.
   (This bullet claimed `NOT_IMPLEMENTED` until 2026-07-28; corrected after running the built binary
@@ -137,6 +137,41 @@ crabgic cancel <run-id|task-id>
 
 Cancels a run (or, once 13's task-level semantics are wired, a single task within it) via the
 supervisor's `run.cancel` operation.
+
+### 3.1 How a run ends, and what to do about it
+
+**Every run that stops doing work records how it ended.** Once its DAG has nothing left to
+dispatch, the daemon writes the run's own terminal state:
+
+| What the DAG did                                  | Run state                                         |
+| ------------------------------------------------- | ------------------------------------------------- |
+| A unit failed (alone, or beside successful ones)  | `failed`                                          |
+| A unit was cancelled, none failed                 | `cancelled`                                       |
+| A failure stranded a unit that can never be ready | `blocked`                                         |
+| Every unit succeeded                              | stays `running` — awaiting the verification stage |
+| A unit is parked on a rate limit                  | stays `running` — resumable, deliberately         |
+
+The four absorbing states (`published_local`, `failed`, `blocked`, `cancelled`) are what
+`status --watch` stops on, and what frees the change set: **retrying is `crabgic run` again**,
+which mints a fresh run with its own repair budget. Nothing needs cancelling first.
+
+(Before 2026-08-02 a failed DAG left the run in `running` forever: the change set was refused
+with "already has run … in flight", `--watch` never terminated, and `resume` reported success
+while doing nothing. `crabgic cancel` was the only escape.)
+
+```
+crabgic resume <run-id> [--json]
+```
+
+**`resume` re-drives an existing run — it does not retry a finished one.** It is for crash
+recovery and for continuing a rate-limit park, and it refuses whenever a re-drive could not
+accomplish anything, naming the reason and the one command that works:
+
+- the run already reached an absorbing state — retry with `crabgic run`;
+- every unit is terminal but the run is still `running` (a run wedged by the pre-2026-08-02
+  defect, or one whose settle write failed) — `crabgic cancel <run-id>`, then `crabgic run`;
+- the only remaining work is parked on engine sessions a daemon restart destroyed — likewise
+  `crabgic cancel <run-id>`, then `crabgic run`.
 
 ## 4. Reviewing evidence
 

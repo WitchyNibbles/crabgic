@@ -135,15 +135,38 @@ export interface DriveRunOptions {
 }
 
 /**
- * Why the loop stopped.
- * - `completed`: every unit reached a terminal status.
+ * Why the loop stopped. The DAG's shape is only known here, so this is where
+ * the truth about how a run ended has to be told: the one production consumer
+ * (`packages/cli`'s run dispatcher) maps each member onto the run-lifecycle
+ * transition it writes, and cannot re-derive DAG semantics for itself.
+ *
+ * - `completed`: every unit SUCCEEDED. Nothing failed, nothing was cancelled,
+ *   nothing is left to do.
+ * - `failed`: every unit is terminal and at least one FAILED. A dead end: no
+ *   re-drive of this run can dispatch anything, so the run must settle and
+ *   the change set be retried as a fresh run.
+ * - `cancelled`: every unit is terminal, none failed, and at least one was
+ *   CANCELLED (`worker.terminate`, or a worker self-reporting `cancelled`).
+ *   Kept distinct from `failed` because the transition written from it is an
+ *   audit record — `running → cancelled` is legal and honest, and calling a
+ *   cancellation a failure would misattribute how the run ended.
  * - `blocked`: units remain pending but none is ready (a dependency failed
  *   or was cancelled) — the run needs repair or human intervention.
  * - `parked`: an account-wide rate limit halted dispatch; resumable once
  *   the reset window passes (`./parking.ts`).
  * - `roundLimit`: the backstop tripped — a bug, not an expected outcome.
+ *
+ * `completed` MEANT "every unit reached a terminal status" until 2026-08-02,
+ * which made an all-failed DAG report a completion; the dispatcher then wrote
+ * no transition (a completed run's successor is `verifying`, not yet wired)
+ * and the run sat in `running` with every unit terminal — un-finishable, its
+ * change set un-dispatchable, and `resume` answering `accepted: true` to a
+ * re-drive that could dispatch nothing. Splitting the failure outcomes out is
+ * what lets the dispatcher settle those runs onto the legal
+ * `running → failed`/`running → cancelled` edges.
  */
-export type DriveRunStopReason = "completed" | "blocked" | "parked" | "roundLimit";
+export type DriveRunStopReason =
+  "completed" | "failed" | "cancelled" | "blocked" | "parked" | "roundLimit";
 
 export interface UnitAttemptOutcome {
   readonly workUnitId: string;
@@ -299,15 +322,26 @@ export async function driveRun(
   });
 
   /**
-   * No unit is ready — classify why. A parked unit is NOT terminal (it is
-   * retained and resumable), so a run holding one is `parked`, never
-   * `completed`; a pending-but-never-ready unit means an upstream
-   * dependency failed or was cancelled.
+   * No unit is ready — classify why, in precedence order.
+   *
+   * A parked unit is NOT terminal (it is retained and resumable), so a run
+   * holding one is `parked` even if everything else failed; a
+   * pending-but-never-ready unit means an upstream dependency failed or was
+   * cancelled, and that run is `blocked`. Neither is a dead end.
+   *
+   * Below those, the set is entirely terminal, and the classification is
+   * about WHICH terminals: a failure anywhere outranks a cancellation (the
+   * run did not merely stop, some of its work broke), and only an
+   * all-succeeded set is a `completed` run. Reporting a completion for an
+   * all-terminal set regardless of outcome is the idle-run wedge — see
+   * `DriveRunStopReason`.
    */
   const classifyIdleRun = (): DriveRunStopReason => {
     const statuses = [...statusById.values()];
     if (statuses.includes("parked:rate_limit")) return "parked";
     if (statuses.includes("pending")) return "blocked";
+    if (statuses.includes("failed")) return "failed";
+    if (statuses.includes("cancelled")) return "cancelled";
     return "completed";
   };
 

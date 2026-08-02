@@ -218,6 +218,48 @@ type PolicyGate =
   | { readonly ok: true; readonly policy: EnvelopePolicy; readonly digest: string }
   | { readonly ok: false; readonly reason: string };
 
+/**
+ * What one run-scoped journal sweep concluded about a `resume` — see
+ * `classifyResume`. Both refusals share the sweep and the precedence, so
+ * neither can drift from the other or from what the drive would actually do.
+ */
+type ResumeVerdict =
+  | { readonly kind: "resumable" }
+  /** Every reachable unit is parked on a session this process no longer holds. */
+  | { readonly kind: "strandedParks"; readonly unitIds: readonly string[] }
+  /** Every unit is terminal and at least one did not succeed — a re-drive has nothing to dispatch. */
+  | {
+      readonly kind: "terminalDeadEnd";
+      readonly failedIds: readonly string[];
+      readonly cancelledIds: readonly string[];
+    };
+
+/**
+ * The refusal a `terminalDeadEnd` verdict earns, in the register PR #46
+ * established for the stranded-park one: name what is in the way, say why
+ * waiting cannot help, and name the exit that works. An operator reading a
+ * bare "cannot be resumed" has no way to discover that `cancel` — on a run
+ * that already stopped doing anything — is the move.
+ */
+function terminalDeadEndReason(
+  runId: string,
+  failedIds: readonly string[],
+  cancelledIds: readonly string[],
+): string {
+  const counts = [
+    failedIds.length > 0 ? `${failedIds.length} failed` : undefined,
+    cancelledIds.length > 0 ? `${cancelledIds.length} cancelled` : undefined,
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join(", ");
+  return (
+    `run "${runId}" cannot be resumed: every work unit has already reached a terminal ` +
+    `outcome (${counts}), so a re-drive has nothing left to dispatch and resuming cannot ` +
+    `advance it. Waiting will not change that — cancel the run ` +
+    `(\`crabgic cancel ${runId}\`) and dispatch the change set again.`
+  );
+}
+
 /** Shutdown defaults for a direct caller; the daemon's boot layer passes its own (`bootSupervisor`). */
 const DEFAULT_DRAIN_TIMEOUT_MS = 30_000;
 const DEFAULT_DRAIN_GRACE_MS = 5_000;
@@ -633,20 +675,38 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * to leave it `running` (ledger run-lifecycle: `running →
    * verifying|failed|blocked|cancelled`).
    *
-   * Only the FAILURE outcomes transition, and this is deliberate: a run that
-   * ended `blocked` or errored used to stay `running` forever, and
-   * `findLiveRunForChangeSet` treats `running` as in-flight — so the change
-   * set could never be re-dispatched, the exact retry-blocking harm this
-   * fixes (review F5). `completed` and `parked` stay `running`: a completed
-   * DAG's successor is `verifying`, owned by the verification pipeline (not
-   * yet wired) rather than invented here, and a completed run must not be
-   * retried anyway; a parked run is resumable and must stay in-flight for
-   * `resume` to reach it.
+   * Every outcome that ENDS the run transitions, and this is deliberate: a run
+   * left `running` is treated as in-flight by `findLiveRunForChangeSet`, so
+   * its change set can never be re-dispatched — the retry-blocking harm this
+   * mapping exists to prevent (review F5, and the idle-run wedge below).
+   *
+   * `failed`/`cancelled` are the drive's own report that every unit reached a
+   * terminal status and at least one did not succeed. They arrived
+   * 2026-08-02: `driveRun` used to call any all-terminal DAG `completed`, this
+   * function correctly wrote nothing for a completion, and an ordinary
+   * single-unit failure therefore wedged its run in `running` forever — with
+   * `resume` answering `accepted: true` to a re-drive that could dispatch
+   * nothing. A failing run raises no verification question, so settling it
+   * onto the declared `running → failed`/`running → cancelled` edges needs
+   * none of the deferred `verifying` wiring.
+   *
+   * `completed` and `parked` still stay `running`, on unchanged grounds: a
+   * completed DAG (now genuinely all-SUCCEEDED) has `verifying` as its
+   * successor, owned by the verification pipeline rather than invented here;
+   * and a parked run is resumable and must stay in-flight for `resume` to
+   * reach it.
    */
   function terminalStateFor(stopped: DriveRunResult["stopped"]): RunLifecycleState | undefined {
     switch (stopped) {
       case "blocked":
         return "blocked";
+      case "failed":
+        return "failed";
+      case "cancelled":
+        // The run's units were cancelled, not broken — `running → cancelled`
+        // is legal, and recording it as a failure would misattribute how the
+        // run ended in an audit record nothing else can correct.
+        return "cancelled";
       case "roundLimit":
         // The round backstop tripped — a bug, not a normal outcome; fail it
         // so the change set can be retried rather than wedged `running`.
@@ -840,41 +900,76 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   }
 
   /**
-   * Whether re-driving `runId` could accomplish anything, or whether every
-   * unit it could touch is parked on a session this process no longer has.
+   * Whether re-driving `runId` could accomplish anything — and if not, which
+   * of the two dead ends it is in.
    *
-   * THE WEDGE THIS ANSWERS. Park records are durable; the adapters that own
-   * their sessions are not (`retainedByRun` is same-daemon by construction).
-   * After a restart the driver therefore found a parked unit, asked
-   * `resumeParkedUnit` for it, was declined — correctly, resuming into a
-   * read-only fallback session would be worse — and left it parked. The drive
-   * ended `parked`, which keeps the run `running` so a LATER resume can reach
-   * it, and `resume` answered `{accepted: true}` to the whole no-op. Repeat
-   * forever, with the change set un-dispatchable the entire time.
+   * THE WEDGES THIS ANSWERS, both instances of one lie: `resume` reporting
+   * success for a re-drive that cannot dispatch anything, leaving the run
+   * `running` and its change set un-dispatchable forever.
    *
-   * A unit whose adapter IS still retained is resumable, and a still-`pending`
-   * unit is real work, so either makes the resume worth accepting. Only when
-   * neither exists and something is parked is the answer "this cannot work".
+   *   - `strandedParks` (PR #46). Park records are durable; the adapters that
+   *     own their sessions are not (`retainedByRun` is same-daemon by
+   *     construction). After a restart the driver found a parked unit, asked
+   *     `resumeParkedUnit` for it, was declined — correctly, resuming into a
+   *     read-only fallback session would be worse — and left it parked.
+   *   - `terminalDeadEnd`. Every unit already reached a terminal status and at
+   *     least one did not succeed. Since 2026-08-02 a drive settles such a run
+   *     itself, so this is reached only by a run wedged BEFORE that fix (the
+   *     journal replays it `running` across restarts) or one whose settle
+   *     write failed. Re-driving it as a covert settle would be the wrong
+   *     contract; name the exit instead.
+   *
+   * PRECEDENCE, preserved exactly from #46: a still-`pending` unit is real
+   * work and a parked unit whose adapter IS retained is resumable, so either
+   * makes the whole resume worth accepting regardless of what else the run
+   * holds. Stranded parks come next. The terminal dead end is last, and an
+   * all-SUCCEEDED run is deliberately NOT one of them: that run is waiting on
+   * the `completed → verifying` wiring, a deferral, not a dead end.
    */
-  async function findUnresumableParks(
+  async function classifyResume(
     runId: string,
     workUnits: readonly WorkUnit[],
-  ): Promise<readonly string[]> {
+  ): Promise<ResumeVerdict> {
     const retained = retainedByRun.get(runId);
     const stranded: string[] = [];
+    const failedIds: string[] = [];
+    const cancelledIds: string[] = [];
+    let resumable = false;
+
     for (const unit of workUnits) {
       // The same run-scoped seed `driveRun` itself starts from, so this asks
       // the question the drive is about to answer, not a different one.
       const latest = await getLatestAttemptForRun(deps.journal, unit.id, runId);
-      const status = latest?.status ?? unit.attemptStatus;
-      if (status === "parked:rate_limit") {
-        if (retained?.has(unit.id) === true) return [];
-        stranded.push(unit.id);
-      } else if (status === "pending") {
-        return [];
+      switch (latest?.status ?? unit.attemptStatus) {
+        case "pending":
+          resumable = true;
+          break;
+        case "parked:rate_limit":
+          if (retained?.has(unit.id) === true) resumable = true;
+          else stranded.push(unit.id);
+          break;
+        case "cancelled":
+          cancelledIds.push(unit.id);
+          break;
+        case "dispatched":
+        // A latest status of `dispatched` at resume ENTRY can only be a prior
+        // drive of THIS run that died mid-attempt (a live drive holds the
+        // in-flight claim, checked above). `driveRun` seeds exactly that as
+        // `failed`; so does this. FALLS THROUGH.
+        case "failed":
+          failedIds.push(unit.id);
+          break;
+        case "succeeded":
+          break;
       }
     }
-    return stranded;
+
+    if (resumable) return { kind: "resumable" };
+    if (stranded.length > 0) return { kind: "strandedParks", unitIds: stranded };
+    if (failedIds.length + cancelledIds.length > 0) {
+      return { kind: "terminalDeadEnd", failedIds, cancelledIds };
+    }
+    return { kind: "resumable" };
   }
 
   return {
@@ -1048,29 +1143,36 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         }
       };
 
-      // ANSWER HONESTLY BEFORE TAKING OWNERSHIP. A resume whose every
-      // reachable unit is parked on a session this daemon no longer holds
-      // cannot move the run one step — it would re-park and report success, as
-      // it did for every restart before this. Say so, and name the only exit
-      // that works, rather than leaving the operator to infer it from a run
-      // that never changes.
-      let stranded: readonly string[];
+      // ANSWER HONESTLY BEFORE TAKING OWNERSHIP. A resume that cannot move the
+      // run one step must say so and name the exit that works, rather than
+      // reporting success to a no-op and leaving the operator to infer it from
+      // a run that never changes. Both dead ends are decided by one sweep
+      // (`classifyResume`), so their precedence is explicit and neither can
+      // drift from what the drive would actually do.
+      let verdict: ResumeVerdict;
       try {
-        stranded = await findUnresumableParks(runId, resolved.workUnits);
+        verdict = await classifyResume(runId, resolved.workUnits);
       } catch (err) {
         release();
         throw err;
       }
-      if (stranded.length > 0) {
+      if (verdict.kind === "strandedParks") {
         release();
         return {
           accepted: false,
           reason:
-            `run "${runId}" cannot be resumed: its remaining work (${stranded.join(", ")}) is ` +
+            `run "${runId}" cannot be resumed: its remaining work (${verdict.unitIds.join(", ")}) is ` +
             `parked on a rate limit, and the session context needed to continue those sessions ` +
             `did not survive a daemon restart. Nothing else in the run can advance, so waiting ` +
             `will not help — cancel the run (\`crabgic cancel ${runId}\`) and dispatch the ` +
             `change set again.`,
+        };
+      }
+      if (verdict.kind === "terminalDeadEnd") {
+        release();
+        return {
+          accepted: false,
+          reason: terminalDeadEndReason(runId, verdict.failedIds, verdict.cancelledIds),
         };
       }
 

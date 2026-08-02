@@ -47,6 +47,12 @@ three named terminals (`packages/contracts/src/state-machines/run-lifecycle.ts`)
 sitting in `running`, `verifying`, `integrating` or `final_verifying` is still in flight.
 Upgrade only once every run is in one of those four absorbing states.
 
+The wait above is only worth making for a run that can still reach one. Since 2026-08-02 a
+run whose DAG ends in failure settles itself (`failed`/`blocked`/`cancelled`, operator-guide
+§3.1), so the first command genuinely terminates; a run that sits in `running` while
+`crabgic resume` refuses it has nothing left to dispatch, and the second command is the
+one to use.
+
 > A supervisor-side `drain` — one call that stops accepting new work, waits for the
 > detached drives to settle, and only then releases the journal lease — is landing
 > separately. Until it does, the sequence above is the whole mechanism; this section will
