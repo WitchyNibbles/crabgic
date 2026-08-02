@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Lease, LeaseAcquireRaceLostError, LeaseHeldError, LeaseLostError } from "./lease.js";
 import { prepareFixtureRuntime, type FixtureRuntime } from "./lease-fixtures/prepare-runtime.js";
 import { readProcessStartTimeFromProc } from "./lease-proc-stat.js";
@@ -220,11 +220,11 @@ describe("Lease.acquire / release — unit (real filesystem, injected clock + pr
       autoRenew: true,
     });
     const before = lease.record.renewedAtMs;
-
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    // Polls for the OBSERVED renewal; the old fixed 120ms sleep raced the 15ms interval.
+    const renewed = (): void => expect(lease.record.renewedAtMs).toBeGreaterThan(before);
+    await vi.waitFor(renewed, { timeout: 15_000, interval: 5 });
     await lease.release();
-
-    expect(lease.record.renewedAtMs).toBeGreaterThan(before);
+    renewed();
   });
 
   it("renewNow() advances renewedAtMs/expiresAtMs on disk without changing pid/startTimeTicks", async () => {
@@ -550,21 +550,29 @@ describe("VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band leas
     await expect(readFile(leaseA.leasePath, "utf8")).rejects.toThrow(); // still absent — A never recreated it
   });
 
+  /**
+   * DETERMINISM NOTE (2026-08-02). This test used to `unlink` A's lease file
+   * and only THEN `await Lease.acquire` for B, which left a real interval —
+   * on this filesystem usually wider than A's 10ms heartbeat — during which
+   * the path was legitimately ABSENT. A heartbeat landing in that window
+   * reads no record and correctly reports `missing`, so the test's own
+   * choreography, not the code under test, decided which reason it saw. It
+   * failed 10 of 20 runs here (and, per phase-04's closeout note, 5/5 when
+   * run alone), while passing on GitHub runners whose gap is narrower.
+   *
+   * B's record is therefore acquired FIRST, in a sub-directory, and swapped
+   * in under A with a single `rename` — an atomic replace, so the path holds
+   * A's record and then B's with no observable state in between. `missing`
+   * becomes unreachable and `ownership_mismatch` is the only reason the
+   * heartbeat can report. Nothing in `lease.ts` changes; the fixed window
+   * was only ever in the test.
+   */
   it("onLeaseLost fires exactly once, synchronously, when the automatic heartbeat detects loss", async () => {
     const clock = { now: () => 1_000_000 };
     const lostEvents: string[] = [];
-    const leaseA = await Lease.acquire(dir, "proj-heartbeat-loss", {
-      pid: 111,
-      clock,
-      readProcessStartTime: async () => 42,
-      autoRenew: true,
-      heartbeatIntervalMs: 10,
-      ttlMs: 60_000,
-      onLeaseLost: (err) => lostEvents.push(err.reason),
-    });
+    const heldInsideCallback: boolean[] = [];
 
-    await unlink(leaseA.leasePath);
-    await Lease.acquire(dir, "proj-heartbeat-loss", {
+    const leaseB = await Lease.acquire(join(dir, "b-source"), "proj-heartbeat-loss", {
       pid: 222,
       clock,
       readProcessStartTime: async () => 99,
@@ -572,10 +580,38 @@ describe("VALIDATION ROUND (2026-07-18) — MAJOR 2 regression: out-of-band leas
       ttlMs: 60_000,
     });
 
-    // Let the background heartbeat fire at least once.
+    const leaseA = await Lease.acquire(dir, "proj-heartbeat-loss", {
+      pid: 111,
+      clock,
+      readProcessStartTime: async () => 42,
+      autoRenew: true,
+      heartbeatIntervalMs: 10,
+      ttlMs: 60_000,
+      onLeaseLost: (err) => {
+        lostEvents.push(err.reason);
+        heldInsideCallback.push(leaseA.held);
+      },
+    });
+
+    // Deliberately NO `await` between the acquire above and this `rename`: the
+    // swap is issued from the microtask that follows A's acquire, i.e. strictly
+    // before A's first 10ms timer callback can run, and it is queued on libuv's
+    // FIFO threadpool ahead of any read that callback later makes. A's
+    // heartbeat can only ever observe B's record.
+    await rename(leaseB.leasePath, leaseA.leasePath);
+
+    // Waits for the heartbeat to be OBSERVED rather than sleeping a fixed 60ms
+    // and hoping a tick landed inside it.
+    await vi.waitFor(() => expect(lostEvents.length).toBe(1), { timeout: 15_000, interval: 5 });
+    // Several further heartbeat intervals: a second event here would mean
+    // `#markLost` failed to clear the timer. This cannot flake in the failing
+    // direction — once the interval is cleared, no later event can arrive.
     await new Promise((resolve) => setTimeout(resolve, 60));
 
     expect(leaseA.held).toBe(false);
     expect(lostEvents).toEqual(["ownership_mismatch"]);
+    // Synchronous, as the name claims: the callback already saw `held === false`,
+    // so it ran from inside `#markLost` after the transition was committed.
+    expect(heldInsideCallback).toEqual([false]);
   });
 });
