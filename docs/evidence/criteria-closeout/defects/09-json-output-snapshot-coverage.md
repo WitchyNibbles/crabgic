@@ -100,8 +100,20 @@ supervisor in a tmp dir is already stood up there, so the fixtures exist):
 4. While there: `run-doctor.ts:50`'s "8-check default set" comment is stale (the default set is 10)
    and `cli.commands.schema.test.ts:190`'s bare `toHaveLength(10)` should assert the check **ids**,
    so the next doctor check to land cannot silently displace one.
+5. Also while there — an adjacent unpinned-string gap this closeout disclosed under criterion 3, and
+   the same failure mode one level down. `doctor.fault-matrix.test.ts` pins the `repairStep` string
+   exactly for the bwrap case and both journal variants, and via `:256-259` for the check that owns
+   the socket case. It does **not** pin two that exist in source and nothing asserts:
+   `hermeticity-selftest.ts:124-126` ("investigate why filesystem settings sources are being loaded
+   despite `settingSources: []`") — the rogue-settings case at `:80-91` asserts only the evidence
+   string — and `engine-version.ts:86`/`:95` ("install a Claude Code version within …") — the
+   wrong-version case at `:63-65` asserts only `expect(finding.repairStep).toBeDefined()`. Assert
+   both as complete strings, in the style rounds 17-18 already settled on for the xdg-permissions
+   step, so the evidence cannot drift from the remedy it must agree with. Criterion 3 is ticked on
+   detection, which is fully evidenced; this closes the "with a correct repair plan" half for the
+   last two fixtures where only the check's source, not a test, says what the plan is.
 
-Effort **S** (one test file plus its `.snap`; every fixture already exists). Needs no CI job, no live
-engine, and no owner input.
+Effort **S** (one test file plus its `.snap`, and two assertions added to an existing one; every
+fixture already exists). Needs no CI job, no live engine, and no owner input.
 
 **Ticket-ready:** yes.

@@ -354,7 +354,7 @@ one command — see the note under criterion 1.
       the test — that is the positive control the "never again" assertion needs); `:37-59`
       digest-binding, with `fc.pre` excluding only the exact minted pair so every other
       `(kind, digest)` must fail; `:61-87` expiry under an injected clock. Deterministic companions in
-      `packages/contracts/src/approval/token.test.ts`: `:59-70` a tampered signature and a
+      `packages/contracts/src/approval/token.test.ts`: `:59-78` a tampered signature and a
       cross-minter key both fail closed, `:80-93` minting twice against the same pending digest does
       not double-journal, `:96-110` re-minting after consumption does. `CI` run 30720547145 green at
       `af46e00`; `docs/evidence/phase-09/closeout-c5-approval-token.txt`.
@@ -384,8 +384,9 @@ one command — see the note under criterion 1.
       — **Left unticked 2026-08-02, defect filed:**
       `docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md`. The help half is
       fully met: `packages/cli/src/commands/cli.snapshots.test.ts:19-40` snapshots top-level help in
-      both human and `--json` form plus a per-topic snapshot for every key of `COMMAND_HELP` (15
-      topics in the committed `.snap`, 19 entries in total). The "every `--json` output schema" half
+      both human and `--json` form plus a per-topic snapshot for every key of `COMMAND_HELP` (14
+      topics in the committed `.snap`; 2 top-level + 14 topic + 3 non-help = 19 entries in total).
+      The "every `--json` output schema" half
       is not: the committed
       snapshot file holds exactly three non-help entries — the `NOT_IMPLEMENTED` shape and two
       `gateway mcp` tool-listing shapes — and no snapshot exists for `doctor --json`,
