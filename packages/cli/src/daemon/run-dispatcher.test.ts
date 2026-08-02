@@ -25,6 +25,7 @@ import {
   type WorkUnit,
   RUN_LIFECYCLE_STATES,
   EnvelopePolicySchema,
+  isRunLifecycleAbsorbing,
 } from "@crabgic/contracts";
 import { createJournalStore, recordAttempt, type JournalStore } from "@crabgic/journal";
 import {
@@ -667,11 +668,13 @@ describe("createRealRunDispatcher — dispatch", () => {
    * `blocked` transition is then an illegal edge from `cancelled`, which is
    * expected: swallow it and leave the run cancelled.
    *
-   * The topology is deliberate: an A→B chain where A fails ends the drive
-   * `blocked` (a single failed unit ends `completed`, which transitions
-   * nothing — the swallow would never be reached). A gated adapter holds the
-   * drive until the test has cancelled the run, so the settle's transition
-   * genuinely fires against a `cancelled` run.
+   * The topology is deliberate: an A→B chain where A fails strands B pending,
+   * so the drive ends `blocked` and this pins the swallow on the `blocked`
+   * edge specifically. (Its sibling on the `failed` edge — a single-unit DAG,
+   * which since 2026-08-02 settles rather than reporting a completion — lives
+   * in the all-terminal describe above.) A gated adapter holds the drive until
+   * the test has cancelled the run, so the settle's transition genuinely fires
+   * against a `cancelled` run.
    */
   it("swallows the illegal transition when the run is cancelled before a blocked drive settles", async () => {
     const UNIT_B = "66666666-6666-4666-8666-666666666666";
@@ -756,8 +759,9 @@ describe("createRealRunDispatcher — dispatch", () => {
     const deps = buildDeps({
       ...seeded,
       run: false,
-      // A→B chain, A fails → the drive ends `blocked` → a settle transition
-      // is attempted (the only path that reaches settleRunState here).
+      // A→B chain, A fails and strands B pending → the drive ends `blocked` →
+      // a settle transition is attempted, and its journal write is the one
+      // this test arms to fail.
       workUnits: [
         buildWorkUnit({
           id: UNIT_ID,
@@ -805,6 +809,125 @@ describe("createRealRunDispatcher — dispatch", () => {
     await vi.waitFor(() => {
       expect(errors.some((e) => (e as Error).message === "journal is on fire")).toBe(true);
     });
+  });
+});
+
+/**
+ * THE IDLE-RUN WEDGE. An ordinary single-unit failure used to wedge its change
+ * set forever: `driveRun` classified any all-terminal DAG `completed`,
+ * `terminalStateFor("completed")` wrote no transition (a completed run's
+ * successor is `verifying`, owned by a verification pipeline nothing composes
+ * yet), and the run stayed `running` with every unit terminal.
+ * `findLiveRunForChangeSet` then refused every re-dispatch — "already has run
+ * … in flight (running)" — and `resume` answered `accepted: true` to a
+ * re-drive that could dispatch nothing, forever. Only `run.cancel` escaped.
+ *
+ * This is PR #46's sibling: #46 fixed the restart-with-a-parked-run shape of
+ * the same lying-accept and deliberately scoped the failure shape out.
+ *
+ * A failing run has no verification question to answer — `running → failed`
+ * and `running → cancelled` are declared edges — so settling it needs none of
+ * the deferred `completed → verifying` wiring.
+ */
+describe("createRealRunDispatcher — an all-terminal DAG settles the run", () => {
+  /** A DAG of one unit, whose scripted worker reports `outcome`. */
+  function dispatcherFor(outcome: "failed" | "cancelled") {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome }) }),
+          ),
+        ),
+    });
+    return { deps, dispatcher };
+  }
+
+  it("marks a run failed when its only unit fails, so the change set is retryable", async () => {
+    const { deps, dispatcher } = dispatcherFor("failed");
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    await vi.waitFor(() => expect(deps.runs.get(runId)?.runState).toBe("failed"), {
+      timeout: 10_000,
+    });
+
+    // THE WEDGE IS GONE. `failed` is absorbing, so `findLiveRunForChangeSet`
+    // skips it and the ordinary retry path — dispatch the change set again —
+    // just works, as a genuinely new run.
+    await dispatcher.whenIdle();
+    const second = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(second.accepted).toBe(true);
+    expect(second.runId).not.toBe(runId);
+
+    // And the dead run is refused by the pre-existing absorbing-state guard
+    // rather than accepted into a futile re-drive.
+    const resumed = await dispatcher.resume(runId);
+    expect(resumed.accepted).toBe(false);
+    expect(resumed.reason).toMatch(/is failed and cannot be resumed/i);
+  });
+
+  /**
+   * A cancelled unit is terminal too, and gets the honest edge: the run's own
+   * record says it was cancelled, not that it failed. Folding the two together
+   * would journal a `running → failed` audit record that misattributes.
+   */
+  it("marks a run cancelled when its only unit ends cancelled, not failed", async () => {
+    const { deps, dispatcher } = dispatcherFor("cancelled");
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+
+    await vi.waitFor(() => expect(deps.runs.get(runId)?.runState).toBe("cancelled"), {
+      timeout: 10_000,
+    });
+  });
+
+  /**
+   * The race guard, on the NEW edge. A `run.cancel` landing before a failing
+   * drive settles makes `running → failed` an illegal transition from the
+   * absorbing `cancelled` — which must be swallowed, exactly as the blocked
+   * settle's own guard does, never surfaced as a drive error.
+   */
+  it("swallows the illegal transition when the run is cancelled before a failing drive settles", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    let releaseAdapter!: () => void;
+    const adapterGate = new Promise<void>((resolve) => {
+      releaseAdapter = resolve;
+    });
+    const unhandled: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      onDriveError: (_runId: string, err: unknown) => unhandled.push(err),
+      createAdapter: async () => {
+        await adapterGate;
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "failed" }) }),
+        );
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    deps.runs.upsert({
+      runId,
+      changeSetId: CHANGE_SET_ID,
+      runState: "cancelled",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    });
+
+    releaseAdapter();
+    await dispatcher.whenIdle();
+
+    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
+    expect(unhandled).toHaveLength(0);
   });
 });
 
@@ -1303,12 +1426,26 @@ describe("createRealRunDispatcher — drain", () => {
 
   /**
    * At the deadline the daemon cannot wait any longer, so it terminates the
-   * live workers through the SAME closure `worker.terminate` uses, then records
-   * the run as `cancelled`. Without that record restart recovery replays a
-   * phantom `running` run whose units are all terminal — a run nothing can ever
-   * finish, blocking every fresh dispatch of its change set.
+   * live workers through the SAME closure `worker.terminate` uses, and the run
+   * is journaled to a terminal state. Without that record restart recovery
+   * replays a phantom `running` run whose units are all terminal — a run
+   * nothing can ever finish, blocking every fresh dispatch of its change set.
+   *
+   * WHO writes that record changed on 2026-08-02, and this test changed
+   * meaning with it. A terminated hung worker's attempt lands `failed` (the
+   * opened hang gate replays to completion with no structured output), so the
+   * drive's OWN settle now reaches `running → failed` first; drain's
+   * `cancelled` write is then an illegal edge from an absorbing state and is
+   * swallowed by the same guard that tolerates a racing `run.cancel`. Before
+   * the fix the drive settled nothing at all for an all-terminal DAG and drain
+   * was the only writer, so the run landed `cancelled`.
+   *
+   * The run's own drive recording how it actually ended is drain's stated goal
+   * met more precisely, not a regression: `cancelledRunIds` still reports the
+   * run, because "cut off" is decided by the DEADLINE and not by which writer
+   * won (see `DrainOutcome.cancelledRunIds`).
    */
-  it("terminates live workers at the deadline and journals the cut-off run cancelled", async () => {
+  it("terminates live workers at the deadline, and the cut-off run is journaled terminal", async () => {
     const deps = buildDeps({ ...fullySeeded(), run: false });
     const dispatcher = newDispatcher(deps, {
       // Hangs until `cancel()` opens its gate — so the drive settles if and
@@ -1326,9 +1463,15 @@ describe("createRealRunDispatcher — drain", () => {
 
     const outcome = await dispatcher.drain({ timeoutMs: 25, graceMs: 10_000 });
 
+    // Reported as cut off at the deadline, exactly as before...
     expect(outcome.cancelledRunIds).toEqual([runId]);
     expect(outcome.unsettledRunIds).toEqual([]);
-    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
+    // ...and the run is recorded in an absorbing state, so restart recovery
+    // sees a finished run. `failed` is the drive's own honest report of the
+    // terminated attempt; drain's `cancelled` write lost the race and was
+    // swallowed as illegal.
+    expect(deps.runs.get(runId)?.runState).toBe("failed");
+    expect(isRunLifecycleAbsorbing(deps.runs.get(runId)!.runState)).toBe(true);
     expect(deps.liveWorkers.size).toBe(0);
   });
 
@@ -1457,6 +1600,169 @@ describe("createRealRunDispatcher — resume after a restart lost the session co
     });
     await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
     await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "parked:rate_limit", RUN_ID);
+
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+  });
+});
+
+/**
+ * RESUME HONESTY, the failure-shaped half. Option A stops NEW wedges forming,
+ * but `resume` can still meet an all-terminal-with-failures run sitting in
+ * `running`: a run wedged before the fix (the journal replays it `running`
+ * across restarts), or one whose settle write failed. Accepting those is the
+ * same lying-accept PR #46 removed for stranded parks — the re-drive dispatches
+ * nothing, the run does not move, and the operator is told it worked.
+ *
+ * DELIBERATELY NOT REFUSED: an all-SUCCEEDED run in `running`. That is the
+ * documented `completed → verifying` deferral, not a dead end, and a resume of
+ * one is how the same-run journal-seeding test observes its drives settling.
+ */
+describe("createRealRunDispatcher — resume of an all-terminal run", () => {
+  const OTHER_UNIT_ID = "55555555-5555-4555-8555-555555555555";
+  const SESSION_ID = "66666666-6666-4666-8666-666666666666";
+
+  /** A run the registry replays as `running`, exactly as a restart would. */
+  function runningRun(extraUnits: readonly WorkUnit[] = []): ReturnType<typeof buildDeps> {
+    const seeded = fullySeeded();
+    const deps = buildDeps({
+      ...seeded,
+      run: false,
+      workUnits: [...(seeded.workUnits ?? []), ...extraUnits],
+    });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    });
+    return deps;
+  }
+
+  it("refuses a legacy wedged run, names the counts and the exit, and starts no drive", async () => {
+    const deps = runningRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "failed", RUN_ID);
+
+    let adaptersCreated = 0;
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => {
+        adaptersCreated += 1;
+        return new Promise(() => undefined);
+      },
+    });
+
+    const result = await dispatcher.resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/every work unit has already reached a terminal outcome/i);
+    expect(result.reason).toMatch(/1 failed/);
+    expect(result.reason).toContain(`crabgic cancel ${RUN_ID}`);
+    expect(adaptersCreated).toBe(0);
+    // Refused BEFORE taking ownership: the run is untouched, not settled by a
+    // resume acting as a covert settle command.
+    expect(deps.runs.get(RUN_ID)?.runState).toBe("running");
+  });
+
+  /** The refusal must release its in-flight claim, or the refusal itself wedges the change set. */
+  it("releases the claim it took, so the run stays reachable to a later call", async () => {
+    const deps = runningRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "failed", RUN_ID);
+    const dispatcher = newDispatcher(deps);
+
+    const first = await dispatcher.resume(RUN_ID);
+    const second = await dispatcher.resume(RUN_ID);
+
+    expect(second.reason).toBe(first.reason);
+    expect(second.reason).not.toMatch(/already being dispatched/i);
+  });
+
+  /**
+   * A latest status of `dispatched` at resume ENTRY can only be a prior drive
+   * of this run that died mid-attempt — the same seed rule `driveRun` applies,
+   * so this asks the question the drive would answer rather than a different
+   * one. A crashed single-unit run is the wedge's crash-recovery shape.
+   */
+  it("refuses a crash-seeded run whose latest attempt never left `dispatched`", async () => {
+    const deps = runningRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+
+    const result = await newDispatcher(deps).resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/every work unit has already reached a terminal outcome/i);
+    expect(result.reason).toMatch(/1 failed/);
+  });
+
+  /** Cancelled units are counted as themselves, so the refusal describes the run it is about. */
+  it("names cancelled units separately from failed ones", async () => {
+    const deps = runningRun([
+      buildWorkUnit({
+        id: OTHER_UNIT_ID,
+        changeSetId: CHANGE_SET_ID,
+        dependsOn: [],
+        attemptStatus: "pending",
+      }),
+    ]);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "failed", RUN_ID);
+    await recordAttempt(deps.journal, OTHER_UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, OTHER_UNIT_ID, SESSION_ID, "cancelled", RUN_ID);
+
+    const result = await newDispatcher(deps).resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/1 failed/);
+    expect(result.reason).toMatch(/1 cancelled/);
+  });
+
+  /** A run stopped entirely by cancellation says exactly that — no phantom "0 failed". */
+  it("names only what the run actually holds when nothing failed", async () => {
+    const deps = runningRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "cancelled", RUN_ID);
+
+    const result = await newDispatcher(deps).resume(RUN_ID);
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/\(1 cancelled\)/);
+    expect(result.reason).not.toMatch(/failed/);
+  });
+
+  /** Only a DEAD END is refused: a failure beside real remaining work is not one. */
+  it("still accepts when a unit is pending beside the failed one", async () => {
+    const deps = runningRun([
+      buildWorkUnit({
+        id: OTHER_UNIT_ID,
+        changeSetId: CHANGE_SET_ID,
+        dependsOn: [],
+        attemptStatus: "pending",
+      }),
+    ]);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "failed", RUN_ID);
+
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () => new Promise(() => undefined),
+    });
+
+    expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+  });
+
+  /**
+   * THE SCOPE GUARD. An all-succeeded run in `running` is the documented
+   * `completed → verifying` deferral, not a dead end. Refusing it would change
+   * what a green test elsewhere measures and would pre-empt a wiring decision
+   * this fix has no business making.
+   */
+  it("does not refuse an all-succeeded run — that is the verifying deferral, not a dead end", async () => {
+    const deps = runningRun();
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "succeeded", RUN_ID);
 
     const dispatcher = newDispatcher(deps, {
       createAdapter: () => new Promise(() => undefined),
