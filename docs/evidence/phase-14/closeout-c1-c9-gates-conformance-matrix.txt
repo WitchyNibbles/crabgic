@@ -1,0 +1,26 @@
+# closeout transcript — phase 14, criteria 1 and 9 (the two suites .github/workflows/gates-conformance.yml runs)
+# captured (UTC): 2026-08-02T09:35:00Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/gates/src/gates-conformance.test.ts packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# verbatim stdout+stderr of that command follows; nothing edited
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p14
+
+ ✓ |@crabgic/gates| src/engine-conformance-binding.test.ts > engine-conformance-binding.test — fails closed before any pass path exists > FAILS the gate when no green engine-live record exists for the attempt's engine version 14ms
+ ✓ |@crabgic/gates| src/engine-conformance-binding.test.ts > engine-conformance-binding.test — fails closed before any pass path exists > a matching green engine-live record's run ID round-trips into the ChangeSet's EvidenceRecord 15ms
+ ✓ |@crabgic/gates| src/engine-conformance-binding.test.ts > engine-conformance-binding.test — fails closed before any pass path exists > a green record for a DIFFERENT engine version does not satisfy this attempt's gate 14ms
+ ✓ |@crabgic/gates| src/engine-conformance-binding.test.ts > engine-conformance-binding.test — fails closed before any pass path exists > a non-green (exitStatus != 0) record never satisfies the gate 8ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 1. coverage regression: a recorded floor of 82% followed by a 79% run BLOCKS 23ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 2. flaky-then-passing test: marked unstable and BLOCKS (not quarantined) 6ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 3. planted secret: gitleaks fixture BLOCKS 8ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 4. vulnerable dependency: osv-scanner known-CVE test double BLOCKS 10ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 5. SAST finding: semgrep vulnerable-pattern fixture BLOCKS 8ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 6. disabled-check diff: root-cause detector flags and BLOCKS when configured blocking 5ms
+ ✓ |@crabgic/gates| src/gates-conformance.test.ts > gates-conformance — seeded-fault matrix (7 independent fixtures) > 7. missing green engine-live record: engine-conformance gate FAILS CLOSED 5ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  11:35:01
+   Duration  893ms (transform 902ms, setup 0ms, import 1.34s, tests 116ms, environment 0ms)
