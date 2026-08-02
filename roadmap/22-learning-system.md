@@ -83,7 +83,7 @@ files / 6155 tests and names all 19 `@crabgic/learning` suites individually (job
 724–749), and its `typecheck (ubuntu-latest)` job
 ([91480519764](https://github.com/WitchyNibbles/crabgic/actions/jobs/91480519764)) is the shared
 `tsc -b`. **`learning-redteam` run
-[30741826289](https://github.com/WitchyNibbles/crabgic/actions/runs/30741826289)** — job
+[30741826020](https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020)** — job
 ([91480517014](https://github.com/WitchyNibbles/crabgic/actions/jobs/91480517014)); its **first**
 step is the `@learning-redteam` suite proper (`npx vitest run packages/learning/src/red-team`,
 5 files / 20 tests), its second the whole-package suite. That distinction is what criterion 2 turns

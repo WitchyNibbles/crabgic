@@ -25,7 +25,7 @@
         {
           "kind": "ci-run",
           "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"full packages/learning + packages/cli suite (state machine, eval infra, shadow comparator, CLI backend, E2E)\"",
-          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826289",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
           "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
           "quotedAssertion": "job log line 231 — '  ✓  @crabgic/learning  src/state-machine.test.ts (130 tests) 1292ms'; and, uniquely among the logs available, this job names BOTH fast-check properties individually — line 232 '     ✓ every transition the pure function accepts is present in the table, and vice versa (10k cases)  375ms' and line 233 '     ✓ no random walk of any length ever lands on 'promoted' without passing through dev_eval, held_out_eval, shadow_run, and independent_review in that order  890ms'. This is the closest thing in existence to the criterion's named \"fast-check report\" — see notes."
         },
@@ -87,7 +87,7 @@
         {
           "kind": "ci-run",
           "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
-          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826289",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
           "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
           "quotedAssertion": "job log line 204 — '  ✓  @crabgic/learning  src/red-team/self-promotion.redteam.test.ts (8 tests) 310ms'; line 203 — '  ✓  @crabgic/learning  src/red-team/no-mcp-tool-family.redteam.test.ts (3 tests) 16ms'; step summary lines 208-209 ' Test Files  5 passed (5)' / '      Tests  20 passed (20)'. Log line 196 records the command this step runs: 'npx vitest run packages/learning/src/red-team --coverage.enabled=false' — so the grep-based check really is executed by a CI job, which is the channel this criterion names."
         },
@@ -201,7 +201,7 @@
         {
           "kind": "ci-run",
           "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
-          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826289",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
           "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
           "quotedAssertion": "job log line 202 — '  ✓  @crabgic/learning  src/red-team/grader-isolation.redteam.test.ts (6 tests) 30ms'. Also green on ubuntu-24.04-arm (job 91480517035) in the same run, which matters for a test whose whole subject is real POSIX mode bits."
         },
