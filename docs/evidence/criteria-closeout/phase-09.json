@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "phase": "09",
+  "roadmapFile": "roadmap/09-cli-and-doctor.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 2 (phase 09)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates against published schemas — suite `cli.commands.schema.test`.",
+      "textSha256": "b899cc34e035158c2ad3d342a8d54965a502a66eed0ded601c0b0df4d1416873",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 936 — '  ✓  crabgic  src/commands/cli.commands.schema.test.ts (28 tests) 305ms'; line 946 — '  ✓  crabgic  src/argv/parse-command.test.ts (24 tests) 12ms'; line 1012 — '  ✓  crabgic  src/cli-entry.test.ts (4 tests) 11ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:98",
+          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:98 — 'expect(() => RunStatusResultSchema.parse(JSON.parse(result.stdout!))).not.toThrow();' and :107 the same for RunCancelResultSchema — the '--json validates against published schemas' clause, against 05's OWN exported zod schemas rather than a snapshot. Both run against a real supervisor started in a tmp dir at :65-70 ('startSupervisorServer({ runtimeDir, socketPath, router, peerAuth })')."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:230",
+          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:230-236 — 'expect(result.exitCode).toBe(EXIT_NOT_IMPLEMENTED); const parsed = JSON.parse(result.stdout!) …; expect(parsed.status).toBe(\"NOT_IMPLEMENTED\"); expect(parsed.command).toBe(command.command);' across an it.each of all 16 unwired-bag command variants — work item 1's 'typed NOT_IMPLEMENTED shape, not a crash or an untyped error'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:148",
+          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:148-151 — 'expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED); … expect(parsed.accepted).toBe(false); expect(parsed.reason).toMatch(/dispatcher/i);' — resume genuinely round-trips to the daemon over UDS; the refusal comes from the supervisor's own missing dispatcher, so the command cannot be short-circuiting in the CLI. :262 'expect(result.exitCode).toBe(EXIT_SUPERVISOR_UNAVAILABLE);' is the stable-exit-code mapping for an unreachable socket."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/argv/parse-command.test.ts:249",
+          "quotedAssertion": "packages/cli/src/argv/parse-command.test.ts:250 — 'expect(parseCommand([\"gateway\", \"mcp\"])).toEqual({ command: \"gateway-mcp\" });'. The file carries one case per command §In scope names (install :6, doctor :14, status :22/:31, resume :35, cancel :44, evidence :52, approve :61, connection add/list/doctor/capabilities :75/:186, trust :203, learn :217, upgrade+uninstall :236, gateway mcp :249, help :257), and :269/:273 reject an unknown top-level command and a malformed flag so the union is closed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/cli-surface/exit-codes.ts",
+          "quotedAssertion": "packages/contracts/src/cli-surface/exit-codes.ts:16-27 — the stable set (EXIT_OK 0, EXIT_GENERAL_ERROR 1, EXIT_DOCTOR_FINDINGS 2, EXIT_USAGE_ERROR 64, EXIT_NOT_IMPLEMENTED 69, EXIT_SUPERVISOR_UNAVAILABLE 71, EXIT_SECRET_REJECTED 77), re-exported verbatim by packages/cli/src/exit-codes.ts. Relocated to @crabgic/contracts in 5c21a0f because backends outside packages/cli (12's `trust *`, in packages/detect) need the same vocabulary."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/cliNotImplementedSweep.test.ts:208",
+          "quotedAssertion": "e2e/live/src/cliNotImplementedSweep.test.ts:247 — 'expect(realGaps).toEqual([\"connection-capabilities\"]);' after folding the real dispatch-level sweep with the real buildRealCliDependencies() wiring (:99-106 asserts installerWired/intakeWired/trustWired/connectionWired/learningWired all true). This is the NOT_IMPLEMENTED-surface scope note on the box, not the criterion itself. The file is in e2e/live's OFFLINE default project (the @live suites are src/live/*.live.test.ts) and is NOT in `npm test`'s fan-out, so it was re-run locally."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c1-cli-commands-schema.txt",
+          "quotedAssertion": "'Test Files  3 passed (3)' / 'Tests  56 passed (56)' — scoped local re-run at the closeout commit, command line and HEAD sha recorded in the file header"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c1-production-not-implemented-surface.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  15 passed (15)' — e2e/live's offline cliNotImplementedSweep suite, scoped local re-run at the closeout commit"
+        }
+      ],
+      "wordingCorrection": {
+        "before": "Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates against published schemas — suite `cli.commands.schema.test`.",
+        "after": "Every plan CLI command exists as a typed command with stable exit codes, dispatched through the one typed client; `--json` validates against published schemas wherever one exists. Most of the surface is not a UDS request and never was, including at this phase's own landing commit: `doctor` runs local host probes, `evidence` reads 04's journal directly through `JournalStore`, and every family wired after this phase (`trust *`, `connection *`, `learn *`, `install`/`upgrade`/`uninstall`) has a local backend. `status`/`cancel`/`resume` are the UDS-backed commands, and those are exactly the ones the suite round-trips against a real supervisor started in a tmp dir."
+      },
+      "notes": "The correction is more precise, not weaker: the guarantee the box carries — every plan command exists, is typed, returns one of the seven stable exit codes rather than crashing or an untyped error, and its `--json` validates against a published schema wherever one exists — is fully evidenced above. The checks are unchanged. Same shape as the phase-12 pilot's c6 correction ('against a real supervisor' for a command family with no supervisor path). Scope recorded so the tick is not read wider: only `status`/`cancel` have published schemas anywhere in @crabgic/contracts/@crabgic/supervisor; `evidence`/`doctor`/`NOT_IMPLEMENTED` are shapes this phase owns, and criterion 7 is where their conformance mechanism is (and is left unticked)."
+    },
+    {
+      "index": 2,
+      "text": "`gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client — the exact process 10's `.mcp.json` entry (`crabgic gateway mcp`) invokes; full 8-family completeness remains a phase-23 release gate — suite `gateway-mcp.boot.test`.",
+      "textSha256": "f689fe814af97f7b45f6e13e11545b842d05ed82cbbf7daf1e0876df5b1f3863",
+      "classification": "WORDING-MISMATCH",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 612 — '  ✓  @crabgic/gateway  src/mcp/server.test.ts (7 tests) 1776ms'; line 617 — '  ✓  @crabgic/gateway  src/mcp/stdio-boot.test.ts (5 tests) 50ms'; line 921 — '  ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 97ms'; line 462 — '  ✓  @crabgic/contracts  src/gateway/tool-registry.test.ts (3 tests) 10ms'; line 982 — '  ✓  crabgic  src/installer/mcp-entry.golden.test.ts (7 tests) 7ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:117",
+          "quotedAssertion": "packages/gateway/src/mcp/server.test.ts:117 — 'expect(tools.map((t) => t.name).sort()).toEqual([...NATIVE_TOOL_NAMES].sort());' where the transport is a REAL child process (:107-111 'new StdioClientTransport({ command: process.execPath, args: [FIXTURE], … })') and the client is the REAL MCP SDK `Client` (:112). This is the 'lists exactly the resolved tool set over stdio to a stub MCP client' clause, with `toEqual` rather than `toContain` so an extra or missing tool fails."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:136",
+          "quotedAssertion": "packages/gateway/src/mcp/server.test.ts:136 — 'expect(names.sort()).toEqual([...NATIVE_TOOL_NAMES, \"project.inspect\"].sort());' with one externally-registered tool. The anti-vacuity control: without it the exact-set assertion above could be satisfied by a listing hard-wired to the native constant rather than read from the registry."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/stdio-boot.test.ts:82",
+          "quotedAssertion": "packages/gateway/src/mcp/stdio-boot.test.ts:82 — 'expect(result.serverInfo.name).toBe(GATEWAY_MCP_SERVER_NAME);' (the 'starts' clause, under 02's constant); :91 'expect(listed.map((t) => t.name)).toEqual([\"probe.echo\"]);'; :134 'expect((responses.get(5)!.result as { tools: unknown[] }).tools).toEqual([]);' — work item 2's empty-registry case; :99-111 a real tools/call round-trip returning the handler's content."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/gateway/tool-registry.test.ts:23",
+          "quotedAssertion": "packages/contracts/src/gateway/tool-registry.test.ts:23 — ').toThrow(DuplicateToolError);' — work item 2's third failing-first clause ('a duplicate tool-name registration is rejected'), the assertion that lived in the deleted packages/cli/src/gateway-mcp/registry.test.ts"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' against buildRealGatewayToolRegistry, i.e. the RESOLVED set the shipped binary boots (24 names: 18 native + 11's two + 12's two + Gap 20's two); :141-146 additionally requires every one to carry a real invocable handler, never a descriptor-only stub."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:37",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:37 — 'expect(JSON.stringify(result.mcpJson.mcpServers)).toBe(expectedJson);' against the ledger's literal {\"crabgic_gateway\":{\"command\":\"crabgic\",\"args\":[\"gateway\",\"mcp\"]}} — the 'exact process 10's .mcp.json entry invokes' clause, byte-for-byte. packages/cli/src/commands/cli.snapshots.test.ts:68/:74/:80 closes the loop from the other side: BINARY_NAME is exactly \"crabgic\", the split invocation string parses back to {command:\"gateway-mcp\"}, and package.json's bin is keyed by that same constant."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/gatewayFamilyCompleteness.test.ts:23",
+          "quotedAssertion": "e2e/live/src/gatewayFamilyCompleteness.test.ts:26-28 — 'expect(results).toHaveLength(8); const unwired = results.filter((r) => !r.wiredAtProductionEntrypoint); expect(unwired.map(…)).toEqual([]);' built from the REAL production registry, and :128-129 'expect(result.supported).toBe(true); expect(result.evidence).toContain(\"real result\");' after booting the real MCP stdio server and invoking project.inspect. Offline suite in e2e/live's default project, not in `npm test`'s fan-out."
+        },
+        {
+          "kind": "discharge",
+          "ref": "roadmap/23-release-hardening.md exit criterion \"Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero `NOT_IMPLEMENTED` remains **outside the recorded deferral allowlist**\" (ticked)",
+          "quotedAssertion": "This criterion's own clause 'full 8-family completeness remains a phase-23 release gate' is discharged by that ticked box. Recorded rather than re-proved here, per this criterion's own deferral wording. Phase 23's box carries its own 2026-07-30 wording correction naming `connection capabilities` as the single allowlisted exception."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c2-gateway-mcp-boot.txt",
+          "quotedAssertion": "'Test Files  6 passed (6)' / 'Tests  40 passed (40)' — scoped local re-run at the closeout commit"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c2-family-completeness.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / 'Tests  9 passed (9)' — e2e/live's offline gatewayFamilyCompleteness suite, scoped local re-run at the closeout commit"
+        }
+      ],
+      "wordingCorrection": {
+        "before": "`gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client — the exact process 10's `.mcp.json` entry (`crabgic gateway mcp`) invokes; full 8-family completeness remains a phase-23 release gate — suite `gateway-mcp.boot.test`.",
+        "after": "Identical claim; the named evidence channel is corrected. `gateway-mcp.boot.test` no longer exists: c39292c (\"refactor: retire the hand-rolled MCP server and reconcile the audit trail\", 2026-07-25) deleted packages/cli/src/gateway-mcp/{protocol,stdio-server}.ts and their tests when production stopped booting them. The channel is now `packages/gateway/src/mcp/server.test.ts` + `packages/gateway/src/mcp/stdio-boot.test.ts`, with the duplicate-name half in `packages/contracts/src/gateway/tool-registry.test.ts`."
+      },
+      "notes": "The substitution is strictly stronger, not a channel downgrade. The retired suite drove a hand-rolled ndjson/JSON-RPC subset over in-process streams that answered every tools/call with METHOD_NOT_FOUND and replied to notifications it was required to ignore (c39292c's own commit message). The replacements spawn a real OS child process over stdio, drive the real @modelcontextprotocol/sdk Client, and invoke a real tool. One residual, recorded so the tick is not read wider than it is: no single suite lists the 24-name PRODUCTION registry over a real child process — server.test.ts lists the 18 native names from a fixture process, build-tool-registry.test.ts pins the 24-name production set in-process, and gatewayFamilyCompleteness boots the production registry over connectGatewayMcpStdio on PassThrough streams (not a child process). Each hop is asserted; the three are not composed into one."
+    },
+    {
+      "index": 3,
+      "text": "Doctor detects each seeded fault (wrong engine version, missing bwrap, rogue settings, bad socket perms, torn journal) with a correct repair plan — suite `doctor.fault-matrix.test`.",
+      "textSha256": "a79668469cfb28118ce928281e809c2d809d4eacfe165a46cd3ae7a59b3a232d",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 926 — '  ✓  crabgic  src/doctor/doctor.fault-matrix.test.ts (22 tests) 30ms'; line 981 — '  ✓  crabgic  src/doctor/run-doctor.test.ts (4 tests) 79ms'; line 983 — '  ✓  crabgic  src/doctor/checks/hermeticity-selftest.test.ts (7 tests) 22ms'; line 1002 — '  ✓  crabgic  src/doctor/framework.test.ts (6 tests) 11ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:58",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:63-65 (wrong engine version, probe returns '1.0.0 (Claude Code)') — 'expect(finding.passed).toBe(false); expect(finding.evidence).toContain(\"1.0.0\"); expect(finding.repairStep).toBeDefined();'; :76-77 (missing bwrap, exit 127) — 'expect(finding.passed).toBe(false); expect(finding.repairStep).toContain(\"bubblewrap\");'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:115",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:132-135 (bad UDS socket perms) — 'expect(finding.passed).toBe(false); expect(finding.evidence).toContain(socketPath); expect(finding.evidence).toContain(\"0755\"); expect(finding.evidence).toContain(\"0600\");' against a REAL UDS socket bound at resolveSupervisorSocketPath's exact path (:118-126), mis-chmodded, and run through buildDefaultDoctorChecks's own production wiring (:129). The 2026-07-24 adversarial-review fix: the case previously checked an unrelated fake directory fed to no real check."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:139",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:157-165 (torn journal, tail position) — 'expect(finding.evidence).toContain(\"000001.ndjson\"); expect(finding.repairStep).toContain(\"repairJournal\"); expect(finding.evidence).toContain(\"torn tail\"); expect(finding.evidence).not.toContain(\"mid-journal corruption\");' and :186-190 the mirrored mid-journal variant ('NOT a safe auto-repair'). Both directions are pinned, so the evidence can never drift from the remedy it must agree with — the 'correct repair plan' clause at its strongest."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:193",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:195-196 — 'const report = await runDoctorChecks([]); expect(report.findings).toEqual([]);' — work item 4's own failing-first framing ('each seeded fault fixture produces no finding because its check isn't registered yet'). Without it, a fault matrix could not distinguish detection from noise."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/checks/hermeticity-selftest.test.ts:71",
+          "quotedAssertion": "packages/cli/src/doctor/checks/hermeticity-selftest.test.ts:98 — 'expect(Object.keys(capturedEnv!).sort()).toEqual([\"CLAUDE_CONFIG_DIR\", \"HOME\", \"PATH\"]);' plus :84/:90 'expect(capturedCwd).toBeDefined(); expect(configDir!.startsWith(capturedCwd!)).toBe(true);'. This is the guard against THIS PHASE's own recorded vacuity: before 2026-07-24 the probe passed cwd/env to nothing, so the planted rogue CLAUDE.md was never in scope and rogueMarkerLeaked was structurally always false."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/framework.test.ts:57",
+          "quotedAssertion": "packages/cli/src/doctor/framework.test.ts:66 — 'expect(buildRepairPlan(report)).toEqual([\"[a] do X\"]);' from a report holding one failing-with-step, one passing, and one failing-without-step finding — ordered, only failing checks, and nothing executed. :52-54 is the empty control. This is the '--repair-plan (ordered, non-destructive, never auto-executed)' half of 'a correct repair plan'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c3-doctor-fault-matrix.txt",
+          "quotedAssertion": "'Test Files  5 passed (5)' / 'Tests  69 passed (69)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Scope, recorded so the tick is not read wider than the evidence. (a) The five fixtures seed the CHECK's input (a scripted ProcessProbeFn / verifyJournal result), except the socket-perms case which is a real on-disk socket run through the real wiring; the engine and bwrap are never actually spawned here, which is correct for an offline suite — a live host probe is phase 23's release-gate business. (b) The repairStep string is pinned exactly for bwrap and for both journal variants, and for the xdg-permissions check that owns the socket case at :256-259; the engine-version case asserts only that a step exists, and the rogue-settings case (:80-91) asserts the evidence string rather than its repairStep. Both of those repair steps do exist in the checks (hermeticity-selftest.ts:124-126 'investigate why filesystem settings sources are being loaded despite settingSources: []'; engine-version.ts:86/:95 'install a Claude Code version within …') — they are simply less tightly pinned than their siblings. Pinning both as complete strings is folded into this phase's defect record as remedy item 5 (docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md), since it is the same unpinned-string failure mode one level down; the tick here rests on detection, which is fully evidenced for all five fixtures. (c) buildDefaultDoctorChecks's default set is 10 checks at HEAD (journal.head-anchor and journal.writer-separation landed in #40/#41); run-doctor.ts:50's doc comment still says '8-check default set' and is stale — reported, not fixed in this pass."
+    },
+    {
+      "index": 4,
+      "text": "Secret value in argv rejected with guidance, never echoed in output or evidence — suite `secret-ref.rejection.test`.",
+      "textSha256": "7e3657ec9364b31e760bfa30fcebd4b12b305b87fdcda5643c20df3bd2474778",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 998 — '  ✓  crabgic  src/argv/secret-ref.rejection.test.ts (12 tests) 10ms'; line 1004 — '  ✓  crabgic  src/argv/secret-reference.property.test.ts (3 tests) 246ms'; line 1012 — '  ✓  crabgic  src/cli-entry.test.ts (4 tests) 11ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/argv/secret-ref.rejection.test.ts:45",
+          "quotedAssertion": "packages/cli/src/argv/secret-ref.rejection.test.ts:51-53 — 'expect(err).toBeInstanceOf(SecretValueRejectedError); expect((err as Error).message).not.toContain(secret); expect((err as Error).message).toContain(\"--token\");' for a ghp_-shaped literal. Both halves of the criterion in one assertion: rejected WITH guidance (the offending flag is named) and NEVER echoed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/argv/secret-ref.rejection.test.ts:34",
+          "quotedAssertion": "packages/cli/src/argv/secret-ref.rejection.test.ts:35-37 (an sk-ant- literal) and :41-42 (a bare JWT) both 'toThrow(SecretValueRejectedError)'; :58-60 closes the default — 'just-a-connection-name' is rejected too, so only the recognized reference forms are accepted at all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/argv/secret-ref.rejection.test.ts:6",
+          "quotedAssertion": "packages/cli/src/argv/secret-ref.rejection.test.ts:6-32 — the negative control: all five reference forms (env:, op://, vault://, file:///, ref:) parse and return their raw value. Without it a rejector that rejected every argument would satisfy every positive case above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/argv/secret-reference.property.test.ts:37",
+          "quotedAssertion": "packages/cli/src/argv/secret-reference.property.test.ts:41-45 — under fast-check at 500 runs over every known provider prefix (sk-, sk_, ghp_, gho_, github_pat_, xox, AKIA) × an 8-40 char suffix: 'expect(() => parseSecretReference(\"--token\", candidate)).toThrow(SecretValueRejectedError); … expect((err as Error).message).not.toContain(candidate);'. :52-60 generalises to any high-entropy ≥20-char non-reference candidate; :26-34 is the 500-run positive control over the five reference forms."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/cli-entry.test.ts:36",
+          "quotedAssertion": "packages/cli/src/cli-entry.test.ts:43 — 'expect(exitCode).toBe(EXIT_SECRET_REJECTED);' for argv ['connection','add','jira','--reference','sk-ant-abcdefghijklmnop'] through the real runCliEntry. The end-to-end argv boundary, not just the parser primitive; packages/cli/src/argv/parse-command.test.ts:174-178 is the same rejection at the parse layer."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:381",
+          "quotedAssertion": "packages/cli/src/doctor/doctor.fault-matrix.test.ts:383-385 — 'expect(finding.passed).toBe(true); expect(finding.evidence).toBe(\"subscription auth is valid\"); expect(finding.repairStep).toBeUndefined();'. The 'never echoed in … evidence' clause: doctor's auth probe emits a verdict string and nothing about the credential. :365-379 pins the two failing verdicts to their exact strings as well, so no branch can start carrying credential detail."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c4-secret-ref-rejection.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / 'Tests  15 passed (15)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Scope: `isSecretShapedValue` is test-only (the parser calls `parseSecretReference` directly) — recorded in docs/evidence/phase-09/README.md's adversarial-fix item #7 and still true at HEAD, so the property suite's use of it is a classifier assertion beside, not behind, the parser's own rejection path."
+    },
+    {
+      "index": 5,
+      "text": "Approval token verifies once, expires, and binds to the exact digest it was minted against — suite `approval-token.property.test`.",
+      "textSha256": "6702dbf710eebe52423a2d678b952eef013deddb625943b87280253f74645c4c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 443 — '  ✓  @crabgic/contracts  src/approval/approval-token.property.test.ts (3 tests) 216ms'; line 416 — '  ✓  @crabgic/contracts  src/approval/token.test.ts (10 tests) 13ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/approval/approval-token.property.test.ts:19",
+          "quotedAssertion": "packages/contracts/src/approval/approval-token.property.test.ts:24-31 — 'minter.verify(minted.token, { subjectKind, digest }); let secondFailed = false; try { minter.verify(…) } catch { secondFailed = true; } expect(secondFailed).toBe(true);' at numRuns 200 over randomized (subjectKind, digest). The FIRST verify is deliberately un-caught, so a minter whose tokens never verified at all would fail here — that is the positive control the single-use property needs."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/approval/approval-token.property.test.ts:37",
+          "quotedAssertion": "packages/contracts/src/approval/approval-token.property.test.ts:45-54 — 'fc.pre(mintedKind !== checkKind || mintedDigest !== checkDigest); … expect(failed).toBe(true);' at numRuns 200: every (subjectKind, digest) pair OTHER than the minted one fails. The 'binds to the exact digest it was minted against' clause, and the discriminator this phase's own §Risks demands between 11's envelope_hash and 12's capability_digest subjects."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/approval/approval-token.property.test.ts:61",
+          "quotedAssertion": "packages/contracts/src/approval/approval-token.property.test.ts:69-82 — an injected clock, a randomized ttl in [1, 100000], 'now = ttlMs + 1' then 'expect(failed).toBe(true);' at numRuns 200. The 'expires' clause, with no reliance on wall-clock sleeping."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/approval/token.test.ts:59",
+          "quotedAssertion": "packages/contracts/src/approval/token.test.ts:59-78 — a tampered signature and a token minted under a different minter's key both fail closed; :80-93 'expect(second.tokenId).toBe(first.tokenId); expect(appended).toHaveLength(1);' (minting twice against the same pending digest does not double-journal — work item 6's own failing-first framing) and :96-110 the complement, that re-minting after consumption does journal a second, distinct token."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c5-approval-token.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / 'Tests  13 passed (13)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Relocation, recorded because docs/evidence/phase-09/README.md still names these two files under packages/cli/src/approval/: both were moved verbatim to @crabgic/contracts in 5c21a0f ('relocate shared CLI-surface primitives to @eo/contracts, breaking the detect -> cli cycle'). The suite name the criterion cites, `approval-token.property.test`, is unchanged, so no wording correction is needed. Known scope limit, recorded by this phase's own evidence README item #6 and unchanged at HEAD: single-use tracking is in-memory and per-ApprovalTokenMinter-instance, so the guarantee is in-process. bootstrap.ts:213 builds ONE minter per process precisely so `trust approve` and the gateway share it."
+    },
+    {
+      "index": 6,
+      "text": "`evidence <change-set-id>` returns every journaled `EvidenceRecord` for that ChangeSet, including rendered PR-title/PR-body/review-comment artifacts once 17 populates them, and an empty-but-valid report before any exist — suite `evidence.query.test`.",
+      "textSha256": "4a81a5f5ad468964a1adbfd663e60f8111f93778c93ce78955e1a2414f13c123",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91423926933, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log line 996 — '  ✓  crabgic  src/evidence/evidence.query.test.ts (4 tests) 52ms'; line 650 — '  ✓  @crabgic/git-engine  src/evidence-attachment.test.ts (7 tests) 170ms'; line 936 — '  ✓  crabgic  src/commands/cli.commands.schema.test.ts (28 tests) 305ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/evidence/evidence.query.test.ts:28",
+          "quotedAssertion": "packages/cli/src/evidence/evidence.query.test.ts:33 — 'expect(report).toEqual({ changeSetId: \"11111111-1111-4111-8111-111111111111\", records: [] });' against a real on-disk JournalStore with nothing in it. The 'empty-but-valid report before any exist' clause, asserted as an exact shape rather than merely 'did not throw'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/evidence/evidence.query.test.ts:36",
+          "quotedAssertion": "packages/cli/src/evidence/evidence.query.test.ts:50 — 'expect(report.records).toEqual([record]);' with a second EvidenceRecord journaled under a DIFFERENT ChangeSet in the same journal, so per-ChangeSet scoping is proven and not assumed; :76 'expect(report.records.map((r) => r.command)).toEqual([\"npm test\", \"npm run lint\"]);' proves multiple records come back, in journal order."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/evidence/evidence.query.test.ts:53",
+          "quotedAssertion": "packages/cli/src/evidence/evidence.query.test.ts:64 — 'expect(report.records).toEqual([]);' when a permissive journal fake yields a run_transition entry under the same filter. This pins the admit-set: the query returns exactly the payloads of evidence_pointer entries for that ChangeSet, and nothing else — which is what makes the 'including rendered artifacts' clause follow from the attachment side below rather than needing a separate mechanism."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/evidence-attachment.test.ts:53",
+          "quotedAssertion": "packages/git-engine/src/evidence-attachment.test.ts:64-75 — 'expect(result.outcomes.map((o) => o.kind)).toEqual([\"pr_title\", \"pr_body\", \"review_comment\"]); … expect(outcome.evidenceRecord.changeSetId).toBe(\"a0000000-0000-4000-8000-000000000001\"); … expect(new Set(digests).size).toBe(3);' and :77-84 'for await (const entry of journal.queryEntries({ type: \"evidence_pointer\", changeSetId: … })) journaled.push(entry); expect(journaled).toHaveLength(3);'. The producing half of the 'including rendered PR-title/PR-body/review-comment artifacts' clause: each lint-passed RenderedArtifact is wrapped in an EvidenceRecord and journaled as an evidence_pointer against the ChangeSet — exactly the entries the query above admits."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:169",
+          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:174-178 — 'expect(result.exitCode).toBe(EXIT_OK); expect(JSON.parse(result.stdout!)).toEqual({ changeSetId: \"22222222-2222-4222-8222-222222222222\", records: [] });' through the real dispatchCommand, so the CLI command path (not just the query function) is exercised."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md, Gap 6 ruling — 'Phase 08 renders `pr_title`/`pr_body`/`review_comment` through Phase 17's `renderWithRegeneration()`, wraps each lint-passed `RenderedArtifact` in an `EvidenceRecord`, and journals an `evidence_pointer` entry against the ChangeSet; a human retrieves them via Phase 09's `evidence <change-set-id>` command — **there is no other delivery path.**' The ledger defines the 'including rendered artifacts' clause as exactly the composition of the two suites cited above; this closeout does not contradict it."
+        },
+        {
+          "kind": "discharge",
+          "ref": "roadmap/23-release-hardening.md exit criterion \"A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via `evidence <change-set-id>`), never an opened PR (Gap 6, by design).\" (ticked)",
+          "quotedAssertion": "The composed clause — rendered artifacts actually retrievable through this command — is discharged live by that ticked phase-23 release-gate box, which no offline suite in this phase can produce."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-09/closeout-c6-evidence-query.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / 'Tests  11 passed (11)' — scoped local re-run at the closeout commit"
+        }
+      ],
+      "notes": "Stated plainly so the tick is read correctly: no single suite drives the CLI `evidence` command against a rendered PR-title/PR-body/review-comment artifact end to end. That clause is closed by composition — the query's admit-set is asserted to be exactly (evidence_pointer, changeSetId) with no further filter (evidence.query.test.ts:53-65, query.ts:33-40), and the attachment routine is asserted to journal precisely those entries for all three artifact kinds (evidence-attachment.test.ts:77-84) — plus phase 23's ticked live box for the composed behaviour. The clause adds no mechanism the first clause does not already carry; it names a scope. Recorded here rather than glossed, so a reader can disagree with the reasoning instead of having to reconstruct it."
+    },
+    {
+      "index": 7,
+      "text": "Help text and every `--json` output schema are snapshot-stable — suite `cli.snapshots.test`.",
+      "textSha256": "17cd4f15a38ae958d3a9221b413cf027c0218bad43d2155da6307c6d36b2e4ce",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/cli.snapshots.test.ts:19",
+          "quotedAssertion": "packages/cli/src/commands/cli.snapshots.test.ts:19-40 — 'expect(result.stdout).toMatchSnapshot();' for top-level help in human and --json form, and ':30-35' one snapshot per key of COMMAND_HELP. PARTIAL evidence: this closes the criterion's HELP half only, and it closes it fully (14 topic snapshots committed)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap",
+          "quotedAssertion": "The committed snapshot file holds 19 entries: 2 top-level help + 14 topic help + exactly 3 non-help entries ('NOT_IMPLEMENTED shape', 'gateway mcp's tool-listing shape (empty registry)', 'gateway mcp's tool-listing shape (one registered tool)'). There is no snapshot for `doctor --json`, `evidence --json`, `status --json`, `cancel --json`, or any later-wired command's --json result. `grep -rn toMatchSnapshot packages/cli/src` returns six hits, all in cli.snapshots.test.ts, so no second snapshot surface exists."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md",
+      "notes": "Original, not drift: `git show d0f29c8:packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap` (this phase's own landing commit) carries the same three non-help entries and no others. Not a wording case: removing 'every' would delete a guarantee rather than clarify a claim, which the wording protocol forbids. Adjacent non-snapshot pins that limit the blast radius are enumerated in the defect (status/cancel are validated against 05's published zod schemas, which is stronger than a snapshot; evidence --json has an exact toEqual for the empty report; doctor --json has only a finding COUNT, which two of the last three merges already moved)."
+    }
+  ]
+}

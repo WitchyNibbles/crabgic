@@ -1,0 +1,35 @@
+# Phase 09 exit criterion 2 — the real production gateway tool registry the shipped `gateway mcp` boots: all 8 ledger Gap 1 families wired, and a real tool invoked over a real MCP stdio server
+#
+# Produced by the criteria-closeout pass (batch 2, phase 09), 2026-08-01T22:23:48Z.
+# Repository HEAD at capture: af46e007c1363d4838d74e2eea0d531e4d6bb4f3
+# Command (run from the repository root):
+#   npx vitest run --config e2e/live/vitest.config.ts --coverage.enabled=false --reporter=verbose src/gatewayFamilyCompleteness.test.ts
+#
+# NOTE: e2e/live's DEFAULT project is offline — its own vitest.config.ts states
+# "none of them spends a live Claude Code turn or touches the network". The @live
+# suites are src/live/*.live.test.ts, excluded by that config and NOT run here.
+#
+# Verbatim output follows. Nothing below this line is edited.
+# ----------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p09/e2e/live
+
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > reports all 8 families wired, with no missing tool names 23ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > accounts for all 22 tool names across the 8 families (Gap 1's settled count) 11ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > reports missingToolNames per family, so a future regression names what disappeared 9ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > reports no dependency edge for a fixture manifest with no @crabgic/gateway entry 11ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > reports a dependency edge when @crabgic/gateway is declared 15ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > genuine integration: the CLI really depends on @crabgic/gateway, now via the bundle rather than a manifest entry 6ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkToolsCallSupported — genuine integration (real MCP stdio server, PassThrough streams, no hang risk) > proves a registered tool can actually be INVOKED over the wire 35ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > interpretToolsCallResponse — unit (both outcomes) > reports unsupported for a JSON-RPC error response 0ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > interpretToolsCallResponse — unit (both outcomes) > reports supported for a real result response 0ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  00:23:49
+   Duration  2.69s (transform 1.37s, setup 0ms, import 2.30s, tests 114ms, environment 0ms)
+
+
+# ----------------------------------------------------------------------
+# exit status: 0
