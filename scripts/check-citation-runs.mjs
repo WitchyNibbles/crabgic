@@ -61,9 +61,14 @@ export const REPO_SLUG = "WitchyNibbles/crabgic";
  */
 export function parseActionsUrl(url) {
   const run = new RegExp(
-    `^https://github\\.com/${REPO_SLUG}/actions/runs/(\\d+)(?:/job/\\d+)?$`,
+    `^https://github\\.com/${REPO_SLUG}/actions/runs/(\\d+)(?:/job/(\\d+))?$`,
   ).exec(url);
-  if (run !== null) return { kind: "run", id: run[1] };
+  // Round-8 finding (bypass 22, minor sibling): the `/job/<jid>` suffix was
+  // matched and then DISCARDED, so a fabricated job id pinned under a real run
+  // was never resolved — the run existed, its head_sha matched, and the job
+  // number was free text. It is carried out now and checked to belong to the
+  // run. Zero merged citations use this URL form, so it costs nothing today.
+  if (run !== null) return { kind: "run", id: run[1], jobId: run[2] };
   const job = new RegExp(`^https://github\\.com/${REPO_SLUG}/actions/jobs/(\\d+)$`).exec(url);
   if (job !== null) return { kind: "job", id: job[1] };
   return undefined;
@@ -147,6 +152,26 @@ export async function auditCiRunCitations(records, resolve) {
           const provenance = auditProvenance({ errors, warnings }, where, citation, outcome);
           if (provenance.commitChecked) commitsChecked += 1;
           if (provenance.commitVerified) commitsVerified += 1;
+          // A `/job/<jid>` pinned under a real run has to be a job OF that run.
+          if (target.jobId !== undefined) {
+            const jobKey = `job:${target.jobId}`;
+            if (!cache.has(jobKey))
+              cache.set(jobKey, await resolve({ kind: "job", id: target.jobId }));
+            const job = cache.get(jobKey);
+            if (job.unavailable !== undefined) {
+              warnings.push(
+                `${where}: could not resolve job ${target.jobId} of ${citation.url} — ${job.unavailable}`,
+              );
+            } else if (!job.found) {
+              errors.push(
+                `${where}: job ${target.jobId} does not exist in ${REPO_SLUG}'s Actions history — a real run URL with a fabricated job number pinned under it names a job nobody can open`,
+              );
+            } else if (job.runId !== undefined && String(job.runId) !== target.id) {
+              errors.push(
+                `${where}: job ${target.jobId} belongs to run ${String(job.runId)}, not to run ${target.id} that ${citation.url} pins it under`,
+              );
+            }
+          }
         } else {
           errors.push(
             `${where}: ${citation.url} does not exist in ${REPO_SLUG}'s Actions history — a cited run that is not there is a fabricated citation`,
@@ -204,6 +229,9 @@ function githubResolver(token) {
         found: true,
         headSha: typeof body?.head_sha === "string" ? body.head_sha : undefined,
         workflowName,
+        // Only the job endpoint carries this; it is what ties a `/job/<jid>`
+        // suffix to the run it is pinned under.
+        runId: body?.run_id === undefined ? undefined : String(body.run_id),
       };
     }
     return { found: false, unavailable: `HTTP ${String(response.status)}` };

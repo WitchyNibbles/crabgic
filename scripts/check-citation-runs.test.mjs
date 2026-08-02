@@ -28,11 +28,18 @@ const recordWith = (citations) => [
 describe("parseActionsUrl", () => {
   it("recognises the three URL forms the committed records use", () => {
     expect(parseActionsUrl(RUN_URL)).toEqual({ kind: "run", id: "30711622357" });
+    // The `/job/<jid>` form hits the RUN endpoint, and carries the job id
+    // along so it can be resolved separately — see the provenance suite.
     expect(parseActionsUrl(`${RUN_URL}/job/91399985018`)).toEqual({
       kind: "run",
       id: "30711622357",
+      jobId: "91399985018",
     });
-    expect(parseActionsUrl(JOB_URL)).toEqual({ kind: "job", id: "91419417929" });
+    expect(parseActionsUrl(JOB_URL)).toEqual({
+      kind: "job",
+      id: "91419417929",
+      jobId: undefined,
+    });
   });
 
   it("refuses another repository's Actions URL", () => {
@@ -323,6 +330,68 @@ describe("auditCiRunCitations — a cited run's provenance", () => {
       unavailable: "HTTP 503",
     }));
     expect(commitsChecked).toBe(0);
+  });
+
+  /**
+   * Adversarial-review finding, round 8 (bypass 22, minor sibling).
+   * `parseActionsUrl` discarded the `/job/<jid>` suffix, so a FABRICATED job id
+   * pinned under a real run URL was never resolved — the run existed, the
+   * head_sha matched, and the job number was free text. Zero merged citations
+   * use that URL form, so checking it costs nothing today and stops the next
+   * one being written with an invented job.
+   */
+  it("carries the job id out of the /runs/<rid>/job/<jid> form", () => {
+    expect(parseActionsUrl(`${RUN_URL}/job/91399985018`)).toEqual({
+      kind: "run",
+      id: "30711622357",
+      jobId: "91399985018",
+    });
+    expect(parseActionsUrl(RUN_URL).jobId).toBeUndefined();
+  });
+
+  it("rejects a fabricated job id pinned under a real run", async () => {
+    const { errors } = await auditCiRunCitations(
+      recordWith([ciRun({ url: `${RUN_URL}/job/00000000000` })]),
+      async (t) =>
+        t.kind === "run"
+          ? { found: true, headSha: REAL_SHA, workflowName: "CI" }
+          : { found: false },
+    );
+    expect(errors.join("\n")).toContain("00000000000");
+  });
+
+  it("rejects a real job that belongs to a DIFFERENT run", async () => {
+    const { errors } = await auditCiRunCitations(
+      recordWith([ciRun({ url: `${RUN_URL}/job/91399985018` })]),
+      async (t) =>
+        t.kind === "run"
+          ? { found: true, headSha: REAL_SHA, workflowName: "CI" }
+          : { found: true, runId: "30250453824" },
+    );
+    expect(errors.join("\n")).toContain("30250453824");
+  });
+
+  it("accepts a job that really belongs to the run it is pinned under", async () => {
+    const { errors } = await auditCiRunCitations(
+      recordWith([ciRun({ url: `${RUN_URL}/job/91399985018` })]),
+      async (t) =>
+        t.kind === "run"
+          ? { found: true, headSha: REAL_SHA, workflowName: "CI" }
+          : { found: true, runId: "30711622357" },
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("warns rather than failing when the job endpoint cannot be asked", async () => {
+    const { errors, warnings } = await auditCiRunCitations(
+      recordWith([ciRun({ url: `${RUN_URL}/job/91399985018` })]),
+      async (t) =>
+        t.kind === "run"
+          ? { found: true, headSha: REAL_SHA, workflowName: "CI" }
+          : { found: false, unavailable: "HTTP 502" },
+    );
+    expect(errors).toEqual([]);
+    expect(warnings.join("\n")).toContain("502");
   });
 
   it("still does not require a run to have SUCCEEDED", async () => {

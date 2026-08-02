@@ -11,9 +11,9 @@ closeout itself, so a tick's citation is machine-resolvable rather than a claim 
 Validated by `scripts/check-criteria-closeout.mjs`
 (`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job), backed by the frozen
 original-wording baseline `criteria-baseline.json`, which `npm run check:criteria-baseline`
-re-derives from git history in the same job. The validator's own rejection paths — 139 cases, almost
+re-derives from git history in the same job. The validator's own rejection paths — 142 cases, almost
 all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`; the baseline generator
-(11) and the run resolver (22) add 33 more, for 172 across the three suites.
+(11) and the run resolver (27) add 38 more, for 180 across the three suites.
 
 ## Layout
 
@@ -215,6 +215,16 @@ records do not classify the same situation three different ways.
    Evidence transcripts belong under `docs/evidence/phase-NN/`, which is where the real records
    already file them.
 
+   **And a record may not cite its OWN phase file** — the sharpest form of the same thing. A
+   reviewer made a ticked criterion's *only* citations (a) `roadmap/22-learning-system.md:96`, the
+   phase's own checkbox **annotation quoted as evidence for itself**, and (b) that pass's own defect
+   record. Both passed, so the mandatory "a ticked criterion needs ≥1 citation" was satisfiable
+   entirely by text the pass wrote in the same commit. Note that path canonicality does **not** reach
+   this: it hardens how a ref is *matched*, not which targets are refused. Scoped to the record's
+   **own** phase file, deliberately — zero merged records cite their own, while phase 17
+   legitimately cites `roadmap/19-…` across phases, and refusing `roadmap/` generally would break
+   that honest citation.
+
    **A ref must already be its own normal form**, and this was a live bypass:
    `docs/evidence/criteria-closeout/./phase-14.json:1-5` validated **green** as an `artifact`
    citation while the plain form was correctly refused — so a ticked criterion's mandatory ≥1
@@ -270,7 +280,10 @@ records do not classify the same situation three different ways.
      asymmetry cannot be turned into a bypass, because an attacker can make the API return neither
      404-shaped success nor a matching `head_sha` for a run that ran somewhere else. It deliberately
      does **not** require `conclusion: success`: a record may legitimately cite a **red** run as
-     evidence that a gate really bites, and phase 01's closeout does exactly that.
+     evidence that a gate really bites, and phase 01's closeout does exactly that. A
+     `/runs/<rid>/job/<jid>` URL also has its **job** resolved and checked to belong to that run —
+     the suffix used to be matched and then discarded, so a fabricated job number pinned under a
+     real run was free text.
 
      **Provenance was the second live bypass, and the more serious one.** Until it was closed,
      existence was *all* this proved. A reviewer repointed phase 01's criterion 1 at run
@@ -337,7 +350,9 @@ narrower, and still real:
    non-symlink file, and be long enough for the line — but the quoted assertion itself is free
    text, so a real file plus a real in-range line plus an invented assertion passes.
 
-   Enforcing it is not a small change. The three merged records carry **143 citations**, of which
+   Enforcing it is not a small change. The figures below were measured when the index held **three**
+   records; the corpus is now 17 records and ~1,000 citations, so treat the ratio as indicative and
+   re-measure before acting on it. At that time the three merged records carried **143 citations**, of which
    **123** are `test`/`artifact` — the only kinds that name a file a quote could be checked
    against. Between **10 and 16 of those 123** have backticked fragments appearing verbatim
    (whitespace-normalized) in the cited file: **10** counting only fragments of ≥12 characters and
@@ -354,9 +369,10 @@ narrower, and still real:
    `quotedAssertion` on a `ci-run` remains free text — a real run, at the real commit, of the right
    workflow, plus an **invented quoted line**, still passes. That channel is inherently human
    territory once a run's logs pass GitHub's retention window and stop being fetchable at all; it is
-   named here rather than claimed closed. Narrower residue with the same shape: the `ref` names a
-   *job* and a *step* within the workflow, and only the workflow half is compared, so a citation can
-   name the right run and the wrong job. Choosing a *plausible* wrong run — same workflow, same
+   named here rather than claimed closed. Narrower residue with the same shape: when the URL carries
+   a `/job/<jid>` suffix that job is resolved and checked to belong to the run, but the job and step
+   named in the `ref` **prose** (`…, job 91399985018, step "…"`) are not, so a citation can name the
+   right run and the wrong job in its text. Choosing a *plausible* wrong run — same workflow, same
    commit, different criterion — is likewise still open, and is a judgement about relevance rather
    than provenance; see limit 6.
 6. **A `discharge` can name a real, ticked, correctly-quoted criterion that is simply not relevant.**

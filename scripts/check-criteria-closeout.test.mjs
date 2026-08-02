@@ -1171,6 +1171,73 @@ describe("validateCloseoutRecord — citations may not be symlinks", () => {
     expect(errors.join("\n")).toContain("claim-space");
   });
 
+  /**
+   * Adversarial-review finding, round 8 (bypass 22) — the sharpest form of the
+   * claim-space family, demonstrated live. A reviewer made ticked criterion 3's
+   * ONLY citations (a) `roadmap/22-learning-system.md:96`, the phase's own
+   * checkbox ANNOTATION quoted as evidence for itself, and (b) that same pass's
+   * own defect record. The validator passed — so the mandatory "a ticked
+   * criterion needs at least one citation" was satisfiable entirely by text the
+   * pass wrote in the same commit.
+   *
+   * (b) is already refused by the claim-space rule above. (a) is not, and no
+   * amount of path canonicalisation reaches it: canonicalisation hardens how a
+   * ref is MATCHED, not which targets are refused. A phase file is the claim
+   * too, so a record may not cite its own.
+   *
+   * Scoped to the record's OWN phase file, deliberately, and measured: across
+   * the merged records ZERO cite their own `roadmapFile`, while phase 17
+   * legitimately cites `roadmap/19-…` as a cross-phase artifact. Refusing
+   * `roadmap/` generally would break that honest citation.
+   */
+  it("rejects a citation of the record's own phase file — the criterion quoting its own annotation", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations = [
+        {
+          kind: "artifact",
+          ref: "roadmap/99-fixture-phase.md:5",
+          quotedAssertion: "the annotation this very pass appended",
+        },
+      ];
+    });
+    expect(errors.join("\n")).toContain("own phase file");
+  });
+
+  it("rejects the own-phase-file citation reached through a dot segment too", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations = [
+        {
+          kind: "artifact",
+          ref: "roadmap/./99-fixture-phase.md",
+          quotedAssertion: "the annotation this very pass appended",
+        },
+      ];
+    });
+    expect(errors.join("\n")).toContain("own phase file");
+  });
+
+  /** Phase 17 cites roadmap/19 as a cross-phase artifact. That must survive. */
+  it("still accepts a citation of ANOTHER phase's roadmap file", () => {
+    const root = fixtureRoot();
+    writeFileSync(
+      join(root, "roadmap", "98-other-phase.md"),
+      ["## Exit criteria", "", "- [ ] Another phase's criterion.", ""].join("\n"),
+      "utf8",
+    );
+    expect(
+      errorsFor(
+        (r) => {
+          r.criteria[0].citations.push({
+            kind: "artifact",
+            ref: "roadmap/98-other-phase.md:3",
+            quotedAssertion: "the neighbouring phase's own wording",
+          });
+        },
+        { root },
+      ),
+    ).toEqual([]);
+  });
+
   it("still accepts an evidence transcript filed where real records file them", () => {
     expect(
       errorsFor((r) => {

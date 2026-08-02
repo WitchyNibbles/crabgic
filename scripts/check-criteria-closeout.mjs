@@ -711,12 +711,25 @@ const normalize = normalizeCriterionText;
  *
  * @returns {string | undefined} the problem, phrased to follow "<kind> ref <x> "
  */
-function forbiddenContentProblem(relPath) {
+function forbiddenContentProblem(relPath, ownRoadmapFile) {
   if (CLOSEOUT_RECORD_REF.test(relPath)) {
     return "is a closeout record — a record is the claim, never the evidence for it";
   }
   if (CLOSEOUT_CLAIM_SPACE.test(relPath)) {
     return `is inside the closeout claim-space ${CLOSEOUT_DIR}/ — a record is the claim, never the evidence for it, and neither is anything filed beside it. A defect record, this directory's README and the frozen baseline are all written by the same pass, in the same PR, as the record that would be citing them.`;
+  }
+  // Round-8 finding (bypass 22), the sharpest form of the same family: a ticked
+  // criterion's ONLY citations were its own phase file's checkbox ANNOTATION
+  // and that pass's own defect record, so the mandatory ≥1 citation was
+  // satisfied entirely by text the pass wrote in the same commit. Canonicality
+  // does not reach this — it hardens how a ref is MATCHED, not which targets
+  // are refused. Scoped to the record's OWN phase file: phase 17 legitimately
+  // cites `roadmap/19-…` across phases, and zero merged records cite their own.
+  if (
+    typeof ownRoadmapFile === "string" &&
+    relPath.toLowerCase() === ownRoadmapFile.toLowerCase()
+  ) {
+    return `is this record's own phase file — a criterion cannot be evidenced by the phase file it lives in, whose annotation this very pass appended. Citing ANOTHER phase's roadmap file is fine.`;
   }
   if (relPath.split(/[\\/]/).some((segment) => FORBIDDEN_SEGMENTS.has(segment.toLowerCase()))) {
     return "is not content the repository carries — node_modules/ is installed by every CI job and .git/ is not source";
@@ -751,7 +764,7 @@ function realpathOr(target) {
  * rebase slid five of its own line citations and none were catchable, because
  * the files still existed.
  */
-function resolveCitationRef(errors, cwhere, citation, repoRoot) {
+function resolveCitationRef(errors, cwhere, citation, repoRoot, ownRoadmapFile) {
   const { relPath: rawPath, start, end } = parseCitationRef(citation.ref);
 
   // Round-8 finding (bypass 17a). Reported, and then the NORMALIZED path is
@@ -766,7 +779,7 @@ function resolveCitationRef(errors, cwhere, citation, repoRoot) {
 
   // Checked on the ref's shape, before resolution, so both hold for a path that
   // does not exist yet — and re-checked below on what the path really OPENS.
-  const contentProblem = forbiddenContentProblem(relPath);
+  const contentProblem = forbiddenContentProblem(relPath, ownRoadmapFile);
   if (contentProblem !== undefined) {
     errors.push(`${cwhere}: ${citation.kind} ref ${relPath} ${contentProblem}`);
     return;
@@ -810,7 +823,7 @@ function resolveCitationRef(errors, cwhere, citation, repoRoot) {
   // are re-run on what the path actually opens.
   const throughLink = path.relative(realRoot, real).split(path.sep).join("/");
   if (throughLink !== relPath) {
-    const launderedProblem = forbiddenContentProblem(throughLink);
+    const launderedProblem = forbiddenContentProblem(throughLink, ownRoadmapFile);
     if (launderedProblem !== undefined) {
       errors.push(
         `${cwhere}: ${citation.kind} ref ${relPath} resolves through a symlink to ${throughLink}, which ${launderedProblem}`,
@@ -1247,7 +1260,7 @@ export function validateCloseoutRecord(record, ctx) {
           // Adversarial-review finding: nothing resolved a citation, so a
           // fabricated ref validated. This pass's own phase-12 defect exists
           // BECAUSE a cited test file was deleted and nothing noticed.
-          resolveCitationRef(errors, cwhere, citation, repoRoot);
+          resolveCitationRef(errors, cwhere, citation, repoRoot, record.roadmapFile);
           // Line numbers drift and files move; the quoted text is the citation
           // that survives. All 466 test/artifact citations across the eleven
           // records already carry one, so requiring it costs nothing today and
