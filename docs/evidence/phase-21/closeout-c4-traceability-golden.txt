@@ -1,0 +1,23 @@
+# captured: 2026-08-02T10:35:09Z (UTC)
+# HEAD: 30f931eab97b8360102498d4b766513be67241d0
+# cwd:  repository root (git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run --coverage.enabled=false --reporter=verbose packages/gates/src/traceability-view.test.ts
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p21
+
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — golden, bidirectional, multi-requirement ChangeSet > matches the committed golden fixture exactly (requirement -> work unit -> object id -> RemoteResource -> confirmed revision, both directions) 8ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > fan-IN: two DIFFERENT requirements pointing at the SAME RemoteResource both appear in byRemoteResourceId's reverse index 1ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > fan-OUT: one requirement pointing at MULTIPLE distinct RemoteResources gets all of them, each with its own revision 2ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > a duplicate pointer to the SAME RemoteResource for one requirement collapses to one binding, not two 1ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > confirmedRevision source precedence: the pointer's OWN confirmedRevision wins even when it DIVERGES from RemoteResource.revision (the pointer is the gate/done-bridge's trusted value) 1ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > falls back to RemoteResource.revision when the pointer itself carries no confirmedRevision 1ms
+ ✓ |@crabgic/gates| src/traceability-view.test.ts > buildTraceabilityView — MINOR-3 (adversarial-validation round): non-degenerate topology > a pointer whose RemoteResource id is ABSENT from the supplied remoteResources list still produces a binding, with confirmedRevision undefined rather than silently dropping the binding 1ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  12:35:13
+   Duration  1.39s (transform 837ms, setup 0ms, import 1.17s, tests 16ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0

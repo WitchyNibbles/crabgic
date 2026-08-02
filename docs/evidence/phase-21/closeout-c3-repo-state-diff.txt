@@ -1,0 +1,48 @@
+# captured: 2026-08-02T10:36:13Z (UTC)
+# HEAD: 30f931eab97b8360102498d4b766513be67241d0
+# purpose: exit criterion 3's second named artifact — "before/after repo-state diff",
+#          proving the drift-CI job applies ZERO pinned-fixture/config changes.
+# method:  runs the EXACT entrypoint .github/workflows/drift-ci.yml runs
+#          (`node packages/gates/dist/drift/cli.js`) with the same JIRA_OBSERVED_VERSION
+#          override CI run 30743998864 used, twice (the debounce threshold is 2), and
+#          captures the repository state immediately before and after.
+#          XDG_STATE_HOME is redirected to a scratch dir so the run does not touch this
+#          machine's real state root; the CLI's default paths are XDG-derived either way.
+# ---------------------------------------------------------------
+$ git status --porcelain > BEFORE ; git rev-parse HEAD:packages/gates/src/drift/pinned-fixtures.ts
+019fc673eb028c00e12cb66677ea08cb88c0e35f
+$ sha256sum .github/workflows/drift-ci.yml packages/gates/src/drift/pinned-fixtures.ts
+07b9a96e1bdd9abe43810599eac50fc7f7b3c9461153e482381cb194841c5827  .github/workflows/drift-ci.yml
+f1fcc77b428f5172bb0332aeb53847aa7d64641b8aed716009d96cba52676f89  packages/gates/src/drift/pinned-fixtures.ts
+
+$ XDG_STATE_HOME=<scratch> JIRA_OBSERVED_VERSION=1001.0.0 GRAFANA_OBSERVED_VERSION=13.1.0 node packages/gates/dist/drift/cli.js   # run 1 of 2 (debounce prime)
+exit=0
+
+$ XDG_STATE_HOME=<scratch> JIRA_OBSERVED_VERSION=1001.0.0 GRAFANA_OBSERVED_VERSION=13.1.0 node packages/gates/dist/drift/cli.js   # run 2 of 2 (emits + red)
+drift-ci: 1 DriftProposal(s) written to /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/xdgstate/crabgic/drift-ci/drift-proposals.json — human review required.
+exit=1
+
+$ cat $XDG_STATE_HOME/crabgic/drift-ci/drift-proposals.json
+[
+  {
+    "connector": "jira",
+    "pinnedVersion": "1000.0.0",
+    "observedVersion": "1001.0.0",
+    "redactedDiff": "{\"connector\":\"jira\",\"pinnedVersion\":\"1000.0.0\",\"observedVersion\":\"1001.0.0\",\"addedKeys\":[],\"removedKeys\":[],\"pinnedShape\":{\"summary\":\"string\",\"description\":\"string\",\"status\":\"string\",\"assignee\":\"string\"},\"observedShape\":{\"summary\":\"string\",\"description\":\"string\",\"status\":\"string\",\"assignee\":\"string\"}}",
+    "recommendedFixtureUpdate": "update pinned jira fixture from 1000.0.0 to 1001.0.0 (version bump only, no shape change)",
+    "detectedAt": "2026-08-02T10:36:14.161Z"
+  }
+]
+
+$ git status --porcelain > AFTER ; diff BEFORE AFTER    # empty diff == zero repo-state change
+diff exit=0  (0 == identical)
+$ sha256sum .github/workflows/drift-ci.yml packages/gates/src/drift/pinned-fixtures.ts
+07b9a96e1bdd9abe43810599eac50fc7f7b3c9461153e482381cb194841c5827  .github/workflows/drift-ci.yml
+f1fcc77b428f5172bb0332aeb53847aa7d64641b8aed716009d96cba52676f89  packages/gates/src/drift/pinned-fixtures.ts
+$ git diff --stat HEAD -- packages/ .github/    # tracked-file changes made by the job
+(no output above == no tracked file under packages/ or .github/ was modified)
+$ find $XDG_STATE_HOME -type f    # everything the job DID write, all outside the repo tree
+<scratch>/xdgstate/crabgic/drift-ci/drift-proposals.json
+<scratch>/xdgstate/crabgic/drift-ci/debounce-state.json
+# ---------------------------------------------------------------
+# exit status: 0

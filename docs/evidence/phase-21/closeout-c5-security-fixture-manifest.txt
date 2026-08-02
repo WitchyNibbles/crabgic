@@ -1,0 +1,32 @@
+# captured: 2026-08-02T10:35:15Z (UTC)
+# HEAD: 30f931eab97b8360102498d4b766513be67241d0
+# cwd:  repository root (git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run --coverage.enabled=false --reporter=verbose packages/gates/src/security-fixture-manifest.test.ts
+# ---------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p21
+
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 11ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 9ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 1ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  12:35:16
+   Duration  5.91s (transform 4.55s, setup 0ms, import 5.62s, tests 36ms, environment 0ms)
+
+# ---------------------------------------------------------------
+# exit status: 0
