@@ -1,0 +1,30 @@
+Criteria-closeout pass, phase 13 — criterion 3 (packet budget violations block dispatch with an actionable diff)
+Date (UTC): 2026-08-01T22:18:39Z. Worktree: chore/closeout-phase-13 at af46e007c1363d4838d74e2eea0d531e4d6bb4f3.
+Run from the repository root of that worktree.
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/budgets.test.ts packages/scheduler/src/budgets.property.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p13
+
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > returns no violations for a fixture packet within every default budget 4ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > flags an over-budget objective with an actionable diff and never mutates the packet 2ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > flags every over-budget field independently, in field order 1ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > measures array fields as their newline-joined rendering 0ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > measures resultSchema via JSON.stringify 1ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > MINOR-5 regression: measures TRUE UTF-8 byte length, not JS string .length — a field within char-count but over BYTE budget is still flagged 1ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > checkPacketBudgets > respects caller-supplied narrower budgets 0ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > assertPacketWithinBudget > does not throw for a within-budget packet 1ms
+ ✓ |@crabgic/scheduler| src/budgets.test.ts > assertPacketWithinBudget > throws PacketBudgetExceededError — blocking dispatch, never silently truncating — for an over-budget packet 1ms
+ ✓ |@crabgic/scheduler| src/budgets.property.test.ts > checkPacketBudgets — property: any field mutation exceeding its budget is always flagged > an objective longer than its budget is ALWAYS flagged, regardless of content 344ms
+ ✓ |@crabgic/scheduler| src/budgets.property.test.ts > checkPacketBudgets — property: any field mutation exceeding its budget is always flagged > an objective within its budget is NEVER flagged, regardless of content 22ms
+ ✓ |@crabgic/scheduler| src/budgets.property.test.ts > checkPacketBudgets — property: any field mutation exceeding its budget is always flagged > gates array total length exceeding budget is always flagged 27ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  00:18:40
+   Duration  1.49s (transform 1.22s, setup 0ms, import 1.81s, tests 409ms, environment 0ms)
+
+
+exit status: 0
+
+Verbatim output; nothing between the command line and this footer is edited.

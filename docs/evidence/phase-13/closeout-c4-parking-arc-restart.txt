@@ -1,0 +1,70 @@
+Criteria-closeout pass, phase 13 — criterion 4 (parking arc: same session_id, journal arc, simulated supervisor restart)
+Date (UTC): 2026-08-01T22:18:57Z. Worktree: chore/closeout-phase-13 at af46e007c1363d4838d74e2eea0d531e4d6bb4f3.
+Run from the repository root of that worktree.
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/parking.test.ts packages/scheduler/src/executor.e2e.test.ts packages/scheduler/src/executor.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p13
+
+ ✓ |@crabgic/scheduler| src/parking.test.ts > isPastReset > is false before the reset time and true at/after it 8ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > records a work_unit_transition('parked:rate_limit') retaining the sessionId 48ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > records a journal-derived park timer readable via getLatestParkTimer 40ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > getLatestParkTimer ignores unrelated journal entry types, unrelated decisions, and other subjects' timers 76ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > MINOR-4 regression: getLatestParkTimer never throws an untyped SyntaxError for a malformed rationale carrying the park-timer sentinel decision — it treats it as 'no valid timer' instead 27ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > MINOR-4 regression: getLatestParkTimer never throws for a park-timer-sentinel entry whose rationale is valid JSON but the WRONG shape 15ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > MINOR-4 regression: a malformed park-timer entry does not crash getParkStatus/isGloballyPaused — it is treated as though no valid timer exists 57ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > does not record a global timer unless accountWide is set 24ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > parkWorkUnit > accountWide:true additionally records a global park timer 47ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > assertNotGloballyPaused > MINOR-3: does not throw when no global pause is active 2ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > assertNotGloballyPaused > MINOR-3: throws GlobalPauseActiveError while an account-wide pause is active 38ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > assertNotGloballyPaused > MINOR-3: does not throw once the simulated clock passes the global reset 68ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > isGloballyPaused > is false with no global timer recorded 2ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > isGloballyPaused > is true before the global reset, false after 65ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > reports not-parked for a unit with no attempt history at all 3ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > defensively reports parked-but-timer-unknown if a 'parked:rate_limit' attempt was recorded WITHOUT a matching timer marker (should be unreachable via parkWorkUnit itself, but guarded) 35ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > reports parked + not-yet-ready before the reset 64ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > reports parked + ready-to-resume once the simulated clock passes the reset 39ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > reports not-parked once the unit has been resumed and re-dispatched past the park 75ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > journals session_assignment then dispatched, and returns 'succeeded' for a clean success script 77ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > survives a simulated supervisor restart: a FRESH JournalStore instance over the same journalDir sees identical park status 35ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > run-scopes the resumable SESSION id when a runId is given (F2) 116ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > threads a caller-supplied runId onto the session_assignment entry 70ms
+ ✓ |@crabgic/scheduler| src/parking.test.ts > getParkStatus — restart-safe journal-derived read-back > run-scopes the parked DETERMINATION when a runId is given (F2) 173ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @crabgic/supervisor's recoverRun see a real dispatch's terminal status after a restart 100ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'workerResultFailure' for a self-reported failure 41ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: 3-unit DAG with forced overlap (two serialize, one proceeds independently) > dispatches the independent unit alongside one of the overlapping pair, then serializes the other into a later round 203ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > crashes, is allowed a repair with 'crash' evidence, and resumes the SAME session to success 99ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'crashed' with evidenceKind 'crash' for an abrupt stream end 43ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'schemaViolation' for a schema-violating result 59ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'cancelled' for a self-reported cancellation 37ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'parked' with resetsAt on a limitSignal, and journals parked:rate_limit retaining the sessionId 49ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > throws PacketBudgetExceededError before ever calling adapter.spawn for an over-budget packet 11ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > MAJOR-1: a resumeAttempt crashRepair is REFUSED once the cap is exhausted — the gate actually blocks the call, not a side assertion 133ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS dispatchAttempt with GlobalPauseActiveError, before ever calling adapter.spawn 67ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: dispatchAttempt proceeds normally once the simulated clock passes the global reset 69ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > refuses a 3rd dispatch attempt WITHOUT new evidence with a TYPED error, via dispatchAttempt itself 127ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > resumes the SAME session id and reaches a terminal outcome via the onResume continuation script 92ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > a schema-violation failure counts as valid repair evidence exactly once — it justifies ONE repair, never more toward the cap 144ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: limit-signal → park → simulated clock past reset → resume, surviving a simulated supervisor restart > parks on limitSignal, then resumes with the SAME session_id after a fresh JournalStore instance (simulated restart) sees the clock has passed the reset 83ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'crashRepair' IS gated identically to dispatchAttempt — refused with a typed error once the cap is exhausted 144ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: limit-signal → park → simulated clock past reset → resume, surviving a simulated supervisor restart > two concurrently-parked work units from the same project never collide on a session_id 148ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: shadow-run alongside a live primary — isolation asserted > the shadow attempt runs to completion in isolation while the primary dispatches and succeeds normally; primary journal/cache/artifacts are provably unmodified beyond the one marker entry 88ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: delegation depth 1 / concurrency cap 4 asserted > concurrency cap defaults to exactly 4 14ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: delegation depth 1 / concurrency cap 4 asserted > every compiled profile this executor dispatches with unconditionally denies 'Agent' (delegation depth 1 — enforced upstream by 03's envelope compiler, asserted here) 15ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'parkResume' never requires evidence and never consumes a repair slot, even after the cap would otherwise be exhausted 301ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS resumeAttempt (both trigger kinds) with GlobalPauseActiveError, before ever calling adapter.resume 107ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > accepts a success whose criteria still match what was approved 85ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded 134ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success when the change set was never sealed — fail-closed, not fail-open 88ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > scopes the journaled refusal to the run, so a runId-filtered replay can still find it 79ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > a unit with no requirements of its own is accepted — the seal constrains, it does not invent work 59ms
+
+ Test Files  3 passed (3)
+      Tests  52 passed (52)
+   Start at  00:18:58
+   Duration  4.24s (transform 4.09s, setup 0ms, import 5.98s, tests 3.83s, environment 0ms)
+
+
+exit status: 0
+
+Verbatim output; nothing between the command line and this footer is edited.

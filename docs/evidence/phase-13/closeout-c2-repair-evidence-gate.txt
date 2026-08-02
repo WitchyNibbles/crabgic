@@ -1,0 +1,71 @@
+Criteria-closeout pass, phase 13 — criterion 2 (3rd attempt without new evidence refused; schema-violation counts once)
+Date (UTC): 2026-08-01T22:18:53Z. Worktree: chore/closeout-phase-13 at af46e007c1363d4838d74e2eea0d531e4d6bb4f3.
+Run from the repository root of that worktree.
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/attempt-policy.test.ts packages/scheduler/src/executor.e2e.test.ts packages/scheduler/src/executor.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p13
+
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > countPriorDispatches > is 0 before any attempt has been recorded 7ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > countPriorDispatches > counts only 'dispatched' transitions, not 'failed'/'succeeded'/'parked:rate_limit' themselves 56ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > countPriorDispatches > MAJOR-1 fix: EXCLUDES a 'dispatched' transition whose previousStatus is 'parked:rate_limit' — a rate-limit-park resume is NOT a repair and must never consume repair budget 77ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > countPriorDispatches > scopes the count to a runId when given, so a retry run does not inherit the prior run's budget 37ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > countPriorDispatches > does not let a prior run's park leak into a retry run's repair count 28ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > allows the very first dispatch with no evidence at all 3ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > refuses a repair (2nd dispatch) with reason 'noNewEvidence' when evidenceKind is 'none' 21ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > allows a repair (2nd dispatch) when evidenceKind is 'workerResultFailure' 17ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > scoped to a runId, a NEW run's first dispatch is allowed even though a PRIOR run exhausted the budget 45ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > allows a repair when evidenceKind is 'schemaViolation', 'crash', or 'gateVerdict' 111ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > allows the 3rd (final) dispatch with evidence after 2 prior dispatches 55ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > refuses a 4th dispatch with reason 'attemptsExhausted' even WITH fresh evidence — the cap is absolute 50ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > re-checking evidence multiple times before an actual redispatch never itself consumes a repair slot (no double-counting) 20ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > MAJOR-1 fix: a park→resume cycle does NOT decrement the available repair budget — the 3-dispatch cap is still reachable afterward 109ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > journals session_assignment then dispatched, and returns 'succeeded' for a clean success script 47ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > threads a caller-supplied runId onto the session_assignment entry 30ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > evidence-distinctness (evidenceDetail) > omitting evidenceDetail entirely skips the distinctness check (backward-compatible) 45ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > evidence-distinctness (evidenceDetail) > refuses a repair whose evidenceDetail is IDENTICAL to the immediately-prior repair's, with reason 'evidenceNotDistinct' 56ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @crabgic/supervisor's recoverRun see a real dispatch's terminal status after a restart 35ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'workerResultFailure' for a self-reported failure 45ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'crashed' with evidenceKind 'crash' for an abrupt stream end 42ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: 3-unit DAG with forced overlap (two serialize, one proceeds independently) > dispatches the independent unit alongside one of the overlapping pair, then serializes the other into a later round 115ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > crashes, is allowed a repair with 'crash' evidence, and resumes the SAME session to success 63ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > evidence-distinctness (evidenceDetail) > allows a repair whose evidenceDetail DIFFERS from the immediately-prior repair's, even with the same evidenceKind 84ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > evidence-distinctness (evidenceDetail) > the very first dispatch is never subject to the distinctness check (no prior evidence exists to compare against) 2ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > assertRepairAllowed > evidence-distinctness (evidenceDetail) > MINOR-4-parity: a malformed/foreign repair-evidence-record entry never throws — it is treated as though no prior evidence exists 38ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > needsRepairPolicyCheck > is false when no attempt has ever been recorded 5ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'schemaViolation' for a schema-violating result 25ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'cancelled' for a self-reported cancellation 48ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > needsRepairPolicyCheck > is true after a failed attempt 29ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > needsRepairPolicyCheck > is false after a succeeded attempt 37ms
+ ✓ |@crabgic/scheduler| src/attempt-policy.test.ts > needsRepairPolicyCheck > is false after a cancelled attempt 24ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > MAJOR-1: a resumeAttempt crashRepair is REFUSED once the cap is exhausted — the gate actually blocks the call, not a side assertion 103ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'parked' with resetsAt on a limitSignal, and journals parked:rate_limit retaining the sessionId 50ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > throws PacketBudgetExceededError before ever calling adapter.spawn for an over-budget packet 3ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS dispatchAttempt with GlobalPauseActiveError, before ever calling adapter.spawn 21ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: dispatchAttempt proceeds normally once the simulated clock passes the global reset 55ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > refuses a 3rd dispatch attempt WITHOUT new evidence with a TYPED error, via dispatchAttempt itself 76ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: crash mid-attempt → repair with fresh diagnostic evidence > a schema-violation failure counts as valid repair evidence exactly once — it justifies ONE repair, never more toward the cap 81ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > resumes the SAME session id and reaches a terminal outcome via the onResume continuation script 50ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: limit-signal → park → simulated clock past reset → resume, surviving a simulated supervisor restart > parks on limitSignal, then resumes with the SAME session_id after a fresh JournalStore instance (simulated restart) sees the clock has passed the reset 75ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'crashRepair' IS gated identically to dispatchAttempt — refused with a typed error once the cap is exhausted 102ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: limit-signal → park → simulated clock past reset → resume, surviving a simulated supervisor restart > two concurrently-parked work units from the same project never collide on a session_id 81ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: shadow-run alongside a live primary — isolation asserted > the shadow attempt runs to completion in isolation while the primary dispatches and succeeds normally; primary journal/cache/artifacts are provably unmodified beyond the one marker entry 42ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: delegation depth 1 / concurrency cap 4 asserted > concurrency cap defaults to exactly 4 1ms
+ ✓ |@crabgic/scheduler| src/executor.e2e.test.ts > E2E: delegation depth 1 / concurrency cap 4 asserted > every compiled profile this executor dispatches with unconditionally denies 'Agent' (delegation depth 1 — enforced upstream by 03's envelope compiler, asserted here) 5ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'parkResume' never requires evidence and never consumes a repair slot, even after the cap would otherwise be exhausted 152ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS resumeAttempt (both trigger kinds) with GlobalPauseActiveError, before ever calling adapter.resume 21ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > accepts a success whose criteria still match what was approved 43ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded 67ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success when the change set was never sealed — fail-closed, not fail-open 42ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > scopes the journaled refusal to the run, so a runId-filtered replay can still find it 35ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > a unit with no requirements of its own is accepted — the seal constrains, it does not invent work 27ms
+
+ Test Files  3 passed (3)
+      Tests  53 passed (53)
+   Start at  00:18:54
+   Duration  2.94s (transform 3.45s, setup 0ms, import 4.81s, tests 2.54s, environment 0ms)
+
+
+exit status: 0
+
+Verbatim output; nothing between the command line and this footer is edited.

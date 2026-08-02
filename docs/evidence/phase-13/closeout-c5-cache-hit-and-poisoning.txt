@@ -1,0 +1,33 @@
+Criteria-closeout pass, phase 13 — criterion 5 (cache hit byte-identical to cold; poisoning/partial-match properties)
+Date (UTC): 2026-08-01T22:18:41Z. Worktree: chore/closeout-phase-13 at af46e007c1363d4838d74e2eea0d531e4d6bb4f3.
+Run from the repository root of that worktree.
+
+$ npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/cache.test.ts packages/scheduler/src/cache.property.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p13
+
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > misses when nothing has been set 2ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > hits on an exact (contentHash, toolchainFingerprint) match 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > MISSES on a fingerprint mismatch even when contentHash matches (poisoning resistance) 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > MISSES on a contentHash mismatch even when fingerprint matches 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > MINOR-2 regression: a boundary-shifted (contentHash, toolchainFingerprint) pair must NEVER collide with a different pair (proves the composite key is unambiguous) 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > SchedulerCache > an entry keyed to one fingerprint is never served to a different declared fingerprint, even after many writes 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > cacheKeyString > is a deterministic, distinct string per (contentHash, toolchainFingerprint) pair 1ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > cacheKeyString > MINOR-2 fix: is unambiguous even when a field contains characters that made the old ':: '-join separator collide 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > getOrCompute > computes and stores on a cold miss 1ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > getOrCompute > returns the cached value byte-identical on a hit, without recomputing 0ms
+ ✓ |@crabgic/scheduler| src/cache.test.ts > getOrCompute > bypass:true never reads AND never writes the cache 0ms
+ ✓ |@crabgic/scheduler| src/cache.property.test.ts > SchedulerCache — property: hit iff BOTH contentHash and toolchainFingerprint match exactly > holds over random (write, read) key pairs — no partial-match false positive 65ms
+ ✓ |@crabgic/scheduler| src/cache.property.test.ts > SchedulerCache — property: hit iff BOTH contentHash and toolchainFingerprint match exactly > an entry keyed to one fingerprint is NEVER served to a dispatch declaring a different one, even with an identical contentHash and many co-resident entries 42ms
+ ✓ |@crabgic/scheduler| src/cache.property.test.ts > SchedulerCache — property: hit iff BOTH contentHash and toolchainFingerprint match exactly > boundary-shift adversarial pairs sharing an identical flat concatenation NEVER collide, for any join scheme (would have caught the original ':: '-join bug) 59ms
+ ✓ |@crabgic/scheduler| src/cache.property.test.ts > SchedulerCache — property: hit iff BOTH contentHash and toolchainFingerprint match exactly > the exact reported counterexample class — (hash:'a', fp:'b::c') vs (hash:'a::b', fp:'c') — never collides 0ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  00:18:42
+   Duration  365ms (transform 67ms, setup 0ms, import 111ms, tests 175ms, environment 0ms)
+
+
+exit status: 0
+
+Verbatim output; nothing between the command line and this footer is edited.
