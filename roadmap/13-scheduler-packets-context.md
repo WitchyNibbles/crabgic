@@ -97,11 +97,14 @@ compile-level half criterion 7 needs. Scoped local re-runs of each criterion's o
 captured verbatim at the closeout base commit, are committed as
 `docs/evidence/phase-13/closeout-c<k>-*.txt`.
 
-That run is at this pass's base commit `af46e00`, which `main` has since moved past. The citation
-still holds because nothing this phase cites changed: `git diff af46e00 a30d3d8 -- packages/` is
-**empty** (`a30d3d8`, the only intervening commit, edits `roadmap/03-*.md` and
-`docs/evidence/criteria-closeout/phase-03.json` and nothing else), so every `file:line` and every
-transcript below resolves identically in both trees.
+That run is at this pass's base commit `af46e00`, which `main` has moved past — several closeout
+PRs are landing in the same window, so the set of intervening commits grows while this one is open.
+The citation survives that because none of them touch source: **as of `main` @ `1d7083e`**, every
+commit between `af46e00` and the merge base (`a30d3d8`, `06e0cc3`, `1d7083e`) edits only
+`roadmap/*.md` and `docs/evidence/`, and `git diff af46e00 1d7083e -- packages/ e2e/ scripts/` is
+**empty** — so every `file:line` and every transcript below resolves identically in both trees.
+The integrator should re-run that diff against the actual merge base at merge time; if it is still
+empty, this paragraph stands as written.
 
 Two scope facts recorded once here rather than repeated: (a) criterion 4's restart is a
 **journal-state** restart, which is what this phase owns — the cross-process daemon restart path

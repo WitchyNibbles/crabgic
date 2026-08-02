@@ -181,7 +181,7 @@
         {
           "kind": "test",
           "ref": "packages/scheduler/src/executor.e2e.test.ts:461",
-          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:461 — 'expect(finalStatus.parked).toBe(false);' read back from the restarted store after the resume. `getParkStatus` derives entirely from the journal — packages/scheduler/src/parking.ts:244-246, 'const latestAttempt = await getLatestAttemptForRun(journal, workUnitId, runId); if (latestAttempt === undefined || latestAttempt.status !== \"parked:rate_limit\") return { parked: false, readyToResume: false };' — so parked/not-parked at each stage IS a cold read of the journaled arc, not an in-memory flag."
+          "quotedAssertion": "packages/scheduler/src/executor.e2e.test.ts:461 — 'expect(finalStatus.parked).toBe(false);' read back from the restarted store after the resume. `getParkStatus` derives entirely from the journal — packages/scheduler/src/parking.ts:244-247, verbatim: 'const latestAttempt = await getLatestAttemptForRun(journal, workUnitId, runId);\n  if (latestAttempt === undefined || latestAttempt.status !== \"parked:rate_limit\") {\n    return { parked: false, readyToResume: false };\n  }' — so parked/not-parked at each stage IS a cold read of the journaled arc, not an in-memory flag."
         },
         {
           "kind": "test",
