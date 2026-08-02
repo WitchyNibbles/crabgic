@@ -1,0 +1,46 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:04Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/supervisor/src/intake/canonical-hash.test.ts packages/contracts/src/contracts/criteria-seal.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > produces the repo's `sha256:`-prefixed digest convention 2ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > is deterministic across repeated evaluation 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > is sensitive to a single-criterion edit 1ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > is sensitive to criteria ORDER — array order is semantically meaningful 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > is sensitive to an added criterion 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > computeCriteriaHash > property: any two distinct criteria lists hash differently (fast-check) 9ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > passes when the record is self-consistent and matches the approval seal 3ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > self_consistency_mismatch — criteria edited, stale hash left behind (the naive vector) 1ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > no_approval_seal — fails CLOSED rather than trusting the live record 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > no_approval_seal — a seal that omits THIS requirement is not a seal for it 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > approval_seal_mismatch — criteria edited AND hash consistently recomputed 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > self-consistency is checked BEFORE the approval seal (ordering is observable) 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > verifyCriteriaSeal — the three failure reasons, first failure wins > exposes exactly the three canonical reasons 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > assertCriteriaSealIntact — typed, fail-closed refusal > returns silently when the seal is intact 1ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > assertCriteriaSealIntact — typed, fail-closed refusal > throws CriteriaSealMismatchError carrying the reason and requirement id 1ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > assertCriteriaSealIntact — typed, fail-closed refusal > throws the missing-seal SUBCLASS when no seal exists, still catchable as the base 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > CriteriaApprovalSealSchema > rejects an unknown top-level key (.strict()) 1ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > CriteriaApprovalSealSchema > rejects a non-uuid requirement id as a hash key 0ms
+ ✓ |@crabgic/contracts| src/contracts/criteria-seal.test.ts > CriteriaApprovalSealSchema > rejects an empty hash value 0ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > is stable across key-order permutations of the same object 2ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > changes when exactly one field's value changes (perturbation-sensitivity) 1ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > does not normalize array order — order is semantically meaningful 0ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > serializes null and undefined (top-level and nested) as 'null' 0ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > produces a 'sha256:' prefixed 64-hex-char digest 0ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > two independent builds of an identical structure are byte-identical 0ms
+ ✓ |@crabgic/supervisor| src/intake/canonical-hash.test.ts > canonicalStringify / canonicalHash > property: identical values always hash identically, and any single scalar leaf mutation changes the hash 36ms
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  13:28:07
+   Duration  551ms (transform 305ms, setup 0ms, import 514ms, tests 62ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0

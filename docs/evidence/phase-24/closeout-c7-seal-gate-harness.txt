@@ -1,0 +1,25 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:14Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/gates/src/criteria-seal-gate.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/gates| src/criteria-seal-gate.test.ts > registerCriteriaSealGate > registers under the existing `acceptance` risk tag — no new tag invented 15ms
+ ✓ |@crabgic/gates| src/criteria-seal-gate.test.ts > registerCriteriaSealGate > PASSES and emits a schema-valid EvidenceRecord when every seal verifies 11ms
+ ✓ |@crabgic/gates| src/criteria-seal-gate.test.ts > registerCriteriaSealGate > BLOCKS on a post-approval criteria edit, and still emits evidence of the refusal 10ms
+ ✓ |@crabgic/gates| src/criteria-seal-gate.test.ts > registerCriteriaSealGate > BLOCKS a never-sealed change set — fail-closed at the final gate too 5ms
+ ✓ |@crabgic/gates| src/criteria-seal-gate.test.ts > registerCriteriaSealGate > passes a change set that owns no requirements 5ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  13:28:15
+   Duration  901ms (transform 537ms, setup 0ms, import 742ms, tests 47ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0

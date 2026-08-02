@@ -1,0 +1,78 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:29:09Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npm run typecheck
+
+DELIBERATE, TEMPORARY BREAK — reproduced by this closeout pass at the HEAD above,
+then reverted (the revert is captured at the end of this file).
+
+The regression exit criterion 8 exists to prevent: `criteriaSeal` is relaxed to
+OPTIONAL on both public entry-point option types, exactly as someone unblocking a
+call site would do it:
+
+    diff --git a/packages/scheduler/src/executor.ts b/packages/scheduler/src/executor.ts
+    index 59f0615..9f96e16 100644
+    --- a/packages/scheduler/src/executor.ts
+    +++ b/packages/scheduler/src/executor.ts
+    @@ -324,3 +324,3 @@ export interface DispatchAttemptOptions {
+       /** The bar this attempt is judged against (roadmap/24) — REQUIRED, so no caller reaches the acceptance funnel without one. */
+    -  readonly criteriaSeal: AttemptCriteriaSeal;
+    +  readonly criteriaSeal?: AttemptCriteriaSeal;
+       readonly packet: TaskPacket;
+    @@ -421,3 +421,3 @@ export interface ResumeAttemptOptions {
+       /** The bar this attempt is judged against (roadmap/24) — REQUIRED, so no caller reaches the acceptance funnel without one. */
+    -  readonly criteriaSeal: AttemptCriteriaSeal;
+    +  readonly criteriaSeal?: AttemptCriteriaSeal;
+       readonly sessionRef: SessionRef;
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+> crabgic-monorepo@0.0.0 typecheck
+> tsc -b
+
+packages/scheduler/src/criteria-seal-required.type.test.ts(81,5): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(100,7): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(118,5): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/criteria-seal-required.type.test.ts(138,7): error TS2578: Unused '@ts-expect-error' directive.
+packages/scheduler/src/executor.ts(396,5): error TS2322: Type 'AttemptCriteriaSeal | undefined' is not assignable to type 'AttemptCriteriaSeal'.
+  Type 'undefined' is not assignable to type 'AttemptCriteriaSeal'.
+packages/scheduler/src/executor.ts(472,5): error TS2322: Type 'AttemptCriteriaSeal | undefined' is not assignable to type 'AttemptCriteriaSeal'.
+  Type 'undefined' is not assignable to type 'AttemptCriteriaSeal'.
+
+----- end of output -----
+exit status: 2
+
+=== RESTORED — the break above reverted with `git checkout -- packages/scheduler/src/executor.ts` ===
+captured (UTC): 2026-08-02T11:29:30Z
+command:        npm run typecheck
+
+
+> crabgic-monorepo@0.0.0 typecheck
+> tsc -b
+
+
+exit status: 0
+
+=== The same fixture's RUNTIME half (the positive control that the four omissions
+    fail for the omission and not for an unrelated type error) ===
+captured (UTC): 2026-08-02T11:29:42Z
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/criteria-seal-required.type.test.ts
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/scheduler| src/criteria-seal-required.type.test.ts > the acceptance-criteria verifier is required BY CONSTRUCTION (roadmap/24 exit criterion 8) > rejects a DispatchAttemptOptions value that omits criteriaSeal 4ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-required.type.test.ts > the acceptance-criteria verifier is required BY CONSTRUCTION (roadmap/24 exit criterion 8) > rejects a dispatchAttempt CALL that omits criteriaSeal 1ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-required.type.test.ts > the acceptance-criteria verifier is required BY CONSTRUCTION (roadmap/24 exit criterion 8) > rejects a ResumeAttemptOptions value that omits criteriaSeal 1ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-required.type.test.ts > the acceptance-criteria verifier is required BY CONSTRUCTION (roadmap/24 exit criterion 8) > rejects a resumeAttempt CALL that omits criteriaSeal 1ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-required.type.test.ts > the acceptance-criteria verifier is required BY CONSTRUCTION (roadmap/24 exit criterion 8) > still accepts both option shapes once criteriaSeal IS supplied — the fixtures above fail for the omission, not for an unrelated type error 1ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  13:29:41
+   Duration  904ms (transform 562ms, setup 0ms, import 787ms, tests 8ms, environment 0ms)
+
+
+exit status: 0
