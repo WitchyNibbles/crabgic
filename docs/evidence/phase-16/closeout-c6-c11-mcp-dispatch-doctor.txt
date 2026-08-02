@@ -1,0 +1,82 @@
+# criteria-closeout pass, phase 16 — criteria 6-11 (MCP registry/stdio boot, tool-name absences, GATEWAY_MCP_SERVER_NAME, provider dispatch, connection doctor, upstream-MCP wrap)
+# UTC:      2026-08-02T10:32:00Z
+# HEAD:     30f931eab97b8360102498d4b766513be67241d0
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/gateway/src/mcp/server.test.ts packages/gateway/src/mcp/stdio-boot.test.ts packages/gateway/src/mcp/native-registry.test.ts packages/gateway/src/mcp/tool-registry.test.ts packages/gateway/src/mcp/gateway-name-reference.test.ts packages/gateway/src/mcp/upstream-mcp-client-policy.test.ts packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts packages/gateway/src/provider-dispatch/provider-registry.test.ts packages/gateway/src/connection-doctor/reachability-probe.test.ts packages/contracts/src/gateway/server-name.test.ts packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80% line+branch
+#           gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1 with every test green.
+# ---------------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p16
+
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > this scanner's target directory actually resolves (sanity: the scan is not vacuous) 56ms
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > no registered MCP tool name anywhere begins with the 'learning.' prefix 101ms
+ ✓ |@crabgic/learning| src/red-team/no-mcp-tool-family.redteam.test.ts > @learning-redteam no learning.* MCP tool family exists anywhere under packages/gateway/src > the bare literal 'learning.' never appears as a STRING LITERAL in any non-test registration source (stronger, whole-substring form; test files are exempt since 16's own suite legitimately asserts this same absence in prose/assertions) 33ms
+ ✓ |@crabgic/gateway| src/mcp/tool-registry.test.ts > GatewayToolRegistry > boots with a well-formed, empty tool set — no native handler wired yet 10ms
+ ✓ |@crabgic/gateway| src/mcp/tool-registry.test.ts > GatewayToolRegistry > registers and lists a tool 2ms
+ ✓ |@crabgic/gateway| src/mcp/tool-registry.test.ts > GatewayToolRegistry > rejects a duplicate-name registration attempt before the check exists elsewhere 14ms
+ ✓ |@crabgic/gateway| src/mcp/tool-registry.test.ts > GatewayToolRegistry > get returns undefined for an unregistered name 0ms
+ ✓ |@crabgic/gateway| src/mcp/tool-registry.test.ts > GatewayToolRegistry > accepts an externally-registered tool alongside native ones with no collision 0ms
+ ✓ |@crabgic/gateway| src/provider-dispatch/provider-registry.test.ts > ProviderRegistry > resolves the correct client for a registered provider 29ms
+ ✓ |@crabgic/gateway| src/provider-dispatch/provider-registry.test.ts > ProviderRegistry > rejects an unrecognized provider before any network call could be attempted 15ms
+ ✓ |@crabgic/gateway| src/provider-dispatch/provider-registry.test.ts > ProviderRegistry > rejects a duplicate-name registration attempt 0ms
+ ✓ |@crabgic/gateway| src/provider-dispatch/provider-registry.test.ts > ProviderRegistry > isRegistered reflects registration state 1ms
+ ✓ |@crabgic/gateway| src/provider-dispatch/provider-registry.test.ts > ProviderRegistry > registeredProviders lists every registered provider key 1ms
+ ✓ |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the literal "crabgic_gateway" (golden value, interface-ledger Gap 11) 19ms
+ ✓ |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the sole definition site of the literal under packages/*/src (exit criterion) 262ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer — unit > booting against an empty registry produces a well-formed server, no crash 10ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer + connectGatewayMcpServer — in-process (real callback body coverage) > a successful tool call round-trips with no isError field 42ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > buildGatewayMcpServer + connectGatewayMcpServer — in-process (real callback body coverage) > a failed tool call (isError: true) round-trips with isError set 14ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-policy.test.ts > UpstreamMcpClientPolicyStore > defaults every connection to disabled (REST remains primary and default) 11ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-policy.test.ts > UpstreamMcpClientPolicyStore > tracks an explicit per-connection enable/disable 1ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-policy.test.ts > exit criterion — upstream-MCP-client wrap never adds a worker-visible MCP server > a simulated worker's mcpServers config contains exactly one entry, keyed by GATEWAY_MCP_SERVER_NAME 1ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-policy.test.ts > exit criterion — upstream-MCP-client wrap never adds a worker-visible MCP server > enabling the upstream-MCP-client flag for a fixture connection changes nothing about the worker-visible mcpServers set 0ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > the scan is not vacuous: the target tree resolves and holds many production sources 63ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > the scanner detects the violations it claims to detect (failing-first, against synthetic text) 1ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > (1) no production source constructs the policy store or flips the flag 167ms
+ ✓ |@crabgic/gateway| src/mcp/gateway-name-reference.test.ts > zero hand-typed gateway server-name literals under packages/gateway/src > the Gap-11 literal appears nowhere in this package's source, this scanner included 43ms
+ ✓ |@crabgic/gateway| src/mcp/gateway-name-reference.test.ts > zero hand-typed gateway server-name literals under packages/gateway/src > this scanner's own directory actually resolves (sanity: the scan is not vacuous) 20ms
+ ✓ |@crabgic/gateway| src/mcp/gateway-name-reference.test.ts > the gateway MCP server registers under GATEWAY_MCP_SERVER_NAME > McpServer construction derives its name from the imported constant 7ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > (2) no production source imports an MCP client — the gateway is a server, never a client 163ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > completes the MCP handshake under GATEWAY_MCP_SERVER_NAME 41ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > lists exactly the resolved tool set to a stub MCP client 17ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > INVOKES a registered tool through tools/call and returns its handler's content 21ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > rejects a call whose arguments violate the tool's own schema, rather than invoking the handler 23ms
+ ✓ |@crabgic/gateway| src/mcp/stdio-boot.test.ts > connectGatewayMcpStdio > boots against an empty registry without crashing 5ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > (3) ExternalConnectionSchema is strict and REJECTS an upstream-MCP flag rather than ignoring it 14ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > (4) no environment variable reaches the flag 189ms
+ ✓ |@crabgic/gateway| src/mcp/upstream-mcp-client-unenableable.test.ts > tripwire — the upstream-MCP-client wrap is structurally unenableable > (5) buildSimulatedWorkerMcpServers takes no policy argument and yields exactly one server 1ms
+(node:79159) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > lists exactly this phase's native tool set over stdio to a stub MCP client 856ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > succeeds against a disposable fixture connection when the custom CA is supplied 108ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > fails informatively when no custom CA is supplied against a self-signed server 12ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > fails informatively against an unreachable connection 10ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > fails informatively when the secret cannot be resolved 6ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > uses the default client builder (no override) and is refused by the real SSRF guard for a loopback target without a custom CA 2ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > uses the default client builder (no override) with a custom CA and is still refused by the real SSRF guard for a loopback target 9ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > fails informatively when the custom CA file cannot be read 2ms
+ ✓ |@crabgic/gateway| src/connection-doctor/reachability-probe.test.ts > probeConnectionReachability > reports reachable:false for a 5xx response 63ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > registers exactly the 18 native tool names across the 8-family surface 15ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > never registers a change_set.* or learning.* tool name 4ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > dispatches tracker.search end-to-end to a registered fake provider client 7ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > evidence.attach then evidence.get round-trips a submitted record 45ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > result.submit durably journals a worker result reference 60ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > tracker.search returns a not_found-mapped error for an unknown connectionId 7ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > tracker.search returns an unsupported-mapped error for an unregistered provider 21ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > tracker.plan_create returns unsupported when the provider client lacks that operation 7ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > tracker.search maps a thrown provider error to a redacted result, never leaking raw fields 3ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > buildNativeToolRegistry > tracker.search reports a typed truncation error when the result exceeds the budget, never silently dropping items 24ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > HIGH #2 adversarial-review fix — tracker.apply/observability.apply route through the exactly-once, SSRF-hardened mutation pipeline > tracker.apply persists a pre-I/O pending record before performing the network call (journal-before-I/O) 70ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > accepts one externally-registered tool with no name collision — the registration API is genuinely extensible 888ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > HIGH #2 adversarial-review fix — tracker.apply/observability.apply route through the exactly-once, SSRF-hardened mutation pipeline > tracker.apply is refused by the SSRF guard for a foreign-origin buildRequest target — never issues the network call 72ms
+ ✓ |@crabgic/gateway| src/mcp/native-registry.test.ts > HIGH #2 adversarial-review fix — tracker.apply/observability.apply route through the exactly-once, SSRF-hardened mutation pipeline > observability.apply also routes through the mutation pipeline (same wiring as tracker.apply) 83ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > calling a native tool over stdio round-trips through the real handler 1196ms
+ ✓ |@crabgic/gateway| src/mcp/server.test.ts > the gateway MCP server — stdio boot to a stub MCP client > calling a native tool over stdio surfaces isError:true for a failed dispatch 524ms
+
+ Test Files  11 passed (11)
+      Tests  62 passed (62)
+   Start at  12:32:03
+   Duration  8.44s (transform 22.64s, setup 0ms, import 34.51s, tests 5.87s, environment 2ms)
+
+# ---------------------------------------------------------------------------
+# exit status: 0

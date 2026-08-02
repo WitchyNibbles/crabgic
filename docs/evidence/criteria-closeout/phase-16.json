@@ -1,0 +1,684 @@
+{
+  "schemaVersion": 1,
+  "phase": "16",
+  "roadmapFile": "roadmap/16-gateway-core.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 4 (phase 16)",
+    "headSha": "30f931eab97b8360102498d4b766513be67241d0"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Exactly-once matrix on fakes: crash before/after remote commit, identical replay, changed-payload rejection, ambiguous POST reconciled or blocked — none produce a duplicate or silent overwrite. Evidence: `runKillHarness`-driven CI suite.",
+      "textSha256": "cc879fcc08d4ed013092f478832fb6cea3e33343b4d4522136616f196b131081",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 601 — '✓  @crabgic/gateway  src/mutation-pipeline/mutation-pipeline.test.ts (26 tests) 3369ms'; line 1032 — ' Test Files  625 passed (625)'; line 1033 — '      Tests  6155 passed | 1 skipped (6156)'. The criterion names a CI suite as its channel; this is that suite executing inside the job, at this record's own base commit, rather than a workflow that was merely green. The 3.4s is the four real subprocess kill-and-recover cases."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:600-630",
+          "quotedAssertion": "The 'crash before/after remote commit' half, driven by the named harness. :602 'const report = await runKillHarness(' with :601 'kill before the network call converges to exactly one real PUT after recovery' and :616 'kill after the network call (before this pipeline's own record write) converges to exactly one real PUT after recovery'; each verifies by re-running the fixture to completion and counting the irreversible side effect — :608 'const count = await countSideEffectLines(\"put\");' / :609 'return { recovered: count === 1, detail: `putCount=${count}` };' — then :613 'expect(report.allConverged).toBe(true);'. `runKillHarness` is imported from the real `@crabgic/journal` at :7, not stubbed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:632-671",
+          "quotedAssertion": "The case that makes 'none produce a duplicate' mean something: a genuinely NON-idempotent create. :633 'kill after the create network call, before this pipeline's own record write, NEVER produces a double-create' / :645 'const count = await countSideEffectLines(\"post\");' / :646 'return { recovered: count === 1, detail: `postCount=${count}` };'. And the fail-closed twin at :653 'kill after the create network call, with reconciliation disabled, blocks (never guesses) and never double-creates' / :664 'recovered: count === 1 && outcome?.status === \"blocked\",'. The two differ only by 'const noReconcile = { CRABGIC_FIXTURE_NO_RECONCILE: \"1\" };' (:654), so the difference in outcome is attributable to reconciliation availability and nothing else."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mutation-pipeline/kill-harness-fixtures/nonidempotent-post-and-crash.mjs:10-70",
+          "quotedAssertion": "packages/gateway/src/mutation-pipeline/kill-harness-fixtures/nonidempotent-post-and-crash.mjs:70 — 'appendFileSync(sideEffectFile, \"post\\n\");'. The side effect the count above measures is a real, append-only, irreversible line written by a real child process, not an in-memory counter a restart would reset — which is what lets a postCount of exactly one distinguish exactly-once from at-most-once-by-accident. The fixture's own header (:10) states it: 'permanent, irreversible \"post\" line to `sideEffectFile` each time it is'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:130-145",
+          "quotedAssertion": "The 'identical replay' clause: :143 'expect(second).toEqual({ status: \"replayed\", appliedRevision: \"rev-1\" });' / :144 'expect(sendRequest).toHaveBeenCalledOnce(); // no duplicate network call on replay'. The byte-identity is the `toEqual` on the whole outcome object, and the call-count assertion is what makes it a replay rather than a second apply that happened to agree."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:147-163",
+          "quotedAssertion": "The 'changed-payload rejection / never a silent overwrite' clause: the second plan differs only at :155 'const changedPlan = buildPlan({ desiredStateHash: \"sha256:desired-state-DIFFERENT\" });', and :160-162 assert 'expect(conflictOutcome.status).toBe(\"conflict\");' / 'expect(conflictOutcome.errorKind).toBe(\"conflict\");' / 'expect(sendRequest).toHaveBeenCalledOnce(); // the conflicting attempt never re-applied'. The third line is the 'silent overwrite' half — a typed conflict that still issued the write would not satisfy it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:347-429",
+          "quotedAssertion": "The 'ambiguous POST reconciled OR blocked' disjunction, both branches, from a restart that finds a `status: \"pending\"` record: blocked at :377-379 'expect(outcome.status).toBe(\"blocked\");' / 'expect(outcome.errorKind).toBe(\"ambiguous_write\");' / 'expect(sendRequest).not.toHaveBeenCalled(); // never blindly retried'; reconciled at :403-404 'expect(outcome).toEqual({ status: \"recorded\", appliedRevision: \"found-via-marker\" });' / 'expect(sendRequest).not.toHaveBeenCalled();'; and the hook-cannot-resolve case still blocking at :426-428. In every branch the network is never re-entered."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:110-126",
+          "quotedAssertion": "The ordering invariant the whole matrix rests on — journal-before-network-I/O, under ONE operationId: :125 'expect(forThisOp.map((e) => e.payload.status)).toEqual([\"pending\", \"recorded\"]);' where :124 filters 'entries.filter((e) => e.payload.operationId === plan.idempotencyKey)'. Interface-ledger Gap 5's `remote_operation_record` is the queried member (:121 'for await (const entry of journal.queryEntries({ type: \"remote_operation_record\" })) {'), so this phase adds no 14th `JournalEntryType`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:89-108",
+          "quotedAssertion": "The anti-vacuity control: a brand-new plan really does apply. :106-107 'expect(outcome).toEqual({ status: \"recorded\", appliedRevision: \"rev-1\" });' / 'expect(applyCalls).toHaveLength(1);'. Without it, an implementation that refused every mutation would satisfy every 'no duplicate' assertion above."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c1-c5-transport-and-pipeline.txt",
+          "quotedAssertion": "' Test Files  12 passed (12)' / '      Tests  165 passed (165)' — supplementary scoped local re-run at `30f931e`, `--reporter=verbose` so all four kill-harness cases are named individually. Header records UTC timestamp, HEAD sha, verbatim command and exit status 0."
+        }
+      ],
+      "notes": "Scope, stated because 'on fakes' invites both an over- and an under-read. The kill-harness cases are REAL: `runKillHarness` spawns `process.execPath` against a `.mjs` fixture (:552-553 'command: process.execPath,' / 'args: [fixture],'), kills it at a printed fault point, and the verify step re-runs the fixture to completion in a fresh process against the SAME on-disk journal directory. What is faked is only the remote provider — the fixture writes a line to a side-effect file where a real HTTP call would go. That is exactly what the criterion says ('on fakes'). Separately: the evidence README's 'Adversarial-review remediation' table records that this matrix was ONCE weaker than it reads — MEDIUM/HIGH #3 found the pre-I/O record used a `${idempotencyKey}#pending` operationId distinct from the dedup key, so a real restart never saw it and a duplicate was avoided only by the PUT fixture's own idempotence. The `nonidempotent-post-and-crash.mjs` fixture and the single-operationId assertion at :125 are that finding's fix, and both are cited above rather than the pre-fix shape."
+    },
+    {
+      "index": 2,
+      "text": "SSRF suite: foreign-origin/private-IP redirects refused pre-credentials; custom CA honored against a disposable self-signed server.",
+      "textSha256": "0a6fa83807d53ba9e5f398a37229efd905ff404efe8e13c77e79ccab98af34a3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 614 — '✓  @crabgic/gateway  src/transport/ssrf-guard.test.ts (35 tests) 787ms'; line 594 — '✓  @crabgic/gateway  src/transport/http-client.test.ts (16 tests) 82ms'; line 607 — '✓  @crabgic/gateway  src/transport/http-transport.test.ts (9 tests) 296ms'. All three halves of the criterion executed in the same job at this record's base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:171-186",
+          "quotedAssertion": "The 'foreign-origin redirect refused PRE-CREDENTIALS' clause, at the level where credentials would attach: :171 'refuses to follow a redirect to a foreign origin — never attaches credentials to it' with the 302 pointing at 'location: \"https://evil.example.com/steal\"' (:174), and :184-185 'await expect(client.request(baseReq())).rejects.toBeInstanceOf(SsrfRefusedError);' / 'expect(sendRequest).toHaveBeenCalledTimes(1); // only the first hop; the redirect was never dialed'. The call-count is the load-bearing half: the redirect target was never dialed at all, so nothing could be attached to it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:188-221",
+          "quotedAssertion": "The 'private-IP redirect' clause, and the hop bound. :188 'refuses to follow a redirect to a private-IP target' resolves the FIRST hop publicly and the redirect target privately — :200-201 '.mockResolvedValueOnce([\"203.0.113.7\"]) // first hop: allowed' / '.mockResolvedValueOnce([\"10.0.0.5\"]), // redirect target resolves privately' — and :204 asserts 'await expect(client.request(baseReq())).rejects.toBeInstanceOf(SsrfRefusedError);'. Because only the second resolution differs, the refusal is attributable to the private address. :207 'gives up after exceeding the max redirect hop count' / :220 'await expect(client.request(baseReq())).rejects.toThrow(/redirect hops/);' bounds the chain."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/ssrf-guard.test.ts:127-154",
+          "quotedAssertion": "The property half, over random inputs rather than chosen ones: :127 'property: any origin outside the allowlist is always refused regardless of resolved address' — 'fc.property(fc.webUrl({ validSchemes: [\"https\"] }), fc.ipV4(), (urlString, ip) => {' (:129) with 'fc.pre(url.origin !== ALLOWLIST.allowedOrigins[0]);' (:131) and :133 'expect(verdict.allowed).toBe(false);' over '{ numRuns: 200 },' (:135); plus :139 'property: a private-range resolved address is always refused even for the allowlisted origin' / :149 'expect(verdict.allowed).toBe(false);'. The two properties are complementary: one varies the origin with the allowlisted one excluded, the other holds the origin allowlisted and varies the address."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/ssrf-guard.test.ts:37-55",
+          "quotedAssertion": "Adversarial-review MEDIUM #4's fix, and the sharpest anti-vacuity pair in the file. :46 'classifies IPv6-embedded-IPv4 %s as private/reserved (MEDIUM #4)' over eight cases including '\"::ffff:169.254.169.254\", // IPv4-mapped metadata endpoint, dotted-quad form' (:38), '\"::ffff:a9fe:a9fe\", // IPv4-mapped metadata endpoint, hex-group form (a9fe:a9fe = 169.254.169.254)' (:42) and '\"64:ff9b::a9fe:a9fe\", // NAT64-embedded metadata endpoint, hex-group form' (:43) — paired at :50-55 with 'classifies IPv6-embedded-IPv4 %s as public when the embedded address is public' over '\"::ffff:8.8.8.8\", // IPv4-mapped public address stays public' and '\"64:ff9b::8.8.8.8\", // NAT64-embedded public address stays public'. A classifier that called every colon-bearing address private would fail the second block."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-transport.test.ts:98-152",
+          "quotedAssertion": "The 'custom CA honored against a disposable self-signed server' clause, against a real server on a real socket. :104-105 'cert = await generateSelfSignedCert();' / 'server = createHttpsServer({ key: cert.keyPem, cert: cert.certPem }, (_req, res) => {'; :117 'succeeds when the custom CA is supplied' / :118 'const agent = new HttpsAgent({ ca: cert.certPem });' / :124-125 'expect(res.status).toBe(200);' / 'expect(res.bodyText).toBe(\"secure hello\");'. Its negative control is :129 'fails when no custom CA is supplied (self-signed cert is untrusted)' / :131 'await expect(' … ').rejects.toThrow();' with :130 'const agent = new HttpsAgent();' — so the success is caused by the supplied CA and not by TLS verification being off."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:81-112",
+          "quotedAssertion": "The DNS-rebinding TOCTOU (adversarial-review HIGH #1), which is what makes 'pre-credentials' a real guarantee rather than a check-then-forget: a resolver scripted to answer public first and metadata second — '.mockResolvedValueOnce([\"203.0.113.7\"])' / '.mockResolvedValueOnce([\"169.254.169.254\"]);' (:90-91) — with :93 'expect(r.pinnedAddress).toBe(\"203.0.113.7\");' inside the transport and :110 'expect(resolveHostAddresses).toHaveBeenCalledTimes(1);'. The second, rebound answer is never consulted, so there is no connect-time re-resolution to poison. :114-142 proves each redirect hop is pinned to its OWN fresh address rather than the first hop's."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-transport.test.ts:173-186",
+          "quotedAssertion": "The pinning claim proven at the socket, not by a mock: :173 'dials the pinned address literally, never re-resolving the (unresolvable) hostname at connect time' issues a request to 'new URL(`http://eo-gateway-test-unresolvable.invalid:${port}/`),' with 'pinnedAddress: \"127.0.0.1\",' (:181) and asserts :184-185 'expect(res.status).toBe(200);' / 'expect(res.bodyText).toBe(\"pinned hello\");'. A hostname that cannot resolve is the control — the request can only have succeeded by dialing the pinned literal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/ssrf-guard.test.ts:58-88",
+          "quotedAssertion": "The unit decision table under the two integration paths: :65 'refuses a foreign origin', :70 'refuses a scheme downgrade (http instead of https)', :75 'refuses a same-origin-looking but distinct port', each 'expect(verdict.allowed).toBe(false);', against the positive control :59 'allows an exact scheme+origin match' / :60 'expect(checkOriginAllowlist(new URL(\"https://example.atlassian.net/rest\"), ALLOWLIST)).toEqual({' … 'allowed: true,'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c1-c5-transport-and-pipeline.txt",
+          "quotedAssertion": "' Test Files  12 passed (12)' / '      Tests  165 passed (165)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 35 ssrf-guard cases, all 16 http-client cases and all 9 http-transport cases individually."
+        }
+      ],
+      "notes": "Two boundaries worth naming. (a) `generateSelfSignedCert()` shells out to a real `openssl` and writes to a temp dir it cleans up (`packages/gateway/src/transport/test-support/self-signed-cert.ts`), so 'disposable self-signed server' is literal — a real `node:https` listener on 127.0.0.1 with a freshly minted cert, not a mocked TLS handshake. (b) The word 'pre-credentials' is not asserted by inspecting an outgoing Authorization header anywhere in this package; what is asserted is stronger for the redirect case and weaker for nothing — the refused hop is never dialed at all (`expect(sendRequest).toHaveBeenCalledTimes(1)`, :185), so no header of any kind reached it. Credential ATTACHMENT itself lives in `connection-store/connection-http-client.ts` and is covered by that module's own suite, outside this criterion."
+    },
+    {
+      "index": 3,
+      "text": "Retry ladder proven per verb (GET free, PUT/PATCH deterministic+precondition, POST never blind, 409/412 fetch-rebase-or-block); per-resource write order preserved under concurrency.",
+      "textSha256": "ae532c7e3f38b5ececf978ed9e3b84612f332237cb7c4aa2c76d9ff358c92281",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 618 — '✓  @crabgic/gateway  src/transport/retry-ladder.test.ts (21 tests) 32ms'; line 622 — '✓  @crabgic/gateway  src/transport/write-serializer.test.ts (5 tests) 65ms'; line 594 — '✓  @crabgic/gateway  src/transport/http-client.test.ts (16 tests) 82ms'; line 598 — '✓  @crabgic/gateway  src/testkit/fault-matrix.test.ts (12 tests) 24ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/retry-ladder.test.ts:7-47",
+          "quotedAssertion": "The per-verb decision table, one `it()` per clause of the criterion, all against the same transient status 503 so the verb is the only variable. :8 'GET is free to retry on a 503' / :10 'expect(action.kind).toBe(\"retry\");'; :13 'PUT with a precondition retries deterministically' / :15 'expect(action.kind).toBe(\"retry\");'; :18 'PUT without a precondition never blindly retries' / :20 'expect(action.kind).toBe(\"give-up\");'; :23 'PATCH without a precondition never blindly retries' / :30 'expect(action.kind).toBe(\"give-up\");'; :33 'POST is never blindly retried, even with a precondition' / :35 'expect(action.kind).toBe(\"give-up\");'. The PUT pair differing only in `hasPrecondition` is what makes 'deterministic+precondition' a real condition rather than a label."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/retry-ladder.test.ts:49-65",
+          "quotedAssertion": "The 409/412 clause, exhaustive over the verb set rather than sampled: :50 'it.each([\"GET\", \"PUT\", \"PATCH\", \"POST\", \"DELETE\"] as const)(' / :51 'status 409 on %s => fetch-rebase-or-block' / :54 'expect(action.kind).toBe(\"fetch-rebase-or-block\");', and the same five verbs again for 412 at :58-64 with 'hasPrecondition: false' (:61) so the verdict does not depend on one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/retry-ladder.test.ts:89-130",
+          "quotedAssertion": "The two properties that close the table over the whole input space: :89 'property: 409/412 always wins over verb/precondition/attempt combinations' / :104 'expect(action.kind).toBe(\"fetch-rebase-or-block\");' over 200 runs of (verb x boolean x attempt 1-10 x {409,412}); and :111 'property: POST is never a 'retry' verdict for any transient status/attempt' / :125 'expect(action.kind).not.toBe(\"retry\");' over 'fc.constantFrom(429, 500, 502, 503, 504),' (:113). `.not.toBe(\"retry\")` here is NOT a cross-type vacuity: `action.kind` really does take the literal value 'retry' on the GET path at :10, so the two operands are comparable and the assertion can fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/retry-ladder.test.ts:67-87",
+          "quotedAssertion": "The anti-vacuity floor for 'give-up': it is not the answer to everything. :68 'gives up once max attempts are exhausted', :79 'gives up on a success status' ('status: 200'), :84 'gives up on a non-retryable client error (404)' — three distinct give-up causes that would be indistinguishable if the function simply never retried, which :10 and :15 rule out anyway."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/write-serializer.test.ts:9-23",
+          "quotedAssertion": "The 'per-resource write order preserved under concurrency' clause at the primitive: :9 'preserves submission order for the same tenant+resource key under concurrency' launches four tasks whose own durations are DELIBERATELY out of order — 'const tasks = [5, 1, 4, 2].map((delayMs, index) =>' (:14) — and :22 asserts 'expect(order).toEqual([0, 1, 2, 3]);'. Because a task that finished by duration would produce [1, 3, 2, 0], the submission order is what is being proven."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/write-serializer.test.ts:25-84",
+          "quotedAssertion": "The anti-vacuity controls that stop 'one global lock' from passing: :25 'runs writes for different keys fully concurrently (no cross-key blocking)' / :46 'expect(started.indexOf(\"k2-end\")).toBeLessThan(started.indexOf(\"k1-end\"));' and :67 'distinguishes tenant boundaries: same resource name, different tenant, run concurrently' / :83 'expect(started.indexOf(\"b-end\")).toBeLessThan(started.indexOf(\"a-end\"));'. Plus :49 'a failed task does not block subsequent tasks for the same key' / :63 'await expect(second).resolves.toBe(\"ok\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:224-295",
+          "quotedAssertion": "The ladder wired into the real client rather than only decided in isolation: :225 'retries a GET on a 503 and eventually succeeds' / :249 'expect(sendRequest).toHaveBeenCalledTimes(2);'; :252 'does not blindly retry a POST on a 503' / :268 'expect(sendRequest).toHaveBeenCalledTimes(1);' — the same status, opposite verbs, opposite call counts; :271 'honors Retry-After between attempts' against a '\"retry-after\": \"1\"' header (:277) / :294 'expect(sleep).toHaveBeenCalledWith(1000);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:316-340",
+          "quotedAssertion": "The serializer observed through the client, on the write path the criterion is about: :317 'preserves write order for the same tenant+resource under concurrent submission' with both requests marked 'method: \"PUT\", isWrite: true, hasPrecondition: true' (:335-336), the first artificially slower ('mine === 0 ? 20 : 1', :323), and :339 'expect(order).toEqual([0, 1]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/testkit/fault-matrix.test.ts:31-93",
+          "quotedAssertion": "The 409/412 rules against the fake-provider transport rather than the pure decision function: :64 '409 on a PUT is surfaced without a blind retry' / :75-76 'expect(res.status).toBe(409);' / 'expect(calls).toHaveLength(1);' and :79 '412 on a PATCH is surfaced without a blind retry' / :90-91 'expect(res.status).toBe(412);' / 'expect(calls).toHaveLength(1);'. Contrast :32 'retries a GET after honoring Retry-After, then succeeds' / :44 'expect(calls).toHaveLength(2);' — the same transport, a retried call count of 2."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c1-c5-transport-and-pipeline.txt",
+          "quotedAssertion": "' Test Files  12 passed (12)' / '      Tests  165 passed (165)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 21 retry-ladder cases, all 5 write-serializer cases and all 12 fault-matrix cases individually."
+        }
+      ],
+      "notes": "One reading corrected in advance. 'DELETE' is not one of the four verbs the criterion enumerates, but the table covers it (:38 'DELETE without a precondition never blindly retries'), and 409/412 is proven across all five. So the table is a superset of the criterion, never a subset. Separately, 'per-resource' is proven at BOTH grains the phase actually uses: `WriteSerializer` keys on `{tenant, resource}` (:11 'const key = { tenant: \"t1\", resource: \"issue:EX-1\" };'), and `IdempotencyKeyLock` reuses the same primitive keyed by idempotency key instead — criterion 1's :215-237 covers that second grain."
+    },
+    {
+      "index": 4,
+      "text": "Budgets enforced (32 KiB item / 256 KiB result, typed truncation errors); pagination memory stays O(page) on a 10k-item fake.",
+      "textSha256": "ab274bd424e5908f717cb56faf7a518defe4a80a87f7ea3292cee7ca67d857c4",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 637 — '✓  @crabgic/gateway  src/transport/budgets.test.ts (10 tests) 13ms'; line 636 — '✓  @crabgic/gateway  src/transport/pagination.test.ts (6 tests) 11ms'; line 598 — '✓  @crabgic/gateway  src/testkit/fault-matrix.test.ts (12 tests) 24ms'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/transport/budgets.ts:11-31",
+          "quotedAssertion": "The two numbers the criterion names, as the single source of truth every assertion below is written against: packages/gateway/src/transport/budgets.ts:11-12 — 'export const ITEM_BUDGET_BYTES = 32 * 1024;' / 'export const RESULT_BUDGET_BYTES = 256 * 1024;'. Measured in real UTF-8 bytes, not string length: :29-31 'function byteLength(text: string): number {' / 'return Buffer.byteLength(text, \"utf8\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/budgets.test.ts:11-29",
+          "quotedAssertion": "The item budget, boundary-exact in both directions: :16 'allows an item exactly at the budget' / :17 'expect(() => enforceItemBudget(\"a\".repeat(ITEM_BUDGET_BYTES))).not.toThrow();' against :20 'throws BudgetExceededError for an item one byte over budget' / :21 'expect(() => enforceItemBudget(\"a\".repeat(ITEM_BUDGET_BYTES + 1))).toThrow(BudgetExceededError);'. One byte apart, opposite verdicts — so the threshold is exactly 32 KiB and the enforcement is not 'throw on everything'. :24 'measures actual UTF-8 byte length, not JS string length' with the U+00E9 case is the encoding half."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/budgets.test.ts:31-58",
+          "quotedAssertion": "The result budget and its aggregate rule: :36 'throws BudgetExceededError for a result over budget' / :37 'expect(() => enforceResultBudget(\"a\".repeat(RESULT_BUDGET_BYTES + 1))).toThrow(' — with the positive control :32 'allows a small result' / :33 'expect(() => enforceResultBudget(\"[]\")).not.toThrow();' — and :53 'throws when the aggregate exceeds the result budget even if every item is individually small' / :56 'expect(() => enforceBudgets(items, (s) => s)).toThrow(BudgetExceededError);'. The last one is the case a per-item-only check would miss."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/budgets.test.ts:59-70",
+          "quotedAssertion": "The 'typed' half, asserted as structure and not merely as a class name: :59 'error carries scope, actualBytes, and budgetBytes fields' / :66-68 'expect(budgetErr.scope).toBe(\"item\");' / 'expect(budgetErr.budgetBytes).toBe(ITEM_BUDGET_BYTES);' / 'expect(budgetErr.actualBytes).toBe(ITEM_BUDGET_BYTES + 10);'. A caller can tell WHICH budget was hit and by how much."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:273-300",
+          "quotedAssertion": "The budget reaching the MCP boundary, which is where the criterion's word 'enforced' has to bite: :273 'tracker.search reports a typed truncation error when the result exceeds the budget, never silently dropping items' against a provider returning 'search: async () => ({ blob: \"x\".repeat(300 * 1024) }),' (:286) — 300 KiB, over the 256 KiB result budget — and :298-299 'expect(result?.isError).toBe(true);' / 'expect(result?.content[0]?.text).toContain(\"validation\");'. So a caller gets a canonical typed error, not a truncated payload."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/pagination.test.ts:58-72",
+          "quotedAssertion": "The O(page) clause at the primitive, on a 10k source: :58 'stays O(page): resident buffered items never exceed one page's worth at a time' with 'const totalItems = 10_000;' (:60), and :70-71 'expect(maxObservedPageLength).toBeLessThanOrEqual(pageSize);' / 'expect(totalYielded).toBe(totalItems);'. The second assertion is what stops the first from passing vacuously: a paginator that yielded nothing would trivially never exceed a page."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/testkit/fault-matrix.test.ts:184-195",
+          "quotedAssertion": "The same clause against the committed fake source the roadmap's own test plan names: :185 'streams 10,000 items without ever buffering more than one page at a time' / :186 'const fetchPage = createFakePaginatedSource(10_000, 100);' / :193-194 'expect(maxPageLength).toBeLessThanOrEqual(100);' / 'expect(total).toBe(10_000);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/pagination.test.ts:48-56",
+          "quotedAssertion": "The bound that makes streaming safe rather than merely lazy: :48 'throws when maxPages is exceeded (misbehaving upstream never stops)' against a source that always returns a cursor — 'const neverEnds = async (): Promise<Page<number>> => ({ items: [1], nextCursor: \"again\" });' (:49) — and :55 'await expect(iterate()).rejects.toThrow(/exceeded maxPages/);'. Without it, O(page) memory could still mean an unbounded loop."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-client.test.ts:298-313",
+          "quotedAssertion": "The result budget enforced on the transport's own response path too: :299 'throws BudgetExceededError when the response body exceeds the result budget' with 'bodyText: \"x\".repeat(256 * 1024 + 1),' (:303) and :312 'await expect(client.request(baseReq())).rejects.toThrow(/budget/);'. One byte over the literal 256 KiB."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c1-c5-transport-and-pipeline.txt",
+          "quotedAssertion": "' Test Files  12 passed (12)' / '      Tests  165 passed (165)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 10 budgets cases, all 6 pagination cases and the fault-matrix 10k case individually."
+        }
+      ],
+      "notes": "Two words in the criterion are read the way the phase file itself uses them, and both readings are stated here rather than assumed. (1) 'typed truncation errors' — nothing in this package ever truncates. `budgets.ts:50-53` is explicit: 'Never silently drops items — a violation always throws rather than' / 'truncating the array away from under the caller.' The typed error is the one raised WHEN the truncation budget is hit, which is roadmap/16 §In scope's own phrasing ('32 KiB item / 256 KiB result enforced here (typed truncation errors)'). Refusing is strictly stronger than truncating-and-reporting, so this is a naming point, not a weakened guarantee. (2) 'pagination memory stays O(page)' is proven as a bound on the maximum PAGE LENGTH yielded, not by measuring process RSS. That is the only form of the claim the abstraction can carry — `paginate` is an async generator that holds one page at a time — and both cited tests also assert the full 10,000 items were delivered, so the bound is not achieved by yielding less."
+    },
+    {
+      "index": 5,
+      "text": "Leak hunt: no raw provider body in any error, log, or artifact (live substring search).",
+      "textSha256": "392fffd0c53ae3cb52e7522feb01235aeebc8103730378920ba4f87cfac8809e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 600 — '✓  @crabgic/gateway  src/security/leak-hunt.test.ts (4 tests) 35ms'; line 640 — '✓  @crabgic/gateway  src/mutation-pipeline/error-mapping.test.ts (17 tests) 12ms'; line 593 — '✓  @crabgic/gateway  src/mcp/native-registry.test.ts (13 tests) 77ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/security/leak-hunt.test.ts:33-53",
+          "quotedAssertion": "The 'live substring search' mechanism itself, which is what distinguishes this from a shape assertion: :33 'const SECRET_MARKER = \"LEAK-HUNT-SECRET-9f3a7c21\";' is planted inside a raw provider body, then :36 'function collectStrings(value: unknown, out: string[] = []): string[] {' walks arrays and object values recursively, and :49-52 'const leaked = strings.filter((s) => s.includes(SECRET_MARKER));' / 'expect(leaked, `${surfaceName} leaked the raw secret marker: ${JSON.stringify(leaked)}`).toEqual(' / '[],'. Recursive, so a marker nested at any depth in any observable output string is found."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/security/leak-hunt.test.ts:55-78",
+          "quotedAssertion": "Surface 1, the error surface: :56 'mapHttpStatusToConnectorError's ConnectorError.toData() never contains the marker' plants the marker at two depths — 'rawProviderResponse: { apiToken: SECRET_MARKER, nested: { deeper: SECRET_MARKER } },' (:60) — and greps both the object and its JSON round trip: :62-63 'assertNoLeak(\"mapHttpStatusToConnectorError\", err.toData());' / 'assertNoLeak(\"ConnectorError JSON.stringify\", JSON.parse(JSON.stringify(err.toData())));'. The second call is what catches a marker hidden on a non-enumerable-in-inspection path but present on the wire."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/security/leak-hunt.test.ts:93-127",
+          "quotedAssertion": "Surface 2, the MCP tool-result surface a worker actually sees: a provider registered to throw with the marker embedded — 'rawProviderResponse: { errors: [{ token: SECRET_MARKER }] },' (:111) — dispatched through the REAL native registry (:116 'const registry = buildNativeToolRegistry({'), then :123-126 'const result = await registry' / '.get(\"tracker.search\")' / '?.handler({ connectionId: connection.id, params: {} });' / 'assertNoLeak(\"tracker.search GatewayToolResult\", result);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/security/leak-hunt.test.ts:143-193",
+          "quotedAssertion": "Surface 3, the durable artifact surface — the journal. A 409 whose body carries the marker ('bodyText: JSON.stringify({ conflictingToken: SECRET_MARKER }),' :162) is driven through the real `executeMutationPlan`, and BOTH the returned outcome and every entry it persisted are searched: :186 'assertNoLeak(\"mutation pipeline outcome\", outcome);' then :189-192 'for await (const entry of journal.queryEntries({ type: \"remote_operation_record\" })) {' / 'entries.push(entry);' / '}' / 'assertNoLeak(\"every remote_operation_record journal entry\", entries);'. The journal is a real on-disk store (:135 mkdtemp), not a stub."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:232-271",
+          "quotedAssertion": "An independent second bearer on the same surface, with a different marker, so the result does not depend on one string: :232 'tracker.search maps a thrown provider error to a redacted result, never leaking raw fields' plants 'rawProviderResponse: { apiToken: \"raw-upstream-secret-XYZ123\" },' (:255) and asserts :270 'expect(result?.content[0]?.text).not.toContain(\"XYZ123\");' alongside :269 'expect(result?.isError).toBe(true);'. `.not.toContain` on two strings is type-comparable and can genuinely fail — the marker really is placed into the input the mapper receives."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:39-41",
+          "quotedAssertion": "Why the search is exhaustive over this package's error surface rather than a sample: there is exactly one error-emitting shape for every read tool. packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:39-41 — 'function errorResult(err: ConnectorError): GatewayToolResult {' / 'return { content: [{ type: \"text\", text: JSON.stringify(err.toData()) }], isError: true };' / '}'. Every failure branch in the file (:60, :73, :86, :100, :104) funnels through it, so proving `toData()` is clean proves every one of them is."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c1-c5-transport-and-pipeline.txt",
+          "quotedAssertion": "' Test Files  12 passed (12)' / '      Tests  165 passed (165)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 4 leak-hunt cases and all 17 error-mapping cases individually."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c5-no-logging-surface.txt",
+          "quotedAssertion": "The 'log' clause, checked rather than assumed. Three greps over production source: '$ git grep -n -I -F -e \"console.\" -- packages/gateway/src \":!*.test.ts\"' -> 'exit=1'; '$ git grep -n -I -i -e \"logger\" -e \"\\\\blog(\" -- packages/gateway/src \":!*.test.ts\"' -> 'exit=1'; and a stream-write grep that IS 'exit=0' with three hits, all read out in the transcript and none of them a logging surface — 'packages/gateway/src/mcp/stdio-boot.ts:31:  /** Defaults to `process.stdout`. */' is a JSDoc line about the MCP transport pipe, and the two 'kill-harness-fixtures' writes emit a fixed fault-point marker for runKillHarness, never provider data. The transcript also records that grep (a) is discriminating (it matches five other files under packages/) while grep (b) is NOT (this repository has no logger abstraction at all, '0' files), so the claim rests on (a) and (c). Header records UTC timestamp, HEAD sha, the verbatim command per line, and exit status."
+        }
+      ],
+      "notes": "The word 'log' is satisfied by absence, and that is worth stating plainly rather than letting a reader assume a log surface was searched. `packages/gateway` has NO logging surface in production source: no `console.`, no logger, and its only `process.stdout` occurrences are one JSDoc line about the MCP transport pipe and two kill-harness fixtures emitting a fixed fault-point marker — all three read out verbatim in `docs/evidence/phase-16/closeout-c5-no-logging-surface.txt`. So the three surfaces the criterion enumerates reduce to the two that exist, errors and artifacts, and both are searched by the cited tests. If a logger is ever added to this package, this criterion's coverage silently narrows; that is a real (small) fragility of the current proof and is recorded here rather than hidden. Separately: `rawProviderResponse` is accepted by the canonical-error constructors for redaction derivation and is never stored on the resulting `ConnectorError` — that type-level guarantee is phase 02's (`@crabgic/contracts`), so what this phase's leak hunt proves is that its own call sites do not re-introduce the body some other way."
+    },
+    {
+      "index": 6,
+      "text": "`gateway mcp` lists exactly this phase's native tool set (`tracker.*`, `observability.*`, `evidence.get`, `evidence.attach`, `result.submit`, forwarded `run.status`/`run.cancel`) over stdio to a stub MCP client, and accepts one externally-registered tool with no name collision — proving the registration API 11/12 depend on later is genuinely open, not hardcoded.",
+      "textSha256": "4d3e16f2cdcf0cf3aea47153910e36386e99b8cdee42ceb10d181ad71d0a0110",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 609 — '✓  @crabgic/gateway  src/mcp/server.test.ts (7 tests) 1740ms'; line 617 — '✓  @crabgic/gateway  src/mcp/stdio-boot.test.ts (5 tests) 47ms'; line 593 — '✓  @crabgic/gateway  src/mcp/native-registry.test.ts (13 tests) 77ms'. The 1.7s on server.test.ts is the three real child-process stdio boots."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:106-121",
+          "quotedAssertion": "The listing clause, over a real stdio pipe to a real MCP SDK client: :107-108 'const transport = new StdioClientTransport({' / 'command: process.execPath,' spawns the boot fixture as a child process, :112 'const client = new Client({ name: \"stub-mcp-client\", version: \"0.0.0\" });' is the stub client, and :116-117 'const { tools } = await client.listTools();' / 'expect(tools.map((t) => t.name).sort()).toEqual([...NATIVE_TOOL_NAMES].sort());'. `toEqual` on the sorted whole set is the 'exactly' — a superset or a subset both fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:15-34",
+          "quotedAssertion": "The set the criterion enumerates, written out as the golden list the assertion above compares against: 'const NATIVE_TOOL_NAMES = [' / '\"tracker.search\",' / '\"tracker.get\",' / '\"tracker.plan_create\",' / '\"tracker.plan_update\",' / '\"tracker.plan_transition\",' / '\"tracker.plan_comment\",' / '\"tracker.apply\",' / '\"observability.search\",' / '\"observability.get\",' / '\"observability.query\",' / '\"observability.plan_create\",' / '\"observability.plan_update\",' / '\"observability.apply\",' / '\"evidence.attach\",' / '\"evidence.get\",' / '\"result.submit\",' / '\"run.status\",' / '\"run.cancel\",' / '];'. Eighteen leaves across the families interface-ledger Gap 1 counts, including the two forwarded `run.*` names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:123-140",
+          "quotedAssertion": "The extensibility clause, and it uses a real 11-owned name rather than an invented one: :123 'accepts one externally-registered tool with no name collision — the registration API is genuinely extensible' boots the same fixture with 'CRABGIC_FIXTURE_REGISTER_EXTRA_TOOL: \"1\"' (:127) and asserts :135-136 'expect(names).toContain(\"project.inspect\");' / 'expect(names.sort()).toEqual([...NATIVE_TOOL_NAMES, \"project.inspect\"].sort());'. The second assertion is the 'no name collision' half: the native eighteen are all still there, exactly once each, alongside the new one."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/test-support/stdio-boot-fixture.mjs:11-40",
+          "quotedAssertion": "What the extra tool actually is — a genuine outside registration through the public API, not a test hook: packages/gateway/src/mcp/test-support/stdio-boot-fixture.mjs:36-40 — 'registry.register({' / 'name: \"project.inspect\",' / 'description: \"an 11-owned tool, registered independently at its own build time\",' / 'inputSchema: {},' / 'handler: async () => ({ content: [{ type: \"text\", text: \"{}\" }] }),'. The fixture imports only the package barrel (:16 'from \"@crabgic/gateway\";'), so it reaches nothing 11 could not reach."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/tool-registry.test.ts:6-68",
+          "quotedAssertion": "The 'no name collision' guarantee at the registry primitive, which is what stops the listing assertion above from being an accident of ordering: :28 'rejects a duplicate-name registration attempt before the check exists elsewhere' registers a tool and then :37-38 'expect(() =>' / 'registry.register({' with the SAME 'name: \"tracker.search\",' (:39) but 'description: \"a different implementation\",' (:40), asserting :44 ').toThrow(DuplicateToolNameError);' — refused, never a silent overwrite. Its positive twin is :52 'accepts an externally-registered tool alongside native ones with no collision' / :67 'expect([...registry.toolNames].sort()).toEqual([\"project.inspect\", \"tracker.search\"]);'. Work item 5's failing-first note is :6-9 'boots with a well-formed, empty tool set — no native handler wired yet' / 'const registry = new GatewayToolRegistry();' / 'expect(registry.list()).toEqual([]);' / 'expect(registry.toolNames).toEqual([]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/server.test.ts:142-187",
+          "quotedAssertion": "The listing is of tools that actually work, not of descriptors: :142 'calling a native tool over stdio round-trips through the real handler' invokes 'name: \"evidence.attach\",' (:154) with a full argument object and asserts :163 'expect(result.isError).toBeFalsy();'; its twin :169 'calling a native tool over stdio surfaces isError:true for a failed dispatch' invokes `tracker.search` with an unknown connection id and asserts :183 'expect(result.isError).toBe(true);'. Both directions of the wire protocol are exercised."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/stdio-boot.test.ts:129-135",
+          "quotedAssertion": "Work item 5's own failing-first note ('booting against an empty native-handler set still lists a well-formed, empty registry without crashing'): :129 'boots against an empty registry without crashing' / :134 'expect((responses.get(5)!.result as { tools: unknown[] }).tools).toEqual([]);'. An empty LIST, not a METHOD_NOT_FOUND — see the next citation for the mechanism that produces it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/server.ts:36-51",
+          "quotedAssertion": "The mechanism behind the empty-list assertion above, given its own citation so the drift check can see it: packages/gateway/src/mcp/server.ts:47-51 — 'const tools = registry.list();' / 'if (tools.length === 0) {' / 'server' / '.registerTool(\"__handler_bootstrap__\", { description: \"\" }, async () => ({' / 'content: [],', then removed. The comment at :36-38 states why declaring the capability is not enough: 'The SDK installs its `tools/list`/`tools/call` request handlers lazily,' / 'on the FIRST `registerTool` call — so a server built from an empty' / 'registry would answer `tools/list` with METHOD_NOT_FOUND rather than an'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:48-58",
+          "quotedAssertion": "The in-process companion to the stdio listing, pinning the same set at the registry rather than at the wire: :48 'registers exactly the 18 native tool names across the 8-family surface' / :57 'expect([...registry.toolNames].sort()).toEqual([...EXPECTED_NATIVE_TOOL_NAMES].sort());'. Two independently-written copies of the golden list (this one at :14-33, the wire one at server.test.ts:15-34) that must agree."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e`, naming 'the gateway MCP server — stdio boot to a stub MCP client > lists exactly this phase's native tool set over stdio to a stub MCP client' and '> accepts one externally-registered tool with no name collision — the registration API is genuinely extensible' individually."
+        }
+      ],
+      "notes": "The one thing a reader should not have to infer: the boot under test is this package's own stdio fixture, NOT the `crabgic gateway mcp` argv shim. That is by design and by this phase's own scope — roadmap/16 §Out of scope assigns 'The `gateway mcp` CLI-level argv shim — parser, help text, stdio process bootstrap, doctor integration' to 09, 'this phase supplies the server 09's shim boots, never the shim itself'. The fixture makes the identical call sequence the shim makes (`buildGatewayMcpServer` + `connectGatewayMcpServer` over a real `StdioServerTransport`), and `stdio-boot.ts` — the one function `packages/cli/src/cli-entry.ts:40` actually calls ('const server = await connectGatewayMcpStdio(buildRealGatewayToolRegistry());') — has its own suite cited above. Consequently the word 'exactly' is a claim about THIS PHASE's server, not about the shipped binary: at HEAD, `packages/cli/src/gateway-mcp/build-tool-registry.ts` registers 11's `project.inspect`/`contract.approve`, 12's `capability.audit`/`capability.approve` and two `review.*` tools on top of the native eighteen. That is the criterion's own second clause coming true, not drift from it."
+    },
+    {
+      "index": 7,
+      "text": "No `change_set.*` or `learning.*` name is ever registered — repo-wide grep/golden-value check over `packages/gateway`'s registered tool names (the substrate 22's own CI gate scans).",
+      "textSha256": "2145ba08d77ec72e57eda0ba50675583a6ea791ee98fb18458b91c96ccd90834",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91485325005, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626860",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 196 — 'npx vitest run packages/learning/src/red-team --coverage.enabled=false'; line 203 — '✓  @crabgic/learning  src/red-team/no-mcp-tool-family.redteam.test.ts (3 tests) 18ms'; lines 208-209 — ' Test Files  5 passed (5)' / '      Tests  20 passed (20)'. This is the criterion's parenthetical — '22's own CI gate' — really executing its scan of this package at this record's base commit, as its own named workflow step rather than folded into the general suite."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:60-73",
+          "quotedAssertion": "The dynamic half, over the LIVE registry rather than over source text: :60 'never registers a change_set.* or learning.* tool name' iterates :69 'for (const name of registry.toolNames) {' and asserts :70-71 'expect(name.startsWith(\"change_set.\")).toBe(false);' / 'expect(name.startsWith(\"learning.\")).toBe(false);'. A `for` loop over an empty collection would make this vacuous, which is exactly why the next citation matters."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:48-58",
+          "quotedAssertion": "The golden-value check the criterion names, and the anti-vacuity floor for the loop above: :48 'registers exactly the 18 native tool names across the 8-family surface' / :57 'expect([...registry.toolNames].sort()).toEqual([...EXPECTED_NATIVE_TOOL_NAMES].sort());' against the literal list at :14-33. Because the registry's whole name set is pinned by equality to an enumerated golden list, the absence of both forbidden prefixes follows by exhaustion and not only from the prefix loop — and the loop is proven to iterate 18 times, not zero."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:47-67",
+          "quotedAssertion": "22's gate, the 'repo-wide grep' half, scanning THIS package's source from outside it: :49 'expect(statSync(GATEWAY_SRC_DIR).isDirectory()).toBe(true);' / :50 'expect(collectSourceFiles(GATEWAY_SRC_DIR).length).toBeGreaterThan(1);' is its own non-vacuity guard, then :53 'no registered MCP tool name anywhere begins with the 'learning.' prefix' with 'const toolNamePattern = /name:\\s*[\"']learning\\./;' (:55) and :66 'expect(violations).toEqual([]);'. `GATEWAY_SRC_DIR` is built at :23-29 from `..`/`..`/`..`/`gateway`/`src`, so the target really is `packages/gateway/src`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:69-82",
+          "quotedAssertion": "The stronger, whole-substring form of the same gate: :69 'the bare literal 'learning.' never appears as a STRING LITERAL in any non-test registration source (stronger, whole-substring form; test files are exempt since 16's own suite legitimately asserts this same absence in prose/assertions)' / :75-76 'const occurrences =' / 'content.split('\\\"learning.').length - 1 + content.split(\"'learning.\").length - 1;' / :82 'expect(violations).toEqual([]);'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c7-c8-whole-package-static-scans.txt",
+          "quotedAssertion": "The `change_set.` half of the static scan, which NO in-tree scanner performs — 22's gate greps only `learning.`. This closeout ran it: '$ git grep -n -I -F -e \"\\\"change_set.\" -e \"@change_set.\" -- packages/gateway \":!*.test.ts\"' → 'exit=1', and including tests the only two hits are 'packages/gateway/src/mcp/native-registry.test.ts:70:      expect(name.startsWith(\"change_set.\")).toBe(false);' and ':71:      expect(name.startsWith(\"learning.\")).toBe(false);' — the absence-assertions themselves. Header records UTC timestamp, HEAD sha, the verbatim command per line, and exit status."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/learning-redteam.yml:44-45",
+          "quotedAssertion": ".github/workflows/learning-redteam.yml:44-45 — '- name: \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"' / 'run: npx vitest run packages/learning/src/red-team --coverage.enabled=false'. The gate the criterion's parenthetical names is a standing workflow step, so the absence is enforced on every push and PR rather than only at this closeout."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e` that deliberately includes `packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts` alongside this phase's own suites, so both halves of the criterion were executed together."
+        }
+      ],
+      "notes": "The asymmetry between the two forbidden prefixes, stated because it is real. `learning.` has THREE independent checks: the live-registry prefix loop, the golden 18-name set, and 22's standing CI grep over `packages/gateway/src`. `change_set.` has only the first two — 22's gate greps `learning.` and nothing else, which is correct for 22 (interface-ledger Gap 1 makes 22 the owner of the `learning.*` absence specifically) but leaves this criterion's `change_set.` half without a standing static scan. That is not a gap in the CLAIM — the golden-value equality on the registry's whole name set is exhaustive, and it is one of the two channels the criterion itself offers ('grep/golden-value check over `packages/gateway`'s registered tool names') — but a future `change_set.*` registration would be caught by a unit test rather than by a dedicated CI gate. The closeout transcript's `change_set.` grep is a one-off, not a standing check. Reported here for the integrator; not filed as a defect, because the criterion is satisfied by the channel it names."
+    },
+    {
+      "index": 8,
+      "text": "Every SDK server registration and wire-level tool name references `GATEWAY_MCP_SERVER_NAME` — zero hand-typed `\"crabgic_gateway\"` literals anywhere in `packages/gateway` (02's repo-wide grep gate).",
+      "textSha256": "16e599e26c5297306cd594d8057ac60a575f393cae2d7f455941ea55ab1a3a2c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 434 — '✓  @crabgic/contracts  src/gateway/server-name.test.ts (2 tests) 90ms' (02's repo-wide grep gate, the one the criterion's parenthetical names); line 624 — '✓  @crabgic/gateway  src/mcp/gateway-name-reference.test.ts (3 tests) 23ms' (this package's own local instantiation); line 617 — '✓  @crabgic/gateway  src/mcp/stdio-boot.test.ts (5 tests) 47ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/stdio-boot.test.ts:76-83",
+          "quotedAssertion": "The REAL bearer for the 'every SDK server registration references the constant' clause — the name observed on the wire, after a real MCP handshake: :76 'completes the MCP handshake under GATEWAY_MCP_SERVER_NAME' / :81 'const result = initialize!.result as { serverInfo: { name: string } };' / :82 'expect(result.serverInfo.name).toBe(GATEWAY_MCP_SERVER_NAME);', with the constant imported from `@crabgic/contracts` at :4. This is what proves the registration derives from the constant rather than merely that no literal is spelled."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/server.ts:20-33",
+          "quotedAssertion": "The single SDK registration site the assertion above exercises: packages/gateway/src/mcp/server.ts:31-33 — 'const server = new McpServer(' / '{ name: GATEWAY_MCP_SERVER_NAME, version: \"0.0.0\" },' / '{ capabilities: { tools: {} } },', fed by the one import at :20 — 'import { GATEWAY_MCP_SERVER_NAME } from \"@crabgic/contracts\";'. This module is, by its own header at :13-14, 'the one module in this package that imports the MCP SDK's server type directly', so 'every SDK server registration' is a set of exactly one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/gateway-name-reference.test.ts:21-58",
+          "quotedAssertion": "The literal-absence scan, package-local: :40 'the Gap-11 literal appears nowhere in this package's source, this scanner included' walks every `.ts`/`.mjs` under `src/` (:24-36) and counts occurrences without ever spelling the value — :21 'const LITERAL = GATEWAY_MCP_SERVER_NAME;' / :46 'const occurrences = content.split(LITERAL).length - 1;' / :52 'expect(violations).toEqual([]);'. Its own non-vacuity guard is :55-57 'expect(statSync(SRC_DIR).isDirectory()).toBe(true);' / 'expect(collectSourceFiles(SRC_DIR).length).toBeGreaterThan(1);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:26-80",
+          "quotedAssertion": "02's repo-wide gate, which the criterion names as its channel: :74 'is the literal \"crabgic_gateway\" (golden value, interface-ledger Gap 11)' / :75 'expect(GATEWAY_MCP_SERVER_NAME).toBe(\"crabgic_gateway\");' and :78 'is the sole definition site of the literal under packages/*/src (exit criterion)'. Its allowlist is exactly two paths (:29-32 'join(\"packages\", \"contracts\", \"src\", \"gateway\", \"server-name.ts\"),' / 'join(\"packages\", \"contracts\", \"src\", \"gateway\", \"server-name.test.ts\"),'), so `packages/gateway/src` carries no exemption of any kind."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c7-c8-whole-package-static-scans.txt",
+          "quotedAssertion": "The 'ANYWHERE in `packages/gateway`' clause, which neither scanner covers — both stop at `src/**/*.ts` (plus `.mjs` locally). This closeout ran the whole-package grep: '$ git grep -n -I -e crabgic_gateway -- packages/gateway' → 'exit=1' (no match), over '78' tracked files of which only 'packages/gateway/package.json' and 'packages/gateway/tsconfig.json' sit outside `src/`. Header records UTC timestamp, HEAD sha, the verbatim command per line, and exit status."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e` that deliberately includes `packages/contracts/src/gateway/server-name.test.ts`, so 02's gate was executed against this tree in this pass and not only cited from CI."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-policy.ts:52-59",
+          "quotedAssertion": "The second of the three constant-consuming production sites in this package, so 'every' is checked and not assumed: packages/gateway/src/mcp/upstream-mcp-client-policy.ts:54-58 — '[GATEWAY_MCP_SERVER_NAME]: {' / 'type: \"stdio\",' / 'command: \"crabgic\",' / 'args: [\"gateway\", \"mcp\"],' / '},'. A repo grep for GATEWAY_MCP_SERVER_NAME under packages/gateway/src returns exactly three production sites — server.ts, this file, and the one in the next citation — plus four test files that assert against it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/uds-forward-client.ts:26-78",
+          "quotedAssertion": "The third constant-consuming production site, given its own citation rather than quoted inside another file's: packages/gateway/src/mcp/uds-forward-client.ts:78 — 'clientName: options.clientName ?? GATEWAY_MCP_SERVER_NAME,', imported at :26 — 'import { GATEWAY_MCP_SERVER_NAME } from \"@crabgic/contracts\";'. This is the identity the gateway presents to 05's UDS router when forwarding run.status/run.cancel, and it too derives from the constant rather than a literal."
+        }
+      ],
+      "notes": "Deliberately NOT re-filed, and the reason matters. Interface-ledger Gap 11's repo-wide gate has a known scope hole — its glob is `packages/*/src/**/*.ts`, so `packages/plugin/.mcp.json` hand-types the literal and escapes it. That is phase 02's criterion 8, left UNMET by its own merged closeout, with the defect already on record at `docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md`. THIS criterion is scoped to `packages/gateway`, and the hole does not reach it: the package has exactly two tracked files outside `src/` (`package.json`, `tsconfig.json`), and the whole-package grep in the cited transcript covers both and finds nothing. So the tick is over a verified-empty scope, not over the known gap. What remains true and is worth the integrator's attention: if a `.json`, `.md` or `.yml` file were ever added under `packages/gateway`, the in-tree scanners would not see a literal in it — the standing protection for this package is `src/**/*.{ts,mjs}` only, and the whole-package check is this closeout's one-off. Separately: the second describe block of `gateway-name-reference.test.ts` (:60-70, 'the gateway MCP server registers under GATEWAY_MCP_SERVER_NAME') is NOT cited above, because its only assertion is 'expect(server.isConnected()).toBe(false);' — a smoke check that would pass identically if the server were registered under any other name. Its own comment concedes the point ('The underlying protocol layer stores serverInfo internally'). The registration claim is carried by `stdio-boot.test.ts:82`, which reads the name back off the wire; recorded here rather than silently dropped."
+    },
+    {
+      "index": 9,
+      "text": "Provider-dispatch point resolves to the correct provider-specific client for a fixture `ExternalConnection` per registered provider; an unrecognized provider value is rejected before any network call.",
+      "textSha256": "cb9660b57f0e8709fabbf2b60dc83a7ff96cd2a51294ed9f187cc98b6f39a9d0",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 641 — '✓  @crabgic/gateway  src/provider-dispatch/provider-registry.test.ts (5 tests) 9ms'; line 593 — '✓  @crabgic/gateway  src/mcp/native-registry.test.ts (13 tests) 77ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/provider-dispatch/provider-registry.test.ts:13-22",
+          "quotedAssertion": "The 'per registered provider' clause, with two providers registered simultaneously so a one-entry registry cannot pass: :13 'resolves the correct client for a registered provider' registers both, then :20-21 'expect(registry.resolve(\"jira\")).toBe(jiraClient);' / 'expect(registry.resolve(\"grafana\")).toBe(grafanaClient);'. `toBe` is reference identity, so 'correct client' means the exact object registered under that key — not merely something client-shaped."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/provider-dispatch/provider-registry.test.ts:24-36",
+          "quotedAssertion": "The rejection clause at the primitive: :24 'rejects an unrecognized provider before any network call could be attempted' with a NON-empty registry (:26 registers 'jira' first) and :28 'expect(() => registry.resolve(\"unknown-provider\")).toThrow(UnknownProviderError);' — a typed error, not a bare throw or an undefined return. Its sibling :31 'rejects a duplicate-name registration attempt' / :35 'expect(() => registry.register(\"jira\", { kind: \"jira-again\" })).toThrow(DuplicateProviderError);' is work item 5's own failing-first requirement."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/provider-dispatch/provider-registry.ts:55-59",
+          "quotedAssertion": "Why 'before any network call' is structural rather than timing-dependent: packages/gateway/src/provider-dispatch/provider-registry.ts:55-58 — 'resolve(provider: string): TClient {' / … / 'throw new UnknownProviderError(provider);'. `resolve` is a pure Map lookup with no I/O of any kind, so an unrecognized value cannot reach a network call by construction — there is nothing to sequence."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:56-95",
+          "quotedAssertion": "The ordering inside the dispatch tool, which is where 'before any network call' has to hold for a real caller. In source order: :56 'const connection = await deps.connections.get(args.connectionId);' → :69 'client = deps.providers.resolve(connection.provider);' → :83 'const method = client[operation];' → :95 'const result = await method(args.params);'. The provider client is the only thing in this path that can issue I/O, and it is not even LOOKED UP until after `resolve` has returned; an unknown provider returns at :71-79 ('if (err instanceof UnknownProviderError) {' / 'return errorResult(' / 'ConnectorError.unsupported({') without ever reaching :83."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:183-204",
+          "quotedAssertion": "The same rejection through the real MCP tool, against a real fixture `ExternalConnection` whose `provider: \"no-such-provider\"` (:186) was never registered: :202-203 'const result = await tool?.handler({ connectionId: connection.id, params: {} });' / 'expect(result?.isError).toBe(true);'. The connection resolves fine — only the provider does not — so the failure is attributable to dispatch and not to a missing connection."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:75-105",
+          "quotedAssertion": "The positive control at the same level, which is what makes the rejections informative: :75 'dispatches tracker.search end-to-end to a registered fake provider client' creates a fixture connection with 'provider: \"fake-tracker\",' (:79), registers a client under that exact key (:88 'providers.register(\"fake-tracker\", {'), and asserts :102-104 'expect(result?.isError).toBeFalsy();' / … / 'expect(parsed.items).toEqual([{ id: \"ISSUE-1\" }]);'. The payload came from the registered client, so the connection's `provider` value really selected it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/native-registry.test.ts:206-230",
+          "quotedAssertion": "The third rejection edge — a provider that IS registered but does not implement the requested operation: :206 'tracker.plan_create returns unsupported when the provider client lacks that operation' / :218 'providers.register(\"partial-provider\", { search: async () => ({}) }); // no planCreate' / :229 'expect(result?.isError).toBe(true);'. Distinguishes 'unrecognized provider' from 'unsupported operation', both of which map to canonical `unsupported` and neither of which dials out."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 5 provider-registry cases and all 13 native-registry cases individually."
+        }
+      ],
+      "notes": "No assertion in this package counts network calls on the unknown-provider path, so 'before any network call' is evidenced structurally (a pure Map lookup that precedes the only I/O-capable object in the path) rather than by a call-count spy. That is stated rather than glossed. The equivalent claim on the MUTATE path IS spy-asserted — `native-registry.test.ts:402-448` counts 'expect(networkCallCount).toBe(0);' for a foreign-origin apply — so the pattern exists in the package where the path has a mockable seam. Separately: the roadmap distinguishes this provider-DISPATCH point from the MCP tool-family registry of criteria 6/7 (roadmap/16 §Risks, 'Naming clarification, not a new mechanism'); at HEAD there are two `ProviderRegistry` instances in play, one keyed to `GenericProviderClient` for reads/plans and one to `MutationApplyClient` for applies, both threaded through `buildNativeToolRegistry`'s deps. This criterion's assertions cover the first; criterion 1's cover the second."
+    },
+    {
+      "index": 10,
+      "text": "Connection-doctor reachability probe (incl. custom-CA validation) succeeds against a disposable fixture connection and fails informatively against an unreachable one, exercised directly against this package, ahead of 18/19/20's own doctor-check wiring.",
+      "textSha256": "be5cf143fd1a99c388c33b70e7b7cdaca4910b94353d998ea0a454399c270af2",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 597 — '✓  @crabgic/gateway  src/connection-doctor/reachability-probe.test.ts (8 tests) 536ms'. The 536ms is the real HTTPS listeners and the real `openssl` certificate generation; a mocked probe would not cost it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:103-115",
+          "quotedAssertion": "The success clause, custom CA included, against a real disposable server: the CA is written to disk at 0600 — :104-106 'const caPath = join(dir, \"ca.pem\");' / 'await writeFile(caPath, cert.certPem);' / 'await chmod(caPath, 0o600);' — referenced by the fixture connection as 'customCaRef: { path: caPath }' (:108), and :113-114 assert 'expect(result.reachable).toBe(true);' / 'expect(result.status).toBe(200);'. The server is a real `node:https` listener created at :57 from a freshly generated self-signed pair."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:117-125",
+          "quotedAssertion": "The negative control that makes 'incl. custom-CA validation' mean something: :117 'fails informatively when no custom CA is supplied against a self-signed server' differs from the success case ONLY by dropping the CA ('buildClient: () => buildClientForFixture(undefined),' :120) and asserts :123-124 'expect(result.reachable).toBe(false);' / 'expect(result.detail).toMatch(/probe request failed/);'. Same server, same connection shape — so the success above is attributable to the CA and not to TLS verification being disabled."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:127-140",
+          "quotedAssertion": "The 'fails informatively against an unreachable one' clause: :128 'const connection = buildConnection({ baseUrl: \"https://127.0.0.1:1\" });' — port 1, nothing listening — and :138-139 'expect(result.reachable).toBe(false);' / 'expect(result.detail).toMatch(/probe request failed/);'. It returns a structured result rather than throwing, which is what lets 09's connection-doctor command render it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:142-172",
+          "quotedAssertion": "'Informatively' proven as DISCRIMINATION, not just as a non-empty string — three different failure causes produce three different details: :142 'fails informatively when the secret cannot be resolved' / :147 'expect(result.detail).toMatch(/secret resolution failed/);'; :167 'fails informatively when the custom CA file cannot be read' / :171 'expect(result.detail).toMatch(/custom CA read failed/);'; and the SSRF refusal at :150-165 / :154 'expect(result.detail).toMatch(/refused/);'. An operator can tell a bad token from a bad CA path from an unreachable host."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:150-165",
+          "quotedAssertion": "The default (non-overridden) client builder really is exercised, so the suite is not only testing its own injected doubles: :150 'uses the default client builder (no override) and is refused by the real SSRF guard for a loopback target without a custom CA' and :157 'uses the default client builder (no override) with a custom CA and is still refused by the real SSRF guard for a loopback target' both call 'await probeConnectionReachability(connection);' with no options argument, and both are refused by the production SSRF guard because the fixture target is loopback."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:174-206",
+          "quotedAssertion": "The 'without performing a mutating call' property of the primitive, and the last failure mode: :174 'reports reachable:false for a 5xx response' stands up a second real HTTPS server answering 503 (:175-176 'const errorServer = createServer({ key: cert.keyPem, cert: cert.certPem }, (_req, res) => {' / 'res.writeHead(503);') and asserts :201-202 'expect(result.reachable).toBe(false);' / 'expect(result.status).toBe(503);' — a reachable-but-unhealthy endpoint is distinguished from an unreachable one."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 8 reachability-probe cases individually, including the two default-client-builder cases."
+        }
+      ],
+      "notes": "'Exercised directly against this package, ahead of 18/19/20's own doctor-check wiring' is the clause a reader might expect a cross-package proof for, and there is none — correctly. The suite lives in `packages/gateway` and imports only `probeConnectionReachability` from its own module; that IS the criterion's 'directly against this package'. The 'ahead of' half is a phase-time statement, checked against the tree rather than assumed: 18/19/20's doctor-check functions consume this primitive later (roadmap/16 §Interfaces produced quotes 19's own words, 'connection-reachability probe exercising 16's custom-CA path'), and nothing in this suite depends on them. One honest limitation of the fixture: because the fixture server is on loopback, the real SSRF guard refuses it, so every SUCCESS case in this file must inject a `buildClient` whose `resolveHostAddresses` answers a public placeholder (`203.0.113.7`) and whose transport dials the pinned loopback address back (:31-33 'function realNetworkSendRequestPinnedTo(pinnedAddress: string): typeof sendHttpRequest {' / 'return (req: HttpTransportRequest) => sendHttpRequest({ ...req, pinnedAddress });'). The file's own header (:15-29) says so. The consequence is that the SUCCESS path is proven against a real TLS handshake with a real CA but a stubbed name resolution; the two default-builder cases above are the ones that run the guard for real, and they prove refusal rather than success. That is a property of testing a loopback fixture against a guard designed to refuse loopback, not a weakened claim."
+    },
+    {
+      "index": 11,
+      "text": "When the optional upstream-MCP-client wrap is enabled for a fixture connection, no additional MCP server ever appears in a simulated worker's `mcpServers` config — only this phase's own native tools are worker-visible.",
+      "textSha256": "2b0fc7f082868a190eda3bac136db7bf466373089f023e0ec3b959ffda9be9b3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 644 — '✓  @crabgic/gateway  src/mcp/upstream-mcp-client-policy.test.ts (4 tests) 8ms'; line 599 — '✓  @crabgic/gateway  src/mcp/upstream-mcp-client-unenableable.test.ts (7 tests) 268ms'. The 268ms is the tripwire's read-only walk of every production source file under `packages/`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-policy.test.ts:31-41",
+          "quotedAssertion": "The criterion's own sentence, executed: :31 'enabling the upstream-MCP-client flag for a fixture connection changes nothing about the worker-visible mcpServers set' / :34 'store.setEnabled(\"fixture-connection-1\", true);' / :38-40 'expect(Object.keys(after)).toEqual(Object.keys(before));' / 'expect(Object.keys(after)).toEqual([GATEWAY_MCP_SERVER_NAME]);' / 'expect(store.isEnabled(\"fixture-connection-1\")).toBe(true);'. The third assertion is what stops this being vacuous on its own antecedent: the flag really IS enabled for the fixture connection when the key set is measured."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts:149-159",
+          "quotedAssertion": "The structural form of the same guarantee, which is stronger than the behavioural one: :149 '(5) buildSimulatedWorkerMcpServers takes no policy argument and yields exactly one server' / :154 'expect(buildSimulatedWorkerMcpServers.length).toBe(0);' / :158 'expect(Object.keys(buildSimulatedWorkerMcpServers())).toEqual([GATEWAY_MCP_SERVER_NAME]);'. Arity zero means no caller CAN make the worker-visible set depend on a policy; the output assertion catches widening the body instead of the signature."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts:114-121",
+          "quotedAssertion": "Why 'no additional MCP server ever appears' holds for a reason better than a default: :118 '(2) no production source imports an MCP client — the gateway is a server, never a client' / :119 'expect(scanProductionSources(MCP_CLIENT_IMPORT_PATTERN)).toEqual([]);' and :114 '(1) no production source constructs the policy store or flips the flag' / :115 'expect(scanProductionSources(ENABLEMENT_PATTERN)).toEqual([]);'. There is no second MCP server to appear, because no MCP client exists in shipped source to talk to one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts:96-112",
+          "quotedAssertion": "The tripwire's own failing-first proof, which is what makes the two empty-array assertions above evidence rather than a regex that matches nothing: :96 'the scanner detects the violations it claims to detect (failing-first, against synthetic text)' / :99-100 'expect(ENABLEMENT_PATTERN.test(\"const store = new UpstreamMcpClientPolicyStore();\")).toBe(true);' / 'expect(ENABLEMENT_PATTERN.test(\"policy.setEnabled(connection.id, true);\")).toBe(true);', plus the discrimination check that the client pattern does NOT match the server import the gateway legitimately uses (:107-112, expecting `false` for 'import { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";')."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts:43-94",
+          "quotedAssertion": "The scan's non-vacuity floor: :91 'the scan is not vacuous: the target tree resolves and holds many production sources' / :92-93 'expect(statSync(PACKAGES_DIR).isDirectory()).toBe(true);' / 'expect(collectProductionSources(PACKAGES_DIR).length).toBeGreaterThan(100);'. The walk is over `packages/` as a whole (:43 'const PACKAGES_DIR = join(dirname(fileURLToPath(import.meta.url)), \"..\", \"..\", \"..\");'), not only this package, so a worker-side enablement elsewhere would also trip it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts:122-142",
+          "quotedAssertion": "The config channel, closed by the schema rather than by a check: :122 '(3) ExternalConnectionSchema is strict and REJECTS an upstream-MCP flag rather than ignoring it' asserts the clean fixture parses first (:136 'expect(ExternalConnectionSchema.safeParse(valid).success).toBe(true);') and then, for each of three plausible field names (:139 'for (const field of [\"upstreamMcpEnabled\", \"upstreamMcpClient\", \"mcpClientEnabled\"]) {'), :140 'expect(ExternalConnectionSchema.safeParse(withFlag).success).toBe(false);'. The positive control makes the rejection attributable to the flag."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gateway/src/mcp/upstream-mcp-client-policy.ts:41-59",
+          "quotedAssertion": "The function under test, and the only thing this phase claims about a worker's config: packages/gateway/src/mcp/upstream-mcp-client-policy.ts:52-58 — 'export function buildSimulatedWorkerMcpServers(): Readonly<Record<string, unknown>> {' / 'return {' / '[GATEWAY_MCP_SERVER_NAME]: {' / 'type: \"stdio\",' / 'command: \"crabgic\",' / 'args: [\"gateway\", \"mcp\"],' / '},'. Its own doc comment (:41-50) states the boundary the criterion's word 'simulated' encodes: 'a worker's own' / '`mcpServers` config is built once, upstream, by 06/10 (never by this' / 'phase)'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/engine-core/src/compiler/worker-settings.ts:32-55",
+          "quotedAssertion": "Corroboration from the REAL builder, given its own citation because it lives in a different package: packages/engine-core/src/compiler/worker-settings.ts:55 — 'mcpServers: { [GATEWAY_MCP_SERVER_NAME]: {} },', under the comment at :32-33 '`mcpServers` is keyed by `GATEWAY_MCP_SERVER_NAME` (interface-ledger Gap'. So the shape the simulation asserts — exactly one key, that key — is the shape 03's compiler actually emits for a worker. This closeout did not re-run `packages/engine-core`'s own suite; the citation is to the source, as a shape check, not as an execution claim."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt",
+          "quotedAssertion": "' Test Files  11 passed (11)' / '      Tests  62 passed (62)' — supplementary scoped local re-run at `30f931e`; the verbose output names all 4 upstream-mcp-client-policy cases and all 7 unenableable-tripwire cases individually."
+        }
+      ],
+      "notes": "Reconciled with what merged rather than re-derived, per `bddac4c` (PR #47) and roadmap/16 §Risks' PRECONDITION RECORDED 2026-08-01. The containment is NOT 'the flag defaults to false' — that phrasing was explicitly retired as 'true but soft'. It is that the wrap cannot be turned on at all: no MCP client in shipped source, no production construction or `setEnabled` caller, `.strict()` schema with no field, no environment variable, and a zero-arity worker-config builder. All five are the tripwire's five numbered `it()` blocks, and the tripwire was verified to fire against seeded violations rather than merely to pass. roadmap/16 §Risks additionally records that settling the 16/12 quarantine question is a PRECONDITION on any enabling work, so the tripwire failing CI is what sends an author to that bullet. Two honest limits on this tick. (a) `buildSimulatedWorkerMcpServers` is this package's own simulation of a worker config, exported from `index.ts` and consumed by nothing outside its two test files; the criterion's own word is 'simulated', and the real builder is cited above as a shape check. (b) The trailing clause 'only this phase's own native tools are worker-visible' is read in the context roadmap/16 §In scope gives it — 'no worker ever sees an upstream provider's MCP server, only this phase's own `tracker.*`/`observability.*` tools' — i.e. the contrast class is UPSTREAM PROVIDER tools. Read instead as a claim about the whole tool set it would be false at HEAD, because 11's and 12's tools are registered into this same server by design (criterion 6's second clause, ledger Gap 1's eight families). The load-bearing claim, and the one the evidence proves, is that no additional MCP SERVER appears."
+    },
+    {
+      "index": 12,
+      "text": "Security review sign-off recorded against `docs/threat-model.md`.",
+      "textSha256": "f18d37051fc274177794b525800dfc5616eb9e370a91898d93c15f5a833747e5",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "notes": "The review happened; the record never landed in the document the criterion names. `docs/threat-model.md` at `30f931e` contains no occurrence of 'sign-off' or 'signoff' at all; its only review record is the section headed '## Review note' — line 280 at this record's base `30f931e`, line 290 as of main @ `2ea3689`, which inserted ten lines above it — dated '- **Date:** 2026-07-15.' — three weeks before `packages/gateway` existed — whose Scope paragraph still reads 'Phases 03, 05, 06, 10, 12, 16, 17, and 22 are unimplemented as of this writing' (:27) and which names 23 as 'the roadmap's designated re-verification point'. Section 5 (Gateway, :152-170) cites no implementation artifact: a grep of that range for `packages/gateway`, `security-posture` and `phase-16` returns nothing, while section 2 (Worker runtime, :105) WAS refreshed post-implementation and does cite `docs/security-posture.md` and dated 2026-08-01 measurements — so the omission is specific to this surface, not a property of the document. Two concrete stalenesses follow: 16 is still listed as unimplemented, and §5's Spoofing residual still calls the upstream-MCP-client wrap 'flag-gated', the exact phrasing `bddac4c` retired as understating the containment ('unenableable' appears twice in `docs/security-posture.md` and once in `roadmap/16-gateway-core.md`, zero times in the threat model). WHAT DOES EXIST, so this defect is not overstated: (a) `docs/evidence/phase-16/README.md` §'Security review (against `docs/threat-model.md` §5 \"Gateway\")' is a real per-STRIDE-category review with an explicit '**Sign-off:**' paragraph — and it says in the same breath (:122) '**Not done in this session:** editing `docs/threat-model.md` itself', naming the doc edit as a carry-forward for the orchestrator; (b) `docs/security-posture.md` ('Security posture — threat model vs. implementation', dated 2026-07-24) carries a '## Sign-off' section at :33 and a '### 5. Gateway' section at :145 covering all five adversarial findings, and it is the artifact behind phase 23's own ticked box. This closeout considered and REJECTED classifying the criterion `SUPERSEDED-DISCHARGED` against that box: this criterion contains no deferral clause for a later phase to discharge, and 23's artifact is a different file from the one this criterion names, so treating it as a discharge would be a channel substitution — the wording protocol's forbidden move. The box stays unticked; the remedy is small and is in the defect record. Search trail: `docs/evidence/phase-16/closeout-c12-threat-model-signoff-search.txt`. One more thing, checked against the merge target rather than the base: main @ `2ea3689` ('docs: correct six disclosures that stopped being true') edited this very document on 2026-08-02 — it CLOSED the Review note's Open item 2 (capability-quarantine journal gap) and rewrote cross-surface residual theme 3. It did not touch Open item 3 (this criterion's own surface), did not touch §5 at all, and did not touch the ':27' unimplemented list. So a maintainer pass over this document happened within a day of this closeout and left the gateway's half exactly as it was, which is why the defect is filed rather than assumed imminent. Every line number quoted above is as of `30f931e` except where a merge-target number is given alongside it; the search transcript is a verbatim capture at `30f931e` and is deliberately not retouched.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/16-threat-model-signoff-not-landed.md"
+    }
+  ]
+}

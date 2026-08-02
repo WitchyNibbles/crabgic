@@ -1,0 +1,183 @@
+# criteria-closeout pass, phase 16 — criteria 1-5 (transport security + mutation pipeline + budgets + leak hunt)
+# UTC:      2026-08-02T10:31:28Z
+# HEAD:     30f931eab97b8360102498d4b766513be67241d0
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts packages/gateway/src/mutation-pipeline/reconciliation.test.ts packages/gateway/src/mutation-pipeline/error-mapping.test.ts packages/gateway/src/transport/ssrf-guard.test.ts packages/gateway/src/transport/http-client.test.ts packages/gateway/src/transport/http-transport.test.ts packages/gateway/src/transport/retry-ladder.test.ts packages/gateway/src/transport/write-serializer.test.ts packages/gateway/src/transport/budgets.test.ts packages/gateway/src/transport/pagination.test.ts packages/gateway/src/testkit/fault-matrix.test.ts packages/gateway/src/security/leak-hunt.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80% line+branch
+#           gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1 with every test green.
+# ---------------------------------------------------------------------------
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p16
+
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > GET is free to retry on a 503 3ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > PUT with a precondition retries deterministically 1ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > PUT without a precondition never blindly retries 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > PATCH without a precondition never blindly retries 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > POST is never blindly retried, even with a precondition 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — verb-specific rules > DELETE without a precondition never blindly retries 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 409 on GET => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 409 on PUT => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 409 on PATCH => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 409 on POST => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 409 on DELETE => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 412 on GET => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 412 on PUT => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 412 on PATCH => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 412 on POST => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — 409/412 always fetch-rebase-or-block > status 412 on DELETE => fetch-rebase-or-block 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — bounds > gives up once max attempts are exhausted 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — bounds > gives up on a success status 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — bounds > gives up on a non-retryable client error (404) 0ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — bounds > property: 409/412 always wins over verb/precondition/attempt combinations 10ms
+ ✓ |@crabgic/gateway| src/transport/retry-ladder.test.ts > decideRetryAction — bounds > property: POST is never a 'retry' verdict for any transient status/attempt 30ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceItemBudget > allows a small item 3ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceItemBudget > allows an item exactly at the budget 1ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceItemBudget > throws BudgetExceededError for an item one byte over budget 0ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceItemBudget > measures actual UTF-8 byte length, not JS string length 0ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceResultBudget > allows a small result 0ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceResultBudget > throws BudgetExceededError for a result over budget 1ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceBudgets > passes for small items well under both budgets 0ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceBudgets > throws when a single item exceeds the item budget 0ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceBudgets > throws when the aggregate exceeds the result budget even if every item is individually small 3ms
+ ✓ |@crabgic/gateway| src/transport/budgets.test.ts > enforceBudgets > error carries scope, actualBytes, and budgetBytes fields 1ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > paginate > yields items page by page and terminates when nextCursor is absent 6ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > paginate > handles a single-page source 0ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > paginate > handles an empty source 0ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > paginate > throws when maxPages is exceeded (misbehaving upstream never stops) 2ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > paginate > stays O(page): resident buffered items never exceed one page's worth at a time 4ms
+ ✓ |@crabgic/gateway| src/transport/pagination.test.ts > collectAllPages > flattens every page into one array, in order 0ms
+ ✓ |@crabgic/gateway| src/transport/write-serializer.test.ts > WriteSerializer > preserves submission order for the same tenant+resource key under concurrency 19ms
+ ✓ |@crabgic/gateway| src/transport/write-serializer.test.ts > WriteSerializer > runs writes for different keys fully concurrently (no cross-key blocking) 23ms
+ ✓ |@crabgic/gateway| src/transport/write-serializer.test.ts > WriteSerializer > a failed task does not block subsequent tasks for the same key 2ms
+ ✓ |@crabgic/gateway| src/transport/write-serializer.test.ts > WriteSerializer > distinguishes tenant boundaries: same resource name, different tenant, run concurrently 21ms
+ ✓ |@crabgic/gateway| src/transport/write-serializer.test.ts > WriteSerializer > activeKeyCount reflects distinct keys seen 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/reconciliation.test.ts > reconcileAmbiguousPost > returns reconciled when the marker is found 3ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/reconciliation.test.ts > reconcileAmbiguousPost > returns blocked when the marker is not found 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/reconciliation.test.ts > assertReconciled > does not throw for a reconciled outcome 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/reconciliation.test.ts > assertReconciled > throws AmbiguousWriteBlockedError for a blocked outcome 9ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — plain HTTP > performs a GET and returns status/headers/body 13ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — plain HTTP > does not follow a redirect itself — reports the 3xx + location verbatim 2ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — plain HTTP > sends a request body for a POST 8ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — plain HTTP > rejects when the target is unreachable 4ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — 429 rate limited > retries a GET after honoring Retry-After, then succeeds 18ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — 401 authentication failure > does not retry; the caller maps the status to a canonical authentication error 1ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — 409/412 fetch-rebase-or-block > 409 on a PUT is surfaced without a blind retry 5ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — 409/412 fetch-rebase-or-block > 412 on a PATCH is surfaced without a blind retry 2ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — malformed pages > a malformed (invalid JSON) page surfaces a parse error rather than a silently-empty page 2ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fault matrix — mid-POST timeout > a POST is never blindly retried after a mid-request fault; the caller observes the rejection directly 6ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake tracker + observability provider doubles — end-to-end through the real transport stack > fake tracker provider dispatches search through GatewayHttpClient 1ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake tracker + observability provider doubles — end-to-end through the real transport stack > fake tracker provider surfaces a 401 status through to the caller 1ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake tracker + observability provider doubles — end-to-end through the real transport stack > fake observability provider dispatches query through GatewayHttpClient 1ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake tracker + observability provider doubles — end-to-end through the real transport stack > fake tracker provider dispatches every operation to its own scripted call 6ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake tracker + observability provider doubles — end-to-end through the real transport stack > fake observability provider dispatches every operation to its own scripted call 1ms
+ ✓ |@crabgic/gateway| src/testkit/fault-matrix.test.ts > fake paginated source — O(page) on a 10k-item fake > streams 10,000 items without ever buffering more than one page at a time 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — SSRF preflight > refuses a foreign origin before any request is sent 17ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — SSRF preflight > refuses when the allowlisted origin resolves to a private address (rebinding) 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — SSRF preflight > allows an allowlisted origin resolving to a public address 3ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix) > dials the SAME resolved address that passed the SSRF check — never re-resolves at connect time 1ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix) > a rebinding resolver that answers a DIFFERENT (private) address on a later call never affects an in-flight request's already-pinned dial target 0ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — DNS pinning (HIGH #1 adversarial-review fix) > pins each redirect hop to ITS OWN freshly-resolved address, never reusing the initial hop's pin 1ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — redirect revalidation > follows a redirect to an allowlisted target after revalidating it 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — redirect revalidation > refuses to follow a redirect to a foreign origin — never attaches credentials to it 1ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — redirect revalidation > refuses to follow a redirect to a private-IP target 1ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — redirect revalidation > gives up after exceeding the max redirect hop count 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — retry ladder + backoff > retries a GET on a 503 and eventually succeeds 1ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — retry ladder + backoff > does not blindly retry a POST on a 503 0ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — retry ladder + backoff > honors Retry-After between attempts 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — budgets > throws BudgetExceededError when the response body exceeds the result budget 2ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — concurrency + write serialization > preserves write order for the same tenant+resource under concurrent submission 24ms
+ ✓ |@crabgic/gateway| src/transport/http-client.test.ts > GatewayHttpClient — concurrency + write serialization > caps in-flight requests at maxInFlightPerConnection 58ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — HTTPS custom CA > succeeds when the custom CA is supplied 25ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — HTTPS custom CA > fails when no custom CA is supplied (self-signed cert is untrusted) 8ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — HTTPS custom CA > HTTPS + custom CA still validates via SNI when pinned (hostname in URL matches the cert's SAN, dial target is the pinned IP) 9ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — DNS pinning (HIGH #1 adversarial-review fix) > dials the pinned address literally, never re-resolving the (unresolvable) hostname at connect time 3ms
+ ✓ |@crabgic/gateway| src/transport/http-transport.test.ts > sendHttpRequest — DNS pinning (HIGH #1 adversarial-review fix) > preserves the original hostname as the Host header while dialing the pinned IP 1ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 10.0.0.1 as private/reserved 16ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 172.16.5.5 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 192.168.1.1 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 127.0.0.1 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 169.254.169.254 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 0.0.0.0 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies ::1 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies fe80::1 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies fd00::1 as private/reserved 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 8.8.8.8 as public 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 1.1.1.1 as public 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 203.0.113.5 as public 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies 2606:4700:4700::1111 as public 1ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:169.254.169.254 as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:10.0.0.1 as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:127.0.0.1 as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:192.168.1.1 as private/reserved (MEDIUM #4) 6ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:a9fe:a9fe as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 64:ff9b::a9fe:a9fe as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 64:ff9b::10.0.0.1 as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::10.0.0.1 as private/reserved (MEDIUM #4) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 ::ffff:8.8.8.8 as public when the embedded address is public 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > isPrivateOrReservedIp > classifies IPv6-embedded-IPv4 64:ff9b::8.8.8.8 as public when the embedded address is public 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkOriginAllowlist > allows an exact scheme+origin match 1ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkOriginAllowlist > refuses a foreign origin 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkOriginAllowlist > refuses a scheme downgrade (http instead of https) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkOriginAllowlist > refuses a same-origin-looking but distinct port 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkResolvedAddress > allows a public IP 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkResolvedAddress > refuses a private IP 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > allows an allowlisted origin resolving to public addresses 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > refuses when origin passes but resolved address is private (DNS rebinding) 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > refuses a foreign-origin redirect target outright, before address resolution matters 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > refuses when no resolved addresses are supplied 0ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > property: any origin outside the allowlist is always refused regardless of resolved address 1811ms
+ ✓ |@crabgic/gateway| src/transport/ssrf-guard.test.ts > checkHopBeforeCredentialAttach > property: a private-range resolved address is always refused even for the allowlisted origin 4ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 401 to kind authentication 11ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 403 to kind permission 5ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 404 to kind not_found 4ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 409 to kind conflict 19ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 412 to kind conflict 11ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 429 to kind rate_limited 6ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 400 to kind validation 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 422 to kind validation 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 501 to kind unsupported 17ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 500 to kind transient 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 502 to kind transient 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 503 to kind transient 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > maps status 418 to kind transient 4ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapHttpStatusToConnectorError > never leaks the raw provider response on the returned error 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapUnknownErrorToConnectorError > passes through an existing ConnectorError unchanged 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapUnknownErrorToConnectorError > wraps a generic Error as transient, with the redacted-detail summary carrying no raw fields 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/error-mapping.test.ts > mapUnknownErrorToConnectorError > wraps a non-Error thrown value 0ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > records a brand-new plan and returns the confirmed applied revision 164ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > persists a pre-I/O pending record, then a terminal 'recorded' record — both under the SAME operationId (HIGH/MEDIUM #3) 64ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > replays a byte-identical result for the same (operationId, contentHash) without re-invoking the network call 33ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > rejects a changed-content plan for the same idempotencyKey as a typed conflict, never a silent overwrite 42ms
+ ✓ |@crabgic/gateway| src/security/leak-hunt.test.ts > leak hunt — canonical-error mapping never echoes a raw provider body > mapHttpStatusToConnectorError's ConnectorError.toData() never contains the marker 3ms
+ ✓ |@crabgic/gateway| src/security/leak-hunt.test.ts > leak hunt — canonical-error mapping never echoes a raw provider body > mapUnknownErrorToConnectorError's ConnectorError.toData() never contains the marker 0ms
+ ✓ |@crabgic/gateway| src/security/leak-hunt.test.ts > leak hunt — native tool-registry dispatch never echoes a raw provider body on error > tracker.search's GatewayToolResult never contains the marker when the provider throws with it embedded 9ms
+ ✓ |@crabgic/gateway| src/security/leak-hunt.test.ts > leak hunt — mutation pipeline never journals a raw provider body > a failed mutation's outcome, and every journal entry it wrote, never contain the marker 65ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > a foreign-origin buildRequest target is refused by the SSRF guard before any network call, mapped to a failed outcome 50ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > concurrent writes for the SAME tenant+resource through the mutation pipeline are write-serialized 147ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — MEDIUM #5: concurrent same-idempotencyKey serialization > two concurrent calls for the SAME idempotencyKey never both apply — the second observes the first's recorded result 75ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a network failure with no reconcileAmbiguous hook to a blocked/ambiguous_write outcome (fails closed) 103ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that resolves it maps to recorded, no duplicate call 107ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that cannot resolve it still blocks 51ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a verify() false result to a failed outcome, never silently treated as success 49ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > MutationVerificationFailedError carries the plan id 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a >=400 HTTP response to a failed outcome carrying the canonical ConnectorError kind 91ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > propagates a genuinely unexpected programming error rather than swallowing it 44ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > an AmbiguousWriteBlockedError thrown directly from parseResponse is mapped to blocked 39ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > never blindly re-applies — with no reconcileAmbiguous hook, blocks instead of retrying 36ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that resolves it, converges to recorded without a fresh network call 43ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that CANNOT resolve it, still blocks (never guesses) 30ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > a reconcileAmbiguous hook that itself throws a ConnectorError maps to a failed outcome 34ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'failed' record for the same operationId+contentHash is returned verbatim, never re-applied 27ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'conflict' record for the same operationId+contentHash is returned verbatim, never re-applied 37ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a network call that itself throws AmbiguousWriteBlockedError directly > is never double-wrapped, and maps straight through to blocked 112ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill before the network call converges to exactly one real PUT after recovery 1591ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill after the network call (before this pipeline's own record write) converges to exactly one real PUT after recovery 1586ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, before this pipeline's own record write, NEVER produces a double-create 1869ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, with reconciliation disabled, blocks (never guesses) and never double-creates 2295ms
+
+ Test Files  12 passed (12)
+      Tests  165 passed (165)
+   Start at  12:31:31
+   Duration  13.35s (transform 12.35s, setup 0ms, import 16.93s, tests 11.60s, environment 3ms)
+
+# ---------------------------------------------------------------------------
+# exit status: 0

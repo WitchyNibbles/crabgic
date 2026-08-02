@@ -1,0 +1,93 @@
+# criteria-closeout pass, phase 16 — criterion 12 search trail (UNMET)
+# UTC:      2026-08-02T10:34:04Z
+# HEAD:     30f931eab97b8360102498d4b766513be67241d0
+# Command:  bash tm.sh   (each command echoed verbatim as a '$ ' line, with its own output
+#           and its own 'exit=' status; exit=1 on a git grep means NO MATCH)
+#
+# Criterion 12: "Security review sign-off recorded against `docs/threat-model.md`."
+# This transcript is the search for that record. It backs
+# docs/evidence/criteria-closeout/defects/16-threat-model-signoff-not-landed.md.
+# ---------------------------------------------------------------------------
+
+# 1. Does docs/threat-model.md carry ANY sign-off wording at all?
+$ git grep -n -i -F -e "sign-off" -e "signoff" -- docs/threat-model.md
+exit=1
+
+#     exit=1 = no match. The doc's only review record is its 02-era note:
+
+$ sed -n '280,287p' docs/threat-model.md
+## Review note
+
+- **Reviewer:** this orchestrated documentation pass (phase 02, work item 9), conducted by reading
+  `docs/claude-code-adaptation.md`, `docs/engine-baseline.md`, `docs/interface-ledger.md`, and roadmap phases
+  02, 03, 05, 06, 10, 12, 16, 17, and 22 directly, and cross-checking each cited mechanism against the owning
+  phase's own committed text rather than summarizing from memory.
+- **Date:** 2026-07-15.
+- **Scope reviewed:** the nine surfaces required by `roadmap/02-contracts-and-schemas.md`'s exit criterion —
+exit=0
+
+# 2. What the doc still says about phase 16's implementation status:
+$ sed -n '27,29p' docs/threat-model.md
+This is a **design-level** threat model. Phases 03, 05, 06, 10, 12, 16, 17, and 22 are unimplemented as of
+this writing (only phase 02's contracts and phase 00/01's spikes/bootstrap exist in `packages/`); the
+mitigations cited below are the specification each phase's own exit criteria will hold it to, not yet
+exit=0
+
+# 3. Section 5 (Gateway) spans lines 152-170. Does IT cite any implementation artifact
+#    (packages/gateway, docs/security-posture.md, docs/evidence/phase-16)?
+$ sed -n '152,170p' docs/threat-model.md | grep -n -F -e 'packages/gateway' -e 'security-posture' -e 'phase-16'
+exit=1
+
+#     exit=1 = no match. Every mitigation cell in 5 cites roadmap prose ('16 §Transport
+#     security', '16 exit criteria'), i.e. the specification, never the shipped code.
+#     For contrast, section 2 (Worker runtime) WAS updated post-implementation and does cite
+#     docs/security-posture.md and dated 2026-08-01 measurements:
+$ sed -n '105p' docs/threat-model.md | grep -c -F 'security-posture'
+1
+exit=0
+
+
+# 4. Is section 5's residual text current? bddac4c sharpened the upstream-MCP-wrap containment
+#    from a soft default to 'structurally unenableable'. That landed in docs/security-posture.md
+#    and roadmap/16, but NOT in the threat model, which still says 'flag-gated':
+$ git grep -c -F -e "unenableable" -- docs/threat-model.md docs/security-posture.md roadmap/16-gateway-core.md
+docs/security-posture.md:2
+roadmap/16-gateway-core.md:1
+exit=0
+
+$ sed -n '163p' docs/threat-model.md | grep -o 'is flag-gated and, per 16.s own text, it remains an open question'
+is flag-gated and, per 16's own text, it remains an open question
+exit=0
+
+# 5. Where the sign-off ACTUALLY lives — recorded so the defect is not overstated:
+$ git grep -n -F -e "## Sign-off" -- docs/security-posture.md
+docs/security-posture.md:33:## Sign-off
+exit=0
+
+$ sed -n '145,153p' docs/security-posture.md
+### 5. Gateway
+
+Implementation: `packages/gateway` (16), the design's other explicit "security keystone."
+Five interrelated findings were found and fixed (table above: HIGH #1 DNS-pinning TOCTOU,
+HIGH #2 the mutate-path SSRF/exactly-once bypass, MEDIUM/HIGH #3 the exactly-once
+identity-mismatch, MEDIUM #4 an IPv4-mapped/NAT64-embedded IPv6 SSRF-classifier gap, MEDIUM
+#5 no concurrency serialization on same-idempotency-key calls). All five are fixed and
+re-verified against the full 278-test suite (`docs/evidence/phase-16/README.md`). The one
+threat-model-acknowledged open item — the optional upstream-MCP-client wrap's quarantine
+exit=0
+
+$ git grep -n -F -e "Not done in this session" -- docs/evidence/phase-16/README.md
+docs/evidence/phase-16/README.md:122:that document already names. **Not done in this session:** editing `docs/threat-model.md` itself
+exit=0
+
+# 6. Change history of docs/threat-model.md — no phase-16 commit ever touched it:
+$ git log --oneline -5 -- docs/threat-model.md
+6dd211b feat(detect): journal capability-quarantine verdicts (ledger Gap 5, resolved) (#49)
+8ae9007 test(live): measure the path-anchor question — honored as ALLOW, inert as DENY (#42)
+933a0a4 fix(security): deny the journal where it actually lives, not where XDG defaults put it (#39)
+3e74cc7 refactor: rename the project from engineering-orchestrator to crabgic
+c0f6762 feat: phase 02 contracts, JSON schemas, testkit, and threat model
+exit=0
+
+# ---------------------------------------------------------------------------
+# exit status: 0 (every command ran to completion)

@@ -1,0 +1,62 @@
+# criteria-closeout pass, phase 16 — criterion 5, the 'log' surface
+# UTC:      2026-08-02T10:50:50Z
+# HEAD:     30f931eab97b8360102498d4b766513be67241d0
+# Command:  bash log.sh   (each command echoed verbatim as a '$ ' line, with its own output
+#           and its own 'exit=' status; exit=1 on a git grep means NO MATCH)
+#
+# Criterion 5 names three surfaces — error, log, artifact. The first and third are searched by
+# packages/gateway/src/security/leak-hunt.test.ts. This transcript establishes what the second
+# amounts to in this package, so its coverage is understood rather than assumed.
+# ---------------------------------------------------------------------------
+
+# The 'log' surface of criterion 5, checked rather than assumed.
+
+# (a) console.* in production source
+$ git grep -n -I -F -e "console." -- packages/gateway/src ":!*.test.ts"
+exit=1
+
+# (b) a logger, or a log() call, in production source
+$ git grep -n -I -i -e "logger" -e "\\blog(" -- packages/gateway/src ":!*.test.ts"
+exit=1
+
+# (c) direct stream writes in production source
+$ git grep -n -I -F -e "process.stderr" -e "process.stdout" -- packages/gateway/src ":!*.test.ts" ":!*/test-support/*"
+packages/gateway/src/mcp/stdio-boot.ts:31:  /** Defaults to `process.stdout`. */
+packages/gateway/src/mutation-pipeline/kill-harness-fixtures/deterministic-put-and-crash.mjs:26:  process.stdout.write(`${FAULT_POINT_MARKER_PREFIX}${name}\n`);
+packages/gateway/src/mutation-pipeline/kill-harness-fixtures/nonidempotent-post-and-crash.mjs:29:  process.stdout.write(`${FAULT_POINT_MARKER_PREFIX}${name}\n`);
+exit=0
+
+# READ (c) HONESTLY — it is exit=0, three hits, and none of them is a logging surface:
+#   - stdio-boot.ts:31 is a JSDoc line naming the default output STREAM for the MCP
+#     transport (the JSON-RPC pipe). Not a write, not a log.
+#   - the two kill-harness-fixtures/*.mjs writes emit this repo's fault-point marker so
+#     runKillHarness knows where to kill the child. They are test fixtures that happen to
+#     live under src/, are never imported by shipped code, and write a fixed marker string,
+#     never provider data.
+# So no production code path in this package writes provider-derived text to any log.
+
+# NON-VACUITY, stated precisely rather than waved at.
+# (a)'s pattern is discriminating: it matches in other packages, so exit=1 above is a real
+# absence in this one.
+$ git grep -l -I -F -e "console." -- packages/ | head -5
+packages/engine-claude/src/live/live-harness.ts
+packages/gates/src/drift/cli.ts
+packages/journal/src/store/append-entry.test.ts
+packages/plugin/hooks/hooks.json
+packages/plugin/hooks/post-tool-use-format-warning.mjs
+exit=0
+
+# (b)'s pattern is NOT discriminating on its own: this repository has no logger abstraction
+# anywhere, so its exit=1 would look the same either way. Recorded as a weak signal, and it
+# is (a) plus (c) that carry the claim.
+$ git grep -l -I -i -e "logger" -- packages/ | wc -l
+0
+exit=0
+
+# Corroboration: the scans above are not scanning an empty set.
+$ git ls-files packages/gateway/src | grep -v ".test.ts" | wc -l
+44
+exit=0
+
+# ---------------------------------------------------------------------------
+# exit status: 0 (every command ran to completion)
