@@ -428,48 +428,156 @@ describe("sandbox-selftest — a marker path with whitespace must not truncate",
  * runs through the real `runDoctor()` left 5, one run of this very file added
  * 14, and `/tmp` on the development host had accumulated **98** before anyone
  * looked. ~4 KB and one inode per `doctor` invocation, permanently.
+ *
+ * ROUND 33 — the assertion was right, its INSTRUMENT was not. Both leak tests
+ * counted `eo-sandbox-selftest-*` entries in the SHARED `os.tmpdir()` before
+ * and after the run, and compared the two numbers. That is a measurement of
+ * the whole host, not of this check: any other process creating or removing a
+ * marker between the two reads flips the comparison. `/tmp` is shared, the
+ * prefix is a compile-time constant, and the population is not this test's to
+ * control.
+ *
+ * Two independent producers were measured, both real:
+ *
+ *   - a neighbour process doing exactly what `createOwnedMarkerPath` does
+ *     (mkdtemp/rm on that prefix in the globbed tmpdir) -> 9 of 10 runs red,
+ *     BOTH call sites, `expected 42 to be 47` / `expected 61 to be 48`;
+ *   - no neighbour injected at all, just another agent's concurrent suite on
+ *     the same host -> red on the first attempt, green on the retry.
+ *
+ * And a third the test inflicted on itself: `createOwnedMarkerPath` first calls
+ * `sweepStaleMarkerDirs`, which REMOVES up to `MAX_STALE_MARKER_SWEEP` stale
+ * markers from that same shared root — so on any host with an hour-old backlog
+ * the count legitimately drops mid-test, with no neighbour required.
+ *
+ * The check was correct every time. A suite that goes red for environmental
+ * reasons teaches everyone reading it to discount red, which is the one habit
+ * this file's evidence discipline exists to prevent.
+ *
+ * The fix is not a laxer assertion, it is a NARROWER instrument. `TMPDIR` is
+ * redirected to a root this test alone owns — the idiom rounds 26 and 27
+ * already use below — and the directory under test is taken from the REAL argv
+ * the check built, then asserted to exist while the probe is running and to be
+ * gone once it returns. "This exact directory existed during the run and does
+ * not exist after it" is strictly stronger than "a population count did not
+ * move": it names the subject, it cannot pass vacuously, and no other process
+ * can perturb it.
  */
 describe("sandbox-selftest — the marker directory must not leak", () => {
-  async function countMarkerDirs(): Promise<number> {
-    const { readdir } = await import("node:fs/promises");
+  /**
+   * A tmpdir this test alone owns. `os.tmpdir()` honours `TMPDIR`, and the
+   * check derives its marker directory from it, so redirecting makes every
+   * marker the run creates identifiable by path. The root's own prefix is
+   * deliberately NOT the swept one: a concurrent `doctor` elsewhere on the
+   * host must have no reason to look inside it.
+   */
+  async function withPrivateTmpdir<T>(body: (root: string) => Promise<T>): Promise<T> {
+    const { mkdtemp, rm } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
-    const entries = await readdir(tmpdir()).catch(() => [] as string[]);
-    return entries.filter((name) => name.startsWith("eo-sandbox-selftest-")).length;
+    const { join } = await import("node:path");
+    const root = await mkdtemp(join(tmpdir(), "eo-r33-leak-"));
+    const previousTmpdir = process.env["TMPDIR"];
+    process.env["TMPDIR"] = root;
+    try {
+      return await body(root);
+    } finally {
+      if (previousTmpdir === undefined) delete process.env["TMPDIR"];
+      else process.env["TMPDIR"] = previousTmpdir;
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  /** Marker directories left under a root, as absolute paths. */
+  async function markerDirsIn(root: string): Promise<readonly string[]> {
+    const { readdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const entries = await readdir(root).catch(() => [] as string[]);
+    return entries
+      .filter((name) => name.startsWith("eo-sandbox-selftest-"))
+      .map((name) => join(root, name));
+  }
+
+  /**
+   * The directory the check created for THIS run, named from the REAL argv it
+   * built: `args[args.length - 1]` is the positional `$1`, the marker path —
+   * the same slot the redirect-target tests above read — and its parent is the
+   * directory `createOwnedMarkerPath` made. Reading the argv rather than
+   * listing a directory means the subject is the path the production code
+   * actually used, not whatever happened to be lying around.
+   *
+   * It is asserted to EXIST here, inside the probe, because this is the one
+   * moment it is guaranteed to: the check is mid-run and its `finally` has not
+   * fired. Without that half, "it is gone afterwards" would also pass if it had
+   * never been created.
+   */
+  async function captureLiveMarkerDir(args: readonly string[]): Promise<string> {
+    const { access } = await import("node:fs/promises");
+    const dir = dirname(args[args.length - 1] ?? "");
+    await expect(access(dir)).resolves.toBeUndefined();
+    return dir;
+  }
+
+  /**
+   * Each captured directory must be inside the private root and must be gone,
+   * and the root must hold no other marker. `runs` pins the count of DISTINCT
+   * directories captured: a short list would mean the probe never reached the
+   * confinement stage, and the test would otherwise pass vacuously.
+   */
+  async function expectRemoved(root: string, captured: readonly string[], runs: number) {
+    const { access } = await import("node:fs/promises");
+    expect(new Set(captured).size).toBe(runs);
+    for (const dir of captured) {
+      // Proves the redirect took effect: a marker outside the private root
+      // would mean the assertion is once again about shared `/tmp`.
+      expect(dirname(dir)).toBe(root);
+      await expect(access(dir)).rejects.toThrow();
+    }
+    expect(await markerDirsIn(root)).toEqual([]);
   }
 
   it("removes the directory it created, on the passing path", async () => {
-    const before = await countMarkerDirs();
-    await createSandboxSelftestCheck({
-      probe: async (_command, args) =>
-        args.includes("--version")
-          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
-          : { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 },
-    }).run();
-    expect(await countMarkerDirs()).toBe(before);
+    await withPrivateTmpdir(async (root) => {
+      const captured: string[] = [];
+      await createSandboxSelftestCheck({
+        probe: async (_command, args) => {
+          if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+          captured.push(await captureLiveMarkerDir(args));
+          return { stdout: "WROTE:2\n", stderr: "Read-only file system", exitCode: 2 };
+        },
+      }).run();
+      await expectRemoved(root, captured, 1);
+    });
   });
 
   it("removes it on a refusal path too, and when the probe throws", async () => {
-    const before = await countMarkerDirs();
+    await withPrivateTmpdir(async (root) => {
+      const captured: string[] = [];
 
-    // Confinement broken -> an early `return`, not the happy path.
-    await createSandboxSelftestCheck({
-      probe: async (_command, args) =>
-        args.includes("--version")
-          ? { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 }
-          : { stdout: "WROTE:0\n", stderr: "", exitCode: 0 },
-    }).run();
-
-    // And a throw, which no `return`-site cleanup would survive.
-    await expect(
-      createSandboxSelftestCheck({
+      // Confinement broken -> an early `return`, not the happy path.
+      await createSandboxSelftestCheck({
         probe: async (_command, args) => {
           if (args.includes("--version")) return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
-          throw new Error("spawn bwrap ENOENT");
+          captured.push(await captureLiveMarkerDir(args));
+          return { stdout: "WROTE:0\n", stderr: "", exitCode: 0 };
         },
-      }).run(),
-    ).rejects.toThrow(/ENOENT/);
+      }).run();
 
-    expect(await countMarkerDirs()).toBe(before);
+      // And a throw, which no `return`-site cleanup would survive.
+      await expect(
+        createSandboxSelftestCheck({
+          probe: async (_command, args) => {
+            if (args.includes("--version"))
+              return { stdout: "bwrap 0.9.0", stderr: "", exitCode: 0 };
+            captured.push(await captureLiveMarkerDir(args));
+            throw new Error("spawn bwrap ENOENT");
+          },
+        }).run(),
+      ).rejects.toThrow(/ENOENT/);
+
+      // Two runs, two distinct directories, each named from its own argv,
+      // each proven to have existed mid-run, and both gone.
+      await expectRemoved(root, captured, 2);
+    });
   });
 
   it("does not delete a caller-injected path, which is the caller's to manage", async () => {
