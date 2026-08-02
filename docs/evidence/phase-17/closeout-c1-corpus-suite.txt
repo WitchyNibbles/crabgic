@@ -1,0 +1,123 @@
+# Captured (UTC): 2026-08-02T10:12:41Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: npx vitest run packages/renderer/src/corpus.test.ts packages/renderer/src/unicode-defense.test.ts packages/renderer/src/secret-scan.test.ts packages/renderer/src/url-policy.test.ts packages/renderer/src/attribution-neutral.test.ts packages/renderer/src/evidence-claims.test.ts packages/renderer/src/metadata-strip.test.ts packages/renderer/src/length-limits.test.ts --coverage.enabled=false --reporter=verbose
+# ---- verbatim output below ----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p17
+
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > blocks a Co-Authored-By trailer 3ms
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > blocks a Signed-off-by trailer 0ms
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > blocks Author/Committer/Date/Change-Id trailers 2ms
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > is case-insensitive on the trailer key 0ms
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > allows clean text with no trailers 1ms
+ ✓ |@crabgic/renderer| src/metadata-strip.test.ts > metadataStripStage > does not false-positive on unrelated 'Author' mid-sentence text 0ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > blocks the seeded 'Generated with...'/'Co-Authored-By' fixture (shared with 08) 4ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > blocks first-person voice 1ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > blocks a sign-off closing 0ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > blocks an engine-name credit 3ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > blocks the harness's own name 0ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > allows clean neutral text 2ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > still blocks a lone '--' signature delimiter on its own line (L1) 2ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > does NOT false-block a unified-diff header ('--- a/file') — L1 adversarial-review finding 0ms
+ ✓ |@crabgic/renderer| src/attribution-neutral.test.ts > attributionNeutralStage > does NOT false-block a markdown horizontal rule ('---') — L1 adversarial-review finding 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > blocks a seeded unevidenced 'fixed' claim in a review comment 4ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > blocks every claim word without evidence 1ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > allows a claim accompanied by an https URL 3ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > allows a claim accompanied by a Jira-style ticket key 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > allows a claim accompanied by an explicit evidence: marker 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > allows text with no completion claims at all 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > blocks a claim next to a placeholder Evidence: line (e.g. 'none provided') 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > blocks a claim next to other placeholder evidence contents 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > blocks an unevidenced claim next to a standard/hash token that looks like a ticket key — M3 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/evidence-claims.test.ts > evidenceClaimsStage > still allows a claim accompanied by a real-looking Jira ticket key not on the denylist 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows a commit subject at exactly the 72-char boundary 9ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks a commit subject one char over the 72-char boundary 1ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows a review comment at exactly the 6-line boundary 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks a review comment one line over the 6-line boundary 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > blocks trailing whitespace on a line 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > allows text with no trailing whitespace 0ms
+ ✓ |@crabgic/renderer| src/length-limits.test.ts > lengthLimitsStage > reads limits from the policy argument, not a hardcoded constant 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a <script> tag in a PR body (failing-first fixture) 3ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a data: URL in a Grafana-annotation-shaped fixture 6ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a javascript: URL 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks an embedded remote image 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a slash-delimited-attribute XSS tag with no whitespace before attrs (<svg/onload=...>) — M1 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a slash-delimited-attribute XSS tag (<img/src=x onerror=y>) — M1 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > blocks a non-allowlisted scheme (plain http) 0ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > allows an https link 1ms
+ ✓ |@crabgic/renderer| src/url-policy.test.ts > urlPolicyStage > allows plain text with no URLs or tags 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks an AWS-style access key in a review comment (failing-first fixture) 4ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a PEM private-key header 1ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a PEM header with no algorithm prefix 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a postgres connection string with embedded credentials 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a mongodb connection string with embedded credentials 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a GitHub-style PAT 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a bearer token 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a hyphenated Anthropic-style API key (sk-ant-*) — C1 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a hyphenated OpenAI-style project API key (sk-proj-*) — C1 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a generic hyphenated sk- secret key not matching a known vendor prefix 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a GCP-style AIza API key — H1 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a modern github_pat_ personal access token — H2 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > blocks a raw JWT with no Bearer prefix — H2 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > allows clean review-comment text with no secrets 1ms
+ ✓ |@crabgic/renderer| src/secret-scan.test.ts > secretScanStage > reports a correct span for the matched secret 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > loads at least one attack fixture per named vector and one valid fixture per ArtifactKind 2ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-adf-link-javascript-href: Jira milestone comment link renders to an ADF link mark with a javascript: href — M2 adversarial-review fixture (validateAdfSafeSubset must catch this even with no url-policy stage ahead of it). 5ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-attribution-leak: Generated-with/Co-Authored-By attribution trailer leaked into a commit body (shared with 08's belt-and-suspenders assertion). 2ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-bidi-override: Trojan Source bidi-override (CVE-2021-42574) smuggled into a commit body. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-confusable-domain: Cyrillic а (U+0430) homograph inside an otherwise-Latin domain, in a link. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-confusable-greek-alpha: Greek lowercase alpha (U+03B1) homograph in a domain-in-link fixture — M4 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-data-url: data: URL injected into a Grafana annotation. 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-engine-name-leak: Engine-name credit line leaked into a PR body (adaptation §9 Neutrality test-matrix item). 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-html-injection: Raw <script> HTML tag injected into a PR body. 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-html-injection-slash-attribute: Slash-delimited-attribute XSS tag with no whitespace before attrs (<svg/onload=...>) in a PR body — M1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-line-paragraph-separator: LINE SEPARATOR (U+2028) smuggled into a review comment to bypass newline-based line counting — L3 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-lrm-rlm-direction-marks: LEFT-TO-RIGHT MARK (U+200E) smuggled into a commit body — L3 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-over-length: Over-length payload exceeding the review comment's 6-line CommunicationPolicy limit. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-remote-image: Embedded remote image in a PR body. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-script-url: javascript: URL injected into a review comment. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-anthropic-key: Hyphenated Anthropic-style API key (sk-ant-*) leaked in a review comment — C1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-aws-key: AWS-style access key leaked in a review comment. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-connection-string: Database connection string with embedded credentials leaked in a PR body. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-gcp-key: GCP-style AIza API key leaked in a Grafana annotation — H1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-github-fine-grained-pat: Modern GitHub fine-grained personal access token (github_pat_*) leaked in a commit body — H2 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-openai-project-key: Hyphenated OpenAI-style project API key (sk-proj-*) leaked in a PR body — C1 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-pem-key: PEM private-key header leaked in a commit body. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-secret-raw-jwt: Raw JWT with no Bearer prefix leaked in a review comment — H2 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-unevidenced-claim: Unevidenced completion claim ('fixed') with no evidence reference anywhere in the text. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-unevidenced-claim-standard-token: Unevidenced completion claim next to a standard/hash token (SHA-256) that must not count as a ticket-key evidence reference — M3 adversarial-review fixture. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > attack-zero-width: Zero-width-joiner smuggled into a Jira milestone comment. 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-branch-name: A clean branch name within the 64-char limit. 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-commit-body: A clean, short commit body within the 5-line limit. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-commit-subject: A clean conventional-commit subject. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-grafana-annotation: A clean Grafana annotation within the 240-char limit. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-jira-milestone-comment: A clean, fully-shaped Jira milestone comment. 1ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-pr-body: A clean, fully-shaped PR body. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-pr-title: A clean PR title matching the commit-subject convention. 0ms
+ ✓ |@crabgic/renderer| src/corpus.test.ts > renderer corpus — packages/renderer/fixtures/corpus/ > valid-review-comment: A clean, fully-shaped review comment with evidence. 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > nfcNormalizationStage > never produces findings — preparatory transform, not a gate 3ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > normalizeToNfc > composes a decomposed accent into its precomposed form 1ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > normalizeToNfc > is idempotent (property, roadmap/17 Test plan) 71ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — bidi overrides (Trojan Source, CVE-2021-42574) > blocks a seeded bidi-override in a commit-body-shaped fixture 2ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — bidi overrides (Trojan Source, CVE-2021-42574) > allows clean text with no bidi controls 1ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — bidi overrides (Trojan Source, CVE-2021-42574) > property: every codepoint in the bidi-control range is always flagged 24ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — zero-width smuggling > blocks a seeded zero-width-joiner in a Jira-comment-shaped fixture 1ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — zero-width smuggling > property: every codepoint in the zero-width set is always flagged 27ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — unexpected control characters > blocks a stray NUL byte 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — unexpected control characters > allows tab/newline/carriage-return 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — confusable/homograph domains > blocks a Cyrillic 'а' (U+0430) inside an otherwise-Latin domain-in-link fixture 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — confusable/homograph domains > does not flag a token composed entirely of one non-Latin script 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — confusable/homograph domains > allows an ordinary Latin-only domain 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — confusable/homograph domains > property: every confusable-table codepoint mixed into a Latin word is always flagged 8ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — confusable/homograph domains > blocks a Greek lowercase alpha (U+03B1) homograph in a domain — M4 adversarial-review fixture 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — LRM/RLM and line/paragraph separators (L3) > blocks LEFT-TO-RIGHT MARK (U+200E) and RIGHT-TO-LEFT MARK (U+200F) 0ms
+ ✓ |@crabgic/renderer| src/unicode-defense.test.ts > unicodeDefenseStage — LRM/RLM and line/paragraph separators (L3) > blocks LINE SEPARATOR (U+2028) and PARAGRAPH SEPARATOR (U+2029) 0ms
+
+ Test Files  8 passed (8)
+      Tests  107 passed (107)
+   Start at  12:12:41
+   Duration  1.08s (transform 3.24s, setup 0ms, import 5.54s, tests 241ms, environment 1ms)
+
+# ---- end of output ----
+# exit status: 0

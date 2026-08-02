@@ -1,0 +1,18 @@
+# Captured (UTC): 2026-08-02T10:13:42Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root
+# command: npx vitest run packages/renderer/src/manifest.test.ts --coverage.enabled=false --reporter=verbose
+# ---- verbatim output below ----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p17
+
+ ✓ |@crabgic/renderer| src/manifest.test.ts > packages/renderer/package.json — no HTTP-client/VCS-host SDK dependency > declares only @crabgic/contracts as a runtime dependency 4ms
+ ✓ |@crabgic/renderer| src/manifest.test.ts > packages/renderer/package.json — no HTTP-client/VCS-host SDK dependency > carries no HTTP-client or VCS-host SDK dependency by name, in dependencies or devDependencies 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:13:43
+   Duration  190ms (transform 24ms, setup 0ms, import 37ms, tests 6ms, environment 0ms)
+
+# ---- end of output ----
+# exit status: 0
