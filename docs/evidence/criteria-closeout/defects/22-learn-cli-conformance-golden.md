@@ -39,8 +39,9 @@ and a **golden CLI-output test** — and neither exercises the real backend.
 1. **P09's conformance harness never exercises the real backend.** P09 names the harness by suite,
    in its own exit criterion 1 — "_Every plan CLI command exists as a typed UDS request with
    stable exit codes; `--json` validates against published schemas — suite `cli.commands.schema.test`_"
-   (`roadmap/09-cli-and-doctor.md:211` at this pass's base `eabb65a`; `:235` as of main
-   `30f931e`, which ticked that box — quote unchanged, line moved).
+   (in `roadmap/09-cli-and-doctor.md`, quoted rather than line-referenced on purpose: another
+   phase's roadmap renumbers whenever its own closeout lands, and this criterion moved twice
+   while this record was being written).
    In `packages/cli/src/commands/cli.commands.schema.test.ts` the string `learn` occurs on exactly
    four lines — `:224-227` — and all four sit inside
    `describe("dispatchCommand — NOT_IMPLEMENTED stubs", …)`, asserting
@@ -60,17 +61,17 @@ and a **golden CLI-output test** — and neither exercises the real backend.
    → `0`. That suite asserts with `toContain`/`toMatchObject` on hand-picked fields. The only
    committed golden touching `learn` is its help topic — help text, not command output. So P09's
    own companion criterion — "_Help text and every `--json` output schema are snapshot-stable —
-   suite `cli.snapshots.test`_" (`roadmap/09-cli-and-doctor.md:224` at base `eabb65a`; `:383` as of
-   main `30f931e`) — is unsatisfied for these four `--json` shapes too.
+   suite `cli.snapshots.test`_" (same file, likewise quoted rather than line-referenced) — is
+   unsatisfied for these four `--json` shapes too.
 
 Search trail, captured verbatim: `docs/evidence/phase-22/closeout-c6-cli-conformance-search-trail.txt`.
 
 ### Independently corroborated by phase 09's own closeout
 
-Found while re-resolving citations against `origin/main` `30f931e` (this pass's base is `eabb65a`;
-the three intervening commits touch only `docs/evidence/` and other phases' `roadmap/` files —
-`git diff eabb65a 30f931e -- packages/ e2e/ scripts/ .github/` is empty, so nothing this record
-cites moved). Phase 09's closeout, run by a different agent, left its own criterion 7 **unticked**
+Found while re-resolving citations against `origin/main` (this pass's base is `eabb65a`; as of
+`f05970c` the diff restricted to the 19 paths this pass cites is empty, so nothing cited moved —
+note that the weaker _package_-level version of that claim has already rotted, `2ea3689` having
+touched `packages/cli`). Phase 09's closeout, run by a different agent, left its own criterion 7 **unticked**
 for the same reason and named these verbs explicitly:
 `docs/evidence/criteria-closeout/defects/09-json-output-snapshot-coverage.md` — "_No snapshot exists
 for the `--json` output of `doctor`, `evidence`, `status` (either shape), `cancel`, `run`,

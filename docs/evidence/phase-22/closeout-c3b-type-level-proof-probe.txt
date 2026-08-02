@@ -1,0 +1,25 @@
+# 2026-08-02T11:44:49Z — HEAD a6e063231898837a03bc33f70d8ccf3ec572563b
+# command: bash ./probe.tmp.sh
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
++ perl -0pi -e 's{(  readonly rollbackChangeSetId\?: string;\n)}{$1  readonly reviewApprovals?: readonly { readonly tokenId: string }[];\n}' packages/learning/src/proposal-store/registry.ts
++ perl -0pi -e 's{(  readonly changeSetRefs: ChangeSetReferences;\n)\}}{$1  readonly reviewApprovals?: readonly { readonly tokenId: string }[];\n\}}' packages/learning/src/promotion/promote.ts
++ grep -n 'readonly reviewApprovals' packages/learning/src/proposal-store/registry.ts packages/learning/src/promotion/promote.ts
+packages/learning/src/proposal-store/registry.ts:71:  readonly reviewApprovals: readonly VerifiedApprovalRecord[];
+packages/learning/src/proposal-store/registry.ts:94:  readonly reviewApprovals?: readonly { readonly tokenId: string }[];
+packages/learning/src/proposal-store/registry.ts:222:    readonly reviewApprovals: readonly VerifiedApprovalRecord[];
+packages/learning/src/promotion/promote.ts:12:  readonly reviewApprovals?: readonly { readonly tokenId: string }[];
++ echo '--- does it still typecheck with the field BACK? (the tests claim it would not) ---'
+--- does it still typecheck with the field BACK? (the tests claim it would not) ---
++ npx tsc -b --force packages/contracts packages/journal packages/learning
++ echo 'tsc exit: 0'
+tsc exit: 0
++ echo '--- do the two type-level proof tests still PASS with the field BACK? ---'
+--- do the two type-level proof tests still PASS with the field BACK? ---
++ grep -E 'reviewApprovals field|Test Files|  Tests '
++ npx vitest run packages/learning/src/proposal-store/registry.test.ts packages/learning/src/promotion/promote.test.ts --coverage.enabled=false --reporter=verbose
+ ✓ |@crabgic/learning| src/promotion/promote.test.ts > promoteProposal > PromoteProposalOptions carries no reviewApprovals field — the caller cannot supply a trusted-by-name approvals array here either 2ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > TransitionOptions carries NO reviewApprovals field at all — a caller cannot supply a trusted-by-name approvals array to transition() 5ms
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+# ---8<--- end ---8<---
+# exit status: 0
