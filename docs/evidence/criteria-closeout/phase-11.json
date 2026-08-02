@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "phase": "11",
+  "roadmapFile": "roadmap/11-intake-contract-approval.md",
+  "pass": {
+    "date": "2026-08-01",
+    "agent": "criteria-closeout pass, batch 2 (phase 11)",
+    "headSha": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "E2E (fake engine): request → contract → approval → run; halts correctly on each of the 7 seeded stop conditions (named suite, e.g. `intake.e2e.spec`).",
+      "textSha256": "d7f9c45ff577da31c83734b4715b14e582db7159d79d62898e6dc3a38c5fece0",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  crabgic  src/intake/intake.e2e.test.ts (9 tests) 92ms'; '  ✓  crabgic  src/intake/closed-loop.e2e.test.ts (4 tests) 114ms'; '  ✓  @crabgic/supervisor  src/intake/stop-conditions.test.ts (9 tests) 93ms'; run summary ' Test Files  623 passed (623)' / '      Tests  6060 passed | 1 skipped (6061)'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/intake.e2e.test.ts:221",
+          "quotedAssertion": "packages/cli/src/intake/intake.e2e.test.ts:221-243 — 'it.each(STOP_CONDITION_KINDS.map((kind, index) => [kind, index] as const))(\"halts an in-flight run for stop condition %s via the correct transition, and no other\", …)' driving a fresh run through awaiting_approval -> ready -> running before each halt, then ':241 expect(record.runState).toBe(\"blocked\"); :242 expect(runs.get(runId)?.runState).toBe(\"blocked\");'. The seven are enumerated from the exported constant, not hand-listed, so a condition added without a fixture cannot pass unnoticed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/stop-conditions.test.ts:56",
+          "quotedAssertion": "packages/supervisor/src/intake/stop-conditions.test.ts:56 — 'expect(decisions).toHaveLength(1);' inside the same 7-way it.each, counting `adjudication_decision` journal entries for the run. This is the 'and no other' half the criterion's word 'correctly' carries: exactly one halt is recorded per seeded condition. :94 'expect(STOP_CONDITION_KINDS).toHaveLength(7);' pins the count at seven."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/stop-conditions.test.ts:60",
+          "quotedAssertion": "packages/supervisor/src/intake/stop-conditions.test.ts:60-90 — the negative control: halting an already-terminal run 'rejects.toThrow(IllegalTransitionError)' AND still leaves 'expect(decisions).toHaveLength(1)'. Without it, a halt routine that journaled unconditionally would satisfy every positive case above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/closed-loop.e2e.test.ts:265",
+          "quotedAssertion": "packages/cli/src/intake/closed-loop.e2e.test.ts:265 — 'takes an intake request all the way to a driven run with no human asked': real `runIntakeCommand` intake, the real standing-policy gate, then ':351 expect(parsed.dispatch.accepted).toBe(true); :356 expect(runs.get(parsed.dispatch.runId!)?.runState).toBe(\"running\");' and ':99 expect(statuses.some((status) => isWorkUnitAttemptStatusTerminal(status))).toBe(true);' over the journal's `work_unit_transition` entries. This is the '→ run' leg of the chain; the engine is 03's `FakeEngineAdapter` (:49 import), which is the criterion's own '(fake engine)' clause."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/intake.e2e.test.ts:153",
+          "quotedAssertion": "packages/cli/src/intake/intake.e2e.test.ts:153-155 — 'expect(commandResult.outcome.artifacts.changeSet.state).toBe(\"awaiting_approval\"); expect(commandResult.standing?.status).toBe(\"approved\"); expect(changeSets.get(changeSetId)?.state).toBe(\"ready\");' — the request → contract → approval leg over the STANDING-approval path (ledger Gap 18). :203-218 exercises the other activation path in the same file, minting a real token and putting it through `runContractApprove` — as the replay-REFUSAL fixture, so it evidences that the token path is wired and guarded, not a successful token approval. The positive token-path evidence is unit-level: contract-approve-handler.test.ts:274 (approves to `ready`) and :318 (the seal it journals). The criterion does not demand a per-path E2E."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c1-e2e-and-stop-conditions.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 22 passed (22)' — scoped local re-run at the closeout base commit, command line and exit status recorded in the file header"
+        }
+      ],
+      "notes": "Two suites are cited because the criterion's chain spans two: `intake.e2e.test.ts` (the suite the criterion names, `intake.e2e.spec`) carries request → contract → approval and the 7 stop conditions, and `closed-loop.e2e.test.ts` carries the '→ run' leg — its own file header cites this criterion verbatim as its reason for existing. Both activation paths are covered, and separately: standing approval (`loadPolicy` → contained → ready, no token minted) and the token path (`ApprovalTokenMinter.mint` → `runContractApprove`). The replay fixture at :160 deliberately disclaims proving single-use — it asserts the ready-transition pre-check, and says so in a comment rather than borrowing credit from the durable ledger's own tests."
+    },
+    {
+      "index": 2,
+      "text": "Model self-approval fixture fails closed; worker-context `mcp__crabgic_gateway__contract.approve` call without a token fails closed (named adversarial fixtures).",
+      "textSha256": "e7ec6c028aa0dc6f70d31eb085804f058b12408da0d9ffa7da699f3b32c1467e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  crabgic  src/intake/contract-approve-handler.test.ts (13 tests) 92ms'; '  ✓  crabgic  src/approval/durable-approval-ledger.test.ts (9 tests) 171ms'; '  ✓  crabgic  src/intake/tool-definitions.test.ts (3 tests) 5ms'; '  ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 81ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:128",
+          "quotedAssertion": "packages/cli/src/intake/contract-approve-handler.test.ts:128 — 'fails closed for a scripted call with no pre-minted token (model self-approval fixture)', asserting ':151 expect(result.approved).toBe(false); :152 expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");' — refused AND no state moved, against a real seeded ChangeSet whose envelope resolves server-side."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:155",
+          "quotedAssertion": "packages/cli/src/intake/contract-approve-handler.test.ts:155 — 'worker-context fixture: a legitimately-registered caller still cannot approve without the real token payload', with the comment 'A worker's own envelope may legitimately allow calling this tool at all (Appendix B's worker profile), but that alone must never satisfy the gate'; ':181 expect(result.approved).toBe(false);' for `token: \"\"`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:274",
+          "quotedAssertion": "packages/cli/src/intake/contract-approve-handler.test.ts:274-301 — the positive control in the same file: 'approves and transitions to ready on a valid token with full requirement coverage', 'expect(result.approved).toBe(true); expect(changeSets.get(seed.id)?.state).toBe(\"ready\");'. Without it, a handler that refused everything would satisfy both fail-closed fixtures above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/approval/durable-approval-ledger.test.ts:67",
+          "quotedAssertion": "packages/cli/src/approval/durable-approval-ledger.test.ts:67-73 — 'fails closed for a token with no pre-mint at all (model self-approval fixture)': 'await expect(verifyApprovalTokenDurable(\"not-a-real-token\", …)).rejects.toThrow(ApprovalTokenSignatureError);'. :171 adds 'fails closed for a signature from a different secret key (a worker cannot forge one)'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/tool-definitions.test.ts:18",
+          "quotedAssertion": "packages/cli/src/intake/tool-definitions.test.ts:18-20 — 'contract.approve requires changeSetId/digest/token — never model-satisfiable with a bare call': 'expect(CONTRACT_APPROVE_TOOL.inputSchema.required).toEqual([\"changeSetId\", \"digest\", \"token\"]);' — the tool descriptor a model sees cannot be invoked without a token field at all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:171",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:171-181 — 'refuses contract.approve for an unknown ChangeSet without consulting the token', invoking the handler through the REAL production registry `buildRealGatewayToolRegistry()`: 'expect(result.isError).toBe(true); expect(result.content[0]!.text).toContain(\"unknown ChangeSet\");'. This is the same handler the gateway MCP server serves under `mcp__crabgic_gateway__contract.approve`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c2-self-approval-fails-closed.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 25 passed (25)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Scope, recorded so the tick is not read as wider than it is. The fixtures exercise the tool's HANDLER — through the real production registry in the `build-tool-registry` case, and directly in the two named adversarial fixtures. No test crosses the MCP stdio transport to invoke the literal wire name `mcp__crabgic_gateway__contract.approve`; the wire name is pinned to the handler by `tool-definitions.ts`'s registration under `contract.approve` plus `GATEWAY_MCP_SERVER_NAME` (ledger Gap 11), not by an end-to-end transport assertion. The criterion's own named channel is 'named adversarial fixtures', which is what is cited. Likewise, 'worker-context' is modelled by calling with no token payload rather than by compiling an Appendix-B worker permission profile — the guarantee the criterion states (a call without a token fails closed) is fully asserted; the allow-list-does-not-imply-authority reasoning lives in the fixture's comment, not in a compiled-profile fixture."
+    },
+    {
+      "index": 3,
+      "text": "Envelope hash stable across repeat builds of an unchanged fixture; amendment produces a distinct hash and invalidates the prior token (property test + golden fixture).",
+      "textSha256": "b0c619f3ffe3789c43c59370c76832950ec267c1f3dd8d167bcc6d337312e5f3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  @crabgic/supervisor  src/intake/envelope-builder.test.ts (7 tests) 141ms'; '  ✓  @crabgic/supervisor  src/intake/amendment.test.ts (11 tests) 51ms'; '  ✓  crabgic  src/approval/durable-approval-ledger.test.ts (9 tests) 171ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/envelope-builder.test.ts:41",
+          "quotedAssertion": "packages/supervisor/src/intake/envelope-builder.test.ts:41-55 — 'two builds of an identical fixture produce byte-identical envelope hashes': 'expect(first.canonicalHash).toBe(second.canonicalHash); expect(first).toEqual(second);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/envelope-builder.test.ts:127",
+          "quotedAssertion": "packages/supervisor/src/intake/envelope-builder.test.ts:138-148 — the property test the criterion names: fc.assert over 200 runs of two random contents, 'expect(hashA).toBe(hashA2);' (stability) and 'if (JSON.stringify(a) !== JSON.stringify(b)) { expect(hashEnvelopeContent(b)).not.toBe(hashA); }' (perturbation-sensitivity). :58-71 is the fixed one-field-mutation case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:251",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:251-280 — 'reports true when any field of the content differs': a previous envelope is really built and stored (`envelopes.put(original)`) with the ChangeSet pointing at it, then amended with `content({ ownedPaths: [\"src/widened\"] })`, giving ':280 expect(result.materialChange).toBe(true);'. By `amendment.ts:154-155` that flag is `isMaterialEnvelopeChange(previous.canonicalHash, options.content)`, i.e. `hashEnvelopeContent(candidate) !== previousHash` (amendment.ts:200-205) — and the new envelope's own `canonicalHash` IS `hashEnvelopeContent(content)`. So this asserts, one named two-line indirection away, that the amended envelope's hash differs from the prior envelope's hash. This is the criterion's 'distinct hash' bearer."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:246",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:216-246 — the falsifying counterpart, same fixture shape with a resolvable previous envelope: re-submitting byte-identical content gives ':246 expect(result.materialChange).toBe(false);'. This is what makes :280 mean something — the flag tracks the content, and is not stuck at true."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:193",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:193-201 — the indirection's own unit pair, comparing hash to hash directly: ':195 expect(isMaterialEnvelopeChange(hashEnvelopeContent(c), c)).toBe(false);' and ':200 expect(isMaterialEnvelopeChange(previous, content({ prohibitedActions: [\"x\"] }))).toBe(true);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:72",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:72-76 — the repointing half, cited ONLY for that: 'expect(changeSets.get(seed.id)?.authorizationEnvelopeId).toBe(result.envelope.id); expect(envelopes.get(result.envelope.id)).toEqual(result.envelope);' — the ChangeSet now names the new envelope and that envelope is durably resolvable, which is what lets `contract.approve` re-derive the digest server-side. See this criterion's notes for why the `:71` line of the same test is NOT cited."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/approval/durable-approval-ledger.test.ts:77",
+          "quotedAssertion": "packages/cli/src/approval/durable-approval-ledger.test.ts:77-88 — 'fails closed for a token minted for a DIFFERENT digest — the envelope-tamper / amendment fixture', whose own comment reads 'Simulates: approve, amend (new envelope hash), then replay the OLD token': 'await expect(verifyApprovalTokenDurable(minted.token, { subjectKind: \"envelope_hash\", digest: \"sha256:amended-envelope-hash\" }, …)).rejects.toThrow(ApprovalTokenMismatchError);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:242",
+          "quotedAssertion": "packages/cli/src/intake/contract-approve-handler.test.ts:242-271 — what makes the amendment actually invalidate the token in the real call path: the expected digest is derived server-side from `changeSets.get(id).authorizationEnvelopeId -> envelopes.get(...).canonicalHash` (CRITICAL C1), so 'a caller-supplied digest that disagrees with the ChangeSet's real envelope hash fails closed even with an otherwise-valid token for that stale digest' — 'expect(result.approved).toBe(false); expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/amendment.test.ts:107",
+          "quotedAssertion": "packages/supervisor/src/intake/amendment.test.ts:107-130 — the fail-closed companion (MEDIUM M4): amending a `ready` ChangeSet demotes it, 'expect(result.changeSet.state).not.toBe(\"ready\"); expect(changeSets.get(seed.id)?.state).not.toBe(\"ready\");' — a ready state can never point at an un-approved envelope. :216-249 is the negative control on the material-change report: byte-identical re-submitted content reports `materialChange: false`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/supervisor/goldens/authorization-envelope.json",
+          "quotedAssertion": "the committed golden envelope the criterion's 'golden fixture' clause names; byte-diffed against a fresh build by packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:21-24 ('expect(artifact.content).toBe(committed);'), which is a stability check across two genuinely separate builds rather than two in-process calls"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c3-envelope-hash-and-amendment.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 27 passed (27)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "CITATION CORRECTED 2026-08-02, after review of PR #60. This record first cited `amendment.test.ts:71` — 'expect(result.envelope.canonicalHash).not.toBe(seed.authorizationEnvelopeId)' — as the 'distinct hash' bearer. That assertion is VACUOUS and has been dropped as a bearer: it compares a `sha256:<hex64>` against a testkit UUID (`buildChangeSet` draws `authorizationEnvelopeId` from the fixture id provider, packages/testkit/src/fixtures/change-set.ts:12), so the two values can never be equal and the expectation cannot fail whatever amendment does. It is also the wrong pair — an envelope hash against a ChangeSet's envelope ID field. The clause is genuinely evidenced, so this is a citation correction and not an UNMET: the bearers are now :251-280 (with :246 as its falsifying counterpart) and the :193-201 unit pair. Generalised by the reviewer into a wave-wide rule: a cross-type `.not.toBe` — hash vs UUID, id vs digest — is a silent vacuity pattern, because an inequality between values of different formats always passes. `amendment.test.ts:71` is left unchanged in the tree (fixing it is not this pass's job); strengthening it to compare against the PREVIOUS envelope's `canonicalHash` is a suggested follow-up.\n\nHonest seam, unchanged: the criterion's two clauses are asserted separately rather than composed into one amend-then-replay test. 'Invalidates the prior token' is durable-approval-ledger.test.ts:77, the phase's own named amendment fixture, which supplies the amended digest directly instead of obtaining it from `amendEnvelope`. What links the two in production is asserted at contract-approve-handler.test.ts:242: the digest a token is checked against is re-derived from the ChangeSet's CURRENT envelope, so the repoint at amendment.test.ts:72-73 mechanically invalidates any token bound to the old hash."
+    },
+    {
+      "index": 4,
+      "text": "Unmapped requirement blocks the `ready` transition (unit test against 02's state machine).",
+      "textSha256": "5726c6cd3c79d8a2b7bbd7e94710c3fae983444c23009d215367ebbed7837a0b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  @crabgic/supervisor  src/intake/readiness-gate.test.ts (5 tests) 43ms'; '  ✓  crabgic  src/intake/contract-approve-handler.test.ts (13 tests) 92ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/readiness-gate.test.ts:31",
+          "quotedAssertion": "packages/supervisor/src/intake/readiness-gate.test.ts:31-51 — 'blocks the ready transition — throws before touching the state machine — when a requirement is unmapped': 'rejects.toThrow(UnmappedRequirementError)' for requirementIds [A, B] against workUnits [{requirementIds:[A]}], then ':50 expect(count).toBe(0);' over `run_transition` journal entries and ':51 expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");' — no journal write, no state change."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/readiness-gate.test.ts:54",
+          "quotedAssertion": "packages/supervisor/src/intake/readiness-gate.test.ts:54-68 — the positive control: identical call with full coverage, 'expect(updated.state).toBe(\"ready\");'. Without it, a gate that refused every transition would satisfy the criterion vacuously."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/readiness-gate.test.ts:124",
+          "quotedAssertion": "packages/supervisor/src/intake/readiness-gate.test.ts:124-138 — 'still surfaces IllegalTransitionError for full coverage but an illegal source state', importing `IllegalTransitionError` from `@crabgic/contracts` (:6). This is what makes the tick mean 'against 02's state machine' rather than against a local re-implementation: the real transition table is still the arbiter once coverage passes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:405",
+          "quotedAssertion": "packages/cli/src/intake/contract-approve-handler.test.ts:405-442 — the same gate reached through the real `contract.approve` call path: 'verifies but refuses ready when a requirement is unmapped — never flips state, and the token is NOT consumed (L5)', 'expect(result.approved).toBe(false); expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");' then ':441 expect(retry.approved).toBe(true);' with the SAME token once coverage is supplied."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c4-unmapped-requirement-blocks-ready.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 5 passed (5)' — scoped local re-run at the closeout base commit"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "text": "`project.inspect` returns a valid partial report with no 07/12 data journaled yet, and correct ChangeSet-state answers across a fixture set spanning every 02 run-lifecycle stage (Gap 1 clause).",
+      "textSha256": "cc19bab0541427cde7178f91f1a9410f33f791e428793451037535e678aa1822",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  @crabgic/supervisor  src/intake/project-inspect.test.ts (7 tests) 33ms'; '  ✓  crabgic  src/intake/project-inspect-handler.test.ts (2 tests) 8ms'; '  ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 81ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/project-inspect.test.ts:24",
+          "quotedAssertion": "packages/supervisor/src/intake/project-inspect.test.ts:24-31 — 'returns a valid partial report — no error — against a fresh, empty journal with no ChangeSets': 'expect(report.freeze).toBeUndefined(); expect(report.stackEvidence).toBeUndefined(); expect(report.changeSets).toEqual([]); expect(report.degraded.length).toBeGreaterThan(0);' — the 'no 07/12 data journaled yet' clause, degraded rather than thrown."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/project-inspect.test.ts:116",
+          "quotedAssertion": "packages/supervisor/src/intake/project-inspect.test.ts:116-136 — 'answers correct ChangeSet-state queries across a fixture set spanning every run-lifecycle stage': fixtures built from `RUN_LIFECYCLE_STATES` (:118), 'expect(listing.changeSets).toHaveLength(RUN_LIFECYCLE_STATES.length);' then per-id 'expect(single.changeSets).toEqual([cs]); expect(single.changeSets[0]!.state).toBe(cs.state);'. The stage set is enumerated from 02's exported constant — all 11 members, pinned at packages/contracts/src/contracts/change-set.test.ts:66 'expect(RUN_LIFECYCLE_STATES.length).toBe(11);' — not hand-listed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/project-inspect.test.ts:34",
+          "quotedAssertion": "packages/supervisor/src/intake/project-inspect.test.ts:34-46 and :93-102 — the anti-vacuity controls: a journaled `git_freeze` IS surfaced ('expect(report.freeze?.reason).toBe(\"second freeze\");') and a resolving StackEvidence provider IS folded in with no degraded note ('expect(report.stackEvidence).toEqual(evidence); expect(report.degraded.some((d) => d.includes(\"StackEvidence\"))).toBe(false);'). Without these, a report that always answered 'degraded, nothing here' would satisfy the empty-journal case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/project-inspect.test.ts:139",
+          "quotedAssertion": "packages/supervisor/src/intake/project-inspect.test.ts:139-146 — an unknown ChangeSet id 'returns an empty result with a degraded note, not a throw': 'expect(report.changeSets).toEqual([]); expect(report.degraded.some((d) => d.includes(\"no ChangeSet found\"))).toBe(true);'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' over the exact shipped tool set. This is the Gap 1 clause's negative control: `project.inspect` is present (:120) and no `change_set.*` tool exists anywhere in the list, asserted by exact set equality rather than by containment. :155-168 additionally INVOKES `project.inspect` against the real journal and ChangeSet registry through the production registry, asserting the degraded partial report."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/project-inspect-handler.test.ts:23",
+          "quotedAssertion": "packages/cli/src/intake/project-inspect-handler.test.ts:23-27 — the MCP-tool-facing wrapper over the same surface: 'expect(report.changeSets).toEqual([]); expect(report.degraded.length).toBeGreaterThan(0);'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c5-project-inspect.txt",
+          "quotedAssertion": "'Test Files 3 passed (3) / Tests 25 passed (25)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Scope note: the criterion is about the degradation path and the ChangeSet-state answers, and both are asserted. It is NOT evidence that `project.inspect` reads real phase-12 detection in production — ledger Gap 21's disclosed residual 1 (narrowed 2026-08-01, StackEvidence half still open) records that 'the `stackEvidenceProvider` seam on `project.inspect` remains unfilled in production'. The tick covers the fixture-level behaviour the criterion names; the production seam is the ledger's open residual, not this box's claim."
+    },
+    {
+      "index": 6,
+      "text": "Golden `IntentContract`/DAG/`AuthorizationEnvelope`/`CapabilityManifest` fixtures byte-stable across two builds.",
+      "textSha256": "a50a8c19379dd2ffefb80fc220b231a46ba42dd1a96cdcc237252049855a3fa8",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  @crabgic/supervisor  src/intake/goldens/generate-golden-artifacts.test.ts (9 tests) 9ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:21",
+          "quotedAssertion": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:21-24 — one generated `it` per artifact: 'const committed = readFileSync(join(GOLDENS_DIR, artifact.relativePath), \"utf8\"); expect(artifact.content).toBe(committed);'. A freshly-built artifact string is compared byte-for-byte against the file a PREVIOUS build committed, which is the criterion's 'across two builds' in its strongest form."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:29",
+          "quotedAssertion": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:29-33 — 'buildGoldenIntakeArtifacts() produces deep-equal output on two consecutive calls': 'expect(second).toEqual(first);'. The compared values are `{relativePath, content: string}` records, so deep equality here IS byte equality of the serialized content."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:42",
+          "quotedAssertion": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:42-44 — 'expect(buildGoldenIntakeArtifacts()).toHaveLength(6);'. The per-artifact `it`s at :20 are generated by iterating the builder's output, so without this an empty generator would produce zero tests and a green, vacuous suite. :35-40 additionally pins the trailing-newline convention."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.ts",
+          "quotedAssertion": "packages/supervisor/src/intake/goldens/generate-golden-artifacts.ts:24-40 — the four artifacts the criterion names by name are all in the set: 'intent-contract.json', 'work-unit-graph.json' (`{workUnits, integrationOrder}` — the DAG), 'authorization-envelope.json', 'capability-manifest.json', plus the two supporting ones ('requirements.json', 'provisional-performance-contract.json')."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/supervisor/goldens/capability-manifest.json",
+          "quotedAssertion": "one of the 6 committed goldens the byte-diff runs against; the directory holds authorization-envelope.json, capability-manifest.json, intent-contract.json, provisional-performance-contract.json, requirements.json, work-unit-graph.json"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c6-golden-byte-stability.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 9 passed (9)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "Re-verified at head after ledger Gap 21 (4f2b33b) regenerated three of these goldens. Gap 21's own entry records the outcome: `provisional-performance-contract.json` stayed byte-identical because the derived budget reproduces the figure the fixture used to declare, and only `intent-contract.json`, `requirements.json` and `work-unit-graph.json` moved — because the fixture gained a real performance requirement. The stability MECHANISM this box evidences is unchanged; the goldens were regenerated in that commit and the byte-diff is green against them here."
+    },
+    {
+      "index": 7,
+      "text": "`ChangeSet` creation idempotent: re-inspecting an unchanged repo never produces a second `ChangeSet` (journal-verified).",
+      "textSha256": "4bc0e9a7e59f091bc04c9f197332d00399f169ff054869d50bd91623898f01cd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91423926939, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145",
+          "commit": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
+          "quotedAssertion": "job log — '  ✓  @crabgic/supervisor  src/intake/intake-pipeline.test.ts (26 tests) 143ms'; coverage table '...sor/src/intake | 100 | 96.55 | 100 | 100'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:161",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:161-182 — 're-inspecting an unchanged repo never creates a second ChangeSet (journal-verified)': 'expect(second.status).toBe(\"replayed\"); expect(deps.changeSets.list()).toHaveLength(1);' plus the journal half, ':178 expect(remoteOpCount).toBe(1);' over `remote_operation_record` entries and ':182 expect(transitionCount).toBe(1);' over `run_transition` entries. The '(journal-verified)' clause is asserted against the journal, not just the in-memory registry."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:185",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:185-201 — the cross-process case: a replay against a brand-new, EMPTY registry set over the same journal still yields 'expect(freshDepsForSecondProcess.changeSets.list()).toHaveLength(1);' with the rehydrated ChangeSet still `awaiting_approval`. Idempotency survives a process boundary, not only a repeated in-process call."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:204",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:204-214 — the CHANGED-content control: the same `requestKey` with a different `rollbackStrategy` returns 'expect(outcome.status).toBe(\"conflict\");' and still 'expect(deps.changeSets.list()).toHaveLength(1);'. Without it, an implementation that keyed only on `requestKey` and ignored content would satisfy the unchanged-repo case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:96",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:96-105 — the positive control: a first intake really does create one, 'expect(outcome.status).toBe(\"created\"); expect(outcome.artifacts.changeSet.state).toBe(\"awaiting_approval\"); expect(deps.changeSets.list()).toHaveLength(1);'. Without it, a pipeline that created nothing at all would satisfy 'never a second'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.test.ts:317",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.test.ts:317-324 — added by ledger Gap 21 (4f2b33b): 'treats the ecosystem as request content — a different one is a conflict, never a silent second ChangeSet'. The new `IntakeRequest.ecosystem` field entered `requestContentHash` rather than escaping the idempotency key, and this is the assertion that pins it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-11/closeout-c7-changeset-idempotency.txt",
+          "quotedAssertion": "'Test Files 1 passed (1) / Tests 26 passed (26)' — scoped local re-run at the closeout base commit"
+        }
+      ],
+      "notes": "This is the criterion most exposed to the recent intake churn, so it was re-walked at head rather than accepted from `docs/evidence/phase-11/README.md`. Ledger Gap 21 (4f2b33b) removed `performanceBudgetSource`/`performanceBudgets` from `IntakeRequest` and added `ecosystem` to `requestContentHash`; #47 (bddac4c) added `UnknownEcosystemError` at the boundary. Both land inside this criterion's suite and both STRENGTHEN it — :317 pins the new field into the idempotency key, and :380-388 pins that a rejected ecosystem 'writes no idempotency record, so a corrected retry is not a conflict' (the ordering that keeps a validation failure from poisoning the key). Gap 21's disclosed residual 4 records the upgrade consequence honestly: a same-`requestKey` replay ACROSS the upgrade reports `conflict`, by ruling, and is not a defect in this criterion."
+    }
+  ]
+}

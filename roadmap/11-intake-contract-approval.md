@@ -201,19 +201,101 @@ invalidates the binding.
 
 ## Exit criteria
 
-- [ ] E2E (fake engine): request → contract → approval → run; halts correctly on each of the 7 seeded stop
+**CLOSED 2026-08-02, evidenced.** All seven criteria walked individually against recorded evidence
+(criteria-closeout pass, batch 2; machine-readable index:
+`docs/evidence/criteria-closeout/phase-11.json`). Shared citations reused by several boxes below:
+`CI / unit-test+coverage (ubuntu-24.04-arm)` job
+[91423926939](https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145), green at `af46e00`,
+whose step log names every suite cited here (run summary ` Test Files 623 passed (623)` /
+`      Tests 6060 passed | 1 skipped (6061)`); and seven scoped local re-runs committed verbatim as
+`docs/evidence/phase-11/closeout-c<k>-*.txt`.
+
+The walk was done against the merged tree rather than against `docs/evidence/phase-11/README.md`,
+because intake changed three times after that note was written: ledger Gap 21 (`4f2b33b`) removed
+`performanceBudgetSource`/`performanceBudgets` from `IntakeRequest` and added `ecosystem` to
+`requestContentHash`; `bddac4c` (#47) added `UnknownEcosystemError` and the contradictory-direction
+refusal at the intake boundary; `06693e5` (#48) added roadmap/24's per-path seal assertions. None of
+the seven criteria names a removed field, and all three changes strengthen the suites they touch —
+details per box below and in the index.
+
+Two claims in `docs/evidence/phase-11/README.md` have since gone stale. They back no criterion here
+and that file is outside this pass's write set, so they are recorded rather than edited: (a) its
+"Carry-forwards from prior phases" bullet on 12's `trust review|approve|revoke` CLI wiring says the
+three verbs "still return the typed `NOT_IMPLEMENTED` shape in `dispatch.ts`" — that wiring landed in
+`01ae7aa` (2026-07-25), is ticked as phase 12's exit criterion 6, and `docs/operator-guide.md` §5 was
+corrected for the same reason in `6dd211b`; (b) its gate-results paragraph predates the three commits
+above, so its test counts and coverage figures are historical.
+
+- [x] E2E (fake engine): request → contract → approval → run; halts correctly on each of the 7 seeded stop
       conditions (named suite, e.g. `intake.e2e.spec`).
-- [ ] Model self-approval fixture fails closed; worker-context `mcp__crabgic_gateway__contract.approve` call
+      — **Evidence (2026-08-02):** `packages/cli/src/intake/intake.e2e.test.ts:221` — `it.each` over
+      `STOP_CONDITION_KINDS` drives a fresh run to `running` and asserts `blocked` for each of the seven;
+      `packages/supervisor/src/intake/stop-conditions.test.ts:56` adds "exactly one
+      `adjudication_decision` journaled" per condition and `:94` pins the count at 7;
+      `packages/cli/src/intake/closed-loop.e2e.test.ts:265` carries the "→ run" leg to a driven work unit
+      under 03's `FakeEngineAdapter`; job
+      [91423926939](https://github.com/WitchyNibbles/crabgic/actions/runs/30720547145);
+      `docs/evidence/phase-11/closeout-c1-e2e-and-stop-conditions.txt`.
+- [x] Model self-approval fixture fails closed; worker-context `mcp__crabgic_gateway__contract.approve` call
       without a token fails closed (named adversarial fixtures).
-- [ ] Envelope hash stable across repeat builds of an unchanged fixture; amendment produces a distinct hash
+      — **Evidence (2026-08-02):** `packages/cli/src/intake/contract-approve-handler.test.ts:128` (model
+      self-approval fixture) and `:155` (worker-context fixture), both asserting `approved === false` with
+      the ChangeSet still `awaiting_approval`, against the positive control at `:274`;
+      `packages/cli/src/approval/durable-approval-ledger.test.ts:67`/`:171`;
+      `packages/cli/src/gateway-mcp/build-tool-registry.test.ts:171` invokes the same handler through the
+      real production registry. Scope recorded in the index: no test crosses the MCP stdio transport, and
+      "worker-context" is modelled by an empty token rather than a compiled Appendix-B profile;
+      `docs/evidence/phase-11/closeout-c2-self-approval-fails-closed.txt`.
+- [x] Envelope hash stable across repeat builds of an unchanged fixture; amendment produces a distinct hash
       and invalidates the prior token (property test + golden fixture).
-- [ ] Unmapped requirement blocks the `ready` transition (unit test against 02's state machine).
-- [ ] `project.inspect` returns a valid partial report with no 07/12 data journaled yet, and correct
+      — **Evidence (2026-08-02):** `packages/supervisor/src/intake/envelope-builder.test.ts:41`
+      (two-build byte-identical), `:127` (the named fast-check property, 200 runs, stability +
+      perturbation-sensitivity), `:58` (one-field mutation);
+      `packages/supervisor/src/intake/amendment.test.ts:251` (the distinct-hash bearer —
+      `materialChange === true` against a resolvable previous envelope, which by `amendment.ts:154`/`:200`
+      is `hashEnvelopeContent(candidate) !== previous.canonicalHash`), `:246` (its falsifying
+      counterpart: byte-identical content reports `false`), `:193` (the hash-to-hash unit pair), `:72`
+      (ChangeSet repointed, new envelope durably stored). The originally-cited `:71` was dropped on
+      review as a vacuous bearer — it compares a `sha256:` hash against a testkit UUID and so cannot
+      fail; see the index's notes. `packages/cli/src/approval/durable-approval-ledger.test.ts:77` (the phase's own
+      "envelope-tamper / amendment fixture" — the prior token fails against the amended digest);
+      `packages/cli/src/intake/contract-approve-handler.test.ts:242` (the digest is re-derived from the
+      ChangeSet's current envelope, which is what makes a repoint invalidate the token in the real call
+      path); golden `packages/supervisor/goldens/authorization-envelope.json`;
+      `docs/evidence/phase-11/closeout-c3-envelope-hash-and-amendment.txt`.
+- [x] Unmapped requirement blocks the `ready` transition (unit test against 02's state machine).
+      — **Evidence (2026-08-02):** `packages/supervisor/src/intake/readiness-gate.test.ts:31` —
+      `UnmappedRequirementError` with zero `run_transition` journal entries and no state change; `:54` the
+      full-coverage positive control; `:124` proves `@crabgic/contracts`' own `IllegalTransitionError`
+      remains the arbiter once coverage passes, which is the "against 02's state machine" clause;
+      `packages/cli/src/intake/contract-approve-handler.test.ts:405` reaches the same gate through
+      `contract.approve`; `docs/evidence/phase-11/closeout-c4-unmapped-requirement-blocks-ready.txt`.
+- [x] `project.inspect` returns a valid partial report with no 07/12 data journaled yet, and correct
       ChangeSet-state answers across a fixture set spanning every 02 run-lifecycle stage (Gap 1 clause).
-- [ ] Golden `IntentContract`/DAG/`AuthorizationEnvelope`/`CapabilityManifest` fixtures byte-stable across
+      — **Evidence (2026-08-02):** `packages/supervisor/src/intake/project-inspect.test.ts:24` (empty
+      journal → `freeze`/`stackEvidence` undefined, non-empty `degraded`, no throw), `:116` (a fixture per
+      member of `RUN_LIFECYCLE_STATES`, all 11, queried individually and via the unscoped listing), `:139`
+      (unknown id degrades rather than throws), with `:34`/`:93` as the controls proving a populated
+      journal is not reported as degraded; `packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138`
+      is the Gap 1 negative control — exact set equality over the shipped tool names, with no
+      `change_set.*` family present; `docs/evidence/phase-11/closeout-c5-project-inspect.txt`.
+- [x] Golden `IntentContract`/DAG/`AuthorizationEnvelope`/`CapabilityManifest` fixtures byte-stable across
       two builds.
-- [ ] `ChangeSet` creation idempotent: re-inspecting an unchanged repo never produces a second `ChangeSet`
+      — **Evidence (2026-08-02):** `packages/supervisor/src/intake/goldens/generate-golden-artifacts.test.ts:21`
+      byte-diffs each freshly-built artifact against the file a previous build committed under
+      `packages/supervisor/goldens/`; `:29` adds two consecutive in-process builds; `:42` pins the artifact
+      count at 6 so the generated per-artifact tests cannot silently become zero. All four named artifacts
+      are in the set (`generate-golden-artifacts.ts:24-40`). Re-verified after ledger Gap 21 regenerated
+      three of the six goldens; `docs/evidence/phase-11/closeout-c6-golden-byte-stability.txt`.
+- [x] `ChangeSet` creation idempotent: re-inspecting an unchanged repo never produces a second `ChangeSet`
       (journal-verified).
+      — **Evidence (2026-08-02):** `packages/supervisor/src/intake/intake-pipeline.test.ts:161` — a second
+      identical `runIntake` returns `replayed` with one ChangeSet, exactly one `remote_operation_record`
+      and exactly one `run_transition` in the journal; `:185` proves the same across a simulated process
+      boundary (fresh empty registries, same journal); `:204` is the changed-content control (`conflict`,
+      still one ChangeSet) and `:96` the creation control; `:317` pins ledger Gap 21's new
+      `IntakeRequest.ecosystem` into `requestContentHash` rather than letting it escape the idempotency
+      key; `docs/evidence/phase-11/closeout-c7-changeset-idempotency.txt`.
 
 ## Risks & open questions
 
