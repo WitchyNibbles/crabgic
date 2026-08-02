@@ -1,0 +1,61 @@
+# criteria-closeout pass, phase 16 — criteria 7 and 8, whole-PACKAGE static scans
+# UTC:      2026-08-02T10:33:21Z
+# HEAD:     30f931eab97b8360102498d4b766513be67241d0
+# Command:  bash scan.sh   (each individual command is echoed verbatim below as a '$ ' line,
+#           immediately followed by its own output and its own 'exit=' status)
+#
+# WHY THIS EXISTS. Each in-tree scanner is narrower than the criterion it backs:
+#   - packages/gateway/src/mcp/gateway-name-reference.test.ts walks .ts/.mjs under src/ only;
+#   - packages/contracts/src/gateway/server-name.test.ts walks packages/*/src/**/*.ts only;
+#   - packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts greps 'learning.' only,
+#     never 'change_set.'.
+# Criterion 8 says 'anywhere in packages/gateway'; criterion 7 names change_set.* as well as
+# learning.*. These greps close exactly those two gaps, over every git-tracked file of the package.
+# The same scan-scope narrowness is already a FILED DEFECT for a different package —
+# docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md (packages/plugin/.mcp.json
+# hand-types the literal outside packages/*/src/**/*.ts). Nothing here re-files it.
+# ---------------------------------------------------------------------------
+
+$ git ls-files packages/gateway | wc -l
+78
+exit=0
+
+$ git ls-files packages/gateway | grep -v "/src/"
+packages/gateway/package.json
+packages/gateway/tsconfig.json
+exit=0
+
+# --- criterion 8: the Gap-11 literal over EVERY tracked file of the package (not just src/*.ts|mjs)
+$ git grep -n -I -e crabgic_gateway -- packages/gateway
+exit=1
+
+#     exit=1 means NO MATCH: zero hand-typed literals anywhere in packages/gateway.
+
+# --- criterion 7a: change_set. as a string literal, PRODUCTION source only
+$ git grep -n -I -F -e "\"change_set." -e "@change_set." -- packages/gateway ":!*.test.ts"
+exit=1
+
+#     (the second -F pattern is a deliberate never-matching control: if this grep ever reports
+#      exit=1 for a reason other than absence, the control would have to be absent too.)
+
+# --- criterion 7b: learning. as a string literal, PRODUCTION source only
+$ git grep -n -I -F -e "\"learning." -- packages/gateway ":!*.test.ts"
+exit=1
+
+# --- criterion 7c: the SAME two patterns including tests, so nothing is hidden. The only hits are
+#     the absence-assertions in native-registry.test.ts, which is what a correct result looks like.
+$ git grep -n -I -F -e "\"change_set." -e "\"learning." -- packages/gateway
+packages/gateway/src/mcp/native-registry.test.ts:70:      expect(name.startsWith("change_set.")).toBe(false);
+packages/gateway/src/mcp/native-registry.test.ts:71:      expect(name.startsWith("learning.")).toBe(false);
+exit=0
+
+# --- corroboration: the constant IS imported and used at the SDK server-registration site
+$ git grep -n GATEWAY_MCP_SERVER_NAME -- packages/gateway/src/mcp/server.ts
+packages/gateway/src/mcp/server.ts:4: * the one gateway MCP server named by `GATEWAY_MCP_SERVER_NAME` (constant
+packages/gateway/src/mcp/server.ts:15: * wire-level tool name derives from `GATEWAY_MCP_SERVER_NAME`.
+packages/gateway/src/mcp/server.ts:20:import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+packages/gateway/src/mcp/server.ts:32:    { name: GATEWAY_MCP_SERVER_NAME, version: "0.0.0" },
+exit=0
+
+# ---------------------------------------------------------------------------
+# exit status: 0 (every grep ran to completion; both production-source violation greps found nothing)
