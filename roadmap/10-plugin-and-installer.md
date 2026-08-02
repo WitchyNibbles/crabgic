@@ -188,8 +188,8 @@ Shared citations reused by several boxes below. **`CI` run
 `eabb65a` — its `unit-test+coverage (ubuntu-latest)` job
 ([91480519773](https://github.com/WitchyNibbles/crabgic/actions/jobs/91480519773)), step "test
 with 80% line+branch coverage gate", executed 625 test files / 6155 tests, and the step log names
-each of this phase's seven offline criterion-suites individually (job-log lines 779, 947, 950,
-956, 985, 987, 990, 1010). Scoped local `--reporter=verbose` re-runs of each criterion's own
+every suite the seven offline criteria rest on individually — eight files, because criterion 6
+names two (job-log lines 779, 947, 950, 956, 985, 987, 990, 1010). Scoped local `--reporter=verbose` re-runs of each criterion's own
 suites, captured verbatim at the closeout commit, are committed as
 `docs/evidence/phase-10/closeout-c<k>-*.txt`.
 
