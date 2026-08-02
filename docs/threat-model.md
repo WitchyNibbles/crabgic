@@ -262,12 +262,22 @@ than only as scattered table cells:
    logic. This is an appropriate response to the nature of the risk (a single compiled-configuration or
    plan-validation bug can matter more than throughput or edge-case correctness), but it means the quality of
    the review process itself is part of the security boundary, not just the code.
-3. **The capability-quarantine journal gap is real and unresolved.** Phase 12's own text flags, and this review
-   confirms independently, that capability-audit pass/fail/contradiction verdicts have no dedicated
-   `JournalEntryType` member — only the subsequent approval-token mint is centrally journaled. `JournalEntryType`
-   is deliberately closed at 13 members pending a coordinated resolution round (Gap 5); this is the single
-   clearest "needs a follow-up decision" item this review identified that is not simply a residual-risk
-   acceptance.
+3. **The capability-quarantine journal gap — closed 2026-08-01.** As written (2026-07-15) this read: "real and
+   unresolved … capability-audit pass/fail/contradiction verdicts have no dedicated `JournalEntryType` member —
+   only the subsequent approval-token mint is centrally journaled … the single clearest 'needs a follow-up
+   decision' item this review identified." That was accurate then, and the follow-up decision has since been
+   made. Interface-ledger **Gap 5**'s Resolution keeps `JournalEntryType` closed at exactly **13** and adds no
+   member: capability-quarantine verdicts and `CapabilityDecision` transitions journal as **existing**
+   `adjudication_decision` entries, carrying a namespaced discriminator in `payload.decision` under the
+   `capability_audit:` prefix and the schema-validated record JSON-encoded in `payload.rationale` — the shape
+   phase 14 already established. Two ordering guarantees carry the security value and both **fail closed**:
+   `runCapabilityAudit` journals the verdict before `store.save`, and `updateDecision` journals the transition
+   before rewriting the artifact; each refuses to run with no journal sink supplied and aborts, leaving the
+   artifact untouched, when an append fails. Implemented in
+   `packages/detect/src/capability-store/audit-journal.ts`. **What this does not claim:** the store artifact
+   remains the detailed record (full stage detail, findings, sandbox result), so a dispute over _what a scanner
+   matched_ still rests on the rewritable artifact. The journal now carries what was _decided_. §7's Repudiation
+   row states the same closure and the same narrowed residual.
 4. **Inbound content is generally less scrutinized than outbound content.** The renderer's lint pipeline (§8)
    and the connector layer's outbound rendering (§6) are both heavily hardened against what the system _emits_;
    what the system _reads back_ from a provider (Jira issue text, capability scan output) is bounded by size
@@ -312,9 +322,17 @@ than only as scattered table cells:
      availability bug (the gateway's UDS exception would not be granted on Linux/WSL2, breaking gateway
      connectivity) rather than a security opening — but it should be corrected in phase 03's own text before
      implementation begins, and is flagged here as this review's most concrete, actionable finding.
-  2. **Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member** (§7, Tampering/
-     Repudiation cells) — phase 12's own text flags this as unresolved and explicitly outside its authority to
-     fix unilaterally; it remains open pending a coordinated `JournalEntryType` resolution round.
+  2. ~~**Capability-quarantine audit verdicts have no dedicated `JournalEntryType` member**~~ (§7, Tampering/
+     Repudiation cells) — **CLOSED 2026-08-01.** The item as filed on 2026-07-15 read: "phase 12's own text
+     flags this as unresolved and explicitly outside its authority to fix unilaterally; it remains open pending
+     a coordinated `JournalEntryType` resolution round." That round happened. Interface-ledger Gap 5's
+     Resolution declines to add a dedicated member — the union stays closed at 13 — and closes the gap by
+     **reuse** instead: verdicts and decision transitions journal as `adjudication_decision` entries under a
+     `capability_audit:` discriminator, journal-first and fail-closed
+     (`packages/detect/src/capability-store/audit-journal.ts`). So the literal wording of this item is still
+     true and is no longer a gap: there is no dedicated member, and none is wanted. See residual theme 3 above
+     and §7's Repudiation row for the narrowed residual that remains (finding _details_ stay in the store
+     artifact, deliberately, because a scanner detail line can quote matched secret text).
   3. **The gateway's optional upstream-MCP-client wrap's quarantine status is unresolved** (§5/§6, Spoofing/
      Information-disclosure cells) — phase 16's own text states this is "addressed by neither file" between 16
      and 12, and this review did not find a resolution elsewhere in the corpus.
