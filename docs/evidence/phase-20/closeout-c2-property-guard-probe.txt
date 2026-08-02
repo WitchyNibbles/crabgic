@@ -1,0 +1,194 @@
+# criteria-closeout pass, phase 20 — criterion 2: guard-entry instrumentation for the three
+#   fast-check properties in packages/connectors-grafana/src/mutation/precondition.property.test.ts
+# UTC:      2026-08-02T11:31:00Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  node ./guard-probe.mjs      (probe source reproduced verbatim at the end of this file)
+# Exit:     0
+# Why:      all three of that file's properties put their load-bearing assertions inside a
+#           conditional. A property whose guard never fires runs green and proves nothing (the
+#           phase-22 finding: 0 entries in 50 000 cases). This probe re-implements the three
+#           properties' generators and control flow exactly as the test file writes them,
+#           importing the SAME production `resolveOptimisticConcurrencyConflict` and
+#           `hashCanonicalFields` the test imports (via @crabgic/connectors-grafana's barrel),
+#           replaces every `expect(...)` with a counter, and runs each at 10x the test's own
+#           numRuns budget. The probe measures; it asserts nothing.
+# ---------------------------------------------------------------------------
+
+property 1 — 'two writers racing from the SAME baseline' (test budget numRuns=300; probe ran 3000)
+{
+  "cases": 3000,
+  "aNoOpBranch": 1,
+  "aDivergedBranch": 2999,
+  "outcomeBBlocked": 2999,
+  "outcomeBRebased": 1
+}
+
+property 2 — 'N-writer fuzzed interleaving' (test budget numRuns=300; probe ran 3000)
+{
+  "cases": 3000,
+  "blockedOutcomes": 8837,
+  "guardEntered": 8837,
+  "writersSeen": 11837
+}
+
+property 3 — 'rebase iff content hash matches, block otherwise' (test budget numRuns=200; probe ran 2000)
+{
+  "cases": 2000,
+  "rebaseBranch": 13,
+  "blockBranch": 1987
+}
+
+# ---------------------------------------------------------------------------
+# READING (written by the closeout agent from the run above; the probe itself draws no
+# conclusions). Numbers below are this run's. The probe is randomized, so it was executed
+# four times in total during this pass; the spread across those four runs is given where it
+# matters.
+#
+#  * Property 1's DIVERGED branch — the branch that carries the criterion's own claim, holding
+#    `expect(outcomeB).toBe("blocked")` and `expect(final.contentHash).toBe(afterA.contentHash)`
+#    — is entered 2999/3000 here, and 3000/3000, 3000/3000, 2999/3000 on the other three runs.
+#    Effectively every generated case. NON-VACUOUS: this is the bearer cited for criterion 2's
+#    "zero blind-overwrite counterexamples".
+#
+#  * Property 1's NO-OP branch (`writerAContent === initial`, the safe-rebase positive control)
+#    is entered 1/3000 here, and 0, 0, 1 on the other three runs — i.e. roughly 0.1 entries per
+#    run at the test's own numRuns=300. That branch is effectively dead and is deliberately NOT
+#    cited as evidence of anything. The safe-rebase half of criterion 2 is instead carried
+#    deterministically by apply-with-rebase.test.ts's "412 + remote content UNCHANGED since
+#    baseline -> safely rebases and completes as recorded" case.
+#
+#  * Property 2's innermost guard — the `!someWriterAppliedSameContent` site holding
+#    `expect(final.contentHash).not.toBe(thisWriterHash)` — is entered 8837 times across 3000
+#    cases (8837 blocked outcomes among 11 837 simulated writers), and 8825/8801/8744 on the
+#    other three runs. NON-VACUOUS.
+#
+#  * Property 3's rebase branch (`baselineHash === currentHash`) is entered 13/2000 here and
+#    24/2000 on another run — about 1.3 to 2.4 entries per run at its own numRuns=200. It does
+#    fire, but thinly; recorded so nobody mistakes it for an exhaustive check of the equal-hash
+#    case.
+#
+# NOTE on `.not.toBe` in property 2: both operands are `hashCanonicalFields(...)` outputs, so
+# they are the same type and CAN be equal by construction — this is not the cross-type
+# always-true shape the closeout brief warns about. The guard immediately above it exists
+# precisely to exclude the case where they legitimately coincide.
+# ---------------------------------------------------------------------------
+# PROBE SOURCE, verbatim (kept out of packages/ because a closeout pass may not add product
+# or test files; reproduce by writing this to <repo-root>/guard-probe.mjs and running
+# `node ./guard-probe.mjs` after `npm run build`):
+# ---------------------------------------------------------------------------
+# | /*
+# |  * Guard-entry probe for roadmap/20 criterion 2's two fast-check properties in
+# |  * packages/connectors-grafana/src/mutation/precondition.property.test.ts.
+# |  *
+# |  * Both properties put their load-bearing assertions inside conditionals, which is
+# |  * the shape that can run green while proving nothing (FANOUT-BRIEF, "VACUITY TRAP
+# |  * — assertions inside a conditional that never fires"). This probe re-implements
+# |  * the two properties' generators and control flow EXACTLY as the test file writes
+# |  * them, importing the SAME production `resolveOptimisticConcurrencyConflict` and
+# |  * `hashCanonicalFields` the test imports, replaces every `expect(...)` with a
+# |  * counter increment, and runs each at 10x the test's own numRuns budget.
+# |  *
+# |  * It answers one question per branch: how often is it entered?
+# |  */
+# | import fc from "fast-check";
+# | import { hashCanonicalFields } from "@crabgic/connectors-grafana";
+# | import { resolveOptimisticConcurrencyConflict } from "@crabgic/connectors-grafana";
+# | 
+# | class SimulatedRemoteResource {
+# |   #revision = 0;
+# |   #content;
+# |   constructor(initialContent) {
+# |     this.#content = initialContent;
+# |   }
+# |   read() {
+# |     return { revision: String(this.#revision), contentHash: hashCanonicalFields({ content: this.#content }) };
+# |   }
+# |   tryWrite(expectedRevision, newContent) {
+# |     if (expectedRevision !== String(this.#revision)) return { ok: false, status: 409 };
+# |     this.#content = newContent;
+# |     this.#revision += 1;
+# |     return { ok: true };
+# |   }
+# | }
+# | 
+# | function simulateWriterAttempt(remote, baselineRevision, baselineContentHash, desiredContent) {
+# |   const first = remote.tryWrite(baselineRevision, desiredContent);
+# |   if (first.ok) return "applied";
+# |   const currentRemote = remote.read();
+# |   const resolution = resolveOptimisticConcurrencyConflict({ baselineContentHash, currentRemote });
+# |   if (resolution.kind === "block") return "blocked";
+# |   const retried = remote.tryWrite(resolution.freshRevision, desiredContent);
+# |   return retried.ok ? "rebased-and-applied" : "blocked";
+# | }
+# | 
+# | const contentArb = fc.string({ minLength: 1, maxLength: 12 });
+# | 
+# | // ---- property 1: two writers racing from the same baseline -----------------
+# | const p1 = { cases: 0, aNoOpBranch: 0, aDivergedBranch: 0, outcomeBBlocked: 0, outcomeBRebased: 0 };
+# | fc.assert(
+# |   fc.property(contentArb, contentArb, contentArb, (initial, writerAContent, writerBContent) => {
+# |     p1.cases += 1;
+# |     const remote = new SimulatedRemoteResource(initial);
+# |     const baseline = remote.read();
+# |     simulateWriterAttempt(remote, baseline.revision, baseline.contentHash, writerAContent);
+# |     const outcomeB = simulateWriterAttempt(remote, baseline.revision, baseline.contentHash, writerBContent);
+# |     if (writerAContent === initial) p1.aNoOpBranch += 1;
+# |     else p1.aDivergedBranch += 1;
+# |     if (outcomeB === "blocked") p1.outcomeBBlocked += 1;
+# |     if (outcomeB === "rebased-and-applied") p1.outcomeBRebased += 1;
+# |     return true;
+# |   }),
+# |   { numRuns: 3000 },
+# | );
+# | 
+# | // ---- property 2: N-writer fuzzed interleaving ------------------------------
+# | const p2 = { cases: 0, blockedOutcomes: 0, guardEntered: 0, writersSeen: 0 };
+# | fc.assert(
+# |   fc.property(contentArb, fc.array(contentArb, { minLength: 2, maxLength: 6 }), (initial, writerContents) => {
+# |     p2.cases += 1;
+# |     const remote = new SimulatedRemoteResource(initial);
+# |     const baseline = remote.read();
+# |     const outcomes = writerContents.map((content) =>
+# |       simulateWriterAttempt(remote, baseline.revision, baseline.contentHash, content),
+# |     );
+# |     p2.writersSeen += writerContents.length;
+# |     for (const [index, outcome] of outcomes.entries()) {
+# |       if (outcome === "blocked") {
+# |         p2.blockedOutcomes += 1;
+# |         const thisWriterHash = hashCanonicalFields({ content: writerContents[index] });
+# |         const someWriterAppliedSameContent = writerContents.some(
+# |           (c, i) => outcomes[i] !== "blocked" && hashCanonicalFields({ content: c }) === thisWriterHash,
+# |         );
+# |         // this is the innermost guard: the `expect(final.contentHash).not.toBe(...)` site
+# |         if (!someWriterAppliedSameContent) p2.guardEntered += 1;
+# |       }
+# |     }
+# |     return true;
+# |   }),
+# |   { numRuns: 3000 },
+# | );
+# | 
+# | console.log("property 1 — 'two writers racing from the SAME baseline' (test budget numRuns=300; probe ran 3000)");
+# | console.log(JSON.stringify(p1, null, 2));
+# | console.log();
+# | console.log("property 2 — 'N-writer fuzzed interleaving' (test budget numRuns=300; probe ran 3000)");
+# | console.log(JSON.stringify(p2, null, 2));
+# | 
+# | // ---- property 3: resolveOptimisticConcurrencyConflict's own 2-branch check --
+# | const p3 = { cases: 0, rebaseBranch: 0, blockBranch: 0 };
+# | fc.assert(
+# |   fc.property(fc.string(), fc.string(), fc.string(), (baselineHash, currentHash, revision) => {
+# |     p3.cases += 1;
+# |     resolveOptimisticConcurrencyConflict({
+# |       baselineContentHash: baselineHash,
+# |       currentRemote: { revision, contentHash: currentHash },
+# |     });
+# |     if (baselineHash === currentHash) p3.rebaseBranch += 1;
+# |     else p3.blockBranch += 1;
+# |     return true;
+# |   }),
+# |   { numRuns: 2000 },
+# | );
+# | console.log();
+# | console.log("property 3 — 'rebase iff content hash matches, block otherwise' (test budget numRuns=200; probe ran 2000)");
+# | console.log(JSON.stringify(p3, null, 2));

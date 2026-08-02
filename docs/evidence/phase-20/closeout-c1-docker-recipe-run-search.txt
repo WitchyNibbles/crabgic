@@ -1,0 +1,142 @@
+# criteria-closeout pass, phase 20 — criterion 1's second clause: search trail for an
+#   OSS/Enterprise Docker-recipe-backed run of the folder->dashboard->annotation->alert-rule flow
+# UTC:      2026-08-02T11:31:49Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  the shell commands are echoed inline below, each followed by its own output and
+#           its own exit status. A grep exit=1 means NO MATCH, which is itself the finding.
+#           Verbatim; nothing edited.
+# ---------------------------------------------------------------------------
+
+$ git grep -nE "child_process|execFile|spawnSync|docker compose|dockerode" -- packages/connectors-grafana
+exit=1   <- no match: this package never starts a container
+
+# The suite that names the Docker recipes states in its own describe title that it does not:
+$ sed -n "177,189p" packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts
+describe("integration: OSS/Enterprise Docker-recipe-backed runs (cassette-replayed — no live container is started, per this repo's no-live-network-calls rule)", () => {
+  it("OSS recipe's declared build-info fixture replays the full flow green", async () => {
+    expect(OSS_DOCKER_RECIPE.buildInfoFixtureLabel).toBe(BUILD_INFO_OSS_13_1.fixtureLabel);
+    await replayFullResourceFlow(BUILD_INFO_OSS_13_1);
+  });
+
+  it("Enterprise recipe's declared build-info fixture replays the full flow green", async () => {
+    expect(ENTERPRISE_DOCKER_RECIPE.buildInfoFixtureLabel).toBe(
+      BUILD_INFO_ENTERPRISE_CURRENT.fixtureLabel,
+    );
+    await replayFullResourceFlow(BUILD_INFO_ENTERPRISE_CURRENT);
+  });
+});
+exit=0
+
+# The only code in the repository that really boots these compose recipes:
+$ git grep -ln "RealComposeRunner"
+e2e/provisioning/src/live/realComposeRunner.ts
+e2e/provisioning/test/grafana-oss.live.test.ts
+e2e/provisioning/vitest.config.ts
+e2e/provisioning/vitest.live.config.ts
+exit=0
+
+# ...and the assertion it makes against a booted container is /api/health only:
+$ sed -n "49,57p;66,74p" e2e/provisioning/test/grafana-oss.live.test.ts
+describe("@live Grafana OSS/Enterprise — real docker compose boot + /api/health + teardown", () => {
+  it.each([
+    { version: "11.6", edition: "oss" as const, port: 3000 },
+    { version: "12.4", edition: "oss" as const, port: 3002 },
+    { version: "13.1", edition: "oss" as const, port: 3004 },
+    { version: "13.1", edition: "enterprise" as const, port: 3005 },
+  ])(
+    "boots Grafana $edition $version, waits for /api/health database:ok, and tears down",
+    async ({ version, edition, port }) => {
+      const outcome = await provisionAndRun(
+        { runId, composeFile, healthTimeoutMs: 120_000, healthPollIntervalMs: 2_000 },
+        () => grafanaHealthProbe(port),
+        async () => {
+          const response = await fetch(`http://localhost:${port}/api/health`);
+          const body = (await response.json()) as { database: string; version: string };
+          return body;
+        },
+        { runner },
+exit=0
+
+# Everything under e2e/ that imports this phase’s package:
+$ git grep -ln "connectors-grafana" -- e2e/
+e2e/attestation/src/live/grafanaTraceabilityBinding.ts
+e2e/attestation/src/traceabilityEvidence.ts
+e2e/attestation/src/versionSupportWindows.ts
+e2e/live/src/knownDeferredAllowlist.ts
+e2e/matrix/connector/src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts
+e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts
+e2e/matrix/connector/src/exactly-once/grafana-cassette.test.ts
+e2e/matrix/connector/vitest.config.ts
+exit=0
+
+# Of those, exactly one drives the real resource clients against a REAL container
+# (e2e/attestation/src/live/grafanaTraceabilityBinding.ts, reached from
+#  e2e/attestation/src/requirementTraceabilityBinding.live.test.ts). Its scope:
+$ grep -n "allowedResources\|kind: \"dashboard\"\|REAL Grafana" e2e/attestation/src/live/grafanaTraceabilityBinding.ts
+33: * Drives a REAL Grafana dashboard mutation through the REAL
+119:    allowedResources: ["dashboard"],
+187:  payloadStore.set(planId, { kind: "dashboard", action: "create", input: dashboardInput });
+192:    kind: "dashboard",
+255:          target: { provider: "grafana", kind: "dashboard", externalId: dashboardUid },
+exit=0   <- ONE kind (dashboard), OSS only; not the 7-kind chain, not Enterprise
+
+# Recorded real-container evidence that exists (phase 23 work item 2):
+$ ls docs/evidence/phase-23/provisioning/
+eslint-clean.txt
+forced-abort-failing.txt
+forced-abort-passing.txt
+grafana-11.6-enterprise-smoke-test.txt
+grafana-11.6-oss-smoke-test.txt
+grafana-12.4-enterprise-smoke-test.txt
+grafana-12.4-oss-smoke-test.txt
+grafana-13.1-enterprise-smoke-test.txt
+grafana-13.1-oss-smoke-test-FAILS-vendor-tag-not-published.txt
+grafana-13.1-tag-check.txt
+live-test-run.txt
+prettier-clean.txt
+tsc-clean.txt
+vitest-run.txt
+exit=0
+
+$ grep -h "smoke test passed" docs/evidence/phase-23/provisioning/grafana-*smoke-test*.txt
+Grafana oss 11.6 reached a healthy /api/health after ~5s — smoke test passed.
+Grafana enterprise 11.6 reached a healthy /api/health after ~15s — smoke test passed.
+Grafana oss 12.4 reached a healthy /api/health after ~10s — smoke test passed.
+Grafana enterprise 12.4 reached a healthy /api/health after ~40s — smoke test passed.
+Grafana enterprise 13.1 reached a healthy /api/health after ~15s — smoke test passed.
+exit=0
+
+# The one 13.1 OSS case is a genuine, recorded vendor-tag failure, not a pass:
+$ grep -n "manifest unknown" docs/evidence/phase-23/provisioning/live-test-run.txt
+1
+(occurrences) exit=0
+
+# ---------------------------------------------------------------------------
+# CONCLUSION (closeout agent, 2026-08-02).
+#
+# Criterion 1's FIRST clause — the folder->dashboard->annotation->alert-rule (in fact the
+# full 7-kind) integration suite green on the 11.6, 12.4, 13.1 and current-Cloud cassettes —
+# is fully evidenced; see closeout-c1-cassette-replay.txt.
+#
+# Its SECOND clause, "plus the OSS/Enterprise Docker-recipe run", is not. roadmap/20
+# §Test plan glosses that clause as "Docker-recipe-backed OSS/Enterprise runs of the same
+# flow", and no run of that flow against a real container exists. Three things that look
+# like it, and what each actually is:
+#   1. integration-cassette-replay.test.ts's "OSS/Enterprise Docker-recipe-backed runs"
+#      describe — a cassette replay against the build-info fixture each recipe DECLARES it
+#      would report. Its own title says no live container is started. It asserts a string
+#      equality between the recipe's fixture label and the fixture, then replays the same
+#      cassette the version-cassette block already replayed.
+#   2. e2e/provisioning's @live grafana-oss test — a real docker compose up, /api/health
+#      probe and teardown. Touches no resource client, no plan, no mutation.
+#   3. e2e/attestation's @live grafanaTraceabilityBinding — a real, containerized,
+#      TLS-fronted Grafana OSS instance driven through the REAL connectors-grafana resource
+#      client and executeMutationPlan. This is the closest thing that exists, and it is
+#      genuinely container-backed — but its allowedResources is exactly ["dashboard"], so
+#      it exercises one of the seven kinds, on OSS only, and it is an owner-gated @live
+#      suite this pass may not run.
+#
+# Reading the clause down to "a cassette replay against the recipe's declared fixture" would
+# be a weaker guarantee, which the closeout protocol classifies as UNMET rather than as a
+# wording correction. Left unticked; defect record:
+# docs/evidence/criteria-closeout/defects/20-docker-recipe-backed-flow-never-run.md.

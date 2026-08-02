@@ -1,0 +1,36 @@
+# criteria-closeout pass, phase 20 — criterion 6 (ambiguous-POST-timeout resolves via marker search or typed ambiguous_write)
+# UTC:      2026-08-02T11:27:53Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts packages/connectors-grafana/src/reconciliation/marker-reconciler.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > deriveDeterministicUid / deriveAnnotationMarkerTag > is a pure, deterministic function of the idempotency key alone 2ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > deriveDeterministicUid / deriveAnnotationMarkerTag > annotation marker tags are prefixed and derived from the same uid 0ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > createGrafanaMarkerReconciler — uid-addressable kinds (folder/dashboard/alert-rule/contact-point/mute-timing/notification-template) > finds an object whose uid already exists remotely 1ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > createGrafanaMarkerReconciler — uid-addressable kinds (folder/dashboard/alert-rule/contact-point/mute-timing/notification-template) > never guesses — a genuinely absent uid resolves to undefined, never a fabricated match 0ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > createGrafanaMarkerReconciler — uid-addressable kinds (folder/dashboard/alert-rule/contact-point/mute-timing/notification-template) > resolves undefined when no getByUid lookup was wired at all (fails closed, never throws) 0ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > createGrafanaMarkerReconciler — annotation (tag-based marker) > finds the annotation's own externalId by tag, distinct from the tag itself 0ms
+ ✓ |@crabgic/connectors-grafana| src/reconciliation/marker-reconciler.test.ts > createGrafanaMarkerReconciler — annotation (tag-based marker) > never guesses for annotations either 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > createGrafanaMutationApplyClient — happy-path create/update through @crabgic/gateway's real pipeline > creates a folder: builds the POST, verifies via read-back GET, records applied revision 21ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > createGrafanaMutationApplyClient — happy-path create/update through @crabgic/gateway's real pipeline > adversarial-review HIGH regression: creates an annotation whose write genuinely landed -> verifies TRUE, records (NOT failed) 8ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > createGrafanaMutationApplyClient — happy-path create/update through @crabgic/gateway's real pipeline > updates a folder: builds the PUT with the precondition header, verifies 7ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > createGrafanaMutationApplyClient — happy-path create/update through @crabgic/gateway's real pipeline > verification fails (mismatched read-back) -> outcome is failed/conflict, never silently recorded 7ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate > mid-POST timeout on folder create, marker (deterministic uid) IS found remotely -> resolves to recorded, zero duplicate POSTs 8ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate > mid-POST timeout, marker NOT found -> blocks with typed ambiguous_write, never guesses success 7ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate > annotation create ambiguity resolves via tag-based marker search, found -> recorded (never a duplicate POST) 7ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate > annotation create ambiguity, tag NOT found -> blocks, never a second POST attempt 7ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  13:27:54
+   Duration  945ms (transform 529ms, setup 0ms, import 805ms, tests 79ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0
