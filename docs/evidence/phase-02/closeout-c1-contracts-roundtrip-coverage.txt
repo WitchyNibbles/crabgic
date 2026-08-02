@@ -136,7 +136,12 @@ directory contains SEVEN rows below 100% on some metric, not the four the scoped
 above lists. Three of them are absent here — acceptance-criteria-parser.ts and
 budget-sourcing.ts (both 0/0/0/0, added in 4f2b33b) and metric-direction.ts (0%
 statements/functions/lines, added in bddac4c). Nothing in the @crabgic/contracts vitest
-project imports them, so v8 never loads them into this scoped run's file set at all.
+project imports them, so v8 never loads them into this scoped run's file set at all;
+in CI they are loaded by suites in other packages.
+  ^ WRONG CLAUSE, kept verbatim. Corrected in the second addendum below (PR #66,
+    same date). It was briefly DELETED from this paragraph by that PR's first draft,
+    which is the one thing this directory's convention forbids — an evidence file
+    records what was written, not what should have been. Restored.
 Verified rather than assumed:
 
 $ npx vitest run --project @crabgic/contracts --coverage.include="packages/contracts/src/contracts/**/*.ts" \
@@ -154,7 +159,9 @@ here because their 0% coverage is a genuine repo-health item — invisible under
 80% gate — reported to the closeout integrator and out of this pass's write set.
 
 ----------------------------------------------------------------------
-ADDENDUM 2026-08-02 — correcting one clause of the addendum above
+ADDENDUM 2026-08-02 (second; PR #66) — correcting one clause of the first
+addendum above (2026-08-02, PR #57). Both carry the same date; the PR
+numbers are what order them.
 ----------------------------------------------------------------------
 The clause "in CI they are loaded by suites in other packages" was wrong, mechanically.
 A loaded ES module cannot sit at 0% statements: importing it executes its top level, so
@@ -222,6 +229,11 @@ was that absence from a scoped table does not mean absence from the repo. The co
 mechanism adds the sharper half: PRESENCE in a whole-suite table does not mean loaded
 either, and a 0% row is ambiguous between "dead code" and "live code whose execution was
 attributed to an excluded path." The repo-health item stands and is unchanged in
-substance — nothing covers these three modules' `src` form, so no coverage gate can ever
-bite on them — but the reason is a dist-attribution artifact of the Gap 21 shims, not an
-absence of exercise. Still out of this pass's write set; reported to the integrator.
+substance, but state it precisely. The three ARE in the whole-suite 80% gate's
+denominator — three 0% files drag the aggregate down, they do not sit outside it. What
+they cannot do is ever be CREDITED: no test reaching them through the shim path can move
+those `src` rows off 0, because the execution lands on the excluded `dist` twin. So the
+gate can be dragged by them and can never be satisfied on them, which is the worst of
+both and is why it is worth recording. The cause is a dist-attribution artifact of the
+Gap 21 shims, not an absence of exercise. Still out of this pass's write set; reported to
+the integrator.

@@ -14,9 +14,10 @@ is kept verbatim and the corrections live here.
    and `@eo/scheduler` — was the package's actual name on 2026-07-24. `3e74cc7` (2026-07-26)
    renamed the project from `engineering-orchestrator` to `crabgic` and every scope with it;
    read `@eo/x` as `@crabgic/x` throughout. Nothing else about those citations changed: the
-   modules, paths and tests they name are the same ones. The `@eo/scheduler` occurrence in
-   the last carry-forward below is a **quotation** of this phase's own brief, so it is
-   doubly not rewritten — it is a record of what the brief said.
+   modules, paths and tests they name are the same ones. The one `@eo/scheduler` occurrence
+   (§Carry-forwards for reconcile, the "09's `resume <run-id>` CLI backend, limit-parked
+   half" bullet — second of that section's four, `:456`) is a **quotation** of this phase's
+   own brief, so it is doubly not rewritten: it is a record of what the brief said.
 
 2. **The `resume <run-id>` limit-parked carry-forward has since been discharged.** That
    bullet says wiring a `packages/cli` handler to call `resumeAttempt`/`getParkStatus`/

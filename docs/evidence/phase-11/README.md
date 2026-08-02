@@ -359,15 +359,23 @@ the only planned consumer and has not landed).
 
 **Annotated 2026-08-02 — these are a 2026-07-24 snapshot, not a current reading.** Every
 number below was measured at this phase's own build and is kept as the record of what that
-build produced; none of it has been re-measured since, and the tree has moved under this
-phase's own code in ways that guarantee the counts no longer match. The largest movement is
-ledger **Gap 21** (`4f2b33b`, then `bddac4c`, both 2026-08-01), which lands squarely inside
-the surfaces measured here: `packages/supervisor/src/intake/intake-pipeline.ts` now *derives*
-`(budgetSource, budgets)` from the requirements it has just built, and
-`performanceBudgetSource`/`performanceBudgets` are gone from `IntakeRequest` entirely, so both
-`packages/supervisor/src/intake` and `packages/cli/src/intake` gained tests and changed shape
-after this paragraph was written. The current, gating numbers are whatever the whole-suite CI
-coverage job reports at HEAD; the per-directory figures below are historical.
+build produced. None of it has been re-measured since, and the three directories it scores
+have moved a long way: between this paragraph and HEAD, `packages/cli/src/intake` is
++1803/-200 across 14 files, `packages/supervisor/src/intake` +994/-126 across 25, and
+`packages/cli/src/approval` +672/-458 across 11. The counts and coverage percentages below
+cannot be expected to match anything at HEAD.
+
+The largest *semantic* movement in that window is ledger **Gap 21** (`4f2b33b`, then
+`bddac4c`, both 2026-08-01): `packages/supervisor/src/intake/intake-pipeline.ts` now
+*derives* `(budgetSource, budgets)` from the requirements it has just built, and
+`performanceBudgetSource`/`performanceBudgets` are gone from `IntakeRequest` entirely.
+Attributed precisely, because it is easy to overstate: those two commits added their tests to
+`packages/supervisor/src/intake/intake-pipeline.test.ts` (+203) and to
+`packages/cli/src/commands/intake-dispatch.test.ts` (+66, a file outside every directory
+scored below); their entire footprint inside `packages/cli/src/intake` is **six deleted
+lines**, the removed caller-supplied fields. So Gap 21 is why the *shape* of what these
+directories test changed; it is not, by itself, why the numbers moved. The current, gating
+numbers are whatever the whole-suite CI coverage job reports at HEAD.
 
 - `npx tsc -b packages/supervisor packages/cli packages/plugin` — clean, no errors.
 - `npx vitest run packages/supervisor packages/plugin packages/cli --coverage.enabled=false`
