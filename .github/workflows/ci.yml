@@ -252,3 +252,13 @@ jobs:
       # matter of rewriting published history rather than editing JSON.
       - name: criteria baseline re-derives from git history
         run: npm run check:criteria-baseline
+      # The offline validator can only check that a `ci-run` citation NAMES a
+      # run in this repository. This step makes the run have to EXIST: a
+      # reviewer built a wholly forged phase closeout whose every baseline hash
+      # matched and whose every citation was `job 00000000000` / `runs/1`, and
+      # CI went green. Only a definitive 404 fails here — "could not ask the
+      # API" warns and passes, so a GitHub blip cannot red an honest PR.
+      - name: cited CI runs actually exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run check:citation-runs

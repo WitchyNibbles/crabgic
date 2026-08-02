@@ -109,34 +109,45 @@ function showBlob(rev, file) {
   });
 }
 
+/**
+ * The trust-critical core, as a pure function of one phase file's text at its
+ * pinned revision. Separated out so it can be unit-tested without git: the
+ * annotation refusal below is the single assertion standing between "these
+ * hashes are the ORIGINAL wording" and "these hashes are whatever the file said
+ * after somebody had already edited it", and it had no test.
+ */
+export function baselineEntryFor(file, pin, markdown) {
+  const { items: checkboxes, problems } = parseExitCriteriaCheckboxes(markdown);
+  if (problems.length > 0) {
+    throw new Error(`${file} at ${pin.rev} ${problems.join("; ")}`);
+  }
+  if (checkboxes === undefined || checkboxes.length === 0) {
+    throw new Error(`${file} at ${pin.rev} has no "## Exit criteria" checkbox items`);
+  }
+  // The pin is supposed to predate the closeout. If a checkbox already
+  // carries the citation annotation, it does not, and the whole baseline for
+  // that phase would be laundered wording rather than original wording.
+  const annotated = checkboxes.filter((box) => box.text.includes(ANNOTATION_LEAD));
+  if (annotated.length > 0) {
+    throw new Error(
+      `${file} at ${pin.rev} already carries ${String(annotated.length)} closeout annotation(s) — that revision is not pre-closeout`,
+    );
+  }
+  return {
+    roadmapFile: file,
+    sourceRev: pin.rev,
+    sourceNote: pin.note,
+    criteria: checkboxes.map((box) => sha256(normalizeCriterionText(box.text))),
+  };
+}
+
 /** Builds the manifest object from git, throwing on anything that smells wrong. */
 export function deriveBaseline() {
   const phases = {};
   for (const file of phaseFiles(DEFAULT_REVISION)) {
     const phase = /^roadmap\/(\d{2})-/.exec(file)[1];
     const pin = PRE_CLOSEOUT_REVISIONS[phase] ?? { rev: DEFAULT_REVISION, note: DEFAULT_NOTE };
-    const { items: checkboxes, problems } = parseExitCriteriaCheckboxes(showBlob(pin.rev, file));
-    if (problems.length > 0) {
-      throw new Error(`${file} at ${pin.rev} ${problems.join("; ")}`);
-    }
-    if (checkboxes === undefined || checkboxes.length === 0) {
-      throw new Error(`${file} at ${pin.rev} has no "## Exit criteria" checkbox items`);
-    }
-    // The pin is supposed to predate the closeout. If a checkbox already
-    // carries the citation annotation, it does not, and the whole baseline for
-    // that phase would be laundered wording rather than original wording.
-    const annotated = checkboxes.filter((box) => box.text.includes(ANNOTATION_LEAD));
-    if (annotated.length > 0) {
-      throw new Error(
-        `${file} at ${pin.rev} already carries ${String(annotated.length)} closeout annotation(s) — that revision is not pre-closeout`,
-      );
-    }
-    phases[phase] = {
-      roadmapFile: file,
-      sourceRev: pin.rev,
-      sourceNote: pin.note,
-      criteria: checkboxes.map((box) => sha256(normalizeCriterionText(box.text))),
-    };
+    phases[phase] = baselineEntryFor(file, pin, showBlob(pin.rev, file));
   }
   return {
     schemaVersion: 1,

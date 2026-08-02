@@ -43,6 +43,14 @@
  *   worse than no ref: it reads as evidence. This pass's own phase-12 defect
  *   exists because a cited test file was deleted and nothing noticed, and the
  *   pilot's one rebase slid five of its own `file:line` citations.
+ * - Every OTHER citation kind resolves as far as it can. A wholly forged phase
+ *   closeout — real checkbox texts so every baseline hash matched, all criteria
+ *   EVIDENCE-EXISTS, every citation `job 00000000000` / `runs/1` — passed
+ *   everything, because ci-run/discharge/journal-export were checked for
+ *   nothing at all. `discharge` must now name a real, TICKED criterion in a
+ *   real roadmap file; `journal-export` must be a committed file; `ci-run` must
+ *   carry this repository's Actions url plus its quote, with the run's actual
+ *   existence resolved by `check-citation-runs.mjs` in CI.
  * - `ticked` is DERIVED from the classification, never independently asserted:
  *   `UNMET`/`EVIDENCE-NEEDS-CI`/`EVIDENCE-NEEDS-LIVE` can never carry a tick.
  * - `UNMET` must name a defect record that is a real defect record — quoting
@@ -72,6 +80,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   BASELINE_FILE,
   CLOSEOUT_DIR,
+  PRE_INDEX_TICKED_PHASES,
   parseExitCriteriaCheckboxes,
   validateAllCloseoutRecords,
   validateCloseoutRecord,
@@ -552,6 +561,53 @@ describe("parseExitCriteriaCheckboxes — one real section, and only one", () =>
     expect(errorsFor(() => {}, { root })).toEqual([]);
   });
 
+  /**
+   * Adversarial-review finding, round 6: continuation lines required NOT
+   * matching `/^\s*-\s/`, which a nested bullet does match — so an indented
+   * sub-bullet inside a criterion was silently DROPPED. A reviewer injected
+   * "- EXCEPT stop conditions 3-7, which are waived for this phase" inside a
+   * ticked criterion and got PASS: arbitrary weakening text, invisible to the
+   * sha256 pin and to the `— **` remainder check alike, against an otherwise
+   * untouched record.
+   *
+   * Rejected rather than folded into the item's text. Folding would silently
+   * change a criterion's wording — and therefore its baseline hash — the first
+   * time someone added a legitimate sub-bullet. Zero of the roadmap's 211
+   * criteria carry one today, so requiring the decision to be explicit costs
+   * nothing and cannot absorb a waiver by accident.
+   */
+  it("rejects a nested sub-bullet inside a criterion instead of silently dropping it", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+        "      - EXCEPT stop conditions 3-7, which are waived for this phase.",
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("sub-bullet");
+  });
+
+  it("does not count a `- [x]` inside a fenced block as a criterion", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+        "",
+        "```markdown",
+        "- [x] A third box that would corrupt the count.",
+        "```",
+        "",
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root })).toEqual([]);
+  });
+
   it("still parses a plain, single-section phase file", () => {
     const { items, problems } = parseExitCriteriaCheckboxes(
       ["## Exit criteria", "", "- [x] One.", "- [ ] Two.", "", "## Risks", "", "- none", ""].join(
@@ -676,13 +732,14 @@ describe("validateCloseoutRecord — tick discipline", () => {
     expect(errors.join("\n")).toContain("outside the repository");
   });
 
-  it("leaves non-path citation kinds unresolved — a run id is not a file", () => {
+  it("does not resolve a ci-run ref as a FILE — a run id is not a path — but still requires its url and quote", () => {
     expect(
       errorsFor((r) => {
         r.criteria[0].citations.push({
           kind: "ci-run",
           ref: "CI / unit-test+coverage, run 30711622357",
           url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          quotedAssertion: "612 test files / 5881 tests",
         });
       }),
     ).toEqual([]);
@@ -744,6 +801,47 @@ describe("validateCloseoutRecord — citations may not be symlinks", () => {
     expect(errors.join("\n")).toContain("outside the repository");
   });
 
+  /**
+   * Adversarial-review finding, round 6: `node_modules/vitest/package.json:3`
+   * validated. `node_modules` exists in EVERY CI job, because `npm ci` runs
+   * before the validator does — so the resolution check was certifying
+   * something the repository does not carry, which is exactly what its own
+   * error message promises it will not do.
+   */
+  it("rejects a citation resolving into node_modules/ or .git/", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "node_modules", "vitest"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "vitest", "package.json"), "{}\n", "utf8");
+    mkdirSync(join(root, ".git"), { recursive: true });
+    writeFileSync(join(root, ".git", "config"), "[core]\n", "utf8");
+    for (const ref of ["node_modules/vitest/package.json", ".git/config"]) {
+      expect(
+        errorsFor(
+          (r) => {
+            r.criteria[0].citations[0].ref = ref;
+          },
+          { root },
+        ).join("\n"),
+        ref,
+      ).toContain("not content the repository carries");
+    }
+  });
+
+  /**
+   * Adversarial-review finding, round 6: a record citing ITSELF as its own
+   * `artifact` evidence resolved as a file and passed. A closeout record is the
+   * claim, never the evidence for it.
+   */
+  it("rejects a citation whose ref is a closeout record — a record is not its own evidence", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "artifact",
+        ref: `${CLOSEOUT_DIR}/phase-99.json`,
+      });
+    });
+    expect(errors.join("\n")).toContain("closeout record");
+  });
+
   it("rejects a symlink even when it points at a file inside the repository — a citation names a real committed file", () => {
     const root = fixtureRoot();
     symlinkSync(
@@ -768,6 +866,146 @@ describe("validateCloseoutRecord — citations may not be symlinks", () => {
  * more phases will rebase onto a moving `main`. A line that does not exist
  * cannot be the line the quoted assertion lives on.
  */
+/**
+ * Adversarial-review finding, round 6 — the most serious of the whole effort.
+ * `ci-run`, `discharge` and `journal-export` refs were never resolved against
+ * anything at all, so a WHOLLY FORGED phase closeout passed everything: a
+ * reviewer generated `phase-13.json` from `roadmap/13`'s verbatim checkbox
+ * texts (so every hash matched the frozen baseline), classified all seven
+ * `EVIDENCE-EXISTS`, cited each with a fabricated `ci-run`
+ * (`job 00000000000`, `runs/1`), ticked the boxes — and got a green validator,
+ * a green baseline `--check` and green CI. Unlike `quotedAssertion`, where at
+ * least the file and the line have to exist, here NOTHING had to exist.
+ */
+describe("validateCloseoutRecord — the non-path citation kinds", () => {
+  it("rejects a `ci-run` citation with no url to resolve it by", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({ kind: "ci-run", ref: "CI / unit-test, job 00000000000" });
+    });
+    expect(errors.join("\n")).toContain("url");
+  });
+
+  it("rejects a `ci-run` url that does not point at this repository's Actions", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test, job 00000000000",
+        url: "https://github.com/someone-else/elsewhere/actions/runs/1",
+        quotedAssertion: "612 test files / 5881 tests",
+      });
+    });
+    expect(errors.join("\n")).toContain("actions/runs");
+  });
+
+  it("rejects a `ci-run` citation carrying no quotedAssertion — run logs expire, the quote is the evidence", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test, job 00000000000",
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+      });
+    });
+    expect(errors.join("\n")).toContain("quotedAssertion");
+  });
+
+  it("accepts a well-formed `ci-run` citation, including the /actions/jobs/ form", () => {
+    for (const url of [
+      "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+      "https://github.com/WitchyNibbles/crabgic/actions/jobs/91419417929",
+      "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357/job/91399985018",
+    ]) {
+      expect(
+        errorsFor((r) => {
+          r.criteria[0].citations.push({
+            kind: "ci-run",
+            ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
+            url,
+            quotedAssertion: "612 test files / 5881 tests",
+          });
+        }),
+        url,
+      ).toEqual([]);
+    }
+  });
+
+  it("rejects a `journal-export` ref that names no committed file", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "journal-export",
+        ref: "docs/evidence/never-here.jsonl",
+      });
+    });
+    expect(errors.join("\n")).toContain("does not exist");
+  });
+
+  /**
+   * `discharge` is the one a phase 09 reviewer showed live: a tick discharging
+   * against a COMPLETELY FABRICATED phase-23 criterion passed. The ref names
+   * another phase's criterion, and that is fully checkable offline — the file
+   * must exist, the quoted wording must really be one of its criteria, and
+   * that criterion must actually be TICKED, or nothing has been discharged.
+   */
+  describe("a `discharge` ref names a real, ticked criterion in another phase", () => {
+    const dischargeRoot = () => {
+      const root = fixtureRoot();
+      writeFileSync(
+        join(root, "roadmap", "23-release-hardening.md"),
+        [
+          "## Exit criteria",
+          "",
+          "- [x] The release gate scored 15 PASS / 0 FAIL in `final` mode.",
+          "- [ ] Something nobody has closed yet.",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+      return root;
+    };
+    const cite = (ref) => (r) => {
+      r.criteria[0].citations.push({ kind: "discharge", ref });
+    };
+
+    it("accepts a discharge against a real ticked criterion", () => {
+      expect(
+        errorsFor(
+          cite(
+            'roadmap/23-release-hardening.md exit criterion "The release gate scored 15 PASS / 0 FAIL in `final` mode."',
+          ),
+          { root: dischargeRoot() },
+        ),
+      ).toEqual([]);
+    });
+
+    it("rejects a discharge against a criterion nobody has ticked", () => {
+      const errors = errorsFor(
+        cite('roadmap/23-release-hardening.md exit criterion "Something nobody has closed yet."'),
+        { root: dischargeRoot() },
+      );
+      expect(errors.join("\n")).toContain("not ticked");
+    });
+
+    it("rejects a discharge against a FABRICATED criterion", () => {
+      const errors = errorsFor(
+        cite('roadmap/23-release-hardening.md exit criterion "Everything is wonderful."'),
+        { root: dischargeRoot() },
+      );
+      expect(errors.join("\n")).toContain("no criterion");
+    });
+
+    it("rejects a discharge naming a roadmap file that does not exist", () => {
+      const errors = errorsFor(cite('roadmap/77-imaginary.md exit criterion "Anything."'), {
+        root: dischargeRoot(),
+      });
+      expect(errors.join("\n")).toContain("77-imaginary.md");
+    });
+
+    it("rejects a discharge ref that is not in the documented form", () => {
+      const errors = errorsFor(cite("phase 23 closed this, trust me"), { root: dischargeRoot() });
+      expect(errors.join("\n")).toContain("exit criterion");
+    });
+  });
+});
+
 describe("validateCloseoutRecord — cited lines must exist", () => {
   it("rejects a `test` citation whose line number is past the end of the file", () => {
     const errors = errorsFor((r) => {
@@ -1132,6 +1370,35 @@ describe("validateAllCloseoutRecords — this repository's own committed records
     );
     const { errors } = validateAllCloseoutRecords(root);
     expect(errors.join("\n")).not.toContain("23-release-hardening.md");
+  });
+
+  /**
+   * Renaming the heading (`## Exit criteria (final)`) and ticking everything
+   * used to pass the VALIDATOR — it was caught only by the unit suite's
+   * self-test, in a different CI job. All 25 phase files parse today, so the
+   * validator can simply require it.
+   */
+  it("reports a phase file whose `## Exit criteria` section cannot be found at all", () => {
+    const root = mkdtempSync(join(tmpdir(), "closeout-nosection-"));
+    tmpDirs.push(root);
+    mkdirSync(join(root, "roadmap"), { recursive: true });
+    mkdirSync(join(root, CLOSEOUT_DIR), { recursive: true });
+    writeFileSync(
+      join(root, "roadmap", "13-renamed-heading.md"),
+      ["## Exit criteria (final)", "", "- [x] Everything, obviously.", ""].join("\n"),
+      "utf8",
+    );
+    const { errors } = validateAllCloseoutRecords(root);
+    expect(errors.join("\n")).toContain("13-renamed-heading.md");
+    expect(errors.join("\n")).toContain("Exit criteria");
+  });
+
+  /**
+   * The exemption list is a standing invitation to grow. Pinning it means
+   * adding a phase requires editing this assertion, which a reviewer sees.
+   */
+  it("grandfathers exactly one phase, and adding another requires editing this test", () => {
+    expect(PRE_INDEX_TICKED_PHASES).toEqual(["23"]);
   });
 
   it("reports an error rather than passing vacuously when the closeout directory holds no records", () => {

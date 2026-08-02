@@ -112,7 +112,11 @@ records do not classify the same situation three different ways.
    mirroring the record exactly — let the **real** section be fraudulently ticked and wholly
    rewritten with the validator reporting **zero errors**. One duplicated heading bypassed the
    baseline manifest, the wording pin, tick discipline and the two-way cross-check at the same
-   time, because none of them ever looked at the real section.
+   time, because none of them ever looked at the real section. A **nested sub-bullet** inside a
+   criterion is rejected for the same reason: the parser dropped it, so
+   `- EXCEPT stop conditions 3-7, which are waived for this phase` rode past both the hash pin and
+   the annotation check untouched. Zero of the 211 criteria carry one, so fold any such qualifier
+   into the criterion's own sentence.
 3. **The wording pin** — `sha256(text)` must match, *and* `text` must account for the **whole**
    checkbox item in the phase file: it must be that item's prefix, and whatever follows must be
    empty or start with `— **` (the citation annotation, `— **Evidence …**`). Both halves are
@@ -150,9 +154,31 @@ records do not classify the same situation three different ways.
    reads as evidence. The **line span must exist in the file**: `:9999` on a 200-line file, a `:0`,
    and an inverted range are all rejected. This pass's own phase-12 defect exists *because* a cited
    test file was deleted in a refactor and nothing noticed, and the pilot's single rebase slid five
-   of its own `file:line` citations with the files still present. `ci-run`, `discharge` and
-   `journal-export` name a run, another phase's criterion, or an exported entry — not local
-   files — so they are left unresolved.
+   of its own `file:line` citations with the files still present. A ref into **`node_modules/` or
+   `.git/`** fails — `npm ci` runs before the validator in every CI job, so `node_modules` always
+   resolves while being precisely *not* content this repository carries. A ref naming a **closeout
+   record** (`phase-NN.json`) fails too: a record is the claim, never the evidence for itself.
+8. **Every other citation kind resolves as far as it can.** None of them was checked for anything
+   at all until a reviewer built a **wholly forged `phase-13.json`** — real checkbox texts, so every
+   frozen baseline hash matched; all seven criteria `EVIDENCE-EXISTS`; every citation
+   `job 00000000000` / `runs/1` — and got a green validator, a green baseline `--check` and green
+   CI.
+   - **`discharge`** is fully checkable offline, and now is: the ref must name a
+     `roadmap/NN-<slug>.md` **and** quote the discharged criterion's wording; that criterion must
+     really exist in that file; and it must be **ticked** — an unticked one has discharged nothing.
+     A phase-09 reviewer discharged a tick against a completely fabricated phase-23 criterion and
+     it passed. It no longer does.
+   - **`journal-export`** is a committed file like any other, and resolves as one.
+   - **`ci-run`** cannot be resolved from a checkout, so offline it must carry a `url` in this
+     repository's `actions/runs/` (or `actions/jobs/`) space, plus a `quotedAssertion` — logs
+     expire, the quote is the durable part. Making the run actually **exist** is
+     `npm run check:citation-runs`, a separate `meta-checks` step that resolves each URL against
+     the GitHub API. Its failure semantics are deliberately asymmetric: a **404 fails the build**
+     (the run is not there), while "could not ask" — no token, rate limit, 5xx, DNS — warns and
+     passes, so an API blip cannot red an honest PR. That asymmetry cannot be turned into a bypass,
+     because an attacker cannot make the API return 404-shaped success. It deliberately does
+     **not** require `conclusion: success`: a record may legitimately cite a **red** run as evidence
+     that a gate really bites, and phase 01's closeout does exactly that.
 
 ## The frozen baseline
 
@@ -197,23 +223,44 @@ narrower, and still real:
    the intended way to change a criterion, so it can also be the dishonest way. Treat any diff to
    `criteria-baseline.json` as the thing to read first.
 4. **`quotedAssertion` is not verified against the file it quotes.** This is the largest remaining
-   hole and it is named here rather than hidden: the citation's *file* must exist, be a real file,
-   and be long enough for the line — but the quoted assertion itself is free text, so a real file
-   plus a real in-range line plus an invented assertion passes. Enforcing it is not a small change:
-   of the 143 citations in the three merged records, only 8 have backticked fragments that appear
-   verbatim in the cited file — the rest paraphrase, reformat, or splice several lines. Closing it
-   means first settling a machine-checkable `quotedAssertion` format, which is a protocol change,
-   not a validator change.
+   hole and it is named here rather than hidden: the citation's *file* must exist, be a real
+   non-symlink file, and be long enough for the line — but the quoted assertion itself is free
+   text, so a real file plus a real in-range line plus an invented assertion passes.
 
-All three surface in exactly one place: the **roadmap diff**, read by a human. That is the boundary
+   Enforcing it is not a small change. The three merged records carry **143 citations**, of which
+   **123** are `test`/`artifact` — the only kinds that name a file a quote could be checked
+   against. Between **10 and 16 of those 123** have backticked fragments appearing verbatim
+   (whitespace-normalized) in the cited file: **10** counting only fragments of ≥12 characters and
+   requiring all of them to match, **16** counting fragments of any length. (An earlier draft of
+   this file said "8 of 143". That was wrong in both numerator and denominator; a reviewer
+   measuring independently got 3, 13 or 16 across its own strictness settings. The methodology is
+   spelled out here so the figure can be reproduced instead of trusted.) Either way at most ~13%
+   would survive as-is — the rest paraphrase, reformat, or splice several lines. Closing this means
+   first settling a machine-checkable `quotedAssertion` format: a protocol change, not a validator
+   change.
+5. **A `ci-run` citation can name a real run that has nothing to do with the criterion.** Run
+   resolution proves the run exists; it does not read the log, so it cannot tell whether the quoted
+   line is really in it, or whether that job exercised this criterion's suite. This is the residue
+   of the forged-closeout hole rather than its closure.
+
+   Note the division of labour, because it matters for anyone running the check locally: the
+   **offline** validator still passes a forged closeout whose fabricated citations merely *look*
+   well-formed. Re-running the reviewer's forged `phase-13.json` against this repository confirms
+   it — `npm run check:criteria-closeout` reports PASS, and `npm run check:citation-runs` reports
+   all seven citations fabricated. Only the second one resolves runs, and it is meaningful only
+   where a token exists. **A green local `check:criteria-closeout` is not evidence that a record's
+   CI citations are real.**
+
+All of these surface in exactly one place: the **roadmap diff**, read by a human. That is the boundary
 of what this kind of check can do, and it is why the wording protocol and per-phase review exist.
 Read the roadmap diff on every closeout PR. Do not let a green `meta-checks` stand in for it.
 
 **Not checked, on purpose:** `pass.headSha` is validated as a 40-hex string but never resolved to a
-real commit. Doing so needs `git`, and both places this validator runs — the `meta-checks` job and
-the unit suite's self-test — use a shallow checkout where most object IDs are simply absent, so the
-check would fail on honest records and pass on nothing. The `headSha` is provenance for a reader,
-not a gate.
+real commit. Doing so needs `git` history. `meta-checks` now checks out with `fetch-depth: 0` —
+the baseline re-derivation requires it — but the validator *also* runs inside the unit suite's own
+self-test, in a job that checks out shallow, where most object IDs are simply absent. The check
+would therefore fail there on honest records while catching nothing. The `headSha` is provenance
+for a reader, not a gate.
 
 ## Rules for the agent writing a record
 

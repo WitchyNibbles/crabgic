@@ -126,10 +126,41 @@ export const CITATION_KINDS = ["ci-run", "artifact", "test", "journal-export", "
 
 /**
  * The kinds whose `ref` is a repository path and must therefore resolve on
- * disk. `ci-run`, `discharge` and `journal-export` name a run, another phase's
- * criterion, or an exported entry — none of them a local file.
+ * disk. `journal-export` joined `test`/`artifact` in round 6: an exported
+ * journal entry is a committed file like any other, and leaving the kind
+ * unresolved made it a free-text forgery channel for no benefit — nothing in
+ * the index used it.
  */
-export const RESOLVABLE_CITATION_KINDS = ["test", "artifact"];
+export const RESOLVABLE_CITATION_KINDS = ["test", "artifact", "journal-export"];
+
+/**
+ * This repository's Actions URL space. A `ci-run` citation cannot be resolved
+ * from a checkout, so the least it must do is name a run in THIS repository,
+ * in a form a reviewer can paste into a browser.
+ *
+ * Both `/actions/runs/<id>` and `/actions/jobs/<id>` are in use across the
+ * committed records (phase 01 cites jobs directly), as is the
+ * `/actions/runs/<id>/job/<id>` form.
+ */
+const CI_RUN_URL =
+  /^https:\/\/github\.com\/WitchyNibbles\/crabgic\/actions\/(?:runs|jobs)\/\d+(?:\/job\/\d+)?$/;
+
+/**
+ * The two load-bearing elements of a `discharge` ref: the roadmap file it
+ * discharges against, and the discharged criterion's wording in double quotes.
+ *
+ * Matched anywhere in the ref rather than as a fixed sentence, because the
+ * records in flight write it three different ways — `roadmap/NN-… exit
+ * criterion "…" (ticked)`, and `phase 23 exit criterion "…"
+ * (roadmap/23-….md:155, ticked), <run details>`. Both carry everything the
+ * check needs; insisting on one phrasing would have failed honest records
+ * while adding no teeth, since the teeth are entirely in resolving the quote.
+ */
+const DISCHARGE_ROADMAP_FILE = /roadmap\/\d{2}-[a-z0-9-]+\.md/;
+const DISCHARGE_QUOTED_CRITERION = /"([^"]+)"/;
+
+/** A closeout record is the claim. It is never the evidence for itself. */
+const CLOSEOUT_RECORD_REF = new RegExp(`^${CLOSEOUT_DIR}/phase-\\d{2}\\.json$`);
 
 /**
  * `packages/x/y.test.ts:12` / `…:12-18` -> the path plus the line span it
@@ -291,17 +322,36 @@ export function parseExitCriteriaCheckboxes(markdown) {
   }
 
   const items = [];
-  for (const rawLine of lines.slice(start, end)) {
+  const nestedBullets = [];
+  lines.slice(start, end).forEach((rawLine, offset) => {
     const checkbox = CHECKBOX_ITEM.exec(rawLine);
     if (checkbox !== null) {
       items.push({ checked: checkbox[1].toLowerCase() === "x", text: checkbox[2] });
-      continue;
+      return;
+    }
+    // Round-6 finding: continuation required NOT matching `/^\s*-\s/`, which a
+    // nested bullet DOES match, so an indented sub-bullet inside a criterion
+    // was silently dropped — "- EXCEPT stop conditions 3-7, which are waived
+    // for this phase" was invisible to the sha256 pin and the `— **` remainder
+    // check alike. Rejected rather than folded into the item's text: folding
+    // would silently move a criterion's baseline hash the first time somebody
+    // added a legitimate sub-bullet. Zero of the roadmap's 211 criteria carry
+    // one, so requiring the decision to be explicit costs nothing.
+    if (items.length > 0 && /^\s+-\s/.test(rawLine)) {
+      nestedBullets.push(start + offset + 1);
+      return;
     }
     // A continuation line belongs to the item above it: indented, non-blank,
     // and not the start of a new list item.
     if (items.length > 0 && /^\s+\S/.test(rawLine) && !/^\s*-\s/.test(rawLine)) {
       items[items.length - 1].text += ` ${rawLine.trim()}`;
     }
+  });
+  if (nestedBullets.length > 0) {
+    problems.push(
+      `has ${String(nestedBullets.length)} nested sub-bullet(s) inside an exit criterion (line(s) ${nestedBullets.map(String).join(", ")}) — a sub-bullet is dropped by this parser, so it can carry arbitrary weakening text past both the hash pin and the annotation check; fold it into the criterion's own sentence instead`,
+    );
+    return { items: undefined, problems };
   }
 
   const strays = [];
@@ -363,6 +413,29 @@ function realpathOr(target) {
  */
 function resolveCitationRef(errors, cwhere, citation, repoRoot) {
   const { relPath, start, end } = parseCitationRef(citation.ref);
+
+  // Round-6 finding: a record cited ITSELF as its own `artifact` evidence and
+  // resolved fine, because a closeout record is a real committed file. Checked
+  // on the ref's shape, before resolution, so it holds for a record that does
+  // not exist yet either.
+  if (CLOSEOUT_RECORD_REF.test(relPath)) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${relPath} is a closeout record — a record is the claim, never the evidence for it`,
+    );
+    return;
+  }
+  // Round-6 finding: `node_modules/vitest/package.json:3` validated. Every CI
+  // job runs `npm ci` before this check, so `node_modules` always exists —
+  // certifying content the repository does not carry, which is precisely what
+  // the error messages below promise cannot happen.
+  const segments = relPath.split(/[\\/]/);
+  if (segments.includes("node_modules") || segments.includes(".git")) {
+    errors.push(
+      `${cwhere}: ${citation.kind} ref ${relPath} is not content the repository carries — node_modules/ is installed by every CI job and .git/ is not source`,
+    );
+    return;
+  }
+
   const abs = path.resolve(repoRoot, relPath);
   const rootPrefix = path.resolve(repoRoot) + path.sep;
 
@@ -406,6 +479,87 @@ function resolveCitationRef(errors, cwhere, citation, repoRoot) {
   } else if (end > lineCount) {
     errors.push(
       `${cwhere}: ${citation.kind} ref ${citation.ref} names line ${String(end)}, but ${relPath} has ${String(lineCount)} lines — the citation is stale. Re-resolve every line citation against the tree you are merging into, immediately before you push.`,
+    );
+  }
+}
+
+/**
+ * A `ci-run` citation cannot be resolved from a checkout — the run lives in
+ * GitHub Actions. What CAN be required offline is that it names a run in THIS
+ * repository, in a form a reviewer can open, and that it carries the quoted
+ * log line that outlives the run's own log retention.
+ *
+ * Round-6 finding, and the most serious of the whole effort: `ci-run` refs were
+ * checked for nothing at all, so a WHOLLY FORGED closeout passed everything —
+ * a reviewer generated `phase-13.json` from the real checkbox texts (so every
+ * baseline hash matched), cited each criterion with `job 00000000000` /
+ * `runs/1`, and got a green validator, a green baseline `--check` and green CI.
+ *
+ * This is a shape check, and a shape check alone does not make a run real.
+ * `scripts/check-citation-runs.mjs` is the half that does, resolving each URL
+ * against the GitHub API in the `meta-checks` job where a token exists.
+ */
+function checkCiRunCitation(errors, cwhere, citation) {
+  if (!isNonEmptyString(citation.url)) {
+    errors.push(
+      `${cwhere}: a ci-run citation must carry the run's url — the ref alone names a job number nobody can resolve`,
+    );
+    return;
+  }
+  if (!CI_RUN_URL.test(citation.url)) {
+    errors.push(
+      `${cwhere}: ci-run url ${citation.url} is not a WitchyNibbles/crabgic actions/runs (or actions/jobs) URL`,
+    );
+  }
+  if (!isNonEmptyString(citation.quotedAssertion)) {
+    errors.push(
+      `${cwhere}: a ci-run citation must carry a quotedAssertion — workflow logs and artifacts expire, so the quoted line IS the durable evidence`,
+    );
+  }
+}
+
+/**
+ * A `discharge` citation says "another phase's closed criterion already covers
+ * this one". That is fully checkable offline, and it was checked for nothing:
+ * a phase-09 reviewer discharged a tick against a COMPLETELY FABRICATED
+ * phase-23 criterion and it passed. The named file must exist, the quoted
+ * wording must really be one of its criteria, and that criterion must actually
+ * be TICKED — an unticked one has discharged nothing.
+ */
+function checkDischargeCitation(errors, cwhere, citation, repoRoot) {
+  const file = DISCHARGE_ROADMAP_FILE.exec(citation.ref);
+  const quotedMatch = DISCHARGE_QUOTED_CRITERION.exec(citation.ref);
+  if (file === null || quotedMatch === null) {
+    errors.push(
+      `${cwhere}: a discharge ref must name the roadmap file it discharges against (roadmap/NN-<slug>.md) AND quote that closed criterion's wording in "double quotes" — e.g. \`roadmap/23-release-hardening.md exit criterion "<verbatim wording>" (ticked)\``,
+    );
+    return;
+  }
+  const roadmapFile = file[0];
+  const quoted = quotedMatch[1];
+  const abs = path.resolve(repoRoot, roadmapFile);
+  if (!abs.startsWith(path.resolve(repoRoot) + path.sep) || !existsSync(abs)) {
+    errors.push(`${cwhere}: discharge ref names ${roadmapFile}, which does not exist`);
+    return;
+  }
+  const { items, problems } = parseExitCriteriaCheckboxes(readFileSync(abs, "utf8"));
+  if (items === undefined) {
+    errors.push(
+      `${cwhere}: discharge ref names ${roadmapFile}, whose exit criteria cannot be read${problems.length > 0 ? ` — ${problems[0]}` : ""}`,
+    );
+    return;
+  }
+  const wanted = normalize(quoted);
+  const match = items.find((box) => normalize(box.text).startsWith(wanted));
+  if (match === undefined) {
+    errors.push(
+      `${cwhere}: ${roadmapFile} has no criterion beginning ${JSON.stringify(quoted.slice(0, 60))} — a discharge cannot cite a criterion that does not exist`,
+    );
+    return;
+  }
+  if (!match.checked) {
+    errors.push(
+      `${cwhere}: the criterion this discharges against is not ticked in ${roadmapFile}, so it has discharged nothing`,
     );
   }
 }
@@ -683,6 +837,10 @@ export function validateCloseoutRecord(record, ctx) {
           // fabricated ref validated. This pass's own phase-12 defect exists
           // BECAUSE a cited test file was deleted and nothing noticed.
           resolveCitationRef(errors, cwhere, citation, repoRoot);
+        } else if (citation.kind === "ci-run") {
+          checkCiRunCitation(errors, cwhere, citation);
+        } else if (citation.kind === "discharge") {
+          checkDischargeCitation(errors, cwhere, citation, repoRoot);
         }
         for (const optional of ["url", "commit", "quotedAssertion"]) {
           if (optional in citation && !isNonEmptyString(citation[optional])) {
@@ -848,6 +1006,16 @@ function findUnrecordedPhaseClosures(repoRoot, presentFileNames) {
     // decoy section planted before a phase is closed must not lie in wait.
     const parsed = parseExitCriteriaCheckboxes(text);
     for (const problem of parsed.problems) problems.push(`roadmap/${name} ${problem}`);
+    if (parsed.items === undefined && parsed.problems.length === 0) {
+      // Renaming the heading (`## Exit criteria (final)`) and ticking
+      // everything used to pass the validator outright — it was caught only by
+      // the unit suite's self-test, in a different CI job. All 25 phase files
+      // parse today, so the validator can simply require it.
+      problems.push(
+        `roadmap/${name} has no "## Exit criteria" section — every phase file must carry one, spelled exactly that way`,
+      );
+      continue;
+    }
 
     if (text.includes(`${CLOSEOUT_DIR}/${expected}`)) {
       problems.push(
