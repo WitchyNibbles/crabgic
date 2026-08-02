@@ -1,5 +1,38 @@
 # Phase 06 work item 6 — `@live` conformance suite (worker W5)
 
+**Pre-rename names — annotated 2026-08-02, not rewritten.** This file was written before
+`3e74cc7` (2026-07-26) renamed the project from `engineering-orchestrator` to `crabgic`, so
+the names in it were the real ones when it was captured. This is an evidence file: the
+original text stays verbatim and the mapping lives here. Read `@eo/x` as `@crabgic/x`; read
+the product / binary / cache-path segment `engineering-orchestrator` as `crabgic`; and read
+the gateway MCP server literal `eo_gateway` as `crabgic_gateway`, which is what
+`GATEWAY_MCP_SERVER_NAME` holds today (`packages/contracts/src/gateway/server-name.ts:26`).
+Nothing else about the citations changed — the modules, paths and tests they name are the
+same ones. Two reading rules follow. Quotations keep their old names verbatim, because a
+quotation records what its source said, not what is true now. And where this file asserts the
+_absence_ of a hand-typed server literal (interface-ledger Gap 11), it asserts it about the
+constant's value at the time; that rule is unchanged and the scan targets `"crabgic_gateway"`
+today (`docs/evidence/phase-02/closeout-c8-gateway-literal-scan.txt`).
+
+**Additionally — one apparent survivor here is NOT stale, and two are worse than stale.**
+(Line numbers below are as of this annotated file; inserting this note shifted every
+original line down by 33.)
+
+§"3. Files created", the `live-harness.ts` bullet (`:72`), names the auth-handoff file
+`~/.claude/.eo-oauth-token`. That is still the exact path the harness reads at HEAD —
+`OAUTH_HANDOFF_FILE`, `packages/engine-claude/src/live/live-harness.ts:200`. The `eo` prefix
+on this _filename_ was never renamed, so the line is an accurate record of current behaviour,
+not drift, and the mapping above does not apply to it. Adjudicated deliberately, because
+"looks pre-rename" and "is pre-rename" are different questions and only the code answers the
+second.
+
+What is genuinely stale here is the **runnable binary name**: the `stub-mcp-server.mjs`
+bullet in the same section (`:84`) and the "Gateway stub vs. real gateway" bullet in
+§"11. Deviations / open questions" (`:215`) refer to an `engineering-orchestrator` binary and an
+`engineering-orchestrator gateway mcp` process. Those are `crabgic` and `crabgic gateway mcp`
+today. Flagged apart from the package scopes because a reader can paste those two straight
+into a shell and get "command not found".
+
 Scope owned: `packages/engine-claude/src/live/**`, `src/fake-live-parity.test.ts`, this
 evidence file, the `[W5-EXPORTS]` anchor in `src/index.ts`, one `.gitignore` line, and
 CONDITIONAL authority over `src/options-assembler.ts` + `goldens/` (path-anchor — see §7).
