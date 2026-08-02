@@ -1,0 +1,18 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:36:38Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run packages/perf/src/gate/performance-gate.e2e.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15
+
+ ✓ |@crabgic/perf| src/gate/performance-gate.e2e.test.ts > E2E: performance gate registered into 14's registry, fired at final_verifying > fires through the registry's fireByTag('performance', ...) and emits a schema-valid EvidenceRecord 33ms
+ ✓ |@crabgic/perf| src/gate/performance-gate.e2e.test.ts > E2E: performance gate registered into 14's registry, fired at final_verifying > MAJOR FIX — a deliberate post-approval budget widening that ALSO recomputes its own budgetHash consistently still fails the journal-anchored hash-link check and BLOCKS, with the block itself journaled as evidence 28ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  11:36:38
+   Duration  1.91s (transform 1.26s, setup 0ms, import 1.73s, tests 62ms, environment 0ms)

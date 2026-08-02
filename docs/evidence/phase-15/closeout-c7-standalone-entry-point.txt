@@ -1,0 +1,40 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:35:42Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run --config e2e/attestation/vitest.config.ts src/perfContractRerun.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15/e2e/attestation
+
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > produces a schema-valid record when the matrix is green on a quiet host 3ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > records the candidate it was actually taken against 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > names what produced the verdicts, not a bare label 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > records ONE contract for the matrix, never the seeded fixtures' own outcomes 1ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > never leaks a seeded fixture's block/inconclusive verdict into the record 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > is accepted by the consumer as a satisfied re-run, not a blocked one 1ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — the record it writes > is the record the CONSUMER accepts — producer and consumer agree on the shape 1ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — it refuses rather than softening > writes NO record when the matrix is red, and says why 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — it refuses rather than softening > never rewrites a failing run's outcomes into a passing record 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — it refuses rather than softening > refuses on a noisy host — 23:75 asks for a quiet one 0ms
+ ✓ src/perfContractRerun.test.ts > producePerfContractRerun — it refuses rather than softening > quotes the failing output so the refusal is actionable 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > finds the suite at the path roadmap/15:112 names 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > perf-conformance/cpu-regression-20pct-sensitive matches a real fixture in the suite 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > perf-conformance/noise-level-3pct-critical matches a real fixture in the suite 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > perf-conformance/noisy-critical-measurement matches a real fixture in the suite 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > declares a distinct contractId per fixture 0ms
+ ✓ src/perfContractRerun.test.ts > the declared contracts are bound to the real perf-conformance suite > is non-empty — an empty re-run is not a re-run 0ms
+ ✓ src/perfContractRerun.test.ts > release-e2e.yml invokes the producer this module exposes > runs the re-run producer 0ms
+ ✓ src/perfContractRerun.test.ts > release-e2e.yml invokes the producer this module exposes > points the record outside the checked-out tree (Gap 16) 0ms
+ ✓ src/perfContractRerun.test.ts > release-e2e.yml invokes the producer this module exposes > exports it to later steps, so the attestation harness reads the same path 0ms
+ ✓ src/perfContractRerun.test.ts > release-e2e.yml invokes the producer this module exposes > is wired as an npm script, so the workflow and a developer run the same thing 0ms
+ ✓ src/perfContractRerun.test.ts > quiescence is ambient, measured before any work starts > refuses without ever invoking the matrix when the host is already busy 0ms
+ ✓ src/perfContractRerun.test.ts > quiescence is ambient, measured before any work starts > runs the matrix once the ambient sample is quiet 0ms
+ ✓ src/perfContractRerun.test.ts > quiescence is ambient, measured before any work starts > samples ambient load for a real, non-zero window by default 0ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  11:35:42
+   Duration  495ms (transform 260ms, setup 0ms, import 380ms, tests 10ms, environment 0ms)

@@ -1,0 +1,42 @@
+# criteria-closeout transcript (phase 15)
+# captured (UTC): 2026-08-02T09:34:44Z
+# HEAD: eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# cwd: repository root (a git worktree of WitchyNibbles/crabgic)
+# command: npx vitest run packages/perf/src/stats/bootstrap-ci.test.ts packages/perf/src/stats/decision-engine.test.ts packages/perf/src/stats/decision-engine.property.test.ts packages/perf/src/runner/twin-worktree-runner.e2e.test.ts --coverage.enabled=false --reporter=verbose
+# exit status: 0
+# Verbatim stdout+stderr of the command above follows; nothing edited.
+# ---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p15
+
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > a constant (zero-variance) sample set has a noise bound of exactly 0 8ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > a higher-variance sample set has a strictly larger noise bound than a lower-variance one of the same mean 16ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > throws InsufficientSamplesError for fewer than 2 samples 0ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > is deterministic: two calls over the identical sample array produce byte-identical output 7ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > is order-independent: shuffling the input array produces the identical noise bound 6ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeNoiseBoundPct > respects a custom seed (still deterministic, but a documented override point) 8ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeRegressionPct > higher-is-worse: a candidate mean above the base mean is a positive regression 0ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeRegressionPct > higher-is-worse: a candidate mean below the base mean is a negative regression (an improvement) 0ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeRegressionPct > lower-is-worse (e.g. throughput): a candidate mean BELOW the base mean is a positive regression 0ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeRegressionPct > lower-is-worse: a candidate mean ABOVE the base mean is a negative regression (an improvement) 0ms
+ ✓ |@crabgic/perf| src/stats/bootstrap-ci.test.ts > computeRegressionPct > a zero base mean is handled without dividing by zero 0ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — critical-path 5% boundary (exact) > a regression of EXACTLY 5% on a critical path PASSES (not 'beyond') 8ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — critical-path 5% boundary (exact) > a regression of 5.0001% on a critical path BLOCKS 11ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — sensitive-path 10% boundary (exact) > a regression of EXACTLY 10% on a sensitive path PASSES 6ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — sensitive-path 10% boundary (exact) > a regression of 10.0001% on a sensitive path BLOCKS 9ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — critical-path 15% noise boundary (exact, via noiseBoundPctOverride) > noise of EXACTLY 15% on a critical path is NOT inconclusive — falls through to max(15,5)=15% block-threshold logic 1ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — critical-path 15% noise boundary (exact, via noiseBoundPctOverride) > noise of 15.0001% on a critical path IS inconclusive-and-blocking 0ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — critical-path 15% noise boundary (exact, via noiseBoundPctOverride) > high noise on a SENSITIVE path (not critical) is never inconclusive — only critical-path gets that rule 0ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — absolute-budget breach > blocks unconditionally when the candidate mean breaches an absolute budget, even with zero regression 8ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — absolute-budget breach > does not block on an absolute budget that is not breached — falls through to statistical rules 3ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — absolute-budget breach > for a lower-is-worse metric (throughput), a candidate mean BELOW the budget breaches 3ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.test.ts > decide — an improvement never blocks > a candidate mean below base (higher-is-worse metric) passes regardless of path sensitivity 4ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.e2e.test.ts > E2E: twin-worktree A/B runner dispatches through 13's executor with exact interleaving order > dispatches each repetition through the REAL @crabgic/scheduler dispatchAttempt, in strict base/candidate alternating order 250ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.property.test.ts > decide — order-independence property > a GENUINE RANDOM PERMUTATION of the base and/or candidate sample arrays never changes the resulting outcome/regressionPct/noiseBoundPct 988ms
+ ✓ |@crabgic/perf| src/runner/twin-worktree-runner.e2e.test.ts > E2E: twin-worktree A/B runner dispatches through 13's executor with exact interleaving order > DETERMINISM: running the identical twin-worktree benchmark twice produces a byte-identical schedule and sample set (excluding wall-clock timestamps) 468ms
+ ✓ |@crabgic/perf| src/stats/decision-engine.property.test.ts > decide — monotonicity in regression magnitude property > holding base samples/noise fixed, a LARGER regression never un-blocks a decision that was already blocking (pass -> block is the only permitted transition as regression grows) 1422ms
+
+ Test Files  4 passed (4)
+      Tests  26 passed (26)
+   Start at  11:34:44
+   Duration  2.94s (transform 1.16s, setup 0ms, import 1.76s, tests 3.23s, environment 0ms)
