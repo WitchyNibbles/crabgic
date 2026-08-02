@@ -1,5 +1,19 @@
 # Phase 18 evidence — Jira Cloud adapter + intake/milestone synchronization
 
+**Pre-rename names — annotated 2026-08-02, not rewritten.** This file was written before
+`3e74cc7` (2026-07-26) renamed the project from `engineering-orchestrator` to `crabgic`, so
+the names in it were the real ones when it was captured. This is an evidence file: the
+original text stays verbatim and the mapping lives here. Read `@eo/x` as `@crabgic/x`; read
+the product / binary / cache-path segment `engineering-orchestrator` as `crabgic`; and read
+the gateway MCP server literal `eo_gateway` as `crabgic_gateway`, which is what
+`GATEWAY_MCP_SERVER_NAME` holds today (`packages/contracts/src/gateway/server-name.ts:26`).
+Nothing else about the citations changed — the modules, paths and tests they name are the
+same ones. Two reading rules follow. Quotations keep their old names verbatim, because a
+quotation records what its source said, not what is true now. And where this file asserts the
+_absence_ of a hand-typed server literal (interface-ledger Gap 11), it asserts it about the
+constant's value at the time; that rule is unchanged and the scan targets `"crabgic_gateway"`
+today (`docs/evidence/phase-02/closeout-c8-gateway-literal-scan.txt`).
+
 Governing spec: `roadmap/18-jira-cloud-adapter.md`. Package: `packages/connectors-jira`.
 Built on `packages/gateway` (16) and `packages/renderer` (17) — reused wholesale, never
 reimplemented (transport/SSRF/retry-ladder/budgets/secrets/mutation-pipeline/error-mapping;

@@ -1,5 +1,35 @@
 # Phase 07 evidence
 
+**Pre-rename names — annotated 2026-08-02, not rewritten.** This file was written before
+`3e74cc7` (2026-07-26) renamed the project from `engineering-orchestrator` to `crabgic`, so
+the names in it were the real ones when it was captured. This is an evidence file: the
+original text stays verbatim and the mapping lives here. Read `@eo/x` as `@crabgic/x`; read
+the product / binary / cache-path segment `engineering-orchestrator` as `crabgic`; and read
+the gateway MCP server literal `eo_gateway` as `crabgic_gateway`, which is what
+`GATEWAY_MCP_SERVER_NAME` holds today (`packages/contracts/src/gateway/server-name.ts:26`).
+Nothing else about the citations changed — the modules, paths and tests they name are the
+same ones. Two reading rules follow. Quotations keep their old names verbatim, because a
+quotation records what its source said, not what is true now. And where this file asserts the
+_absence_ of a hand-typed server literal (interface-ledger Gap 11), it asserts it about the
+constant's value at the time; that rule is unchanged and the scan targets `"crabgic_gateway"`
+today (`docs/evidence/phase-02/closeout-c8-gateway-literal-scan.txt`).
+
+**Additionally — here a VALUE moved, not just a name, so the mapping above is not enough.**
+Two lines need more than a scope substitution. (Line numbers are as of this annotated file;
+inserting this note shifted every original line down by 30.) §"Exported surface for
+downstream 08/13/23", the "Git identity (WI8)" bullet (`:157`), cites
+`ENGINEERING_ORCHESTRATOR_GIT_IDENTITY_NAME` (`"Engineering Orchestrator"`); both halves
+changed — the constant is `CRABGIC_GIT_IDENTITY_NAME` and its value is `"Crabgic"`
+(`packages/git-engine/src/git-identity.ts:33`), so a reader applying only the name mapping
+would still have the wrong string. The §"Exit-criteria → evidence map" control-clone row
+(`:62`) spells the path `$XDG_CACHE_HOME/engineering-orchestrator/<project-hash>/git-control/`; `resolveGitControlDir`
+returns `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/`
+(`packages/git-engine/src/layout.ts:23-26`), which is also what interface-ledger Gap 14 pins.
+Both were already filed — as a stale-evidence flag, explicitly *not* a criterion defect — at
+`docs/evidence/criteria-closeout/phase-07.json:416`, which deferred the edit under the rule
+against fixing a finding in the same pass that reports it. This annotation is that deferred
+edit. The finding is discharged; that record is left untouched.
+
 This directory is the evidence trail for `roadmap/07-git-control-repo-worktrees.md`'s
 work items and exit criteria, following the same convention `docs/evidence/phase-02/
 README.md` established: each file name is prefixed `wiN-` (work item N) or
