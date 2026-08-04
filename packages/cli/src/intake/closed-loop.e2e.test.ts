@@ -227,7 +227,14 @@ function buildDispatcher(
   };
 
   const dispatcher = createRealRunDispatcher({
-    deps: deps as never,
+    // No `as never`. It used to be one, and that cast is exactly how this
+    // file came to run REAL intake — which builds and persists `Requirement`
+    // records — and then hand the dispatcher a bundle that dropped them,
+    // driving the run to `succeeded` against an empty acceptance bar. A cast
+    // that silences the compiler also silences the guarantee the required
+    // fields exist to give (defect
+    // `24-daemon-requirements-registry-unwired.md`).
+    deps,
     projectDir: dir,
     xdgEnv: { HOME: dir },
     projectHash: "closed-loop",
@@ -289,7 +296,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
         workers: createWorkersRegistry(),
         artifactIndex: createArtifactIndexRegistry(),
         liveWorkers: new Map(),
-      } as never,
+      },
       projectDir: dir,
       xdgEnv: { HOME: dir },
       projectHash: "closed-loop-cli",
@@ -414,7 +421,7 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
         workers: createWorkersRegistry(),
         artifactIndex: createArtifactIndexRegistry(),
         liveWorkers: new Map(),
-      } as never,
+      },
       projectDir: dir,
       xdgEnv: { HOME: dir },
       projectHash: "closed-loop",

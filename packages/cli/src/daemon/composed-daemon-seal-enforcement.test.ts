@@ -94,6 +94,8 @@ const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
 const ENVELOPE_ID = "33333333-3333-4333-8333-333333333333";
 const UNIT_ID = "44444444-4444-4444-8444-444444444444";
 const REQ_ID = "aaaaaaaa-1111-4111-8111-111111111111";
+/** A second declared requirement id that no record is ever written for. */
+const ABSENT_REQ_ID = "bbbbbbbb-2222-4222-8222-222222222222";
 
 /** The criteria approved and sealed. */
 const APPROVED_CRITERIA = ["The login form submits"];
@@ -236,13 +238,28 @@ async function bootDaemon(): Promise<ComposedSupervisor> {
   });
 }
 
-/** Dispatches and waits for the detached drive to settle — `drain` is the daemon's own shutdown primitive. */
-async function dispatchAndSettle(daemon: ComposedSupervisor): Promise<void> {
+/** Dispatches, waits for the detached drive to settle (`drain` is the daemon's own shutdown primitive), and yields the run id it minted. */
+async function dispatchAndSettle(daemon: ComposedSupervisor): Promise<string> {
   const dispatcher = daemon.deps.runDispatcher;
   if (dispatcher === undefined) throw new Error("the composed daemon has no run dispatcher");
   const outcome = await dispatcher.dispatch(CHANGE_SET_ID);
   expect(outcome.accepted).toBe(true);
   await dispatcher.drain({ timeoutMs: 20_000, graceMs: 1_000 });
+  if (outcome.runId === undefined) throw new Error("an accepted dispatch minted no run id");
+  return outcome.runId;
+}
+
+/**
+ * The run record's own lifecycle state, read out of the composed daemon's runs
+ * registry.
+ *
+ * Pinned deliberately (orchestrator ruling, 2026-08-04): an unresolvable
+ * declared id is an INPUTS-incoherent condition, so the whole run fails rather
+ * than one unit earning a per-unit verdict. Asserting only the drive-error
+ * text would leave that ruling evidenced nowhere in the state machine.
+ */
+function runStateOf(daemon: ComposedSupervisor, runId: string): string | undefined {
+  return daemon.deps.runs.get(runId)?.runState;
 }
 
 /** Reads the settled journal back through a FRESH store — durable evidence, not an in-process handle. */
@@ -298,7 +315,7 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     });
 
     composed = await bootDaemon();
-    await dispatchAndSettle(composed);
+    const runId = await dispatchAndSettle(composed);
 
     const statuses = await attemptStatuses();
     expect(statuses).toContain("failed");
@@ -311,6 +328,10 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     expect(rationales[0]).toContain(REQ_ID);
     // Ids and hashes only — the attacker-authored criteria text never leaks.
     expect(rationales[0]).not.toContain("silently skips auth");
+
+    // TAMPER is a verdict on this unit's OUTPUT, and the run fails because its
+    // only unit did — the contrast case B pins against.
+    expect(runStateOf(composed, runId)).toBe("failed");
   });
 
   it("B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id", async () => {
@@ -330,7 +351,7 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     });
 
     composed = await bootDaemon();
-    await dispatchAndSettle(composed);
+    const runId = await dispatchAndSettle(composed);
 
     expect(await attemptStatuses()).not.toContain("succeeded");
     expect(await getLatestAttempt(readerStore(), UNIT_ID)).not.toMatchObject({
@@ -340,6 +361,46 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     // policy, envelope or dispatcher.
     expect(driveErrors.join(" ")).toContain(REQ_ID);
     expect(driveErrors.join(" ")).toContain(UNIT_ID);
+    // The RULING, pinned on state and not only on the error text: an
+    // incoherent acceptance basis fails the whole RUN.
+    expect(runStateOf(composed, runId)).toBe("failed");
+  });
+
+  it("D — refuses when only SOME declared requirements resolve: a partial bar is not a bar", async () => {
+    // Guards the `missing.length > 0` boundary at the composed layer. An
+    // implementation that refused only when EVERY declared id is unresolvable
+    // passes A, B and C and still judges this unit against half its criteria —
+    // measured: that mutation left 399/399 tests green before this case
+    // existed (adversarial review of PR #85).
+    const present = buildRequirement({
+      id: REQ_ID,
+      acceptanceCriteria: [...APPROVED_CRITERIA],
+    });
+    await seedApprovalSeal(present.criteriaHash);
+    // Two declared ids; only the first has a record.
+    seedIntakeState({
+      requirement: present,
+      workUnit: buildWorkUnit({
+        id: UNIT_ID,
+        changeSetId: CHANGE_SET_ID,
+        dependsOn: [],
+        attemptStatus: "pending",
+        requirementIds: [REQ_ID, ABSENT_REQ_ID],
+      }),
+      changeSet: changeSetFixture(),
+      envelope: buildAuthorizationEnvelope({ id: ENVELOPE_ID, changeSetId: CHANGE_SET_ID }),
+    });
+
+    composed = await bootDaemon();
+    const runId = await dispatchAndSettle(composed);
+
+    expect(await attemptStatuses()).not.toContain("succeeded");
+    expect(runStateOf(composed, runId)).toBe("failed");
+    // Names ONLY the unresolvable id. A refusal that also listed the
+    // resolvable one would send a reader hunting for a record that is
+    // sitting right there in `requirements.json`.
+    expect(driveErrors.join(" ")).toContain(ABSENT_REQ_ID);
+    expect(driveErrors.join(" ")).not.toContain(REQ_ID);
   });
 
   it("C — control: matching record and seal complete normally, with zero refusals journaled", async () => {
@@ -356,10 +417,13 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     });
 
     composed = await bootDaemon();
-    await dispatchAndSettle(composed);
+    const runId = await dispatchAndSettle(composed);
 
     expect(await getLatestAttempt(readerStore(), UNIT_ID)).toMatchObject({ status: "succeeded" });
     expect(await refusalRationales()).toHaveLength(0);
     expect(driveErrors).toEqual([]);
+    // NOT `failed` — the control that stops A/B/D's run-level failure from
+    // being something this composition does to every run.
+    expect(runStateOf(composed, runId)).not.toBe("failed");
   });
 });
