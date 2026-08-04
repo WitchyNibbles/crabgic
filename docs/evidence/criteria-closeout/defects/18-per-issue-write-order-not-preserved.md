@@ -151,3 +151,43 @@ therefore phases 16, 18, 19 and 20 together. No CI job, no live engine. Owner or
 is needed for step 1.
 
 **Ticket-ready:** yes for step 1 as a decision ticket, with step 3 as its follow-on.
+
+## Remedied by PR #84, 2026-08-04 — for single-issue writes
+
+Step 1 of the proposed remedy was decided in favour of serialization, unqualified across kinds: field
+update, comment, worklog and attachment on one issue take one mutex, matching the criterion's wording
+and §In scope's "per-issue write compliance".
+
+Step 2 was taken in its "distinct serialization key" form. `canonicalTarget` is **not** collapsed — it
+is parsed as identity downstream in both Jira clients and remains the identity/audit key. Instead an
+optional `serializationTarget` hook on `MutationApplyClient`/`MutationPipelineHandlers` defaults to
+`canonicalTarget` and is consumed at `mutation-pipeline.ts`'s single `httpClient.request` call site.
+No P02 contract change was needed; Grafana omits the hook and is byte-identical, now pinned by its own
+assertion (a reverse probe adds the hook and watches that assertion fail).
+
+Step 3 is done: `write-order.integration.test.ts` keeps the original probe's control case and adds a
+Data Center arm — DC shared the defect, reusing the same plan builders and the same
+`canonical-target.ts`, and previously had no write-order coverage at all.
+
+The effort estimate of **L** for step 2 proved wrong. The optional-hook form touched no contract, so
+phases 16/18/19/20 did not need coordinating and phase 20 needed no change at all.
+
+### Residual, deliberately not closed — why this criterion stays unticked
+
+`bulk:<keys>` targets (`issue.bulkUpdate` / `issue.bulkTransition`, `issue-plans.ts:189` and `:210`)
+name **multiple existing issues** in one target string. A mutex key is a single string, so no single
+key can mean "PROJ-1 and PROJ-2 at once", and folding a bulk plan onto any one member would be wrong.
+They therefore pass through unserialized against their own member issues:
+
+- a `bulk:` write touching PROJ-1 still races a single-issue write to PROJ-1;
+- two `bulk:` plans whose key lists overlap still race each other;
+- and because both builders mint `` `bulk:${issueKeys.join(",")}` `` with no sort, two plans over the
+  **same key set in different order** mint different strings and fail to serialize.
+
+Closing this needs multi-key lock acquisition in phase 16's `WriteSerializer` — a design change, out
+of scope for this fix. The residual is **asserted** in `canonical-target.test.ts` rather than only
+described, so it cannot change silently.
+
+An earlier draft of this fix justified the `bulk:` passthrough on the grounds that it "names no
+existing issue". That was false — the target literally contains the issue keys — and is corrected
+here rather than rewritten away. The behaviour was right; the stated reason was not.
