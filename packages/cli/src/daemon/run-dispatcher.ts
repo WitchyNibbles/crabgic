@@ -460,7 +460,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
 
     // The envelope is the authorization boundary every packet is bounded
     // against — dispatching without it would mean dispatching unbounded.
-    const envelope = deps.envelopes?.get(changeSet.authorizationEnvelopeId);
+    const envelope = deps.envelopes.get(changeSet.authorizationEnvelopeId);
     if (envelope === undefined) {
       return {
         ok: false,

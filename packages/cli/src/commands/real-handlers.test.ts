@@ -13,6 +13,7 @@ import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
   createRequirementsRegistry,
+  createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -42,6 +43,7 @@ beforeEach(async () => {
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
   });
   const runtimeDir = join(root, "run");

@@ -28,6 +28,7 @@ import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
 import { createRequirementsRegistry } from "../registries/requirements-registry.js";
+import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { buildSupervisorRouter, type SupervisorDependencies } from "./build-router.js";
 import { DISPATCHER_DRAINING_REASON, type RunDispatcher } from "./run-dispatcher.js";
 
@@ -59,6 +60,7 @@ function baseDeps(runDispatcher?: Partial<RunDispatcher>): SupervisorDependencie
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
     ...(runDispatcher !== undefined
       ? {

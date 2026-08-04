@@ -15,6 +15,7 @@ import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
   createRequirementsRegistry,
+  createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -52,6 +53,7 @@ function buildDeps(): SupervisorDependencies {
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
   };
 }

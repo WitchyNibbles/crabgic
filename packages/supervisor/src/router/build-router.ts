@@ -58,12 +58,17 @@ export interface SupervisorDependencies {
   /**
    * The approved AuthorizationEnvelopes. Needed by the run dispatcher —
    * compiling a worker profile and bounding a TaskPacket both require the
-   * envelope the DAG was approved under. Optional so the pre-existing
-   * construction sites (which predate `run.dispatch`) keep compiling;
-   * deliberately NOT exposed as a router operation, since an envelope is
-   * an authorization boundary and is never listed over the wire.
+   * envelope the DAG was approved under. Deliberately NOT exposed as a router
+   * operation, since an envelope is an authorization boundary and is never
+   * listed over the wire.
+   *
+   * REQUIRED, since 2026-08-04, for the same reason `requirements` below is:
+   * it was optional so "the pre-existing construction sites keep compiling",
+   * which is precisely the sentence that let the sibling field go unbuilt in
+   * the shipped daemon. Nothing here is behavioural — production already
+   * supplies it — the class of omission is simply no longer expressible.
    */
-  readonly envelopes?: Registry<AuthorizationEnvelope>;
+  readonly envelopes: Registry<AuthorizationEnvelope>;
   /**
    * The `Requirement` records (roadmap/24) — the acceptance bar a completion
    * is verified against. Never listed over the wire.

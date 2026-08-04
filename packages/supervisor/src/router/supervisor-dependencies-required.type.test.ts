@@ -70,7 +70,25 @@ describe("SupervisorDependencies' durable registries are required by constructio
     expect(deps).toBeDefined();
   });
 
-  it("still accepts the bundle once requirements IS supplied — the fixture above fails for the omission, not for an unrelated type error", () => {
+  it("rejects a SupervisorDependencies value that omits envelopes", () => {
+    const base = commonDeps();
+
+    // @ts-expect-error — `envelopes` is the SAME latent trap as
+    // `requirements`, non-firing until now only because `composeSupervisor`
+    // happens to build one. The authorization boundary every TaskPacket is
+    // bounded against must not be omissible either: a composition root that
+    // dropped it would make `run.dispatch` refuse every change set as
+    // "envelope not available", which reads as a data problem rather than as
+    // the wiring bug it would be.
+    const deps: SupervisorDependencies = {
+      ...base,
+      requirements: createRequirementsRegistry(),
+    };
+
+    expect(deps).toBeDefined();
+  });
+
+  it("still accepts the bundle once BOTH are supplied — the fixtures above fail for the omission, not for an unrelated type error", () => {
     const base = commonDeps();
 
     const deps: SupervisorDependencies = {
