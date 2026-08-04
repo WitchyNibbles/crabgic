@@ -57,6 +57,29 @@ and need owner approval to run; **19** (7) is not yet started;
 > also the single phase exempt from the ticks-need-a-record rule; that exemption was removed
 > from `scripts/check-criteria-closeout.mjs` in the same change, so no phase holds one now.
 
+> **Updated 2026-08-04 (wave close, integrator pass).** Phase 19 now carries a record as well —
+> closed at **2 of 7**, with four defect records — so **twenty-three** of the twenty-five phases
+> are recorded. The two without records, **00** (5 criteria) and **06** (10), are
+> live-engine-gated and wait on owner approval; nothing else remains unrecorded. Running tally:
+> **211 criteria; 169 ticked, 42 not.** Eight phases closed at full marks (01, 03, 05, 07, 08,
+> 11, 13, 24); ten carry exactly one unticked box; five closed well short — 18 at 6/10, 19 at
+> 2/7, 21 at 4/6, 22 at 5/8, and 23 — the release gate itself — at 13 of 16.
+>
+> The wave's closeouts filed **twenty-nine defect records**, indexed at
+> `docs/evidence/criteria-closeout/defects/INDEX.md`. That index is bookkeeping inside the
+> claim-space and is never evidence — cite a record's underlying evidence, never the index.
+> By that index's own vocabulary exactly **one** record is `fixed`: the Jira Cloud connector's
+> per-issue write-order loss, remedied by PR #84 for single-issue writes, with `bulk:` targets
+> deliberately left unserialized, so even that criterion stays unticked. Seven more are
+> **owner-gated** — their missing evidence needs an owner-authorised run against a paid or
+> licensed system — and the remaining twenty-one are open.
+>
+> One discrepancy is recorded rather than smoothed over. Phase 24's daemon-requirements-registry
+> defect **was** fixed, by PR #85, and the remediation is annotated in the production source at
+> the composition root; the defect record itself was never given the dated addendum the
+> convention asks for, so the index shows it `open`. `open` there means "this record does not
+> evidence a remedy", not "no remedy exists".
+
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
 clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8, and
