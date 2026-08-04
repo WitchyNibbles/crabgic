@@ -79,10 +79,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  ANNOTATION_LABELS,
+  ANNOTATION_LEAD,
   BASELINE_FILE,
   CLOSEOUT_DIR,
   PRE_INDEX_TICKED_PHASES,
@@ -214,8 +216,12 @@ function fixtureRoot({
     "utf8",
   );
   // Citation targets must RESOLVE, so the fixture repo really contains them.
+  // The transcript lives under `docs/evidence/phase-NN/`, where the real
+  // records file theirs — NOT inside the closeout directory, which is the
+  // claim-space and may not be cited as evidence for anything (bypass 21).
   writeFileSync(join(root, "packages", "x", "src", "frob.test.ts"), FIXTURE_TEST_FILE, "utf8");
-  writeFileSync(join(root, CLOSEOUT_DIR, "closeout-c1.txt"), "transcript\n", "utf8");
+  mkdirSync(join(root, "docs", "evidence", "phase-99"), { recursive: true });
+  writeFileSync(join(root, "docs", "evidence", "phase-99", "closeout-c1.txt"), "transcript\n");
   return root;
 }
 
@@ -433,6 +439,165 @@ describe("validateCloseoutRecord — the criterion-text pin", () => {
     expect(errors).toEqual([]);
   });
 
+  /**
+   * Adversarial-review finding, round 8 (bypass 18), demonstrated live and the
+   * direct successor of the internal-em-dash bypass above: `ANNOTATION_LEAD`
+   * closed the em-dash channel, and the weakening text simply moved four
+   * characters to the right. The whole-checkbox check required only that the
+   * tail START with `— **`; nothing constrained what came after, so
+   *
+   *   `— **Evidence (2026-08-02), WAIVED for all cases except empty dir; the
+   *     suite is advisory only:** …`
+   *
+   * validated green — and the validator's own error message was already
+   * promising the tail is "the `— **Evidence …**` citation annotation".
+   *
+   * MEASURED BEFORE ENFORCING, against all 105 annotated criteria in the merged
+   * roadmap plus the two open closeout PRs. Two rules that looked obvious are
+   * NOT enforced, because honest records fail them:
+   *
+   *   - a strict `— **<Label> (<date>):**` shape fails **7** criteria across 5
+   *     distinct honest forms (`Left unticked 2026-08-01, defect filed:`,
+   *     `UNMET (2026-08-02), channel absent:`, and a dated parenthetical);
+   *   - requiring the annotation's date to equal the record's `pass.date`
+   *     fails **14** criteria in phases 01 and 11, where the annotation was
+   *     written a day either side of the pass.
+   *
+   * What IS enforced is what the whole corpus already satisfies, and it does
+   * NOT close the weakening channel — see the honesty test below and limit 7 in
+   * the README.
+   */
+  it("rejects an annotation whose bold span is never closed", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01): cited but never un-bolded.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("closing `**`");
+  });
+
+  it("rejects an annotation that does not lead with a recognised label", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **WAIVED (2026-08-01):** not required after all.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("Evidence");
+  });
+
+  it("rejects a ticked criterion whose annotation says it was left unticked", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Left unticked 2026-08-01, defect filed:** contradicts the tick.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("ticked");
+  });
+
+  it("rejects an unticked criterion whose annotation claims evidence", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+        `- [ ] ${CRITERION_B} — **Evidence (2026-08-01):** but the box is not ticked.`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("not ticked");
+  });
+
+  it("rejects an annotation carrying no date", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence:** undated.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("date");
+  });
+
+  it("accepts every annotation form the merged roadmap actually uses", () => {
+    const tickedForms = [
+      "Evidence (2026-08-01):",
+      "Evidence (2026-08-02):",
+      "Evidence (2026-08-02, and see the lease note above — this became true only at `70d7da7`):",
+    ];
+    const untickedForms = [
+      "Left unticked 2026-08-01, defect filed:",
+      "Left unticked 2026-08-02, owner-gated live handoff filed:",
+      "UNMET (2026-08-02), channel absent:",
+      "UNMET (2026-08-02); left unticked.",
+    ];
+    for (const head of tickedForms) {
+      const root = fixtureRoot({
+        phaseFileLines: [
+          "## Exit criteria",
+          "",
+          `- [x] ${CRITERION_A} — **${head}** the body.`,
+          `- [ ] ${CRITERION_B}`,
+          "",
+        ],
+      });
+      expect(
+        errorsFor(() => {}, { root }),
+        head,
+      ).toEqual([]);
+    }
+    for (const head of untickedForms) {
+      const root = fixtureRoot({
+        phaseFileLines: [
+          "## Exit criteria",
+          "",
+          `- [x] ${CRITERION_A} — **Evidence (2026-08-01):** cited.`,
+          `- [ ] ${CRITERION_B} — **${head}** the body.`,
+          "",
+        ],
+      });
+      expect(
+        errorsFor(() => {}, { root }),
+        head,
+      ).toEqual([]);
+    }
+  });
+
+  /**
+   * HONESTY TEST, and it asserts a hole is still open on purpose. Every honest
+   * form in the corpus already exercises each syntactic position the waiver
+   * uses — a parenthetical inside the label, free text after the date, a
+   * trailing clause before the colon — so no syntactic rule on the bold head
+   * separates the demonstrated waiver from a real annotation. It is documented
+   * as README limit 7 rather than quietly claimed closed. If someone closes it
+   * for real, this test fails and the README must be corrected with it.
+   */
+  it("does NOT catch a weakening clause written inside a well-formed annotation head", () => {
+    const root = fixtureRoot({
+      phaseFileLines: [
+        "## Exit criteria",
+        "",
+        `- [x] ${CRITERION_A} — **Evidence (2026-08-01), WAIVED for all cases except the empty dir; the suite is advisory only:** cited.`,
+        `- [ ] ${CRITERION_B}`,
+        "",
+      ],
+    });
+    expect(errorsFor(() => {}, { root })).toEqual([]);
+  });
+
   it("rejects a record whose criteria count disagrees with the roadmap's checkbox count", () => {
     const errors = errorsFor((r) => {
       r.criteria.pop();
@@ -595,6 +760,90 @@ describe("parseExitCriteriaCheckboxes — one real section, and only one", () =>
     expect(errorsFor(() => {}, { root }).join("\n")).toContain("sub-bullet");
   });
 
+  /**
+   * Found by this pass, not reported to it (bypass 20). `CHECKBOX_ITEM` matched
+   * only the `-` bullet, but GitHub-Flavored Markdown renders `* [x]` and
+   * `+ [x]` as task list items exactly like `- [x]` — and this parser saw
+   * NEITHER. Not as a criterion, not as a stray (the stray scan uses the same
+   * regex), not as a continuation line (that branch needs leading whitespace).
+   * It was simply invisible.
+   *
+   * Demonstrated end-to-end against the real repository: appending
+   * `* [x] Quarantine is disabled by default in production, as agreed with the
+   * owner.` inside `roadmap/12`'s real `## Exit criteria` section — a phase that
+   * HAS a closeout record — left `check-criteria-closeout` reporting PASS on 13
+   * records and `generate-criteria-baseline --check` reporting PASS on 25
+   * phases, while github.com renders a ticked exit criterion that nothing pins,
+   * nothing records and no count notices. Same family as the decoy section and
+   * the nested sub-bullet: a criterion-shaped line the parser cannot see.
+   *
+   * Rejected rather than absorbed, for the reason the nested-sub-bullet ruling
+   * already gives: absorbing would silently move a baseline hash the first time
+   * somebody used a different bullet. Zero of the roadmap's 211 criteria use
+   * one, so requiring the `-` costs nothing.
+   */
+  it("rejects a `*`-bulleted task list item, which renders as a criterion and parsed as nothing", () => {
+    const { items, problems } = parseExitCriteriaCheckboxes(
+      [
+        "## Exit criteria",
+        "",
+        "- [x] A criterion the record accounts for.",
+        "* [x] A ticked criterion no check can see.",
+        "",
+      ].join("\n"),
+    );
+    expect(items).toBeUndefined();
+    expect(problems.join("\n")).toContain("bullet");
+  });
+
+  it("rejects a `+`-bulleted task list item too", () => {
+    const { items, problems } = parseExitCriteriaCheckboxes(
+      [
+        "## Exit criteria",
+        "",
+        "- [x] A criterion the record accounts for.",
+        "+ [ ] And one with a plus bullet.",
+        "",
+      ].join("\n"),
+    );
+    expect(items).toBeUndefined();
+    expect(problems.join("\n")).toContain("bullet");
+  });
+
+  it("rejects an alt-bullet task list item OUTSIDE the section, like any other stray", () => {
+    const { items, problems } = parseExitCriteriaCheckboxes(
+      [
+        "# Phase 99",
+        "",
+        "* [x] A ticked criterion smuggled above the section.",
+        "",
+        "## Exit criteria",
+        "",
+        "- [x] A criterion the record accounts for.",
+        "",
+      ].join("\n"),
+    );
+    expect(items).toBeUndefined();
+    expect(problems.join("\n")).toContain("bullet");
+  });
+
+  it("does not mistake an alt-bullet task list item inside a fenced block for one", () => {
+    const { items, problems } = parseExitCriteriaCheckboxes(
+      [
+        "## Exit criteria",
+        "",
+        "- [x] A criterion the record accounts for.",
+        "",
+        "```markdown",
+        "* [x] an illustrative example",
+        "```",
+        "",
+      ].join("\n"),
+    );
+    expect(problems).toEqual([]);
+    expect(items).toHaveLength(1);
+  });
+
   it("does not count a `- [x]` inside a fenced block as a criterion", () => {
     const root = fixtureRoot({
       phaseFileLines: [
@@ -686,7 +935,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
     const errors = errorsFor((r) => {
       r.criteria[0].citations.push({
         kind: "artifact",
-        ref: `${CLOSEOUT_DIR}/closeout-never-written.txt`,
+        ref: "docs/evidence/phase-99/closeout-never-written.txt",
       });
     });
     expect(errors.join("\n")).toContain("does not exist");
@@ -710,7 +959,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
       errorsFor((r) => {
         r.criteria[0].citations.push({
           kind: "artifact",
-          ref: `${CLOSEOUT_DIR}/closeout-c1.txt`,
+          ref: "docs/evidence/phase-99/closeout-c1.txt",
           quotedAssertion: "the transcript line that matters",
         });
       }),
@@ -745,6 +994,7 @@ describe("validateCloseoutRecord — tick discipline", () => {
           kind: "ci-run",
           ref: "CI / unit-test+coverage, run 30711622357",
           url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+          commit: "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
           quotedAssertion: "612 test files / 5881 tests",
         });
       }),
@@ -848,19 +1098,394 @@ describe("validateCloseoutRecord — citations may not be symlinks", () => {
     expect(errors.join("\n")).toContain("closeout record");
   });
 
+  /**
+   * Adversarial-review finding, round 8 (bypass 21), demonstrated live and
+   * needing NO path games at all — it is the sibling of the dot-segment
+   * self-citation, aimed one directory to the side. `CLOSEOUT_RECORD_REF`
+   * blocked `phase-NN.json` and that filename shape ALONE, so a reviewer
+   * appended to a ticked criterion, each with wholly forged `quotedAssertion`
+   * text: an `artifact` citation of the pass's OWN defect record, an `artifact`
+   * citation of this directory's README, and a `journal-export` citation of
+   * `criteria-baseline.json`. The validator passed.
+   *
+   * The principle the old check already stated — "a record is the claim, never
+   * the evidence for it" — covers the whole tree, not one filename: a defect
+   * record, the README and the baseline are all written by the same pass in the
+   * same PR as the record citing them. Measured first: across the merged
+   * records, ZERO of 774 citations resolve into this directory (the single ref
+   * mentioning it is a `ci-run` job NAME, not a path), so the whole claim-space
+   * is refused rather than one shape of it.
+   */
+  it("rejects an artifact citation of the pass's own defect record", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "artifact",
+        ref: `${CLOSEOUT_DIR}/defects/99-red-drift-check.md`,
+        quotedAssertion: "totally-forged free text that no file contains",
+      });
+    });
+    expect(errors.join("\n")).toContain("a record is the claim, never the evidence for it");
+  });
+
+  it("rejects an artifact citation of the closeout directory's own README", () => {
+    const root = fixtureRoot();
+    writeFileSync(join(root, CLOSEOUT_DIR, "README.md"), "# index\n", "utf8");
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: `${CLOSEOUT_DIR}/README.md`,
+          quotedAssertion: "totally-forged free text that no file contains",
+        });
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  it("rejects a journal-export citation of the frozen baseline", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "journal-export",
+        ref: BASELINE_FILE,
+        quotedAssertion: "totally-forged free text that no file contains",
+      });
+    });
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  it("rejects the claim-space reached through a symlinked parent, like any other laundering", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "docs", "evidence"), { recursive: true });
+    symlinkSync(join(root, CLOSEOUT_DIR), join(root, "docs", "evidence", "cs"));
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: "docs/evidence/cs/defects/99-red-drift-check.md",
+          quotedAssertion: "the long way round",
+        });
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("claim-space");
+  });
+
+  /**
+   * Adversarial-review finding, round 8 (bypass 22) — the sharpest form of the
+   * claim-space family, demonstrated live. A reviewer made ticked criterion 3's
+   * ONLY citations (a) `roadmap/22-learning-system.md:96`, the phase's own
+   * checkbox ANNOTATION quoted as evidence for itself, and (b) that same pass's
+   * own defect record. The validator passed — so the mandatory "a ticked
+   * criterion needs at least one citation" was satisfiable entirely by text the
+   * pass wrote in the same commit.
+   *
+   * (b) is already refused by the claim-space rule above. (a) is not, and no
+   * amount of path canonicalisation reaches it: canonicalisation hardens how a
+   * ref is MATCHED, not which targets are refused. A phase file is the claim
+   * too, so a record may not cite its own.
+   *
+   * Scoped to the record's OWN phase file, deliberately, and measured: across
+   * the merged records ZERO cite their own `roadmapFile`, while phase 17
+   * legitimately cites `roadmap/19-…` as a cross-phase artifact. Refusing
+   * `roadmap/` generally would break that honest citation.
+   */
+  it("rejects a citation of the record's own phase file — the criterion quoting its own annotation", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations = [
+        {
+          kind: "artifact",
+          ref: "roadmap/99-fixture-phase.md:5",
+          quotedAssertion: "the annotation this very pass appended",
+        },
+      ];
+    });
+    expect(errors.join("\n")).toContain("own phase file");
+  });
+
+  it("rejects the own-phase-file citation reached through a dot segment too", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations = [
+        {
+          kind: "artifact",
+          ref: "roadmap/./99-fixture-phase.md",
+          quotedAssertion: "the annotation this very pass appended",
+        },
+      ];
+    });
+    expect(errors.join("\n")).toContain("own phase file");
+  });
+
+  /** Phase 17 cites roadmap/19 as a cross-phase artifact. That must survive. */
+  it("still accepts a citation of ANOTHER phase's roadmap file", () => {
+    const root = fixtureRoot();
+    writeFileSync(
+      join(root, "roadmap", "98-other-phase.md"),
+      ["## Exit criteria", "", "- [ ] Another phase's criterion.", ""].join("\n"),
+      "utf8",
+    );
+    expect(
+      errorsFor(
+        (r) => {
+          r.criteria[0].citations.push({
+            kind: "artifact",
+            ref: "roadmap/98-other-phase.md:3",
+            quotedAssertion: "the neighbouring phase's own wording",
+          });
+        },
+        { root },
+      ),
+    ).toEqual([]);
+  });
+
+  it("still accepts an evidence transcript filed where real records file them", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: "docs/evidence/phase-99/closeout-c1.txt",
+          quotedAssertion: "the transcript line that matters",
+        });
+      }),
+    ).toEqual([]);
+  });
+
   it("rejects a symlink even when it points at a file inside the repository — a citation names a real committed file", () => {
     const root = fixtureRoot();
     symlinkSync(
       join(root, "packages", "x", "src", "frob.test.ts"),
-      join(root, CLOSEOUT_DIR, "alias.test.ts"),
+      join(root, "docs", "evidence", "phase-99", "alias.test.ts"),
     );
     const errors = errorsFor(
       (r) => {
-        r.criteria[0].citations[0].ref = `${CLOSEOUT_DIR}/alias.test.ts`;
+        r.criteria[0].citations[0].ref = "docs/evidence/phase-99/alias.test.ts";
       },
       { root },
     );
     expect(errors.join("\n")).toContain("symlink");
+  });
+});
+
+/**
+ * Adversarial-review finding, round 8 (bypass 17a), demonstrated live against
+ * the hardened validator. An `artifact` ref of
+ * `docs/evidence/criteria-closeout/./phase-14.json:1-5` validated GREEN, while
+ * the plain form is correctly refused with "a record is the claim, never the
+ * evidence for it" — so a ticked criterion's mandatory ≥1 citation could be
+ * satisfied by a SELF-citation. The same reviewer passed
+ * `defects/14-decoy/../14-ratchet-….md`, borrowing the mandatory `defects/NN-`
+ * phase prefix from a decoy directory that the `..` then discards.
+ *
+ * One cause, three victims: every check that reads a ref as a STRING — the
+ * self-citation regex, the `node_modules`/`.git` segment scan, the
+ * `defects/NN-` prefix and location discipline — matched the RAW text, while
+ * `path.resolve`/`path.join` silently collapsed the dot segments underneath
+ * them.
+ *
+ * The fix is deliberately NOT "normalize before each check". Normalizing alone
+ * would silently ACCEPT `defects/14-decoy/../14-ratchet.md` as though the
+ * author had written the real path, which is a laundering channel of its own
+ * and leaves the next string-reading check to be written just as vulnerable. A
+ * ref must already BE the plain path, so that raw and resolved can never
+ * disagree again.
+ */
+describe("validateCloseoutRecord — a ref must already be the plain repository path", () => {
+  it("rejects the dot-segment self-citation that validated green", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "artifact",
+        ref: `${CLOSEOUT_DIR}/./phase-99.json:1-5`,
+        quotedAssertion: "the record quoting itself as its own evidence",
+      });
+    });
+    expect(errors.join("\n")).toContain("a record is the claim, never the evidence for it");
+  });
+
+  /**
+   * A regression guard, not one of the demonstrated bypasses: a `..` cannot
+   * HIDE a `node_modules` segment, because the segment is still literally
+   * present in the raw string. It is here so that the switch to checking the
+   * normalized path cannot quietly lose the segment scan. The case variant
+   * below is the one that really was open.
+   */
+  it("keeps rejecting node_modules/ when it is reached through a `..` hop", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "node_modules", "vitest"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "vitest", "package.json"), "{}\n", "utf8");
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations[0].ref = "packages/x/../../node_modules/vitest/package.json";
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("not content the repository carries");
+  });
+
+  it("names the plain path a ref should have been written as", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations[0].ref = "packages/x/src/./frob.test.ts:12";
+    });
+    expect(errors.join("\n")).toContain("packages/x/src/frob.test.ts");
+    expect(errors.join("\n")).toContain("plain repository path");
+  });
+
+  /**
+   * The self-citation and segment checks compare strings, but macOS and
+   * Windows checkouts resolve paths case-insensitively, so `Phase-99.json`
+   * opens the record on a developer's machine while reading as an unrelated
+   * path to a case-sensitive regex. Free to close; no honest ref differs from
+   * another only by case.
+   */
+  it("rejects a closeout-record self-citation that differs only in case", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "artifact",
+        ref: `${CLOSEOUT_DIR}/Phase-99.json`,
+        quotedAssertion: "the record quoting itself, shouted",
+      });
+    });
+    expect(errors.join("\n")).toContain("closeout record");
+  });
+
+  it("rejects a Node_Modules segment that differs only in case", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "Node_Modules", "vitest"), { recursive: true });
+    writeFileSync(join(root, "Node_Modules", "vitest", "package.json"), "{}\n", "utf8");
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations[0].ref = "Node_Modules/vitest/package.json";
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("not content the repository carries");
+  });
+
+  /**
+   * `\` is a path separator to the segment scan (it splits on `[\\/]`) and an
+   * ordinary filename character to POSIX `path.resolve`. Refs are POSIX
+   * repository paths; banning the character keeps the two halves of every check
+   * reading the same string, on every platform.
+   */
+  it("rejects a backslash in a ref, which the two halves of the check read differently", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations[0].ref = "packages\\x\\src\\frob.test.ts";
+    });
+    expect(errors.join("\n")).toContain("backslash");
+  });
+
+  it("rejects a defectRef whose `defects/NN-` prefix comes from a decoy segment a `..` discards", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[1].defectRef = `${CLOSEOUT_DIR}/defects/99-decoy/../99-red-drift-check.md`;
+    });
+    expect(errors.join("\n")).toContain("plain repository path");
+  });
+
+  /**
+   * The sharper form of the same defect: nothing checked that a `defectRef`
+   * stayed inside the repository at all, so `..` past the root satisfied "an
+   * honest partial close files a defect" with a file no reviewer of this
+   * repository can see — and the validator then READ it.
+   */
+  it("rejects a defectRef that `..` its way out of the repository entirely", () => {
+    const root = fixtureRoot();
+    const outside = mkdtempSync(join(tmpdir(), "closeout-outside-"));
+    tmpDirs.push(outside);
+    writeFileSync(join(outside, "planted.md"), defectRecordFor(CRITERION_B), "utf8");
+    const escape = relative(
+      join(root, CLOSEOUT_DIR, "defects", "99-decoy"),
+      join(outside, "planted.md"),
+    )
+      .split(sep)
+      .join("/");
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[1].defectRef = `${CLOSEOUT_DIR}/defects/99-decoy/${escape}`;
+      },
+      { root },
+    );
+    expect(errors).not.toEqual([]);
+    expect(errors.join("\n")).toContain("plain repository path");
+  });
+
+  it("rejects a defect record reached through a symlinked parent directory", () => {
+    const root = fixtureRoot();
+    const outside = mkdtempSync(join(tmpdir(), "closeout-outside-"));
+    tmpDirs.push(outside);
+    writeFileSync(join(outside, "99-red-drift-check.md"), defectRecordFor(CRITERION_B), "utf8");
+    rmSync(join(root, CLOSEOUT_DIR, "defects"), { recursive: true });
+    symlinkSync(outside, join(root, CLOSEOUT_DIR, "defects"));
+    expect(errorsFor(() => {}, { root }).join("\n")).toContain("outside the repository");
+  });
+
+  /**
+   * Adversarial-review finding, round 8 (bypass 19), demonstrated live. The
+   * forbidden-segment scan ran on the CITED ref only, while the realpath
+   * containment check accepts any target inside the repository root — and
+   * `node_modules/` and `.git/` ARE inside the repository root. So a committed
+   * `docs/evidence/nmlink -> ../../node_modules`, cited as
+   * `docs/evidence/nmlink/vitest/package.json:3`, passed everything: the final
+   * component is a regular file, so the direct-symlink check never fires, and
+   * the parent-realpath check only rejects escapes OUTSIDE the root.
+   *
+   * Same family as the dot segments above — the check ran on the wrong string —
+   * so the segment scan now also runs on the repo-relative REALPATH.
+   */
+  it("rejects node_modules/ laundered through a symlinked parent inside the repo", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, "node_modules", "vitest"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "vitest", "package.json"), "{}\n", "utf8");
+    mkdirSync(join(root, "docs", "evidence"), { recursive: true });
+    symlinkSync(join(root, "node_modules"), join(root, "docs", "evidence", "nmlink"));
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations[0].ref = "docs/evidence/nmlink/vitest/package.json:1";
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("not content the repository carries");
+  });
+
+  it("rejects .git/ laundered the same way", () => {
+    const root = fixtureRoot();
+    mkdirSync(join(root, ".git"), { recursive: true });
+    writeFileSync(join(root, ".git", "config"), "[core]\n", "utf8");
+    mkdirSync(join(root, "docs", "evidence"), { recursive: true });
+    symlinkSync(join(root, ".git"), join(root, "docs", "evidence", "gitlink"));
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations[0].ref = "docs/evidence/gitlink/config";
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("not content the repository carries");
+  });
+
+  /** The same laundering aimed at the self-citation refusal rather than at node_modules. */
+  it("rejects a closeout record reached through a symlinked parent inside the repo", () => {
+    const root = fixtureRoot();
+    writeFileSync(join(root, CLOSEOUT_DIR, "phase-99.json"), "{}\n", "utf8");
+    mkdirSync(join(root, "docs", "evidence"), { recursive: true });
+    symlinkSync(join(root, CLOSEOUT_DIR), join(root, "docs", "evidence", "cl"));
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[0].citations.push({
+          kind: "artifact",
+          ref: "docs/evidence/cl/phase-99.json",
+          quotedAssertion: "the record, reached the long way round",
+        });
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("closeout record");
+  });
+
+  it("still accepts the plain forms of every path a record legitimately writes", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[0].citations[0].ref = "packages/x/src/frob.test.ts:12-18";
+        r.criteria[1].defectRef = `${CLOSEOUT_DIR}/defects/99-red-drift-check.md`;
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -926,12 +1551,118 @@ describe("validateCloseoutRecord — the non-path citation kinds", () => {
             kind: "ci-run",
             ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
             url,
+            commit: "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
             quotedAssertion: "612 test files / 5881 tests",
           });
         }),
         url,
       ).toEqual([]);
     }
+  });
+
+  /**
+   * Adversarial-review finding, round 8 (bypass 17b) — the higher-value of the
+   * pair, demonstrated live. A reviewer repointed phase 01's criterion 1 at run
+   * **30250453824**: a months-old `release-e2e` run, wrong workflow, wrong
+   * commit, months before the criterion existed. They set `commit` to the null
+   * object id and replaced `quotedAssertion` with a fabrication.
+   * `validateCloseoutRecord` returned ZERO errors, and `check-citation-runs`
+   * would also have passed, because it only 404-checks existence and NOTHING
+   * anywhere read the citation's `commit`.
+   *
+   * So any real run in this repository's Actions history could stand as
+   * evidence for any criterion, at any claimed commit — and the run does not
+   * even have to be plausible, because nothing compared the workflow either.
+   *
+   * `commit` was already carried by all 108 `ci-run` citations across the
+   * eleven merged records, and all 14 distinct runs they name resolve to
+   * exactly the recorded `head_sha`. It was simply optional and unread. Making
+   * it required costs those records nothing and gives
+   * `check-citation-runs.mjs` something to compare.
+   */
+  it("rejects a `ci-run` citation with no commit — the run is then tied to no tree at all", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+        quotedAssertion: "612 test files / 5881 tests",
+      });
+    });
+    expect(errors.join("\n")).toContain("commit");
+  });
+
+  it("rejects a `ci-run` commit that is not an object id at all", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+        commit: "HEAD~1",
+        quotedAssertion: "612 test files / 5881 tests",
+      });
+    });
+    expect(errors.join("\n")).toContain("object id");
+  });
+
+  it("rejects a commit too short to identify one object", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+        commit: "4f2b",
+        quotedAssertion: "612 test files / 5881 tests",
+      });
+    });
+    expect(errors.join("\n")).toContain("object id");
+  });
+
+  /** The exact value the reviewer used. No run ever ran at the null object id. */
+  it("rejects the all-zero null object id the live demonstration used", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: "CI / unit-test+coverage (ubuntu-latest), job 91399985018",
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824",
+        commit: "0".repeat(40),
+        quotedAssertion: "a fabricated line",
+      });
+    });
+    expect(errors.join("\n")).toContain("null object id");
+  });
+
+  /**
+   * The offline half of the workflow check: unless the ref leads with the
+   * workflow name, `check-citation-runs.mjs` has nothing to compare the API's
+   * name against. All 40 distinct `ci-run` refs across the merged records
+   * already lead with `CI / `, `gates-conformance / ` or `perf-conformance / `.
+   */
+  it("rejects a `ci-run` ref that does not lead with the workflow name", () => {
+    const errors = errorsFor((r) => {
+      r.criteria[0].citations.push({
+        kind: "ci-run",
+        ref: 'job 91399985018, step "test with 80% line+branch coverage gate"',
+        url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30711622357",
+        commit: "4f2b33bbf68f517643a8d4f8eb5f85c793e99e3f",
+        quotedAssertion: "612 test files / 5881 tests",
+      });
+    });
+    expect(errors.join("\n")).toContain("workflow");
+  });
+
+  it("accepts the abbreviated commit form phase 08 records", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[0].citations.push({
+          kind: "ci-run",
+          ref: "CI / unit-test+coverage (ubuntu-latest), job 91422199956",
+          url: "https://github.com/WitchyNibbles/crabgic/actions/runs/30720047928",
+          commit: "d11b0594",
+          quotedAssertion: "612 test files / 5881 tests",
+        });
+      }),
+    ).toEqual([]);
   });
 
   it("rejects a `journal-export` ref that names no committed file", () => {
@@ -1158,11 +1889,73 @@ describe("validateCloseoutRecord — defect and wording bookkeeping", () => {
     expect(errors.join("\n")).toContain("defectRef");
   });
 
-  it("rejects a defectRef on a criterion that is not UNMET", () => {
-    const errors = errorsFor((r) => {
-      r.criteria[0].defectRef = `${CLOSEOUT_DIR}/defects/99-red-drift-check.md`;
-    });
-    expect(errors.join("\n")).toContain("defectRef");
+  /**
+   * Raised by the phase-10 closeout, which is the first criterion in the wave
+   * that is live-gated rather than defective: `defectRef` was accepted ONLY on
+   * `UNMET`, so an `EVIDENCE-NEEDS-LIVE` or `EVIDENCE-NEEDS-CI` criterion could
+   * not machine-link the handoff record it had already written, and had to
+   * point at it from free-text `notes`. Phases 06 and 19 have the same shape.
+   *
+   * Widened rather than given a new `handoffRef` key: the file shape is
+   * identical, it is checked identically, and a handoff IS a defect record in
+   * everything but name — whereas a new key would be a `schemaVersion` change.
+   * The permitted set is DERIVED as "the classifications that may not be
+   * ticked", so a criterion carrying a tick can never gain one, and a future
+   * tickable class cannot acquire one by being added to a list.
+   */
+  it("permits a defectRef on the live-gated classification, whose handoff is a defect record in all but name", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[1].classification = "EVIDENCE-NEEDS-LIVE";
+      }),
+    ).toEqual([]);
+  });
+
+  it("permits a defectRef on EVIDENCE-NEEDS-CI", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[1].classification = "EVIDENCE-NEEDS-CI";
+      }),
+    ).toEqual([]);
+  });
+
+  it("does not REQUIRE a defectRef on a pending-run criterion — only UNMET must file one", () => {
+    expect(
+      errorsFor((r) => {
+        r.criteria[1].classification = "EVIDENCE-NEEDS-CI";
+        delete r.criteria[1].defectRef;
+      }),
+    ).toEqual([]);
+  });
+
+  it("holds a pending-run handoff to the same shape as a defect record", () => {
+    const root = fixtureRoot();
+    writeFileSync(
+      join(root, CLOSEOUT_DIR, "defects", "99-red-drift-check.md"),
+      defectRecordFor("Some other criterion entirely."),
+      "utf8",
+    );
+    const errors = errorsFor(
+      (r) => {
+        r.criteria[1].classification = "EVIDENCE-NEEDS-LIVE";
+      },
+      { root },
+    );
+    expect(errors.join("\n")).toContain("verbatim");
+  });
+
+  it("rejects a defectRef on every classification that carries a tick", () => {
+    for (const classification of [
+      "EVIDENCE-EXISTS",
+      "EVIDENCE-REPRODUCED",
+      "SUPERSEDED-DISCHARGED",
+    ]) {
+      const errors = errorsFor((r) => {
+        r.criteria[0].classification = classification;
+        r.criteria[0].defectRef = `${CLOSEOUT_DIR}/defects/99-red-drift-check.md`;
+      });
+      expect(errors.join("\n"), classification).toContain("defectRef");
+    }
   });
 
   it("rejects a WORDING-MISMATCH criterion with no wordingCorrection", () => {
@@ -1393,6 +2186,51 @@ describe("validateAllCloseoutRecords — this repository's own committed records
    * already there when their closeout lands, rather than generating it against
    * whatever the file says by then.
    */
+  /**
+   * `ANNOTATION_LABELS` is measured from the corpus, so it goes stale as
+   * closeouts land — and it did, mid-review: phase 16 merged carrying
+   * `Open defect (…)`, the rule caught it, and the ENUMERATION was the
+   * incomplete thing rather than the rule. That must fail HERE, in the suite,
+   * where it reads as "add the form deliberately", rather than surprising the
+   * next closeout PR at the last moment.
+   *
+   * The second half is the one that keeps the rule honest: the ticked and
+   * unticked vocabularies must stay DISJOINT. That disjointness is the entire
+   * bite — it is what stops an annotation contradicting the box beside it — and
+   * widening either list to fit a record would silently destroy it.
+   */
+  it("the annotation labels cover every merged record, and the two vocabularies stay disjoint", () => {
+    expect(
+      ANNOTATION_LABELS.ticked.filter((label) => ANNOTATION_LABELS.unticked.includes(label)),
+      "a label legal for both a ticked and an unticked box removes the whole point of the check",
+    ).toEqual([]);
+
+    const dir = join(REPO_ROOT, CLOSEOUT_DIR);
+    const unrecognised = [];
+    for (const name of readdirSync(dir).filter((n) => /^phase-\d{2}\.json$/.test(n))) {
+      const record = JSON.parse(readFileSync(join(dir, name), "utf8"));
+      const { items } = parseExitCriteriaCheckboxes(
+        readFileSync(join(REPO_ROOT, record.roadmapFile), "utf8"),
+      );
+      items?.forEach((box, index) => {
+        const criterion = record.criteria[index];
+        const at = box.text.indexOf(ANNOTATION_LEAD);
+        if (at < 0 || criterion === undefined) return;
+        const closed = /^— \*\*(.+?)\*\*/s.exec(box.text.slice(at));
+        const allowed = criterion.ticked ? ANNOTATION_LABELS.ticked : ANNOTATION_LABELS.unticked;
+        if (closed === null || !allowed.some((label) => closed[1].trim().startsWith(label))) {
+          unrecognised.push(
+            `${name} criterion ${String(index + 1)}: ${box.text.slice(at, at + 70)}`,
+          );
+        }
+      });
+    }
+    expect(
+      unrecognised,
+      "a merged record uses an annotation label ANNOTATION_LABELS does not list — add it there deliberately, and re-check the disjointness above",
+    ).toEqual([]);
+  });
+
   it("the frozen baseline covers every roadmap phase, at that phase's current checkbox count", () => {
     const baseline = JSON.parse(readFileSync(join(REPO_ROOT, BASELINE_FILE), "utf8"));
     const phaseFiles = readdirSync(join(REPO_ROOT, "roadmap"))
@@ -1417,6 +2255,34 @@ describe("validateAllCloseoutRecords — this repository's own committed records
     expect(Object.keys(baseline.phases).sort()).toEqual(
       phaseFiles.map((n) => n.slice(0, 2)).sort(),
     );
+  });
+
+  /**
+   * Adversarial-review finding, round 8 (bypass 21), demonstrated live. Both
+   * this validator and the baseline generator's `--check` iterate over the
+   * phase files PRESENT; nothing asserted that every baseline-pinned phase
+   * still has one. So deleting `roadmap/22-learning-system.md` — 8 unticked
+   * criteria — left both reporting PASS. (Deleting `roadmap/19` happened to
+   * fail, but only incidentally, because phase 17's criterion 5 cites it as an
+   * artifact.)
+   *
+   * Round 7 closed the mirror of this — a phase file the baseline does not pin
+   * — and noted deletion as a low-priority residual. With 12 phases still
+   * unclosed it is a live channel: deleting a phase file is strictly easier
+   * than closing it, and the baseline is precisely the out-of-commit anchor
+   * that should notice.
+   */
+  it("reports a baseline-pinned phase file that has been deleted outright", () => {
+    const root = mkdtempSync(join(tmpdir(), "closeout-deleted-"));
+    tmpDirs.push(root);
+    mkdirSync(join(root, "roadmap"), { recursive: true });
+    mkdirSync(join(root, CLOSEOUT_DIR), { recursive: true });
+    // The baseline pins roadmap/99-fixture-phase.md; the roadmap directory is
+    // empty, exactly as it is after `git rm` of an unclosed phase.
+    writeBaseline(root);
+    const { errors } = validateAllCloseoutRecords(root);
+    expect(errors.join("\n")).toContain("roadmap/99-fixture-phase.md");
+    expect(errors.join("\n")).toContain("deleted");
   });
 
   /**

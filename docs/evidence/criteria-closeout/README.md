@@ -11,9 +11,9 @@ closeout itself, so a tick's citation is machine-resolvable rather than a claim 
 Validated by `scripts/check-criteria-closeout.mjs`
 (`npm run check:criteria-closeout`, a step in `ci.yml`'s `meta-checks` job), backed by the frozen
 original-wording baseline `criteria-baseline.json`, which `npm run check:criteria-baseline`
-re-derives from git history in the same job. The validator's own rejection paths — 99 cases, almost
+re-derives from git history in the same job. The validator's own rejection paths — 142 cases, almost
 all rejections — are unit-tested in `scripts/check-criteria-closeout.test.mjs`; the baseline generator
-and the run resolver add 21 more, for 120 across the three suites.
+(11) and the run resolver (27) add 38 more, for 180 across the three suites.
 
 ## Layout
 
@@ -56,19 +56,32 @@ Every path is phase-prefixed, so parallel agents never collide.
       ],
       "notes": "optional — scope caveats, anti-vacuity controls, anything a reader needs",
       "wordingCorrection": { "before": "…", "after": "…" },        // WORDING-MISMATCH only
-      "defectRef": "docs/evidence/criteria-closeout/defects/12-….md" // UNMET only
+      "defectRef": "docs/evidence/criteria-closeout/defects/12-….md" // untickable classes only
     }
   ]
 }
 ```
 
 Unknown keys are rejected at every level. `url`, `commit` and `quotedAssertion` are optional on a
-citation; everything else shown is required.
+citation **except on a `ci-run`, where all three are required** — see check 8. Everything else shown
+is required.
+
+**Every path a record writes — a `test`/`artifact`/`journal-export` `ref`, and a `defectRef` — must
+already be the plain repository path.** No `./`, no `..`, no leading `/`, no backslash. Dot segments
+were a live bypass (see check 7); requiring normal form means the string a check reads and the file
+that resolution opens can never be two different things.
 
 ## Defect record shape (`defects/NN-<slug>.md`)
 
+`UNMET` **must** name one. `EVIDENCE-NEEDS-CI` and `EVIDENCE-NEEDS-LIVE` **may**, to machine-link
+the handoff record for the run that has not happened yet — phase 10's live-gated criterion 7 was the
+first to need it, and phases 06 and 19 have the same shape. A handoff is a defect record in
+everything but name: identical file shape, identical checks, no new schema key. The permitted set is
+**derived** as "the classifications that may not be ticked", so a criterion carrying a tick can never
+name one — a tick means the evidence is in hand, and a record of what is outstanding contradicts it.
+
 Checked, not merely required to exist — a reviewer truncated a real one to zero bytes and the old
-validator stayed green. A defect record must carry:
+validator stayed green. A defect (or handoff) record must carry:
 
 | Element | Recognised as | Why it is checked |
 |---|---|---|
@@ -91,8 +104,8 @@ exists" vs "what is missing" — is strongly expected by review and not machine-
 | `EVIDENCE-REPRODUCED` | yes | No recorded execution existed; the agent's own scoped run is the only execution evidence, committed verbatim |
 | `SUPERSEDED-DISCHARGED` | yes | The criterion's own deferral clause is discharged by a later closed phase's ticked box |
 | `WORDING-MISMATCH` | yes | The check passes but the criterion's literal words claim something adjacent; corrected per the wording protocol |
-| `EVIDENCE-NEEDS-CI` | no | The wording demands a CI run of a job with no green record. Costs CI minutes, not the owner's subscription |
-| `EVIDENCE-NEEDS-LIVE` | no | Needs the real engine / owner subscription (`@live`, `engine-live`). Owner-gated batch only |
+| `EVIDENCE-NEEDS-CI` | no | The wording demands a CI run of a job with no green record. Costs CI minutes, not the owner's subscription. May name a handoff record in `defectRef` |
+| `EVIDENCE-NEEDS-LIVE` | no | Needs the real engine / owner subscription (`@live`, `engine-live`). Owner-gated batch only. May name a handoff record in `defectRef` |
 | `UNMET` | no | No check exists, the check fails, or the claim is false. Stays unticked, defect record filed |
 
 **Settled: `EVIDENCE-EXISTS` vs `EVIDENCE-REPRODUCED` when both apply.** If the named check was
@@ -127,6 +140,31 @@ records do not classify the same situation three different ways.
    it (`— suite \`install.matrix.test\``) escaped the hash — 95 of the roadmap's 211 criteria
    contain an internal em dash, and zero contain `— **`. A criterion reworded to make it tickable
    fails here.
+
+   **The annotation itself is now shaped, and the weakening clause moved into it.** Requiring the
+   lead `— **` closed the em-dash channel and the text simply moved four characters right:
+   `— **Evidence (2026-08-02), WAIVED for all cases except empty dir; the suite is advisory only:**`
+   validated green, while the validator's own error message already claimed the tail was "the
+   `— **Evidence …**` citation annotation". Four things are now checked — the bold span must
+   **close**; the bold head must lead with a **recognised label** (`Evidence` when the box is
+   ticked, `Left unticked` / `Open defect` / `UNMET` when it is not); the label must therefore
+   **agree with the tick**; and the head must carry a **date**. The two vocabularies are **disjoint**
+   and the suite asserts they stay so — that disjointness is the whole bite, and the enumeration is
+   asserted to still cover every merged record, so it fails in the suite rather than surprising the
+   next closeout PR. Two stronger rules were measured against all 132
+   annotated criteria and **rejected because honest records fail them**: a strict
+   `— **<Label> (<date>):**` shape fails 7 criteria across 5 honest forms, and requiring the
+   annotation's date to equal the record's `pass.date` fails 14 in phases 01 and 11. **This does not
+   close the weakening channel** — see limit 7.
+
+   **Every criterion must use the `-` bullet.** GitHub renders `* [x]` and `+ [x]` as ticked task
+   list items exactly like `- [x]`, and this parser read only `-` — so such a line was invisible to
+   the hash pin, the counts, the tick cross-check and the stray scan alike. Appending
+   `* [x] <anything>` inside a real `## Exit criteria` section of a phase that **has** a closeout
+   record left both `check-criteria-closeout` and `generate-criteria-baseline --check` reporting
+   PASS while github.com rendered a ticked criterion nothing pinned. Rejected rather than absorbed,
+   for the same reason as the nested sub-bullet: absorbing would silently move a baseline hash the
+   first time somebody reached for a different bullet.
 4. **Two-way agreement with the roadmap** — checkbox count equals criteria count, and each box's
    `[x]`/`[ ]` state equals its record's `ticked`. Within a phase that has a record, a box ticked
    without a matching entry fails, and so does a record claiming a tick the file does not have.
@@ -136,6 +174,12 @@ records do not classify the same situation three different ways.
    other check is anchored on a record existing, so ticking all seven of `roadmap/13`'s boxes and
    writing nothing passed. Phase **23** is the single grandfathered exemption (closed and evidenced
    against `release-e2e` run 30250453824 before this index existed); the list is closed.
+   **A pinned phase file that has been DELETED is reported.** Every other check here — and
+   `--check` in the baseline generator — iterates over the phase files that are *present*, so
+   nothing asserted that a pinned phase still has one: deleting `roadmap/22-learning-system.md`, 8
+   unticked criteria, left both reporting PASS. With 12 phases still unclosed, deleting a phase file
+   is strictly easier than closing it. Removing a phase is a roadmap decision that re-pins the
+   baseline in its own commit, not something a closeout pass does.
 5. **The frozen baseline** — every criterion's text must also hash to its entry in
    `criteria-baseline.json` (see below). Checks 2 and 3 compare the record against the phase file
    **in the same commit**, so co-editing the checkbox and the record defeated both at once; the
@@ -146,7 +190,8 @@ records do not classify the same situation three different ways.
    file and puts the correction in the annotation — so `before` is, by construction, what the box
    still says. Every `UNMET` names a defect record that is a **real defect record**, not merely a
    file that exists: non-empty, quoting its criterion verbatim in a blockquote, stating a severity,
-   and proposing a remedy with S/M/L sizing.
+   and proposing a remedy with S/M/L sizing. The two `NEEDS-*` classes may name one too (their
+   handoff record); no class that carries a tick may.
 7. **Citations resolve** — `test` and `artifact` refs are repository paths (with an optional
    `:line` or `:line-line` suffix) and must resolve to a **regular file inside the repository
    root**. A directory ref, an absolute path and a `..` escape all fail; so does a **symlink**,
@@ -158,7 +203,55 @@ records do not classify the same situation three different ways.
    of its own `file:line` citations with the files still present. A ref into **`node_modules/` or
    `.git/`** fails — `npm ci` runs before the validator in every CI job, so `node_modules` always
    resolves while being precisely *not* content this repository carries. A ref naming a **closeout
-   record** (`phase-NN.json`) fails too: a record is the claim, never the evidence for itself.
+   record** (`phase-NN.json`) fails too: a record is the claim, never the evidence for itself —
+   **and so does anything else in this directory.** That refusal matched the `phase-NN.json`
+   filename shape *alone*, so a reviewer appended to a ticked criterion, each with wholly forged
+   `quotedAssertion` text, an `artifact` citation of the pass's **own defect record**, an `artifact`
+   citation of **this README**, and a `journal-export` citation of **`criteria-baseline.json`** — and
+   the validator passed. No path games were needed; it simply aimed one directory to the side. A
+   defect record, this README and the baseline are all written by the same pass, in the same PR, as
+   the record that would be citing them, so the whole **claim-space** is refused. Measured before
+   enforcing: across the merged records, **zero of 774** citations resolve into this directory.
+   Evidence transcripts belong under `docs/evidence/phase-NN/`, which is where the real records
+   already file them.
+
+   **And a record may not cite its OWN phase file** — the sharpest form of the same thing. A
+   reviewer made a ticked criterion's *only* citations (a) `roadmap/22-learning-system.md:96`, the
+   phase's own checkbox **annotation quoted as evidence for itself**, and (b) that pass's own defect
+   record. Both passed, so the mandatory "a ticked criterion needs ≥1 citation" was satisfiable
+   entirely by text the pass wrote in the same commit. Note that path canonicality does **not** reach
+   this: it hardens how a ref is *matched*, not which targets are refused. Scoped to the record's
+   **own** phase file, deliberately — zero merged records cite their own, while phase 17
+   legitimately cites `roadmap/19-…` across phases, and refusing `roadmap/` generally would break
+   that honest citation.
+
+   **A ref must already be its own normal form**, and this was a live bypass:
+   `docs/evidence/criteria-closeout/./phase-14.json:1-5` validated **green** as an `artifact`
+   citation while the plain form was correctly refused — so a ticked criterion's mandatory ≥1
+   citation could be satisfied by a **self-citation**. `defects/14-decoy/../14-ratchet-….md`
+   passed the same way, borrowing the mandatory `defects/NN-` phase prefix from a directory the
+   `..` then discards. One cause, several victims: the self-citation regex, the segment scan and
+   the `defectRef` prefix all matched the **raw string** while `path.resolve`/`path.join`
+   normalized underneath them. Requiring normal form — rather than merely normalizing before each
+   check, which would silently *accept* the decoy path as though the real one had been written —
+   closes the class rather than its instances. A **backslash** is refused for the same reason
+   (POSIX resolution reads it as a filename character, the segment scan as a separator), and the
+   self-citation and `node_modules`/`.git` comparisons are now case-insensitive, because macOS and
+   Windows checkouts open `Phase-14.json` while a case-sensitive regex reads it as an unrelated
+   path. A `defectRef` is now held to the same containment and symlink rules as a citation: it had
+   **none**, so `..` past the repository root named a "defect record" no reviewer of this
+   repository can see — and the validator read it.
+
+   **And the same two content checks now run on what the path OPENS, not only on what it says.**
+   They ran on the cited ref alone, while the containment check accepts any target inside the
+   repository root — and `node_modules/` and `.git/` *are* inside the repository root. A committed
+   `docs/evidence/nmlink -> ../../node_modules`, cited as
+   `docs/evidence/nmlink/vitest/package.json:3`, therefore passed everything: the final component is
+   a regular file, so the direct-symlink refusal never fired, and the parent-realpath check only
+   rejects escapes *outside* the root. The same laundering aimed a citation at a **closeout record**
+   through a symlinked directory. Both are the dot-segment defect wearing a different hat — the
+   check ran on the wrong string — so the segment scan and the self-citation refusal now also run
+   against the repo-relative realpath.
 8. **Every other citation kind resolves as far as it can.** None of them was checked for anything
    at all until a reviewer built a **wholly forged `phase-13.json`** — real checkbox texts, so every
    frozen baseline hash matched; all seven criteria `EVIDENCE-EXISTS`; every citation
@@ -175,15 +268,38 @@ records do not classify the same situation three different ways.
      criterion is *relevant*. See limit 6.
    - **`journal-export`** is a committed file like any other, and resolves as one.
    - **`ci-run`** cannot be resolved from a checkout, so offline it must carry a `url` in this
-     repository's `actions/runs/` (or `actions/jobs/`) space, plus a `quotedAssertion` — logs
-     expire, the quote is the durable part. Making the run actually **exist** is
+     repository's `actions/runs/` (or `actions/jobs/`) space, a `quotedAssertion` — logs expire,
+     the quote is the durable part — **the `commit` the run ran at**, and a `ref` that **leads with
+     the workflow name** (`CI / unit-test+coverage (ubuntu-latest), job 91399985018, step "…"`).
+     Making the run actually **exist**, and be the run the citation says it is, is
      `npm run check:citation-runs`, a separate `meta-checks` step that resolves each URL against
      the GitHub API. Its failure semantics are deliberately asymmetric: a **404 fails the build**
-     (the run is not there), while "could not ask" — no token, rate limit, 5xx, DNS — warns and
-     passes, so an API blip cannot red an honest PR. That asymmetry cannot be turned into a bypass,
-     because an attacker cannot make the API return 404-shaped success. It deliberately does
-     **not** require `conclusion: success`: a record may legitimately cite a **red** run as evidence
-     that a gate really bites, and phase 01's closeout does exactly that.
+     (the run is not there), and so does a **`head_sha` or workflow name that disagrees with the
+     citation**, while "could not ask" — no token, rate limit, 5xx, DNS, or a response that simply
+     does not carry the field — warns and passes, so an API blip cannot red an honest PR. That
+     asymmetry cannot be turned into a bypass, because an attacker can make the API return neither
+     404-shaped success nor a matching `head_sha` for a run that ran somewhere else. It deliberately
+     does **not** require `conclusion: success`: a record may legitimately cite a **red** run as
+     evidence that a gate really bites, and phase 01's closeout does exactly that. A
+     `/runs/<rid>/job/<jid>` URL also has its **job** resolved and checked to belong to that run —
+     the suffix used to be matched and then discarded, so a fabricated job number pinned under a
+     real run was free text.
+
+     **Provenance was the second live bypass, and the more serious one.** Until it was closed,
+     existence was *all* this proved. A reviewer repointed phase 01's criterion 1 at run
+     **30250453824** — a months-old `release-e2e` run: wrong workflow, wrong commit, months before
+     the criterion existed — set `commit` to the null object id, and replaced `quotedAssertion`
+     with a fabrication. The offline validator reported **zero errors**, and `check-citation-runs`
+     would have passed too, because it only 404-checks existence and **nothing anywhere read
+     `commit`**. So *any* real run in this repository's Actions history could stand as evidence for
+     *any* criterion at *any* claimed commit. Both endpoints carry `head_sha` and the job endpoint
+     carries `workflow_name`, so both claims are now checked with the request this step already
+     made. Making `commit` required cost the merged corpus nothing: all **108** `ci-run` citations
+     across the eleven records already carried one, and all **14** distinct runs they name resolve
+     to exactly the recorded `head_sha` (phase 08's abbreviated `d11b0594` is compared as a prefix).
+     The **dead-check guard is doubled** to match: the step already fails when it resolved runs but
+     verified none, and now also when it resolved runs but confirmed **not one** cited commit — a
+     provenance check that silently stops working must not print a green line.
 
 ## The frozen baseline
 
@@ -234,7 +350,9 @@ narrower, and still real:
    non-symlink file, and be long enough for the line — but the quoted assertion itself is free
    text, so a real file plus a real in-range line plus an invented assertion passes.
 
-   Enforcing it is not a small change. The three merged records carry **143 citations**, of which
+   Enforcing it is not a small change. The figures below were measured when the index held **three**
+   records; the corpus is now 17 records and ~1,000 citations, so treat the ratio as indicative and
+   re-measure before acting on it. At that time the three merged records carried **143 citations**, of which
    **123** are `test`/`artifact` — the only kinds that name a file a quote could be checked
    against. Between **10 and 16 of those 123** have backticked fragments appearing verbatim
    (whitespace-normalized) in the cited file: **10** counting only fragments of ≥12 characters and
@@ -245,15 +363,44 @@ narrower, and still real:
    would survive as-is — the rest paraphrase, reformat, or splice several lines. Closing this means
    first settling a machine-checkable `quotedAssertion` format: a protocol change, not a validator
    change.
-5. **A `ci-run` citation can name a real run that has nothing to do with the criterion.** Run
-   resolution proves the run exists; it does not read the log, so it cannot tell whether the quoted
-   line is really in it, or whether that job exercised this criterion's suite. This is the residue
-   of the forged-closeout hole rather than its closure.
+5. **A `ci-run` citation is now pinned to a run, a commit and a workflow — but not to a log line.**
+   What is checked: the run exists, it ran at the commit the citation claims, and it belongs to the
+   workflow the `ref` names. What is *not*: the log itself. Nothing reads it, so the
+   `quotedAssertion` on a `ci-run` remains free text — a real run, at the real commit, of the right
+   workflow, plus an **invented quoted line**, still passes. That channel is inherently human
+   territory once a run's logs pass GitHub's retention window and stop being fetchable at all; it is
+   named here rather than claimed closed. Narrower residue with the same shape: when the URL carries
+   a `/job/<jid>` suffix that job is resolved and checked to belong to the run, but the job and step
+   named in the `ref` **prose** (`…, job 91399985018, step "…"`) are not, so a citation can name the
+   right run and the wrong job in its text. Choosing a *plausible* wrong run — same workflow, same
+   commit, different criterion — is likewise still open, and is a judgement about relevance rather
+   than provenance; see limit 6.
 6. **A `discharge` can name a real, ticked, correctly-quoted criterion that is simply not relevant.**
    The checks establish that the discharging criterion *exists*, is *closed*, and is *identified
    unambiguously* — not that it actually covers the criterion being discharged. Relevance is a
    judgement about two sentences' meanings, and no hash makes it. `SUPERSEDED-DISCHARGED` is
    therefore the tick that most needs a human to read both criteria side by side.
+7. **The annotation body can still weaken a criterion, and this one is worth reading twice.** The
+   pinned wording is frozen against the baseline, but the `— **…**` annotation appended after it is
+   prose, and it renders on github.com immediately beside the criterion, in bold. A reviewer
+   demonstrated `— **Evidence (2026-08-02), WAIVED for all cases except empty dir; the suite is
+   advisory only:** …` passing green. After the shape rules above it **still passes**, and there is
+   a test asserting so, deliberately, rather than a claim here that it does not.
+
+   The reason is worth stating, because it is not laziness: **every honest form already in the
+   corpus exercises each syntactic position the waiver uses.** `UNMET (2026-08-02), channel absent:`
+   puts free text after the date and before the colon — exactly where the waiver sits.
+   `Evidence (2026-08-02, and see the lease note above — this became true only at 70d7da7):` puts a
+   substantive qualification inside the label's own parentheses. `Left unticked 2026-08-01, defect
+   filed:` uses no parentheses at all. So no rule on the head's *shape* separates the waiver from a
+   real annotation, and every rule that would have — a strict `<Label> (<date>):`, or pinning the
+   date to `pass.date` — fails 7 and 14 honest criteria respectively. Closing this needs the
+   annotation to become *derived from the record* rather than free prose, which is a protocol and
+   `schemaVersion` change, not a validator change.
+
+   Until then: **a weakening clause in an annotation is visible in exactly one place, the roadmap
+   diff, and it is bold text sitting next to the criterion it weakens.** It is one of the easier
+   things for a human to catch and one of the impossible things for this validator to.
 
    Note the division of labour, because it matters for anyone running the check locally: the
    **offline** validator still passes a forged closeout whose fabricated citations merely *look*
@@ -263,9 +410,24 @@ narrower, and still real:
    where a token exists. **A green local `check:criteria-closeout` is not evidence that a record's
    CI citations are real.**
 
-All of these surface in exactly one place: the **roadmap diff**, read by a human. That is the boundary
-of what this kind of check can do, and it is why the wording protocol and per-phase review exist.
-Read the roadmap diff on every closeout PR. Do not let a green `meta-checks` stand in for it.
+Limits 1, 2, 3, 6 and 7 surface in exactly one place: the **roadmap diff**, read by a human. That is
+the boundary of what this kind of check can do, and it is why the wording protocol and per-phase
+review exist. Read the roadmap diff on every closeout PR. Do not let a green `meta-checks` stand in
+for it. **Limit 7 is the one to read first** — it is bold text sitting beside the criterion it
+weakens, and it is the successor of two bypasses that were closed by narrowing the syntax around it.
+
+Limits 4 and 5 do not surface there at all, and it is worth being exact about what is left after the
+provenance fix, because it is a smaller and stranger residue than before. A `ci-run` citation is now
+pinned to a run that exists, at the commit it claims, of the workflow it names; a `test`/`artifact`
+citation is pinned to a real non-symlink file at a line that exists, by a path that cannot mean two
+things. **What is left in both is the quoted text itself.** Nothing reads a workflow log and nothing
+reads the cited file's line, so an otherwise perfectly-pinned citation can carry a
+`quotedAssertion` that was never written anywhere. For a `test`/`artifact` that is checkable in
+principle and blocked only on settling a format (limit 4). For a `ci-run` it is checkable only while
+the run's logs are still fetchable, and GitHub deletes them; past retention it is **permanently**
+human territory. **The single highest-value thing a reviewer can do on a closeout PR is open one
+cited file, or one cited job, and check that the quoted line is really there.** No amount of further
+validator work replaces that.
 
 **Not checked, on purpose:** `pass.headSha` is validated as a 40-hex string but never resolved to a
 real commit. Doing so needs `git` history. `meta-checks` now checks out with `fetch-depth: 0` —
@@ -299,8 +461,14 @@ for a reader, not a gate.
   to prevent.
 - **A criterion you cannot honestly close stays unticked** and gets a defect record. An honest
   partial close is a successful outcome.
-- **Never weaken a criterion's wording to make it tickable.** Corrections go through the wording
-  protocol: original text preserved verbatim in the phase file, dated annotation appended, before/
-  after recorded here. A correction that loses a guarantee is `UNMET`, not a wording fix.
+- **Never weaken a criterion's wording to make it tickable** — and that includes the annotation.
+  Corrections go through the wording protocol: original text preserved verbatim in the phase file,
+  dated annotation appended, before/after recorded here. A correction that loses a guarantee is
+  `UNMET`, not a wording fix. The annotation is for *evidence*, never for scope: a clause like
+  "except…", "advisory only" or "waived for…" belongs in a defect record, and putting it in the
+  bold head is the one weakening this validator cannot see (limit 7).
+- **Write every criterion with a `-` bullet, and every path as the plain path.** `* [x]` renders as
+  a criterion and parses as nothing; `./`, `..`, a leading `/` and a backslash in a ref are all
+  refused. Both were live bypasses.
 - **Never fix a defect in the same pass.** Filing it is the deliverable; the fix is separate work
   with its own TDD trail.

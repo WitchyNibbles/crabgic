@@ -17,7 +17,7 @@
  * journal entry, or committed artifact." The closeout pass applies that rule
  * to itself, and this check is what keeps the resulting records from becoming
  * the very thing they exist to prevent — a self-reported claim nothing
- * verifies. Concretely it makes eight drifts impossible to land quietly:
+ * verifies. Concretely it makes ten drifts impossible to land quietly:
  *
  *   0. A phase file with more than one `## Exit criteria` section. Listed
  *      first because every check below is downstream of a single parse: it
@@ -71,6 +71,30 @@
  *      record-less. Every phase file is now held against its baseline entry,
  *      and a second `roadmap/NN-*.md` sharing a pinned phase number — which
  *      inherited the exemption and was pinned by neither — is rejected.
+ *   8. A ref that reads as two different paths. Every check above that matches
+ *      a ref as a STRING — the self-citation refusal, the node_modules/.git
+ *      scan, the defects/NN- prefix — compared the raw text while path
+ *      resolution normalized underneath it, so `…/./phase-14.json` validated
+ *      green as a SELF-citation and `defects/14-decoy/../14-ratchet-….md`
+ *      borrowed its mandatory phase prefix from a directory the `..` discarded.
+ *      Refs must now already be their own normal form; see
+ *      `repoPathShapeProblem`. A `defectRef` gets the containment and symlink
+ *      rules it never had, having been able to name a file outside the
+ *      repository — which the validator then read.
+ *   9. A `ci-run` citation whose provenance is nobody's business. It had to
+ *      name a run in this repository and nothing more, so any real run in the
+ *      history could evidence any criterion at any claimed commit: a
+ *      months-old `release-e2e` run passed as phase 01's coverage-gate
+ *      evidence. The commit the run ran at and the workflow it belongs to are
+ *      now required here and compared against the GitHub API by
+ *      `scripts/check-citation-runs.mjs`.
+ *  10. A criterion-shaped line the parser cannot see. `* [x]` and `+ [x]` are
+ *      task list items to GitHub and invisible here, so one appended inside a
+ *      real `## Exit criteria` section rendered as a ticked criterion that
+ *      nothing pinned; and the annotation appended after a criterion was
+ *      constrained only by its four-character lead, so a waiver clause moved
+ *      into it. See `ALT_BULLET_CHECKBOX` and `ANNOTATION_LABELS` — and note
+ *      what the latter deliberately does NOT claim.
  *
  * What it CANNOT catch, stated so nobody over-trusts it. A `discharge` can
  * name a real, ticked, unambiguously-quoted criterion that is simply
@@ -136,6 +160,29 @@ export const TICKABLE_CLASSIFICATIONS = [
   "WORDING-MISMATCH",
 ];
 
+/**
+ * The classifications that may name a `defectRef`, DERIVED as "the ones that
+ * may not be ticked" rather than listed.
+ *
+ * Raised by the phase-10 closeout. `defectRef` was accepted only on `UNMET`, so
+ * an `EVIDENCE-NEEDS-LIVE` or `EVIDENCE-NEEDS-CI` criterion could not
+ * machine-link the handoff record it had already written — phase 10 wrote
+ * `defects/10-plugin-live-smoke-unrun.md` and could only point at it from
+ * free-text `notes`. Phases 06 and 19 have the same shape.
+ *
+ * Widened rather than given a new `handoffRef` key: the file shape is
+ * identical, it is checked identically, and a handoff IS a defect record in
+ * everything but name — whereas a new key would be a `schemaVersion` change,
+ * which belongs with the deferred `quotedAssertion` protocol work, not here.
+ *
+ * Derived, because the invariant that actually matters is "a criterion carrying
+ * a TICK never names one". A hard-coded list would let a future tickable class
+ * acquire one by being added to it; this cannot.
+ */
+export const DEFECT_REF_CLASSIFICATIONS = CLASSIFICATIONS.filter(
+  (classification) => !TICKABLE_CLASSIFICATIONS.includes(classification),
+);
+
 export const CITATION_KINDS = ["ci-run", "artifact", "test", "journal-export", "discharge"];
 
 /**
@@ -160,6 +207,58 @@ const CI_RUN_URL =
   /^https:\/\/github\.com\/WitchyNibbles\/crabgic\/actions\/(?:runs|jobs)\/\d+(?:\/job\/\d+)?$/;
 
 /**
+ * The commit a cited run ran at. Abbreviated ids are allowed because merged
+ * phase 08 records one (`d11b0594`); `check-citation-runs.mjs` compares it as a
+ * prefix of the API's `head_sha`. Seven is git's own floor for an abbreviation.
+ */
+const CI_RUN_COMMIT = /^[0-9a-f]{7,40}$/;
+
+/**
+ * A `ci-run` ref leads with the workflow the run belongs to:
+ * `CI / unit-test+coverage (ubuntu-latest), job 91399985018, step "…"`. All 40
+ * distinct refs across the eleven merged records already do — `CI / `,
+ * `gates-conformance / `, `perf-conformance / ` — and it is what gives
+ * `check-citation-runs.mjs` something to compare the API's workflow name
+ * against.
+ */
+const CI_RUN_REF_WORKFLOW = /^([^/\n]+?) \/ \S/;
+
+/**
+ * The lead of a `ci-run` ref — everything before its first ` / ` — or
+ * `undefined` if it has none. Exported for `check-citation-runs.mjs`.
+ */
+export function ciRunRefLead(ref) {
+  if (typeof ref !== "string") return undefined;
+  const match = CI_RUN_REF_WORKFLOW.exec(ref);
+  return match === null ? undefined : match[1].trim();
+}
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Does a `ci-run` ref name this workflow? `undefined` when the ref has no lead
+ * to compare (the offline validator reports that separately).
+ *
+ * The comparison is on the token IMMEDIATELY before the first ` / `, allowing a
+ * labelled prefix in front of it. Sweeping this check over the open closeout
+ * PRs before landing it found why that matters: phase 17's criterion 2 cites
+ * two runs of the SAME workflow and distinguishes them as
+ * `BUILD 1 — CI / unit-test+coverage (…)` and `BUILD 2 — CI / …`. Reading the
+ * whole lead as the workflow name failed both — an honest record and a wrong
+ * rule. The label may not become a smuggling channel, though: it is the token
+ * immediately before the separator that must BE the workflow, so
+ * `CI — release-e2e / …` does not pass as a run of `CI`.
+ */
+export function ciRunRefNamesWorkflow(ref, workflowName) {
+  const lead = ciRunRefLead(ref);
+  if (lead === undefined) return undefined;
+  const wanted = workflowName.trim().toLowerCase();
+  const actual = lead.toLowerCase();
+  if (actual === wanted) return true;
+  return new RegExp(`(?:^|[\\s\\u2013\\u2014:|-])${escapeRegExp(wanted)}$`).test(actual);
+}
+
+/**
  * The two load-bearing elements of a `discharge` ref: the roadmap file it
  * discharges against, and the discharged criterion's wording in double quotes.
  *
@@ -181,8 +280,74 @@ const MIN_DISCHARGE_QUOTE = 40;
 const DISCHARGE_ROADMAP_FILE = /roadmap\/\d{2}-[a-z0-9-]+\.md/;
 const DISCHARGE_QUOTED_CRITERION = /"([^"]+)"/;
 
-/** A closeout record is the claim. It is never the evidence for itself. */
-const CLOSEOUT_RECORD_REF = new RegExp(`^${CLOSEOUT_DIR}/phase-\\d{2}\\.json$`);
+/**
+ * The closeout CLAIM-SPACE: this whole directory, not one filename in it.
+ *
+ * Round-6 finding, and round-8 finding (bypass 21) which generalised it. The
+ * refusal matched `phase-NN.json` and that shape ALONE, so a reviewer appended
+ * to a ticked criterion — each with wholly forged `quotedAssertion` text — an
+ * `artifact` citation of the pass's OWN defect record, an `artifact` citation
+ * of this directory's README, and a `journal-export` citation of
+ * `criteria-baseline.json`, and the validator passed. No path games were
+ * needed; it simply aimed one directory to the side.
+ *
+ * The principle the old error message already stated covers the whole tree: a
+ * defect record, the README and the baseline are all written by the same pass,
+ * in the same PR, as the record citing them. Measured before enforcing —
+ * across the merged records ZERO of 774 citations resolve into this directory
+ * (the one ref mentioning it is a `ci-run` job NAME, not a path), so refusing
+ * the claim-space costs nothing and closes the class rather than one shape.
+ *
+ * Case-insensitive: macOS and Windows checkouts resolve paths without regard
+ * to case, so `…/Phase-14.json` opens the record there while reading as an
+ * unrelated path to a case-sensitive regex. No honest ref differs from another
+ * only by case, so closing it costs nothing.
+ */
+const CLOSEOUT_CLAIM_SPACE = new RegExp(`^${CLOSEOUT_DIR}/`, "i");
+const CLOSEOUT_RECORD_REF = new RegExp(`^${CLOSEOUT_DIR}/phase-\\d{2}\\.json$`, "i");
+
+/** Segments a citation may never name, compared case-insensitively for the same reason. */
+const FORBIDDEN_SEGMENTS = new Set(["node_modules", ".git"]);
+
+/**
+ * Every repository path a record writes — a `test`/`artifact`/`journal-export`
+ * ref, and a `defectRef` — must already BE the plain path, byte for byte.
+ *
+ * Adversarial-review finding, round 8 (bypass 17a), demonstrated live against
+ * the hardened validator. An `artifact` ref of
+ * `docs/evidence/criteria-closeout/./phase-14.json:1-5` validated GREEN while
+ * the plain form was correctly refused — so a ticked criterion's mandatory ≥1
+ * citation could be satisfied by a SELF-citation. The same reviewer passed
+ * `defects/14-decoy/../14-ratchet-….md`, borrowing the mandatory `defects/NN-`
+ * phase prefix from a decoy directory the `..` then discards.
+ *
+ * One cause, several victims: every check that reads a ref as a STRING — the
+ * self-citation regex, the segment scan, the `defectRef` prefix and location
+ * discipline — matched the raw text, while `path.resolve`/`path.join`
+ * normalized underneath them.
+ *
+ * REQUIRING normal form rather than merely normalizing before each check is the
+ * deliberate choice. Normalizing alone would silently ACCEPT
+ * `defects/14-decoy/../14-ratchet.md` as though the author had written the real
+ * path — a laundering channel of its own — and would leave the next
+ * string-reading check to be written just as vulnerable. With raw === resolved
+ * the whole class is closed rather than its three current instances.
+ *
+ * @returns {string | undefined} the problem, phrased to follow "<kind> ref <x> "
+ */
+function repoPathShapeProblem(relPath) {
+  if (relPath.includes("\\")) {
+    return "contains a backslash — a citation is a POSIX repository path, and `\\` is an ordinary filename character to path resolution while the segment scan reads it as a separator, so the two halves of this check would disagree about what the ref says";
+  }
+  if (relPath.startsWith("/")) {
+    return "is an absolute path, which resolves outside the repository root of any checkout — a citation is a path relative to the repository";
+  }
+  const normalized = path.posix.normalize(relPath);
+  if (normalized !== relPath) {
+    return `is not a plain repository path — write ${normalized}. Dot segments defeat every check that reads a ref as a string (the self-citation refusal, the node_modules/.git scan, the defects/NN- prefix) while path resolution silently collapses them, so a ref must already be its own normal form`;
+  }
+  return undefined;
+}
 
 /**
  * `packages/x/y.test.ts:12` / `…:12-18` -> the path plus the line span it
@@ -225,6 +390,86 @@ function countLines(contents) {
  * code match what the error message already promised.
  */
 export const ANNOTATION_LEAD = "— **";
+
+/**
+ * The labels an annotation's bold head may lead with, keyed by whether the
+ * criterion carries a tick.
+ *
+ * Round-8 finding (bypass 18), demonstrated live and the direct successor of
+ * the internal-em-dash bypass `ANNOTATION_LEAD` closed: the whole-checkbox
+ * check required only that the tail START with those four characters, so the
+ * weakening text moved four characters to the right and
+ * `— **Evidence (2026-08-02), WAIVED for all cases except empty dir; the suite
+ * is advisory only:** …` validated green.
+ *
+ * ENUMERATED FROM THE CORPUS, not guessed — all 132 annotated criteria across
+ * the 16 merged records plus both open closeout PRs. Adding a form is a
+ * deliberate edit here, which is the point, and the suite asserts the
+ * enumeration still covers every merged record so drift fails loudly here
+ * rather than surprising the next closeout PR. (`Open defect` was added exactly
+ * that way: phase 16 merged mid-review carrying it, the rule caught it, and the
+ * ENUMERATION was the incomplete thing, not the rule.)
+ *
+ * THE INVARIANT THAT MAKES THIS BITE is that the two vocabularies are
+ * DISJOINT — no label may be legal for both a ticked and an unticked box — so
+ * an annotation cannot contradict the box beside it. The suite asserts that
+ * too; widening either list without checking it would quietly hollow the rule.
+ *
+ * Two stronger rules were measured and REJECTED because honest records fail
+ * them, and a rule that fails an honest record is the rule being wrong:
+ *
+ *   - a strict `— **<Label> (<date>):**` shape fails 7 criteria across 5
+ *     distinct honest forms (`Left unticked 2026-08-01, defect filed:`,
+ *     `UNMET (2026-08-02), channel absent:`, a dated parenthetical, …);
+ *   - requiring the annotation's date to equal the record's `pass.date` fails
+ *     14 criteria in phases 01 and 11, annotated a day either side of the pass.
+ *
+ * And see limit 7 in the directory README: this does NOT close the weakening
+ * channel. Every honest form in the corpus already exercises each syntactic
+ * position the demonstrated waiver uses — a parenthetical inside the label,
+ * free text after the date, a trailing clause before the colon — so no
+ * syntactic rule on the bold head separates them. What it does close is an
+ * unterminated bold span, an unrecognised label, an annotation that contradicts
+ * its own tick, and an undated one.
+ */
+export const ANNOTATION_LABELS = {
+  ticked: ["Evidence"],
+  unticked: ["Left unticked", "Open defect", "UNMET"],
+};
+
+const ANNOTATION_DATE = /\d{4}-\d{2}-\d{2}/;
+
+/**
+ * Checks the `— **<head>** <body>` annotation appended after a criterion's
+ * pinned wording. `remainder` is the whitespace-normalized tail, already known
+ * to start with `ANNOTATION_LEAD`.
+ */
+function checkAnnotation(errors, where, remainder, criterion, roadmapFile, position) {
+  const box = `checkbox ${String(position + 1)} in ${roadmapFile}`;
+  const closed = /^— \*\*(.+?)\*\*/s.exec(remainder);
+  if (closed === null) {
+    errors.push(
+      `${where}: ${box}'s annotation opens with "${ANNOTATION_LEAD}" and never reaches a closing \`**\` — an unterminated bold span swallows the rest of the criterion line, so the label cannot be read at all`,
+    );
+    return;
+  }
+  const head = closed[1].trim();
+  const allowed = criterion.ticked ? ANNOTATION_LABELS.ticked : ANNOTATION_LABELS.unticked;
+  if (!allowed.some((label) => head.startsWith(label))) {
+    const other = criterion.ticked ? ANNOTATION_LABELS.unticked : ANNOTATION_LABELS.ticked;
+    errors.push(
+      other.some((label) => head.startsWith(label))
+        ? `${where}: ${box} is ${criterion.ticked ? "ticked" : "not ticked"}, but its annotation is labelled ${JSON.stringify(head.slice(0, 40))} — the annotation contradicts the box beside it`
+        : `${where}: ${box}'s annotation is labelled ${JSON.stringify(head.slice(0, 40))}, which is not one of ${allowed.map((label) => `"${label}"`).join(" or ")}. The label is what a reader skims; a new one is a deliberate edit to ANNOTATION_LABELS, not a free choice.`,
+    );
+    return;
+  }
+  if (!ANNOTATION_DATE.test(head)) {
+    errors.push(
+      `${where}: ${box}'s annotation carries no YYYY-MM-DD date — an annotation nobody can date cannot be held against the pass that wrote it`,
+    );
+  }
+}
 
 /**
  * A checkbox item's criterion wording, with any closeout annotation removed —
@@ -307,6 +552,27 @@ const EXIT_CRITERIA_HEADING = /^##\s+Exit criteria\s*$/;
 const CHECKBOX_ITEM = /^\s*-\s+\[([ xX])\]\s?(.*)$/;
 
 /**
+ * A task list item written with a bullet this parser does NOT read.
+ *
+ * Round-8 finding (bypass 20), found by this pass and demonstrated end-to-end:
+ * GitHub-Flavored Markdown renders `* [x]` and `+ [x]` as task list items
+ * exactly like `- [x]`, and `CHECKBOX_ITEM` matched neither. Nor did anything
+ * else — the stray scan uses the same regex, and the continuation branch needs
+ * leading whitespace — so such a line was simply INVISIBLE. Appending
+ * `* [x] <fabricated criterion>` inside `roadmap/12`'s real `## Exit criteria`
+ * section, a phase that HAS a closeout record, left both
+ * `check-criteria-closeout` and `generate-criteria-baseline --check` reporting
+ * PASS while github.com rendered a ticked criterion nothing pinned, nothing
+ * recorded and no count noticed.
+ *
+ * Rejected rather than absorbed, on the reasoning the nested-sub-bullet ruling
+ * already sets out: absorbing would silently move a baseline hash the first
+ * time somebody reached for a different bullet. Zero of the roadmap's 211
+ * criteria use one.
+ */
+const ALT_BULLET_CHECKBOX = /^\s*[*+]\s+\[[ xX]\]/;
+
+/**
  * Splits a phase file's `## Exit criteria` section into one entry per
  * checkbox item, joining wrapped continuation lines and collapsing runs of
  * whitespace so a hard-wrapped criterion compares equal to its one-line
@@ -332,6 +598,20 @@ const CHECKBOX_ITEM = /^\s*-\s+\[([ xX])\]\s?(.*)$/;
 export function parseExitCriteriaCheckboxes(markdown) {
   const problems = [];
   const lines = blankFencedBlocks(markdown).split("\n");
+
+  // Checked over the WHOLE file, and before the section is even located: an
+  // alt-bullet task list item is invisible to every other check here, so it is
+  // as dangerous above the section as inside it.
+  const altBullets = [];
+  lines.forEach((line, index) => {
+    if (ALT_BULLET_CHECKBOX.test(line)) altBullets.push(index + 1);
+  });
+  if (altBullets.length > 0) {
+    problems.push(
+      `has ${String(altBullets.length)} task list item(s) written with a \`*\` or \`+\` bullet (line(s) ${altBullets.map(String).join(", ")}) — GitHub renders those as ticked criteria exactly like \`- [x]\`, but this parser reads only the \`-\` bullet, so such a line is invisible to the hash pin, the counts, the tick cross-check and the stray scan alike. Write every exit criterion with \`- [ ]\` / \`- [x]\`.`,
+    );
+    return { items: undefined, problems };
+  }
 
   const headings = [];
   lines.forEach((line, index) => {
@@ -417,6 +697,46 @@ export function parseExitCriteriaCheckboxes(markdown) {
 export const normalizeCriterionText = (value) => value.replace(/\s+/g, " ").trim();
 const normalize = normalizeCriterionText;
 
+/**
+ * The two checks that are about WHAT a repo-relative path names, rather than
+ * whether it resolves. Separated out because they must run TWICE — once on the
+ * cited ref and once on the repo-relative realpath it opens, which bypass 19
+ * showed are not the same string.
+ *
+ * Round-6 findings, both: a record cited ITSELF as its own `artifact` evidence
+ * and resolved fine (a closeout record is a real committed file), and
+ * `node_modules/vitest/package.json:3` validated — every CI job runs `npm ci`
+ * before this check, so `node_modules` always exists while being precisely NOT
+ * content this repository carries.
+ *
+ * @returns {string | undefined} the problem, phrased to follow "<kind> ref <x> "
+ */
+function forbiddenContentProblem(relPath, ownRoadmapFile) {
+  if (CLOSEOUT_RECORD_REF.test(relPath)) {
+    return "is a closeout record — a record is the claim, never the evidence for it";
+  }
+  if (CLOSEOUT_CLAIM_SPACE.test(relPath)) {
+    return `is inside the closeout claim-space ${CLOSEOUT_DIR}/ — a record is the claim, never the evidence for it, and neither is anything filed beside it. A defect record, this directory's README and the frozen baseline are all written by the same pass, in the same PR, as the record that would be citing them.`;
+  }
+  // Round-8 finding (bypass 22), the sharpest form of the same family: a ticked
+  // criterion's ONLY citations were its own phase file's checkbox ANNOTATION
+  // and that pass's own defect record, so the mandatory ≥1 citation was
+  // satisfied entirely by text the pass wrote in the same commit. Canonicality
+  // does not reach this — it hardens how a ref is MATCHED, not which targets
+  // are refused. Scoped to the record's OWN phase file: phase 17 legitimately
+  // cites `roadmap/19-…` across phases, and zero merged records cite their own.
+  if (
+    typeof ownRoadmapFile === "string" &&
+    relPath.toLowerCase() === ownRoadmapFile.toLowerCase()
+  ) {
+    return `is this record's own phase file — a criterion cannot be evidenced by the phase file it lives in, whose annotation this very pass appended. Citing ANOTHER phase's roadmap file is fine.`;
+  }
+  if (relPath.split(/[\\/]/).some((segment) => FORBIDDEN_SEGMENTS.has(segment.toLowerCase()))) {
+    return "is not content the repository carries — node_modules/ is installed by every CI job and .git/ is not source";
+  }
+  return undefined;
+}
+
 /** `realpathSync` that degrades to the given path rather than throwing. */
 function realpathOr(target) {
   try {
@@ -444,28 +764,24 @@ function realpathOr(target) {
  * rebase slid five of its own line citations and none were catchable, because
  * the files still existed.
  */
-function resolveCitationRef(errors, cwhere, citation, repoRoot) {
-  const { relPath, start, end } = parseCitationRef(citation.ref);
+function resolveCitationRef(errors, cwhere, citation, repoRoot, ownRoadmapFile) {
+  const { relPath: rawPath, start, end } = parseCitationRef(citation.ref);
 
-  // Round-6 finding: a record cited ITSELF as its own `artifact` evidence and
-  // resolved fine, because a closeout record is a real committed file. Checked
-  // on the ref's shape, before resolution, so it holds for a record that does
-  // not exist yet either.
-  if (CLOSEOUT_RECORD_REF.test(relPath)) {
-    errors.push(
-      `${cwhere}: ${citation.kind} ref ${relPath} is a closeout record — a record is the claim, never the evidence for it`,
-    );
-    return;
+  // Round-8 finding (bypass 17a). Reported, and then the NORMALIZED path is
+  // what every check below sees — so the record's author is told to write the
+  // plain path, and meanwhile the dot-segment form cannot slip past the
+  // string-matching checks while resolution collapses it.
+  const shapeProblem = repoPathShapeProblem(rawPath);
+  if (shapeProblem !== undefined) {
+    errors.push(`${cwhere}: ${citation.kind} ref ${rawPath} ${shapeProblem}`);
   }
-  // Round-6 finding: `node_modules/vitest/package.json:3` validated. Every CI
-  // job runs `npm ci` before this check, so `node_modules` always exists —
-  // certifying content the repository does not carry, which is precisely what
-  // the error messages below promise cannot happen.
-  const segments = relPath.split(/[\\/]/);
-  if (segments.includes("node_modules") || segments.includes(".git")) {
-    errors.push(
-      `${cwhere}: ${citation.kind} ref ${relPath} is not content the repository carries — node_modules/ is installed by every CI job and .git/ is not source`,
-    );
+  const relPath = shapeProblem === undefined ? rawPath : path.posix.normalize(rawPath);
+
+  // Checked on the ref's shape, before resolution, so both hold for a path that
+  // does not exist yet — and re-checked below on what the path really OPENS.
+  const contentProblem = forbiddenContentProblem(relPath, ownRoadmapFile);
+  if (contentProblem !== undefined) {
+    errors.push(`${cwhere}: ${citation.kind} ref ${relPath} ${contentProblem}`);
     return;
   }
 
@@ -488,12 +804,32 @@ function resolveCitationRef(errors, cwhere, citation, repoRoot) {
     );
     return;
   }
+  const realRoot = realpathOr(path.resolve(repoRoot));
   const real = realpathOr(abs);
-  if (real !== abs && !real.startsWith(realpathOr(path.resolve(repoRoot)) + path.sep)) {
+  if (real !== abs && !real.startsWith(realRoot + path.sep)) {
     errors.push(
       `${cwhere}: ${citation.kind} ref ${relPath} resolves outside the repository root, through a symlinked parent directory (-> ${real})`,
     );
     return;
+  }
+  // Round-8 finding (bypass 19). The two content checks above ran on the CITED
+  // ref only, while the containment check accepts any target inside the
+  // repository root — and `node_modules/` and `.git/` ARE inside it. So a
+  // committed `docs/evidence/nmlink -> ../../node_modules`, cited as
+  // `docs/evidence/nmlink/vitest/package.json:3`, passed everything: the final
+  // component is a regular file so the direct-symlink check never fired, and
+  // the parent-realpath check only rejects escapes OUTSIDE the root. Same
+  // family as the dot segments — the check ran on the wrong string — so they
+  // are re-run on what the path actually opens.
+  const throughLink = path.relative(realRoot, real).split(path.sep).join("/");
+  if (throughLink !== relPath) {
+    const launderedProblem = forbiddenContentProblem(throughLink, ownRoadmapFile);
+    if (launderedProblem !== undefined) {
+      errors.push(
+        `${cwhere}: ${citation.kind} ref ${relPath} resolves through a symlink to ${throughLink}, which ${launderedProblem}`,
+      );
+      return;
+    }
   }
   if (!statSync(abs).isFile()) {
     // A directory ref resolves but cites nothing in particular.
@@ -531,6 +867,18 @@ function resolveCitationRef(errors, cwhere, citation, repoRoot) {
  * This is a shape check, and a shape check alone does not make a run real.
  * `scripts/check-citation-runs.mjs` is the half that does, resolving each URL
  * against the GitHub API in the `meta-checks` job where a token exists.
+ *
+ * Round-8 finding (bypass 17b), the higher-value of that pair and demonstrated
+ * live: a cited run's PROVENANCE was entirely unverified. A reviewer repointed
+ * phase 01's criterion 1 at run 30250453824 — a months-old `release-e2e` run,
+ * wrong workflow, wrong commit, predating the criterion — set `commit` to the
+ * null object id and fabricated the `quotedAssertion`. This function returned
+ * nothing, and `check-citation-runs.mjs` would also have passed: it 404-checks
+ * existence, and NOTHING anywhere read `commit`. So any real run in this
+ * repository's history could stand as evidence for any criterion at any claimed
+ * commit. The two fields that pin a run to a criterion — the commit it ran at
+ * and the workflow it belongs to — are now required here and compared against
+ * the API there.
  */
 function checkCiRunCitation(errors, cwhere, citation) {
   if (!isNonEmptyString(citation.url)) {
@@ -547,6 +895,24 @@ function checkCiRunCitation(errors, cwhere, citation) {
   if (!isNonEmptyString(citation.quotedAssertion)) {
     errors.push(
       `${cwhere}: a ci-run citation must carry a quotedAssertion — workflow logs and artifacts expire, so the quoted line IS the durable evidence`,
+    );
+  }
+  if (!isNonEmptyString(citation.commit)) {
+    errors.push(
+      `${cwhere}: a ci-run citation must carry the commit the run ran at — without it the citation names a run but not the tree that run exercised, so any real run in this repository's Actions history stands as evidence for any criterion. scripts/check-citation-runs.mjs holds it against the run's head_sha.`,
+    );
+  } else if (!CI_RUN_COMMIT.test(citation.commit)) {
+    errors.push(
+      `${cwhere}: ci-run commit ${JSON.stringify(citation.commit)} is not a 7-to-40 character lowercase hex object id`,
+    );
+  } else if (/^0+$/.test(citation.commit)) {
+    errors.push(
+      `${cwhere}: ci-run commit ${citation.commit} is the null object id — no run ever ran at it, and it is what the live demonstration of this bypass used`,
+    );
+  }
+  if (ciRunRefLead(citation.ref) === undefined) {
+    errors.push(
+      `${cwhere}: a ci-run ref must lead with the workflow the run belongs to — \`<workflow> / <job>, job <id>, step "…"\`, e.g. \`CI / unit-test+coverage (ubuntu-latest), job 91399985018\`. Without it nothing can compare the cited workflow against the run the url resolves to.`,
     );
   }
 }
@@ -894,7 +1260,7 @@ export function validateCloseoutRecord(record, ctx) {
           // Adversarial-review finding: nothing resolved a citation, so a
           // fabricated ref validated. This pass's own phase-12 defect exists
           // BECAUSE a cited test file was deleted and nothing noticed.
-          resolveCitationRef(errors, cwhere, citation, repoRoot);
+          resolveCitationRef(errors, cwhere, citation, repoRoot, record.roadmapFile);
           // Line numbers drift and files move; the quoted text is the citation
           // that survives. All 466 test/artifact citations across the eleven
           // records already carry one, so requiring it costs nothing today and
@@ -917,43 +1283,70 @@ export function validateCloseoutRecord(record, ctx) {
       });
     }
 
-    if (criterion.classification === "UNMET") {
+    // `UNMET` must file one; the two pending-run classes MAY, to machine-link
+    // the handoff record they would otherwise only mention in `notes`. Every
+    // class that carries a tick may not — see DEFECT_REF_CLASSIFICATIONS.
+    if (DEFECT_REF_CLASSIFICATIONS.includes(criterion.classification)) {
       if (!isNonEmptyString(criterion.defectRef)) {
-        errors.push(`${where}: an UNMET criterion must name a defectRef`);
+        if (criterion.classification === "UNMET") {
+          errors.push(`${where}: an UNMET criterion must name a defectRef`);
+        }
       } else {
+        // Round-8 finding (bypass 17a): the `defects/NN-` location discipline
+        // was string-only while `path.join` collapsed `..`, so
+        // `defects/14-decoy/../14-ratchet-….md` satisfied the phase prefix with
+        // a directory the `..` discarded — and nothing checked containment at
+        // all, so `..` past the repository root named a "defect record" no
+        // reviewer of this repository can see, which the validator then READ.
+        const shapeProblem = repoPathShapeProblem(criterion.defectRef);
+        if (shapeProblem !== undefined) {
+          errors.push(`${where}: defectRef ${criterion.defectRef} ${shapeProblem}`);
+        }
+        const defectRef =
+          shapeProblem === undefined
+            ? criterion.defectRef
+            : path.posix.normalize(criterion.defectRef);
         const expectedPrefix = `${CLOSEOUT_DIR}/defects/${record.phase}-`;
-        if (
-          !criterion.defectRef.startsWith(expectedPrefix) ||
-          !criterion.defectRef.endsWith(".md")
-        ) {
+        const defectAbs = path.resolve(repoRoot, defectRef);
+        if (!defectRef.startsWith(expectedPrefix) || !defectRef.endsWith(".md")) {
           errors.push(`${where}: defectRef must be ${expectedPrefix}<slug>.md`);
+        } else if (!defectAbs.startsWith(path.resolve(repoRoot) + path.sep)) {
+          errors.push(`${where}: defectRef ${defectRef} resolves outside the repository root`);
+        } else if (!existsSync(defectAbs)) {
+          errors.push(`${where}: defectRef ${defectRef} does not exist`);
+        } else if (lstatSync(defectAbs).isSymbolicLink()) {
+          errors.push(
+            `${where}: defectRef ${defectRef} is a symlink, not a committed defect record`,
+          );
+        } else if (
+          realpathOr(defectAbs) !== defectAbs &&
+          !realpathOr(defectAbs).startsWith(realpathOr(path.resolve(repoRoot)) + path.sep)
+        ) {
+          // The parent-directory form of the same escape, which `lstat` on the
+          // file itself cannot see: a symlinked `defects/` leads anywhere.
+          errors.push(
+            `${where}: defectRef ${defectRef} resolves outside the repository root, through a symlinked parent directory (-> ${realpathOr(defectAbs)})`,
+          );
+        } else if (!statSync(defectAbs).isFile()) {
+          // Round-5 finding: this check was `existsSync` alone, unlike the
+          // citation path check beside it, so a DIRECTORY named `NN-slug.md`
+          // satisfied "the defect record exists" — and then reading it threw
+          // EISDIR and took the whole validator down.
+          errors.push(`${where}: defectRef ${defectRef} is not a file`);
         } else {
-          const defectAbs = path.join(repoRoot, criterion.defectRef);
-          if (!existsSync(defectAbs)) {
-            errors.push(`${where}: defectRef ${criterion.defectRef} does not exist`);
-          } else if (lstatSync(defectAbs).isSymbolicLink()) {
-            errors.push(
-              `${where}: defectRef ${criterion.defectRef} is a symlink, not a committed defect record`,
-            );
-          } else if (!statSync(defectAbs).isFile()) {
-            // Round-5 finding: this check was `existsSync` alone, unlike the
-            // citation path check beside it, so a DIRECTORY named `NN-slug.md`
-            // satisfied "the defect record exists" — and then reading it threw
-            // EISDIR and took the whole validator down.
-            errors.push(`${where}: defectRef ${criterion.defectRef} is not a file`);
-          } else {
-            checkDefectRecordShape(
-              errors,
-              where,
-              defectAbs,
-              criterion.defectRef,
-              isNonEmptyString(criterion.text) ? criterion.text : "",
-            );
-          }
+          checkDefectRecordShape(
+            errors,
+            where,
+            defectAbs,
+            defectRef,
+            isNonEmptyString(criterion.text) ? criterion.text : "",
+          );
         }
       }
     } else if ("defectRef" in criterion) {
-      errors.push(`${where}: defectRef is only for an UNMET criterion`);
+      errors.push(
+        `${where}: defectRef is only for a criterion that stays UNTICKED — ${DEFECT_REF_CLASSIFICATIONS.join(", ")}. A tick means the evidence is in hand; a record of what is outstanding contradicts it.`,
+      );
     }
 
     if (criterion.classification === "WORDING-MISMATCH") {
@@ -1019,6 +1412,12 @@ export function validateCloseoutRecord(record, ctx) {
           errors.push(
             `${where}: checkbox ${String(position + 1)} in ${record.roadmapFile} continues past the recorded text with ${JSON.stringify(remainder.slice(0, 60))} — that tail is unaccounted for; the record must pin the criterion's full wording, and anything appended must be the "${ANNOTATION_LEAD}Evidence …**" citation annotation`,
           );
+        } else if (remainder.length > 0) {
+          // Round-8 finding (bypass 18): the message above already promised the
+          // tail is "the `— **Evidence …**` citation annotation" while only the
+          // four-character lead was enforced, so the weakening clause simply
+          // moved to the right of it.
+          checkAnnotation(errors, where, remainder, criterion, record.roadmapFile, position);
         }
       }
       if (checkbox.checked !== criterion.ticked) {
@@ -1058,9 +1457,30 @@ export const PRE_INDEX_TICKED_PHASES = ["23"];
  *      becoming a check.
  */
 function findUnrecordedPhaseClosures(repoRoot, presentFileNames, baseline) {
-  const roadmapDir = path.join(repoRoot, "roadmap");
-  if (!existsSync(roadmapDir)) return [];
   const problems = [];
+
+  // Round-8 finding (bypass 21). Everything below — and `--check` in the
+  // baseline generator — iterates over the phase files PRESENT, so nothing
+  // asserted that a pinned phase still HAS one: deleting
+  // `roadmap/22-learning-system.md`, 8 unticked criteria, left both reporting
+  // PASS. The baseline is the anchor that lives outside the commit under
+  // review, so it is the thing that can see a file stop existing. Checked
+  // before the directory scan, and independently of it, so an entirely missing
+  // `roadmap/` is reported as 25 deletions rather than as nothing at all.
+  if (baseline !== null) {
+    const pinned = Object.entries(baseline.phases).sort(([a], [b]) => a.localeCompare(b));
+    for (const [phase, entry] of pinned) {
+      if (!isPlainObject(entry) || typeof entry.roadmapFile !== "string") continue;
+      if (!existsSync(path.join(repoRoot, entry.roadmapFile))) {
+        problems.push(
+          `${entry.roadmapFile} is pinned by ${BASELINE_FILE} for phase ${phase} but has been deleted — every other check here iterates over the phase files that are PRESENT, so a deleted phase is an unclosed phase that stopped being anyone's problem. Removing a phase is a roadmap decision that re-pins the baseline in its own commit, not something a closeout pass does.`,
+        );
+      }
+    }
+  }
+
+  const roadmapDir = path.join(repoRoot, "roadmap");
+  if (!existsSync(roadmapDir)) return problems;
   for (const name of readdirSync(roadmapDir).sort()) {
     const phase = /^(\d{2})-.*\.md$/.exec(name);
     if (phase === null) continue;
