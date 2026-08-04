@@ -41,7 +41,7 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/report/src/generator.ts:87-88",
+          "ref": "e2e/report/src/generator.ts:87-107",
           "quotedAssertion": "Why a PASS is not PASS-by-default — the zero-evidence branch cannot return PASS in either mode: :87 '  if (matchedEvidence.length === 0) {' / :88 '    const verdict: ReleaseGateVerdict = scoringMode === \"final\" ? \"FAIL\" : \"EVIDENCE-PENDING\";'. And :106-107 '  const negative = matchedEvidence.filter(isNegativeEvidence);' / '  const verdict: ReleaseGateVerdict = negative.length > 0 ? \"FAIL\" : \"PASS\";' — one negative record among the matches forces FAIL however many green ones sit beside it."
         },
         {
@@ -57,7 +57,7 @@
           "quotedAssertion": "The generator's own suites are in the DEFAULT per-push fan-out (the e2e-report project of the root vitest workspace), so unlike every other lane this criterion touches they run on every push: job-log line 1000 — ' ✓  e2e-report  src/generator.test.ts (15 tests) 50ms'; line 1004 — ' ✓  e2e-report  src/generator.property.test.ts (2 tests) 4437ms'. Whole-suite totals, lines 1008-1009 — ' Test Files  605 passed (605)' / '      Tests  5802 passed | 1 skipped (5803)'."
         }
       ],
-      "notes": "Four things are disclosed rather than glossed, and the first two are corrections to claims already in this repository. (a) LINK COUNT. roadmap/README.md's completion ledger and roadmap/23's own §Exit criteria header both say run 30250453824 linked 160 EvidenceRecords. The archived artifact sums to 158 links / 103 unique; 160/105 belongs to the v1.5.0 report. Both prose sites now carry a dated correction beside the original, and both reports are committed under docs/evidence/phase-23/closeout/ so the count is checkable without GitHub. (b) CHECKOUT-vs-CANDIDATE SKEW. Run 30250453824's head_sha is dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105 — it executed a tree two commits AHEAD of the 2435cb955809a5420f396043e5bc7003282491fa it stamped on every record. This is not cosmetic: one of those two commits (b035227) re-points packages/plugin/.claude-plugin/marketplace.json's commit field from 94f419b0 to 2435cb95, and marketplacePinCheck.ts accepts an ancestor pin only when every path changed between pin and candidate is under packages/plugin/.claude-plugin/. At the attested candidate that condition is false (four of five changed paths are outside it), so the reproducible-build item's marketplace-pin clause passed BECAUSE of the skew. The transcript proves it with read-only git queries. The v1.5.0 run has no skew — its head_sha IS its candidate — which is the second reason it is the primary citation here. (c) THE COMMITTED e2e/release-gate-report.json IS NOT THIS REPORT. A reader opening the repository file finds a stale interim snapshot with overallVerdict FAIL; the criterion is about the ARCHIVED artifact, which is why both real ones are now committed under a distinct path. (d) OR-MATCHED GATE TAGS. e2e/report/src/checklist.ts declares requiredGateTags per item and the generator OR-matches them, so an item can be satisfied by an umbrella tag rather than by the evidence its wording names. That is a real weakness and it bites criterion 2 concretely — see that criterion's notes. It does not weaken THIS criterion, whose claim is exactly 'every item PASS, each with >=1 linked record at the exact object ID', which is what both artifacts show."
+      "notes": "Four things are disclosed rather than glossed, and the first two are corrections to claims already in this repository. (a) LINK COUNT. roadmap/README.md's completion ledger and roadmap/23's own §Exit criteria header both say run 30250453824 linked 160 EvidenceRecords. The archived artifact sums to 158 links / 103 unique; 160/105 belongs to the v1.5.0 report. Both prose sites now carry a dated correction beside the original, and both reports are committed under docs/evidence/phase-23/closeout/ so the count is checkable without GitHub. (b) CHECKOUT-vs-CANDIDATE SKEW. Run 30250453824's head_sha is dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105 — it executed a tree two commits AHEAD of the 2435cb955809a5420f396043e5bc7003282491fa it stamped on every record. This is not cosmetic: one of those two commits (b035227) re-points packages/plugin/.claude-plugin/marketplace.json's commit field from 94f419b0 to 2435cb95, and marketplacePinCheck.ts accepts an ancestor pin only when every path changed between pin and candidate is under packages/plugin/.claude-plugin/. At the attested candidate that condition is false (four of five changed paths are outside it), so the reproducible-build item's marketplace-pin clause passed BECAUSE of the skew. The transcript proves it with read-only git queries. The v1.5.0 run has no skew — its head_sha IS its candidate — which is the second reason it is the primary citation here. (c) THERE IS NO COMMITTED e2e/release-gate-report.json AT ALL, and an earlier draft of this record said there was. Corrected here rather than quietly: the path is gitignored (.gitignore:44, 'regenerated each release-gate-report run'), git log over it across all refs is EMPTY, and it resolves at neither 3dec9bf nor 2435cb9. So the criterion's subject exists only as a workflow artifact, and a reader with a checkout has nothing local to open — which is precisely why both archived reports are now committed under docs/evidence/phase-23/closeout/ instead. (d) OR-MATCHED GATE TAGS. e2e/report/src/checklist.ts declares requiredGateTags per item and the generator OR-matches them, so an item can be satisfied by an umbrella tag rather than by the evidence its wording names. That is a real weakness and it bites criterion 2 concretely — see that criterion's notes. It does not weaken THIS criterion, whose claim is exactly 'every item PASS, each with >=1 linked record at the exact object ID', which is what both artifacts show."
     },
     {
       "index": 2,
@@ -71,7 +71,7 @@
           "ref": "gates-conformance / gates-conformance (ubuntu-latest), job 91002989132, steps \"seeded-fault matrix (7 independent fixtures) blocks correctly\" and \"engine-conformance-binding.test — fails closed / runId round-trip\"",
           "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597742/job/91002989132",
           "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
-          "quotedAssertion": "14's quality+security half, run on a push AT the release candidate. job-log line 201 — ' ✓  @crabgic/gates  src/gates-conformance.test.ts (7 tests) 44ms'; lines 195-215 — ' ✓  @crabgic/gates  src/engine-conformance-binding.test.ts (4 tests) 28ms'. The commands are quoted in the log itself at lines 195 and 209 — 'npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false' and 'npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false'."
+          "quotedAssertion": "14's quality+security half, run on a push AT the release candidate. job-log line 201 — ' ✓  @crabgic/gates  src/gates-conformance.test.ts (7 tests) 44ms'; line 215 — ' ✓  @crabgic/gates  src/engine-conformance-binding.test.ts (4 tests) 28ms'. The commands the log echoes for those two steps, line 195 — 'npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false'; line 209 — 'npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false'."
         },
         {
           "kind": "ci-run",
@@ -122,13 +122,13 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/report/src/checklist.ts:53-58",
+          "ref": "e2e/report/src/checklist.ts:53-70",
           "quotedAssertion": "THE VACUITY THIS CRITERION'S OWN REPORT ITEM CARRIES, quoted so the finding lives in the repository rather than in a scratch file. The item accepts umbrella tags as alternatives to the real gate tags: :53 '    requiredGateTags: [' / :54 '      \"release-gate:quality-security-perf-learning\",' / :55 '      \"tdd\",' / :56 '      \"coverage\",' / :57 '      \"security\",' / :58 '      \"engine-conformance\",' and then :69-70 '      \"release-gate:live-conformance\",' / '      \"release-gate:not-implemented-sweep\",'. Because the generator OR-matches (generator.ts:172-177), the last two alone satisfy the item."
         },
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:19-33",
-          "quotedAssertion": "...and that is exactly what happened, in BOTH final reports. The item's three linked records are :19 '          \"gateTag\": \"release-gate:not-implemented-sweep\",', :19 '          \"gateTag\": \"release-gate:not-implemented-sweep\",' and :33 '          \"gateTag\": \"release-gate:live-conformance\",' — zero records tagged tdd, coverage, security or engine-conformance, and zero from 14/15/22 at all. Deleting every one of those gates would leave this report item green. The tick above therefore does NOT rest on the report item; it rests on the four push-triggered runs cited first."
+          "quotedAssertion": "...and that is exactly what happened, in BOTH final reports. The item's three linked records are :19 '          \"gateTag\": \"release-gate:not-implemented-sweep\",', :26 '          \"gateTag\": \"release-gate:not-implemented-sweep\",' and :33 '          \"gateTag\": \"release-gate:live-conformance\",' — zero records tagged tdd, coverage, security or engine-conformance, and zero from 14/15/22 at all. Deleting every one of those gates would leave this report item green. The tick above therefore does NOT rest on the report item; it rests on the four push-triggered runs cited first."
         },
         {
           "kind": "artifact",
@@ -162,12 +162,12 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/securityReviewSignOff.ts:150",
-          "quotedAssertion": "What the machine check actually asserts, quoted because it is weaker than the criterion's words and that matters: :150 '  const blocking = input.findings.filter((finding) => isBlockingSeverity(finding.severity));' and the anti-vacuity guard that stops an empty table reading as proof — :152-155 '    reasons.push(' / '      `no findings rows parsed from \"${FINDINGS_TABLE_HEADING}\" — zero rows is treated as a broken ` +' / '        \"or moved table, never as proof that no CRITICAL/HIGH finding exists.\",' / '    );'. 'Still open' is then decided per row: :162-166 '      finding.fix === \"\" ||' / '      LEADING_STATUS_MARKER.test(finding.fix) ||' / '      UNRESOLVED_PHRASE.test(fixProse)' -> '      reasons.push(`${label}: still open — no recorded fix (\"${finding.fix.slice(0, 80)}\").`);'."
+          "ref": "e2e/attestation/src/securityReviewSignOff.ts:150-165",
+          "quotedAssertion": "What the machine check actually asserts, quoted because it is weaker than the criterion's words and that matters: :150 '  const blocking = input.findings.filter((finding) => isBlockingSeverity(finding.severity));' and the anti-vacuity guard that stops an empty table reading as proof — :152-155 '    reasons.push(' / '      `no findings rows parsed from \"${FINDINGS_TABLE_HEADING}\" — zero rows is treated as a broken ` +' / '        \"or moved table, never as proof that no CRITICAL/HIGH finding exists.\",' / '    );'. 'Still open' is then decided per row: :163-165 '      finding.fix === \"\" ||' / '      LEADING_STATUS_MARKER.test(finding.fix) ||' / '      UNRESOLVED_PHRASE.test(fixProse)' -> :167 '      reasons.push(`${label}: still open — no recorded fix (\"${finding.fix.slice(0, 80)}\").`);'."
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/securityReviewSignOff.ts:173",
+          "ref": "e2e/attestation/src/securityReviewSignOff.ts:169-173",
           "quotedAssertion": "The cross-reference half, and its real reach: :169-172 '    if (finding.evidence === \"\") {' / '      reasons.push(`${label}: no implementation cross-reference recorded.`);' / '      continue;' / '    }' / :173 '    const dangling = extractCitedPaths(finding.evidence).filter((path) => !input.pathExists(path));'. extractCitedPaths (releaseDocsCommitted.ts:74-85) only recognises backticked repo-ROOTED paths, so each row's bare test-file names are dropped and what is verified is that the row's evidence README resolves."
         },
         {
@@ -197,7 +197,7 @@
           "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run set -uo pipefail\" (the containerized traceability binding)",
           "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
           "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
-          "quotedAssertion": "THE REMOTE-REVISION CONJUNCT, and it is genuinely containerized rather than cassette-modeled. job-log line 530 — '[traceability-binding] outcome: {\"status\":\"recorded\",\"appliedRevision\":\"1785445622643010\"}'; line 531 — '[traceability-binding] container: grafana/grafana-oss:12.4.3 reported oss 12.4.3'; line 535 — ' ✓ src/requirementTraceabilityBinding.live.test.ts (1 test) 22053ms'; lines 543-593 — 'bound requirement-traceability at 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb'. The record catted straight after carries two pointers, each with '\"confirmedRevision\": \"1785445622643010\"' and '\"objectId\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\"'. The §Risks claim that the binding moved to Grafana 12.4 is therefore code-true AND run-true; the committed docs/evidence/phase-23/requirement-traceability.json still records an 11.6.5 capture and is a historical snapshot, not a contradiction."
+          "quotedAssertion": "THE REMOTE-REVISION CONJUNCT, and it is genuinely containerized rather than cassette-modeled. job-log line 530 — '[traceability-binding] outcome: {\"status\":\"recorded\",\"appliedRevision\":\"1785445622643010\"}'; line 531 — '[traceability-binding] container: grafana/grafana-oss:12.4.3 reported oss 12.4.3'; line 535 — ' ✓ src/requirementTraceabilityBinding.live.test.ts (1 test) 22053ms'; line 543 — 'bound requirement-traceability at 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb'. The record catted straight after carries two pointers, the first at lines 592-593 — '      \"objectId\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",' / '      \"confirmedRevision\": \"1785445622643010\",' and the second at lines 600-601 — '      \"objectId\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",' / '      \"confirmedRevision\": \"1785445622643010\",'. The §Risks claim that the binding moved to Grafana 12.4 is therefore code-true AND run-true; the committed docs/evidence/phase-23/requirement-traceability.json still records an 11.6.5 capture and is a historical snapshot, not a contradiction."
         },
         {
           "kind": "artifact",
@@ -206,13 +206,13 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/requirementTraceability.ts:261",
-          "quotedAssertion": "The 'every requirement' arithmetic, and why it is not vacuous — the object-ID half applies to ALL requirements and a requirement with no evidence at the candidate is a blocking reason: :242-245 '    if (' / '      !entry.objectIds.includes(input.releaseCandidateObjectId) &&' / '      !structurallyEvidenceless.has(entry.requirementId)' / '    ) {' -> :247-249 '      reasons.push(' / '        `${entry.requirementId}: no evidence at the release-candidate object ID ` +' / '          `${input.releaseCandidateObjectId} (linked object IDs: ${entry.objectIds.join(\", \") || \"none\"}).`,'. The remote half fails closed twice over: :261 '      reasons.push(`${entry.requirementId}: bound to no remote (Jira/Grafana) resource.`);' and :268-270 '      reasons.push(' / '        `${entry.requirementId}: ${unconfirmed.length} remote binding(s) carry no confirmed revision — ` +' / '          `${unconfirmed.map((binding) => binding.remoteResourceId).join(\", \")}.`,'."
+          "ref": "e2e/attestation/src/requirementTraceability.ts:245-270",
+          "quotedAssertion": "The 'every requirement' arithmetic, and why it is not vacuous — the object-ID half applies to ALL requirements and a requirement with no evidence at the candidate is a blocking reason. The guard (its opening ':244 \\'    if (\\'' is too generic a line to anchor on, so the distinctive body is quoted): :245-247 '      !entry.objectIds.includes(input.releaseCandidateObjectId) &&' / '      !structurallyEvidenceless.has(entry.requirementId)' / '    ) {' -> :249-250 '        `${entry.requirementId}: no evidence at the release-candidate object ID ` +' / '          `${input.releaseCandidateObjectId} (linked object IDs: ${entry.objectIds.join(\", \") || \"none\"}).`,'. The remote half fails closed twice over: :261 '      reasons.push(`${entry.requirementId}: bound to no remote (Jira/Grafana) resource.`);' and :269-270 '        `${entry.requirementId}: ${unconfirmed.length} remote binding(s) carry no confirmed revision — ` +' / '          `${unconfirmed.map((binding) => binding.remoteResourceId).join(\", \")}.`,'."
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/requirementTraceability.ts:234-235",
-          "quotedAssertion": "...and the scope of the remote half is DECLARED in the report rather than applied silently, which is the anti-vacuity control that matters most here: :234 '  const remoteBindingRequired = new Set(' / :235 '    input.requirements.filter((r) => r.requiresRemoteBinding).map((r) => r.id),' / :236-239 '  details.push(' / '    `remote binding required of ${remoteBindingRequired.size} of ${input.requirements.length} ` +' / '      `requirement(s) — the criteria whose subject is a remote Jira/Grafana resource. The ` +' / '      `release-candidate object ID is required of ALL of them.`,'."
+          "ref": "e2e/attestation/src/requirementTraceability.ts:234-240",
+          "quotedAssertion": "...and the scope of the remote half is DECLARED in the report rather than applied silently, which is the anti-vacuity control that matters most here: :234 '  const remoteBindingRequired = new Set(' / :235 '    input.requirements.filter((r) => r.requiresRemoteBinding).map((r) => r.id),' / :237-240 '  details.push(' / '    `remote binding required of ${remoteBindingRequired.size} of ${input.requirements.length} ` +' / '      `requirement(s) — the criteria whose subject is a remote Jira/Grafana resource. The ` +' / '      `release-candidate object ID is required of ALL of them.`,'."
         },
         {
           "kind": "test",
@@ -231,7 +231,7 @@
           "ref": "release-e2e / release-e2e (ReleaseGateReport generator), job 89927021648, step \"Run node e2e/report/dist/cli.js\"",
           "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824/job/89927021648",
           "commit": "dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105",
-          "quotedAssertion": "The same item scored PASS in the v1.0.0 gate as well — see docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json's requirement-traceability entry — under the same generator line quoted for criterion 1, 'overallVerdict=PASS (scoringMode=final, releaseCandidateObjectId=2435cb955809a5420f396043e5bc7003282491fa, …)'."
+          "quotedAssertion": "The same item scored PASS in the v1.0.0 gate as well — see docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json's requirement-traceability entry — under the same generator line quoted for criterion 1, whose scored-mode and candidate fields read line 929 — 'overallVerdict=PASS (scoringMode=final, releaseCandidateObjectId=2435cb955809a5420f396043e5bc7003282491fa, journalDir=/home/runner/work/_temp/release-gate-journal)'."
         }
       ],
       "notes": "CONJUNCTS: every requirement; the exact final Git object ID; a remote revision. The first two are enforced over the whole corpus and fail closed. The third is enforced over the two criteria whose SUBJECT is a remote resource, and that narrowing is owner-ratified (2026-07-26), declared in the report's own details line, and explained at length in releaseRequirements.ts's doc comment — read as 'every requirement must bind to a Jira/Grafana resource' the clause is unsatisfiable by construction, since most of this phase's criteria are about tarballs and docs. THE DISCLOSURE THAT MATTERS: both remote-subject requirements bind to Grafana DASHBOARDS. No Jira revision appears anywhere in the traceability record — its two remoteResources are both '\"resourceKind\": \"dashboard\"' — so the '(Jira/Grafana)' parenthetical is exercised on the Grafana side only. That is a consequence of which criteria have a remote subject, not of the Jira side being faked: the record's provenance block states plainly that it came from a containerized grafana-oss:12.4.3 with the address-resolution seams engaged, 'NOT a live-SaaS tenant, and not a cassette'. The Jira live gap is real and it is recorded against criterion 7, where the criterion's own wording puts it. SEAM HONESTY, quoted from the record the run catted: resolveHostAddresses was overridden to 203.0.113.60 and the dial pinned to 127.0.0.1, with an in-process TLS terminator in front of the container's plain-HTTP port. That is a containerized run reached through a test seam, not a production network path, and the record says so itself rather than leaving a reader to infer it."
@@ -262,13 +262,13 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/performanceContracts.ts:840",
+          "ref": "e2e/attestation/src/performanceContracts.ts:840-844",
           "quotedAssertion": "'satisfied rather than skipped' is fail-closed on an ABSENT record — the check never reads a missing re-run as a pass: :840 '  if (evidence.record === undefined) {' / :841-844 '    return {' / '      reasons: [`${PERFORMANCE_CONTRACT_RERUN_UNEVIDENCED_REASON} ${evidence.unavailable}`],' / '      details: [`15 re-run record: none. ${evidence.unavailable}`],' / '    };'."
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/performanceContracts.ts:862",
-          "quotedAssertion": "...and on a record that admits it was taken on a busy host, or whose contracts did not all pass: :862 '  if (!record.quietHost) {' / :864-865 '      \"the 15 re-run record states it was NOT taken on a quiet host, which is what roadmap/23:75 \" +' / '        \"asks for — a contended benchmark decides nothing.\",' and :868-869 '  const unsatisfied = record.contracts.filter((contract) => contract.outcome !== \"pass\");' / '  if (unsatisfied.length > 0) {'. The 'skipped' half again at :923-928 '    if (decision.outcome === \"inconclusive_blocking\") {' -> '\"requires contracts be satisfied rather than skipped.\";', and the empty-set half at :899-903 '  if (input.decisions.length === 0) {' -> '\"no performance contracts were measured for the release candidate — an empty set is never \" + '\"scored as \\\"all contracts satisfied\\\".\"'."
+          "ref": "e2e/attestation/src/performanceContracts.ts:862-923",
+          "quotedAssertion": "...and on a record that admits it was taken on a busy host, or whose contracts did not all pass: :862 '  if (!record.quietHost) {' / :864-865 '      \"the 15 re-run record states it was NOT taken on a quiet host, which is what roadmap/23:75 \" +' / '        \"asks for — a contended benchmark decides nothing.\",' and :868-869 '  const unsatisfied = record.contracts.filter((contract) => contract.outcome !== \"pass\");' / '  if (unsatisfied.length > 0) {'. The 'skipped' half again at :923 '    if (decision.outcome === \"inconclusive_blocking\") {', whose reason ends at :927 '          \"requires contracts be satisfied rather than skipped.\",'. And the empty-set half at :899-901 '  if (input.decisions.length === 0) {' / '    reasons.push(' / '      \"no performance contracts were measured for the release candidate — an empty set is never \" +'; its continuation at :902 reads, in single quotes in the source so it cannot be quoted here in kind, scored as \"all contracts satisfied\"."
         },
         {
           "kind": "ci-run",
@@ -304,8 +304,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/engine-claude/src/live/parked-resume-write-authority.live.test.ts:31-44",
-          "quotedAssertion": "The repository states the gap about itself, in the only live park-resume probe that exists: :33-35 ' *   - The cross-process / cross-adapter-instance resume (a daemon RESTART):' / ' *     `spawnContexts` is in-memory per adapter, so a restart hits' / ' *     `FALLBACK_SPAWN_CONTEXT` and degrades to READ_ONLY by design.' / :36-37 ' *   - Forcing a REAL rate-limit park: a `rejected` limit event has never been' / ' *     observed live (baseline §8; `rate-limit-fixtures.ts`)'. So the live channel would not, as built, evidence this criterion's restart clause even if it were run."
+          "ref": "packages/engine-claude/src/live/parked-resume-write-authority.live.test.ts:31-37",
+          "quotedAssertion": "The repository states the gap about itself, in the only live park-resume probe that exists: :31-33 ' *   - The cross-process / cross-adapter-instance resume (a daemon RESTART):' / ' *     `spawnContexts` is in-memory per adapter, so a restart hits' / ' *     `FALLBACK_SPAWN_CONTEXT` and degrades to READ_ONLY by design.' / :36-37 ' *   - Forcing a REAL rate-limit park: a `rejected` limit event has never been' / ' *     observed live (baseline §8; `rate-limit-fixtures.ts`)'. So the live channel would not, as built, evidence this criterion's restart clause even if it were run."
         },
         {
           "kind": "artifact",
@@ -338,12 +338,12 @@
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt",
-          "quotedAssertion": "The channel table, measured against the GitHub API rather than read off the workflow files: 'engine-live.yml                0' and 'jira-datacenter-smoke.yml      0'. Section 5 records that docker/jira-datacenter/smoke-test.sh 'is referenced only by jira-datacenter-smoke.yml (0 runs)' and that docker/grafana/smoke-test.sh 'is referenced by no workflow at all'."
+          "quotedAssertion": "The channel table, measured against the GitHub API rather than read off the workflow files: 'engine-live.yml              0' and 'jira-datacenter-smoke.yml    0'. Section 5 records that docker/jira-datacenter/smoke-test.sh 'is referenced only by jira-datacenter-smoke.yml (0 runs)' and that docker/grafana/smoke-test.sh 'is referenced by no workflow at all'."
         },
         {
           "kind": "test",
-          "ref": "e2e/report/src/checklist.ts:108-120",
-          "quotedAssertion": "How cassette evidence comes to score a criterion whose own word is 'live' — the item OR-accepts the connector harness's blanket tag: :108 '    requiredGateTags: [' / :109 '      \"release-gate:jira-grafana-exactly-once\",' / :119 '      \"release-gate:connector-matrix\",' / :120 '    ],'. In both final reports all 28 linked records carry the second tag and none carries the first."
+          "ref": "e2e/report/src/checklist.ts:53-120",
+          "quotedAssertion": "How cassette evidence comes to score a criterion whose own word is 'live' — the item OR-accepts the connector harness's blanket tag: :53 '    requiredGateTags: [' / :109 '      \"release-gate:jira-grafana-exactly-once\",' / :119 '      \"release-gate:connector-matrix\",' / :120 '    ],'. In both final reports all 28 linked records carry the second tag and none carries the first."
         },
         {
           "kind": "artifact",
@@ -353,7 +353,7 @@
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-23/closeout/c8-c10-live-and-matrix-lanes.txt",
-          "quotedAssertion": "The exactly-once mechanism IS real and is re-run green at this pass's HEAD — this criterion is not a claim that the pipeline is unproven. LEG 2 records '✓ src/exactly-once/crash-recovery.test.ts > exactly-once under crash before/after the remote commit > NEVER produces a double-create — the real reconcileAmbiguousPost marker search finds the already-landed create' among 15 files / 95 tests, '# EXIT=0'. What none of it touches is a real Jira or a real Grafana."
+          "quotedAssertion": "The exactly-once mechanism IS real and is re-run green at this pass's HEAD — this criterion is not a claim that the pipeline is unproven. LEG 2 records '✓ src/exactly-once/crash-recovery.test.ts > crash-after-remote-commit — non-idempotent create, kill after the network call (MEDIUM/HIGH #3's own required case) > NEVER produces a double-create — the real reconcileAmbiguousPost marker search finds the already-landed create' among 15 files / 95 tests, '# EXIT=0'. What none of it touches is a real Jira or a real Grafana."
         },
         {
           "kind": "ci-run",
@@ -427,23 +427,23 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:41-47",
-          "quotedAssertion": "The seeded leak is planted by raw git plumbing, deliberately bypassing 17's renderer, so the scenario tests the belt-and-suspenders rather than the thing that would already have refused it: :41 '    await plumbing.run(' / :43 '        \"commit\",' / :44 '        \"--allow-empty\",' / :46 '        \"-m\",' / :47 '        \"feat: leaky feature\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>\",'."
+          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:35-47",
+          "quotedAssertion": "The seeded leak is planted by raw git plumbing, deliberately bypassing 17's renderer, so the scenario tests the belt-and-suspenders rather than the thing that would already have refused it: :35 '    await plumbing.run(' / :43 '        \"commit\",' / :44 '        \"--allow-empty\",' / :46 '        \"-m\",' / :47 '        \"feat: leaky feature\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>\",'."
         },
         {
           "kind": "test",
-          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:72",
+          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:64-72",
           "quotedAssertion": "...and the pass condition needs BOTH the typed refusal and the ref actually being cleaned up, so a publication that merely threw would still fail: :64-70 '    const branchDeleted =' / '      (' / '        await plumbing.run([\"rev-parse\", \"--verify\", \"refs/heads/feat/leaky-feature\"], {' / '          cwd: userRepo.dir,' / '          allowFailure: true,' / '        })' / '      ).exitCode !== 0;' / :72 '    const passed = caught instanceof PublishedAttributionLeakError && branchDeleted;'."
         },
         {
           "kind": "test",
-          "ref": "e2e/matrix/git/test/neutral-rendering-assertion.test.ts:21-26",
-          "quotedAssertion": "The RED-before-GREEN vectors at the assertion level, one per attribution shape: :21 '  it('RED: a seeded \"Generated with\" commit body is caught', () => {' / :23 '    const findings = findAttributionLeaks(leaking);' / :25 '    expect(findings.some((f) => f.token === \"Generated with\")).toBe(true);' / :26 '    expect(() => assertNeutralRendering(leaking)).toThrow(AttributionLeakError);'. Siblings at :29-33 (Co-Authored-By trailer) and :36-38 (robot emoji), with the GREEN control at :41-44 '  it(\"GREEN: a clean commit body passes with zero findings\", () => {' / '    expect(findAttributionLeaks(clean)).toEqual([]);'."
+          "ref": "e2e/matrix/git/test/neutral-rendering-assertion.test.ts:21-44",
+          "quotedAssertion": "The RED-before-GREEN vectors at the assertion level, one per attribution shape: :21 '  it('RED: a seeded \"Generated with\" commit body is caught', () => {' / :23 '    const findings = findAttributionLeaks(leaking);' / :25 '    expect(findings.some((f) => f.token === \"Generated with\")).toBe(true);' / :26 '    expect(() => assertNeutralRendering(leaking)).toThrow(AttributionLeakError);'. Siblings at :29-33 (Co-Authored-By trailer) and :36-38 (robot emoji), with the GREEN control at :41 '  it(\"GREEN: a clean commit body passes with zero findings\", () => {' and its assertions at :43-44 '    expect(findAttributionLeaks(clean)).toEqual([]);' / '    expect(() => assertNeutralRendering(clean)).not.toThrow();'."
         },
         {
           "kind": "test",
-          "ref": "e2e/matrix/git/src/neutral-rendering-assertion.ts:21-23",
-          "quotedAssertion": "The scanner is 02's, not a fork — which is what stops this harness drifting away from what production actually refuses: :21-23 '  return scanForAttributionTokens(text);'."
+          "ref": "e2e/matrix/git/src/neutral-rendering-assertion.ts:22",
+          "quotedAssertion": "The scanner is 02's, not a fork — which is what stops this harness drifting away from what production actually refuses: :22 '  return scanForAttributionTokens(text);'."
         },
         {
           "kind": "ci-run",
@@ -454,8 +454,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:482-527",
-          "quotedAssertion": "The scored item at the candidate: :527 '      \"id\": \"no-engine-attribution\",' / :482 '      \"verdict\": \"PASS\",' over 24 linked records, all carrying 'release-gate:git-matrix' — the git harness's blanket tag, which checklist.ts:155-163 documents as covering exactly these two scenarios."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:527-530",
+          "quotedAssertion": "The scored item at the candidate: :527 '      \"id\": \"no-engine-attribution\",' / :530 '      \"verdict\": \"PASS\",' over 24 linked records, all carrying 'release-gate:git-matrix' — the git harness's blanket tag, which checklist.ts:155-163 documents as covering exactly these two scenarios."
         }
       ],
       "notes": "Non-vacuous in the way that matters: the leaking commit is real, planted by git plumbing, and it is the PRODUCTION publishLocal path that refuses it, with the branch ref deleted afterwards so a half-published leak is not left behind. Both halves of the criterion's surface are covered — the renderer refuses to PRODUCE an attributed branch name or commit, and publication refuses to SHIP one that arrived by another route. Scope, stated: 'any project-controlled shared artifact' is exercised here as branch names, commit subjects and commit bodies. Rendered PR-title/PR-body/review-comment artifacts are covered by 17's own corpus and, for the demo run, by criterion 11's lint invocation. The lane runs in no per-push CI channel, which is why the tick rests on a local re-run at this pass's HEAD in addition to the release-candidate run — see the lane-and-channel audit for the full map of which lane has which channel."
@@ -479,7 +479,7 @@
         },
         {
           "kind": "test",
-          "ref": "packages/connectors-grafana/src/auth/connection-doctor.ts:63-72",
+          "ref": "packages/connectors-grafana/src/auth/connection-doctor.ts:63-67",
           "quotedAssertion": "ANTI-VACUITY, checked because the sibling tenant-boundary fixture in packages/gates IS a tautology over two literals (that is phase 21's own filed defect, 21-tenant-boundary-manifest-entries-tautological.md). This one is not: the comparison under test is production code, and only the identity lookup is injected. :63-65 '  if (deps.orgAllowlist.length === 0) {' / '    return { ok: false, reason: \"connection has an empty org allowlist — refusing to proceed\" };' / '  }' / :66-67 '  const orgIdStr = String(tokenInfo.orgId);' / '  if (!deps.orgAllowlist.includes(orgIdStr)) {'."
         },
         {
@@ -494,7 +494,7 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/matrix/installation/test/user-edit-assertion.test.ts:20-27",
+          "ref": "e2e/matrix/installation/test/user-edit-assertion.test.ts:20-31",
           "quotedAssertion": "...and the RED counterpart, so the GREEN above means something: :20 '  it(\"RED: a broken-installer double that reports 'removed' for a drifted (user-edited) path is caught\", () => {' / :27 '    expect(violations).toEqual([{ relPath: \"CLAUDE.md\", action: \"removed\" }]);' / :29-31 '    expect(() => assertUserEditsPreserved(brokenDoubleOutcomes, [\"CLAUDE.md\"])).toThrow(' / '      UserEditOverwrittenError,' / '    );'."
         },
         {
@@ -511,7 +511,7 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/report/src/checklist.ts:188-206",
+          "ref": "e2e/report/src/checklist.ts:188-199",
           "quotedAssertion": "The installation lane has no checklist item of its own and is folded in here BY DECLARED CHOICE rather than smuggled — quoting it because a reader of the report should know why 20 installation records score a criterion about unauthorized mutation: :188-190 '      // `e2e/matrix/installation`'s harness (roadmap/23 work item 3) has no' / '      // dedicated checklist item of its own (there is no' / '      // \"install-matrix\"-slugged item in this 15-item list).' and :198-199 '      // which is this item's own description almost verbatim. DELIBERATE' / '      // CHOICE (documented per this work item's own instruction)'."
         }
       ],
@@ -526,8 +526,8 @@
       "citations": [
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1477-1566",
-          "quotedAssertion": "The scored item at the candidate: :1477 '      \"id\": \"demo-branch-evidence-handoff\",' / :1556 '      \"verdict\": \"PASS\",' with :1489 '          \"gateTag\": \"release-gate:demo-branch-evidence-handoff\",' / :1566 '          \"exitStatus\": 0'."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1477-1490",
+          "quotedAssertion": "The scored item at the candidate: :1477 '      \"id\": \"demo-branch-evidence-handoff\",' / :1480 '      \"verdict\": \"PASS\",' with :1489 '          \"gateTag\": \"release-gate:demo-branch-evidence-handoff\",' / :1490 '          \"exitStatus\": 0'."
         },
         {
           "kind": "test",
@@ -546,7 +546,7 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/demoBranchEvidenceHandoff.ts:33",
+          "ref": "e2e/attestation/src/demoBranchEvidenceHandoff.ts:33-122",
           "quotedAssertion": "What the handoff check decides, in full, so its strength is on the record: :114-116 '  if (record.pullRequestOpened) {' / '    reasons.push(\"a pull request was opened — Gap 6 requires the branch and bundle, never a PR.\");' / '  }' and the 'concise' clause, which is a subject-length bound: :121-122 '  record.commits.forEach((commit, index) => {' / '    if (commit.subject.length > MAX_COMMIT_SUBJECT_LENGTH) {' with :33 'export const MAX_COMMIT_SUBJECT_LENGTH = 72;'."
         },
         {
@@ -588,7 +588,7 @@
           "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run set -euo pipefail\" (ARM64 record ingest)",
           "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
           "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
-          "quotedAssertion": "...and the gate really ingested that record rather than trusting a claim: job-log lines 472-482 — 'found successful ci.yml run 30581597639 for 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb on attempt 1/30', followed by the catted record at lines 474-484 including '  \"jobName\": \"unit-test+coverage (ubuntu-24.04-arm)\",', '  \"commitSha\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",', '  \"arch\": \"aarch64\",', '  \"conclusion\": \"success\",'. The ingest step's own comment, quoted in the same log, records that a miss fails soft — the record is simply absent and arm64-verification FAILs in scoring — rather than erroring the gate."
+          "quotedAssertion": "...and the gate really ingested that record rather than trusting a claim: job-log line 472 — 'found successful ci.yml run 30581597639 for 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb on attempt 1/30', followed by the catted record, line 475 — '  \"jobName\": \"unit-test+coverage (ubuntu-24.04-arm)\",'; line 478 — '  \"commitSha\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",'; lines 479-480 — '  \"arch\": \"aarch64\",' / '  \"kernel\": \"Linux 6.17.0-1020-azure\",'; line 482 — '  \"conclusion\": \"success\",'. The ingest step's own comment, quoted in the same log, records that a miss fails soft — the record is simply absent and arm64-verification FAILs in scoring — rather than erroring the gate."
         },
         {
           "kind": "ci-run",
@@ -599,8 +599,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496-1589",
-          "quotedAssertion": "The scored item at the candidate: :1496 '      \"id\": \"arm64-verification\",' / :1589 '      \"verdict\": \"PASS\",' with :1508 '          \"gateTag\": \"release-gate:arm64-verification\",' / :1580 '          \"exitStatus\": 0'. The 2435cb9 report carries the same item and verdict."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496-1509",
+          "quotedAssertion": "The scored item at the candidate: :1496 '      \"id\": \"arm64-verification\",' / :1499 '      \"verdict\": \"PASS\",' with :1508 '          \"gateTag\": \"release-gate:arm64-verification\",' / :1509 '          \"exitStatus\": 0'. The 2435cb9 report carries the same item and verdict."
         },
         {
           "kind": "ci-run",
@@ -610,7 +610,7 @@
           "quotedAssertion": "The consuming check at the candidate: job-log line 925 — ' ✓ src/arm64Verification.test.ts (41 tests) 40ms'; emitter line 934 — '[attestation] release-gate:arm64-verification: PASS'."
         }
       ],
-      "notes": "The criterion is a disjunction — real hardware/CI, OR an explicitly documented substitute — and the STRONGER disjunct is what happened: GitHub's hosted ubuntu-24.04-arm runners executed lint, typecheck and the full coverage-gated suite at both release candidates, and the record carries the architecture the machine reported rather than the one the workflow intended. Three notes. (a) A DOC IN THIS REPOSITORY STILL SAYS THE OPPOSITE, and it is stale in the conservative direction: docs/compatibility-matrix.md:95 opens its ARM64 close-out with '**Honest status: ARM64 has not been hardware-verified.**' and :117-118 tells a reader not to cite ARM64 as hardware-verified. That document was last touched 2026-07-26, the day before the v1.0.0 candidate, and it has not caught up. The evidence is right and the doc is wrong; that staleness is one of the concrete instances behind criterion 14's UNMET, and it is filed there rather than fixed here. (b) The committed interim e2e/release-gate-report.json also scores this item FAIL — same staleness, same cause. (c) This criterion is the discharge target of phase 01's merged record, whose citation quotes it and requires it to be ticked. Nothing measured here disturbs that; if anything the direct CI-job citations above are stronger than the release-gate item the merged record leaned on."
+      "notes": "The criterion is a disjunction — real hardware/CI, OR an explicitly documented substitute — and the STRONGER disjunct is what happened: GitHub's hosted ubuntu-24.04-arm runners executed lint, typecheck and the full coverage-gated suite at both release candidates, and the record carries the architecture the machine reported rather than the one the workflow intended. Three notes. (a) A DOC IN THIS REPOSITORY STILL SAYS THE OPPOSITE, and it is stale in the conservative direction: docs/compatibility-matrix.md:95 opens its ARM64 close-out with '**Honest status: ARM64 has not been hardware-verified.**' and :117-118 tells a reader not to cite ARM64 as hardware-verified. That document was last touched 2026-07-26, the day before the v1.0.0 candidate, and it has not caught up. The evidence is right and the doc is wrong; that staleness is one of the concrete instances behind criterion 14's UNMET, and it is filed there rather than fixed here. (b) An earlier draft of this record asserted that a committed interim e2e/release-gate-report.json also scores this item FAIL. That was wrong and is corrected rather than deleted: the path is gitignored and has never been committed on any ref, so no such file exists to disagree with the evidence. The stale claim that DOES exist is the compatibility matrix's, above. (c) This criterion is the discharge target of phase 01's merged record, whose citation quotes it and requires it to be ticked. Nothing measured here disturbs that; if anything the direct CI-job citations above are stronger than the release-gate item the merged record leaned on."
     },
     {
       "index": 13,
@@ -626,12 +626,12 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/versionSupportWindows.ts:171-174",
-          "quotedAssertion": "An expired window is a hard FAIL, and a fixtureRefresh note does NOT rescue one — the first reason is pushed unconditionally: :171 '    if (record.lifecycle === \"versioned\") {' / :174 '      if (remaining <= 0) {' / :175-178 '        reasons.push(' / '          `${target}: vendor support for ${record.pinnedVersion} ended ${endsOn}, ` +' / '            `on or before the release cut (${input.releaseCutDate}) — shipping an out-of-support version.`,' / '        );' and then, separately, :179-184 '        if (record.fixtureRefresh === undefined) {' -> '\"19's deferred note requires fixtures be refreshed when a support window moves.\"'."
+          "ref": "e2e/attestation/src/versionSupportWindows.ts:171-179",
+          "quotedAssertion": "An expired window is a hard FAIL, and a fixtureRefresh note does NOT rescue one — the first reason is pushed unconditionally: :171 '    if (record.lifecycle === \"versioned\") {' / :174 '      if (remaining <= 0) {' / :175-178 '        reasons.push(' / '          `${target}: vendor support for ${record.pinnedVersion} ended ${endsOn}, ` +' / '            `on or before the release cut (${input.releaseCutDate}) — shipping an out-of-support version.`,' / '        );' and then, separately, :179 '        if (record.fixtureRefresh === undefined) {' -> '\"19's deferred note requires fixtures be refreshed when a support window moves.\"'."
         },
         {
           "kind": "test",
-          "ref": "e2e/attestation/src/versionSupportWindows.ts:73-162",
+          "ref": "e2e/attestation/src/versionSupportWindows.ts:73-166",
           "quotedAssertion": "...and 'current at release time' is enforced as a freshness bound rather than left to judgement: :162 '    } else if (age > maxAgeDays) {' / :163-166 '      reasons.push(' / '        `${target}: re-confirmation is ${Math.floor(age)} days stale at the release cut ` +' / '          `(confirmed ${record.confirmedOn}, limit ${maxAgeDays} days) — not \"current at release time\".`,' / '      );', with :73 'const DEFAULT_MAX_RECORD_AGE_DAYS = 30;'."
         },
         {
@@ -653,11 +653,16 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1515-1598",
-          "quotedAssertion": "The scored item at the candidate: :1515 '      \"id\": \"jira-grafana-version-support-windows\",' / :1589 '      \"verdict\": \"PASS\",' with :1527 '          \"gateTag\": \"release-gate:jira-grafana-version-support-windows\",' / :1598 '          \"exitStatus\": 0'."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1515-1528",
+          "quotedAssertion": "The scored item at the candidate: :1515 '      \"id\": \"jira-grafana-version-support-windows\",' / :1518 '      \"verdict\": \"PASS\",' with :1527 '          \"gateTag\": \"release-gate:jira-grafana-version-support-windows\",' / :1528 '          \"exitStatus\": 0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c13-drift-ci-attribution.txt",
+          "quotedAssertion": "drift-CI has been RED since 2026-08-02, and a red drift-CI could mean a vendor window moved, so it was attributed rather than left unmentioned. It did not. In the scheduled run of 2026-08-03 the window step SUCCEEDED — 'support-window probe: wrote /home/runner/work/crabgic/crabgic/docs/evidence/phase-23/vendor-support-windows.json — 6 record(s)' — and the failure is one step later, 'drift-ci: 1 DriftProposal(s) written to /home/runner/.local/state/crabgic/drift-ci/drift-proposals.json — human review required.' The downloaded proposal has '\"observedVersion\": \"\"' against the '1000.0.0' sentinel, with pinnedShape and observedShape byte-identical — the known blank-input false positive, not drift."
         }
       ],
-      "notes": "Both clauses borne. 'Re-confirmed current at release time' is a numeric check against the run's own wall-clock date with a 30-day freshness bound, and at both cuts the record was two and five days old. 'Fixtures refreshed if vendor support windows moved' is not a provision for a hypothetical — it fired: Grafana 11.6 left support on 2026-06-25, versionSupportWindows.ts reported the matrix as shipping an out-of-support version while the commitment stood, and 11.6 was withdrawn from the provisioning targets, the compatibility matrix, docs/vendor-support-policy.json and the containerized traceability binding rather than the check being weakened. TWO DATED FACTS A LATER READER NEEDS. (1) At this pass's date, 2026-08-04, no listed window has expired — the nearest is jira-dc-10.3 on 2026-12-05. (2) The FRESHNESS bound is the live one: every record is confirmedOn 2026-07-25, so against the 30-day limit and a wall-clock cut date this item begins to FAIL on 2026-08-25 unless the windows are re-confirmed. That is not a defect in a release-time criterion, which is scored at the cut, but it is a dated obligation and it belongs on the record rather than in a reviewer's head. SCOPE NUANCE on the 11.6 withdrawal, recorded because the carve-out is easy to overread: 'unreferenced by any supported target' is true of the support-window list, and docker/grafana/11.6/ is deliberately retained; e2e/provisioning/test/grafana-oss.live.test.ts still enumerates an 11.6 boot case, and that lane runs in no CI channel at all (see the lane-and-channel audit), so nothing executes it either way."
+      "notes": "Both clauses borne. 'Re-confirmed current at release time' is a numeric check against the run's own wall-clock date with a 30-day freshness bound, and at both cuts the record was two and five days old. 'Fixtures refreshed if vendor support windows moved' is not a provision for a hypothetical — it fired: Grafana 11.6 left support on 2026-06-25, versionSupportWindows.ts reported the matrix as shipping an out-of-support version while the commitment stood, and 11.6 was withdrawn from the provisioning targets, the compatibility matrix, docs/vendor-support-policy.json and the containerized traceability binding rather than the check being weakened. TWO DATED FACTS A LATER READER NEEDS. (1) At this pass's date, 2026-08-04, no listed window has expired — the nearest is jira-dc-10.3 on 2026-12-05. (2) The FRESHNESS bound is the live one: every record is confirmedOn 2026-07-25, so against the 30-day limit and a wall-clock cut date this item begins to FAIL on 2026-08-25 unless the windows are re-confirmed. That is not a defect in a release-time criterion, which is scored at the cut, but it is a dated obligation and it belongs on the record rather than in a reviewer's head. SCOPE NUANCE on the 11.6 withdrawal, recorded because the carve-out is easy to overread: 'unreferenced by any supported target' is true of the support-window list, and docker/grafana/11.6/ is deliberately retained; e2e/provisioning/test/grafana-oss.live.test.ts still enumerates an 11.6 boot case, and that lane runs in no CI channel at all (see the lane-and-channel audit), so nothing executes it either way. DRIFT-CI ATTRIBUTED rather than left unmentioned, because a red drift-CI is exactly the shape of news this criterion would have to act on. It has been red since 2026-08-02 and none of it is a window move. The two 2026-08-02 runs are workflow_dispatches from phase 21's own closeout, which produced a red check deliberately. The 2026-08-03 SCHEDULED run, which nobody drove, fails at the drift step while its vendor-support-window step succeeds and re-writes all six records; its single DriftProposal reports observedVersion \"\" against the 1000.0.0 sentinel with the pinned and observed shapes byte-identical. That is the already-filed phase-21 defect 21-drift-ci-blank-dispatch-input-false-positive.md, whose own text predicts this steady state on the schedule trigger — GitHub sets the override env var to the empty string when the inputs context is empty, and the empty string is not undefined, so the override is taken. No vendor window has moved and this criterion is unaffected."
     },
     {
       "index": 14,
@@ -668,7 +673,7 @@
       "citations": [
         {
           "kind": "test",
-          "ref": "docs/compatibility-matrix.md:128",
+          "ref": "docs/compatibility-matrix.md:125-128",
           "quotedAssertion": "THE DECISIVE MEASUREMENT. The document's own 'at a glance' section pins its authority to a release-gate report that is neither the release candidate nor the verdict: :125-127 'Cross-referenced against the current release-gate-report snapshot' / '(`releaseCandidateObjectId: 008ae4b2848d3d3c84a5b2d19100f12e073235e3`,' / '`scoringMode: \"interim\"`) — every one of its 15 checklist items is currently' / :128 '`EVIDENCE-PENDING` (\"zero EvidenceRecord matched this item's required gate tags for the'. 008ae4b2 is a 2026-07-24 engine-re-baseline commit, three days before the v1.0.0 candidate; both committed final reports say final mode, 15 PASS, 0 FAIL."
         },
         {
@@ -678,12 +683,12 @@
         },
         {
           "kind": "test",
-          "ref": "docs/compatibility-matrix.md:95-99",
+          "ref": "docs/compatibility-matrix.md:95-118",
           "quotedAssertion": "The ARM64 section refuses a fact this record evidences twice over under criterion 12: :95-97 '**Honest status: ARM64 has not been hardware-verified.** This host is x86_64' / '(`docs/engine-baseline.md` header records the exact kernel string; no ARM64 hardware or' / 'emulated ARM64 environment was available to this session).' and the instruction at :117-118 'run exists, ARM64 support is a documented, CI-gated intent, not a verified fact — do not' / 'cite it as hardware-verified in any release announcement.'"
         },
         {
           "kind": "test",
-          "ref": "docs/security-posture.md:220-222",
+          "ref": "docs/security-posture.md:220-226",
           "quotedAssertion": "The second doc scopes itself out of the shipped release line: :220 '## Pending re-review — the approval model is being amended (2026-07-28)' / :222 'Everything below this heading reviews the security posture **as shipped in `crabgic@1.3.0`**, in which' / :225-226 '**This document has not yet been re-reviewed' / 'against that model, and the sign-off below does not cover it.**'"
         },
         {
@@ -703,8 +708,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1534-1589",
-          "quotedAssertion": "The item nonetheless scored PASS at the candidate — :1534 '      \"id\": \"release-docs-committed\",' / :1589 '      \"verdict\": \"PASS\",' — which is the whole point: the bearer is structurally incapable of judging the clause it is scoring, so a green item here is not evidence for this criterion."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1534-1537",
+          "quotedAssertion": "The item nonetheless scored PASS at the candidate — :1534 '      \"id\": \"release-docs-committed\",' / :1537 '      \"verdict\": \"PASS\",' — which is the whole point: the bearer is structurally incapable of judging the clause it is scoring, so a green item here is not evidence for this criterion."
         }
       ],
       "notes": "UNMET. CONJUNCTS: the four docs are committed — true, uncontested, and the only conjunct the gate actually checks; every claim in them cites a passing CI run or EvidenceRecord FROM THE RELEASE CANDIDATE — false; no aspirational text — arguably true, since the pending markers are honest disclosures rather than claims. MEASURED, across all four documents at this pass's HEAD: zero citations of a GitHub Actions run URL or run id, zero citations of an EvidenceRecord id or object id, and no mention anywhere of either release candidate, 2435cb9 or 6b9dd7b. docs/compatibility-matrix.md carries 13 EVIDENCE-PENDING markers; docs/upgrade-guide.md cites code paths only; docs/operator-guide.md's 'run id' references are crabgic run ids, not CI ones. NO WORDING-MISMATCH ESCAPE IS AVAILABLE, and this is worth being explicit about because it is the tempting move. §In scope's docs bullet just names the four files; the citation demand exists only in the criterion, so 'correcting' the criterion to match §In scope would delete a guarantee rather than reconcile a drift, which the protocol classifies as UNMET. Nor is this a case of a stale doc being harmless: the compatibility matrix's snapshot section actively contradicts both final reports, and its ARM64 section instructs readers not to cite as verified a fact this very record evidences from two real aarch64 CI jobs. THE REMEDY IS A DOCS PASS, NOT A CHECK CHANGE. releaseDocsCommitted.ts is honest about what it can decide and its EVIDENCE-PENDING carve-out is correct reasoning; nothing here proposes tightening it into an unfalsifiable prose judge. What is owed is updating the four documents to cite the runs and records that now exist. That is a fix, and a closeout pass files rather than fixes.",
@@ -749,7 +754,7 @@
         {
           "kind": "test",
           "ref": "e2e/release/src/marketplacePinCheck.ts:17",
-          "quotedAssertion": "The SHA-pinned-marketplace-entry clause, and the exact relaxation it allows: an ancestor pin passes only when every path changed between the pin and the candidate is under the plugin's own manifest directory. :154-155 record that this is 'deliberately NOT \"accept any ancestor\": a pin left at a previous release still fails, because that range touches packaged files', and :17 'const DIGEST_EXCLUDED_PATH = /^packages\\/plugin\\/\\.claude-plugin\\//' is the excluded prefix. At 6b9dd7b the span 39ef7d19..6b9dd7b changes exactly that one file, so the condition holds."
+          "quotedAssertion": "The SHA-pinned-marketplace-entry clause, and the exact relaxation it allows: an ancestor pin passes only when every path changed between the pin and the candidate is under the plugin's own manifest directory. :154-155 record that intent verbatim — '  // This is deliberately NOT \"accept any ancestor\": a pin left at a previous' / '  // release still fails, because that range touches packaged files.' — and :17 'const DIGEST_EXCLUDED_PATH = /^packages\\/plugin\\/\\.claude-plugin\\//' is the excluded prefix. At 6b9dd7b the span 39ef7d19..6b9dd7b changes exactly that one file, so the condition holds."
         },
         {
           "kind": "artifact",
@@ -763,8 +768,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1553-1589",
-          "quotedAssertion": "The scored item at the candidate: :1553 '      \"id\": \"reproducible-build\",' / :1589 '      \"verdict\": \"PASS\",' over three linked records all tagged 'release-gate:reproducible-build'. The v1.0.0 report carries the same item, PASS, with two."
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1553-1556",
+          "quotedAssertion": "The scored item at the candidate: :1553 '      \"id\": \"reproducible-build\",' / :1556 '      \"verdict\": \"PASS\",' over three linked records all tagged 'release-gate:reproducible-build'. The v1.0.0 report carries the same item, PASS, with two."
         }
       ],
       "notes": "SEVEN CONJUNCTS, and each has its own bearer above: byte-identical tarballs from two clean checkouts (the rebuild leg, with the env flag that makes it a real rebuild and the summary reason that blocks a copy-only run); provenance attestation (the registry's own dist.attestations for BOTH 1.0.0 and 1.5.0, plus the Sigstore transparency-log line); package published (npm view crabgic versions); SHA-pinned marketplace entry cut at the release commit; the v1.0.0 tag; the CHANGELOG entry; and the npm view re-check. THREE THINGS DISCLOSED RATHER THAN LEFT TO BE FOUND. (a) THE v1.0.0 TAG PUBLISH RUN IS RED, and what failed in it is not what a reader would assume. Run 30249669814's job log shows the publish itself succeeding with provenance and then the POST-publish re-check erroring 'npm error 404 Not Found - GET https://registry.npmjs.org/crabgic - Not found' — the registry had not begun serving a brand-new package name. The package is published, the attestation is on it, and the same re-check run today passes; the transcript records both the failure and the current state so neither is hidden. (b) THE MARKETPLACE PIN CLAUSE PASSED AT v1.0.0 ONLY BECAUSE OF THE CHECKOUT SKEW. At the attested candidate the entry pins its own parent and the digest-neutral test fails; the tree the run executed had already been re-pointed. The v1.5.0 citation is skew-free and is why this criterion is ticked on that bearer. (c) AT THIS PASS'S HEAD THE COMMITTED MARKETPLACE ENTRY MATCHES NO TAGGED RELEASE. Its digest was rewritten after the v1.5.0 tag, in 2ff3bce (PR #50), while version and commit were left alone; the digest is correct for HEAD's plugin content but the pinned commit is now hundreds of files behind, so checkMarketplacePin at HEAD reports mismatched. That does not untick a release-time criterion, and it is not a defect in this phase's evidence — but it is deploy-relevant current-state drift and it belongs on the record. TWO SCOPE FACTS: no module in e2e/release verifies a real provenance attestation (publishDryRunCheck.ts:12-15 says so about itself), which is exactly why the registry query above is cited instead; and in gate position publicationCheck runs pre-publish, where it verifies the version is PUBLISHABLE rather than published, the published half being established post-publish and by the registry."
@@ -807,13 +812,13 @@
         },
         {
           "kind": "test",
-          "ref": "e2e/release/src/enginePinCheck.ts:70-86",
+          "ref": "e2e/release/src/enginePinCheck.ts:70-85",
           "quotedAssertion": "How the 'identical in both from-clean-checkout' clause is implemented, quoted exactly because it is weaker than the criterion's word 'tarballs': the module exports the engine package twice through the SAME CheckoutExporter seam reproducibleBuildCheck uses and compares the two package.json pins. :70-77 '  const dirA = await options.exporter.exportCheckout(' / '    options.commitIsh,' / '    options.enginePackageSubPath,' / '  );' / '  const dirB = await options.exporter.exportCheckout(' / '    options.commitIsh,' / '    options.enginePackageSubPath,' / '  );' / :79-80 '    const pinA = readSdkPin(join(dirA, \"package.json\"));' / '    const pinB = readSdkPin(join(dirB, \"package.json\"));' / :84-85 '      match: pinA === pinB,' / '      matchesBaseline: pinA === EXPECTED_SDK_PIN && pinB === EXPECTED_SDK_PIN,'."
         },
         {
           "kind": "test",
           "ref": "docs/compatibility-matrix.md:13",
-          "quotedAssertion": "The compatibility-matrix conjunct — the pinned version stated alongside the tested range, in one row: :13 begins '| `@anthropic-ai/claude-agent-sdk`  | **0.3.207 – 0.3.218** — deliberately **not** extended alongside the CLI range' and states within the same cell that 'the SDK transport still runs the engine binary bundled with `0.3.218`, which reports `2.1.218 (Claude Code)`' and that '`EXPECTED_SDK_PIN` (`e2e/release/src/enginePinCheck.ts`) stays `0.3.218` accordingly.' The Claude Code engine range it sits beside is :12's '**2.1.207 – 2.1.220** (accepted range)'."
+          "quotedAssertion": "The compatibility-matrix conjunct — the pinned version stated alongside the tested range, in one row: :13 (a column-padded table row, so these are exact substrings of it rather than the whole line) '| `@anthropic-ai/claude-agent-sdk`', then '**0.3.207 – 0.3.218** — deliberately **not** extended alongside the CLI range', then 'the SDK transport still runs the engine binary bundled with `0.3.218`', then '`EXPECTED_SDK_PIN` (`e2e/release/src/enginePinCheck.ts`) stays `0.3.218` accordingly'. The Claude Code engine range it sits beside is :12's '**2.1.207 – 2.1.220** (accepted range)'."
         },
         {
           "kind": "ci-run",

@@ -2481,7 +2481,20 @@ describe("validateAllCloseoutRecords — this repository's own committed records
       "utf8",
     );
     const { errors } = validateAllCloseoutRecords(root);
-    expect(errors.join("\n")).toContain("23-supplement.md");
+    // MUST assert the rule's OWN message, not merely that the filename appears.
+    // Round-2 review of the phase-23 closeout deleted the duplicate-phase-number
+    // rule outright and all 142 tests still passed: with the grandfathering
+    // exemption gone, the now-universal ticks-need-a-record rule ALSO names
+    // `23-supplement.md`, so a bare `toContain("23-supplement.md")` was
+    // satisfied by a different rule entirely. On main the exemption had shielded
+    // the supplement from that second rule, which is the only reason the loose
+    // assertion used to pin this one.
+    expect(errors.join("\n")).toContain(
+      "roadmap/23-supplement.md is not the file the frozen baseline pins for phase 23",
+    );
+    expect(errors.join("\n")).toContain(
+      "a second file sharing a phase number is pinned by nothing",
+    );
     expect(errors.join("\n")).not.toContain("23-release-hardening.md has");
   });
 

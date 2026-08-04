@@ -61,3 +61,16 @@ $ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
 $ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
 258
 exit=0
+
+# ---- Re-run note, 2026-08-04T17:24:24Z ----
+# origin/main advanced to 86408b2 (PR #84) after this transcript was first captured, so this
+# branch was rebased and the two drift counts above moved by exactly one commit. Re-measured
+# at HEAD fc8eb8110f4affe8796458d75849bb52484cbc1e:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+49
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+260
+exit=0
+# Emptiness proof re-run against the new tip: no path this record cites was touched by 86408b2.
+$ comm -12 <(git diff --name-only 3dec9bf 86408b2 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved)

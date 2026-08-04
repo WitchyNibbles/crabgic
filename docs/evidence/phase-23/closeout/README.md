@@ -1,7 +1,8 @@
 # Phase-23 criteria-closeout evidence (2026-08-04)
 
-Produced by the per-criterion closeout pass for `roadmap/23-release-hardening.md`, at
-`3dec9bf2caa6b94bd817aee414f9458c37750fd9`. Everything here is evidence, not claim: the record
+Produced by the per-criterion closeout pass for `roadmap/23-release-hardening.md`. First captured
+at `3dec9bf2caa6b94bd817aee414f9458c37750fd9`; re-verified after this branch was rebased onto
+`86408b2` (PR #84), which touched no path this record cites. Everything here is evidence, not claim: the record
 itself lives at `docs/evidence/criteria-closeout/phase-23.json` and cites these files.
 
 ## The two archived release-gate reports, committed verbatim
@@ -31,17 +32,27 @@ Two things a reader should carry away from the table rather than from prose else
   ahead of the `2435cb9` every one of its records is stamped with. `c1-c15-checkout-candidate-skew.txt`
   measures what those two commits change and why it is load-bearing rather than cosmetic.
 
-## The committed `e2e/release-gate-report.json` is a different, older thing
+## There is no committed `e2e/release-gate-report.json`, and an earlier draft said there was
 
-The file at the repository root path is a **stale interim snapshot** whose `overallVerdict` is
-`FAIL`. It is scaffolding, not the scored artifact, and a reader opening it will see the opposite of
-what this phase's criteria claim. That is exactly why the two real reports are committed here under
-distinct names.
+Corrected in place rather than quietly, because a record that gates deployability must not assert a
+repository fact it did not measure. The path is **gitignored** — `.gitignore:44`, under a comment
+describing it as regenerated on each release-gate run — and it has **never been committed on any
+ref**: `git log --oneline --all -- e2e/release-gate-report.json` is empty, and the path resolves at
+neither `3dec9bf` nor the release candidate `2435cb9`.
+
+So this criterion's subject exists only as a workflow artifact, and a reader with a checkout has
+nothing local to open. That is exactly why the two archived reports are committed here under
+distinct names — not to correct a stale local copy, but because there is no local copy at all and
+GitHub deletes artifacts on a retention clock.
+
+(The earlier draft described a "stale interim `FAIL` snapshot" at that path. That description came
+from an unmeasured line in this pass's own plan; `ls` on a working tree cannot distinguish a
+gitignored build output from a committed file, and `git log` over the path is what does.)
 
 ## Transcripts
 
-Each carries a UTC timestamp, the HEAD it ran at, the verbatim command and the exit status. One is
-deliberately RED and says so.
+Each carries a UTC timestamp, the HEAD it ran at, the verbatim command and the exit status. Two are
+deliberately RED and say so.
 
 | File                                     | What it establishes                                                                                                                                    |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,9 +60,11 @@ deliberately RED and says so.
 | `c8-c10-live-and-matrix-lanes.txt`       | The `e2e/live` sweep lane and the connector and installation matrix lanes, re-run at this HEAD. None of them runs in any per-push CI channel.           |
 | `c9-git-matrix-attribution.txt`          | The git-invariance and neutral-rendering lane, re-run at this HEAD, including the fail-first attribution vectors.                                       |
 | `c6-c7-live-gap.txt`                     | What the orchestration matrix actually drives (a fake engine), what its "supervisor restart" actually is, and the absence of any live Jira channel.     |
-| `c1-c15-checkout-candidate-skew.txt`     | The two commits between `2435cb9` and `dbb83fd`, and the concrete consequence for the marketplace-pin clause.                                           |
+| `c1-c15-checkout-candidate-skew.txt`     | The two commits between `2435cb9` and `dbb83fd`, and the concrete consequence for the marketplace-pin clause. Carries a dated re-run note after this branch was rebased onto `86408b2`. |
 | `c15-registry-ground-truth.txt`          | `npm view` against the real registry — versions, dist-tags and the SLSA provenance attestation on both 1.0.0 and 1.5.0. Read-only queries only.         |
 | `lane-and-channel-audit.txt`             | Which CI channel, if any, executes each release lane — including the two workflows with **zero** runs in this repository's entire history.              |
+| `c13-drift-ci-attribution.txt`           | Why drift-CI has been red since 2026-08-02 — phase 21's deliberate red, then a known blank-input false positive. The vendor-support-window step **succeeds**; no window moved. |
+| `degrandfathering-rule-deletion-probe.txt` | A **deliberately RED** mutation probe: deleting the duplicate-phase-number rule must redden the validator's own suite. Removing the grandfathering exemption had silently weakened that test; this proves the tightened assertion restored its bite. |
 
 ## What this pass did not run, and would not
 
