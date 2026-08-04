@@ -132,7 +132,7 @@ consistent leaf-counting gives 11).
   description ("11 and 12 — already dependents of this phase — each register their own already-built
   handlers … into the same registry when those phases land, with no new cross-phase dependency edge
   required").
-- `11-intake-contract-approval.md` §Out of scope, line 59 — *"A `change_set.*` MCP tool family — deliberately
+- `11-intake-contract-approval.md` §Out of scope, line 85 — *"A `change_set.*` MCP tool family — deliberately
   does not exist anywhere in v1 (Gap 1 resolution); `project.inspect` is the sole ChangeSet-state read
   surface"*; §In scope, `project.inspect` bullet, line 23 — *"Also answers ChangeSet-state queries; no
   separate `change_set.*` tool family exists."*
@@ -141,16 +141,16 @@ consistent leaf-counting gives 11).
   `packages/gateway`)… no new dependency edge, since this phase already depends on 09."*
 - `22-learning-system.md` §In scope "Separation of duties," line 17, and §Interfaces produced, line 43 —
   *"No MCP `learning.*` tool family exists… a model-invokable promotion tool would violate this section's
-  tested invariant"*; §Exit criteria, line 75 — *"a grep-based CI check over `packages/gateway`'s registered
+  tested invariant"*; §Exit criteria, line 96 — *"a grep-based CI check over `packages/gateway`'s registered
   tool names confirms no `learning.*` MCP tool exists to route around it (Gap 1)."*
-- `02-contracts-and-schemas.md` §Out of scope, line 36 — MCP tool implementations "owned by 16/11/12; this
+- `02-contracts-and-schemas.md` §Out of scope, line 45 — MCP tool implementations "owned by 16/11/12; this
   phase only names the server constant."
 - `06-claude-engine-adapter.md` §Out of scope, line 30 — names the full Phase-16-owned family list
   (`tracker.*, observability.*, evidence.get, evidence.attach, result.submit's server-side handler, forwarded
   run.status/run.cancel`).
 - `23-release-hardening.md` §Interfaces consumed, row "16," line 76 — *"tool surface (`tracker.*`,
   `observability.*`, `evidence.get`, `evidence.attach`, `result.submit`, `run.status`/`run.cancel`
-  forwarding)"*; §Exit criteria, line 129 — *"Full 8-family gateway MCP tool surface… zero
+  forwarding)"*; §Exit criteria, line 160 — *"Full 8-family gateway MCP tool surface… zero
   `NOT_IMPLEMENTED` remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation)."*
 - **`16-gateway-core.md` itself now carries the ruling throughout** — §Goal: *"This phase natively implements
   `tracker.*`, `observability.*`, `evidence.get`, `evidence.attach`, and `result.submit`, and forwards
@@ -194,14 +194,14 @@ is explicitly deferred to Phase 23's release gate, not required at Phase 09/16's
 
 **Verified in:**
 - `09-cli-and-doctor.md` §In scope — *"gateway mcp: boots the `crabgic_gateway` MCP server (stdio) over
-  `packages/gateway`'s (16) extensible tool registry…"*; §Work items 1–2; §Exit criteria, line 203 —
+  `packages/gateway`'s (16) extensible tool registry…"*; §Work items 1–2; §Exit criteria, line 268 —
   *"`gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client… full
   8-family completeness remains a phase-23 release gate."*
 - `10-plugin-and-installer.md` §Work items 2 — golden-file test of the `{"crabgic_gateway": {"command":
   "crabgic", "args": ["gateway", "mcp"]}}` shape; §Exit criteria — byte-for-byte assertion
   against the same literal.
 - `23-release-hardening.md` §Interfaces consumed, row "09," line 69 — *"Full CLI surface incl. `gateway mcp`
-  (Gap 2)"*; §Exit criteria, line 129 — "Gap 1/Gap 2's explicit phase-23 obligation."
+  (Gap 2)"*; §Exit criteria, line 163 — "Gap 1/Gap 2's explicit phase-23 obligation."
 - `16-gateway-core.md` now explicitly describes itself as this command's backend — §Goal: *"09's `gateway
   mcp` command is a thin argv shim that boots this phase's server over stdio"*; §Out of scope repeats it:
   *"this phase supplies the server 09's shim boots, never the shim itself."*
@@ -230,13 +230,13 @@ implementation; Phase 03's own text no longer calls it "new" — it now reads "s
 
 **Verified in:**
 - `01-repo-bootstrap.md` §In scope, line 16 — 18-package workspace enumeration including
-  `packages/engine-core`, tagged "(Gap 3)"; §Exit criteria, line 76 — *"All 18 packages (Gap 3) — the 17
+  `packages/engine-core`, tagged "(Gap 3)"; §Exit criteria, line 109 — *"All 18 packages (Gap 3) — the 17
   originally enumerated plus `packages/engine-core` — compile empty"*; §Out of scope, line 29 —
   *"`renderer-core` — a module living inside `packages/contracts`, not a 19th workspace package (Gap 3)."*
 - `02-contracts-and-schemas.md` §In scope — *"`renderer-core` module, inside `packages/contracts` (not a
   standalone package)"*; work item 6.
 - `03-envelope-compiler-engine-adapter.md` §In scope, line 16 — *"`packages/engine-core`, scaffolded empty by
-  01 — Gap 3; this phase is its first implementation"*; §Interfaces produced, line 38 — *"scaffolded empty
+  01 — Gap 3; this phase is its first implementation"*; §Interfaces produced, line 48 — *"scaffolded empty
   by 01; first populated here — Gap 3, header no longer says 'new.'"*
 - `23-release-hardening.md` header, "Primary package" row, line 8 — *"cross-cutting over all 18 workspace
   packages (Gap 3: `engine-core` counted, `renderer-core` is a `packages/contracts` module, not a 19th
@@ -278,7 +278,7 @@ prior set (02, 04, 09, 13) omitted the real writers/consumers)
   `WorkUnitAttemptStatus` row.
 - `09-cli-and-doctor.md` §Interfaces consumed — cites `WorkUnitAttemptStatus` (incl. `parked:rate_limit`, and
   `cancelled`) for `status --watch` rendering.
-- `13-scheduler-packets-context.md` §In scope "Limit parking" and §Risks & open questions, line 93 —
+- `13-scheduler-packets-context.md` §In scope "Limit parking" and §Risks & open questions, line 129 —
   *"`WorkUnitAttemptStatus: parked:rate_limit`, session retained — only reachable from, and returning to,
   `dispatched`"* / *"`cancelled` as the anticipated member per Gap 4's own text."*
 - `23-release-hardening.md` §In scope — *"limit-parked resume (`WorkUnitAttemptStatus: parked:rate_limit`)
@@ -377,7 +377,7 @@ attributes `approval_token_mint` to 09/12 only) — expanded 2026-07-15 after an
   all type against the identical 13-member list, verbatim.
 - `08-integration-publication.md` (journals `cas_ref_update`/`evidence_pointer`), `13-scheduler-packets-
   context.md` (`fanout_rationale`/`work_unit_transition`), `14-quality-security-gates.md` (`evidence_pointer`,
-  line 87 — *"Gap 5's own rationale rejected a 14th"*), `22-learning-system.md` (`learning_transition`) —
+  line 107 — *"Gap 5's own rationale rejected a 14th"*), `22-learning-system.md` (`learning_transition`) —
   each journals against specific named members drawn from the same closed list, none inventing an additional
   member.
 
@@ -422,7 +422,7 @@ precondition/ETag token, never rendered communication text.
 - `09-cli-and-doctor.md` §In scope, `evidence <change-set-id>` bullet — *"including rendered PR-title/PR-body/
   review-comment `RenderedArtifact`s (17) once attached… the human-facing handoff copy is retrieved here,
   never auto-posted anywhere."*
-- `14-quality-security-gates.md` §Risks & open questions, line 91 — *"Gap 6, confirmed no-op for this phase:
+- `14-quality-security-gates.md` §Risks & open questions, line 111 — *"Gap 6, confirmed no-op for this phase:
   the binding resolutions explicitly rejected tying this phase's repair-dispatch 'new diagnostic evidence'
   requirement to 17's rendered/lint-passed review-comment template… This file introduces no relationship to
   `packages/renderer` (17)."*
@@ -432,7 +432,7 @@ precondition/ETag token, never rendered communication text.
 - `20-grafana-adapters.md` §In scope "Mutation safety," line 20 — *"the deleted `dashboard version message
   ≤160` CommunicationPolicy constant (Gap 6) never applied to this phase; this line confirms that deletion's
   rationale."*
-- `23-release-hardening.md` §Interfaces consumed rows "09" and "17"; §Exit criteria, line 132 — *"never an
+- `23-release-hardening.md` §Interfaces consumed rows "09" and "17"; §Exit criteria, line 172 — *"never an
   opened PR (Gap 6, by design)."*
 
 **Where the 4 resolvers disagreed:** One resolver proposed explicitly wiring `review_comment` evidence into
@@ -459,8 +459,8 @@ implementation at 06:42/116 — 06 added 2026-07-15)
 - `03-envelope-compiler-engine-adapter.md` §In scope, `EngineAdapter` interface bullet, line 16 — *"returning
   exactly `supportsJsonSchema`, `supportsSessionResume`, `permissionModel`, `sandboxModel`, `engineVersion`
   (Gap 7 — retires this phase's earlier `structuredOutput`/`sessionResume` draft names)"*; §Exit criteria,
-  line 91 — same five fields, "(Gap 7)."
-- `11-intake-contract-approval.md` §Interfaces consumed, line 96 — *"`EngineAdapter.capabilities()` —
+  line 125 — same five fields, "(Gap 7)."
+- `11-intake-contract-approval.md` §Interfaces consumed, line 122 — *"`EngineAdapter.capabilities()` —
   `engineVersion`, `supportsJsonSchema`, `supportsSessionResume` (field names per Gap 7)."*
 - `23-release-hardening.md` §Interfaces consumed, row "03," line 63 — the same five field names listed
   verbatim.
@@ -532,9 +532,9 @@ gap's Verified-in — 13 added 2026-07-15)
 - `11-intake-contract-approval.md` §In scope, `project.inspect` bullet — "12 detection when available;
   graceful degradation before 12" (pre-existing text, left unedited, and cited by Phase 12 as sufficient
   corroboration).
-- `13-scheduler-packets-context.md` §Out of scope, line 38 — *"Doc-research task-packet generation (12) —
-  consumed by 11's drafting flow, never directly by this phase (Gap 9)"*; §In scope, line 21 and §Out of
-  scope line 32 also cite "(Gap 9)" directly for the related "manager subagents are never this phase's
+- `13-scheduler-packets-context.md` §Out of scope, line 40 — *"Doc-research task-packet generation (12) —
+  consumed by 11's drafting flow, never directly by this phase (Gap 9)"*; §In scope, line 23 and §Out of
+  scope line 34 also cite "(Gap 9)" directly for the related "manager subagents are never this phase's
   vocabulary" clarification.
 
 **Where the 4 resolvers disagreed:** Near-unanimous on the core fix (redirect the citation from 13 to 11); one
@@ -566,7 +566,7 @@ approval-preview surface (11:32–33); 11 added 2026-07-15
   transition)."*
 - `20-grafana-adapters.md` §In scope, line 19 — *"using 02's `HighImpactCapabilityFlag` labels verbatim
   (Grafana's 4 members never drifted from 02's wording, unlike Jira's, which Gap 10 corrects)."*
-- `19-jira-datacenter-adapter.md` §Interfaces consumed, line 57 — "P02's canonical labels (`closing
+- `19-jira-datacenter-adapter.md` §Interfaces consumed, line 88 — "P02's canonical labels (`closing
   transitions`, `bulk mutations`, among others)."
 - `23-release-hardening.md` §Interfaces consumed, row "18," line 78 — "canonical P02 labels: closing
   transitions, bulk mutations, etc."
@@ -606,7 +606,7 @@ registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
 - `06-claude-engine-adapter.md` §In scope "Gateway wiring (Gap 11, Gap 2)," line 17; §Exit criteria, line
   101 — "zero hand-typed `"crabgic_gateway"` literals anywhere in `packages/engine-claude` — `gateway-name-
   reference.test`."
-- `09-cli-and-doctor.md` §Interfaces consumed, line 129 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` —
+- `09-cli-and-doctor.md` §Interfaces consumed, line 138 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` —
   `gateway mcp`'s server identity."*
 - `10-plugin-and-installer.md` §In scope — ".mcp.json entry keyed `GATEWAY_MCP_SERVER_NAME`"; §Work items 2 —
   golden-file test against the constant.
@@ -656,7 +656,7 @@ open, explicitly-tracked question: Phase 00 runs a dedicated probe and records t
 - `03-envelope-compiler-engine-adapter.md` §In scope, "Envelope compiler" bullet, line 18 — the four literals
   quoted verbatim, *"no space before the colon, per adaptation Appendix B; the word-boundary rule… is a
   separate mechanism, not stretched to justify a third, unverified colon-spacing notation (Gap 12)"*; §Risks
-  & open questions, line 101 — the identical constraint restated as a build-blocking condition on
+  & open questions, line 135 — the identical constraint restated as a build-blocking condition on
   generalization.
 
 **Where the 4 resolvers disagreed:** No material disagreement — all four independently proposed the identical
@@ -713,7 +713,7 @@ sibling (05:24) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/1
   exactly once in this package."
 - `07-git-control-repo-worktrees.md` §In scope, "Control clone," line 17 — "into
   `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` (cache-root convention pinned in
-  04)"; §Interfaces produced, line 39, and §Exit criteria, line 80 — the same path repeated as a
+  04)"; §Interfaces produced, line 39, and §Exit criteria, line 113 — the same path repeated as a
   path-convention test.
 - `12-stack-detection-quarantine.md` §In scope, line 21 — "Content-addressed capability store under
   `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (same convention, pinned in
@@ -747,7 +747,7 @@ link explicitly.
 **Verified in:**
 - `01-repo-bootstrap.md` §In scope, line 22 — *"a manually-triggered `engine-live` job placeholder that phase
   06 wires to run the `@live`-tagged conformance suite (needs a host with `claude`) (Gap 15)"*; §Interfaces
-  produced, line 44, and §Exit criteria, line 83 repeat the identical link.
+  produced, line 44, and §Exit criteria, line 116 repeat the identical link.
 - `06-claude-engine-adapter.md` §In scope, "`@live` conformance," line 23 — *"wire the `engine-live` CI job
   (inert placeholder from 01, Gap 15) to run the `@live`-tagged suite"*; §Work items 6.
 - `23-release-hardening.md` §Out of scope, line 40 — *"The `engine-live` CI job's existence and its
