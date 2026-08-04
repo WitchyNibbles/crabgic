@@ -99,11 +99,15 @@ export function buildMutationApplyTool(
       const httpClient = await (deps.buildHttpClient ?? buildHttpClientForConnection)(connection);
       const verify = applyClient.verify;
       const reconcileAmbiguous = applyClient.reconcileAmbiguous;
+      const serializationTarget = applyClient.serializationTarget;
       const handlers: MutationPipelineHandlers = {
         provider: connection.provider,
         buildRequest: (p) => applyClient.buildRequest(p),
         parseResponse: (p, r) => applyClient.parseResponse(p, r),
         verify: verify !== undefined ? (p, a) => verify(p, a) : async () => true,
+        ...(serializationTarget !== undefined
+          ? { serializationTarget: (p: typeof plan) => serializationTarget(p) }
+          : {}),
         ...(reconcileAmbiguous !== undefined
           ? { reconcileAmbiguous: (p: typeof plan, cause: unknown) => reconcileAmbiguous(p, cause) }
           : {}),

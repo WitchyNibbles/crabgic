@@ -10,6 +10,7 @@ import type { AttachmentStagingRegistry } from "../../attachments/attachment-sta
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";
 import { assertAllowedJiraOperation } from "../../security/preflight-capability-guard.js";
 import { assertSafeAdfDocument } from "../adf-guard.js";
+import { writeSerializationTarget } from "../canonical-target.js";
 import type { JiraAction } from "../actions.js";
 import type { JiraPlanPayloadRegistry } from "../plan-payload-registry.js";
 import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";
@@ -345,6 +346,11 @@ export function createJiraDatacenterMutationApplyClient(
       return buildRequestForAction(plan, deps);
     },
     parseResponse: (plan, response) => parseResponseForAction(plan, response),
+    // Identical to Cloud's — DC reuses 18's plan builders and the same
+    // `../canonical-target.ts`, so it inherits the same per-issue
+    // write-order requirement (roadmap/19 §In scope: "the gateway's
+    // cross-worker throttling … still serializes writes").
+    serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget),
     verify: (plan) => verifyForAction(deps.ctx, plan),
     reconcileAmbiguous: async (plan) => {
       const action = plan.action as JiraAction;

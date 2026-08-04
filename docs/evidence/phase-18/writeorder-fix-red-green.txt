@@ -1,0 +1,615 @@
+==============================================================================
+RULING-3 TRANSCRIPT — phase 18 exit criterion 10, second clause
+  "Rate-limit fixture: `Retry-After` honored; per-issue write order preserved."
+==============================================================================
+
+PURPOSE
+  RED -> GREEN -> deletion probes for the fix to
+  "18 — per-issue write order is not preserved" (the defect record filed by the
+  2026-08-02 criteria-closeout pass; named in prose, deliberately not cited —
+  docs/evidence/criteria-closeout/ is the claim-space).
+
+  The defect, measured: two writes of DIFFERENT KINDS to the SAME issue, built by
+  the real resource client and applied through the real `executeMutationPlan`,
+  ran concurrently (`maxInFlight = 2`) because serialization keys on
+  `plan.canonicalTarget` and this connector mints four distinct targets for one
+  issue (`issue:K`, `issue:K:comment`, `issue:K:worklog`, `issue:K:attachment`).
+
+  The fix does NOT collapse `canonicalTarget` (it is identity — both apply
+  clients parse a `commentId` back out of it). It adds an optional
+  `serializationTarget` hook on `MutationApplyClient` /
+  `MutationPipelineHandlers`, defaulting to `canonicalTarget`, consumed at the
+  pipeline's single `httpClient.request` call site and forwarded by
+  `mutation-apply-tool.ts`. Both Jira apply clients (Cloud + Data Center) fold
+  every issue-scoped shape onto `issue:<key>` via one shared derivation.
+
+NOT A WALL-CLOCK TEST
+  Overlap is detected by a deferred-promise barrier that releases the moment N
+  requests are simultaneously in flight. The bounded fallback timer is reachable
+  ONLY by the first request of a correctly-serialized batch (in which no sibling
+  can ever arrive to release the barrier), so a loaded machine LENGTHENS the hold
+  rather than shortening it — which makes the `=== 2` controls more reliable
+  under load, not less. No test asserts a duration.
+
+NO LIVE RUN
+  Nothing here touches a real Jira instance. No `@live`, no `CRABGIC_LIVE=1`, no
+  `engine-live`, no `jira-datacenter-smoke`. Every request is served by an
+  injected `sendRequest`; every journal is a real temp dir.
+
+------------------------------------------------------------------------------
+(1) RED — deliberately failing, at the test-only commit
+------------------------------------------------------------------------------
+UTC:  2026-08-04T16:05:52Z
+HEAD: 17dbf05ec16845a7017481e25f3ea7c41fd8d2ea
+CMD:  npx vitest run packages/connectors-jira/src/testkit/write-order.integration.test.ts packages/connectors-jira/src/resource-client/canonical-target.test.ts packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts packages/gateway/src/mcp/native-tools/mutation-apply-tool.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  worktree of WitchyNibbles/crabgic, branch fix/jira-per-issue-write-order
+EXIT: 1
+
+  Read the PASSING lines as carefully as the failing ones: every `=== 2` control
+  and every DEFAULT-PATH case is green at this commit. That is what rules out
+  "the instrumentation cannot see overlap at all" (which would make each
+  `maxInFlight === 1` assertion pass for free) and what pins today's behaviour
+  for a provider that omits the hook.
+
+----- verbatim output below; nothing edited -----
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-writeorder
+
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > issues.planUpdate / planTransition / planLink (issue:PROJ-1) serializes on issue:PROJ-1 3ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planCreate (issue:PROJ-1:comment) serializes on issue:PROJ-1 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planUpdate (issue:PROJ-1:comment:77) serializes on issue:PROJ-1 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > worklogs.planCreate (issue:PROJ-1:worklog) serializes on issue:PROJ-1 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > attachments.planUpload (issue:PROJ-1:attachment) serializes on issue:PROJ-1 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps every issue-scoped shape distinct as IDENTITY while collapsing it for serialization 1ms
+   → undefined is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps different issues on different keys (cross-issue parallelism is preserved) 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planUpdate / planRankIssues (board:7) is returned unchanged 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planStart / planComplete / planMoveIssues (sprint:3) is returned unchanged 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planCreate (project:PROJ:new-issue) is returned unchanged 2ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planCreate (project:PROJ:new-board) is returned unchanged 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planCreate (board:7:new-sprint) is returned unchanged 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planBulkUpdate / planBulkTransition (bulk:PROJ-1,PROJ-2) is returned unchanged 0ms
+   → writeSerializationTarget is not a function
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > returns an unrecognized shape unchanged rather than guessing 0ms
+   → writeSerializationTarget is not a function
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > returns a not_found error for an unknown connectionId 5ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > returns an unsupported error for a connection whose provider has no registered MutationApplyClient 3ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > uses the provider client's own verify() when supplied 16ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > uses the provider client's own reconcileAmbiguous() when the network call fails 14ms
+ × |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key 16ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > DEFAULT PATH: a provider client without serializationTarget still keys on canonicalTarget 11ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > records a brand-new plan and returns the confirmed applied revision 25ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > persists a pre-I/O pending record, then a terminal 'recorded' record — both under the SAME operationId (HIGH/MEDIUM #3) 12ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > replays a byte-identical result for the same (operationId, contentHash) without re-invoking the network call 13ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > rejects a changed-content plan for the same idempotencyKey as a typed conflict, never a silent overwrite 12ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > a foreign-origin buildRequest target is refused by the SSRF guard before any network call, mapped to a failed outcome 16ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > concurrent writes for the SAME tenant+resource through the mutation pipeline are write-serialized 30ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — MEDIUM #5: concurrent same-idempotencyKey serialization > two concurrent calls for the SAME idempotencyKey never both apply — the second observes the first's recorded result 25ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a network failure with no reconcileAmbiguous hook to a blocked/ambiguous_write outcome (fails closed) 7ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that resolves it maps to recorded, no duplicate call 7ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that cannot resolve it still blocks 7ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a verify() false result to a failed outcome, never silently treated as success 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > MutationVerificationFailedError carries the plan id 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a >=400 HTTP response to a failed outcome carrying the canonical ConnectorError kind 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > propagates a genuinely unexpected programming error rather than swallowing it 6ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > an AmbiguousWriteBlockedError thrown directly from parseResponse is mapped to blocked 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > never blindly re-applies — with no reconcileAmbiguous hook, blocks instead of retrying 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that resolves it, converges to recorded without a fresh network call 8ms
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update and comment.create on PROJ-1 never overlap on the wire 21ms
+   → expected 2 to be 1 // Object.is equality
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update, worklog.create and attachment.upload on PROJ-1 all take the same mutex 12ms
+   → expected 3 to be 1 // Object.is equality
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > CONTROL: writes to DIFFERENT issues still run concurrently 8ms
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > issue.update and comment.create on PROJ-1 never overlap on the wire 9ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > CONTROL: writes to DIFFERENT issues still run concurrently 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that CANNOT resolve it, still blocks (never guesses) 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > a reconcileAmbiguous hook that itself throws a ConnectorError maps to a failed outcome 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'failed' record for the same operationId+contentHash is returned verbatim, never re-applied 5ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'conflict' record for the same operationId+contentHash is returned verbatim, never re-applied 7ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a network call that itself throws AmbiguousWriteBlockedError directly > is never double-wrapped, and maps straight through to blocked 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill before the network call converges to exactly one real PUT after recovery 486ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill after the network call (before this pipeline's own record write) converges to exactly one real PUT after recovery 442ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, before this pipeline's own record write, NEVER produces a double-create 446ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, with reconciliation disabled, blocks (never guesses) and never double-creates 443ms
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > passes the hook's key to the transport as `resource`, leaving canonicalTarget alone 11ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > DEFAULT PATH: with no hook, `resource` is exactly plan.canonicalTarget 7ms
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget 9ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > CONTROL: without the hook, those same two plans overlap (the instrumentation CAN see overlap) 7ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 20 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > issues.planUpdate / planTransition / planLink (issue:PROJ-1) serializes on issue:PROJ-1
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planCreate (issue:PROJ-1:comment) serializes on issue:PROJ-1
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planUpdate (issue:PROJ-1:comment:77) serializes on issue:PROJ-1
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > worklogs.planCreate (issue:PROJ-1:worklog) serializes on issue:PROJ-1
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > attachments.planUpload (issue:PROJ-1:attachment) serializes on issue:PROJ-1
+TypeError: writeSerializationTarget is not a function
+ ❯ src/resource-client/canonical-target.test.ts:39:12
+     37|
+     38|   it.each(issueScoped)("%s (%s) serializes on issue:PROJ-1", (_label, …
+     39|     expect(writeSerializationTarget(canonicalTarget)).toBe("issue:PROJ…
+       |            ^
+     40|   });
+     41|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps every issue-scoped shape distinct as IDENTITY while collapsing it for serialization
+TypeError: undefined is not a function
+ ❯ src/resource-client/canonical-target.test.ts:47:31
+     45|     expect(new Set(identities).size).toBe(5);
+     46|     // …that all take the SAME write mutex.
+     47|     expect(new Set(identities.map(writeSerializationTarget)).size).toB…
+       |                               ^
+     48|   });
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps different issues on different keys (cross-issue parallelism is preserved)
+TypeError: writeSerializationTarget is not a function
+ ❯ src/resource-client/canonical-target.test.ts:51:12
+     49|
+     50|   it("keeps different issues on different keys (cross-issue parallelis…
+     51|     expect(writeSerializationTarget(commentTarget("PROJ-2"))).toBe("is…
+       |            ^
+     52|     expect(writeSerializationTarget(issueTarget("PROJ-1"))).not.toBe(
+     53|       writeSerializationTarget(issueTarget("PROJ-2")),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planUpdate / planRankIssues (board:7) is returned unchanged
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planStart / planComplete / planMoveIssues (sprint:3) is returned unchanged
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planCreate (project:PROJ:new-issue) is returned unchanged
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planCreate (project:PROJ:new-board) is returned unchanged
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planCreate (board:7:new-sprint) is returned unchanged
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planBulkUpdate / planBulkTransition (bulk:PROJ-1,PROJ-2) is returned unchanged
+TypeError: writeSerializationTarget is not a function
+ ❯ src/resource-client/canonical-target.test.ts:73:12
+     71|
+     72|   it.each(passthrough)("%s (%s) is returned unchanged", (_label, canon…
+     73|     expect(writeSerializationTarget(canonicalTarget)).toBe(canonicalTa…
+       |            ^
+     74|   });
+     75|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > returns an unrecognized shape unchanged rather than guessing
+TypeError: writeSerializationTarget is not a function
+ ❯ src/resource-client/canonical-target.test.ts:77:12
+     75|
+     76|   it("returns an unrecognized shape unchanged rather than guessing", (…
+     77|     expect(writeSerializationTarget("something-else")).toBe("something…
+       |            ^
+     78|     expect(writeSerializationTarget("")).toBe("");
+     79|     // "issue" with no key is not an issue target — do not invent one.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update and comment.create on PROJ-1 never overlap on the wire
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/testkit/write-order.integration.test.ts:295:36
+    293|     await applyAll([updatePlan, commentPlan], h.applyClient, h.httpCli…
+    294|
+    295|     expect(recorder.maxInFlight()).toBe(1);
+       |                                    ^
+    296|     // Strictly sequential: the first request's end precedes the secon…
+    297|     const firstEnd = recorder.events.findIndex((e) => e.startsWith("en…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update, worklog.create and attachment.upload on PROJ-1 all take the same mutex
+AssertionError: expected 3 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 3
+
+ ❯ src/testkit/write-order.integration.test.ts:328:36
+    326|     await applyAll(plans, h.applyClient, h.httpClient, "jira-cloud");
+    327|
+    328|     expect(recorder.maxInFlight()).toBe(1);
+       |                                    ^
+    329|     expect(recorder.events.filter((e) => e.startsWith("start:"))).toHa…
+    330|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/20]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > issue.update and comment.create on PROJ-1 never overlap on the wire
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/testkit/write-order.integration.test.ts:370:36
+    368|     await applyAll(plans, h.applyClient, h.httpClient, "jira-datacente…
+    369|
+    370|     expect(recorder.maxInFlight()).toBe(1);
+       |                                    ^
+    371|   });
+    372|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/20]⎯
+
+ FAIL  |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > passes the hook's key to the transport as `resource`, leaving canonicalTarget alone
+AssertionError: expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+
+Expected: "issue:EX-1"
+Received: "issue:EX-1:comment"
+
+ ❯ src/mutation-pipeline/mutation-pipeline.test.ts:747:27
+    745|     expect(requestSpy).toHaveBeenCalledTimes(1);
+    746|     const req = requestSpy.mock.calls[0]?.[0];
+    747|     expect(req?.resource).toBe("issue:EX-1");
+       |                           ^
+    748|     expect(req?.isWrite).toBe(true);
+    749|     // Identity is untouched — only the mutex key was redirected.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/20]⎯
+
+ FAIL  |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/mutation-pipeline/mutation-pipeline.test.ts:781:36
+    779|     ]);
+    780|
+    781|     expect(recorder.maxInFlight()).toBe(1);
+       |                                    ^
+    782|   });
+    783|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/20]⎯
+
+ FAIL  |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key
+AssertionError: expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+
+Expected: "issue:EX-1"
+Received: "issue:EX-1:comment"
+
+ ❯ src/mcp/native-tools/mutation-apply-tool.test.ts:240:79
+    238|     expect(result.isError).toBeFalsy();
+    239|     expect(requestSpy).toHaveBeenCalledTimes(1);
+    240|     expect((requestSpy?.mock.calls[0]?.[0] as { resource: string }).re…
+       |                                                                               ^
+    241|   });
+    242|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/20]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  20 failed | 35 passed (55)
+   Start at  18:05:49
+   Duration  2.88s (transform 1.77s, setup 0ms, import 2.61s, tests 2.23s, environment 0ms)
+
+
+----- end of output -----
+
+------------------------------------------------------------------------------
+(2) GREEN — at the fix commit
+------------------------------------------------------------------------------
+UTC:  2026-08-04T16:10:18Z
+HEAD: d4505d6172d9e79329aedabc26521137bf8e732c
+CMD:  npx vitest run packages/connectors-jira/src/testkit/write-order.integration.test.ts packages/connectors-jira/src/resource-client/canonical-target.test.ts packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts packages/gateway/src/mcp/native-tools/mutation-apply-tool.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  worktree of WitchyNibbles/crabgic, branch fix/jira-per-issue-write-order
+EXIT: 0
+
+  RED -> GREEN: 20 failed / 35 passed  ->  0 failed / 55 passed.
+
+----- verbatim output below; nothing edited -----
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-writeorder
+
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > issues.planUpdate / planTransition / planLink (issue:PROJ-1) serializes on issue:PROJ-1 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planCreate (issue:PROJ-1:comment) serializes on issue:PROJ-1 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > comments.planUpdate (issue:PROJ-1:comment:77) serializes on issue:PROJ-1 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > worklogs.planCreate (issue:PROJ-1:worklog) serializes on issue:PROJ-1 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > attachments.planUpload (issue:PROJ-1:attachment) serializes on issue:PROJ-1 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps every issue-scoped shape distinct as IDENTITY while collapsing it for serialization 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every issue-scoped shape collapses to issue:<key> > keeps different issues on different keys (cross-issue parallelism is preserved) 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planUpdate / planRankIssues (board:7) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planStart / planComplete / planMoveIssues (sprint:3) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planCreate (project:PROJ:new-issue) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > boards.planCreate (project:PROJ:new-board) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > sprints.planCreate (board:7:new-sprint) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > issues.planBulkUpdate / planBulkTransition (bulk:PROJ-1,PROJ-2) is returned unchanged 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — non-issue-scoped targets pass through unchanged > returns an unrecognized shape unchanged rather than guessing 0ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > returns a not_found error for an unknown connectionId 4ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > returns an unsupported error for a connection whose provider has no registered MutationApplyClient 3ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > uses the provider client's own verify() when supplied 14ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > uses the provider client's own reconcileAmbiguous() when the network call fails 12ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key 12ms
+ ✓ |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > DEFAULT PATH: a provider client without serializationTarget still keys on canonicalTarget 13ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > records a brand-new plan and returns the confirmed applied revision 19ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — happy path > persists a pre-I/O pending record, then a terminal 'recorded' record — both under the SAME operationId (HIGH/MEDIUM #3) 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > replays a byte-identical result for the same (operationId, contentHash) without re-invoking the network call 11ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — exactly-once semantics > rejects a changed-content plan for the same idempotencyKey as a typed conflict, never a silent overwrite 14ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > a foreign-origin buildRequest target is refused by the SSRF guard before any network call, mapped to a failed outcome 12ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — mutating network I/O goes through GatewayHttpClient (HIGH #2) > concurrent writes for the SAME tenant+resource through the mutation pipeline are write-serialized 31ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — MEDIUM #5: concurrent same-idempotencyKey serialization > two concurrent calls for the SAME idempotencyKey never both apply — the second observes the first's recorded result 23ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a network failure with no reconcileAmbiguous hook to a blocked/ambiguous_write outcome (fails closed) 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that resolves it maps to recorded, no duplicate call 15ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > a network failure WITH a reconcileAmbiguous hook that cannot resolve it still blocks 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a verify() false result to a failed outcome, never silently treated as success 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > MutationVerificationFailedError carries the plan id 1ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > maps a >=400 HTTP response to a failed outcome carrying the canonical ConnectorError kind 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > propagates a genuinely unexpected programming error rather than swallowing it 5ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — ambiguous write, verification failure, connector errors > an AmbiguousWriteBlockedError thrown directly from parseResponse is mapped to blocked 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > never blindly re-applies — with no reconcileAmbiguous hook, blocks instead of retrying 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that resolves it, converges to recorded without a fresh network call 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > with a reconcileAmbiguous hook that CANNOT resolve it, still blocks (never guesses) 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — HIGH/MEDIUM #3: restart finds a pending (non-terminal) record > a reconcileAmbiguous hook that itself throws a ConnectorError maps to a failed outcome 9ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'failed' record for the same operationId+contentHash is returned verbatim, never re-applied 6ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a prior TERMINAL (failed/conflict) record is never silently re-run > a prior 'conflict' record for the same operationId+contentHash is returned verbatim, never re-applied 6ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — a network call that itself throws AmbiguousWriteBlockedError directly > is never double-wrapped, and maps straight through to blocked 10ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill before the network call converges to exactly one real PUT after recovery 469ms
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update and comment.create on PROJ-1 never overlap on the wire 320ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > deterministic PUT fixture (idempotent by construction, reconciles-by-retry) > kill after the network call (before this pipeline's own record write) converges to exactly one real PUT after recovery 441ms
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update, worklog.create and attachment.upload on PROJ-1 all take the same mutex 313ms
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > CONTROL: writes to DIFFERENT issues still run concurrently 8ms
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > issue.update and comment.create on PROJ-1 never overlap on the wire 310ms
+ ✓ |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > CONTROL: writes to DIFFERENT issues still run concurrently 16ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, before this pipeline's own record write, NEVER produces a double-create 464ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic/journal's runKillHarness) > non-idempotent POST/create fixture (MEDIUM/HIGH #3's own required case) > kill after the create network call, with reconciliation disabled, blocks (never guesses) and never double-creates 451ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > passes the hook's key to the transport as `resource`, leaving canonicalTarget alone 7ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > DEFAULT PATH: with no hook, `resource` is exactly plan.canonicalTarget 8ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget 310ms
+ ✓ |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > CONTROL: without the hook, those same two plans overlap (the instrumentation CAN see overlap) 8ms
+
+ Test Files  4 passed (4)
+      Tests  55 passed (55)
+   Start at  18:07:45
+   Duration  3.16s (transform 1.77s, setup 0ms, import 2.54s, tests 3.44s, environment 0ms)
+
+
+----- end of output -----
+
+------------------------------------------------------------------------------
+(3) DELETION PROBES — measure, do not read
+------------------------------------------------------------------------------
+UTC:  2026-08-04T16:10:41Z
+HEAD: d4505d6172d9e79329aedabc26521137bf8e732c
+CMD:  one bearer line removed per probe, then the same four-suite vitest command
+      as above; the tree is restored with `git checkout -- packages/` after each.
+      Probe script: scratchpad/probe-writeorder.sh (not committed — a scratch
+      helper, reproduced in full below).
+
+  Each probe must redden a NAMED suite. All four do. Summary:
+
+    PROBE 1  remove the CLOUD apply client's `serializationTarget` property
+             -> EXIT 1, 2 failed / 53 passed
+             -> connectors-jira write-order.integration.test.ts, both Cloud
+                same-issue cases (issue.update+comment.create; and
+                issue.update+worklog.create+attachment.upload)
+
+    PROBE 2  remove the DATA CENTER apply client's `serializationTarget` property
+             -> EXIT 1, 1 failed / 54 passed
+             -> connectors-jira write-order.integration.test.ts, the DC
+                same-issue case. (The DC property is separately pinned: probe 1
+                left it green and probe 2 left the Cloud cases green.)
+
+    PROBE 3  remove the production bridge's forwarding in mutation-apply-tool.ts
+             -> EXIT 1, 1 failed / 54 passed
+             -> gateway mutation-apply-tool.test.ts, "forwards the provider
+                client's serializationTarget to the transport's `resource` key".
+                This is the named countermeasure for the connector integration
+                test's own blind spot: that test calls `executeMutationPlan`
+                directly and never crosses this bridge, so without this case the
+                forwarding line would be deletable with every connector test
+                still green.
+
+    PROBE 4  revert the pipeline consumption line to `resource: plan.canonicalTarget`
+             -> EXIT 1, 3 failed / 52 passed (src-only run)
+             -> gateway mutation-pipeline.test.ts (2 cases) + mutation-apply-tool.test.ts
+
+    PROBE 4b same revert, WITH `npm run build` first
+             -> EXIT 1, 6 failed / 49 passed
+             -> all three suites, INCLUDING all three connectors-jira same-issue
+                cases (Cloud x2, DC x1).
+
+  Why 4 and 4b differ, stated plainly: `packages/connectors-jira` imports
+  `@crabgic/gateway` through its published entry, i.e. `packages/gateway/dist/`,
+  not `packages/gateway/src/`. A gateway src-only edit is therefore invisible to
+  the connector suite until the workspace is rebuilt. 4b is the honest
+  measurement of the full chain; 4 is recorded too rather than quietly replaced.
+
+  In every probe the surviving cases are the controls (`=== 2` different-issue,
+  and the two DEFAULT-PATH cases) — exactly the ones that must NOT move.
+
+----- probe script, verbatim (scratchpad/probe-writeorder.sh) -----
+#!/usr/bin/env bash
+# Deletion probes for the per-issue write-order fix. Each removes ONE
+# bearer line and measures which suites redden.
+set -uo pipefail
+WT=/home/eimi/projects/wt-writeorder
+SP=/tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad
+cd "$WT"
+SUITES="packages/connectors-jira/src/testkit/write-order.integration.test.ts packages/connectors-jira/src/resource-client/canonical-target.test.ts packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts packages/gateway/src/mcp/native-tools/mutation-apply-tool.test.ts"
+
+run_probe () {
+  local name="$1"; shift
+  echo "=== PROBE $name ==="
+  npx vitest run $SUITES --coverage.enabled=false --reporter=verbose > "$SP/probe-$name.txt" 2>&1
+  echo "EXIT: $?"
+  grep -E "^ ×" "$SP/probe-$name.txt" || echo "(no failing tests)"
+  echo "--- summary ---"
+  grep -E "Test Files|Tests  " "$SP/probe-$name.txt"
+  git checkout -- packages/
+}
+
+# Probe 1: remove the CLOUD connector hook.
+perl -0pi -e 's{^    serializationTarget: \(plan\) => writeSerializationTarget\(plan\.canonicalTarget\),\n}{}m' packages/connectors-jira/src/resource-client/jira-mutation-apply-client.ts
+run_probe 1-cloud-connector-hook
+
+# Probe 2: remove the DC connector hook.
+perl -0pi -e 's{^    serializationTarget: \(plan\) => writeSerializationTarget\(plan\.canonicalTarget\),\n}{}m' packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+run_probe 2-dc-connector-hook
+
+# Probe 3: remove the production bridge forwarding in mutation-apply-tool.ts.
+perl -0pi -e 's{        \.\.\.\(serializationTarget !== undefined\n          \? \{ serializationTarget: \(p: typeof plan\) => serializationTarget\(p\) \}\n          : \{\}\),\n}{}m' packages/gateway/src/mcp/native-tools/mutation-apply-tool.ts
+run_probe 3-production-bridge
+
+# Probe 4: revert the pipeline consumption line.
+perl -0pi -e 's{resource: handlers\.serializationTarget\?\.\(plan\) \?\? plan\.canonicalTarget,}{resource: plan.canonicalTarget,}' packages/gateway/src/mutation-pipeline/mutation-pipeline.ts
+run_probe 4-pipeline-consumption
+
+echo "=== tree restored ==="
+git status --short
+----- end of probe script -----
+
+----- probe 1 output: failing lines + summary -----
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update and comment.create on PROJ-1 never overlap on the wire 32ms
+   → expected 2 to be 1 // Object.is equality
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update, worklog.create and attachment.upload on PROJ-1 all take the same mutex 20ms
+   → expected 3 to be 1 // Object.is equality
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 53 passed (55)
+
+----- probe 2 output: failing lines + summary -----
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > issue.update and comment.create on PROJ-1 never overlap on the wire 51ms
+   → expected 2 to be 1 // Object.is equality
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 54 passed (55)
+
+----- probe 3 output: failing lines + summary -----
+ × |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key 24ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 54 passed (55)
+
+----- probe 4 output (src-only): failing lines + summary -----
+ × |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key 15ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > passes the hook's key to the transport as `resource`, leaving canonicalTarget alone 27ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget 18ms
+   → expected 2 to be 1 // Object.is equality
+ Test Files  2 failed | 2 passed (4)
+      Tests  3 failed | 52 passed (55)
+
+----- probe 4b output (after npm run build): failing lines + summary -----
+ × |@crabgic/gateway| src/mcp/native-tools/mutation-apply-tool.test.ts > buildMutationApplyTool > forwards the provider client's serializationTarget to the transport's `resource` key 15ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update and comment.create on PROJ-1 never overlap on the wire 22ms
+   → expected 2 to be 1 // Object.is equality
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — same issue, different resource kinds (Jira Cloud) > issue.update, worklog.create and attachment.upload on PROJ-1 all take the same mutex 12ms
+   → expected 3 to be 1 // Object.is equality
+ × |@crabgic/connectors-jira| src/testkit/write-order.integration.test.ts > per-issue write order — Jira Data Center shares the fix > issue.update and comment.create on PROJ-1 never overlap on the wire 10ms
+   → expected 2 to be 1 // Object.is equality
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > passes the hook's key to the transport as `resource`, leaving canonicalTarget alone 12ms
+   → expected 'issue:EX-1:comment' to be 'issue:EX-1' // Object.is equality
+ × |@crabgic/gateway| src/mutation-pipeline/mutation-pipeline.test.ts > executeMutationPlan — serializationTarget > serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget 9ms
+   → expected 2 to be 1 // Object.is equality
+ Test Files  3 failed | 1 passed (4)
+      Tests  6 failed | 49 passed (55)
+
+----- end of probe output -----
+
+------------------------------------------------------------------------------
+(4) REVIEW ROUND 2 — two further probes, added after adversarial review
+------------------------------------------------------------------------------
+UTC:  2026-08-04T16:43:56Z
+HEAD: 2b0d8be22e9eed64cd5dc9f88e9e3764680c7d23
+CWD:  worktree of WitchyNibbles/crabgic, branch fix/jira-per-issue-write-order
+
+  Review found that this PR's own new prose gave a FALSE justification for one
+  of the passthrough shapes. The original comment said the create-shaped
+  passthrough targets "name no existing issue, so none may be folded onto an
+  issue's mutex" — and swept `bulk:<key>,<key>,…` in with them. That is wrong:
+  `bulk:` is minted by `issue-plans.ts:189`/`:210` for
+  `issue.bulkUpdate`/`issue.bulkTransition`, i.e. a write to EXISTING, named
+  issues, whose keys are in the target string.
+
+  The BEHAVIOUR is unchanged and correct — a mutex key is a single string, no
+  single key can mean "PROJ-1 and PROJ-2 at once," and folding a bulk plan onto
+  any one of its members would be wrong. Only the grounds were wrong, and they
+  concealed a real residual, now named in the code and asserted in the suite:
+
+    KNOWN RESIDUAL — per-issue write order is preserved for SINGLE-issue writes
+    only. A `bulk:` write touching PROJ-1 still races a single-issue write to
+    PROJ-1, and two `bulk:` plans whose key lists overlap (or list the same keys
+    in a different ORDER, which mints a different target string) still race each
+    other.
+
+  PROBE 5  add `serializationTarget` to the GRAFANA apply client
+           (the reverse of a deletion probe: this connector must NOT have it)
+           CMD:  npx vitest run packages/connectors-grafana/src/mutation/mutation-apply-client.unit.test.ts --coverage.enabled=false --reporter=verbose
+           -> EXIT 1, 1 failed / 12 passed
+           -> "omits serializationTarget, so the gateway keys the write mutex on
+               canonicalTarget"
+              → expected [Function serializationTarget] to be undefined
+
+           Why this test exists: the gateway's two DEFAULT-PATH cases pin the
+           PIPELINE's behaviour when the hook is absent, using synthetic
+           providers. NOTHING pinned that Grafana itself omits it, so wiring the
+           hook into that connector would have changed its serialization
+           granularity with nothing going red. This probe is the proof that the
+           new one-line assertion is not vacuous.
+
+  PROBE 6  make `writeSerializationTarget` fold `bulk:` onto its FIRST member
+           issue (i.e. "fix" the residual wrongly, as a single-key mutex forces)
+           CMD:  npx vitest run packages/connectors-jira/src/resource-client/canonical-target.test.ts --coverage.enabled=false --reporter=verbose
+           -> EXIT 1, 1 failed / 13 passed
+           -> "KNOWN RESIDUAL: a bulk target is left unserialized against its own
+               member issues"
+              → expected 'issue:PROJ-1' to be 'bulk:PROJ-1,PROJ-2'
+
+           The residual is therefore ASSERTED, not merely described in a comment
+           — it cannot change silently in either direction.
+
+  Both probes restored the tree afterwards. Note for anyone re-running probe 5
+  or 6 from these notes: `git checkout -- packages/connectors-grafana/` (a
+  DIRECTORY restore) also reverts uncommitted TEST edits in that directory. That
+  happened here on a first attempt and produced a spurious EXIT 0 / "12 passed"
+  with the new test silently absent. The runs recorded above are the re-runs
+  with the test present. Restore by explicit FILE path, not by directory.
+
+----- probe 5 output: failing lines + summary -----
+ × |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.unit.test.ts > createGrafanaMutationApplyClient — write serialization > omits serializationTarget, so the gateway keys the write mutex on canonicalTarget 5ms
+   → expected [Function serializationTarget] to be undefined
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+
+----- probe 6 output: failing lines + summary -----
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every other target passes through unchanged > KNOWN RESIDUAL: a bulk target is left unserialized against its own member issues 4ms
+   → expected 'issue:PROJ-1' to be 'bulk:PROJ-1,PROJ-2' // Object.is equality
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+
+----- end of probe output -----

@@ -106,6 +106,28 @@ export interface MutationPipelineHandlers {
   /** Read-back compare + verify: confirms the applied change is actually reflected remotely. Returning `false` (rather than throwing) signals a verification mismatch, mapped to a `failed` outcome. */
   verify(plan: RemoteMutationPlan, applied: MutationApplyResult): Promise<boolean>;
   /**
+   * Optional SERIALIZATION-ONLY key for the write mutex this pipeline
+   * hands `../transport/http-client.js` (`WriteSerializer`, keyed on
+   * `tenant` + `resource`). Absent, `resource` is `plan.canonicalTarget`
+   * exactly — the default every provider had before this hook existed,
+   * and still the behavior for any provider (e.g. 20's Grafana, whose
+   * targets are flat `<kind>:<id>`) that omits it.
+   *
+   * It exists because identity and mutex-granularity are NOT the same
+   * question. `canonicalTarget` is a plan's identity: it is the marker-
+   * reconciliation and audit identifier, and 18/19's Jira apply clients
+   * parse a `commentId` back out of it, so it cannot be coarsened. But
+   * 18's four issue-scoped shapes on ONE issue (`issue:K`,
+   * `issue:K:comment`, `issue:K:worklog`, `issue:K:attachment`) must
+   * take one mutex for roadmap/18 exit criterion 10's "per-issue write
+   * order preserved" to hold. This hook is the seam between the two.
+   *
+   * Must be a pure function of the plan — it is consulted once per
+   * network attempt and must return the same key every time, or writes
+   * that should serialize will not.
+   */
+  serializationTarget?(plan: RemoteMutationPlan): string;
+  /**
    * Optional marker-reconciliation hook (`./reconciliation.js`), consulted
    * whenever this mutation's outcome is ambiguous: either the network
    * call itself failed ambiguously (`cause` is that error), or a restart
@@ -213,7 +235,7 @@ async function performApplyOnce(
     response = await deps.httpClient.request({
       connectionId: plan.externalConnectionId,
       tenant: plan.tenant,
-      resource: plan.canonicalTarget,
+      resource: handlers.serializationTarget?.(plan) ?? plan.canonicalTarget,
       isWrite: true,
       url: spec.url,
       method: spec.method,
