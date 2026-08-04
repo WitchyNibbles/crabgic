@@ -155,7 +155,7 @@ commit each transcript's own RULING-3 header pins, zero disagreements — becaus
 record written in the same PR disagreeing about one line number is a free detector this pass had and
 did not use the first time.
 
-This branch merges `main` @ `86408b2` (#84). That PR landed after the pass ran and touched
+This branch merges `main` @ `6a62729` (#84 and #85). #84 landed after the pass ran and touched
 `packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts`, shifting
 one cited line. The record's `pass.headSha` therefore names the merge commit, so every citation
 resolves against the tree this branch actually lands as; every *measurement* was taken at
@@ -163,6 +163,8 @@ resolves against the tree this branch actually lands as; every *measurement* was
 the commit their run executed at. Criterion 2's emptiness proof was re-run against post-#84 `main`
 rather than assumed — it holds unchanged — and criterion 3's two probes were re-cut compile-clean
 and with `npm run build` between mutation and test run, reaching the same result.
+(#85 was merged for the same reason and measured first: it touches 22 files, none of the 34 this
+record cites, so no citation needed re-resolving.)
 
 Correction to `docs/evidence/phase-19/README.md`, recorded here rather than by editing that file
 (2026-08-04). Its criterion-2 row cites `isActionSupportedForDcEdition`'s property test as the
