@@ -1,0 +1,38 @@
+# criteria-closeout pass, phase 20 — criterion 7 (HighImpactCapabilityFlag static tagging of every high-impact mutation)
+# UTC:      2026-08-02T11:27:55Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/mutation/high-impact-tagging.test.ts packages/connectors-grafana/src/mutation/mutation-plan-builder.test.ts packages/connectors-grafana/src/resource-kinds.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/resource-kinds.test.ts > GRAFANA_RESOURCE_KINDS > is exactly the 7 kinds roadmap/20 §In scope names, no more, no fewer 2ms
+ ✓ |@crabgic/connectors-grafana| src/resource-kinds.test.ts > GRAFANA_RESOURCE_KINDS > isGrafanaResourceKind narrows correctly and rejects unknown strings 1ms
+ ✓ |@crabgic/connectors-grafana| src/resource-kinds.test.ts > HIGH_IMPACT_FLAG_BY_KIND > maps exactly the 4 high-impact kinds to a valid HighImpactCapabilityFlag member, verbatim 1ms
+ ✓ |@crabgic/connectors-grafana| src/resource-kinds.test.ts > HIGH_IMPACT_FLAG_BY_KIND > carries no flag for folder/dashboard/annotation 0ms
+ ✓ |@crabgic/connectors-grafana| src/resource-kinds.test.ts > HIGH_IMPACT_FLAG_BY_KIND > GRAFANA_HIGH_IMPACT_FLAGS is exactly the table's 4 values 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > folder/dashboard/annotation never carry a high-impact flag, create or update 2ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > contact-point/mute-timing/notification-template ALWAYS carry their flag, create and update, regardless of which fields the input touches 1ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > contact-point/mute-timing/notification-template are flagged even with no input object at all 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > alert-rule CREATE is flagged "alert disabling" ONLY when the input touches isPaused 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > alert-rule UPDATE is flagged "alert disabling" when the input touches isPaused 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > adversarial-review MEDIUM fix: alert-rule UPDATE is ALSO flagged "alert disabling" when condition/for/ruleGroup are touched — not just isPaused (an update can silently neutralize a firing alert without ever touching isPaused) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > static exhaustive sweep: every (kind, action) combination that SHOULD be flagged actually is (fails the whole suite if any is silently dropped) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-plan-builder.test.ts > buildGrafanaMutationPlan > attaches requiredCapabilityFlags for a high-impact kind (contact-point) 3ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-plan-builder.test.ts > buildGrafanaMutationPlan > omits requiredCapabilityFlags entirely for a non-high-impact kind (folder) 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-plan-builder.test.ts > buildGrafanaMutationPlan > an update carries expectedRemoteRevision and the version-checked-restore rollback class 0ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-plan-builder.test.ts > buildGrafanaMutationPlan > desiredStateHash is deterministic for identical input and differs for different input 1ms
+ ✓ |@crabgic/connectors-grafana| src/mutation/mutation-plan-builder.test.ts > buildGrafanaMutationPlan > round-trips through RemoteMutationPlanSchema (validated at construction, defense in depth) 1ms
+
+ Test Files  3 passed (3)
+      Tests  17 passed (17)
+   Start at  13:27:55
+   Duration  467ms (transform 657ms, setup 0ms, import 1.03s, tests 16ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0

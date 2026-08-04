@@ -1,0 +1,56 @@
+# criteria-closeout pass, phase 20 — criterion 1 (per-version cassette replay of the 7-kind flow) + the route-table/discovery fixtures it rests on
+# UTC:      2026-08-02T11:27:39Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts packages/connectors-grafana/src/discovery/route-table.test.ts packages/connectors-grafana/src/discovery/capability-discovery.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route selection per pinned build-info fixture (work item 2) > 11.6: every kind resolves to legacy 2ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route selection per pinned build-info fixture (work item 2) > 12.4: folder/dashboard resolve to apis; everything else legacy 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route selection per pinned build-info fixture (work item 2) > 13.1: folder/dashboard resolve to apis; annotation and alerting stay legacy 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route selection per pinned build-info fixture (work item 2) > current Cloud: same coverage as 13.1 — folder/dashboard on apis, the rest legacy 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route selection per pinned build-info fixture (work item 2) > every pinned fixture resolves every one of the 7 kinds to SOME family (nothing unsupported) 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > encode/decode round-trips through CapabilitySnapshot.apiFamilies's flat string shape > decodeApiFamiliesToRouteTable(encodeRouteTableToApiFamilies(table)) is the identity 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > encode/decode round-trips through CapabilitySnapshot.apiFamilies's flat string shape > ignores malformed/unknown tokens rather than throwing 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > never takes a version string as input at the type level — selectRouteFamily's signature is (kind, flags) only 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > shuffling insertion order and duplicating entries never changes the selected family 18ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > prefers apis over legacy for every kind this connector can speak it for 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > falls back to legacy — never to a family it cannot build requests for 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > reports a kind offered only on an unspeakable family as unsupported 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/route-table.test.ts > route-table selection is a deterministic function of capability alone (property) > an empty capability set resolves every kind to undefined (unsupported) 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > recognizes each of the 4 pinned fixtures 2ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > rejects an unrecognized OSS version 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > treats patch-version drift within a known major.minor as still known 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > rejects a version string with no parseable leading major.minor at all 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 11.6 discovers a fully legacy, writable snapshot 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 12.4 discovers folder/dashboard on apis, a writable snapshot 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 13.1 and current-Cloud resolve the kinds this connector can speak on apis 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > resources lists exactly the 7 kinds when every route is reachable 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > unknown build forces read-only (exit criterion) > an unrecognized build-info version is read-only even though every route probed as reachable 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects a build-info response missing `version` 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects an edition outside the 3-member enum 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects a response reporting a different product 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects extra unrecognized fields (strict shape) rather than silently ignoring them 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > a well-formed edition:"cloud" response with an untested/arbitrary version STILL passes shape validation and is treated as known (documented design decision, not a validation gap) 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > buildGrafanaCapabilitySnapshotDiscoverer — @crabgic/gateway DiscoverCapabilitySnapshot adapter > produces a shape that round-trips through CapabilitySnapshotSchema once discoveredAt/expiresAt are added 2ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion) > 11.6 65ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion) > 12.4 42ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion) > 13.1 41ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion) > current Cloud 41ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: OSS/Enterprise Docker-recipe-backed runs (cassette-replayed — no live container is started, per this repo's no-live-network-calls rule) > OSS recipe's declared build-info fixture replays the full flow green 41ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: OSS/Enterprise Docker-recipe-backed runs (cassette-replayed — no live container is started, per this repo's no-live-network-calls rule) > Enterprise recipe's declared build-info fixture replays the full flow green 40ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > drift-CI stub: a replayable cassette set exists for every pinned version (work item 6 starting point) > every pinned fixture + Enterprise has a non-empty, ordered 7-kind cassette 2ms
+
+ Test Files  3 passed (3)
+      Tests  35 passed (35)
+   Start at  13:27:40
+   Duration  1.21s (transform 857ms, setup 0ms, import 1.41s, tests 311ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0

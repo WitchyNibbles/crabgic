@@ -1,0 +1,48 @@
+# 2026-08-02T10:16:30Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: bash ./cl8.tmp.sh
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
++ echo '--- does packages/learning PRODUCTION source ever fire gates? ---'
+--- does packages/learning PRODUCTION source ever fire gates? ---
++ git grep -n 'createGateRegistry\|fireAll\|fireByTag' -- 'packages/learning/src/**/*.ts' ':!packages/learning/src/**/*.test.ts'
++ echo '(exit 1 from git grep: 1 == no match)'
+(exit 1 from git grep: 1 == no match)
++ echo '--- does any FakeEngine appear in the no-bypass test the criterion names? ---'
+--- does any FakeEngine appear in the no-bypass test the criterion names? ---
++ git grep -n 'FakeEngineAdapter\|@crabgic/testkit' -- packages/learning/src/red-team/no-bypass.redteam.test.ts
++ echo '(exit 1 from git grep: 1 == no match)'
+(exit 1 from git grep: 1 == no match)
++ echo '--- is the promoted ChangeSet persisted or dispatched anywhere in the shipped CLI path? ---'
+--- is the promoted ChangeSet persisted or dispatched anywhere in the shipped CLI path? ---
++ git grep -n promoteProposal -- 'packages/cli/src/**/*.ts' ':!packages/cli/src/**/*.test.ts'
+packages/cli/src/learning/learn-command-backend.ts:11: * `promoteProposal`/`rollbackProposal`/`ProposalRegistry.transition` — no
+packages/cli/src/learning/learn-command-backend.ts:36:  promoteProposal,
+packages/cli/src/learning/learn-command-backend.ts:191:    const result = await promoteProposal({
++ echo '--- what learn approve does with the ChangeSet it constructs ---'
+--- what learn approve does with the ChangeSet it constructs ---
++ sed -n 188,205p packages/cli/src/learning/learn-command-backend.ts
+  }
+
+  try {
+    const result = await promoteProposal({
+      registry: deps.registry,
+      proposalId: proposal.id,
+      changeSetRefs: deps.resolveChangeSetRefs(),
+    });
+    return cmd.json
+      ? { exitCode: EXIT_OK, stdout: formatJson({ promoted: true, changeSet: result.changeSet }) }
+      : {
+          exitCode: EXIT_OK,
+          stdout:
+            `proposal "${proposal.id}" PROMOTED — ChangeSet ${result.changeSet.id} constructed ` +
+            "for the normal scheduler->gates->publish pipeline\n",
+        };
+  } catch (err) {
+    return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };
++ echo '--- any test linking a learning ChangeSet to 08 publish? ---'
+--- any test linking a learning ChangeSet to 08 publish? ---
++ git grep -ln 'publishLocal\|@crabgic/git-engine' -- 'packages/learning/**'
+packages/learning/src/promotion/promote.ts
++ echo '(exit 0 from git grep: 1 == no match)'
+(exit 0 from git grep: 1 == no match)
+# ---8<--- end ---8<---
+# exit status: 0

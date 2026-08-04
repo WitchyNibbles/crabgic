@@ -1,0 +1,53 @@
+UTC:  2026-08-02T11:28:56Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts packages/connectors-jira/src/security/preflight-capability-guard.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "issue.delete" before any I/O 2ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "project.delete" before any I/O 1ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "board.delete" before any I/O 1ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "sprint.delete" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "comment.delete" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "attachment.delete" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "user.delete" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "user.impersonate" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "permission-scheme.update" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "workflow-scheme.update" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "security-scheme.update" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "automation-rule.create" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "admin.settings.update" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "raw.request" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > rejects forged/out-of-scope action "issue.create; DROP TABLE" before any I/O 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.create" 1ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.update" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.transition" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.link" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.rank" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.bulkUpdate" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "issue.bulkTransition" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "comment.create" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "comment.update" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "worklog.create" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "attachment.upload" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "board.create" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "board.update" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "sprint.create" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "sprint.start" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "sprint.complete" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > allows every in-scope action "sprint.moveIssues" 0ms
+ ✓ |@crabgic/connectors-jira| src/security/preflight-capability-guard.test.ts > assertAllowedJiraOperation — forged/out-of-scope operations > never leaks the raw candidate string in the thrown error's message when it looks like an injection attempt 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/exactly-once.integration.test.ts > exactly-once via entity-property markers under an injected mid-POST timeout > issue.create: a mid-POST timeout followed by a found marker resolves to a single recorded issue, never a duplicate POST 22ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/exactly-once.integration.test.ts > exactly-once via entity-property markers under an injected mid-POST timeout > issue.create: a mid-POST timeout with NO marker found blocks — never guesses, never duplicates 8ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/exactly-once.integration.test.ts > exactly-once via entity-property markers under an injected mid-POST timeout > comment.create: a mid-POST timeout followed by a REAL entity-property search recovers the landed comment, never a duplicate POST 9ms
+
+ Test Files  2 passed (2)
+      Tests  37 passed (37)
+   Start at  13:28:56
+   Duration  1.24s (transform 993ms, setup 0ms, import 1.46s, tests 50ms, environment 0ms)
+
+----- end of output -----
+EXIT: 0

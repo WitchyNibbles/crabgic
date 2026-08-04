@@ -1,0 +1,93 @@
+# 2026-08-02T10:16:45Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: bash ./cl6.tmp.sh
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
++ echo '--- P09 names cli.commands.schema.test as the conformance harness ---'
+--- P09 names cli.commands.schema.test as the conformance harness ---
++ grep -n 'cli.commands.schema.test\|cli.snapshots.test' roadmap/09-cli-and-doctor.md
+211:      against published schemas — suite `cli.commands.schema.test`.
+224:- [ ] Help text and every `--json` output schema are snapshot-stable — suite `cli.snapshots.test`.
++ echo '--- every mention of learn in that harness ---'
+--- every mention of learn in that harness ---
++ grep -n learn packages/cli/src/commands/cli.commands.schema.test.ts
+224:    { command: "learn-list", json: true } as const,
+225:    { command: "learn-approve", proposalId: "p-1", json: true } as const,
+226:    { command: "learn-reject", proposalId: "p-1", json: true } as const,
+227:    { command: "learn-rollback", proposalId: "p-1", json: true } as const,
++ echo '--- the describe block those lines sit inside ---'
+--- the describe block those lines sit inside ---
++ sed -n 202,236p packages/cli/src/commands/cli.commands.schema.test.ts
+describe("dispatchCommand — NOT_IMPLEMENTED stubs", () => {
+  it.each([
+    { command: "install", dryRun: false, json: true } as const,
+    { command: "run", json: true } as const,
+    { command: "approve", digest: "sha256:abc", json: true } as const,
+    {
+      command: "connection-add",
+      provider: "jira",
+      reference: { raw: "env:X" },
+      baseUrl: "https://example.atlassian.net",
+      allowedRedirectOrigins: ["https://example.atlassian.net"],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      json: true,
+    } as const,
+    { command: "connection-list", json: true } as const,
+    { command: "connection-doctor", connectionId: "c-1", json: true } as const,
+    { command: "connection-capabilities", connectionId: "c-1", json: true } as const,
+    { command: "trust-review", json: true } as const,
+    { command: "trust-approve", digest: "abc", json: true } as const,
+    { command: "trust-revoke", tokenId: "t-1", json: true } as const,
+    { command: "learn-list", json: true } as const,
+    { command: "learn-approve", proposalId: "p-1", json: true } as const,
+    { command: "learn-reject", proposalId: "p-1", json: true } as const,
+    { command: "learn-rollback", proposalId: "p-1", json: true } as const,
+    { command: "upgrade", dryRun: false, json: true } as const,
+    { command: "uninstall", keepState: false, json: true } as const,
+  ])("$command returns the typed NOT_IMPLEMENTED shape", async (command) => {
+    const result = await dispatchCommand(command, deps);
+    expect(result.exitCode).toBe(EXIT_NOT_IMPLEMENTED);
+    const parsed = JSON.parse(result.stdout!) as { status: string; command: string };
+    expect(parsed.status).toBe("NOT_IMPLEMENTED");
+    expect(parsed.command).toBe(command.command);
+  });
++ echo '--- committed goldens/snapshots mentioning learn ---'
+--- committed goldens/snapshots mentioning learn ---
++ grep -n learn packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap
+78:  "learn": {
+79:    "usage": "crabgic learn list|approve|reject|rollback",
+80:    "summary": "Manage reviewed learning proposals."
+121:  crabgic learn list|approve|reject|rollback
+122:      Manage reviewed learning proposals.
+174:exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-learn 1`] = `
+175:"crabgic learn list|approve|reject|rollback
+176:    Manage reviewed learning proposals.
++ echo '--- assertion style in the real backend test (no golden/snapshot) ---'
+--- assertion style in the real backend test (no golden/snapshot) ---
++ grep -c 'toMatchSnapshot\|toMatchFileSnapshot' packages/cli/src/learning/learn-command-backend.test.ts
+0
++ echo '--- the shipped composition root DOES wire the real backend ---'
+--- the shipped composition root DOES wire the real backend ---
++ sed -n 305,310p packages/cli/src/bootstrap.ts
+      overrides.intake ??
+      buildRealIntakeDependencies(xdgEnv, projectHash, journal, minter, signingKey),
+    learning:
+      overrides.learning ??
+      buildRealLearningDependencies(xdgEnv, projectHash, journal, minter, signingKey),
+  };
++ echo '--- ... but no test asserts that wiring ---'
+--- ... but no test asserts that wiring ---
++ grep -cn learning packages/cli/src/bootstrap.test.ts
+0
++ git grep -n 'learnWired\|learning' -- e2e/live/src/cliNotImplementedSweep.test.ts
+e2e/live/src/cliNotImplementedSweep.test.ts:98:  /** Every optional bag is wired as of the phase-23 composition-root work — learning closed last, once promotion was bound to an ongoing intake. */
+e2e/live/src/cliNotImplementedSweep.test.ts:105:    expect(wiring.learningWired).toBe(true);
+e2e/live/src/cliNotImplementedSweep.test.ts:131:      learningWired: true,
+e2e/live/src/cliNotImplementedSweep.test.ts:147:      learningWired: false,
+e2e/live/src/cliNotImplementedSweep.test.ts:163:      learningWired: false,
+e2e/live/src/cliNotImplementedSweep.test.ts:179:      learningWired: true,
+e2e/live/src/cliNotImplementedSweep.test.ts:196:      learningWired: false,
++ echo '(exit 0 from git grep: 1 == no match)'
+(exit 0 from git grep: 1 == no match)
+# ---8<--- end ---8<---
+# exit status: 0

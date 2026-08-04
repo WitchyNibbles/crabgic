@@ -1,0 +1,30 @@
+# criteria-closeout pass, phase 20 — criterion 8 (forged delete/admin calls produce zero outbound HTTP requests)
+# UTC:      2026-08-02T11:27:56Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/security/no-delete-admin.test.ts packages/connectors-grafana/src/fixtures/fault-injection.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/security/no-delete-admin.test.ts > GrafanaProviderAdapter — no forged delete/admin operation is callable > none of the forged operation names exist as a function on the adapter 3ms
+ ✓ |@crabgic/connectors-grafana| src/security/no-delete-admin.test.ts > GrafanaProviderAdapter — no forged delete/admin operation is callable > Object.keys(adapter) is exactly {list, get, planCreate, planUpdate} — an exhaustive allowlist, not a denylist 0ms
+ ✓ |@crabgic/connectors-grafana| src/security/no-delete-admin.test.ts > resource definitions — no definition exposes a delete-shaped request builder > none of the 7 resource definitions has a buildDeleteRequest (or similarly named) method 1ms
+ ✓ |@crabgic/connectors-grafana| src/security/no-delete-admin.test.ts > resource definitions — no definition exposes a delete-shaped request builder > the registry's own key set is exactly the 7 in-scope kinds — no data-source/user/org/notification-policy-tree kind exists 1ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > covers all 3 named categories 1ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > forged delete/admin call reaches zero outbound HTTP requests 0ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > a token bound to an out-of-allowlist org is refused before any resource access 0ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > a capability-snapshot-derived error never carries the connection's raw discovered resource list beyond documented fields 3ms
+ ✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > neverCalledSend — the test-support helper itself, exercised directly > records any call made to it and returns a 200 (used only to detect a regression, never expected to fire) 1ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  13:27:57
+   Duration  490ms (transform 470ms, setup 0ms, import 746ms, tests 13ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0

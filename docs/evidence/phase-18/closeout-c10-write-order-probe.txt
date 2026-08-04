@@ -1,0 +1,235 @@
+UTC:  2026-08-02T11:29:24Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/testkit/zz-closeout-probe.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE — criteria-closeout probe for phase 18 exit criterion 10
+  ("Rate-limit fixture: `Retry-After` honored; per-issue write order preserved.").
+
+  The criterion's only recorded bearer for the write-order half
+  (packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:60 and :108)
+  calls `httpClient.request({ resource: "issue:PROJ-1", ... })` DIRECTLY with a
+  hand-written resource key — no JiraResourceClient, no plan, no mutation pipeline.
+  This probe asks the question that test does not: do two writes to the SAME issue,
+  built by the REAL resource client and applied through the REAL executeMutationPlan,
+  actually serialize?
+
+  The probe is a DELIBERATELY RED measurement (`expect(maxInFlight).toBe(1)`).
+  Its failure IS the finding. It is NOT committed to packages/ — a closeout pass
+  does not add production tests — so its full source is reproduced verbatim below
+  so the measurement can be re-run by anyone.
+
+----- probe source, verbatim (packages/connectors-jira/src/testkit/zz-closeout-probe.test.ts, created and deleted in this pass) -----
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import {
+  GatewayHttpClient,
+  IdempotencyKeyLock,
+  executeMutationPlan,
+  type HttpTransportRequest,
+  type HttpTransportResponse,
+} from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
+import { JiraTokenManager } from "../auth/token-manager.js";
+import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
+import { buildFieldMetadataIndex } from "../capability/field-metadata.js";
+import { createJiraMutationApplyClient } from "../resource-client/jira-mutation-apply-client.js";
+import { createJiraResourceClient } from "../resource-client/jira-resource-client.js";
+import { JiraPlanPayloadRegistry } from "../resource-client/plan-payload-registry.js";
+import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
+
+const BASE_URL = "https://closeout-probe.atlassian.invalid";
+const ENVELOPE_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+let journalDir: string;
+let journal: JournalStore;
+beforeEach(async () => {
+  journalDir = await mkdtemp(join(tmpdir(), "p18-probe-"));
+  journal = createJournalStore({ journalDir });
+});
+afterEach(async () => {
+  await rm(journalDir, { recursive: true, force: true });
+});
+
+describe("CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue", () => {
+  it("measures whether issue.update and comment.create on PROJ-1 overlap on the wire", async () => {
+    const connection = buildExternalConnection({ provider: "jira-cloud", baseUrl: BASE_URL });
+    const events: string[] = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const sendRequest = async (req: HttpTransportRequest): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      events.push(`start:${req.method}:${req.url.pathname}`);
+      await new Promise((r) => setTimeout(r, 25));
+      inFlight -= 1;
+      events.push(`end:${req.method}:${req.url.pathname}`);
+      return { status: 200, headers: {}, bodyText: JSON.stringify({ id: "50001" }) };
+    };
+    const httpClient = new GatewayHttpClient({
+      allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(BASE_URL).origin] },
+      resolveHostAddresses: async () => ["203.0.113.200"],
+      sendRequest,
+      sleep: async () => undefined,
+    });
+    const tokenManager = new JiraTokenManager({
+      fetchToken: async () => ({ accessToken: "tok", expiresInSeconds: 3600, scopes: [] }),
+    });
+    const ctx: JiraHttpContext = { connection, httpClient, tokenManager };
+    const payloadRegistry = new JiraPlanPayloadRegistry();
+    const resourceClient = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry,
+    });
+    const applyClient = createJiraMutationApplyClient({
+      ctx,
+      payloadRegistry,
+      attachmentStaging: new AttachmentStagingRegistry(),
+      issueMarkerReconciler: { findByMarker: async () => undefined },
+      commentMarkerReconciler: () => ({ findByMarker: async () => undefined }),
+    });
+
+    const updatePlan = resourceClient.issues.planUpdate(
+      "PROJ-1",
+      "rev-1",
+      { summary: "s" },
+      ENVELOPE_ID,
+    );
+    const commentPlan = resourceClient.comments.planCreate(
+      "PROJ-1",
+      { type: "doc", version: 1, content: [] },
+      "probe-marker",
+      ENVELOPE_ID,
+    );
+    // eslint-disable-next-line no-console
+    console.log("PROBE canonicalTarget issue.update  =", updatePlan.canonicalTarget);
+    // eslint-disable-next-line no-console
+    console.log("PROBE canonicalTarget comment.create =", commentPlan.canonicalTarget);
+
+    const apply = (plan: Parameters<typeof executeMutationPlan>[0]) =>
+      executeMutationPlan(
+        plan,
+        {
+          provider: "jira-cloud",
+          buildRequest: (p) => applyClient.buildRequest(p),
+          parseResponse: (p, r) => applyClient.parseResponse(p, r),
+          verify: async () => true,
+        },
+        { journal, httpClient, lock: new IdempotencyKeyLock() },
+      );
+
+    await Promise.all([apply(updatePlan), apply(commentPlan)]);
+    // eslint-disable-next-line no-console
+    console.log("PROBE maxInFlight =", maxInFlight);
+    // eslint-disable-next-line no-console
+    console.log("PROBE events =", JSON.stringify(events));
+    expect(maxInFlight).toBe(1);
+  });
+
+  it("control: two issue.update-shaped writes to the SAME issue (identical canonicalTarget)", async () => {
+    const connection = buildExternalConnection({ provider: "jira-cloud", baseUrl: BASE_URL });
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const sendRequest = async (): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 25));
+      inFlight -= 1;
+      return { status: 200, headers: {}, bodyText: JSON.stringify({ id: "1" }) };
+    };
+    const httpClient = new GatewayHttpClient({
+      allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(BASE_URL).origin] },
+      resolveHostAddresses: async () => ["203.0.113.201"],
+      sendRequest,
+      sleep: async () => undefined,
+    });
+    const tokenManager = new JiraTokenManager({
+      fetchToken: async () => ({ accessToken: "tok", expiresInSeconds: 3600, scopes: [] }),
+    });
+    const ctx: JiraHttpContext = { connection, httpClient, tokenManager };
+    const payloadRegistry = new JiraPlanPayloadRegistry();
+    const resourceClient = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry,
+    });
+    const applyClient = createJiraMutationApplyClient({
+      ctx,
+      payloadRegistry,
+      attachmentStaging: new AttachmentStagingRegistry(),
+      issueMarkerReconciler: { findByMarker: async () => undefined },
+      commentMarkerReconciler: () => ({ findByMarker: async () => undefined }),
+    });
+    const a = resourceClient.issues.planUpdate("PROJ-1", "rev-1", { summary: "a" }, ENVELOPE_ID);
+    const b = resourceClient.issues.planUpdate("PROJ-1", "rev-2", { summary: "b" }, ENVELOPE_ID);
+    const apply = (plan: Parameters<typeof executeMutationPlan>[0]) =>
+      executeMutationPlan(
+        plan,
+        {
+          provider: "jira-cloud",
+          buildRequest: (p) => applyClient.buildRequest(p),
+          parseResponse: (p, r) => applyClient.parseResponse(p, r),
+          verify: async () => true,
+        },
+        { journal, httpClient, lock: new IdempotencyKeyLock() },
+      );
+    await Promise.all([apply(a), apply(b)]);
+    // eslint-disable-next-line no-console
+    console.log("PROBE control maxInFlight =", maxInFlight);
+    expect(maxInFlight).toBe(1);
+  });
+});
+----- end of probe source -----
+
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+stdout | src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire
+PROBE canonicalTarget issue.update  = issue:PROJ-1
+PROBE canonicalTarget comment.create = issue:PROJ-1:comment
+
+stdout | src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire
+PROBE maxInFlight = 2
+PROBE events = ["start:PUT:/rest/api/3/issue/PROJ-1","start:POST:/rest/api/3/issue/PROJ-1/comment","end:PUT:/rest/api/3/issue/PROJ-1","end:POST:/rest/api/3/issue/PROJ-1/comment"]
+
+stdout | src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > control: two issue.update-shaped writes to the SAME issue (identical canonicalTarget)
+PROBE control maxInFlight = 1
+
+ × |@crabgic/connectors-jira| src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire 50ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ |@crabgic/connectors-jira| src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > control: two issue.update-shaped writes to the SAME issue (identical canonicalTarget) 60ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/connectors-jira| src/testkit/zz-closeout-probe.test.ts > CLOSEOUT PROBE c10: two REAL connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/testkit/zz-closeout-probe.test.ts:108:25
+    106|     // eslint-disable-next-line no-console
+    107|     console.log("PROBE events =", JSON.stringify(events));
+    108|     expect(maxInFlight).toBe(1);
+       |                         ^
+    109|   });
+    110|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  13:29:25
+   Duration  1.30s (transform 762ms, setup 0ms, import 1.08s, tests 111ms, environment 0ms)
+
+----- end of output -----
+EXIT: 1
