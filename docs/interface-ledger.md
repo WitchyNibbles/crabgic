@@ -141,7 +141,7 @@ consistent leaf-counting gives 11).
   `packages/gateway`)… no new dependency edge, since this phase already depends on 09."*
 - `22-learning-system.md` §In scope "Separation of duties," line 17, and §Interfaces produced, line 43 —
   *"No MCP `learning.*` tool family exists… a model-invokable promotion tool would violate this section's
-  tested invariant"*; §Exit criteria, line 75 — *"a grep-based CI check over `packages/gateway`'s registered
+  tested invariant"*; §Exit criteria, line 96 — *"a grep-based CI check over `packages/gateway`'s registered
   tool names confirms no `learning.*` MCP tool exists to route around it (Gap 1)."*
 - `02-contracts-and-schemas.md` §Out of scope, line 36 — MCP tool implementations "owned by 16/11/12; this
   phase only names the server constant."
@@ -150,7 +150,7 @@ consistent leaf-counting gives 11).
   run.status/run.cancel`).
 - `23-release-hardening.md` §Interfaces consumed, row "16," line 76 — *"tool surface (`tracker.*`,
   `observability.*`, `evidence.get`, `evidence.attach`, `result.submit`, `run.status`/`run.cancel`
-  forwarding)"*; §Exit criteria, line 129 — *"Full 8-family gateway MCP tool surface… zero
+  forwarding)"*; §Exit criteria, line 160 — *"Full 8-family gateway MCP tool surface… zero
   `NOT_IMPLEMENTED` remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation)."*
 - **`16-gateway-core.md` itself now carries the ruling throughout** — §Goal: *"This phase natively implements
   `tracker.*`, `observability.*`, `evidence.get`, `evidence.attach`, and `result.submit`, and forwards
@@ -194,14 +194,14 @@ is explicitly deferred to Phase 23's release gate, not required at Phase 09/16's
 
 **Verified in:**
 - `09-cli-and-doctor.md` §In scope — *"gateway mcp: boots the `crabgic_gateway` MCP server (stdio) over
-  `packages/gateway`'s (16) extensible tool registry…"*; §Work items 1–2; §Exit criteria, line 203 —
+  `packages/gateway`'s (16) extensible tool registry…"*; §Work items 1–2; §Exit criteria, line 268 —
   *"`gateway mcp` starts and lists exactly the resolved tool set over stdio to a stub MCP client… full
   8-family completeness remains a phase-23 release gate."*
 - `10-plugin-and-installer.md` §Work items 2 — golden-file test of the `{"crabgic_gateway": {"command":
   "crabgic", "args": ["gateway", "mcp"]}}` shape; §Exit criteria — byte-for-byte assertion
   against the same literal.
 - `23-release-hardening.md` §Interfaces consumed, row "09," line 69 — *"Full CLI surface incl. `gateway mcp`
-  (Gap 2)"*; §Exit criteria, line 129 — "Gap 1/Gap 2's explicit phase-23 obligation."
+  (Gap 2)"*; §Exit criteria, line 163 — "Gap 1/Gap 2's explicit phase-23 obligation."
 - `16-gateway-core.md` now explicitly describes itself as this command's backend — §Goal: *"09's `gateway
   mcp` command is a thin argv shim that boots this phase's server over stdio"*; §Out of scope repeats it:
   *"this phase supplies the server 09's shim boots, never the shim itself."*
@@ -230,7 +230,7 @@ implementation; Phase 03's own text no longer calls it "new" — it now reads "s
 
 **Verified in:**
 - `01-repo-bootstrap.md` §In scope, line 16 — 18-package workspace enumeration including
-  `packages/engine-core`, tagged "(Gap 3)"; §Exit criteria, line 76 — *"All 18 packages (Gap 3) — the 17
+  `packages/engine-core`, tagged "(Gap 3)"; §Exit criteria, line 109 — *"All 18 packages (Gap 3) — the 17
   originally enumerated plus `packages/engine-core` — compile empty"*; §Out of scope, line 29 —
   *"`renderer-core` — a module living inside `packages/contracts`, not a 19th workspace package (Gap 3)."*
 - `02-contracts-and-schemas.md` §In scope — *"`renderer-core` module, inside `packages/contracts` (not a
@@ -432,7 +432,7 @@ precondition/ETag token, never rendered communication text.
 - `20-grafana-adapters.md` §In scope "Mutation safety," line 20 — *"the deleted `dashboard version message
   ≤160` CommunicationPolicy constant (Gap 6) never applied to this phase; this line confirms that deletion's
   rationale."*
-- `23-release-hardening.md` §Interfaces consumed rows "09" and "17"; §Exit criteria, line 132 — *"never an
+- `23-release-hardening.md` §Interfaces consumed rows "09" and "17"; §Exit criteria, line 172 — *"never an
   opened PR (Gap 6, by design)."*
 
 **Where the 4 resolvers disagreed:** One resolver proposed explicitly wiring `review_comment` evidence into
@@ -713,7 +713,7 @@ sibling (05:24) — expanded 2026-07-15 (same under-coverage class as Gaps 4/5/1
   exactly once in this package."
 - `07-git-control-repo-worktrees.md` §In scope, "Control clone," line 17 — "into
   `$XDG_CACHE_HOME/crabgic/<project-hash>/git-control/` (cache-root convention pinned in
-  04)"; §Interfaces produced, line 39, and §Exit criteria, line 80 — the same path repeated as a
+  04)"; §Interfaces produced, line 39, and §Exit criteria, line 113 — the same path repeated as a
   path-convention test.
 - `12-stack-detection-quarantine.md` §In scope, line 21 — "Content-addressed capability store under
   `$XDG_CACHE_HOME/crabgic/<project-hash>/capability-store/` (same convention, pinned in
@@ -747,7 +747,7 @@ link explicitly.
 **Verified in:**
 - `01-repo-bootstrap.md` §In scope, line 22 — *"a manually-triggered `engine-live` job placeholder that phase
   06 wires to run the `@live`-tagged conformance suite (needs a host with `claude`) (Gap 15)"*; §Interfaces
-  produced, line 44, and §Exit criteria, line 83 repeat the identical link.
+  produced, line 44, and §Exit criteria, line 116 repeat the identical link.
 - `06-claude-engine-adapter.md` §In scope, "`@live` conformance," line 23 — *"wire the `engine-live` CI job
   (inert placeholder from 01, Gap 15) to run the `@live`-tagged suite"*; §Work items 6.
 - `23-release-hardening.md` §Out of scope, line 40 — *"The `engine-live` CI job's existence and its
