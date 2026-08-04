@@ -68,17 +68,22 @@ and need owner approval to run; **19** (7) is not yet started;
 > The wave's closeouts filed **twenty-nine defect records**, indexed at
 > `docs/evidence/criteria-closeout/defects/INDEX.md`. That index is bookkeeping inside the
 > claim-space and is never evidence — cite a record's underlying evidence, never the index.
-> By that index's own vocabulary exactly **one** record is `fixed`: the Jira Cloud connector's
-> per-issue write-order loss, remedied by PR #84 for single-issue writes, with `bulk:` targets
-> deliberately left unserialized, so even that criterion stays unticked. Seven more are
-> **owner-gated** — their missing evidence needs an owner-authorised run against a paid or
-> licensed system — and the remaining twenty-one are open.
+> **Two** of those records are `fixed`, and neither fix clears its criterion. The Jira Cloud
+> connector's per-issue write-order loss is remedied by PR #84 for single-issue writes, with
+> `bulk:` targets deliberately left unserialized, so that box stays unticked. Phase 24's daemon
+> composing no requirements registry is remedied by PR #85 — the registry is now built at the
+> composition root, the dependency field is no longer optional so omitting it will not compile,
+> and resolution is strict, since a tolerant registry over an absent file would have reproduced
+> the defect silently. Its sibling half is **not** discharged: no production code creates a gate
+> registry or reaches `verifying`/`final_verifying`, so phase 24's final gate stays unreached.
+> Seven further records are **owner-gated** — their missing evidence needs an owner-authorised
+> run against a paid or licensed system — and the remaining twenty are open.
 >
-> One discrepancy is recorded rather than smoothed over. Phase 24's daemon-requirements-registry
-> defect **was** fixed, by PR #85, and the remediation is annotated in the production source at
-> the composition root; the defect record itself was never given the dated addendum the
-> convention asks for, so the index shows it `open`. `open` there means "this record does not
-> evidence a remedy", not "no remedy exists".
+> One bookkeeping lesson is recorded rather than smoothed over. Phase 24's fix shipped on
+> 2026-08-04 and was annotated in the production source, but its defect record was never given
+> the dated addendum the convention asks for, so for a time the code was right and the record
+> said nothing. This pass appended that addendum. The index states the distinction it exposed:
+> `open` there means "this record does not evidence a remedy", never "no remedy exists".
 
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
