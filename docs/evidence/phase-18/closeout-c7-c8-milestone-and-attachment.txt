@@ -1,0 +1,43 @@
+UTC:  2026-08-02T11:29:05Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/intake/milestone-sync.test.ts packages/connectors-jira/src/attachments/attachment-pipeline.test.ts packages/connectors-jira/src/evidence/done-transition-verification.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > accepts a small, correctly-typed, clean file 2ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects an oversized attachment before any byte is otherwise inspected 9ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a spoofed MIME type — claimed image/png but the magic bytes don't match 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a filename with path-traversal characters 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a Windows executable disguised with a benign extension 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects the EICAR anti-malware test string 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a file whose text region embeds an AWS-shaped secret key 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a file embedding a PEM private key header 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > never surfaces the raw content in a rejected result's fields 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a secret placed well past the old 64 KiB scan window 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects an EICAR signature placed well past the old 4 KiB scan window 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > rejects a secret-shaped filename, before any redactedDiff embedding can occur 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > never crashes on the dangerous claimed MIME type "__proto__" — treated as simply unrecognized 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > never crashes on the dangerous claimed MIME type "constructor" — treated as simply unrecognized 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > never crashes on the dangerous claimed MIME type "toString" — treated as simply unrecognized 0ms
+ ✓ |@crabgic/connectors-jira| src/attachments/attachment-pipeline.test.ts > validateAttachmentBeforeStaging > never crashes on the dangerous claimed MIME type "hasOwnProperty" — treated as simply unrecognized 0ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > false when no pointer exists 1ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > false when the pointer targets a DIFFERENT RemoteResource 0ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > false when the confirmed revision does not exactly match 0ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > false when the pointer has no confirmed revision at all 0ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > true on an exact RemoteResource id + revision match 0ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > feeds directly into assertDoneTransitionHasEvidence: a done-targeting transition with a verified pointer never throws 1ms
+ ✓ |@crabgic/connectors-jira| src/evidence/done-transition-verification.test.ts > hasExactRevisionVerification > feeds directly into assertDoneTransitionHasEvidence: a done-targeting transition with NO verified pointer throws (policy_blocked) 1ms
+ ✓ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — no existing dedup comment (create path) > creates exactly one comment plan carrying a per-(issue,kind) marker 8ms
+ ✓ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — an existing dedup comment (edit-in-place path) > updates the existing comment rather than creating a second one 2ms
+ ✓ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — distinct milestone kinds never share a marker > start/material_blocker/verified_completion each get their own marker 1ms
+ ✓ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — policy enforcement > blocks (never creates a plan) when the rendered comment cannot pass lint even after one regeneration 1ms
+
+ Test Files  3 passed (3)
+      Tests  27 passed (27)
+   Start at  13:29:05
+   Duration  1.10s (transform 1.47s, setup 0ms, import 2.39s, tests 34ms, environment 0ms)
+
+----- end of output -----
+EXIT: 0

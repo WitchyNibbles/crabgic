@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "phase": "21",
+  "roadmapFile": "roadmap/21-connector-evidence-integration.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 4 (connectors)",
+    "headSha": "30f931eab97b8360102498d4b766513be67241d0"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "E2E on fakes: a run completes only when every requirement's `EvidenceRecord` carries a confirmed remote revision; a seeded mid-run tracked-field edit halts the run via 11's `material amendment` stop condition before `final_verifying`. Evidence: integration suite in `packages/gates` + the halted run's journal excerpt.",
+      "textSha256": "9c8583b24449726593e7d8f9ed49ad09198c34eeaab80754818b20b3f30a5454",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 536 — '  ✓  @crabgic/gates  src/remote-verification-e2e.test.ts (4 tests) 67ms'; line 581 — '  ✓  @crabgic/gates  src/material-amendment-guard.test.ts (2 tests) 9ms'; run summary ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. Cited for the FIRST clause only — see notes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-e2e.test.ts:94-146",
+          "quotedAssertion": "packages/gates/src/remote-verification-e2e.test.ts:101 — 'expect(allGatesPassed(firstResults)).toBe(false);' then :140 'expect(allGatesPassed(secondResults)).toBe(true);' and :144-146 'expect(req2FinalEvidence?.evidence.artifactDigests).toContain(' / '`confirmed-revision:${remote2}:3`,' / ');'. CLAUSE ONE IS FULLY EVIDENCED: fired through a real `createGateRegistry()` against a real `@crabgic/journal` store, the run flips from not-complete to complete only once req2's EvidenceRecord literally carries its confirmed revision."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-e2e.test.ts:148-166",
+          "quotedAssertion": "packages/gates/src/remote-verification-e2e.test.ts:158-165 — 'journalExcerpt.some(' / '(e as { payload: { requirementId?: string; artifactDigests: readonly string[] } }).payload' / '.requirementId === req2 &&' / ').payload.artifactDigests.includes(`confirmed-revision:${remote2}:3`),'. This is the only journal-excerpt assertion in the suite, and it belongs to the COMPLETING run, not to a halted one — see notes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-e2e.test.ts:239-252",
+          "quotedAssertion": "packages/gates/src/remote-verification-e2e.test.ts:246-247 — 'throwIfMaterialAmendment(signal);' / 'finalVerifyingGateFired = true;' and :251-252 'await expect(runToFinalVerifying()).rejects.toThrow(MaterialAmendmentDetectedError);' / 'expect(finalVerifyingGateFired).toBe(false);'. The halt is produced by the TEST'S OWN two-line helper calling a phase-21 function; no phase-11 machinery participates."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/material-amendment-guard.ts:26-30",
+          "quotedAssertion": "packages/gates/src/material-amendment-guard.ts:26-27 — 'export function throwIfMaterialAmendment(signal: MaterialAmendmentSignal): void {' / '  if (signal.material) {'. A repo-wide grep for this symbol at 30f931e returns only this module, this package's barrel (`packages/gates/src/index.ts:151`), its own unit test and the E2E test above — zero production callers, and nothing in `packages/supervisor`."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/stop-conditions.ts:73-79",
+          "quotedAssertion": "packages/supervisor/src/intake/stop-conditions.ts:73 — 'export async function haltOnStopCondition(options: HaltOnStopConditionOptions): Promise<RunRecord> {'. This IS the entry point of 11's material-amendment stop condition; it transitions the run to blocked through transitionRun and then journals an adjudication_decision. An UNFILTERED repo-wide grep for the symbol at 30f931e (no test exclusion — see notes) returns exactly four call sites, all in tests: stop-conditions.test.ts lines 40, 63 and 73, and packages/cli/src/intake/intake.e2e.test.ts line 232; plus two prose comments, create-run.ts line 7 and create-run.test.ts line 6. So: no PRODUCTION caller, and nothing in or reachable from packages/gates, which does not list the supervisor package as a dependency."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/intake.e2e.test.ts:221-244",
+          "quotedAssertion": "packages/cli/src/intake/intake.e2e.test.ts:221-222 — 'it.each(STOP_CONDITION_KINDS.map((kind, index) => [kind, index] as const))(' / '\"halts an in-flight run for stop condition %s via the correct transition, and no other\",' with :232 'const record = await haltOnStopCondition({' and :242-243 'expect(record.runState).toBe(\"blocked\");' / 'expect(runs.get(runId)?.runState).toBe(\"blocked\");'. Cited BECAUSE it cuts against the simplest reading of this record: 11's stop condition is not dead code — this drives it for all seven kinds, `material_amendment` among them, against a run walked to `running` first. What is missing is only the wiring from 21's signal to it, which is exactly what the defect asks for and is why that remedy is sized M rather than L."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/stop-conditions.ts:36-45",
+          "quotedAssertion": "packages/supervisor/src/intake/stop-conditions.ts:36-38 — 'export const STOP_CONDITION_KINDS = [' / '  \"material_amendment\",' / '  \"expanded_authority\",'. The union the criterion's phrase names, in the package that owns it. Given its own citation so the quote is resolvable against the file it comes from."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c1-remote-verification-e2e.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  4 passed (4)' — scoped local re-run at the closeout base commit, verbose reporter, command line and exit status in the file header."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/21-material-amendment-halt-not-wired-to-phase-11.md",
+      "notes": "Split verdict, and the split is why this box stays unticked. CLAUSE ONE (\"a run completes only when every requirement's EvidenceRecord carries a confirmed remote revision\") is evidenced end-to-end and non-vacuously — the negative half (`allGatesPassed` false while req2 is unbound) and the positive half are both asserted, and the third requirement in the fixture tracks nothing remote and passes trivially, so a gate that blocked everything would not satisfy it. CLAUSE TWO is not. The criterion says the edit \"halts the run via 11's `material amendment` stop condition\"; what the suite proves is that a phase-21 signal, handed to a phase-21 `throwIfMaterialAmendment` that the test's own helper invokes two lines before the gate call, throws. 11's actual stop condition (`haltOnStopCondition`, kind `material_amendment`, which transitions the run to `blocked` and journals an `adjudication_decision`) is never reached and is not imported on this path, and has **no production caller** anywhere — its only four call sites are its own unit test and `packages/cli/src/intake/intake.e2e.test.ts:232`, and none is in or reachable from `packages/gates`. CORRECTION, 2026-08-02, review of PR #76: an earlier draft of this record said \"no caller anywhere in the repository\", which is false — the grep behind it excluded `*.test.*` and so did not reproduce. The narrower statement is the true one and is what the UNMET verdict rests on; the reviewer confirmed the verdict is unaffected, since `gates` has no `supervisor` dependency and no production code consumes `MaterialAmendmentSignal`. The distinction matters in the useful direction too: 11's halt is *tested* end-to-end for all seven kinds including `material_amendment`, so what is missing is the wiring, not the mechanism. The roadmap's own §In scope predicts the path \"reached transitively via 14→13→11\"; that path does not exist at 30f931e. Substituting a phase-21-local throw for phase 11's stop condition is a WEAKER guarantee, not a more precise description of the same one, so the wording protocol does not apply (brief RULING: \"A weaker guarantee is never a wording fix — it is UNMET\"). SECOND, INDEPENDENT GAP on this criterion's own named evidence: it asks for \"the halted run's journal excerpt\". The halt path journals nothing — it throws before `registry.fireByTag` is called, and the only journal-query assertions in the suite (:148-166) belong to the run that COMPLETES. `docs/evidence/phase-21/README.md`'s \"Journal excerpt (MAJOR-1's named evidence artifact)\" section presents entries from that completing scenario (req2 blocked-then-passed) under a heading that reads as the halted run's excerpt; quoting the transcript rather than the README's summary of it is what surfaced this. Both gaps and the smallest honest remedy are in the defect record."
+    },
+    {
+      "index": 2,
+      "text": "`unsupported`-mapped and `ambiguous_write` remote operations block the `final_verifying`→`published_local` transition (02) with an actionable `EvidenceRecord` entry, never a silent pass. Evidence: fault-matrix test.",
+      "textSha256": "3312a8955c6c057abeb0bcd36255ac1b6205de89aae707a4ac39d52a5f08ff57",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 555 — '  ✓  @crabgic/gates  src/remote-verification-gate.test.ts (15 tests) 42ms'; line 536 — '  ✓  @crabgic/gates  src/remote-verification-e2e.test.ts (4 tests) 67ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-gate.test.ts:88-110",
+          "quotedAssertion": "packages/gates/src/remote-verification-gate.test.ts:89 — 'it.each([\"unsupported\", \"ambiguous_write\"] as const)(' with :107-108 'expect(result.passed).toBe(false);' / 'expect(result.detail).toContain(outcome);'. The fault matrix the criterion names. The fixture records a bound, confirmed pointer FIRST (:94-101), so the block is attributable to the canonical outcome and not to a missing pointer — that is the test's own \"regardless of pointer state\" clause."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-gate.test.ts:112-128",
+          "quotedAssertion": "packages/gates/src/remote-verification-gate.test.ts:122-126 — '\"does NOT block on the other 8 canonical outcomes by itself (%s)\",' / 'const gate = createRemoteVerificationGate({ connectorOutcome: outcome });' / 'const result = await gate(baseContext({ requirementId: randomUUID() }));' / 'expect(result.passed).toBe(true);'. THE ANTI-VACUITY CONTROL: it.each over the remaining 8 members of 02's 10-member connector-error union. Without it a gate that blocked on every outcome would satisfy the positive half."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-gate.ts:48-51",
+          "quotedAssertion": "packages/gates/src/remote-verification-gate.ts:48-51 — 'const BLOCKING_CONNECTOR_OUTCOMES: ReadonlySet<ConnectorErrorKind> = new Set([' / '  \"unsupported\",' / '  \"ambiguous_write\",' / ']);' — typed as `ConnectorErrorKind`, so the set is drawn from 02's canonical union and cannot smuggle an informal 11th code."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-e2e.test.ts:187-199",
+          "quotedAssertion": "packages/gates/src/remote-verification-e2e.test.ts:194-199 — 'expect(unsupportedResult?.verdict.passed).toBe(false);' / 'expect(unsupportedResult?.verdict.detail).toContain(\"unsupported\");' / 'expect(ambiguousResult?.verdict.passed).toBe(false);' / 'expect(ambiguousResult?.verdict.detail).toContain(\"ambiguous_write\");' / 'expect(cleanResult?.verdict.passed).toBe(true);' / 'expect(allGatesPassed(results.flat())).toBe(false);'. The same matrix fired THROUGH the real registry, per requirement, which is the path that actually journals an EvidenceRecord."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/evidence.ts:42-56",
+          "quotedAssertion": "packages/gates/src/evidence.ts:48 — 'gateVerdict: verdict.passed ? \"passed\" : \"failed\",' and :51-55 'await journal.appendEntry({' / 'type: \"evidence_pointer\",' / 'payload: record,'. This is what makes the block never a silent pass: the failing firing is durably journaled, with the handler's own verdict recorded rather than reconstructed from the exit status. See notes for exactly how far actionable reaches."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-gate.ts:53-62",
+          "quotedAssertion": "packages/gates/src/remote-verification-gate.ts:56-57 — 'command: \"remote_verification\",' / 'exitStatus: passed ? 0 : 1,'. The other half of the journaled record's failure signal, cited against its own file rather than quoted inside the evidence.ts citation."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c2-fault-matrix.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  21 passed (21)' — scoped local re-run at the closeout base commit; the verbose reporter names all ten canonical-outcome cases individually."
+        }
+      ],
+      "notes": "Two precisions that narrow what this tick means; neither is a hedge, both are checkable. (a) THE TRANSITION BOUNDARY. `final_verifying` is a caller-supplied `GateContext` field on this path, not an enforced one: `packages/gates/src/registry.ts`'s `fireByTag`/`fireAll` never inspect `context.stage` and `EvidenceRecordSchema` has no stage member, so the cited tests would read identically with `stage: \"verifying\"`. Nothing in the shipped product fires `remote_verification` at the `final_verifying`→`published_local` edge — `createRemoteVerificationGate` has zero non-test callers, and `fireFinalCandidateVerification` (`final-candidate.ts:45-47`, the one function that does enforce the stage) is likewise test-only. What this box evidences is the gate's verdict: a `unsupported`/`ambiguous_write` outcome yields `passed: false`, which makes `allGatesPassed` false, which is the condition final-candidate re-verification consults. The same narrowing is already on record for the sibling perf gate — `docs/evidence/criteria-closeout/phase-15.json` criterion 5's notes, and `docs/interface-ledger.md` Gap 21 ('createPerformanceGateHandler still has no production caller'). This record does not claim shipped enforcement. (b) WHERE \"ACTIONABLE\" LIVES. The canonical kind is in `GateVerdict.detail` ('blocked: remote operation resolved to canonical \"unsupported\" — never a silent pass'), and `EvidenceRecordSchema` is `.strict()` with no `detail` field, so the journaled record carries `command: \"remote_verification\"`, `exitStatus: 1`, `gateVerdict: \"failed\"` and `gateTag` — enough to identify the failing gate and rule out a silent pass, not enough to name which of the two canonical kinds fired. The criterion's own channel is the fault-matrix test, which asserts the detail directly."
+    },
+    {
+      "index": 3,
+      "text": "Drift-CI job run against an intentionally bumped fixture produces exactly one `DriftProposal` artifact and a red CI check, with zero pinned-fixture/config changes applied by the job itself. Evidence: CI job log + before/after repo-state diff.",
+      "textSha256": "bfeb2ff2f02c7e897597875f7cff6861eac0e2ab65343915eed430fda12ba3cc",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "drift-ci / drift-ci, run 30743998864 — RED (conclusion: failure), workflow_dispatch at main `30f931ea`, inputs jira_observed_version=1001.0.0 (pinned is 1000.0.0) + grafana_observed_version=13.1.0 (its pinned value, i.e. no drift). Produced by this closeout pass; see notes.",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743998864",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log — 'drift-ci: 1 DriftProposal(s) written to /home/runner/.local/state/crabgic/drift-ci/drift-proposals.json — human review required.' then '##[error]Process completed with exit code 1.' and 'Artifact drift-proposals has been successfully uploaded! Final size is 446 bytes. Artifact ID is 8832254797'. The uploaded artifact, downloaded and read in full, is a one-element JSON array whose single object reads '\"connector\": \"jira\",' / '\"pinnedVersion\": \"1000.0.0\",' / '\"observedVersion\": \"1001.0.0\",' / '\"recommendedFixtureUpdate\": \"update pinned jira fixture from 1000.0.0 to 1001.0.0 (version bump only, no shape change)\",' / '\"detectedAt\": \"2026-08-02T10:35:04.544Z\"' — exactly one DriftProposal, and a red check. (Quoted as exact per-line substrings rather than as an elided whole, so every fragment byte-compares against the downloaded artifact.)"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "drift-ci / drift-ci, run 30743854535 — GREEN, the debounce-priming first sample (the job's threshold is 2 consecutive drifted runs)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743854535",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log — 'Cache not found for input keys: drift-ci-debounce-state-30743854535, drift-ci-debounce-state-' then 'Cache saved with key: drift-ci-debounce-state-30743854535'. The step emitted no proposal-count line at all and no error — an absence, so nothing is quoted for it. Cited because it is what makes the red run's redness attributable to the debounce rule the roadmap's §Risks section demands, rather than to a single sample."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c3-repo-state-diff.txt",
+          "quotedAssertion": "'$ git status --porcelain > AFTER ; diff BEFORE AFTER    # empty diff == zero repo-state change' followed by 'diff exit=0  (0 == identical)', with the two `sha256sum` blocks for `.github/workflows/drift-ci.yml` and `packages/gates/src/drift/pinned-fixtures.ts` byte-identical before and after, and 'find $XDG_STATE_HOME -type f' listing only '<scratch>/xdgstate/crabgic/drift-ci/drift-proposals.json' and '<scratch>/xdgstate/crabgic/drift-ci/debounce-state.json'. This is the criterion's second named artifact, produced by running the EXACT command the workflow runs (`node packages/gates/dist/drift/cli.js`) with the same overrides, twice, and it independently reproduces the CI run's single proposal — 'drift-ci: 1 DriftProposal(s) written to' followed by 'exit=1'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/drift/run-drift-ci.test.ts:71-81",
+          "quotedAssertion": "packages/gates/src/drift/run-drift-ci.test.ts:78-80 — 'expect(secondRun.proposals).toHaveLength(1);' / 'expect(secondRun.proposals[0]?.connector).toBe(\"jira\");' / 'expect(secondRun.redCheck).toBe(true);' against the BUMPED fixture at :14-20, whose observedShape withdraws the `description` field — the roadmap test plan's own \"renamed field or withdrawn capability\" bump, which the version-only CI override does not exercise."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/drift/run-drift-ci.test.ts:54-61",
+          "quotedAssertion": "packages/gates/src/drift/run-drift-ci.test.ts:58-59 — 'expect(result.proposals).toEqual([]);' / 'expect(result.redCheck).toBe(false);' on the un-bumped PINNED snapshot. The anti-vacuity control: a runner that always emitted would satisfy the bumped case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/drift/no-pinned-write.test.ts:16-32",
+          "quotedAssertion": "packages/gates/src/drift/no-pinned-write.test.ts:18-21 — 'const FORBIDDEN_WRITE_PATTERNS: readonly RegExp[] = [' / '  /writeFile/,' / '  /writeFileSync/,' — and :29-31 'for (const pattern of FORBIDDEN_WRITE_PATTERNS) {' / '      expect(source).not.toMatch(pattern);'. Read the glob, not the comment: `SOURCE_PATH` (:16) is `run-drift-ci.ts` and nothing else, so this proves the ORCHESTRATOR is write-primitive-free; `drift/cli.ts` legitimately does write, to its own two XDG-state paths, which is what the repo-state-diff artifact above measures."
+        },
+        {
+          "kind": "artifact",
+          "ref": ".github/workflows/drift-ci.yml:110-132",
+          "quotedAssertion": ".github/workflows/drift-ci.yml:113-115 — 'JIRA_OBSERVED_VERSION: ${{ inputs.jira_observed_version }}' / 'GRAFANA_OBSERVED_VERSION: ${{ inputs.grafana_observed_version }}' / 'run: node packages/gates/dist/drift/cli.js' and :128-132 'name: Upload DriftProposal artifact (for human review)' / 'if: always()' / 'uses: actions/upload-artifact@v4' / 'with:' / 'name: drift-proposals'. The job has no step that writes anything back into the checkout: the only mutating steps are the two `actions/cache` steps and the CLI invocation."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c3-drift-suite.txt",
+          "quotedAssertion": "' Test Files  6 passed (6)' / '      Tests  28 passed (28)' — the whole `packages/gates/src/drift` suite, scoped local re-run at the closeout base commit."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "drift-ci / drift-ci, run 30743929773 — RED, but with TWO proposals; the run that surfaced defect 21-drift-ci-blank-dispatch-input-false-positive",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743929773",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log — '  GRAFANA_OBSERVED_VERSION: ' (blank) then 'drift-ci: 2 DriftProposal(s) written to /home/runner/.local/state/crabgic/drift-ci/drift-proposals.json — human review required.' Only `jira_observed_version` was supplied; Grafana drifted anyway. Recorded here, not hidden, because it is the reason the citable red run supplies BOTH inputs."
+        }
+      ],
+      "notes": "PRODUCED, NOT REINTERPRETED. Before this pass `drift-ci.yml` had exactly one recorded run — 30256034367, scheduled, green — so the criterion's \"red CI check\" half had no evidence at all, and per the brief's RULING 1 a green run plus a local transcript would have been a channel downgrade rather than a closeout. The red half was producible without a code change, using the workflow's own documented `workflow_dispatch` drift-simulation inputs, so it was produced: three dispatches at main `30f931ea`, no scratch branch and no repository change. WHAT WAS BUMPED. The pinned fixture (`pinned-fixtures.ts`, `PINNED_JIRA_VERSION = \"1000.0.0\"`) is untouched — bumping it would violate the criterion's own \"zero pinned-fixture changes\" clause — and the OBSERVED half is overridden to 1001.0.0, which is exactly the comparison `compareDriftFixture` makes (`snapshot.pinnedVersion !== snapshot.observedVersion`). That exercises the version-drift limb only; the shape-drift limb (a withdrawn `description` field, the roadmap test plan's own example) has no `workflow_dispatch` input and is evidenced by the unit citation above. DEFECT FOUND WHILE PRODUCING THIS. The first red attempt (run 30743929773) emitted TWO proposals, not one, because `cli.ts:143` tests `process.env[\"GRAFANA_OBSERVED_VERSION\"] !== undefined` and an unsupplied `workflow_dispatch` string input arrives as the empty string, not as absent — so the un-bumped connector was compared against an observed version of \"\". The same is true on the `schedule` trigger, where `${{ inputs.* }}` is likewise blank: the one historical scheduled run (30256034367) shows '  JIRA_OBSERVED_VERSION: ' and '  GRAFANA_OBSERVED_VERSION: ' blank in its own job log, and stayed green only because it was the first sample under a threshold-2 debounce. Filed as `docs/evidence/criteria-closeout/defects/21-drift-ci-blank-dispatch-input-false-positive.md`. It does not undermine this tick — the cited red run supplies both inputs explicitly and produces exactly one proposal — but a reader must know the scheduled job's steady state is a two-connector false positive. Not fixed here: verify-your-own-fix is self-review. LIVE SCOPE, unchanged by this pass: the \"observed\" half is fixture/env-modeled, never a live Jira or Grafana probe, exactly as `docs/evidence/phase-21/README.md` and the roadmap's §Risks note already disclose."
+    },
+    {
+      "index": 4,
+      "text": "Traceability view resolves requirement → work unit → exact object ID → RemoteResource → confirmed revision, both directions, on a seeded multi-requirement `ChangeSet`. Evidence: golden traceability-view fixture, snapshot-tested.",
+      "textSha256": "f32d87bb514c7829279907f89d669a3b6cb6b999866b5a14d4196ef5c2f7d47a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 537 — '  ✓  @crabgic/gates  src/traceability-view.test.ts (7 tests) 22ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/traceability-view.test.ts:112-128",
+          "quotedAssertion": "packages/gates/src/traceability-view.test.ts:114-121 — 'expect(entry1).toEqual({' / 'requirementId: REQ1,' / 'workUnitIds: [WU1],' / 'objectIds: [\"object-id-req1\"],' / 'remoteResources: [' / '{ remoteResourceId: REMOTE1, relation: \"tracking-issue\", confirmedRevision: \"7\" },' — the FULL forward chain in one structural equality, then :124-125 'expect(view.byRemoteResourceId[REMOTE3]).toEqual([REQ3]);' / 'expect(view.byRemoteResourceId[REMOTE1]).toEqual([REQ1]);' for the reverse direction, and :128 'expect(view).toEqual(golden);' against the committed fixture. Seeded with three requirements (two Jira tracking-issue, one Grafana dashboard), which is the criterion's \"multi-requirement ChangeSet\"."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/gates/goldens/phase-21/traceability-view.golden.json",
+          "quotedAssertion": "'\"requirementId\": \"10000000-0000-4000-8000-000000000001\",' / '\"workUnitIds\": [' / '\"30000000-0000-4000-8000-000000000001\"' / '\"objectIds\": [' / '\"object-id-req1\"' / '\"remoteResources\": [' / '{ \"remoteResourceId\": \"20000000-0000-4000-8000-000000000001\", \"relation\": \"tracking-issue\", \"confirmedRevision\": \"7\" }' (pretty-printed across lines 3-18 of the 63-line file). The snapshot the criterion names; it carries every leg of the chain, so the structural equality against it cannot pass on a view that dropped one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/traceability-view.test.ts:299-324",
+          "quotedAssertion": "packages/gates/src/traceability-view.test.ts:319-323 — 'expect(entry?.remoteResources).toHaveLength(1);' / 'expect(entry?.remoteResources[0]?.remoteResourceId).toBe(missingRemote);' / 'expect(entry?.remoteResources[0]?.confirmedRevision).toBeUndefined();' / 'expect(view.byRemoteResourceId[missingRemote]).toEqual([req]);' with 'remoteResources: [], // deliberately empty — the resource is absent'. The fail-open control: a binding whose RemoteResource is missing is still emitted rather than silently dropped, so the golden's completeness is not an artefact of dropping awkward rows."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/traceability-view.test.ts:132-217",
+          "quotedAssertion": "packages/gates/src/traceability-view.test.ts:165 — 'expect(view.byRemoteResourceId[sharedRemote]).toEqual([reqA, reqB]);' (fan-IN, two requirements to one resource) and :214-215 'expect(view.byRemoteResourceId[remoteA]).toEqual([req]);' / 'expect(view.byRemoteResourceId[remoteB]).toEqual([req]);' (fan-OUT). Cited because the golden's own topology is 1:1, where a reverse index and a forward index are indistinguishable; these two make \"both directions\" mean something."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c4-traceability-golden.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  7 passed (7)' — scoped local re-run at the closeout base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/requirementTraceability.ts:222-230",
+          "quotedAssertion": "e2e/attestation/src/requirementTraceability.ts:222-224 — 'const view = buildTraceabilityView({' / 'requirements: input.requirements.map(' / '(requirement) => ({ id: requirement.id, workUnitIds: [] }) as unknown as Requirement,'. Cited for scope, NOT as executed evidence — `e2e/attestation` is not in the default `npm test` fan-out and was not run by this pass. It records that the view's one real consumer (23's `requirement-traceability` release-gate check) supplies EMPTY `workUnitIds`, so the work-unit leg of the chain is evidenced by the golden above and by nothing downstream of it."
+        }
+      ],
+      "notes": "Non-vacuity of the golden itself was checked directly rather than inferred from the assertion: the committed fixture is 63 lines and carries `workUnitIds`, `objectIds` and a structured `remoteResources` binding for each of the three requirements, so `expect(view).toEqual(golden)` is a full-shape comparison, not a stub. The `remoteResources` shape is the post-MINOR-3 structured array (`{remoteResourceId, relation, confirmedRevision}`), which is intrinsically 1:1 — the two parallel arrays it replaced could be misaligned without any assertion noticing. Revision-source precedence (pointer wins over a stale `RemoteResource.revision`) and the no-pointer-revision fallback are covered at :250-297 and are what make \"confirmed revision\" the gate's trusted value rather than whatever the resource list happened to carry."
+    },
+    {
+      "index": 5,
+      "text": "16/18/20's security fixtures (forged admin/delete, tenant boundary, redaction) are present as blocking entries in 14's gate manifest; removing one fails the manifest-completeness test. Evidence: manifest-completeness test.",
+      "textSha256": "dda4309630e8fe8d3dc3edd5bbf449602743a2f09b006658019a8e1d4748c248",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 558 — '  ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (16 tests) 19ms'. The suite is green; what it asserts is the problem, not whether it ran."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/security-fixture-manifest.test.ts:49-54",
+          "quotedAssertion": "packages/gates/src/security-fixture-manifest.test.ts:50-52 — 'for (const idToRemove of REQUIRED_SECURITY_FIXTURE_IDS) {' / 'const withOneRemoved = SECURITY_FIXTURE_MANIFEST.filter((e) => e.id !== idToRemove);' / 'expect(() => assertManifestComplete(withOneRemoved)).toThrow(idToRemove);'. PARTIAL: the criterion's SECOND clause (\"removing one fails the manifest-completeness test\") is fully evidenced, for all seven ids, and every entry is asserted `blocking` at :29-33."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/security-fixture-manifest.ts:164-187",
+          "quotedAssertion": "packages/gates/src/security-fixture-manifest.ts:172 — '() => assertTenantBoundary(\"tenant-a\", \"tenant-b\"),' for `jira-tenant-boundary`, and :184 — '() => assertTenantBoundary(\"tenant-a\", \"tenant-b\"),' for `grafana-tenant-boundary`. Byte-identical calls with two string literals: the two entries are the same check twice, and neither touches Jira or Grafana."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/security-fixture-manifest.ts:31-39",
+          "quotedAssertion": "packages/gates/src/security-fixture-manifest.ts:31-32 — 'export function assertTenantBoundary(planTenant: string, callerTenant: string): void {' / '  if (planTenant !== callerTenant) {'. Fed two unequal literals, the guard throws unconditionally, so `verdictFromAssertion` returns `pass` unconditionally. The verdict is a compile-time constant: deleting every tenant-boundary enforcement from both connector packages would leave both of these standing gates green."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:61-74",
+          "quotedAssertion": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:61-67 — 'const tenantBoundaryBreachScenario: FaultInjectionScenario = {' / 'name: \"a token bound to an out-of-allowlist org is refused before any resource access\",' / 'category: \"tenant-boundary\",' / 'const result = await checkGrafanaConnectionDoctor({' / 'fetchTokenInfo: async () => ({ orgId: 999, role: \"Admin\" }),' / 'orgAllowlist: [\"7\"],'. THIS is 20's real tenant-boundary fixture — the one the criterion asks to be registered. It drives real connector code and would go red if that code stopped refusing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/index.ts:185",
+          "quotedAssertion": "packages/connectors-grafana/src/index.ts:185 — 'export { FAULT_INJECTION_MATRIX } from \"./fixtures/fault-injection-matrix.js\";'. The matrix is on 20's PUBLIC barrel, so nothing prevented phase 21 importing it. The gates manifest imports six symbols from that package and this is not one of them; a repo-wide grep for the constant at 30f931e finds only its own module, this barrel line and 20's own fault-injection test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:9-17",
+          "quotedAssertion": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:12-16 — 'produced: \"Fault-injection fixtures (forged delete/admin, tenant-boundary' / 'breach, redaction-check) — consumed by 21 work item 6 (\\'connector' / 'security fixtures... run inside 14\\'s framework\\') and by 23\\'s' / 'Connector-security E2E bullet.\" Each scenario is self-contained and' / 'self-verifying (`run()` returns its own pass/fail), so 21/23 can drive' / 'this matrix directly without re-deriving each scenario\\'s assertion.'. 20 built this FOR this phase and said so; given its own citation so the quote resolves against the file it comes from."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c5-security-fixture-manifest.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  16 passed (16)', including '✓ ... jira-tenant-boundary passes when invoked directly' and '✓ ... grafana-tenant-boundary passes when invoked directly' — the two entries this record declines to accept as evidence, recorded green so the reasoning can be checked rather than taken on trust."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/21-tenant-boundary-manifest-entries-tautological.md",
+      "notes": "Five of the seven manifest entries do what the criterion says. `jira-forged-admin-delete` calls 18's real `assertAllowedJiraOperation`; `jira-redaction` calls 18's real `containsSecretShapedContent` against a real `ConnectorError.toData()`; `grafana-redaction` calls 20's real `redactSecretBearingObject`; `gateway-redaction` calls 16's real `mapHttpStatusToConnectorError`; `grafana-forged-admin-delete` constructs a real `createGrafanaProviderAdapter` and inspects its surface (a re-implementation of 20's `forgedDeleteAdminScenario` that drops that scenario's `calls.length === 0` half, but still exercises 20's real constructor). The two TENANT-BOUNDARY entries do not. Both call `assertTenantBoundary(\"tenant-a\", \"tenant-b\")` — this phase's own three-line string comparison, on two literals — so both verdicts are constants that no change anywhere in `packages/connectors-jira` or `packages/connectors-grafana` can flip. That is the brief's can-never-fail vacuity pattern in its purer form: not a type mismatch, but a fixture that never sets up the state the assertion describes, so no tenant boundary is ever crossed. The criterion's whole point (roadmap §In scope: these fixtures are \"registered as standing, blocking entries ... rather than one-off phase-exit tests\", \"proof that these fixtures graduated\") is defeated for that category: 20's genuine `tenantBoundaryBreachScenario` remains a one-off phase-exit test, and the standing gate that replaced it is inert. `docs/evidence/phase-21/README.md` Deviation 4 discloses the substitution and justifies it as \"neither connector package exported a dedicated tenant-boundary assertion function of its own prior to this phase\" — true of an *assertion function*, and beside the point, because 20 exported a self-verifying *scenario* addressed to this phase by name. Ticking this would assert something factually wrong about the system for two of seven entries and would lose a real guarantee, so the wording protocol does not apply. Remedy and sizing in the defect record."
+    },
+    {
+      "index": 6,
+      "text": "Jira's `done` (18) and the Run lifecycle's `final_verifying`/`published_local` (02) are proven to share no member string. Evidence: enum-disjointness test.",
+      "textSha256": "42d4319d4ed2e66b9f4e305ba893deb20a0c46e231ff724e565f2fe69946bfe3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91485325042, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30743626882",
+          "commit": "30f931eab97b8360102498d4b766513be67241d0",
+          "quotedAssertion": "job log line 555 — '  ✓  @crabgic/gates  src/remote-verification-gate.test.ts (15 tests) 42ms'; the enum-disjointness case is the 15th, named individually in the local verbose transcript cited below."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/remote-verification-gate.test.ts:131-145",
+          "quotedAssertion": "packages/gates/src/remote-verification-gate.test.ts:133-135 — 'expect(RUN_LIFECYCLE_STATES).not.toContain(\"done\");' / 'expect(JIRA_WORKFLOW_STAGES).not.toContain(\"final_verifying\");' / 'expect(JIRA_WORKFLOW_STAGES).not.toContain(\"published_local\");' and :139-144 'const shared = JIRA_WORKFLOW_STAGES.filter((s) =>' / '(RUN_LIFECYCLE_STATES as readonly string[]).includes(s),' / 'expect(shared).not.toContain(\"final_verifying\");' / 'expect(shared).not.toContain(\"published_local\");' / 'expect(shared).not.toContain(\"done\");'. Both unions are imported from their owning packages (:3-4), never re-declared locally."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/state-machines/run-lifecycle.ts:12-24",
+          "quotedAssertion": "packages/contracts/src/state-machines/run-lifecycle.ts:12-23 — 'export const RUN_LIFECYCLE_STATES = [' / '\"final_verifying\",' / '\"published_local\",' / '\"blocked\",' / '] as const;'. The 11-member union under test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/workflow/workflow-stage.ts:42",
+          "quotedAssertion": "packages/connectors-jira/src/workflow/workflow-stage.ts:42 — 'export const JIRA_WORKFLOW_STAGES = [\"planned\", \"in_progress\", \"blocked\", \"done\"] as const;'. THE ANTI-VACUITY CHECK, done by reading both operands rather than trusting the matcher: these are two string arrays over an overlapping vocabulary, and they DO intersect on the member spelled blocked, so the filtered intersection built at remote-verification-gate.test.ts line 139 is non-empty. The negated containment assertions therefore run against a genuinely populated intersection and are not a category error that cannot fail."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-21/closeout-c2-fault-matrix.txt",
+          "quotedAssertion": "the verbose reporter names this exact case on its own line — 'src/remote-verification-gate.test.ts > enum-disjointness' and, on the same line, 'never on final_verifying/published_local/done 14ms' — in a run summarised ' Test Files  2 passed (2)' / '      Tests  21 passed (21)'. Scoped local re-run at the closeout base commit. Two exact substrings are quoted rather than the whole line because the line itself contains apostrophes and single quotes, which an elided or re-quoted rendering would misrepresent."
+        }
+      ],
+      "notes": "The `blocked` overlap is real and is not a hole in the tick: the criterion names three strings (`done`, `final_verifying`, `published_local`) and the test disproves membership for exactly those three, in both directions, against the live imported constants. 18's own `workflow-stage.ts` documents the `blocked` coincidence separately as \"same spelling, unrelated enum\". Because both unions are `as const` arrays imported from their owning packages, a future edit that added `done` to the run lifecycle, or `published_local` to the Jira stage set, would turn this test red without anyone touching it — which is what makes it a proof rather than a restatement."
+    }
+  ]
+}

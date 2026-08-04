@@ -1,0 +1,47 @@
+# criteria-closeout pass, phase 20 — criterion 4 (unknown build -> read-only CapabilitySnapshot; mutation refused before any HTTP call)
+# UTC:      2026-08-02T11:27:50Z
+# HEAD:     d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+# Command:  npx vitest run --reporter=verbose --coverage.enabled=false packages/connectors-grafana/src/discovery/capability-discovery.test.ts packages/connectors-grafana/src/adapter.test.ts
+# Note:     --coverage.enabled=false because the repo-root vitest config carries an 80%
+#           line+branch gate scoped to the WHOLE monorepo; a scoped run trips it and exits 1
+#           with every test green.
+# ---------------------------------------------------------------------------
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p20
+
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > recognizes each of the 4 pinned fixtures 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > rejects an unrecognized OSS version 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > treats patch-version drift within a known major.minor as still known 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > isKnownGrafanaBuild > rejects a version string with no parseable leading major.minor at all 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 11.6 discovers a fully legacy, writable snapshot 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 12.4 discovers folder/dashboard on apis, a writable snapshot 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > 13.1 and current-Cloud resolve the kinds this connector can speak on apis 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > discoverGrafanaCapabilities — per-fixture route selection (work item 2) > resources lists exactly the 7 kinds when every route is reachable 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > unknown build forces read-only (exit criterion) > an unrecognized build-info version is read-only even though every route probed as reachable 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects a build-info response missing `version` 1ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects an edition outside the 3-member enum 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects a response reporting a different product 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > rejects extra unrecognized fields (strict shape) rather than silently ignoring them 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > adversarial-review LOW fix: build-info is zod-validated at the boundary, never trusted blind > a well-formed edition:"cloud" response with an untested/arbitrary version STILL passes shape validation and is treated as known (documented design decision, not a validation gap) 0ms
+ ✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > buildGrafanaCapabilitySnapshotDiscoverer — @crabgic/gateway DiscoverCapabilitySnapshot adapter > produces a shape that round-trips through CapabilitySnapshotSchema once discoveredAt/expiresAt are added 2ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — list/get > list() dispatches a GET and parses the summary list 3ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — list/get > get() dispatches a GET and parses the canonical resource 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — planCreate/planUpdate > planCreate builds a plan without issuing any HTTP call for the plan itself 2ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — planCreate/planUpdate > planUpdate captures a rollback snapshot + expectedRemoteRevision from ONE authoritative GET before any write 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — planCreate/planUpdate > a contact-point create plan carries the required HighImpactCapabilityFlag 0ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — exit criterion: unknown-build read-only snapshot fails a mutation attempt before any HTTP call > planCreate refuses before ANY HTTP call when the snapshot is read-only 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — exit criterion: unknown-build read-only snapshot fails a mutation attempt before any HTTP call > planUpdate refuses before ANY HTTP call when the snapshot is read-only (no read-back GET is even attempted) 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — exit criterion: unknown-build read-only snapshot fails a mutation attempt before any HTTP call > list()/get() (reads) still work against a read-only snapshot — only writes are refused 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — a kind unsupported by this connection's discovered route table is refused > list() throws before any HTTP call when the snapshot's route table has no entry for the requested kind 1ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — a kind unsupported by this connection's discovered route table is refused > planCreate throws before any HTTP call for an unsupported kind 0ms
+ ✓ |@crabgic/connectors-grafana| src/adapter.test.ts > GrafanaProviderAdapter — type-level: no delete method exists on the interface (roadmap/20 §Interfaces produced) > the built adapter object carries no delete-shaped property at runtime either 0ms
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  13:27:51
+   Duration  599ms (transform 601ms, setup 0ms, import 897ms, tests 24ms, environment 0ms)
+
+
+# ---------------------------------------------------------------------------
+# EXIT=0

@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 1,
+  "phase": "20",
+  "roadmapFile": "roadmap/20-grafana-adapters.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 4 (phase 20)",
+    "headSha": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`folder→dashboard→annotation→alert-rule` integration suite green on all three version cassettes (11.6/12.4/13.1) + the current-Cloud cassette, plus the OSS/Enterprise Docker-recipe run.",
+      "textSha256": "ace1ebd991380ad7bf49e5baa9e2b9185e190fe8aa206f065c565065a262b3e9",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts:159-175",
+          "quotedAssertion": "The FIRST clause, fully evidenced. :159 'describe(\"integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion)\", () => {' with one it() per pinned build: :160 'it(\"11.6\", async () => {', :164 'it(\"12.4\", async () => {', :168 'it(\"13.1\", async () => {', :172 'it(\"current Cloud\", async () => {' — each calling replayFullResourceFlow against that fixture."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts:65-157",
+          "quotedAssertion": "What replayFullResourceFlow actually does, i.e. why the first clause is non-vacuous: :66 'const discovery = await discoverGrafanaCapabilities(discoveryDepsFromFixture(fixture));' / :67 'const routeTable = decodeApiFamiliesToRouteTable(discovery.apiFamilies);' / :68 'expect(discovery.isReadOnly).toBe(false); // every pinned fixture is a KNOWN, writable build'; the chain is driven through 16's real pipeline at :152 'const outcome = await executeMutationPlan(plan, handlers, pipelineDeps);' / :153 'expect(outcome.status, `${fixture.fixtureLabel}/${kind} outcome`).toBe(\"recorded\");' over :133 'for (const kind of RESOURCE_FLOW_ORDER) {', and the transport call count is pinned at :156 'expect(fakeTransport.calls).toHaveLength(RESOURCE_FLOW_ORDER.length * 2);' so a silently skipped kind fails."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts:177-189",
+          "quotedAssertion": "The SECOND clause's only candidate bearer, and why it is not one — the describe says so itself: :177 'describe(\"integration: OSS/Enterprise Docker-recipe-backed runs (cassette-replayed — no live container is started, per this repo's no-live-network-calls rule)\", () => {'; the two cases assert a label equality and then replay the same cassette, :179 'expect(OSS_DOCKER_RECIPE.buildInfoFixtureLabel).toBe(BUILD_INFO_OSS_13_1.fixtureLabel);' and :184-186 'expect(ENTERPRISE_DOCKER_RECIPE.buildInfoFixtureLabel).toBe(' / '      BUILD_INFO_ENTERPRISE_CURRENT.fixtureLabel,' / '    );'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/docker-recipes.ts:1-13",
+          "quotedAssertion": "The recipe module's own doc comment concedes the same scope: :5-7 '* 6: \"OSS/Enterprise Docker recipes for 23\" (the live E2E matrix runner' / ' * phase 23 owns). This package supplies the RECIPE as reviewable,' / ' * versioned data — never a live container — matching this repo's ground'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/live/grafanaTraceabilityBinding.ts:119",
+          "quotedAssertion": "The closest real-container run of this phase's resource clients that exists anywhere in the repository, and its scope: :119 '    allowedResources: [\"dashboard\"],' — one of the seven kinds, OSS only, and reached only from an owner-gated @live suite (e2e/attestation/src/requirementTraceabilityBinding.live.test.ts) this pass may not run."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c1-cassette-replay.txt",
+          "quotedAssertion": "Scoped local re-run of the first clause at this record's HEAD, verbatim with command line and exit status: '✓ |@crabgic/connectors-grafana| src/fixtures/integration-cassette-replay.test.ts > integration: full 7-kind resource chain replays green per pinned version cassette (exit criterion) > 11.6' and the 12.4 / 13.1 / current Cloud siblings; '# EXIT=0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c1-docker-recipe-run-search.txt",
+          "quotedAssertion": "The search trail for the second clause, with each command's own exit status. '$ git grep -nE \"child_process|execFile|spawnSync|docker compose|dockerode\" -- packages/connectors-grafana' / 'exit=1   <- no match: this package never starts a container'. Enumerates the three things that resemble a Docker-recipe run and what each actually is."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 335 — ' ✓  @crabgic/connectors-grafana  src/fixtures/integration-cassette-replay.test.ts (7 tests) 255ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. Cited for the first clause only; the run contains no container-backed execution of this flow, and could not, because no such check exists."
+        }
+      ],
+      "notes": "Split criterion, honestly partial. Clause 1 (the four version cassettes) is fully and non-vacuously evidenced. Clause 2 (\"plus the OSS/Enterprise Docker-recipe run\") is not: roadmap/20 §Test plan glosses it as \"Docker-recipe-backed OSS/Enterprise runs OF THE SAME FLOW\", and no run of that flow against a real container exists. Reading the clause down to \"a cassette replay against the fixture the recipe declares it would report\" is a weaker guarantee, which the closeout protocol classifies as UNMET rather than as a wording correction, so the box stays unticked. ON THE 11.6 CLAUSE, which plan C forecast as this phase's guaranteed wording reconciliation: it needs none, and asserting one would be wrong. Grafana 11.6 was retired 2026-07-26 (owner-ratified) from the supported provisioning matrix, but the ratification's own text carves this phase out by name — roadmap/23-release-hardening.md's risk note reads \"Not affected: `packages/connectors-grafana`'s 11.6 capability-discovery fixture — which builds the *adapter* understands is roadmap/20's scope and is listed under this phase's own §Out of scope; `docker/grafana/11.6/` is likewise retained\", and docs/compatibility-matrix.md:63-68 and e2e/attestation/src/versionSupportWindows.ts:55-57 repeat it. docs/vendor-support-policy.json carries no grafana-11.6 entry precisely because the retirement is about supported deployment targets, not about which builds the adapter can talk to. The 11.6 cassette is therefore still in scope, still pinned, and still green (job-log line 335, closeout-c1-cassette-replay.txt).",
+      "defectRef": "docs/evidence/criteria-closeout/defects/20-docker-recipe-backed-flow-never-run.md"
+    },
+    {
+      "index": 2,
+      "text": "Mutation-safety property suite finds zero blind-overwrite counterexamples over its fuzzed-concurrency run; every 409/412 resolves to fetch-compare-rebase or an explicit typed block.",
+      "textSha256": "b09ab59d0f9085e289e0928be57451023424ffbf4b48870415e804f761244e03",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 334 — ' ✓  @crabgic/connectors-grafana  src/mutation/precondition.property.test.ts (3 tests) 185ms'; line 331 — ' ✓  @crabgic/connectors-grafana  src/mutation/apply-with-rebase.test.ts (4 tests) 51ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/precondition.property.test.ts:111-117",
+          "quotedAssertion": "The branch that carries \"zero blind-overwrite counterexamples\", entered on effectively every generated case (see the guard probe): :111 '        } else {' / :115 '          expect(outcomeB).toBe(\"blocked\");' / :116 '          expect(final.contentHash).toBe(afterA.contentHash);'. Its comment states the invariant: :112-114 '          // A's write genuinely changed the remote's content away from the' / '          // baseline — B must NEVER silently apply over that; the remote' / '          // must still reflect exactly A's write, untouched by B.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/precondition.property.test.ts:143-159",
+          "quotedAssertion": "The N-writer property's two assertions: :143 '          expect(legitimateHashes.has(final.contentHash)).toBe(true);' and, inside the blocked guard, :157 '                expect(final.contentHash).not.toBe(thisWriterHash);'. Both operands of that .not.toBe are hashCanonicalFields(...) outputs, so they are the same type and can be equal by construction — not the cross-type always-true shape; the guard at :151-155 exists precisely to exclude the case where they legitimately coincide."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/precondition.property.test.ts:49-71",
+          "quotedAssertion": "The harness the properties fuzz is not a mock of the answer — the production resolver decides: :55 '  const first = remote.tryWrite(baselineRevision, desiredContent);' / :59 '  const resolution = resolveOptimisticConcurrencyConflict({ baselineContentHash, currentRemote });' / :60 '  if (resolution.kind === \"block\") return \"blocked\";'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/precondition.property.test.ts:29-40",
+          "quotedAssertion": "...and the simulated remote it runs against really refuses a stale precondition rather than rubber-stamping: :33-35 '    if (expectedRevision !== String(this.#revision)) {' / '      return { ok: false, status: 409 };' / '    }'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:87-132",
+          "quotedAssertion": "The 412 -> fetch-compare-rebase half, through 16's real GatewayHttpClient and executeMutationPlan: :87 'describe(\"applyGrafanaMutationWithRebase — exit criterion: every 409/412 resolves to fetch-compare-rebase or an explicit typed block\", () => {' / :88 '  it(\"412 + remote content UNCHANGED since baseline -> safely rebases and completes as recorded\", async () => {' / :130 '    expect(outcome.status).toBe(\"recorded\");' / :131 '    expect(calls.filter((c) => c.method === \"PUT\")).toHaveLength(2); // original (412) + rebased (success)'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:134-183",
+          "quotedAssertion": "The 409 -> explicit typed block half: :134 '  it(\"409 + remote content DIVERGED since baseline -> blocks explicitly, never retries the write\", async () => {' / :178 '    expect(outcome.status).toBe(\"blocked\");' / :179 '    expect(outcome.errorKind).toBe(\"conflict\");' / :182 '    expect(calls.filter((c) => c.method === \"PUT\")).toHaveLength(1);' — one PUT, so no blind retry happened."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:185-227",
+          "quotedAssertion": "Fail-closed when the comparison itself is impossible: :185 '  it(\"409 + the fetch-compare GET itself fails -> blocks (never assumes safety when it can't even check)\", async () => {' / :225 '    expect(outcome.status).toBe(\"blocked\");' / :226 '    expect(outcome.detail).toMatch(/could not read current remote state/);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:229-271",
+          "quotedAssertion": "The anti-vacuity control — the rebase path is not simply always taken: :229 '  it(\"a non-conflict outcome (plain success) passes through untouched — no extra fetch-compare call at all\", async () => {' / :269 '    expect(outcome.status).toBe(\"recorded\");' / :270 '    expect(calls).toHaveLength(2); // PUT + verify GET only — no fetch-compare GET was ever needed'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c2-mutation-safety.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/mutation/precondition.property.test.ts > resolveOptimisticConcurrencyConflict — concurrent-edit fuzzing (work item 4, exit criterion) > two writers racing from the SAME baseline: the loser is NEVER a blind overwrite — it either observes identical content (safe rebase) or blocks' plus the four apply-with-rebase cases; '# EXIT=0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c2-property-guard-probe.txt",
+          "quotedAssertion": "Guard-entry instrumentation, run because all three properties put their assertions inside conditionals. At ten times their own numRuns budget: property 1's diverged branch entered 2999/3000 ('\"aDivergedBranch\": 2999'), property 2's innermost guard entered 8837 times across 3000 cases ('\"guardEntered\": 8837'). The same probe shows property 1's NO-OP branch entered '\"aNoOpBranch\": 1' of 3000, so that branch is deliberately not cited — the safe-rebase half rests on apply-with-rebase.test.ts:87-132 instead. Probe source reproduced verbatim in the transcript."
+        }
+      ],
+      "notes": "Both clauses evidenced separately. The fuzzed-concurrency clause rests on the property suite; the 409/412 clause rests on apply-with-rebase.test.ts, which runs through @crabgic/gateway's real GatewayHttpClient, executeMutationPlan, IdempotencyKeyLock and a real tmp-dir JournalStore, not a stand-in. Scope caveat recorded rather than glossed: the property suite fuzzes resolveOptimisticConcurrencyConflict against an in-memory SimulatedRemoteResource, not against the HTTP pipeline, and its own comment at :66-69 declares the single-retry bound ('A genuinely concurrent 3rd writer could still race this retry in principle; for THIS harness ... that is out of scope'). The criterion asks for a property suite finding zero blind-overwrite counterexamples, which is what this is. Guard instrumentation is the load-bearing anti-vacuity control here and it found something real: one of property 1's two branches is entered about 0.1 times per run at its own budget and evidences nothing. It is named in the transcript and excluded from the citations rather than quietly counted."
+    },
+    {
+      "index": 3,
+      "text": "Rollback-restore integration test proves the restored resource is canonical-identical (post-serializer-normalization) to the pre-mutation snapshot; a failed resource-creation path leaves the created resource in place with a cleanup-report artifact, never an auto-delete call.",
+      "textSha256": "2ef204549ed5d85ff3e7ce45477ab87f18689de873106fe7ccd69dfde8dcbb3f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 341 — ' ✓  @crabgic/connectors-grafana  src/mutation/rollback.test.ts (5 tests) 9ms'; line 350 — ' ✓  @crabgic/connectors-grafana  src/mutation/cleanup-report.test.ts (5 tests) 9ms'; line 355 — ' ✓  @crabgic/connectors-grafana  src/mutation/snapshot-store.test.ts (4 tests) 6ms'; line 342 — ' ✓  @crabgic/connectors-grafana  src/security/no-delete-admin.test.ts (4 tests) 15ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/rollback.test.ts:43-61",
+          "quotedAssertion": "Canonical identity after serializer normalization, which is the criterion's actual claim: :43 'describe(\"restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot\", () => {' / :53 '    expect(outcome.status).toBe(\"restored\");' / :55 '      expect(outcome.canonical.fields).toEqual(SNAPSHOT.fields);'. outcome.canonical is the folder definition's parseCanonical output over the post-restore read-back body, not the request that was sent. The restore is written against the FRESH revision, asserted at :60 '    expect(calls[1]?.headers?.[\"If-Match\"]).toBe(\"etag-2\");' — never the stale snapshot's own etag-1."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/rollback.test.ts:94-105",
+          "quotedAssertion": "The anti-vacuity control that makes the identity assertion mean something — a read-back that does NOT match must block: :94 '  it(\"blocks when the post-restore read-back does not actually match the snapshot (never a false-positive restore)\", async () => {' / :101 '    expect(outcome.status).toBe(\"blocked\");' / :103 '      expect(outcome.reason).toMatch(/did not match/);'. Three further fail-closed cases at :63-92 cover each HTTP step failing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/cleanup-report.test.ts:14-35",
+          "quotedAssertion": "The cleanup-report artifact for a failed create: :14 'describe(\"buildCleanupReportForFailedCreate — exit criterion: failed creation is reported for reviewed cleanup, never auto-deleted\", () => {' / :28-34 'expect(report).toEqual({' / '      planId: plan.id,' / '      kind: \"folder\",' / '      canonicalTarget: plan.canonicalTarget,' / '      reason: \"verification mismatch\",' / '      detectedAt: \"2026-01-01T00:00:00.000Z\",' / '    });' — a whole-object equality, so a degenerate empty report fails."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/cleanup-report.test.ts:53-64",
+          "quotedAssertion": "The negative controls that stop the report being unconditional: :53 '  it(\"returns undefined for a successfully recorded create (nothing to clean up)\", () => {' / :61-63 'expect(' / '      buildCleanupReportForFailedCreate(plan, { status: \"recorded\", appliedRevision: \"1\" }),' / '    ).toBeUndefined();', with the replayed-create and failed-UPDATE cases at :66-91."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/security/no-delete-admin.test.ts:103-111",
+          "quotedAssertion": "\"never an auto-delete call\" is proven structurally rather than by counting zero calls on one path: :104 '    it(\"none of the 7 resource definitions has a buildDeleteRequest (or similarly named) method\", () => {' / :107 '      for (const name of [\"buildDeleteRequest\", \"buildRemoveRequest\", \"delete\", \"remove\"]) {' / :108 '        expect(typeof definition[name]).not.toBe(\"function\");'. There is no delete-shaped request builder on any of the seven kinds for a cleanup path to reach for."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c3-rollback-cleanup.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/mutation/rollback.test.ts > restoreFromSnapshot — exit criterion: restored resource is canonical-identical to the pre-mutation snapshot > restores successfully when the read-back matches the snapshot exactly' and the cleanup-report and snapshot-store cases; '# EXIT=0'."
+        }
+      ],
+      "notes": "Scope note recorded rather than glossed: the criterion says \"integration test\", and rollback.test.ts drives restoreFromSnapshot against a scripted send fake rather than through 16's GatewayHttpClient — it is integration in the sense of composing the real resource definition, the real canonical serializer and the real three-step restore protocol, not in the sense of crossing the HTTP client. That is the same shape 16's own pipeline tests use for this layer, and the three fail-closed cases plus the mismatch case are what carry the claim. The second half's \"leaves the created resource in place\" is evidenced by absence-of-mechanism (no delete-shaped method exists on the adapter or on any of the seven definitions) rather than by a zero-call assertion on the cleanup path; that is the stronger form, and it is the same bearer criterion 8 rests on."
+    },
+    {
+      "index": 4,
+      "text": "An unknown/untested build-info fixture forces a read-only `CapabilitySnapshot`; a mutation attempt against that snapshot is asserted to fail before any HTTP call.",
+      "textSha256": "a41e10bdee4a3b8ed9de927d38a13518a5cdf1aa21a515e6638f8fcf84f4b507",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 337 — ' ✓  @crabgic/connectors-grafana  src/discovery/capability-discovery.test.ts (15 tests) 38ms'; line 332 — ' ✓  @crabgic/connectors-grafana  src/adapter.test.ts (11 tests) 21ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/discovery/capability-discovery.test.ts:94-103",
+          "quotedAssertion": "The unknown-build half, and the control that makes it non-trivial: :94 'describe(\"unknown build forces read-only (exit criterion)\", () => {' / :95 '  it(\"an unrecognized build-info version is read-only even though every route probed as reachable\", async () => {' / :97 '    expect(result.isReadOnly).toBe(true);' / :98-99 '    expect(result.actions).not.toContain(\"create\");' / '    expect(result.actions).not.toContain(\"update\");' / :102 '    expect(result.resources.length).toBeGreaterThan(0);' — the last line is the anti-vacuity control: routes ARE reachable, so the read-only verdict is not a side effect of a failed probe."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/adapter.test.ts:151-174",
+          "quotedAssertion": "The \"fails before any HTTP call\" half, asserted by mock-transport call count on both write entry points: :151 'describe(\"GrafanaProviderAdapter — exit criterion: unknown-build read-only snapshot fails a mutation attempt before any HTTP call\", () => {' / :159-160 '    await expect(adapter.planCreate(\"folder\", { title: \"x\" }, \"op-4\")).rejects.toThrow(/read-only/);' / '    expect(calls).toHaveLength(0);' / :170-173 '    await expect(adapter.planUpdate(\"folder\", \"fold-1\", { title: \"x\" }, \"op-5\")).rejects.toThrow(' / '      /read-only/,' / '    );' / '    expect(calls).toHaveLength(0);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/adapter.test.ts:176-183",
+          "quotedAssertion": "The anti-vacuity control for the call-count assertions — the adapter is not simply inert against a read-only snapshot: :176 '  it(\"list()/get() (reads) still work against a read-only snapshot — only writes are refused\", async () => {' / :182 '    await expect(adapter.list(\"folder\")).resolves.toEqual([]);' — the same scripted transport does get called on the read path."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:76-105",
+          "quotedAssertion": "A third, independent bearer reached through the fixture matrix: the redaction scenario constructs a CapabilitySnapshot with :91 '      isReadOnly: true,' and asserts assertWritableCapability throws at :98 '      assertWritableCapability(snapshot);' / :102 '    const passed = !message.includes(\"resources\") && message.length > 0;' — a non-throwing guard would leave message empty and fail the scenario."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c4-readonly-guard.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/discovery/capability-discovery.test.ts > unknown build forces read-only (exit criterion) > an unrecognized build-info version is read-only even though every route probed as reachable' and the two adapter refusal cases; '# EXIT=0'."
+        }
+      ],
+      "notes": "A known, disclosed narrowing of this guarantee is recorded in the phase's own source and is not re-litigated here: write-eligibility-guard.ts documents that assertWritableCapability runs at PLAN time only, so a snapshot that flips writable->read-only between planCreate and the later observability.apply is not re-guarded. docs/evidence/phase-20/README.md carries it as a LOW finding deliberately left open because closing it needs a change to @crabgic/gateway's own MutationApplyClient contract. The criterion is about a snapshot that is ALREADY read-only at plan time, which is exactly what the cited tests exercise."
+    },
+    {
+      "index": 5,
+      "text": "Query-layer test proves aggregation/redaction completes, and results stay within 16's 32 KiB item / 256 KiB result budgets, before data leaves `packages/connectors-grafana`.",
+      "textSha256": "cda55d28a871428a7bb5c9e4ad2d11037776ed3392cba7663d6a3b3fc1e94ade",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 340 — ' ✓  @crabgic/connectors-grafana  src/query/query-layer.test.ts (17 tests) 422ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:1-10",
+          "quotedAssertion": "The budgets under test are 16's own exported constants, not a local restatement: :2 'import { ITEM_BUDGET_BYTES, RESULT_BUDGET_BYTES } from \"@crabgic/gateway\";'. If 16 moved a budget this suite would move with it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/budgets.ts:11-12",
+          "quotedAssertion": "The values those names hold, which is what makes the criterion's \"32 KiB item / 256 KiB result\" literal check out: :11 'export const ITEM_BUDGET_BYTES = 32 * 1024;' / :12 'export const RESULT_BUDGET_BYTES = 256 * 1024;'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:83-93",
+          "quotedAssertion": "The item budget, measured in real UTF-8 bytes on both sides: :83 '  it(\"shrinks an oversized row until it satisfies the item budget\", () => {' / :86 '    expect(Buffer.byteLength(JSON.stringify(oversized), \"utf8\")).toBeGreaterThan(ITEM_BUDGET_BYTES);' / :89-91 '    expect(Buffer.byteLength(JSON.stringify(truncated), \"utf8\")).toBeLessThanOrEqual(' / '      ITEM_BUDGET_BYTES,' / '    );' / :92 '    expect(truncated.service).toBe(\"checkout\"); // small fields survive untouched'. The fixture is asserted to really be oversized before the truncation is checked."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:95-103",
+          "quotedAssertion": "Fail-closed rather than pass-through when the row cannot be shrunk: :95 '  it(\"throws rather than silently passing through a row that cannot be shrunk under budget\", () => {' / :102 '    expect(() => truncateRowToItemBudget(manyFields)).toThrow(/item budget/);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:112-122",
+          "quotedAssertion": "The result budget: :112 '  it(\"downsamples an oversized result set (many rows, each individually within budget) until it fits\", () => {' / :114 '    expect(Buffer.byteLength(JSON.stringify(rows), \"utf8\")).toBeGreaterThan(RESULT_BUDGET_BYTES);' / :117-119 '    expect(Buffer.byteLength(JSON.stringify(downsampled), \"utf8\")).toBeLessThanOrEqual(' / '      RESULT_BUDGET_BYTES,' / '    );' / :121 '    expect(downsampled.length).toBeGreaterThan(0);' — the last line stops \"return nothing\" from satisfying the budget."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:139-172",
+          "quotedAssertion": "The whole-pipeline case the criterion actually describes — aggregation AND redaction AND both budgets, on one combined fixture: :139 'describe(\"processGrafanaQueryResult — the full pipeline, before data leaves packages/connectors-grafana\", () => {' / :163 '    expect(totalBytes).toBeLessThanOrEqual(RESULT_BUDGET_BYTES);' / :164-166 '    for (const row of result) {' / '      expect(Buffer.byteLength(JSON.stringify(row), \"utf8\")).toBeLessThanOrEqual(ITEM_BUDGET_BYTES);' / '    }' / :171 '    expect(anyLeakedToken).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:45-50",
+          "quotedAssertion": "Redaction is not merely field scoping — it survives an explicit caller allowlist: :45 '  it(\"redacts a secret-shaped field even when explicitly allowlisted by the caller\", () => {' / :48 '    expect(scoped.apiToken).toBe(\"[redacted]\");' / :49 '    expect(scoped.service).toBe(\"checkout\");' — the second line is the control that redaction is targeted, not blanket."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/query/query-layer.test.ts:140-144",
+          "quotedAssertion": "\"before data leaves packages/connectors-grafana\" is enforced by rejecting an unscoped query outright: :140 '  it(\"rejects a query with no time range before touching any row\", () => {' / :141-143 '    expect(() => processGrafanaQueryResult({ timeRange: undefined, rawRows: [{ a: 1 }] })).toThrow(' / '      GrafanaQueryValidationError,' / '    );'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c5-query-budgets.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/query/query-layer.test.ts > processGrafanaQueryResult — the full pipeline, before data leaves packages/connectors-grafana > scopes, redacts, truncates, and downsamples in one pass, always ending within both budgets'; '# EXIT=0'."
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "text": "Reconciliation suite: an ambiguous-POST-timeout fixture resolves via marker search to zero duplicate resources created, or blocks with typed `ambiguous_write` — never silently both.",
+      "textSha256": "61c064a3f7ccfff306ed4e1c46b062c7305d84c94cd7db05b3863832b417ea24",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 326 — ' ✓  @crabgic/connectors-grafana  src/mutation/mutation-apply-client.test.ts (8 tests) 75ms'; line 351 — ' ✓  @crabgic/connectors-grafana  src/reconciliation/marker-reconciler.test.ts (7 tests) 11ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:274-319",
+          "quotedAssertion": "The \"resolves via marker search to zero duplicate resources created\" arm, driven by a real mid-POST-timeout fault through 16's real executeMutationPlan: :274 'describe(\"reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate\", () => {' / :279 '      { status: 0, fault: \"mid-post-timeout\" }, // the ambiguous POST' / :314-315 '    const outcome = await executeMutationPlan(plan, buildHandlers(applyClient), deps);' / '    expect(outcome.status).toBe(\"recorded\");' / :318 '    expect(calls.filter((c) => c.method === \"POST\")).toHaveLength(1);' — the POST count is the \"zero duplicates\" assertion."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:321-360",
+          "quotedAssertion": "The \"or blocks with typed ambiguous_write\" arm, differing from the arm above only in the marker GET's answer: :326 '      { status: 404, bodyText: \"\" }, // marker GET: not found' / :357-358 '    expect(outcome.status).toBe(\"blocked\");' / '    expect(outcome.errorKind).toBe(\"ambiguous_write\");' / :359 '    expect(calls.filter((c) => c.method === \"POST\")).toHaveLength(1);'. Together the two arms are the \"never silently both\" the criterion asks for: each outcome is reached, and each is reached with exactly one POST."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:362-407",
+          "quotedAssertion": "The same pair again for the one kind whose marker is a TAG rather than a uid, because annotations accept no caller-supplied id: :362 '  it(\"annotation create ambiguity resolves via tag-based marker search, found -> recorded (never a duplicate POST)\", async () => {' / :406 '    expect(calls.filter((c) => c.method === \"POST\")).toHaveLength(1);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:409-446",
+          "quotedAssertion": "...and its not-found arm: :421 '      findAnnotationByTag: async () => undefined,' / :443-445 '    expect(outcome.status).toBe(\"blocked\");' / '    expect(outcome.errorKind).toBe(\"ambiguous_write\");' / '    expect(calls.filter((c) => c.method === \"POST\")).toHaveLength(1);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:237-273",
+          "quotedAssertion": "The control that the pipeline is not simply reporting success for everything: :237 '  it(\"verification fails (mismatched read-back) -> outcome is failed/conflict, never silently recorded\", async () => {'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c6-reconciliation.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.test.ts > reconciliation — exit criterion: ambiguous-POST-timeout resolves via marker search, never a silent duplicate > mid-POST timeout on folder create, marker (deterministic uid) IS found remotely -> resolves to recorded, zero duplicate POSTs'; '# EXIT=0'."
+        }
+      ],
+      "notes": "The mid-post-timeout fault is 16's own testkit fault, injected into 16's own createFakeProviderTransport, and the pipeline is 16's real executeMutationPlan with a real tmp-dir JournalStore — this phase supplies only the marker derivation and the reconcileAmbiguous handler, which is exactly the division roadmap/20 §Interfaces consumed declares. Four cases, two arms x two marker mechanisms (deterministic uid, annotation tag)."
+    },
+    {
+      "index": 7,
+      "text": "Every mutation touching alert disabling, contact points, mute timings, or notification templates carries at least one of 02's 4 corresponding `HighImpactCapabilityFlag` labels, verified by a static/schema-level test that fails on any untagged high-impact call — the fixed set 23's notification-side-effect-classification matrix exercises.",
+      "textSha256": "1405e27d9e2f2d8347c8e126cfca197bc4b2717689c11ea20c3ad11e64d37875",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 343 — ' ✓  @crabgic/connectors-grafana  src/mutation/high-impact-tagging.test.ts (7 tests) 14ms'; line 349 — ' ✓  @crabgic/connectors-grafana  src/mutation/mutation-plan-builder.test.ts (5 tests) 11ms'; line 353 — ' ✓  @crabgic/connectors-grafana  src/resource-kinds.test.ts (5 tests) 10ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/high-impact-tagging.test.ts:80-95",
+          "quotedAssertion": "The static test that \"fails on any untagged high-impact call\", written as a violation sweep rather than a spot check: :80 '  it(\"static exhaustive sweep: every (kind, action) combination that SHOULD be flagged actually is (fails the whole suite if any is silently dropped)\", () => {' / :86-88 '        if (shouldFlag && flags.length === 0) {' / '          violations.push(`${kind}:${action} should be flagged but was not`);' / '        }' / :94 '    expect(violations).toEqual([]);'. The sweep is over GRAFANA_RESOURCE_KINDS x {create, update}, and the expected set at :7-11 is a hand-written literal, not read back out of the table under test."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/high-impact-tagging.test.ts:21-29",
+          "quotedAssertion": "The labels are bound to 02's enum at the schema level, which is what the criterion means by \"02's 4 corresponding HighImpactCapabilityFlag labels\": :24 '        const flags = requiredHighImpactFlagsFor(kind, action, { name: \"x\" });' / :25 '        expect(flags.length).toBe(1);' / :26 '        expect(() => HighImpactCapabilityFlagSchema.parse(flags[0])).not.toThrow();' — a drifted label would fail 02's own parser."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/high-impact-tagging.test.ts:63-78",
+          "quotedAssertion": "The four ways an UPDATE can neutralise a live alert are each flagged, and the pure rename is the control: :64-66 '    expect(requiredHighImpactFlagsFor(\"alert-rule\", \"update\", { condition: \"1 == 2\" })).toEqual([' / '      \"alert disabling\",' / '    ]);' / :67-69 '    expect(' / '      requiredHighImpactFlagsFor(\"alert-rule\", \"update\", { ruleGroup: \"quiet-unwatched-group\" }),' / '    ).toEqual([\"alert disabling\"]);' / :75-77 '    expect(' / '      requiredHighImpactFlagsFor(\"alert-rule\", \"update\", { title: \"renamed\", folderUID: \"f2\" }),' / '    ).toEqual([]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/high-impact-tagging.test.ts:14-19",
+          "quotedAssertion": "The negative half of the sweep, so \"tagged\" is not simply \"always\": :14 '  it(\"folder/dashboard/annotation never carry a high-impact flag, create or update\", () => {' / :16-17 '      expect(requiredHighImpactFlagsFor(kind, \"create\", { title: \"x\" })).toEqual([]);' / '      expect(requiredHighImpactFlagsFor(kind, \"update\", { title: \"x\" })).toEqual([]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/mutation/mutation-plan-builder.test.ts:14-36",
+          "quotedAssertion": "The static tagging really reaches the RemoteMutationPlan the criterion talks about, rather than living only in a helper: :22 '    expect(plan.requiredCapabilityFlags).toEqual([\"contact points\"]);' and its control :36 '    expect(plan.requiredCapabilityFlags).toBeUndefined();'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/resource-kinds.ts:38-45",
+          "quotedAssertion": "The table itself is typed against 02's union, so a drifted label is a compile error before it is a test failure: :38-40 'export const HIGH_IMPACT_FLAG_BY_KIND: Readonly<' / '  Partial<Record<GrafanaResourceKind, HighImpactCapabilityFlag>>' / '> = {' / :41-44 '  \"alert-rule\": \"alert disabling\",' / '  \"contact-point\": \"contact points\",' / '  \"mute-timing\": \"mute timings\",' / '  \"notification-template\": \"notification templates\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/capability-flags/high-impact-capability-flag.ts:19-22",
+          "quotedAssertion": "The four labels as 02 spells them, byte-for-byte, which is what interface-ledger Gap 10 rules must be verbatim: :19-22 '  \"alert disabling\",' / '  \"contact points\",' / '  \"mute timings\",' / '  \"notification templates\",'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c7-high-impact-tagging.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/mutation/high-impact-tagging.test.ts > requiredHighImpactFlagsFor — exit criterion: static tagging fails closed on any untagged high-impact call > static exhaustive sweep: every (kind, action) combination that SHOULD be flagged actually is (fails the whole suite if any is silently dropped)'; '# EXIT=0'."
+        }
+      ],
+      "notes": "Ledger check performed: interface-ledger.md Gap 10 rules that 02's labels win verbatim everywhere and lists 20 among the phases that confirm it, quoting roadmap/20 §In scope line 19. The four strings in resource-kinds.ts:41-44 are byte-identical to packages/contracts/src/capability-flags/high-impact-capability-flag.ts:19-22, and the type annotation plus the HighImpactCapabilityFlagSchema.parse assertion make drift fail twice. One deliberate asymmetry is recorded rather than treated as a gap: an alert-rule UPDATE that touches none of condition/for/ruleGroup/isPaused is unflagged. That is not an untagged high-impact call — it is a mutation that does not touch alert disabling — and the criterion's scope is \"every mutation TOUCHING alert disabling\"."
+    },
+    {
+      "index": 8,
+      "text": "Security fixture suite: forged delete/admin calls produce zero outbound HTTP requests (mock-transport call-count assertion).",
+      "textSha256": "dce5daf87319d33a88d7e5f62a8a1f105d276e20e6cb3ee810eb0ceb563fc6fd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job-log line 342 — ' ✓  @crabgic/connectors-grafana  src/security/no-delete-admin.test.ts (4 tests) 15ms'; line 360 — ' ✓  @crabgic/connectors-grafana  src/fixtures/fault-injection.test.ts (5 tests) 14ms'. job-log lines 1035-1036 — ' Test Files  625 passed (625)' / '      Tests  6155 passed | 1 skipped (6156)'. "
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/security/no-delete-admin.test.ts:51-84",
+          "quotedAssertion": "The mock-transport call-count assertion the criterion names, over a 14-name forged-operation list that includes the delete, user/org/service-account admin, data-source-secret and notification-policy-tree-replacement shapes roadmap/20 §Test plan enumerates: :51 'describe(\"GrafanaProviderAdapter — no forged delete/admin operation is callable\", () => {' / :80-82 '    for (const name of FORGED_OPERATION_NAMES) {' / '      expect(typeof untyped[name]).not.toBe(\"function\");' / '    }' / :83 '    expect(calls).toHaveLength(0);'. The adapter is built with a WRITABLE snapshot (:70 '          isReadOnly: false,'), so the zero-call result is not an artefact of a read-only refusal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/security/no-delete-admin.test.ts:86-100",
+          "quotedAssertion": "The allowlist form, which is what makes the denylist above non-vacuous — a name absent from FORGED_OPERATION_NAMES still cannot exist: :86 '  it(\"Object.keys(adapter) is exactly {list, get, planCreate, planUpdate} — an exhaustive allowlist, not a denylist\", () => {' / :99 '    expect(Object.keys(adapter).sort()).toEqual([\"get\", \"list\", \"planCreate\", \"planUpdate\"].sort());'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:34-59",
+          "quotedAssertion": "The named security FIXTURE the criterion's \"Security fixture suite\" refers to, self-verifying so 21/23 can drive it without re-deriving the assertion: :35 '  name: \"forged delete/admin call reaches zero outbound HTTP requests\",' / :52-53 '    const forgedDelete = (adapter as unknown as Record<string, unknown>).delete;' / '    const passed = typeof forgedDelete !== \"function\" && calls.length === 0;'. Its getSnapshot deliberately throws (:44-46) so any code path that got as far as needing a snapshot would fail loudly rather than silently produce zero calls."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection.test.ts:4-17",
+          "quotedAssertion": "The fixture matrix is really executed, every scenario, not merely exported: :4 'describe(\"FAULT_INJECTION_MATRIX — every scenario self-verifies as passing\", () => {' / :7 '    expect([...categories].sort()).toEqual([\"forged-delete-admin\", \"redaction\", \"tenant-boundary\"]);' / :10 '  it.each(FAULT_INJECTION_MATRIX.map((s) => [s.name, s] as const))(' / :13-14 '      const result = await scenario.run();' / '      expect(result.passed, result.detail).toBe(true);'. The category-set equality at :7 is what stops a scenario being dropped from the array unnoticed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/fixtures/fault-injection.test.ts:19-25",
+          "quotedAssertion": "The negative control for every \"zero outbound HTTP requests\" claim in this criterion — proof that the counting spy would in fact count: :20 '    it(\"records any call made to it and returns a 200 (used only to detect a regression, never expected to fire)\", async () => {' / :22 '      const response = await send({ method: \"DELETE\", path: \"/api/folders/x\" });' / :24 '      expect(calls).toEqual([{ method: \"DELETE\", path: \"/api/folders/x\" }]);'. Without this, the zero-length call-count assertions above would be satisfied by a spy that records nothing."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/security/no-delete-admin.test.ts:113-126",
+          "quotedAssertion": "The registry half — the excluded resource CLASSES have no kind at all, so there is nothing for a forged admin call to name: :113 '  it(\"the registry's own key set is exactly the 7 in-scope kinds — no data-source/user/org/notification-policy-tree kind exists\", () => {' / :124 '      expect(keys).not.toContain(forbidden);'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-20/closeout-c8-security-fixtures.txt",
+          "quotedAssertion": "Scoped local re-run at this record's HEAD: '✓ |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > forged delete/admin call reaches zero outbound HTTP requests' plus the no-delete-admin cases; '# EXIT=0'."
+        }
+      ],
+      "notes": "Reciprocal check requested by the closeout brief, recorded here because it bears on how much this tick is worth. Phase 21's closeout found that this package's `tenantBoundaryBreachScenario` is not consumed by phase 21's blocking gate manifest — packages/gates/src/security-fixture-manifest.ts:176-187 registers the sourcePhase \"20\" tenant-boundary entry against the gates-owned generic assertTenantBoundary(\"tenant-a\", \"tenant-b\"), two literals, not against anything in this package. Confirmed from this side: `git grep FAULT_INJECTION_MATRIX` resolves to this package's barrel, this package's own fault-injection.test.ts, and nothing else in the repository. Two consequences, both narrower than they first look. (a) NO phase-20 exit criterion claims tenant-boundary enforcement is exercised — the eight boxes cover cassettes, mutation safety, rollback, read-only, budgets, reconciliation, high-impact tagging and forged delete/admin; tenant boundary appears only in §In scope, §Test plan and §Interfaces produced. So no tick in this record rests on it. (b) The scenario is NOT orphaned within phase 20: fault-injection.test.ts:10-16 runs every member of FAULT_INJECTION_MATRIX including the tenant one, and auth/connection-doctor.test.ts:28-44 tests the same enforcement directly — both in the default `npm test` fan-out (job-log lines 360 and 346). Deleting the org-allowlist check from checkGrafanaConnectionDoctor would redden phase 20's suite; it would not redden phase 21's blocking gate. That is a phase-21 defect about gate coverage, not a phase-20 evidence defect, and this record does not attempt to fix it. The same reciprocal for THIS criterion comes out clean: the forged-delete-admin scenario has a second, independent bearer in no-delete-admin.test.ts, and a third in e2e/matrix/connector/src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts:116-148, which drives the real createGrafanaProviderAdapter and asserts the same 4-key surface."
+    }
+  ]
+}

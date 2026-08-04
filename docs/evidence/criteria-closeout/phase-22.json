@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 1,
+  "phase": "22",
+  "roadmapFile": "roadmap/22-learning-system.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, batch 3 (phase 22)",
+    "headSha": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`LearningProposalState` transition-table suite green; fuzz over random event sequences finds no illegal path (evidence: CI job + fast-check report).",
+      "textSha256": "e5c20b7ea767016d4e1dee41cd0d6aba35fa36512112b550899a40679b34dd31",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 740 — '  ✓  @crabgic/learning  src/state-machine.test.ts (130 tests) 1513ms'; run summary line 1036 ' Test Files  625 passed (625)' / line 1037 '      Tests  6155 passed | 1 skipped (6156)'. 130 = the 121-case 11x11 table loop + 7 named cases + 2 fast-check properties."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"full packages/learning + packages/cli suite (state machine, eval infra, shadow comparator, CLI backend, E2E)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 231 — '  ✓  @crabgic/learning  src/state-machine.test.ts (130 tests) 1292ms'; and, uniquely among the logs available, this job names BOTH fast-check properties individually — line 232 '     ✓ every transition the pure function accepts is present in the table, and vice versa (10k cases)  375ms' and line 233 '     ✓ no random walk of any length ever lands on 'promoted' without passing through dev_eval, held_out_eval, shadow_run, and independent_review in that order  890ms'. This is the closest thing in existence to the criterion's named \"fast-check report\" — see notes."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/state-machine.test.ts:32",
+          "quotedAssertion": "packages/learning/src/state-machine.test.ts:32-54 — the four hardcoded pipeline-skip regressions, and the ONLY assertions in this file whose expectation is not derived from the table under test: 'expect(() => learningProposalTransition(\"observation\", \"promoted\")).toThrow(' / 'expect(() => learningProposalTransition(\"candidate\", \"independent_review\")).toThrow(' / 'expect(() => learningProposalTransition(\"dev_eval\", \"shadow_run\")).toThrow(' / 'expect(() => learningProposalTransition(\"shadow_run\", \"promoted\")).toThrow('. A table that silently gained a shortcut edge fails here and nowhere else in this suite. These are the load-bearing bearers for \"finds no illegal path\" at the level of the pipeline's own order."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/state-machine.test.ts:81",
+          "quotedAssertion": "packages/learning/src/state-machine.test.ts:81-93 — the fuzz the criterion names, at { numRuns: 10_000 }: 'const legal = LEARNING_PROPOSAL_TRANSITIONS[from].includes(to);' / 'expect(learningProposalTransition(from, to)).toBe(to);' / 'expect(() => learningProposalTransition(from, to)).toThrow(IllegalTransitionError);'. Non-vacuous for what it can see: a transition function that admitted an edge the table does not declare fails on the illegal branch. Its oracle is the same table the function is constructed from — see the separate state-machine.ts:52 citation below — so it pins the FUNCTION against the table, not the table's content; that is what citation :32 above covers."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/state-machine.test.ts:15",
+          "quotedAssertion": "packages/learning/src/state-machine.test.ts:15-17 — 'expect(Object.keys(LEARNING_PROPOSAL_TRANSITIONS).sort()).toEqual([...ALL_STATES].sort());' where ALL_STATES is `LEARNING_PROPOSAL_STATES` imported from @crabgic/contracts (:3, :12). An INDEPENDENT source: a table that dropped or invented a state fails against 02's union, not against itself."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/state-machine.test.ts:56",
+          "quotedAssertion": "packages/learning/src/state-machine.test.ts:56-62 — 'expect(isLearningProposalAbsorbing(state)).toBe(' / '(LEARNING_PROPOSAL_ABSORBING_STATES as readonly LearningProposalState[]).includes(state),'. `isLearningProposalAbsorbing` is computed from the table (state-machine.ts:73-75) while the expectation is the separately-written 3-member constant (state-machine.ts:78-82), so a table that gave `rejected`/`rolled_back`/`expired` an outgoing edge — or stripped `promoted`'s two — fails here. The second independent check in the file."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/state-machine.ts:52",
+          "quotedAssertion": "packages/learning/src/state-machine.ts:52-64 — the table itself: 'shadow_run: [\"independent_review\", \"rejected\", \"expired\"],' / 'independent_review: [\"promoted\", \"rejected\"],' / 'promoted: [\"rolled_back\", \"expired\"],'. Quoted because the structural half of the criterion's claim holds by construction of these three lines: `promoted` has exactly one inbound edge, from `independent_review`, which has exactly one inbound edge, from `shadow_run`, and so on back to `observation`."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c1-state-machine.txt",
+          "quotedAssertion": "'Test Files  1 passed (1)' / '      Tests  130 passed (130)' — scoped local re-run at the closeout base commit with --reporter=verbose, so every one of the 121 table cases is named individually in the transcript; command line and exit status recorded in the file header."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c1b-fuzz-walk-reachability.txt",
+          "quotedAssertion": "'fast-check cases executed: 50000' / 'cases where current === \"promoted\" (assertion body entered): 0' — this pass's own measurement that the file's SECOND fast-check property is vacuous in practice. Recorded rather than hidden; see notes. The probe script is appended verbatim to the transcript."
+        }
+      ],
+      "notes": "Two anti-vacuity findings a reader must have, both recorded rather than papered over. (a) DROPPED BEARER — the second fast-check property, 'no random walk of any length ever lands on promoted without passing through dev_eval, held_out_eval, shadow_run, and independent_review in that order' (state-machine.test.ts:95-122), is VACUOUS IN PRACTICE and is deliberately NOT cited above. Its assertions live inside `if (current === \"promoted\")` (:109). A uniform-random walk of length <= 12 over 11 states, where an illegal step is skipped without advancing, reaches `promoted` only by drawing the correct next state 7 times in the right order while never drawing an absorbing state — measured probability ~1.8e-6 per case. Re-running the test's own loop and arbitraries under fast-check for 50,000 cases (10x its own 5,000) entered the body ZERO times (closeout-c1b transcript). The zero is SEED-DEPENDENT and should not be read as an impossibility proof — a reviewer's independent 50,000-case run entered it ONCE, and derived ~1.6e-6/case analytically, agreeing with the figure above. The argument does not rest on the zero: at that rate a 5,000-case CI run enters the body about 0.008 times, so on the overwhelming majority of executions — including both cited CI runs — the property asserts nothing at all. The test passes, is green in both cited CI jobs, and asserts nothing about ordering. It is a strictly weaker restatement of what the table's shape (citation state-machine.ts:52) already guarantees structurally, so nothing is lost by not citing it — but a reader should not count it. Not fixed here, per the pass rule against fixing findings in the same pass. (b) SHARED ORACLE — the 121-case 11x11 loop (:19-30) and the 10k property (:81-93) both compute their expectation as `LEARNING_PROPOSAL_TRANSITIONS[from].includes(to)`, i.e. from the very table the function under test is constructed from (state-machine.ts:67-70). They therefore prove `createTransitionFn` conforms to its table — a real property, and the one the criterion's 'finds no illegal path' literally asks for — but they cannot detect a WRONG table. The three citations that can are :32 (four hardcoded skip shapes), :15 (11 keys pinned against 02's own union) and :56 (absorbing set pinned against a separately-written constant). Third, on the channel: the criterion names 'CI job + fast-check report'. There is no separate committed fast-check report artifact in this repository, and none is produced by any workflow; the `learning-redteam` job log's per-`it()` lines 232-233 (with the run counts visible in source at :91 `{ numRuns: 10_000 }` and :120 `{ numRuns: 5_000 }`) are the report, and the scoped verbose transcript reproduces them locally. Flagged so the wording is not read as pointing at a missing file. (d) CITATION RE-RESOLUTION. This record was written at base `eabb65a` and re-resolved against `origin/main` as of `f05970c` (provenance rots within minutes, so read this as 'as of', and re-run the diff at merge time). The proof is scoped to THE PATHS THIS RECORD CITES, not to whole packages — a package-level claim was true at `30f931e` and had already rotted by `f05970c`, when `2ea3689` touched `packages/cli`. `git diff eabb65a f05970c -- <the 19 distinct paths cited by this record>` is EMPTY, so all 32 in-repo `test`/`artifact` citations point at byte-identical files. The 19 paths are enumerable from this record itself: every `citations[].ref` of kind `test` or `artifact` whose path is not under `docs/evidence/phase-22/`. A resolver extracted 77 code-shaped snippets from those citations and located all 77 within their cited spans, 0 slid, 0 not found, 0 citations yielding zero snippets. Separately, 20 quoted job-log strings were byte-compared against the three downloaded job logs: 20 exact, 0 mismatched. The one thing that DID move is a line ref in this pass's own criterion-6 defect record, into `roadmap/09-cli-and-doctor.md`, which phase 09's closeout re-numbered; it is updated there with both line numbers and the anchoring quote."
+    },
+    {
+      "index": 2,
+      "text": "Held-out contamination detected; reward hacking caught by grader isolation; grader-drift attempt blocked; rejected promotion changes nothing; expiry + rollback work — each a separate passing case in the `@learning-redteam` suite.",
+      "textSha256": "7ad31ea8ef80b32d4d49edda947b6ef2510b81b492219e309ba13a6e2e1cbc29",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "notes": "Left unticked. Every one of the five named behaviours has a real, passing, non-vacuous case — but three of them are not cases in the `@learning-redteam` suite, and 'grader-drift attempt blocked' has no case of its own under any name. `npx vitest list packages/learning/src/red-team` (the exact selector `.github/workflows/learning-redteam.yml`'s first step runs) enumerates all 20 cases in the tagged suite, and `git grep -l '@learning-redteam'` finds the tag in those five files and nowhere else under packages/learning/src — both captured in docs/evidence/phase-22/closeout-c2-redteam-suite-membership.txt. Contamination lives in src/eval/contamination.test.ts, rejected-changes-nothing in src/proposal-store/registry.test.ts:137-145, expiry in src/expiry/expiry-sweeper.test.ts, rollback in src/rollback/rollback.test.ts; all four run only in the workflow's SECOND step (the whole-package suite) and in CI / unit-test+coverage. Passing in the same workflow is not being a case in the named suite, and the tag exists precisely so the adversarial cases can be run alone — the same reason `@live` exists. Substituting the second step for the first would be reinterpreting a named channel, so the box stays unticked and the gap is filed.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/22-redteam-suite-membership.md"
+    },
+    {
+      "index": 3,
+      "text": "Active run provably cannot promote its own policy: a test attempting direct promotion-logic invocation from within a running work unit fails, and a grep-based CI check over `packages/gateway`'s registered tool names confirms no `learning.*` MCP tool exists to route around it (Gap 1).",
+      "textSha256": "8a0a7a56b3b3b678249c440de4435784fab7e4d4a65d592c48553059538196b1",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 204 — '  ✓  @crabgic/learning  src/red-team/self-promotion.redteam.test.ts (8 tests) 310ms'; line 203 — '  ✓  @crabgic/learning  src/red-team/no-mcp-tool-family.redteam.test.ts (3 tests) 16ms'; step summary lines 208-209 ' Test Files  5 passed (5)' / '      Tests  20 passed (20)'. Log line 196 records the command this step runs: 'npx vitest run packages/learning/src/red-team --coverage.enabled=false' — so the grep-based check really is executed by a CI job, which is the channel this criterion names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/self-promotion.redteam.test.ts:104",
+          "quotedAssertion": "packages/learning/src/red-team/self-promotion.redteam.test.ts:104-127 — the case that WAS the documented vacuous one, now genuine. The fixture really reaches the branch: :107 'await advanceToIndependentReview(proposal.id);' (:69-76, six real registry.transition calls), and :126 'expect((await registry.get(proposal.id))?.state).toBe(\"independent_review\");' confirms the state at the moment of attack. Then :113-118 'await expect(' / 'registry.recordReviewApproval(proposal.id, fabricateToken(), verify),' / ').rejects.toThrow(ReferenceTokenError);' twice with two DISTINCT fabricated strings, :122 'expect(await registry.getReviewApprovals(proposal.id)).toEqual([]);' proving nothing accumulated, and :123-125 the promotion still refusing with InsufficientIndependentReviewError."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/self-promotion.redteam.test.ts:180",
+          "quotedAssertion": "packages/learning/src/red-team/self-promotion.redteam.test.ts:180-203 — the POSITIVE control, without which every refusal above could be satisfied by a promote path that never works at all: two genuinely minted, correctly-bound tokens are recorded and 'expect(result.proposal.state).toBe(\"promoted\");'. Without it every refusal cited here would also be satisfied by a promote path that simply never works."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/self-promotion.redteam.test.ts:129",
+          "quotedAssertion": "packages/learning/src/red-team/self-promotion.redteam.test.ts:129-144 — the confused-deputy case: a genuinely-signed token minted for proposal A, offered against proposal B, is rejected for the RIGHT reason — 'await expect(registry.recordReviewApproval(proposalB.id, tokenForA, verify)).rejects.toThrow(' / '/confused-deputy/,' — and 'expect(await registry.getReviewApprovals(proposalB.id)).toEqual([]);'. :146-160 is the wrong-subject-kind case (rejects.toThrow(/subject kind/)) and :162-178 the single-use replay case (rejects.toThrow(/already consumed/))."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/test-support/reference-token-verifier.ts:87",
+          "quotedAssertion": "packages/learning/src/test-support/reference-token-verifier.ts:87-93 — the injected oracle is a REAL check, not a stub that always throws: 'const expected = createHmac(\"sha256\", secretKey).update(body).digest(\"hex\");' / 'if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {' / 'throw new ReferenceTokenError(\"signature invalid — token was not genuinely minted\");'. :118-135 then adds subject-kind, proposal-binding, expiry and single-use consumption. Cited because the flagship case's meaning depends entirely on this verifier being faithful AND on the same verifier accepting the genuine tokens at :180-203 — the two together are what make the refusal specific rather than blanket."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/proposal-store/registry.test.ts:308",
+          "quotedAssertion": "packages/learning/src/proposal-store/registry.test.ts:308-328 — the defence-in-depth control: a deliberately-buggy stub verifier that always returns the SAME tokenId is injected, 'expect(calls).toBe(2);' proves it really ran twice, and the registry's own distinctness check still fires — 'await expect(registry.transition(proposal.id, \"promoted\")).rejects.toThrow(' / 'DuplicateApprovalTokenError,'. This is what stops the guard from being wholly delegated to whatever verifier a caller injects."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:48",
+          "quotedAssertion": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:48-51 — the anti-vacuity floor for a scan whose whole result is an absence: 'expect(statSync(GATEWAY_SRC_DIR).isDirectory()).toBe(true);' / 'expect(collectSourceFiles(GATEWAY_SRC_DIR).length).toBeGreaterThan(1);'. The floor itself is weak (greater-than-one); the glob it guards is not — independently measured for this pass at 73 TypeScript files under packages/gateway/src, recorded in the notes. Noted, not defective."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:53",
+          "quotedAssertion": "packages/learning/src/red-team/no-mcp-tool-family.redteam.test.ts:53-67 — the criterion's named grep, over registered tool NAMES: 'const toolNamePattern = /name:\\s*[\"']learning\\./;' applied line-by-line to every .ts under packages/gateway/src, 'expect(violations).toEqual([]);'. :69-83 is the strictly stronger companion — the bare literal '\"learning.' or ''learning.' anywhere in non-test source — 'expect(violations).toEqual([]);'. Read the glob, not the comment: collectSourceFiles (:32-45) excludes only node_modules/ and dist/, so the first scan covers test files too; only the second exempts them, and its doc comment says so."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md",
+          "quotedAssertion": "docs/interface-ledger.md, Gap 1 — '**There is NO `learning.*` tool family.** Deleted; promotion/review is CLI-only' (line 113), and the ledger quotes this very criterion back at line 145: 'tool names confirms no `learning.*` MCP tool exists to route around it (Gap 1).' The ledger also settles WHERE the check lives ('Phase 22 carries a grep-based CI check ... permanently enforcing this absence'), which is why it sits in packages/learning rather than packages/gateway. Criterion, ledger and test agree."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c3b-type-level-proof-probe.txt",
+          "quotedAssertion": "Records a DROPPED bearer, not a tick. Two tests advertise themselves as proving exactly this criterion's invariant — registry.test.ts:271-281 'TransitionOptions carries NO reviewApprovals field at all — a caller cannot supply a trusted-by-name approvals array to transition()' and promote.test.ts:91-98's counterpart. This pass put the field BACK on both option types, as OPTIONAL, and measured: 'tsc exit: 0' with the field present, and both tests STILL PASS — '✓ |@crabgic/learning| src/proposal-store/registry.test.ts > … > TransitionOptions carries NO reviewApprovals field at all …' / ' Test Files  2 passed (2)'. So neither test can fail for the reason it names. See notes (e). Both edits were reverted; `git status --porcelain -- packages/` is empty at the closeout commit."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c3-self-promotion-and-no-mcp-tool.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  11 passed (11)' — scoped local re-run at the closeout base commit, --reporter=verbose so all 8 self-promotion cases and all 3 scan cases are named."
+        }
+      ],
+      "notes": "Scope, stated so this tick is not read wider than the evidence. (a) The phase's own evidence README is explicit that the meetable claim is the CLI/MCP-tool boundary, not arbitrary in-process code execution: docs/evidence/phase-22/README.md 'Threat model, precisely' records that the pre-repair-pass doc's 'structurally incapable' wording was FALSE, because code with arbitrary in-process rights can always supply its own hostile `verify`. This closeout agrees and does not re-import the retracted claim. What is proven: a caller-supplied claim of prior verification is insufficient — some verification must genuinely run and genuinely succeed, twice, with distinct results — plus, separately, that no model-invokable route to this code exists at all. (b) The red-team suite injects a decoupled reference verifier, not the production one; the production verifier (`buildLearningReviewTokenVerifier`, packages/cli/src/learning/learn-command-backend.ts:73) is exercised by packages/cli/src/learning/learn-command-backend.test.ts, cited under criterion 4. Oracle and subject are therefore genuinely separate here — the oracle is test-support code, the subject is ProposalRegistry's accumulate-then-require-two logic — which is what makes the flagship case non-circular. (c) 'two distinct approval tokens' does NOT mean two distinct human identities; the same operator running `learn approve` twice satisfies it. Disclosed in the phase README's threat-model section and repeated here so the tick is not read as a two-person rule. (d) Measured by this pass for the scan's anti-vacuity floor: packages/gateway/src contains 73 TypeScript files, so the glob the two scans walk is real and large even though the committed floor only requires more than one. (e) DROPPED BEARERS — two tests that look like the most direct evidence for THIS criterion's invariant are vacuous and are deliberately not cited. `registry.test.ts:271-281` ('TransitionOptions carries NO reviewApprovals field at all — a caller cannot supply a trusted-by-name approvals array to transition()') and `promote.test.ts:91-98` (the same for `PromoteProposalOptions`) each declare an object literal with two or three fields and then assert `expect(Object.keys(options)).not.toContain(\"reviewApprovals\")` — on the literal they wrote one line earlier. That is a tautology: `Object.keys` of a literal cannot contain a key the literal does not spell, whatever the TYPE says. Their shared doc comment claims the compile step covers it — 'this file would fail to compile if `TransitionOptions` still declared `reviewApprovals`' — and that claim is FALSE, because an OPTIONAL field is satisfied by omitting it. This pass measured it rather than reasoning about it: putting `readonly reviewApprovals?: readonly { readonly tokenId: string }[]` back on both interfaces leaves `npx tsc -b --force packages/contracts packages/journal packages/learning` at exit 0 AND leaves both tests passing (`docs/evidence/phase-22/closeout-c3b-type-level-proof-probe.txt`; both edits reverted, `git status --porcelain -- packages/` empty at the closeout commit). So neither test constrains the removal it is named for. The invariant itself IS genuinely evidenced — by the flagship fabrication case, the confused-deputy/wrong-subject/replay cases, the positive control, and `registry.test.ts:308-328`'s distinctness backstop, all cited above — which is why this criterion is still ticked. Recorded, not fixed: the honest repair is to make the field's absence a compile ERROR (e.g. an `Exclude<keyof TransitionOptions, …>` assertion or a `@ts-expect-error` on a literal that supplies it), and that is separate work with its own TDD trail."
+    },
+    {
+      "index": 4,
+      "text": "E2E: seeded recurring failure → lesson → shadow improvement → human promotion (two distinct approval tokens, journaled) → behavior change → rollback restores baseline (committed E2E fixture + journal excerpt).",
+      "textSha256": "5316f7fbe56bc9b72cc1a9a2bdb603f1340b2adc76b526dbd2e4fac040432812",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91480519773, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 731 — '  ✓  @crabgic/learning  src/pipeline.e2e.test.ts (1 test) 63ms'; line 744 — '  ✓  @crabgic/learning  src/shadow/shadow-comparator.test.ts (4 tests) 37ms'; line 939 — '  ✓  crabgic  src/learning/learn-command-backend.test.ts (13 tests) 181ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/pipeline.e2e.test.ts:68",
+          "quotedAssertion": "packages/learning/src/pipeline.e2e.test.ts:68-78 — the 'seeded recurring failure' beat, proven to genuinely fail BEFORE the lesson: 'const fixture = buildReproducerFixture({' / 'failingScript: { failure: { kind: \"schemaViolation\" } },' then a real replay through @crabgic/testkit's fake engine and 'expect(baselineValidation.kind).toBe(\"schemaViolation\");'. Without this the later 'improved' verdict would be measured against an asserted baseline rather than an observed one."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/pipeline.e2e.test.ts:114",
+          "quotedAssertion": "packages/learning/src/pipeline.e2e.test.ts:114-132 — the 'shadow improvement' beat: the reproducer failure is stripped ('const { failure: _baselineFailure, ...fixtureScriptWithoutFailure } = fixture.script;') and the mirrored dispatch re-run through a real FakeEngineAdapter, then 'expect(comparison.verdict).toBe(\"improved\");' against the SAME baseline established at :78. :101 'assertNoContamination(devCases, heldOutCases); // must run BEFORE either eval.' precedes both eval stages."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/pipeline.e2e.test.ts:176",
+          "quotedAssertion": "packages/learning/src/pipeline.e2e.test.ts:176-184 — the committed journal excerpt, read back from a real @crabgic/journal store and asserted as an exact ordered array: 'expect(transitionEntries.map((e) => e.payload.to)).toEqual([' / '\"reproducer\",' / '\"candidate\",' / '\"dev_eval\",' / '\"held_out_eval\",' / '\"shadow_run\",' / '\"independent_review\",' / '\"promoted\",' / ']);'. toEqual on the full array, not toContain — an extra, missing or reordered transition fails."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/pipeline.e2e.test.ts:193",
+          "quotedAssertion": "packages/learning/src/pipeline.e2e.test.ts:193-213 — the rollback beat: 'expect(rolledBackProposal.state).toBe(\"rolled_back\");' / 'expect(rolledBackProposal.rollbackChangeSetId).toBe(inverseChangeSet.id);' / 'expect(inverseChangeSet.rollbackStrategy).toContain(changeSet.id);', then the journal is re-read and 'expect(rollbackEntries[rollbackEntries.length - 1]?.payload).toEqual({' / 'from: \"promoted\",' / 'to: \"rolled_back\",' / '});'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/shadow/shadow-comparator.test.ts:51",
+          "quotedAssertion": "packages/learning/src/shadow/shadow-comparator.test.ts:51-65 — the anti-vacuity control for the 'improved' verdict the E2E relies on: with the baseline passing and the shadow failing, 'expect(comparison.verdict).toBe(\"regressed\");'. :67-83 and :85-96 pin both 'unchanged' shapes. A comparator hardcoded to 'improved' fails three of its four cases."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/learning/learn-command-backend.test.ts:133",
+          "quotedAssertion": "packages/cli/src/learning/learn-command-backend.test.ts:133-173 — the 'human promotion (two distinct approval tokens, journaled)' half, which the E2E itself does NOT cover (see notes). A real terminal 'yes' at each of two prompts (yesIo(), :55-62, writes \"yes\\n\" into a PassThrough the real runApprovalFlow reads), a real ApprovalTokenMinter, then 'expect(parsed.promoted).toBe(true);' / 'expect(new Set(approvals.map((a) => a.tokenId)).size).toBe(2);' / 'expect(mints.length).toBeGreaterThanOrEqual(2);' over journal.queryEntries({ type: \"approval_token_mint\" }). :120-131 is the control that ONE approval does not promote ('expect(result.stdout).toContain(\"awaiting at least one more DISTINCT reviewer\");'), and :175-187 that declining mints and records nothing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c4-pipeline-e2e.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  14 passed (14)' — scoped local re-run of pipeline.e2e.test.ts plus learn-command-backend.test.ts at the closeout base commit, --reporter=verbose."
+        }
+      ],
+      "notes": "Two scope statements, so the tick is not read wider than it is. (a) The criterion's beats are split across TWO committed tests, not one. pipeline.e2e.test.ts walks the whole chain on the fake engine and owns the journal excerpt, but its two approval tokens come from the decoupled reference verifier — no human prompt, and no `approval_token_mint` entries. learn-command-backend.test.ts:133-173 owns the 'human ... journaled' half against the real minter and a real terminal prompt, but is not the E2E. Each is cited separately above rather than one being quoted inside the other's citation. Nothing in the criterion is unevidenced; it is simply not all in one file. (b) 'behavior change' and 'rollback restores baseline' are evidenced at the ChangeSet-object level, not behaviourally: the E2E asserts the forward ChangeSet is produced in `draft` state and handed back (:190), and that the inverse ChangeSet names the forward one (:201) — it does not re-run the reproducer to show the promoted lesson changing an engine outcome and the rollback restoring the failing baseline. That is the phase's own boundary, not an omission: roadmap/22 §Out of scope says 'ChangeSet publication and branch/commit rendering — owned by 07/08; a promoted or rolled-back lesson only constructs and hands off a `ChangeSet`.' A reviewer who wants the behavioural loop should read criterion 8's defect (docs/evidence/criteria-closeout/defects/22-no-bypass-scope.md), which is where the unexercised hand-off actually bites."
+    },
+    {
+      "index": 5,
+      "text": "Persistent artifacts change only through reviewed promotion: fs-permission test proves the proposer namespace cannot write grader/held-out paths.",
+      "textSha256": "ca20d452b0d3e4ee7ceca23dbfb279d706ee3cd59124fc904825d2f7b3423da2",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91480517014, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826020",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log line 202 — '  ✓  @crabgic/learning  src/red-team/grader-isolation.redteam.test.ts (6 tests) 30ms'. Also green on ubuntu-24.04-arm (job 91480517035) in the same run, which matters for a test whose whole subject is real POSIX mode bits."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:53",
+          "quotedAssertion": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:53-58 — the POSITIVE control the test's own name calls out ('sanity — the boundary isn't vacuously \"always fails\"'): before sealing, 'await store.write([evalCase]);' / 'expect(await store.read()).toEqual([evalCase]);'. Without it, a store whose write always failed would satisfy every EACCES assertion below."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:60",
+          "quotedAssertion": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:60-69 — the fs-permission proof, deliberately bypassing every abstraction this package offers: 'await expect(' / 'writeFile(join(heldOutDir, \"tamper.json\"), JSON.stringify({ hacked: true }), \"utf8\"),' / ').rejects.toMatchObject({ code: \"EACCES\" });' after store.seal(). :71-80 repeats it for OVERWRITING the existing sealed cases file (the case a directory-mode-only seal would miss), and :91-98 proves reads still succeed, so the seal is write-only and not a blanket lockout."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/store/case-fixture-store.ts:65",
+          "quotedAssertion": "packages/learning/src/store/case-fixture-store.ts:65-72 — what makes the boundary OS-level rather than a convention: 'async seal(): Promise<void> {' / 'await chmod(join(this.#dir, name), LEARNING_SEALED_FILE_MODE);' / 'await chmod(this.#dir, LEARNING_SEALED_DIR_MODE);'. Modes pinned at store/layout.ts:47-50 as 0o500 / 0o400. :47-50's in-process refusal ('is sealed — refusing write', :49) is the weaker, layered companion — the EACCES above holds without it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:100",
+          "quotedAssertion": "packages/learning/src/red-team/grader-isolation.redteam.test.ts:100-112 — the disjointness half: 'expect(heldOutStore.isSealed).toBe(true);' / 'expect(devStore.isSealed).toBe(false);' and the dev store then genuinely written twice over, 'expect(await devStore.read()).toHaveLength(2);'. Sealing one namespace does not seize the other."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/store/layout.test.ts:28",
+          "quotedAssertion": "packages/learning/src/store/layout.test.ts:28-34 — the paths the criterion names really are disjoint namespaces under 04's pinned root: 'expect(devDir).not.toBe(heldOutDir);' / 'expect(devDir.startsWith(resolveGraderDir(env, projectHash))).toBe(true);' / 'expect(heldOutDir.startsWith(resolveGraderDir(env, projectHash))).toBe(true);'. :20-26 does the same for registry/ versus grader/."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/store/layout.test.ts:14",
+          "quotedAssertion": "packages/learning/src/store/layout.test.ts:14-18 — the state root pinned as a literal, not re-derived: 'expect(resolveLearningDir(env, projectHash)).toBe(' / '\"/home/tester/.local/state/crabgic/abc123/learning\",'. That is roadmap/22 §In scope's storage-policy path (XDG state home, crabgic, project hash, learning) reproduced exactly, and the sibling convention interface-ledger Gap 14 settles."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/proposal-store/registry.ts:139",
+          "quotedAssertion": "packages/learning/src/proposal-store/registry.ts:139-145 — the structural half the phase README calls a type-level absence: the ProposalRegistry constructor takes 'readonly journal: Pick<JournalStore, \"appendEntry\">;' and a registryDir, and no grader/held-out path at all. Cited as source rather than as a test because that is what it is — there is no runtime check here to be bypassed, and equally no test asserting the absence."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c5-grader-isolation.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  9 passed (9)' — scoped local re-run of grader-isolation.redteam.test.ts plus layout.test.ts at the closeout base commit, --reporter=verbose. Run on Linux, where the 0o500/0o400 seal is genuinely enforced by the kernel for a non-root uid."
+        }
+      ],
+      "notes": "Three residuals, named rather than papered over, because this tick is narrower than its headline sentence. (i) Only `grader/held-out/` is ever sealed. `grader/dev/` (layout.ts:65-67) has no seal step, so nothing stops a same-uid process writing dev cases; the criterion's 'grader/held-out paths' is evidenced for the held-out half and, for the grader half, only by the disjoint-namespace and type-level-absence arguments above. (ii) NO PRODUCTION CALLER EVER SEALS. `git grep 'CaseFixtureStore' packages --include=*.ts`, outside tests, hits only its own definition and the barrel export (index.ts:59); packages/cli/src/bootstrap.ts wires ProposalRegistry and resolveRegistryDir and nothing else from this package's store layer. So the OS boundary this criterion cites is real and proven, and in the shipped binary it is never established, because the grader directories are never created by shipped code at all. The criterion's words are about the test, and the test delivers; the deployment gap is recorded here so no reader infers it. (iii) The test operates on an mkdtemp directory named 'held-out', not on resolveHeldOutCasesDir's output — the pinned path is asserted separately (layout.test.ts:28-34) and the two are never composed. Also, two stale doc comments found while reading: store/layout.ts:33 and store/case-fixture-store.ts:33 both point at a `grader-isolation.test.ts` under src/store/ (the file is src/red-team/grader-isolation.redteam.test.ts), and layout.ts:38-39 names `../store/grader-store.ts` and `../proposal-store/proposer-store.ts`, neither of which exists at HEAD. Left unedited per the pass rule against fixing findings in the same pass."
+    },
+    {
+      "index": 6,
+      "text": "`learn list|approve|reject|rollback` passes P09's CLI conformance harness, replacing its `NOT_IMPLEMENTED` stub (golden CLI-output test).",
+      "textSha256": "5d107aa147c5713e27b45626c5ee5eef7b17e88f684ef9cc034c3029fb3c2931",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "notes": "Left unticked. The backend is real and well-tested and the shipped composition root wires it (bootstrap.ts:307-309, asserted by e2e/live/src/cliNotImplementedSweep.test.ts:105 'expect(wiring.learningWired).toBe(true);' — an offline test, re-run for this pass as docs/evidence/phase-22/closeout-c6b-production-wiring.txt). But both channels the criterion names are unsatisfied. P09 identifies its conformance harness by suite name in its own exit criterion 1 — 'Every plan CLI command exists as a typed UDS request with stable exit codes; `--json` validates against published schemas — suite `cli.commands.schema.test`' (roadmap/09-cli-and-doctor.md, quoted rather than line-referenced on purpose: another phase's roadmap renumbers every time its own closeout lands, and this one already moved twice while this record was being written); in packages/cli/src/commands/cli.commands.schema.test.ts the four learn verbs appear on exactly four lines, :224-227, all inside describe('dispatchCommand — NOT_IMPLEMENTED stubs') asserting EXIT_NOT_IMPLEMENTED — the harness records the stub as still present. And there is no golden CLI-output test of the verbs: `grep -c 'toMatchSnapshot|toMatchFileSnapshot' packages/cli/src/learning/learn-command-backend.test.ts` is 0, and the only committed golden naming learn is its HELP topic (cli.snapshots.test.ts.snap:174-176). Compounding both: unlike phase 12's analogous trust criterion, which had trust-dispatch.test.ts driving the real dispatchCommand, there is no learn-dispatch.test.ts — dispatch.ts:112-125's four wired branches are never executed by any test. Search trail captured verbatim in docs/evidence/phase-22/closeout-c6-cli-conformance-search-trail.txt.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/22-learn-cli-conformance-golden.md"
+    },
+    {
+      "index": 7,
+      "text": "Every `learning_transition` journal entry round-trips through 02's `JournalEntryType` exhaustiveness compile check (shared CI job with 02/04).",
+      "textSha256": "26c52998cf99f58eba8aa2dc6b7adf3d5650405c6875d570ff93f3632f275139",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91480519764, steps \"tsc -b (cold)\" and \"tsc -b (incremental, no-op expected)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30741826008",
+          "commit": "eabb65acb723ad1e21cfcbe4869fcfb432fe4625",
+          "quotedAssertion": "job log lines 158-164 — '##[group]Run npm run typecheck' / 'npm run typecheck' / '> crabgic-monorepo@0.0.0 typecheck' / '> tsc -b', repeated at lines 166-172 for the incremental pass, both green. This IS the shared-CI-job-with-02/04 the criterion names: one whole-monorepo `tsc -b` compiles packages/contracts, packages/journal and packages/learning in the same job, and it is the only job that evaluates either exhaustiveness Record."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-payloads.ts:203",
+          "quotedAssertion": "packages/journal/src/codec/journal-payloads.ts:203-217 — the exhaustiveness mechanism itself, with this phase's member in it: 'export const JOURNAL_ENTRY_PAYLOAD_SCHEMAS = {' … 'learning_transition: LearningTransitionPayloadSchema,' … '} satisfies Record<JournalEntryType, z.ZodTypeAny>;'. The `satisfies` is the check: omitting learning_transition, or adding a key 02 never declared, fails `tsc -b packages/journal`. Note for accuracy: this object has NO runtime consumer anywhere — searching packages/journal and packages/contracts for its name, outside its own declaration and tests, returns nothing — so it is purely a compile-time assertion, which is exactly what the criterion calls it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/journal/journal-entry-type.ts:79",
+          "quotedAssertion": "packages/contracts/src/journal/journal-entry-type.ts:79 — 'learning_transition: \"A LearningProposalState transition (22).\",' inside JOURNAL_ENTRY_TYPE_DESCRIPTIONS, the Readonly<Record<JournalEntryType, string>> that is 02's own half of the same mechanism, with the member declared in the union at :38. Given its own citation rather than quoted inside the journal one, so the drift check on each file is separately auditable."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-entry.ts:162",
+          "quotedAssertion": "packages/journal/src/codec/journal-entry.ts:162-168 — the RUNTIME half that makes 'round-trips' literal rather than metaphorical: 'export const LearningTransitionEntrySchema = z' / '.object({' / '...envelopeFields,' / 'type: z.literal(\"learning_transition\"),' / 'payload: LearningTransitionPayloadSchema,' / '})' / '.strict();', a branch of the 13-member 'export const JournalEntrySchema = z.discriminatedUnion(\"type\", [' at :171. `.strict()` means an unexpected payload key is a parse error, not a silent pass-through."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/store/append-entry.ts:141",
+          "quotedAssertion": "packages/journal/src/store/append-entry.ts:141 — the WRITE side of the round trip: 'const entry = JournalEntrySchema.parse({ ...draft, hash });'. Every append goes through it, so an entry that did not validate against the strict discriminated union could not be written at all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/ndjson-codec.ts:28",
+          "quotedAssertion": "packages/journal/src/codec/ndjson-codec.ts:28 — the READ side, against the same union: 'return JournalEntrySchema.parse(parsed);'. Given its own citation rather than quoted inside the append-entry one, so each file's drift is separately checkable. Together these two are what make 'round-trips' literal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/proposal-store/registry.ts:285",
+          "quotedAssertion": "packages/learning/src/proposal-store/registry.ts:285-289 — this phase's only writer: 'await this.#journal.appendEntry({' / 'type: \"learning_transition\",' / 'workUnitId: id,' / 'payload: { from, to },' / '});' — through @crabgic/journal's typed appendEntry, never a hand-rolled envelope, so it cannot skip the parse at append-entry.ts:141."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/learning/src/proposal-store/registry.test.ts:107",
+          "quotedAssertion": "packages/learning/src/proposal-store/registry.test.ts:107-121 — the round trip executed end to end against a real store: after one real transition, 'expect(entries).toHaveLength(1);' and 'expect(entries[0]).toMatchObject({' / 'type: \"learning_transition\",' / 'workUnitId: proposal.id,' / 'payload: { from: \"observation\", to: \"reproducer\" },' / '});'. :123-135 is the negative control — an illegal transition 'journals nothing' ('expect(entries).toHaveLength(0);'), so the writer is not simply emitting an entry for every call."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c7b-tsc-exhaustiveness.txt",
+          "quotedAssertion": "'# command: npx tsc -b --force packages/contracts packages/journal packages/learning' / '# exit status: 0' — a COLD (--force) rebuild for this closeout, so both compile-time Records were genuinely re-evaluated rather than served from an incremental build cache."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-22/closeout-c7-journal-round-trip.txt",
+          "quotedAssertion": "'Test Files  2 passed (2)' / '      Tests  63 passed (63)' — scoped local re-run of registry.test.ts plus @crabgic/journal's own journal-entry.test.ts at the closeout base commit."
+        }
+      ],
+      "notes": "Two precisions. (a) WHO WRITES. `learning_transition` entries are appended by packages/learning/src/proposal-store/registry.ts:285 running inside the CLI process (`learn approve`/`reject`/`rollback` via packages/cli/src/learning/learn-command-backend.ts), NOT by the supervisor daemon. That makes this package one of the direct journal writers named in the writer-separation disclosure. This criterion makes no claim about writer identity, so nothing here is affected — but a reader should not infer daemon-mediated writes from the word 'journal'. (b) The criterion's phrase '02's `JournalEntryType` exhaustiveness compile check' names one thing that is physically two, in two packages: 02's Readonly<Record<JournalEntryType, string>> descriptor (contracts, cited above) and 04's `satisfies Record<JournalEntryType, z.ZodTypeAny>` payload map (journal, cited above). Both are pure `tsc -b` assertions with no runtime consumer; the runtime round trip is a separate mechanism (JournalEntrySchema's strict discriminated union). All three are cited so the tick does not rest on conflating them. Unlike packages/git-engine, packages/learning carries no compliance test of its own asserting that this package's entry types are a subset of JOURNAL_ENTRY_TYPES; there is exactly one type it writes, it is a string literal at registry.ts:286 checked by the appendEntry parameter type, and the round trip at registry.test.ts:107-121 exercises it — but a reviewer wanting git-engine's belt-and-braces shape should know it is absent here."
+    },
+    {
+      "index": 8,
+      "text": "Project-scoped promotion produces a real `ChangeSet` that clears the same gates (14) as any other change before publish (08) — integration test on fake engine proves no bypass path exists.",
+      "textSha256": "2918936ec9e22fa73f6aa9cddf513c52c94b31160964c55f6b1471a5e0d92340",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "notes": "Left unticked. The first clause is genuinely and non-vacuously evidenced: no-bypass.redteam.test.ts:99-128 constructs @crabgic/gates' own createGateRegistry(), registers one passing and one FAILING fake gate, fires both against the promoted ChangeSet's id, and asserts the failing one really reports false and that two evidence_pointer entries are journaled under that changeSetId — an implementation that special-cased learning-originated ChangeSets into always-green fails :118. What is not evidenced are the clauses after the em dash. There is no engine in the 'integration test on fake engine' (git grep 'FakeEngineAdapter|@crabgic/testkit' over that file returns nothing; the fake engine is in pipeline.e2e.test.ts, which fires no gates). 'Proves no bypass path exists' rests on a doc-comment grep at no-bypass.redteam.test.ts:28-30, not on a check; this pass re-ran it independently and it is true today, but nothing enforces it — contrast phase 07's spawn-surface-scan.test.ts, which turns exactly this kind of absence claim into a permanent static check. And 'before publish (08)' is exercised nowhere: packages/cli/src/learning/learn-command-backend.ts:191-201 is the only production caller of promoteProposal, and it constructs the ChangeSet, prints it to stdout and returns — nothing persists or dispatches it, so in the shipped system a promoted lesson's ChangeSet never reaches gates or publish at all. The honest correction ('a promoted ChangeSet is not special-cased when gates are fired against it') is strictly WEAKER than the criterion, which per the wording protocol makes this UNMET rather than a wording fix. Search trail captured verbatim in docs/evidence/phase-22/closeout-c8-no-bypass-search-trail.txt.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/22-no-bypass-scope.md"
+    }
+  ]
+}

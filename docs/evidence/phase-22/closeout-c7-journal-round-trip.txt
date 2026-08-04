@@ -1,0 +1,77 @@
+# 2026-08-02T10:15:26Z — HEAD eabb65acb723ad1e21cfcbe4869fcfb432fe4625
+# command: npx vitest run packages/learning/src/proposal-store/registry.test.ts packages/journal/src/codec/journal-entry.test.ts --coverage.enabled=false --reporter=verbose
+# ---8<--- verbatim stdout+stderr below, nothing edited ---8<---
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p22
+
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > JOURNAL_ENTRY_TYPES really has 13 members (sanity on the fixture table above) 3ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "run_transition" entry through encode -> decode 4ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "run_transition" entry whose payload doesn't match its own schema 2ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "work_unit_transition" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "work_unit_transition" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "adjudication_decision" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "adjudication_decision" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "remote_operation_record" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "remote_operation_record" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "evidence_pointer" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "evidence_pointer" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "session_assignment" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "session_assignment" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "git_freeze" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "git_freeze" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "worktree_quarantine" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "worktree_quarantine" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "cas_ref_update" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "cas_ref_update" entry whose payload doesn't match its own schema 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "approval_token_mint" entry through encode -> decode 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "approval_token_mint" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "fanout_rationale" entry through encode -> decode 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "fanout_rationale" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "milestone_sync" entry through encode -> decode 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "milestone_sync" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > round-trips a valid "learning_transition" entry through encode -> decode 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a "learning_transition" entry whose payload doesn't match its own schema 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects an entry whose type is not one of the 13 members 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects a payload with an extra unknown key (.strict() enforcement) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > rejects prevHash/hash values that aren't 64-char lowercase hex 1ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > evidence_pointer payload deserializes as a full EvidenceRecord shape (02) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > remote_operation_record payload deserializes as a full RemoteOperationRecord shape (02) 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — all 13 JournalEntryType members > run_transition payload carries a (from,to) pair typed against the run-lifecycle enum 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > WORK_UNIT_ATTEMPT_STATUSES really has all documented members 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "pending" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "dispatched" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "succeeded" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "failed" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "cancelled" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > round-trips a work_unit_transition entry with status "parked:rate_limit" 0ms
+ ✓ |@crabgic/journal| src/codec/journal-entry.test.ts > JournalEntrySchema — every WorkUnitAttemptStatus member via work_unit_transition > a parked:rate_limit entry retains its sessionId in the round-tripped payload 0ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > creates a proposal in the observation state, persisted and readable back 8ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > get() on an unknown id returns undefined (not a throw) 1ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > list() returns every created proposal 5ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > operating on an unknown id throws ProposalNotFoundError 2ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > getReviewApprovals on an unknown id throws ProposalNotFoundError 1ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > getReviewApprovals returns the accumulated (genuinely-verified) approvals for a known proposal 7ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — create/get/list > recordReviewApproval on an unknown id throws ProposalNotFoundError 1ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > advances legally through the full pipeline to independent_review 33ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > journals exactly one learning_transition entry per transition, correlated by workUnitId=proposalId 12ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > an illegal transition (observation -> promoted) throws IllegalTransitionError and journals nothing 4ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > rejected: changes nothing else about the proposal's recorded evidence/content 9ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > expired is reachable from any non-terminal state 9ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — transition + journaling > additionalEvidenceRecordIds accumulate across transitions 14ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > promotion with ZERO approvals throws InsufficientIndependentReviewError 28ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > promotion with exactly ONE genuinely-verified approval throws InsufficientIndependentReviewError 29ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > the SAME genuinely-minted token replayed twice throws on the SECOND recordReviewApproval call (single-use) — never accumulates as two 30ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > a fabricated (never-minted) token is rejected by recordReviewApproval itself — nothing is ever accumulated from it 30ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > promotion with TWO genuinely-verified, distinct approvals succeeds and journals the transition 35ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > recordReviewApproval accumulates across separate calls; transition(..., 'promoted') reads the accumulated set 32ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > TransitionOptions carries NO reviewApprovals field at all — a caller cannot supply a trusted-by-name approvals array to transition() 1ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — promotion requires >= 2 distinct, GENUINELY VERIFIED approvals (keystone invariant) > promoted -> rolled_back is legal and records the inverse ChangeSet id 35ms
+ ✓ |@crabgic/learning| src/proposal-store/registry.test.ts > ProposalRegistry — DuplicateApprovalTokenError defense-in-depth (in case a verifier implementation ever mis-behaves) > two approvals sharing the same tokenId (even if a hypothetical verifier let that through) still throw at promotion time 29ms
+
+ Test Files  2 passed (2)
+      Tests  63 passed (63)
+   Start at  12:15:27
+   Duration  1.17s (transform 833ms, setup 0ms, import 1.19s, tests 386ms, environment 0ms)
+
+# ---8<--- end ---8<---
+# exit status: 0

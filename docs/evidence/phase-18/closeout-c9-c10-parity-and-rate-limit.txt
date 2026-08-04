@@ -1,0 +1,21 @@
+UTC:  2026-08-02T11:29:07Z
+HEAD: d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+CMD:  npx vitest run packages/connectors-jira/src/testkit/fake-cassette-parity.test.ts packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p18
+
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity.test.ts > fake vs. cassette parity > the hand-authored fake and the recorded JSON cassette drive the JiraResourceClient to byte-identical typed results 9ms
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity.test.ts > fake vs. cassette parity > sanity: the cassette fixture actually resolves and is non-trivial 0ms
+ ✓ |@crabgic/connectors-jira| src/testkit/rate-limit-and-write-order.test.ts > Retry-After is honored on a rate-limited GET > sleeps for exactly the Retry-After duration before the next attempt 5ms
+ ✓ |@crabgic/connectors-jira| src/testkit/rate-limit-and-write-order.test.ts > per-issue write order is preserved (write-serialized by canonicalTarget) > two concurrent writes to the SAME issue never overlap on the wire 22ms
+ ✓ |@crabgic/connectors-jira| src/testkit/rate-limit-and-write-order.test.ts > per-issue write order is preserved (write-serialized by canonicalTarget) > a concurrent write to a DIFFERENT issue is NOT serialized against the first 11ms
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  13:29:07
+   Duration  1.18s (transform 1.36s, setup 0ms, import 2.05s, tests 49ms, environment 0ms)
+
+----- end of output -----
+EXIT: 0
