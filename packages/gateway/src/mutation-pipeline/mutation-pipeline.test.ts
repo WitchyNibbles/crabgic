@@ -671,3 +671,126 @@ describe("executeMutationPlan — crash-recovery / exactly-once matrix (@crabgic
     });
   });
 });
+
+/**
+ * `serializationTarget` — the OPTIONAL provider hook that decouples the
+ * write-mutex key from the plan's identity key. roadmap/18 exit criterion
+ * 10's second clause ("per-issue write order preserved") needs Jira's
+ * four issue-scoped `canonicalTarget` shapes (`issue:K`, `issue:K:comment`,
+ * `issue:K:worklog`, `issue:K:attachment`) to take ONE mutex, while
+ * `canonicalTarget` itself must stay distinct — the Jira apply clients
+ * parse a `commentId` back out of it. Absent the hook, behavior must be
+ * byte-identical to before it existed (the Grafana/default path).
+ */
+/** Overlap detection via a deferred-promise barrier — the fallback timer is only reachable when the requests provably CANNOT overlap (i.e. they are serialized), so a loaded machine lengthens the hold rather than shortening it. */
+function createOverlapRecorder(): {
+  readonly maxInFlight: () => number;
+  readonly sendRequest: typeof sendHttpRequest;
+} {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let completed = 0;
+  let releaseBarrier: () => void = () => undefined;
+  const barrier = new Promise<void>((resolve) => {
+    releaseBarrier = resolve;
+  });
+  return {
+    maxInFlight: () => maxInFlight,
+    sendRequest: async (): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      if (inFlight >= 2) releaseBarrier();
+      if (completed === 0) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          barrier,
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, 300);
+          }),
+        ]);
+        if (timer !== undefined) clearTimeout(timer);
+      }
+      inFlight -= 1;
+      completed += 1;
+      return { status: 200, headers: {}, bodyText: JSON.stringify({ appliedRevision: "rev-1" }) };
+    },
+  };
+}
+
+function sharedTargetPlan(suffix: string, canonicalTarget: string): RemoteMutationPlan {
+  return buildPlan({
+    id: `33333333-3333-4333-8333-3333333333${suffix.charCodeAt(0).toString(16)}`,
+    canonicalTarget,
+    idempotencyKey: `op-serialize-${suffix}`,
+  });
+}
+
+describe("executeMutationPlan — serializationTarget", () => {
+  it("passes the hook's key to the transport as `resource`, leaving canonicalTarget alone", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "issue:EX-1:comment" });
+
+    const outcome = await executeMutationPlan(
+      plan,
+      buildHandlers({ serializationTarget: (p) => p.canonicalTarget.split(":").slice(0, 2).join(":") }),
+      deps,
+    );
+
+    expect(outcome.status).toBe("recorded");
+    expect(requestSpy).toHaveBeenCalledTimes(1);
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.resource).toBe("issue:EX-1");
+    expect(req?.isWrite).toBe(true);
+    // Identity is untouched — only the mutex key was redirected.
+    expect(plan.canonicalTarget).toBe("issue:EX-1:comment");
+  });
+
+  it("DEFAULT PATH: with no hook, `resource` is exactly plan.canonicalTarget", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "dashboard:abc123" });
+    const handlers = buildHandlers();
+    expect(handlers.serializationTarget).toBeUndefined();
+
+    await executeMutationPlan(plan, handlers, deps);
+
+    expect(requestSpy.mock.calls[0]?.[0]?.resource).toBe("dashboard:abc123");
+  });
+
+  it("serializes two plans with DIFFERENT canonicalTargets that share one serializationTarget", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers({
+      serializationTarget: (p) => p.canonicalTarget.split(":").slice(0, 2).join(":"),
+    });
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("a", "issue:EX-1"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("b", "issue:EX-1:comment"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("CONTROL: without the hook, those same two plans overlap (the instrumentation CAN see overlap)", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers();
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("c", "issue:EX-1"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("d", "issue:EX-1:comment"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+});
