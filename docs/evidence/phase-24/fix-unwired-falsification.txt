@@ -1,0 +1,99 @@
+roadmap/24 defect fix (daemon requirements registry unwired) — FALSIFICATION MEASUREMENTS
+captured (UTC): 2026-08-04T16:14:10Z – 2026-08-04T16:22:53Z
+HEAD:           4f561c6c2b033de7b09a09fceacd605f5966969e (tip of the fix branch, both commits applied)
+cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
+
+Four deletions, each measured, each reverted. The method is the brief's: do not
+read the tests, DELETE the code and watch which suites redden. A claim-bearing
+test that stays green when its bearer is removed is evidencing nothing.
+
+IMPORTANT METHOD NOTE. `@crabgic/*` packages resolve through `dist`, not `src`,
+so every behavioural measurement below was preceded by `npx tsc -b --force`.
+A first pass of measurement 3 was run WITHOUT rebuilding and produced a
+misleading `Cannot read properties of undefined (reading 'get')`; it was
+discarded and re-run. Only the rebuilt runs are reported here.
+
+────────────────────────────────────────────────────────────────────────────
+M1 — revert ONLY the `composeSupervisor` wiring line. Compile-time claim.
+     command:     npx tsc -b --force
+     exit status: 2
+
+    packages/supervisor/src/compose/compose-supervisor.ts(191,9): error TS6133: 'requirements' is declared but its value is never read.
+    packages/supervisor/src/compose/compose-supervisor.ts(222,9): error TS2741: Property 'requirements' is missing in type '{ journal: JournalStore; runs: RunsRegistry; ... }' but required in type 'ComposedSupervisorDependencies'.
+
+     TS2741 is the "the omission is unexpressible" proof. Before this fix the
+     identical deletion compiled clean — that is exactly how the defect shipped.
+
+────────────────────────────────────────────────────────────────────────────
+M1b — ALSO restore `?` on both fields. Falsifies the type fixture itself.
+     command:     npx tsc -b --force
+     exit status: 2
+
+    packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(61,5): error TS2578: Unused '@ts-expect-error' directive.
+    packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(76,5): error TS2578: Unused '@ts-expect-error' directive.
+    packages/cli/src/daemon/run-dispatcher.ts(463,22): error TS18048: 'deps.envelopes' is possibly 'undefined'.
+    packages/cli/src/daemon/run-dispatcher.ts(581,13): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
+    packages/cli/src/daemon/run-dispatcher.ts(681,17): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
+
+     Line 61 is the `requirements` fixture, line 76 the `envelopes` one. This
+     measurement exists because the brief records a prior "type-level proof"
+     whose doc comment claimed a compile failure that, when tested, gave
+     `tsc` exit 0. This one bites: both directives report unused, and the two
+     TS2345s at :581/:681 are the strict resolver refusing an optional
+     registry — the daemon's two seams, dispatch and park-resume.
+
+────────────────────────────────────────────────────────────────────────────
+M2 — revert ALL FOUR production files to `origin/main` (optionality restored,
+     wiring removed, lenient resolver back). Behavioural claim.
+     commands:    npx tsc -b --force  (exit 2 — the two TS2578 above)
+                  npx vitest run packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts
+     exit status: 1
+
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (3 tests | 2 failed) 143ms
+        × A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement 70ms
+        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 36ms
+
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to include 'failed'
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+
+     A and B redden; C (the clean-pass control) stays green, which is what makes
+     the two refusals attributable rather than an implementation that refuses
+     unconditionally. `[ 'dispatched', 'succeeded' ]` is the defect: the shipped
+     daemon accepting a completion against an empty acceptance bar.
+
+────────────────────────────────────────────────────────────────────────────
+M3 — delete ONLY `resolveRequirementsStrict`'s throw (collect the missing ids,
+     then drop them silently — i.e. make it behave as `resolveRequirements`).
+     Everything else — the wiring, the requiredness — left in place.
+     commands:    npx tsc -b --force  (exit 0)
+                  npx vitest run .../composed-daemon-seal-enforcement.test.ts .../run-dispatcher.test.ts
+     exit status: 1
+
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (3 tests | 1 failed) 166ms
+        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 40ms
+    ❯ |crabgic| src/daemon/run-dispatcher.test.ts (58 tests | 1 failed) 1725ms
+        × refuses a unit whose declared requirement has no record, rather than judging it against nothing 32ms
+
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+
+     Test Files  2 failed (2)
+          Tests  2 failed | 59 passed (61)
+
+     EXACTLY B reddens, at both layers; A and C stay green. This is the
+     measurement that proves B is not redundant with A: wiring the registry
+     without strict resolution would leave A green and the defect half-standing,
+     because the file registry is ENOENT-tolerant and an absent
+     `requirements.json` resolves to `[]` just as `undefined` did.
+
+────────────────────────────────────────────────────────────────────────────
+RESTORED. `git checkout HEAD -- packages/supervisor packages/cli` followed by
+`npx tsc -b --force` (exit 0); `git status --short` reports a clean tree at
+`4f561c6c2b033de7b09a09fceacd605f5966969e`.
+
+WHAT THESE MEASUREMENTS DO NOT COVER, disclosed rather than implied: gate
+registration and the whole post-completion verification pipeline. No production
+code creates a `GateRegistry` or calls `fireAll`/`fireByTag`, and no production
+code transitions a run to `verifying`/`integrating`/`final_verifying` — deleting
+`registerCriteriaSealGate` entirely would redden only `packages/gates`' own
+harness. That is a systemic gap, filed separately as
+`14-gate-registry-never-composed.md`, and deliberately NOT fixed here.
