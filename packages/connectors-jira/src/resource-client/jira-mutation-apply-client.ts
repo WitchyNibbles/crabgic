@@ -10,6 +10,7 @@ import type { AttachmentStagingRegistry } from "../attachments/attachment-stagin
 import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { assertAllowedJiraOperation } from "../security/preflight-capability-guard.js";
 import { assertSafeAdfDocument } from "./adf-guard.js";
+import { writeSerializationTarget } from "./canonical-target.js";
 import type { JiraAction } from "./actions.js";
 import type { JiraHttpContext } from "./http-read-helper.js";
 import type { JiraPlanPayloadRegistry } from "./plan-payload-registry.js";
@@ -360,6 +361,10 @@ export function createJiraMutationApplyClient(deps: JiraMutationApplyDeps): Muta
       return buildRequestForAction(plan, deps);
     },
     parseResponse: (plan, response) => parseResponseForAction(plan, response),
+    // roadmap/18 exit criterion 10, second clause: every issue-scoped
+    // write to ONE issue takes ONE write mutex, while `canonicalTarget`
+    // (parsed for `commentId` at `:199` below) stays distinct.
+    serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget),
     verify: (plan) => verifyForAction(deps.ctx, plan),
     reconcileAmbiguous: async (plan) => {
       const action = plan.action as JiraAction;
