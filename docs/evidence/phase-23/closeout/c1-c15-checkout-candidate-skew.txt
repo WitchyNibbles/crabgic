@@ -1,0 +1,63 @@
+# Phase-23 criteria-closeout pass — the checkout-vs-candidate skew of release-e2e run
+# 30250453824, and what it actually changes. Read-only git queries.
+# UTC: 2026-08-04T16:23:56Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+
+# The run stamped every EvidenceRecord with objectId 2435cb95..., but GitHub records its
+# head_sha as dbb83fd7... — the tree it checked out and executed. The two commits between
+# them are:
+$ git log --oneline 2435cb955809a5420f396043e5bc7003282491fa..dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105
+dbb83fd test: describe the published state, now that crabgic@1.0.0 has shipped
+b035227 chore(release): pin the marketplace entry at the v1.0.0 release commit
+exit=0
+
+$ git diff --name-only 2435cb955809a5420f396043e5bc7003282491fa dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105
+e2e/release/src/publicationCheck.test.ts
+e2e/release/src/publishDryRunCheck.test.ts
+e2e/release/src/releaseGateSummary.test.ts
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# The one non-test file in that span is the marketplace pin, and the change is material to
+# the reproducible-build item, which scores checkMarketplacePin:
+$ git diff 2435cb955809a5420f396043e5bc7003282491fa dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105 -- packages/plugin/.claude-plugin/marketplace.json
+diff --git a/packages/plugin/.claude-plugin/marketplace.json b/packages/plugin/.claude-plugin/marketplace.json
+index 00ef8da..dfccad0 100644
+--- a/packages/plugin/.claude-plugin/marketplace.json
++++ b/packages/plugin/.claude-plugin/marketplace.json
+@@ -13,7 +13,7 @@
+       "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
+       "version": "1.0.0",
+       "license": "Apache-2.0",
+-      "commit": "94f419b066284d223249429ba46d78c0bd47309c",
++      "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+       "digest": "1a8891fec8b477499c43b241bdc61375ce76f03daa97be0dee3f1b7be27edb25"
+     }
+   ]
+exit=0
+
+# So at the ATTESTED candidate the entry pins 94f419b0..., its own parent, not the release
+# commit. marketplacePinCheck.ts accepts an ancestor pin only when every path changed
+# between the pin and the candidate is under packages/plugin/.claude-plugin/ (its
+# DIGEST_EXCLUDED_PATH / digest-neutral rule). At 2435cb9 that condition is FALSE:
+$ git diff --name-only 94f419b066284d223249429ba46d78c0bd47309c 2435cb955809a5420f396043e5bc7003282491fa
+e2e/live/src/gatewayFamilyCompleteness.ts
+package.json
+packages/cli/package.json
+packages/cli/src/index.ts
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# ...four of those five paths are outside packages/plugin/.claude-plugin/. The v1.5.0 gate
+# has no such skew: its head_sha IS the candidate (6b9dd7b), and its pin span is
+# digest-neutral by the same rule:
+$ git diff --name-only 39ef7d192d9098c1258681d33441093bc53381c7 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# Drift of the two candidates from this pass HEAD:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+47
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+258
+exit=0

@@ -174,6 +174,12 @@ records do not classify the same situation three different ways.
    other check is anchored on a record existing, so ticking all seven of `roadmap/13`'s boxes and
    writing nothing passed. Phase **23** is the single grandfathered exemption (closed and evidenced
    against `release-e2e` run 30250453824 before this index existed); the list is closed.
+   **Update (2026-08-04): the exemption is gone.** Phase 23 now carries `phase-23.json` like every
+   other closed phase — and walking its evidence unticked three of its sixteen boxes — so the
+   exemption had no subject left. `PRE_INDEX_TICKED_PHASES` and its one behavioural use were
+   **removed** rather than emptied, because an empty list is the same standing invitation the
+   sentence above warns about, and the suite now asserts the identifier is absent from the
+   validator altogether. No phase is exempt from the ticks-need-a-record rule.
    **A pinned phase file that has been DELETED is reported.** Every other check here — and
    `--check` in the baseline generator — iterates over the phase files that are *present*, so
    nothing asserted that a pinned phase still has one: deleting `roadmap/22-learning-system.md`, 8

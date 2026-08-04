@@ -1,0 +1,306 @@
+# Phase-23 criteria-closeout pass — reproduction of the two release-only lanes that carry
+# criteria 8 and 10: e2e/live (the zero-NOT_IMPLEMENTED sweep, exact-set match against
+# knownDeferredAllowlist.ts) and e2e/matrix/{connector,installation}. Neither lane runs in
+# any per-push CI channel; both run only inside release-e2e / publish.
+# UTC: 2026-08-04T16:18:26Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+
+## LEG 1 — command: npx vitest run --no-file-parallelism --config e2e/live/vitest.config.ts --reporter=verbose
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23/e2e/live
+      Coverage enabled with v8
+
+ ✓ src/versionRangeGate.test.ts > parseClaudeVersionOutput > extracts the version triple from claude --version's real stdout shape 2ms
+ ✓ src/versionRangeGate.test.ts > parseClaudeVersionOutput > returns undefined when no version triple is present 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports in-range for the exact min boundary 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports in-range for the exact max boundary 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports out-of-range for a version below the min 1ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports out-of-range for a version above the max (a future engine that has drifted past the re-baselined 2.1.220 ceiling) 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports malformed for a non-numeric-triple version string 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > reports probe-failed (never throws) when the probe itself fails 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > never throws for any input shape — every branch returns a typed verdict 1ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > re-throws any non-EngineVersionRejectedError failure from the version-accept check rather than swallowing it 0ms
+ ✓ src/versionRangeGate.test.ts > checkPinnedRange > accepts an injected assertVersionAccepted that throws EngineVersionRejectedError directly (covers both reason branches via injection too) 0ms
+ ✓ src/versionRangeGate.test.ts > createClaudeVersionProbe — genuine integration, real subprocess error branches (no mocks) > reports probe-failed when the binary does not exist on PATH 87ms
+ ✓ src/versionRangeGate.test.ts > createClaudeVersionProbe — genuine integration, real subprocess error branches (no mocks) > reports probe-failed (unparsable) when the real subprocess's stdout has no version triple 27ms
+ ✓ src/versionRangeGate.test.ts > createClaudeVersionProbe — genuine integration, real subprocess error branches (no mocks) > reports ok:true with the parsed version for a real subprocess whose stdout does contain one 25ms
+ ✓ src/versionRangeGate.test.ts > realClaudeVersionProbe (genuine integration check — no auth/network needed) > shells out to the real `claude --version` on this host and produces a well-formed verdict either way 116ms
+ ✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — genuine integration (real dispatch, real cli-entry.ts, real MCP server) > finds exactly the 1 remaining tracked gap and reports PASS (the allowlist matches today's live reality) 42ms
+ ✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — genuine integration (real dispatch, real cli-entry.ts, real MCP server) > every live finding id is present in the checked-in KNOWN_DEFERRED_ALLOWLIST 13ms
+ ✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — FAIL-FIRST proof: a new, unlisted gap must fail the gate > genuinely reports FAIL when the live-discovered set contains an id absent from the (deliberately shrunk) allowlist 12ms
+ ✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — FAIL-FIRST proof: a new, unlisted gap must fail the gate > control: the same real findings against the real, full allowlist report PASS 11ms
+ ✓ src/notImplementedSweepGate.test.ts > runAndEmitNotImplementedSweepEvidence > journals evidence under both the sweep's own tag and the checklist-matching tag when the gate PASSes 27ms
+ ✓ src/notImplementedSweepGate.test.ts > runAndEmitNotImplementedSweepEvidence > defaults objectId to the resolved release-candidate object ID when omitted 33ms
+ ✓ src/notImplementedSweepGate.test.ts > runAndEmitNotImplementedSweepEvidence > journals only the sweep's own tag (never the checklist-matching tag) and exitStatus 1 when the gate FAILs 15ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > reports all 8 families wired, with no missing tool names 10ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > accounts for all 22 tool names across the 8 families (Gap 1's settled count) 5ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkFamilyWiringAtProductionEntrypoint — genuine integration (real production registry) > reports missingToolNames per family, so a future regression names what disappeared 5ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > reports no dependency edge for a fixture manifest with no @crabgic/gateway entry 3ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > reports a dependency edge when @crabgic/gateway is declared 1ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkGatewayDependencyEdge > genuine integration: the CLI really depends on @crabgic/gateway, now via the bundle rather than a manifest entry 1ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > checkToolsCallSupported — genuine integration (real MCP stdio server, PassThrough streams, no hang risk) > proves a registered tool can actually be INVOKED over the wire 19ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > interpretToolsCallResponse — unit (both outcomes) > reports unsupported for a JSON-RPC error response 0ms
+ ✓ src/gatewayFamilyCompleteness.test.ts > interpretToolsCallResponse — unit (both outcomes) > reports supported for a real result response 0ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — unit (fake probe, no real bwrap needed) > fails when bwrap is not on PATH 2ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — unit (fake probe, no real bwrap needed) > fails (not a vacuous pass) when bwrap itself fails to set up the sandbox (unprivileged userns disabled) 4ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — unit (fake probe, no real bwrap needed) > fails when a confined write unexpectedly succeeds 3ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — unit (fake probe, no real bwrap needed) > passes when bwrap is present and correctly denies the confined write 2ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — unit (fake probe, no real bwrap needed) > fails when the refusal carries no evidence that the write was ever attempted 2ms
+ ✓ src/sandboxSelftestHarness.test.ts > runSandboxSelftest — genuine integration (real bwrap, no engine/auth needed) > runs the real confinement self-test on this host and reports a well-formed finding 16ms
+ ✓ src/evidence.test.ts > resolveReleaseCandidateObjectId > falls back to FAKE_RELEASE_CANDIDATE_OBJECT_ID when the env var is unset 2ms
+ ✓ src/evidence.test.ts > resolveReleaseCandidateObjectId > falls back to FAKE_RELEASE_CANDIDATE_OBJECT_ID when the env var is set but empty 0ms
+ ✓ src/evidence.test.ts > resolveReleaseCandidateObjectId > honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set and non-empty 0ms
+ ✓ src/evidence.test.ts > emitLiveConformanceEvidence > journals one evidence_pointer entry per gate tag, all other fields identical bar id/gateTag 19ms
+ ✓ src/evidence.test.ts > emitLiveConformanceEvidence > honors an explicit objectId override (the real release-candidate object id, in production) 4ms
+ ✓ src/evidence.test.ts > emitLiveConformanceEvidence > records a genuine negative run (nonzero exitStatus) rather than fabricating a pass 4ms
+ ✓ src/evidence.test.ts > emitLiveConformanceEvidence > defaults artifactDigests to [] and uses an injectable clock 4ms
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > finds every dispatch-level NOT_IMPLEMENTED command among the 18 probes, absent any optional dependency 3ms
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > SWEEP_COMMAND_PROBES covers exactly the 18 command variants this sweep is designed to probe 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > sweepDispatchLevelNotImplemented — genuine integration (real dispatchCommand, real packages/cli) > never mistakes an unreachable supervisor for an unimplemented command 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies) > reflects today's real production wiring: every optional bag is now supplied 2ms
+ ✓ src/cliNotImplementedSweep.test.ts > checkProductionDependencyWiring — genuine integration (real buildRealCliDependencies) > reports capability discovery as NOT wired — the one remaining connection-bag gap 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks an unconditional stub (no gating dependency) as a real gap 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks the gateway-mcp dead branch as NOT a real gap regardless of wiring 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks a dependency-gated command as NOT a real gap when its dependency IS wired 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks connection-capabilities a real gap: its bag is wired but its discoverer is not 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > marks a dependency-gated command as a real gap when its dependency is NOT wired (run/intake today) 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > combineFindings > genuine integration: folding today's real dispatch-level findings with today's real production wiring yields exactly the accurate gap list 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > connectClient throws SupervisorUnavailableError if ever actually called 1ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > journal.queryEntries throws if ever actually iterated 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > unusedDeps — the never-invoked defensive stub deps.ts's own probe list relies on > journal.verifyJournal throws if ever actually called 0ms
+ ✓ src/cliNotImplementedSweep.test.ts > exit code sanity > EXIT_NOT_IMPLEMENTED is distinct from EXIT_OK 0ms
+ ✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > has exactly 1 CLI-command entry and no remaining gateway-family or gateway-protocol entries 3ms
+ ✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > tracks the provider-dispatch deferral separately from the sweep-matched allowlist 1ms
+ ✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > every entry has a unique, non-empty id 0ms
+ ✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > every entry has a non-empty ownerPhase, description, and at least one location 0ms
+ ✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > every entry's kind matches its own bucket 0ms
+
+ Test Files  7 passed (7)
+      Tests  64 passed (64)
+   Start at  18:18:26
+   Duration  4.45s (transform 872ms, setup 0ms, import 2.87s, tests 544ms, environment 1ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   97.46 |    88.05 |   95.45 |   97.36 |                   
+ ...mentedSweep.ts |     100 |    91.66 |     100 |     100 | 140               
+ evidence.ts       |     100 |    92.85 |     100 |     100 | 142               
+ ...ompleteness.ts |     100 |    84.61 |     100 |     100 | 160,222           
+ ...edSweepGate.ts |   96.15 |     90.9 |    90.9 |   95.83 | 99                
+ testJournal.ts    |   66.66 |       50 |   66.66 |   66.66 | 46-50             
+ ...onRangeGate.ts |     100 |     92.3 |     100 |     100 | 65                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 97.46% ( 154/158 )
+Branches     : 88.05% ( 59/67 )
+Functions    : 95.45% ( 42/44 )
+Lines        : 97.36% ( 148/152 )
+================================================================================
+# EXIT=0
+
+## LEG 2 — command: npx vitest run --no-file-parallelism --config e2e/matrix/connector/vitest.config.ts --reporter=verbose
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23/e2e/matrix/connector
+      Coverage enabled with v8
+
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > issue.delete is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 5ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > project.delete is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > user.impersonate is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > permission.grant is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > workflow.scheme.edit is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > security.scheme.edit is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > automation.rule.create is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > raw.request is outside JIRA_ACTIONS and throws policy_blocked before any plan/request is built 1ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Jira — forged delete/admin/impersonation/raw-endpoint actions fail pre-network (closed allowlist) > a real allowlisted action never throws (proves this isn't a blanket ban) 2ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > Grafana — no forged delete/admin operation is ever constructible on the real adapter surface > none of the forged operation names exist as callable functions, and Object.keys is exactly the 4-member real surface 2ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > gateway MCP tool surface — no raw HTTP-passthrough / generic-execute tool exists (raw-tool denial) > the real gateway MCP server's full tool surface is exactly the known 18-tool set, and contains none of the forged raw/passthrough names 291ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > gateway MCP tool surface — no raw HTTP-passthrough / generic-execute tool exists (raw-tool denial) > calling a forged/unregistered tool name against the real server fails ('tool not found'), never silently dispatching 263ms
+ ✓ src/connector-security/forged-delete-admin-and-raw-tool-denial.test.ts > evidence tagging > every EvidenceRecord emitted in this file is tagged release-gate:connector-matrix 1ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — real @crabgic/renderer lint() over every ArtifactKind (golden) > every ArtifactKind's one valid golden fixture clears the full real lint() pipeline 23ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > branch_name: any short alnum-hyphen name clears lint() 11ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > commit_subject / pr_title: renderPrTitle's own conventional-commit shape always clears lint() 13ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > commit_body: any 1-5 line benign phrase clears lint() 9ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > pr_body: renderPrBody's own section shape always clears lint() 10ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > review_comment: renderReviewComment's own section shape always clears lint() 12ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > jira_milestone_comment: renderJiraMilestoneComment's own section shape always clears lint() 12ms
+ ✓ src/neutral-communication/artifact-corpus.test.ts > neutral-communication — property: real render*() + real lint() over randomized (but structurally valid) content > grafana_annotation: renderGrafanaAnnotation's own shape always clears lint() 6ms
+ ✓ src/neutral-communication/secret-leakage.test.ts > layer 1 — real @crabgic/renderer lint() secret-scan stage blocks synthetic secret sentinels > AWS-style and Anthropic-style synthetic secret sentinels are both blocked, across every checked ArtifactKind 25ms
+ ✓ src/neutral-communication/secret-leakage.test.ts > layer 1 — real @crabgic/renderer lint() secret-scan stage blocks synthetic secret sentinels > control: the same templates WITHOUT a secret embedded clear lint() cleanly 1ms
+ ✓ src/neutral-communication/secret-leakage.test.ts > layer 2 — real @crabgic/connectors-jira apply-boundary guard blocks the same sentinel PRE-NETWORK > a comment.create plan whose ADF body embeds the synthetic secret throws ConnectorError.policy_blocked at buildRequest — zero outbound calls 5ms
+ ✓ src/neutral-communication/secret-leakage.test.ts > layer 2 — real @crabgic/connectors-jira apply-boundary guard blocks the same sentinel PRE-NETWORK > control: the same plan shape with a benign comment body builds a request cleanly (proves this isn't a blanket comment.create ban) 1ms
+ ✓ src/neutral-communication/secret-leakage.test.ts > layer 2 — real @crabgic/connectors-jira apply-boundary guard blocks the same sentinel PRE-NETWORK > emits an EvidenceRecord tagged release-gate:connector-matrix for the apply-boundary defense layer 5ms
+ ✓ src/exactly-once/grafana-cassette.test.ts > Grafana annotation — real cassette-replayed create through the real exactly-once pipeline > a fresh annotation create against the recorded cassette is 'recorded' (green) 36ms
+ ✓ src/exactly-once/grafana-cassette.test.ts > Grafana annotation — real cassette-replayed create through the real exactly-once pipeline > replaying the SAME plan is byte-identical ('replayed'), with no additional network call 9ms
+ ✓ src/exactly-once/grafana-cassette.test.ts > Grafana annotation — real cassette-replayed create through the real exactly-once pipeline > a CHANGED payload for the same idempotencyKey is REJECTED as a typed conflict, never silently accepted 12ms
+ ✓ src/support/evidence.test.ts > digestOf > is deterministic and content-addressed 5ms
+ ✓ src/support/evidence.test.ts > resolveReleaseCandidateObjectId > honors $CRABGIC_RELEASE_CANDIDATE_OBJECT_ID when set (fresh module instance, cache not yet populated) 35ms
+ ✓ src/support/evidence.test.ts > resolveReleaseCandidateObjectId > falls back to git rev-parse HEAD (a real 40-hex-char object id) when unset 36ms
+ ✓ src/support/evidence.test.ts > resolveReleaseCandidateObjectId > caches across repeated calls within the same module instance 6ms
+ ✓ src/support/evidence.test.ts > emitScenarioEvidence > defaults changeSetId to a fresh UUID when not supplied 15ms
+ ✓ src/support/evidence.test.ts > emitScenarioEvidence > honors an explicit changeSetId when supplied 7ms
+ ✓ src/support/evidence.test.ts > emitScenarioEvidence > carries an explicit requirementId through when supplied, and otherwise defaults to the requirement its gate tag evidences 8ms
+ ✓ src/support/evidence.test.ts > emitScenarioEvidence > always tags the record release-gate:connector-matrix and journals a real, round-trippable evidence_pointer entry 5ms
+ ✓ src/support/evidence.test.ts > recordEmittedEvidenceIds > records the id of every EvidenceRecord appended THROUGH it, and nothing appended around it 7ms
+ ✓ src/support/evidence.test.ts > recordEmittedEvidenceIds > passes non-evidence entries straight through without recording anything 5ms
+ ✓ src/support/evidence.test.ts > createScenarioJournal — shared-journal mode (CRABGIC_RELEASE_GATE_JOURNAL_DIR) > writes into the shared directory, creating it if absent, and NEVER deletes it on cleanup 8ms
+ ✓ src/support/evidence.test.ts > createScenarioJournal — shared-journal mode (CRABGIC_RELEASE_GATE_JOURNAL_DIR) > treats an empty value as unset — a private temp directory, really removed 6ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > private/reserved IPv4 ranges — refused pre-network > loopback (127.0.0.1) is refused before any HTTP call 6ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > private/reserved IPv4 ranges — refused pre-network > RFC1918 10/8 (10.1.2.3) is refused before any HTTP call 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > private/reserved IPv4 ranges — refused pre-network > RFC1918 192.168/16 (192.168.1.1) is refused before any HTTP call 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > private/reserved IPv4 ranges — refused pre-network > link-local incl. cloud metadata endpoint (169.254.169.254) is refused before any HTTP call 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > IPv4-mapped IPv6 — a smuggled private IPv4 address is still caught > checkResolvedAddress refuses ::ffff:169.254.169.254 (IPv4-mapped cloud metadata endpoint) 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > IPv4-mapped IPv6 — a smuggled private IPv4 address is still caught > checkResolvedAddress refuses the hex-group IPv4-mapped form (::ffff:a9fe:a9fe encodes 169.254.169.254) 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > IPv4-mapped IPv6 — a smuggled private IPv4 address is still caught > the full GatewayHttpClient refuses a hop that resolves to an IPv4-mapped IPv6 private address, pre-network 18ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > IPv4-mapped IPv6 — a smuggled private IPv4 address is still caught > control: a genuinely public IPv4-mapped IPv6 address is NOT flagged private 1ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > DNS-rebind — the address validated is structurally the ONLY address ever dialed (no re-resolution window) > resolveHostAddresses is called exactly once per attempt, and the fake transport's own pinnedAddress always equals that SAME call's return value — never a second, later resolution 2ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > DNS-rebind — the address validated is structurally the ONLY address ever dialed (no re-resolution window) > a resolver that would answer PRIVATE on this (the only) resolution is refused immediately — there is no later 'connect-time' resolution a rebinding attacker could exploit instead 5ms
+ ✓ src/connector-security/ssrf-and-dns-rebind.test.ts > evidence tagging > every EvidenceRecord emitted in this file is tagged release-gate:connector-matrix 1ms
+ ✓ src/exactly-once/crash-recovery.test.ts > crash-before-remote-commit — deterministic update, kill before the network call > recovery converges to exactly one real PUT-equivalent side effect (safe retry) 494ms
+ ✓ src/exactly-once/crash-recovery.test.ts > crash-after-remote-commit — deterministic update, kill after the network call > recovery converges to exactly one real PUT-equivalent side effect 473ms
+ ✓ src/exactly-once/crash-recovery.test.ts > crash-after-remote-commit — non-idempotent create, kill after the network call (MEDIUM/HIGH #3's own required case) > NEVER produces a double-create — the real reconcileAmbiguousPost marker search finds the already-landed create 473ms
+ ✓ src/exactly-once/crash-recovery.test.ts > crash-after-remote-commit — non-idempotent create, kill after the network call (MEDIUM/HIGH #3's own required case) > with reconciliation disabled, blocks (never guesses) and STILL never double-creates 467ms
+ ✓ src/exactly-once/replay-changed-payload.test.ts > exactly-once — replay is byte-identical, no duplicate network call > the SAME plan replayed for the same idempotencyKey returns the recorded result verbatim, without a second network call 20ms
+ ✓ src/exactly-once/replay-changed-payload.test.ts > RED (fail-first, kept permanently): a naive 'always accept' outcome does NOT match what the real pipeline actually returns for a changed payload > the naively-expected 'recorded' (silent-overwrite) outcome is wrong — the real pipeline never returns it here 10ms
+ ✓ src/exactly-once/replay-changed-payload.test.ts > GREEN: the REAL executeMutationPlan pipeline REJECTS a changed-payload replay as a typed conflict > a changed desiredStateHash for the SAME idempotencyKey is rejected as 'conflict', never silently accepted/overwritten, and never re-applied over the network 21ms
+ ✓ src/exactly-once/ambiguous-reconciliation.test.ts > ambiguous reconciliation — a mid-POST timeout that DID land is reconciled via marker search, never re-applied > uses the REAL reconcileAmbiguousPost(reconciler, marker): the create already landed remotely (marker found) -> pipeline converges to 'recorded' with zero additional network calls 32ms
+ ✓ src/exactly-once/ambiguous-reconciliation.test.ts > ambiguous reconciliation — a mid-POST timeout that DID land is reconciled via marker search, never re-applied > marker NOT found (genuinely unresolvable) -> blocks (ambiguous_write), never guesses, never re-applies 12ms
+ ✓ src/connector-security/exact-origin-and-redirects.test.ts > exact-origin credential binding > buildAllowlistForConnection scopes the allowlist to exactly the connection's own base origin plus its declared redirect origins — nothing else 7ms
+ ✓ src/connector-security/exact-origin-and-redirects.test.ts > exact-origin credential binding > a request built for connection A's own origin succeeds; the SAME client refuses a request target at connection B's origin (never reused across connections) 16ms
+ ✓ src/connector-security/exact-origin-and-redirects.test.ts > redirect revalidation > follows a redirect to an origin that IS on the allowlist 2ms
+ ✓ src/connector-security/exact-origin-and-redirects.test.ts > redirect revalidation > refuses to follow a redirect to an origin NOT on the allowlist — credentials never attach to the unvalidated hop 6ms
+ ✓ src/connector-security/exact-origin-and-redirects.test.ts > redirect revalidation > all scenarios in this file emit EvidenceRecords tagged release-gate:connector-matrix 1ms
+ ✓ src/exactly-once/jira-cassette-readback.test.ts > Jira Cloud — real JiraResourceClient read-back against the real recorded cassette > the byte-recorded cassette drives the real 7-call read scenario to fully-typed results 29ms
+ ✓ src/exactly-once/jira-cassette-readback.test.ts > Jira Cloud — real JiraResourceClient read-back against the real recorded cassette > cassette/fake parity — the independently-maintained hand-authored script drives byte-identical results to the recorded cassette 4ms
+ ✓ src/exactly-once/jira-cassette-readback.test.ts > Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC live container for this pass) > DC 10.3: the real cassette drives the real DC JiraResourceClient (REST v2 + Agile) to fully-typed results 3ms
+ ✓ src/exactly-once/jira-cassette-readback.test.ts > Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC live container for this pass) > DC 11.3: the real cassette drives the real DC JiraResourceClient (REST v2 + Agile) to fully-typed results 2ms
+ ✓ src/exactly-once/jira-cassette-readback.test.ts > Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC live container for this pass) > emits an EvidenceRecord tagged release-gate:connector-matrix confirming DC evidence is cassette-sourced, not a live container 6ms
+ ✓ src/neutral-communication/confusable-domain.test.ts > RED (fail-first, kept permanently): a naive denylist check does NOT catch the seeded confusable-domain fixture > wrongly reports the confusable-domain payload as clean — demonstrating the naive approach is insufficient 4ms
+ ✓ src/neutral-communication/confusable-domain.test.ts > GREEN: the REAL @crabgic/renderer lint() pipeline rejects the same seeded confusable-domain fixture > blocks a pr_body embedding the Cyrillic-'а' confusable 'paypal.com' homograph 17ms
+ ✓ src/neutral-communication/confusable-domain.test.ts > GREEN: the REAL @crabgic/renderer lint() pipeline rejects the same seeded confusable-domain fixture > control: the genuine, non-confusable domain is NOT flagged by lint() (proves this isn't just a blanket URL ban) 2ms
+ ✓ src/neutral-communication/confusable-domain.test.ts > GREEN: the REAL @crabgic/renderer lint() pipeline rejects the same seeded confusable-domain fixture > emitted exactly one EvidenceRecord tagged release-gate:connector-matrix for this scenario 5ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 401: neither .toData() nor the thrown error's own fields leak the embedded secret 6ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 403: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 404: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 409: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 429: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 400: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 501: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > HTTP 500: neither .toData() nor the thrown error's own fields leak the embedded secret 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapHttpStatusToConnectorError never echoes a raw provider body containing a secret > the redactedDetail summary carries only structural info (key names), never the secret value itself 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapUnknownErrorToConnectorError never echoes a secret carried in an already-constructed ConnectorError's rawProviderResponse > re-wrapping an already-redacting ConnectorError never re-surfaces the original rawProviderResponse secret (mirrors @crabgic/gateway's own leak-hunt suite) 1ms
+ ✓ src/connector-security/error-redaction.test.ts > mapUnknownErrorToConnectorError never echoes a secret carried in an already-constructed ConnectorError's rawProviderResponse > a ConnectorError passed straight through is returned as-is (never double-wrapped, never re-leaking) 1ms
+ ✓ src/connector-security/error-redaction.test.ts > evidence emission > emits one EvidenceRecord tagged release-gate:connector-matrix summarizing the redaction proof 21ms
+ ✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > a token whose org IS in the connection's declared org allowlist is accepted 4ms
+ ✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > a token bound to an org OUTSIDE the connection's declared org allowlist is refused — the tenant boundary cannot be crossed by presenting a valid token for a different tenant 16ms
+ ✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > an empty org allowlist fails closed — never implicitly 'any org is fine' 1ms
+ ✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > a role below the required minimum is refused even when the org matches (both dimensions of the boundary are enforced) 1ms
+ ✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > emitted evidence for this file is tagged release-gate:connector-matrix 1ms
+ ✓ src/connector-security/custom-ca.test.ts > resolveCustomCaPem > returns undefined when the connection declares no customCaRef 7ms
+ ✓ src/connector-security/custom-ca.test.ts > resolveCustomCaPem > reads the exact PEM bytes off disk when customCaRef is declared 3ms
+ ✓ src/connector-security/custom-ca.test.ts > buildHttpClientForConnection with a custom CA configured > builds a fully functional client (custom CA wired into the https.Agent, no throw) and honors the connection's own origin allowlist 21ms
+
+ Test Files  15 passed (15)
+      Tests  95 passed (95)
+   Start at  18:18:38
+   Duration  10.30s (transform 1.12s, setup 0ms, import 4.96s, tests 3.17s, environment 1ms)
+
+ % Coverage report from v8
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------|---------|----------|---------|---------|-------------------
+-------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 37/37 )
+Branches     : 100% ( 16/16 )
+Functions    : 100% ( 8/8 )
+Lines        : 100% ( 35/35 )
+================================================================================
+# EXIT=0
+
+## LEG 3 — command: npx vitest run --no-file-parallelism --config e2e/matrix/installation/vitest.config.ts --reporter=verbose
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23/e2e/matrix/installation
+      Coverage enabled with v8
+
+ ✓ test/evidence.test.ts > evidence emission > stamps the release candidate under a release run, so the evidence can actually link 7ms
+ ✓ test/evidence.test.ts > evidence emission > treats an empty release-candidate value as unset 1ms
+ ✓ test/evidence.test.ts > evidence emission > digestArtifact is deterministic and content-sensitive 1ms
+ ✓ test/evidence.test.ts > evidence emission > buildScenarioEvidence produces a schema-valid EvidenceRecord tagged release-gate:installation-matrix 1ms
+ ✓ test/evidence.test.ts > evidence emission > emitScenarioEvidence appends exactly one evidence_pointer journal entry, queryable back 11ms
+ ✓ test/evidence.test.ts > evidence emission > a nonzero exitStatus is recorded verbatim (never silently coerced to 0) 5ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > RED: a broken-installer double that reports 'removed' for a drifted (user-edited) path is caught 2ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > RED: a broken-installer double that 'restores' (overwrites with the pre-install snapshot) a drifted path is also caught 1ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > GREEN: a correct-installer double that reports 'preserved-drifted' for the drifted path passes clean 1ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > a path never claimed as drifted is never flagged, regardless of its action 0ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > UserEditOverwrittenError carries every violation and a human-legible message 0ms
+ ✓ test/user-edit-assertion.test.ts > findUserEditOverwriteViolations / assertUserEditsPreserved (RED before GREEN) > multiple drifted paths are all reported, not just the first 0ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > empty dir: declined git-init aborts cleanly; approved git-init installs for real 51ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > invalid .git: install completes, reports repoState=invalid-git, never runs git init 20ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > unborn HEAD: install completes against a real git-init'd, commit-less repo 34ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > dirty repo: install completes against a real repo with an uncommitted change 115ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > monorepo: install reports monorepoDetected=true and roots artifacts at the top level 170ms
+ ✓ test/repo-state-scenarios.test.ts > installation matrix: repo-state scenarios (live) > every repo-state scenario emits exactly one evidence_pointer entry tagged release-gate:installation-matrix 53ms
+ ✓ test/cli-driver.test.ts > cli-driver > pluginSourceDir resolves to a real, existing @crabgic/plugin root 87ms
+ ✓ test/cli-driver.test.ts > cli-driver > connectClient rejects loudly if ever invoked (install/upgrade/uninstall must never call it) 82ms
+ ✓ test/cli-driver.test.ts > cli-driver > runCli drives a real install end-to-end and returns a real CommandResult 104ms
+ ✓ test/cli-driver.test.ts > cli-driver > runCliJson parses the real --json stdout into a structural result 100ms
+ ✓ test/cli-driver.test.ts > cli-driver > runCliJson throws a descriptive error when a command result carries no stdout (e.g. a rejected connectClient bubbling through cancel) 80ms
+ ✓ test/cli-driver.test.ts > cli-driver > a confirmGitInit override is honored end-to-end 103ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildEmptyDir: a plain dir, no .git 3ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildInvalidGitDir: .git exists but is not a real repo 8ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildUnbornHeadRepo: a real repo with no commits yet 17ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildCleanRepo: a real repo with a real commit and a clean status 89ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildDirtyRepo: a real repo with an uncommitted modification 83ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildMonorepoRepo: a real repo with a committed nested package.json 142ms
+ ✓ test/all-scenarios.test.ts > installation matrix: full run (live) > every scenario in the matrix passes and emits exactly one evidence_pointer entry each 1982ms
+ ✓ test/upgrade-marker-fixture.test.ts > upgrade-marker-fixture > seeds a backup file + marker entry for a pending artifact WITH preUpgradeContent 7ms
+ ✓ test/upgrade-marker-fixture.test.ts > upgrade-marker-fixture > seeds a marker entry with NO backupPath for a pending artifact that did not exist before (no preUpgradeContent) 3ms
+ ✓ test/upgrade-marker-fixture.test.ts > upgrade-marker-fixture > seeds a mix of backed-up and no-backup pending artifacts in one call 3ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > requireStatus > does nothing when actual === expected 2ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > requireStatus > throws ScenarioSetupError when actual !== expected 1ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > requirePassed > does nothing when passed is true 0ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > requirePassed > throws ScenarioAssertionError with the scenario name and detail when passed is false 0ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > findOutcomeAction > returns the matching outcome's action when relPath is present 0ms
+ ✓ test/scenario-support.test.ts > scenario-support (pure guards, both branches) > findOutcomeAction > returns "MISSING" when no outcome names relPath at all 0ms
+ ✓ test/uninstall-preserving-edits-scenario.test.ts > installation matrix: uninstall-preserving-user-edits scenario (live) > a real user edit to CLAUDE.md survives a real uninstall, byte-for-byte 138ms
+ ✓ test/upgrade-recovery-scenarios.test.ts > installation matrix: interrupted-upgrade / rollback scenarios (live) > a seeded torn-upgrade marker is recovered by the REAL upgrade backend on its next call 126ms
+ ✓ test/upgrade-recovery-scenarios.test.ts > installation matrix: interrupted-upgrade / rollback scenarios (live) > recovery restores the pre-crash CLAUDE.md content byte-for-byte (rollback content fidelity) 110ms
+ ✓ test/object-id.test.ts > object-id resolution > resolveHeadObjectId returns the real 40-hex-char HEAD commit id of a real repo 112ms
+ ✓ test/object-id.test.ts > object-id resolution > syntheticObjectId is deterministic, labeled, and never collides across distinct labels 10ms
+ ✓ test/config-drift-scenario.test.ts > installation matrix: config-drift scenario (live) > a real out-of-band edit to CLAUDE.md is caught by the REAL installer.checksum-drift doctor check 1314ms
+
+ Test Files  12 passed (12)
+      Tests  46 passed (46)
+   Start at  18:18:51
+   Duration  12.01s (transform 1.08s, setup 0ms, import 4.87s, tests 5.20s, environment 1ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    98.3 |    84.21 |   96.36 |   98.27 |                   
+ src               |     100 |    93.33 |     100 |     100 |                   
+  cli-driver.ts    |     100 |       75 |     100 |     100 | 69,98             
+ src/scenarios     |   99.21 |    80.95 |   94.11 |   99.21 |                   
+  ...t-scenario.ts |     100 |    71.42 |     100 |     100 | 51-56             
+  ...-scenarios.ts |   97.87 |    95.45 |   88.88 |   97.87 | 96                
+  ...s-scenario.ts |     100 |       50 |     100 |     100 | 59                
+  ...-scenarios.ts |     100 |    63.63 |     100 |     100 | 79,91-119         
+ src/test-support  |   66.66 |       50 |   66.66 |   66.66 |                   
+  test-journal.ts  |   66.66 |       50 |   66.66 |   66.66 | 40-44             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.3% ( 232/236 )
+Branches     : 84.21% ( 64/76 )
+Functions    : 96.36% ( 53/55 )
+Lines        : 98.27% ( 228/232 )
+================================================================================
+# EXIT=0

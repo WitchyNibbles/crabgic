@@ -1,0 +1,142 @@
+# Phase-23 criteria-closeout pass — the two 'pass live' criteria (6 and 7), measured.
+# Read-only greps; nothing live was run, and nothing live may be run by this pass.
+# UTC: 2026-08-04T16:25:09Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+
+## 6 — crash-recovery / concurrent change sets / limit-parked resume across a restart.
+
+# What engine the orchestration matrix drives, in its own words:
+$ sed -n "17,26p" e2e/matrix/orchestration/vitest.config.ts
+ * (or `--config e2e/matrix/orchestration/vitest.config.ts`).
+ *
+ * Every scenario here drives the REAL `@crabgic/scheduler` executor
+ * (`dispatchAttempt`/`resumeAttempt`) and the REAL `@crabgic/supervisor`
+ * `recoverRun` against the FAKE engine (`@crabgic/testkit`'s `FakeEngineAdapter`)
+ * over a real `@crabgic/journal` `JournalStore` on a real temp directory — no
+ * network, no real Claude Code engine, no live Docker daemon, so this gate
+ * is fast and safe to run anywhere, including CI.
+ */
+export default defineConfig({
+exit=0
+
+# The adapter each crash/park scenario constructs:
+$ grep -n "FakeEngineAdapter" e2e/matrix/orchestration/test/*.test.ts
+e2e/matrix/orchestration/test/worker-crash-recovery.test.ts:9:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/worker-crash-recovery.test.ts:52:    const adapter = new FakeEngineAdapter(crashScript);
+e2e/matrix/orchestration/test/dependent-serialization.test.ts:10:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/dependent-serialization.test.ts:72:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/dependent-serialization.test.ts:102:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/duplicated-side-effect-fail-first.test.ts:10:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/duplicated-side-effect-fail-first.test.ts:76:      adapter: new FakeEngineAdapter(crashScript),
+e2e/matrix/orchestration/test/duplicated-side-effect-fail-first.test.ts:94:      adapter: new FakeEngineAdapter(repairScript),
+e2e/matrix/orchestration/test/duplicated-side-effect-fail-first.test.ts:130:      adapter: new FakeEngineAdapter(crashScript),
+e2e/matrix/orchestration/test/duplicated-side-effect-fail-first.test.ts:147:      adapter: new FakeEngineAdapter(repairScript),
+e2e/matrix/orchestration/test/cancellation.test.ts:9:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/cancellation.test.ts:45:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/manager-crash-recovery.test.ts:8:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/manager-crash-recovery.test.ts:200:        adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/idempotent-resume.test.ts:9:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/idempotent-resume.test.ts:59:    const adapter = new FakeEngineAdapter(crashScript);
+e2e/matrix/orchestration/test/idempotent-resume.test.ts:129:    const adapter = new FakeEngineAdapter(crashScript);
+e2e/matrix/orchestration/test/independent-parallel.test.ts:9:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/independent-parallel.test.ts:79:          adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:9:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:86:    const adapter = new FakeEngineAdapter(parkScript);
+e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:189:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:217:        adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:233:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/target-drift.test.ts:8:  FakeEngineAdapter,
+e2e/matrix/orchestration/test/target-drift.test.ts:45:      adapter: new FakeEngineAdapter(buildFakeEngineScript({ failure: { kind: "crash" } })),
+e2e/matrix/orchestration/test/target-drift.test.ts:60:      adapter: new FakeEngineAdapter(
+e2e/matrix/orchestration/test/target-drift.test.ts:86:      adapter: new FakeEngineAdapter(buildFakeEngineScript({ failure: { kind: "crash" } })),
+e2e/matrix/orchestration/test/target-drift.test.ts:98:    const driftedAdapter = new FakeEngineAdapter(
+exit=0
+
+# There is no process API anywhere in the harness, so the "supervisor restart" is not a
+# process restart:
+$ grep -rnE "child_process|spawnSync|execFile|\.fork\(" e2e/matrix/orchestration --include=*.ts
+exit=1 (1 == no match)
+
+# What it is instead:
+$ sed -n "62,65p" e2e/matrix/orchestration/src/testJournal.ts
+/** Opens a brand-new `JournalStore` instance over an EXISTING `journalDir` — the "simulated supervisor restart" primitive: no in-memory state survives, only what was durably journaled to disk. */
+export function reopenJournal(journalDir: string): JournalStore {
+  return createJournalStore({ journalDir });
+}
+exit=0
+
+# No committed transcript anywhere under docs/evidence/ records parking against a real
+# engine. Every file mentioning the parked status:
+$ grep -rl "parked:rate_limit" docs/evidence/
+docs/evidence/phase-02/closeout-c3-work-unit-attempt-status.txt
+docs/evidence/phase-04/wi3-chain-snapshot-passing.txt
+docs/evidence/phase-13/closeout-c4-parking-arc-restart.txt
+docs/evidence/criteria-closeout/phase-04.json
+docs/evidence/criteria-closeout/phase-13.json
+docs/evidence/criteria-closeout/phase-02.json
+docs/evidence/criteria-closeout/phase-05.json
+docs/evidence/phase-02/README.md
+docs/evidence/phase-22/closeout-c7-journal-round-trip.txt
+docs/evidence/phase-24/closeout-c5-tamper-reason-journaled.txt
+docs/evidence/phase-04/wi5-attempts-failing.txt
+docs/evidence/phase-04/closeout-c2-codec-roundtrip.txt
+docs/evidence/phase-04/README.md
+docs/evidence/phase-04/wi1-codec-failing.txt
+docs/evidence/phase-04/closeout-c8-parked-session-id.txt
+docs/evidence/phase-04/closeout-c6-snapshot-equivalence.txt
+docs/evidence/phase-04/wi1-codec-passing.txt
+docs/evidence/phase-13/closeout-c2-repair-evidence-gate.txt
+docs/evidence/phase-13/README.md
+docs/evidence/phase-01/closeout-c7-changesets-live.txt
+exit=0
+
+# ...and the closest one names its own scope in its first line:
+$ sed -n "1p" docs/evidence/phase-13/closeout-c4-parking-arc-restart.txt
+Criteria-closeout pass, phase 13 — criterion 4 (parking arc: same session_id, journal arc, simulated supervisor restart)
+exit=0
+
+# The repository states the same limit itself, in the one live probe that exists:
+$ sed -n "31,44p" packages/engine-claude/src/live/parked-resume-write-authority.live.test.ts
+ *   - The cross-process / cross-adapter-instance resume (a daemon RESTART):
+ *     `spawnContexts` is in-memory per adapter, so a restart hits
+ *     `FALLBACK_SPAWN_CONTEXT` and degrades to READ_ONLY by design. Restart-
+ *     safe session context is the ledger's separate carry-forward; this probe
+ *     asserts nothing about it.
+ *   - Forcing a REAL rate-limit park: a `rejected` limit event has never been
+ *     observed live (baseline §8; `rate-limit-fixtures.ts`), and actually
+ *     exhausting the subscription is non-deterministic and quota-destroying.
+ *     The park/resume WIRING is proven by the fake-engine matrix suite
+ *     (`e2e/matrix/orchestration/.../limit-parked-resume-restart.test.ts`);
+ *     what only a live run can prove — that OUR adapter's `resume` carries
+ *     write authority against the pinned engine — is what this file adds.
+ *
+ * Like every `*.live.test.ts` it fails RED (never skips) without
+exit=0
+
+## 7 — Jira/Grafana exactly-once and read-back "pass live" (16/18/19/20).
+
+# The 28 records that score this item all come from e2e/matrix/connector, whose
+# exactly-once suite is cassette-replayed:
+$ ls e2e/matrix/connector/src/exactly-once/
+ambiguous-reconciliation.test.ts
+crash-recovery.test.ts
+fixtures
+grafana-cassette.test.ts
+jira-cassette-readback.test.ts
+replay-changed-payload.test.ts
+exit=0
+
+# Jira Data Center: the adapter phase (19) has no closeout record and no ticked criterion.
+$ grep -c "^- \[x\]" roadmap/19-jira-datacenter-adapter.md ; grep -c "^- \[ \]" roadmap/19-jira-datacenter-adapter.md
+0
+7
+exit=0
+
+# and its only container channel has never run (see lane-and-channel-audit.txt):
+$ gh api ".../actions/workflows/jira-datacenter-smoke.yml/runs?per_page=1" --jq .total_count
+0
+exit=0
+
+# Grafana, by contrast, DOES have a genuinely containerized mutation + read-back — it runs
+# inside release-e2e as the requirement-traceability binding step, and its own record says
+# what it is. See the provenance.statement field of the record catted into job 91004033370.

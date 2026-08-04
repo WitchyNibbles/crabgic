@@ -1,0 +1,74 @@
+# Phase-23 criteria-closeout pass — criterion 9 reproduction: the git-invariance +
+# neutral-rendering matrix lane, which runs in NO per-push CI channel (only inside
+# release-e2e / publish). Re-run locally at this pass's HEAD so the tick does not rest
+# solely on a 2026-07-30 run.
+# UTC: 2026-08-04T16:18:06Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+# command: npx vitest run --no-file-parallelism --config e2e/matrix/git/vitest.config.ts --reporter=verbose
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23/e2e/matrix/git
+      Coverage enabled with v8
+
+ ✓ test/evidence.test.ts > evidence emission > digestArtifact is deterministic and content-sensitive 4ms
+ ✓ test/evidence.test.ts > evidence emission > buildScenarioEvidence produces a schema-valid EvidenceRecord tagged release-gate:git-matrix 3ms
+ ✓ test/evidence.test.ts > evidence emission > emitScenarioEvidence appends exactly one evidence_pointer journal entry, queryable back 12ms
+ ✓ test/evidence.test.ts > evidence emission > stamps the release candidate under a release run, so the evidence can actually link 1ms
+ ✓ test/evidence.test.ts > evidence emission > preserves the scenario's own object ID as a digest rather than losing it 1ms
+ ✓ test/evidence.test.ts > evidence emission > treats an empty release-candidate value as unset 1ms
+ ✓ test/evidence.test.ts > evidence emission > a nonzero exitStatus is recorded verbatim 4ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > RED: a seeded "Generated with" commit body is caught 2ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > RED: a seeded Co-Authored-By...Claude trailer is caught 0ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > RED: the robot-emoji attribution line is caught 0ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > GREEN: a clean commit body passes with zero findings 1ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > AttributionLeakError carries every finding and a human-legible message naming the token(s) 0ms
+ ✓ test/neutral-rendering-assertion.test.ts > assertNeutralRendering / findAttributionLeaks (RED before GREEN) > findings are sorted by index ascending, matching the shared scanner's own contract 0ms
+ ✓ test/all-scenarios.test.ts > git matrix: full run (live) > every scenario in the matrix passes and emits exactly one evidence_pointer entry each 998ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > buildBasicFixtureRepo: a real repo on branch main with one real commit 54ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > initFixtureRepo with objectFormat sha256 produces a real SHA-256 repo 22ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > writeFixtureFile creates parent directories as needed 42ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > commitAll uses --no-verify (fixture commits never depend on ambient hooks) 57ms
+ ✓ test/fixtures.test.ts > fixture builders (real fs/git, throwaway temp dirs) > commitAllHonoringHooks omits --no-verify so a real hook has a chance to fire 103ms
+ ✓ test/branch-commit-golden-scenarios.test.ts > git matrix: branch/commit golden scenarios (live) > a clean input renders a construction-legal branch name and a well-formed commit via the REAL renderers 16ms
+ ✓ test/branch-commit-golden-scenarios.test.ts > git matrix: branch/commit golden scenarios (live) > THE FAIL-FIRST VECTOR: a seeded attribution-leaking slug/outcome is BLOCKED by the REAL nameBranch/renderCommit 5ms
+ ✓ test/branch-commit-golden-scenarios.test.ts > git matrix: branch/commit golden scenarios (live) > buildCleanBranchNameCandidate's own pure output never itself carries an attribution token 1ms
+ ✓ test/publish-attribution-leak-scenario.test.ts > git matrix: publish-time attribution-leak scenarios (live) > THE STRONGEST FAIL-FIRST PROOF: a real leaking commit is rejected by the REAL publishLocal belt-and-suspenders, and the branch ref is deleted (never left dangling) 156ms
+ ✓ test/publish-attribution-leak-scenario.test.ts > git matrix: publish-time attribution-leak scenarios (live) > a clean commit publishes for real: branch appears in the user repo, working tree stays byte-identical 134ms
+ ✓ test/scenario-types.test.ts > scenario-types (pure guards, both branches) > exitStatusFor > returns 0 when passed is true 1ms
+ ✓ test/scenario-types.test.ts > scenario-types (pure guards, both branches) > exitStatusFor > returns 1 when passed is false 0ms
+ ✓ test/scenario-types.test.ts > scenario-types (pure guards, both branches) > requirePassed > does nothing when passed is true 1ms
+ ✓ test/scenario-types.test.ts > scenario-types (pure guards, both branches) > requirePassed > throws ScenarioAssertionError with the scenario name and detail when passed is false 0ms
+ ✓ test/repo-format-scenarios.test.ts > git matrix: repo-format scenarios (live) > a real SHA-256 repo is detected by the REAL validateRepository 66ms
+ ✓ test/repo-format-scenarios.test.ts > git matrix: repo-format scenarios (live) > a real local-path submodule is detected by the REAL validateRepository 157ms
+ ✓ test/repo-format-scenarios.test.ts > git matrix: repo-format scenarios (live) > a real LFS-pointer-shaped tracked file is detected without ever invoking git-lfs smudge 53ms
+ ✓ test/conflict-scenarios.test.ts > git matrix: conflict scenarios (live) > a disjoint-file candidate preflights clean via the REAL preflightMerge 103ms
+ ✓ test/conflict-scenarios.test.ts > git matrix: conflict scenarios (live) > an intersecting-hunk candidate yields a resolution WorkUnit via the REAL preflightMerge, never a silent auto-merge 87ms
+ ✓ test/hooks-filters-scenario.test.ts > git matrix: hooks/filters neutralization scenario (live) > a real pre-commit hook fires before neutralization and is silenced after neutralizeHooksPath 107ms
+ ✓ test/rename-collision-scenario.test.ts > git matrix: rename-collision scenario (live) > a moved-in-one/edited-in-other pair is flagged as a collision via REAL git diff --find-renames + analyzeOverlap 104ms
+ ✓ test/checkout-invariance-scenario.test.ts > git matrix: checkout-invariance scenario (live) > a real control-clone + fetch cycle leaves the source user repo byte-identical 106ms
+
+ Test Files  12 passed (12)
+      Tests  36 passed (36)
+   Start at  18:18:06
+   Duration  6.24s (transform 568ms, setup 0ms, import 2.32s, tests 2.42s, environment 1ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.84 |    87.69 |   97.56 |   98.83 |                   
+ src/scenarios     |     100 |    86.36 |     100 |     100 |                   
+  ...-scenarios.ts |     100 |       75 |     100 |     100 | 34-35,75          
+  ...k-scenario.ts |     100 |     87.5 |     100 |     100 | 73                
+  ...n-scenario.ts |     100 |    71.42 |     100 |     100 | 52                
+ src/test-support  |   66.66 |       50 |   66.66 |   66.66 |                   
+  test-journal.ts  |   66.66 |       50 |   66.66 |   66.66 | 40-44             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 98.84% ( 257/260 )
+Branches     : 87.69% ( 57/65 )
+Functions    : 97.56% ( 40/41 )
+Lines        : 98.83% ( 255/258 )
+================================================================================
+# EXIT=0

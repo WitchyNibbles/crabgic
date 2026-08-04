@@ -87,7 +87,6 @@ import {
   ANNOTATION_LEAD,
   BASELINE_FILE,
   CLOSEOUT_DIR,
-  PRE_INDEX_TICKED_PHASES,
   parseExitCriteriaCheckboxes,
   validateAllCloseoutRecords,
   validateCloseoutRecord,
@@ -2310,7 +2309,16 @@ describe("validateAllCloseoutRecords — this repository's own committed records
     expect(errors.join("\n")).toContain("ticked");
   });
 
-  it("does not report phase 23, whose ticks predate this pass and are evidenced elsewhere", () => {
+  /**
+   * The inverse of the test this replaced. Until 2026-08-04 phase 23 was the
+   * one grandfathered exemption — ticked, evidenced against `release-e2e` run
+   * 30250453824, and record-less — and this suite asserted it was NOT reported.
+   * Its closeout record now exists, so the exemption was removed along with the
+   * constant that held it. What must be true from here is the opposite: phase
+   * 23 gets no special treatment, and a ticked box with no record behind it is
+   * reported for it exactly as for any other phase.
+   */
+  it("reports phase 23 like any other phase now that the grandfathering exemption is gone", () => {
     const root = mkdtempSync(join(tmpdir(), "closeout-legacy-"));
     tmpDirs.push(root);
     mkdirSync(join(root, "roadmap"), { recursive: true });
@@ -2321,7 +2329,8 @@ describe("validateAllCloseoutRecords — this repository's own committed records
       "utf8",
     );
     const { errors } = validateAllCloseoutRecords(root);
-    expect(errors.join("\n")).not.toContain("23-release-hardening.md");
+    expect(errors.join("\n")).toContain("23-release-hardening.md");
+    expect(errors.join("\n")).toContain("ticked");
   });
 
   /**
@@ -2346,11 +2355,16 @@ describe("validateAllCloseoutRecords — this repository's own committed records
   });
 
   /**
-   * The exemption list is a standing invitation to grow. Pinning it means
-   * adding a phase requires editing this assertion, which a reviewer sees.
+   * The exemption list was a standing invitation to grow, so pinning it meant
+   * adding a phase required editing an assertion a reviewer sees. With phase
+   * 23 recorded the list has no subject left, and it was removed rather than
+   * emptied — an empty array is the same invitation. This assertion is what
+   * keeps it removed: re-introducing any exemption mechanism means editing the
+   * validator here, in the open.
    */
-  it("grandfathers exactly one phase, and adding another requires editing this test", () => {
-    expect(PRE_INDEX_TICKED_PHASES).toEqual(["23"]);
+  it("exposes no exemption mechanism at all — a tick needs a record, without exception", () => {
+    const source = readFileSync(new URL("./check-criteria-closeout.mjs", import.meta.url), "utf8");
+    expect(source).not.toContain("PRE_INDEX_TICKED_PHASES");
   });
 
   /**
@@ -2430,14 +2444,18 @@ describe("validateAllCloseoutRecords — this repository's own committed records
    * nothing and discharges could resolve against it.
    */
   it("rejects a second roadmap file claiming a phase number the baseline already pins", () => {
-    // Reproduced on the exempt phase, which is where it actually bit: 23 is
+    // Reproduced on phase 23, which is where it actually bit: 23 used to be
     // skipped by the ticks-need-a-record rule, so a brand-new `roadmap/23-*.md`
-    // was checked by nothing whatsoever.
+    // was checked by nothing whatsoever. That exemption was removed on
+    // 2026-08-04 once phase 23 got a closeout record, so the scaffolding here
+    // no longer leans on it — the pinned file's own box is left UNTICKED, and
+    // what is still being isolated is the supplement, which the baseline pins
+    // for nothing whatever its boxes say.
     const root = mkdtempSync(join(tmpdir(), "closeout-supplement-"));
     tmpDirs.push(root);
     mkdirSync(join(root, "roadmap"), { recursive: true });
     mkdirSync(join(root, CLOSEOUT_DIR), { recursive: true });
-    const real = "- [x] The release gate scored 15 PASS / 0 FAIL in `final` mode.";
+    const real = "- [ ] The release gate scored 15 PASS / 0 FAIL in `final` mode.";
     writeFileSync(
       join(root, "roadmap", "23-release-hardening.md"),
       `## Exit criteria\n\n${real}\n`,

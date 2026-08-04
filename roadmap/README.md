@@ -18,6 +18,32 @@ Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §
 scored 15 PASS / 0 FAIL in `final` mode at release candidate `2435cb9` with 160 linked
 `EvidenceRecord`s. `crabgic@1.0.0` is published with provenance.
 
+> **Correction (2026-08-04), from phase 23's own closeout pass — three parts, none of them
+> cosmetic.** The paragraph above is left verbatim; this is what walking its evidence found.
+>
+> 1. **The link count is wrong.** It entered this ledger in PR #83, hours before this pass, and
+>    it is an error rather than a rounding. Run 30250453824's
+>    archived report links **158** evidence entries across **103** distinct `EvidenceRecord`s,
+>    not 160. The 160 belongs to the **v1.5.0** report. Both archived reports are now committed
+>    verbatim under `docs/evidence/phase-23/closeout/` so the count is checkable without GitHub.
+> 2. **That run's checkout was not its candidate.** Its `head_sha` is `dbb83fd` — it executed a
+>    tree two commits ahead of the `2435cb9` it stamped on every record. Not cosmetic: one of
+>    those two commits re-points the marketplace entry at the release commit, and the pin check
+>    accepts an ancestor pin only when the intervening span touches nothing but the plugin
+>    manifest directory. At the attested candidate that condition is false, so the
+>    reproducible-build item's pin clause passed because of the skew.
+> 3. **A fresher, skew-free `final` PASS exists that this ledger predates.** Since 2026-07-30
+>    `publish.yml` calls `release-e2e` as a blocking gate, so the v1.5.0 tag re-ran the whole
+>    matrix: run
+>    [30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006), 15/15 in
+>    `final` mode at `6b9dd7b`, where checkout and candidate are the same commit. That is the
+>    primary citation in `docs/evidence/criteria-closeout/phase-23.json`.
+>
+> **And the sixteen ticks are now thirteen.** Walking them per criterion left three unticked —
+> the two "pass live" boxes (crash-recovery/limit-park resume, and Jira/Grafana exactly-once)
+> and the release-docs citation box — each with a defect record. Phase 23's grandfathered
+> exemption from the ticks-need-a-record rule is closed along with it.
+
 **Closeout status (2026-08-02): 211 criteria across the 25 phases; 161 ticked, 50 not.**
 Twenty-one phases now carry a per-criterion closeout record under
 `docs/evidence/criteria-closeout/`, each validated by `npm run check:criteria-closeout`.
@@ -25,9 +51,16 @@ Four phases have no record yet: **00** (5 criteria) and **06** (10) are live-eng
 and need owner approval to run; **19** (7) is not yet started;
 **23** (16, all ticked) predates the record format — see below.
 
+> **Updated 2026-08-04.** Phase 23 now carries a record too, so **twenty-two** phases are
+> recorded and **three** are not: 00, 06 and 19. Its closeout unticked three of its sixteen
+> boxes, which moves the running tally to **211 criteria; 158 ticked, 53 not**. Phase 23 was
+> also the single phase exempt from the ticks-need-a-record rule; that exemption was removed
+> from `scripts/check-criteria-closeout.mjs` in the same change, so no phase holds one now.
+
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
-clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8. Phase 24 closed
+clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8, and
+phase 23 — the release gate itself — 13 of 16. Phase 24 closed
 9 of 9, but its record carries an explicit scope bound rather than a clean bill of health.
 It also surfaced production defects that green suites had hidden, including per-issue write
 ordering in the Jira Cloud connector and phase 24's completion funnel resolving an empty

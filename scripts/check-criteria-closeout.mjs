@@ -1432,13 +1432,16 @@ export function validateCloseoutRecord(record, ctx) {
 }
 
 /**
- * Phases whose ticks legitimately predate this pass and so have no closeout
- * record. Phase 23 was closed and evidenced against `release-e2e` run
- * 30250453824 before the closeout index existed — see `roadmap/README.md`'s
- * completion ledger. **Nothing may be added here.** From now on a tick needs a
- * record; if a phase's ticks cannot be recorded, they should not be ticks.
+ * THE GRANDFATHERING EXEMPTION IS CLOSED (2026-08-04). Exactly one phase ever
+ * held it: 23, whose sixteen ticks predated this index. It now carries a
+ * per-criterion closeout record like every other closed phase — three of those
+ * sixteen boxes came back unticked when its evidence was walked — so the
+ * exemption has no remaining subject and the constant and its one behavioural
+ * use are removed rather than emptied. An empty list is a standing invitation
+ * to add a phase to it; no list at all is not. From here a tick needs a record,
+ * without exception: if a phase's ticks cannot be recorded, they should not be
+ * ticks.
  */
-export const PRE_INDEX_TICKED_PHASES = ["23"];
 
 /**
  * The reverse direction of every check in `validateCloseoutRecord`, all of
@@ -1553,7 +1556,6 @@ function findUnrecordedPhaseClosures(repoRoot, presentFileNames, baseline) {
       );
       continue;
     }
-    if (PRE_INDEX_TICKED_PHASES.includes(phase[1])) continue;
     const ticked = (parsed.items ?? []).filter((box) => box.checked).length;
     if (ticked > 0) {
       problems.push(

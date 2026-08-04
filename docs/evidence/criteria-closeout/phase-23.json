@@ -1,0 +1,834 @@
+{
+  "schemaVersion": 1,
+  "phase": "23",
+  "roadmapFile": "roadmap/23-release-hardening.md",
+  "pass": {
+    "date": "2026-08-04",
+    "agent": "criteria-closeout pass, phase 23 (release hardening) — the last unrecorded non-live phase",
+    "headSha": "3dec9bf2caa6b94bd817aee414f9458c37750fd9"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`release-e2e` CI job's archived `e2e/release-gate-report.json` shows PASS for every item below, each linked to ≥1 `EvidenceRecord` from the exact release-candidate object ID.",
+      "textSha256": "c4cb972994750ddae9706defe972047dd6b973cda5ecc2f93d2cdc49ad926fe6",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run node e2e/report/dist/cli.js\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "THE PRIMARY BEARER, and the one the roadmap never mentions: since 2026-07-30 publish.yml calls release-e2e as a BLOCKING gate, so v1.5.0's own tag push re-ran the whole matrix in final mode at a candidate equal to its own checkout. job-log line 1005 — 'release-gate-report: wrote /home/runner/work/crabgic/crabgic/e2e/release-gate-report.json — overallVerdict=PASS (scoringMode=final, releaseCandidateObjectId=6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb, journalDir=/home/runner/work/_temp/release-gate-journal)'. The candidate this scored is the run's own head_sha, resolved at line 426 — 'release candidate: 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:3-5",
+          "quotedAssertion": "That run's archived release-gate-report artifact (artifact id 8775098257, unexpired, downloaded 2026-08-04 and committed here verbatim so the claim outlives GitHub's retention): :3 '  \"releaseCandidateObjectId\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",' / :5 '  \"scoringMode\": \"final\",'. Every one of its 15 items carries verdict PASS and >=1 linkedEvidence entry (minimum 1, maximum 72), and every linkedEvidence objectId in the file is that same candidate — 160 links across 105 distinct evidenceRecordIds."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "release-e2e / release-e2e (ReleaseGateReport generator), job 89927021648, step \"Run node e2e/report/dist/cli.js\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824/job/89927021648",
+          "commit": "dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105",
+          "quotedAssertion": "The run the roadmap's own §Exit criteria header cites, kept as corroboration and NOT as the primary bearer — see the notes on its checkout-vs-candidate skew, which is why `commit` here is the run's real head_sha dbb83fd7... rather than the 2435cb95... it stamped. job-log line 929 — 'release-gate-report: wrote /home/runner/work/crabgic/crabgic/e2e/release-gate-report.json — overallVerdict=PASS (scoringMode=final, releaseCandidateObjectId=2435cb955809a5420f396043e5bc7003282491fa, journalDir=/home/runner/work/_temp/release-gate-journal)'; line 371 — 'release candidate: 2435cb955809a5420f396043e5bc7003282491fa'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json:3-5",
+          "quotedAssertion": "Its archived artifact (id 8646862319), committed here verbatim: :3 '  \"releaseCandidateObjectId\": \"2435cb955809a5420f396043e5bc7003282491fa\",' / :5 '  \"scoringMode\": \"final\",'. 15 items, all PASS, and — measured rather than repeated — 158 linkedEvidence entries across 103 distinct evidenceRecordIds, not the 160 the roadmap and the completion ledger both state. 160 is the v1.5.0 report's link count."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/report/src/generator.ts:87-88",
+          "quotedAssertion": "Why a PASS is not PASS-by-default — the zero-evidence branch cannot return PASS in either mode: :87 '  if (matchedEvidence.length === 0) {' / :88 '    const verdict: ReleaseGateVerdict = scoringMode === \"final\" ? \"FAIL\" : \"EVIDENCE-PENDING\";'. And :106-107 '  const negative = matchedEvidence.filter(isNegativeEvidence);' / '  const verdict: ReleaseGateVerdict = negative.length > 0 ? \"FAIL\" : \"PASS\";' — one negative record among the matches forces FAIL however many green ones sit beside it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c1-generator-fail-closed.txt",
+          "quotedAssertion": "The anti-vacuity probe run at this pass's HEAD, and the reason this criterion is REPRODUCED rather than merely EXISTS. LEG 1 green: '✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > FAILs (never PASS-by-default) when zero evidence matched, in 'final' scoring mode' and '✓ |e2e-report| src/generator.property.test.ts > generateReleaseGateReport — property: never PASS on missing/incomplete evidence > for any random combination of checklist items x evidence sets x scoring mode, PASS implies >=1 linked green EvidenceRecord and zero linked negative ones'. LEG 2 deliberately RED: with generator.ts:88's verdict replaced by a literal PASS, ' Test Files  3 failed | 2 passed (5)' / '      Tests  11 failed | 44 passed (55)', '# EXIT=1'. LEG 3 reverts the mutation and shows `git status --porcelain -- packages/ e2e/` empty."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91002998119, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639/job/91002998119",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The generator's own suites are in the DEFAULT per-push fan-out (the e2e-report project of the root vitest workspace), so unlike every other lane this criterion touches they run on every push: job-log line 1000 — ' ✓  e2e-report  src/generator.test.ts (15 tests) 50ms'; line 1004 — ' ✓  e2e-report  src/generator.property.test.ts (2 tests) 4437ms'. Whole-suite totals, lines 1008-1009 — ' Test Files  605 passed (605)' / '      Tests  5802 passed | 1 skipped (5803)'."
+        }
+      ],
+      "notes": "Four things are disclosed rather than glossed, and the first two are corrections to claims already in this repository. (a) LINK COUNT. roadmap/README.md's completion ledger and roadmap/23's own §Exit criteria header both say run 30250453824 linked 160 EvidenceRecords. The archived artifact sums to 158 links / 103 unique; 160/105 belongs to the v1.5.0 report. Both prose sites now carry a dated correction beside the original, and both reports are committed under docs/evidence/phase-23/closeout/ so the count is checkable without GitHub. (b) CHECKOUT-vs-CANDIDATE SKEW. Run 30250453824's head_sha is dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105 — it executed a tree two commits AHEAD of the 2435cb955809a5420f396043e5bc7003282491fa it stamped on every record. This is not cosmetic: one of those two commits (b035227) re-points packages/plugin/.claude-plugin/marketplace.json's commit field from 94f419b0 to 2435cb95, and marketplacePinCheck.ts accepts an ancestor pin only when every path changed between pin and candidate is under packages/plugin/.claude-plugin/. At the attested candidate that condition is false (four of five changed paths are outside it), so the reproducible-build item's marketplace-pin clause passed BECAUSE of the skew. The transcript proves it with read-only git queries. The v1.5.0 run has no skew — its head_sha IS its candidate — which is the second reason it is the primary citation here. (c) THE COMMITTED e2e/release-gate-report.json IS NOT THIS REPORT. A reader opening the repository file finds a stale interim snapshot with overallVerdict FAIL; the criterion is about the ARCHIVED artifact, which is why both real ones are now committed under a distinct path. (d) OR-MATCHED GATE TAGS. e2e/report/src/checklist.ts declares requiredGateTags per item and the generator OR-matches them, so an item can be satisfied by an umbrella tag rather than by the evidence its wording names. That is a real weakness and it bites criterion 2 concretely — see that criterion's notes. It does not weaken THIS criterion, whose claim is exactly 'every item PASS, each with >=1 linked record at the exact object ID', which is what both artifacts show."
+    },
+    {
+      "index": 2,
+      "text": "All applicable quality/security/perf/learning gates (14/15/22) pass on the release candidate with the coverage policy satisfied — not a synthetic fixture.",
+      "textSha256": "5212bf96a2eb81231651e2122fa851a166c73eb84ed3db8bc65dd5aac8b5a3d1",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance (ubuntu-latest), job 91002989132, steps \"seeded-fault matrix (7 independent fixtures) blocks correctly\" and \"engine-conformance-binding.test — fails closed / runId round-trip\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597742/job/91002989132",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "14's quality+security half, run on a push AT the release candidate. job-log line 201 — ' ✓  @crabgic/gates  src/gates-conformance.test.ts (7 tests) 44ms'; lines 195-215 — ' ✓  @crabgic/gates  src/engine-conformance-binding.test.ts (4 tests) 28ms'. The commands are quoted in the log itself at lines 195 and 209 — 'npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false' and 'npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 91002993992, step \"perf-conformance fixture matrix (4 independent fixtures) decides correctly\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597775/job/91002993992",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "15's half at the same candidate: job-log line 202 — ' ✓  @crabgic/perf  src/conformance/perf-conformance.test.ts (5 tests) 249ms'; totals for that step at lines 204-205 — ' Test Files  1 passed (1)' / '      Tests  5 passed (5)'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 91002988189, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597676/job/91002988189",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "22's half at the same candidate: job-log line 203 — ' ✓  @crabgic/learning  src/red-team/self-promotion.redteam.test.ts (8 tests) 310ms'; line 205 — ' ✓  @crabgic/learning  src/red-team/no-bypass.redteam.test.ts (1 test) 37ms'; step totals at lines 207-208 — ' Test Files  5 passed (5)' / '      Tests  20 passed (20)'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91002998119, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639/job/91002998119",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The coverage-policy conjunct, at the candidate, under a step whose own name is the policy: job-log lines 1008-1009 — ' Test Files  605 passed (605)' / '      Tests  5802 passed | 1 skipped (5803)'; line 1013 — ' % Coverage report from v8'; line 1017 — 'All files          |   94.82 |    87.73 |   96.17 |   95.78 |                   '."
+        },
+        {
+          "kind": "test",
+          "ref": "vitest.config.ts:138-143",
+          "quotedAssertion": "...and the thresholds that make that step a GATE rather than a report, so a sub-80% run would have reddened it: :138 '      thresholds: {' / :139 '        lines: 80,' / :140 '        branches: 80,' / :141 '        functions: 80,' / :142 '        statements: 80,' / :143 '      },'. Identical at the candidate — `git show 6b9dd7b:vitest.config.ts` carries the same five lines at :125-130."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance (ubuntu-latest), job 89923395481, step \"seeded-fault matrix (7 independent fixtures) blocks correctly\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30249294711/job/89923395481",
+          "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+          "quotedAssertion": "The same four gates were green at the v1.0.0 candidate too, on push, with no checkout skew (these runs' head_sha IS 2435cb95...). job-log line 202 — ' ✓  @crabgic/gates  src/gates-conformance.test.ts (7 tests) 45ms'; line 216 — ' ✓  @crabgic/gates  src/engine-conformance-binding.test.ts (4 tests) 29ms'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "perf-conformance / perf-conformance (ubuntu-latest), job 89923391270, step \"perf-conformance fixture matrix (4 independent fixtures) decides correctly\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30249293439/job/89923391270",
+          "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+          "quotedAssertion": "job-log line 201 — ' ✓  @crabgic/perf  src/conformance/perf-conformance.test.ts (5 tests) 62ms'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "learning-redteam / learning-redteam (ubuntu-latest), job 89923387562, step \"@learning-redteam suite: self-promotion, grader isolation, no-bypass, no MCP tool family, no promptfoo dep\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30249291954/job/89923387562",
+          "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+          "quotedAssertion": "job-log line 202 — ' ✓  @crabgic/learning  src/red-team/self-promotion.redteam.test.ts (8 tests) 299ms'; line 200 — ' ✓  @crabgic/learning  src/red-team/grader-isolation.redteam.test.ts (6 tests) 29ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/report/src/checklist.ts:53-58",
+          "quotedAssertion": "THE VACUITY THIS CRITERION'S OWN REPORT ITEM CARRIES, quoted so the finding lives in the repository rather than in a scratch file. The item accepts umbrella tags as alternatives to the real gate tags: :53 '    requiredGateTags: [' / :54 '      \"release-gate:quality-security-perf-learning\",' / :55 '      \"tdd\",' / :56 '      \"coverage\",' / :57 '      \"security\",' / :58 '      \"engine-conformance\",' and then :69-70 '      \"release-gate:live-conformance\",' / '      \"release-gate:not-implemented-sweep\",'. Because the generator OR-matches (generator.ts:172-177), the last two alone satisfy the item."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:19-33",
+          "quotedAssertion": "...and that is exactly what happened, in BOTH final reports. The item's three linked records are :19 '          \"gateTag\": \"release-gate:not-implemented-sweep\",', :19 '          \"gateTag\": \"release-gate:not-implemented-sweep\",' and :33 '          \"gateTag\": \"release-gate:live-conformance\",' — zero records tagged tdd, coverage, security or engine-conformance, and zero from 14/15/22 at all. Deleting every one of those gates would leave this report item green. The tick above therefore does NOT rest on the report item; it rests on the four push-triggered runs cited first."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt",
+          "quotedAssertion": "The scope of the 'not a synthetic fixture' clause, measured rather than assumed: the four cited runs are push-triggered at the candidate commit itself. Section 2 of the transcript records what the default fan-out covers — 'npm test' reaches packages/* plus e2e/report and scripts, and nothing else — which is why the gate suites and the coverage gate are genuinely exercised on every push while the e2e matrix lanes are not."
+        }
+      ],
+      "notes": "CONJUNCTS, each evidenced separately: quality (14) and security (14) by gates-conformance; perf (15) by perf-conformance; learning (22) by learning-redteam; the coverage policy by CI's 80% line+branch gate; 'on the release candidate' by all four being push runs whose head_sha IS the candidate — at BOTH candidates, so the tick does not depend on the skewed run. THE FINDING THIS CRITERION EXISTS TO RECORD: the release-gate report item that nominally scores this criterion is satisfiable with zero evidence from 14, 15 or 22, and in both final reports it was satisfied that way. checklist.ts's own doc comment at :27-36 explains why the 14 tags were added, but the two release-gate umbrella tags added at :69-70 are OR-alternatives to them, not additions on top, so the item's verdict is independent of whether any 14/15/22 gate ran at all. This is a defect in the gate's tag mapping, not in this criterion's underlying truth; a closeout pass files findings rather than fixing them, and defectRef is illegal on a ticked criterion, so it is recorded here and in the roadmap box's annotation. A reviewer wanting to act on it should tighten quality-security-perf-learning-gates to require at least one 14/15/22 tag rather than accepting the live-conformance/not-implemented-sweep pair alone. SCOPE HONESTY on 'not a synthetic fixture': the gates-conformance and perf-conformance steps do run seeded-fault FIXTURE matrices — that is what those gates are, and 14/15 own them (roadmap/23 §Out of scope). What the criterion forbids is scoring the release against a synthetic candidate, and the object ID these ran at is the real one."
+    },
+    {
+      "index": 3,
+      "text": "No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16 keystones + 17's lint surface).",
+      "textSha256": "d0f06ccbf5e32ac2461dc978f1c305a701fb527c9dd7a29759af8e0cff976047",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:40-53",
+          "quotedAssertion": "The scored item, PASS in final mode at the candidate: :40 '      \"id\": \"security-review-sign-off\",' / :43 '      \"verdict\": \"PASS\",' with one linked record :52 '          \"gateTag\": \"release-gate:security-review\",' / :53 '          \"exitStatus\": 0'. The 2435cb9 report carries the same item, same verdict."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/security-posture.md:33-39",
+          "quotedAssertion": "The sign-off itself, recorded: :33 '## Sign-off' / :35 '**No unresolved CRITICAL or HIGH security finding blocks this release.** Every CRITICAL and' / :36 'HIGH finding raised by an adversarial-validation pass against any of the nine threat-model' / :37 'surfaces was fixed with a RED (reproduced against the pre-fix code) → GREEN (fixed,' / :38 're-verified) test pair, recorded in the cited evidence file, before that phase's own build' / :39 'was considered closed.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/security-posture.md:59",
+          "quotedAssertion": "The implementation cross-references the criterion asks for: :59 '| Surface (threat-model §)' — a column-padded header row whose five columns are Surface, Severity, Finding, Fix and Evidence — followed by ten data rows at :61-70, four CRITICAL and six HIGH (one written 'MEDIUM/HIGH (#3)'), each carrying a non-empty Fix cell and a non-empty Evidence cell. The count is what the check parses; the severities are what make it the CRITICAL/HIGH table the criterion names."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/securityReviewSignOff.ts:150",
+          "quotedAssertion": "What the machine check actually asserts, quoted because it is weaker than the criterion's words and that matters: :150 '  const blocking = input.findings.filter((finding) => isBlockingSeverity(finding.severity));' and the anti-vacuity guard that stops an empty table reading as proof — :152-155 '    reasons.push(' / '      `no findings rows parsed from \"${FINDINGS_TABLE_HEADING}\" — zero rows is treated as a broken ` +' / '        \"or moved table, never as proof that no CRITICAL/HIGH finding exists.\",' / '    );'. 'Still open' is then decided per row: :162-166 '      finding.fix === \"\" ||' / '      LEADING_STATUS_MARKER.test(finding.fix) ||' / '      UNRESOLVED_PHRASE.test(fixProse)' -> '      reasons.push(`${label}: still open — no recorded fix (\"${finding.fix.slice(0, 80)}\").`);'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/securityReviewSignOff.ts:173",
+          "quotedAssertion": "The cross-reference half, and its real reach: :169-172 '    if (finding.evidence === \"\") {' / '      reasons.push(`${label}: no implementation cross-reference recorded.`);' / '      continue;' / '    }' / :173 '    const dangling = extractCitedPaths(finding.evidence).filter((path) => !input.pathExists(path));'. extractCitedPaths (releaseDocsCommitted.ts:74-85) only recognises backticked repo-ROOTED paths, so each row's bare test-file names are dropped and what is verified is that the row's evidence README resolves."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/security-review-and-docs.md",
+          "quotedAssertion": "The review pass's own process record, committed under this phase's evidence directory and therefore outside the closeout claim-space: it is the artifact the sign-off table's Evidence column points into, and it is what makes the sign-off a recorded review rather than an assertion."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The check executing at the candidate, inside the lane that emits the release-gate:security-review record: job-log line 952 — ' ✓ src/securityReviewSignOff.test.ts (17 tests) 12ms'; and the emitter's own line 931 — '[attestation] release-gate:security-review: PASS'."
+        }
+      ],
+      "notes": "CONJUNCTS: (a) no unresolved CRITICAL/HIGH; (b) a threat-model review sign-off recorded; (c) with implementation cross-references. All three are borne, and three adverse facts are disclosed rather than left for a reviewer to find. FIRST, the sign-off's SCOPE IS TWO MINORS STALE. docs/security-posture.md:220-226 carries its own heading '## Pending re-review — the approval model is being amended (2026-07-28)' and states that everything below reviews the posture 'as shipped in `crabgic@1.3.0`' and that 'This document has not yet been re-reviewed against that model, and the sign-off below does not cover it.' The shipping version at the v1.5.0 candidate is 1.5.0. That section is not in either region securityReviewSignOff.ts extracts, so the machine check cannot see the disclaimer at all. It does not falsify the tick — the criterion asks that a sign-off be recorded with cross-references, and one is — but it is the sharpest reason a reviewer might disagree, and it is why this criterion is EVIDENCE-EXISTS rather than REPRODUCED. Note that at the v1.0.0 candidate (2026-07-27) that disclaimer did not yet exist. SECOND, docs/threat-model.md itself carries NO sign-off annotation of any kind — `grep -nE \"sign-off|signoff\" docs/threat-model.md` is empty — and securityReviewSignOff.ts:193 verifies the threat model only with existsSync, never reading a byte of it. That gap is already filed as phase 16's defect record 16-threat-model-signoff-not-landed.md, which names precisely this channel substitution; it is still true at this pass's HEAD and this record does not attempt to re-file or fix it. THIRD, the sign-off SECTION is measured only by character count (securityReviewSignOff.ts:135-142 pushes a reason when it is absent or blank and otherwise records its length), so a sign-off that said nothing would pass. The load-bearing evidence is the ten-row table, not that check. SWEEP PERFORMED: grepping docs/ and packages/ at HEAD for a finding graded CRITICAL or HIGH and stated as open, unresolved or unfixed returns nothing. What is open is graded below the blocking bar and disclosed as such — security-posture.md:264-267 and :297-299 record two 'owed' product decisions on the approval surface, and :301-311 records two smaller findings 'for the next pass', including that `crabgic trust approve` mints without a prompt. None is in the findings table and none is graded CRITICAL/HIGH, so conjunct (a) stands as written."
+    },
+    {
+      "index": 4,
+      "text": "Every requirement linked to evidence from the exact final Git object ID and remote (Jira/Grafana) revisions (21's traceability report).",
+      "textSha256": "fa5c72aba26ed9007c6d928e94dd0fed271491c807a6c23271b89b918a8ba24c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run set -uo pipefail\" (the containerized traceability binding)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "THE REMOTE-REVISION CONJUNCT, and it is genuinely containerized rather than cassette-modeled. job-log line 530 — '[traceability-binding] outcome: {\"status\":\"recorded\",\"appliedRevision\":\"1785445622643010\"}'; line 531 — '[traceability-binding] container: grafana/grafana-oss:12.4.3 reported oss 12.4.3'; line 535 — ' ✓ src/requirementTraceabilityBinding.live.test.ts (1 test) 22053ms'; lines 543-593 — 'bound requirement-traceability at 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb'. The record catted straight after carries two pointers, each with '\"confirmedRevision\": \"1785445622643010\"' and '\"objectId\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\"'. The §Risks claim that the binding moved to Grafana 12.4 is therefore code-true AND run-true; the committed docs/evidence/phase-23/requirement-traceability.json still records an 11.6.5 capture and is a historical snapshot, not a contradiction."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:59-72",
+          "quotedAssertion": "The scored item at the candidate: :59 '      \"id\": \"requirement-traceability\",' / :62 '      \"verdict\": \"PASS\",' with its one linked record at :71 '          \"gateTag\": \"release-gate:requirement-traceability\",' / :72 '          \"exitStatus\": 0'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/requirementTraceability.ts:261",
+          "quotedAssertion": "The 'every requirement' arithmetic, and why it is not vacuous — the object-ID half applies to ALL requirements and a requirement with no evidence at the candidate is a blocking reason: :242-245 '    if (' / '      !entry.objectIds.includes(input.releaseCandidateObjectId) &&' / '      !structurallyEvidenceless.has(entry.requirementId)' / '    ) {' -> :247-249 '      reasons.push(' / '        `${entry.requirementId}: no evidence at the release-candidate object ID ` +' / '          `${input.releaseCandidateObjectId} (linked object IDs: ${entry.objectIds.join(\", \") || \"none\"}).`,'. The remote half fails closed twice over: :261 '      reasons.push(`${entry.requirementId}: bound to no remote (Jira/Grafana) resource.`);' and :268-270 '      reasons.push(' / '        `${entry.requirementId}: ${unconfirmed.length} remote binding(s) carry no confirmed revision — ` +' / '          `${unconfirmed.map((binding) => binding.remoteResourceId).join(\", \")}.`,'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/requirementTraceability.ts:234-235",
+          "quotedAssertion": "...and the scope of the remote half is DECLARED in the report rather than applied silently, which is the anti-vacuity control that matters most here: :234 '  const remoteBindingRequired = new Set(' / :235 '    input.requirements.filter((r) => r.requiresRemoteBinding).map((r) => r.id),' / :236-239 '  details.push(' / '    `remote binding required of ${remoteBindingRequired.size} of ${input.requirements.length} ` +' / '      `requirement(s) — the criteria whose subject is a remote Jira/Grafana resource. The ` +' / '      `release-candidate object ID is required of ALL of them.`,'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/releaseRequirements.ts:70-77",
+          "quotedAssertion": "Which requirements those are — exactly two, both named by regex, and the reason the scope is what it is: :70 'const REMOTE_SUBJECT_CRITERIA: readonly RegExp[] = [' / :73 '  /Every requirement linked to evidence/i,' / :76 '  /exactly-once and read-back/i,' / :77 '];'. The corpus is derived from roadmap/23's own checkbox list, so 'every requirement' means every exit criterion of this phase."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The checks executing at the candidate: job-log line 926 — ' ✓ src/requirementTraceability.test.ts (38 tests) 35ms'; line 927 — ' ✓ src/traceabilityEvidence.test.ts (21 tests) 22ms'; line 942 — ' ✓ src/requirementLinkability.test.ts (17 tests) 24ms'; and the emitter line 937 — '[attestation] release-gate:requirement-traceability: PASS'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "release-e2e / release-e2e (ReleaseGateReport generator), job 89927021648, step \"Run node e2e/report/dist/cli.js\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824/job/89927021648",
+          "commit": "dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105",
+          "quotedAssertion": "The same item scored PASS in the v1.0.0 gate as well — see docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json's requirement-traceability entry — under the same generator line quoted for criterion 1, 'overallVerdict=PASS (scoringMode=final, releaseCandidateObjectId=2435cb955809a5420f396043e5bc7003282491fa, …)'."
+        }
+      ],
+      "notes": "CONJUNCTS: every requirement; the exact final Git object ID; a remote revision. The first two are enforced over the whole corpus and fail closed. The third is enforced over the two criteria whose SUBJECT is a remote resource, and that narrowing is owner-ratified (2026-07-26), declared in the report's own details line, and explained at length in releaseRequirements.ts's doc comment — read as 'every requirement must bind to a Jira/Grafana resource' the clause is unsatisfiable by construction, since most of this phase's criteria are about tarballs and docs. THE DISCLOSURE THAT MATTERS: both remote-subject requirements bind to Grafana DASHBOARDS. No Jira revision appears anywhere in the traceability record — its two remoteResources are both '\"resourceKind\": \"dashboard\"' — so the '(Jira/Grafana)' parenthetical is exercised on the Grafana side only. That is a consequence of which criteria have a remote subject, not of the Jira side being faked: the record's provenance block states plainly that it came from a containerized grafana-oss:12.4.3 with the address-resolution seams engaged, 'NOT a live-SaaS tenant, and not a cassette'. The Jira live gap is real and it is recorded against criterion 7, where the criterion's own wording puts it. SEAM HONESTY, quoted from the record the run catted: resolveHostAddresses was overridden to 203.0.113.60 and the dial pinned to 127.0.0.1, with an in-process TLS terminator in front of the container's plain-HTTP port. That is a containerized run reached through a test seam, not a production network path, and the record says so itself rather than leaving a reader to infer it."
+    },
+    {
+      "index": 5,
+      "text": "Performance contracts satisfied rather than skipped, measured on a quiet host (15).",
+      "textSha256": "964be65942516a0498c1150c3bf95feb1fffd08afdae0cefee31b7a5357a2ea0",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run set -uo pipefail\" (probe:perf-contract-rerun)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "15's re-run, executed AT the release candidate, and its own log states the quiescence probe ran before the matrix: job-log line 503 — '[perf-contract-rerun] release candidate: 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb'; line 504 — '[perf-contract-rerun] probing host quiescence, then re-running the matrix'; line 505 — '[perf-contract-rerun] wrote /home/runner/work/_temp/perf-contract-rerun.json'; line 506 — '[perf-contract-rerun]   perf-conformance-matrix: pass'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/perfContractRerun.ts:202-233",
+          "quotedAssertion": "Why 'measured on a quiet host' is a HARD condition on that record and not a label: the producer REFUSES to emit one at all from a loaded host. :202 '  if (!quietHost.quiet) {' / :203-208 '    return {' / '      refusal:' / '        `host was not quiet before the re-run (load/core ${quietHost.loadPerCore.toFixed(2)}, ` +' / '        `idle ${(quietHost.idleFraction * 100).toFixed(1)}%): ${quietHost.reasons.join(\" \")} ` +' / '        \"roadmap/23:75 requires the re-run be taken on a quiet host, and a record taken on a \" +' / '        \"busy one is not the evidence it asks for.\",'. The emitted record's :233 '      quietHost: true,' is therefore reachable only past that guard, and the line quoted above proves the guard was passed on a shared GitHub runner."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/quietHost.ts:48-51",
+          "quotedAssertion": "The thresholds that decision uses, so 'quiet' is a number rather than a word: :48 'export const DEFAULT_QUIET_HOST_THRESHOLDS: QuietHostThresholds = {' / :49 '  maxLoadPerCore: 0.5,' / :50 '  minIdleFraction: 0.8,' / :51 '};'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/performanceContracts.ts:840",
+          "quotedAssertion": "'satisfied rather than skipped' is fail-closed on an ABSENT record — the check never reads a missing re-run as a pass: :840 '  if (evidence.record === undefined) {' / :841-844 '    return {' / '      reasons: [`${PERFORMANCE_CONTRACT_RERUN_UNEVIDENCED_REASON} ${evidence.unavailable}`],' / '      details: [`15 re-run record: none. ${evidence.unavailable}`],' / '    };'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/performanceContracts.ts:862",
+          "quotedAssertion": "...and on a record that admits it was taken on a busy host, or whose contracts did not all pass: :862 '  if (!record.quietHost) {' / :864-865 '      \"the 15 re-run record states it was NOT taken on a quiet host, which is what roadmap/23:75 \" +' / '        \"asks for — a contended benchmark decides nothing.\",' and :868-869 '  const unsatisfied = record.contracts.filter((contract) => contract.outcome !== \"pass\");' / '  if (unsatisfied.length > 0) {'. The 'skipped' half again at :923-928 '    if (decision.outcome === \"inconclusive_blocking\") {' -> '\"requires contracts be satisfied rather than skipped.\";', and the empty-set half at :899-903 '  if (input.decisions.length === 0) {' -> '\"no performance contracts were measured for the release candidate — an empty set is never \" + '\"scored as \\\"all contracts satisfied\\\".\"'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The consuming check and 05's idle-budget measurement, both executed at the candidate: job-log line 917 — ' ✓ src/performanceContracts.test.ts (76 tests) 30144ms' with its own sustained-window case at line 922 — '     ✓ collects a real, decidable idle measurement across the full sustained window  18584ms'; line 956 — ' ✓ src/quietHost.test.ts (13 tests) 134ms'; and the emitter line 932 — '[attestation] release-gate:performance-contracts: PASS'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:78-91",
+          "quotedAssertion": "The scored item at the candidate: :78 '      \"id\": \"performance-contracts\",' / :81 '      \"verdict\": \"PASS\",' with :90 '          \"gateTag\": \"release-gate:performance-contracts\",' / :91 '          \"exitStatus\": 0'."
+        }
+      ],
+      "notes": "CONJUNCTS: satisfied; not skipped; on a quiet host. The third is the one worth being precise about, because a shared GitHub runner is not obviously quiet. It is not asserted — it is MEASURED, before the matrix, against numeric thresholds, and a failed measurement means no record exists at all rather than a record marked false. Downstream, an absent record is a blocking reason and a record marked quietHost:false is a separate blocking reason, so both directions fail closed. TWO SCOPE FACTS, disclosed. (a) The quiescence window is sampled BEFORE the matrix rather than across it — perfContractRerun.ts:179-200 gives the reasoning — so a host that became loaded mid-run would not be caught. (b) The record is NOT committed to this repository: at this pass's HEAD there is no docs/evidence/phase-23/perf-contract-rerun.json, and performanceContracts.ts:652-655 says so about itself ('NO SUCH RECORD EXISTS IN THIS REPOSITORY, and nothing here writes one'), with its suite pinning that state. That is by design and is roadmap/23 §Interfaces produced's own ruling: committing such a record would advance HEAD past the object ID it names, so the release-e2e ingest supplies it through the $CRABGIC_PERF_CONTRACT_RERUN_RECORD override instead — visible in the job log's env block for the step that consumed it. The consequence for a reader: running the check locally at HEAD FAILs, correctly, and the evidence for this criterion lives in the run, which is why the log lines above are quoted verbatim."
+    },
+    {
+      "index": 6,
+      "text": "Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).",
+      "textSha256": "0d28cd691b73811b2b54c7c3a5860d3925e841d84210d2eb34116f5611223320",
+      "classification": "EVIDENCE-NEEDS-LIVE",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c6-c7-live-gap.txt",
+          "quotedAssertion": "The measurement, verbatim from the harness's own config: 'Every scenario here drives the REAL `@crabgic/scheduler` executor' / '(`dispatchAttempt`/`resumeAttempt`) and the REAL `@crabgic/supervisor`' / '`recoverRun` against the FAKE engine (`@crabgic/testkit`'s `FakeEngineAdapter`)' / 'over a real `@crabgic/journal` `JournalStore` on a real temp directory — no' / 'network, no real Claude Code engine, no live Docker daemon'. The grep for any process API across the whole harness exits 1 (no match), and the 'supervisor restart' is instead 'export function reopenJournal(journalDir: string): JournalStore {'. The search for a committed live park/resume transcript returns only fake-engine files, the nearest of which announces its own scope in its first line: 'Criteria-closeout pass, phase 13 — criterion 4 (parking arc: same session_id, journal arc, simulated supervisor restart)'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:66",
+          "quotedAssertion": "The scenario itself is real and thorough, and this is not a claim that it is weak — only that it is not live: :66 'it(\"parks on limitSignal, survives a FULL simulated supervisor restart (fresh journal + fresh run/worker registries), and resumes the SAME session past the reset to success\", async () => {'. Its own name carries the word 'simulated', and the clock is an injected integer, not elapsed time."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/parked-resume-write-authority.live.test.ts:31-44",
+          "quotedAssertion": "The repository states the gap about itself, in the only live park-resume probe that exists: :33-35 ' *   - The cross-process / cross-adapter-instance resume (a daemon RESTART):' / ' *     `spawnContexts` is in-memory per adapter, so a restart hits' / ' *     `FALLBACK_SPAWN_CONTEXT` and degrades to READ_ONLY by design.' / :36-37 ' *   - Forcing a REAL rate-limit park: a `rejected` limit event has never been' / ' *     observed live (baseline §8; `rate-limit-fixtures.ts`)'. So the live channel would not, as built, evidence this criterion's restart clause even if it were run."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt",
+          "quotedAssertion": "And the channel that would carry it has never run: 'engine-live.yml' has total_count 0 in the workflow-runs table, and section 4 records that the root vitest.live.config.ts — the only config that includes packages/engine-claude/src/live/**/*.live.test.ts — 'is invoked only by engine-live.yml, which has never run.'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "What DOES exist, recorded so the gap is not overstated: the whole orchestration matrix ran at the candidate and is green. job-log line 751 — ' ✓ test/manager-crash-recovery.test.ts (3 tests) 110ms'; line 752 — ' ✓ test/limit-parked-resume-restart.test.ts (2 tests) 138ms'; line 753 — ' ✓ test/duplicated-side-effect-fail-first.test.ts (3 tests) 119ms'; line 761 — ' ✓ test/worker-crash-recovery.test.ts (1 test) 102ms'; totals at lines 766-767 — ' Test Files  14 passed (14)' / '      Tests  41 passed (41)'. Sixteen release-gate:crash-recovery-concurrency records were journaled from it. All of them are fake-engine."
+        }
+      ],
+      "notes": "LEFT UNTICKED. Conjuncts: crash recovery; concurrent change sets; LIVE; limit-parked resume across a supervisor restart. The first, second and fourth are genuinely and non-vacuously evidenced against the real scheduler, the real supervisor recovery path and a real on-disk journal. The third is not evidenced at all. The directed hunt this pass was asked to run found no committed transcript, anywhere under docs/evidence/, of the parking arc against a real Claude Code engine; every file mentioning parked:rate_limit resolves to a fake-engine vitest run. The one genuinely green live-suite record in the repository, docs/evidence/gap-18/live-verification.md, covers eleven @live files and none of them is a parking suite. The phase's own §Test plan is explicit that this is not a detail — its Sessions row reads 'Kill -9 → resume, and parking-across-restart, both live' — and §Goal says the release-gate evidence must come from a live or containerized run, 'never a fake-engine substitute'. WHY EVIDENCE-NEEDS-LIVE RATHER THAN UNMET: the harness is complete and the semantics it proves are the criterion's semantics; what is missing is a channel, and that channel is owner-gated because it spends a paid subscription. This pass may not run it and did not. But the handoff is not simply 'dispatch engine-live': the repository's own live probe declines the cross-process daemon restart by design, and a real rate-limit park has never been observed live, so closing this needs work as well as authorisation. That is what the defect record sizes. AGGRAVATING FACT, recorded because it is the concrete argument that matrix evidence ages: two post-gate fixes touch exactly this production surface — #51, publishing a lease with its contents so two processes cannot both hold it, and #67, settling a run whose DAG ended in failure instead of wedging it in `running`. Both landed after the v1.5.0 gate, so the crash-recovery evidence cited above was produced by a tree that still contained them.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/23-limit-park-resume-not-live-evidenced.md"
+    },
+    {
+      "index": 7,
+      "text": "Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).",
+      "textSha256": "48dc50dddd3f5f44af5dc6070937d9f4e48b120712b8e4d4d578d05fc6fc2538",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c6-c7-live-gap.txt",
+          "quotedAssertion": "The measurement. The 28 records that score this item all come from e2e/matrix/connector, whose exactly-once directory is cassette-replayed end to end — the listing shows 'ambiguous-reconciliation.test.ts', 'crash-recovery.test.ts', 'grafana-cassette.test.ts', 'jira-cassette-readback.test.ts', 'replay-changed-payload.test.ts'. The Jira Data Center side has no channel at all: the workflow-run count for jira-datacenter-smoke.yml is 0, and roadmap/19 has 0 ticked and 7 unticked exit criteria."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt",
+          "quotedAssertion": "The channel table, measured against the GitHub API rather than read off the workflow files: 'engine-live.yml                0' and 'jira-datacenter-smoke.yml      0'. Section 5 records that docker/jira-datacenter/smoke-test.sh 'is referenced only by jira-datacenter-smoke.yml (0 runs)' and that docker/grafana/smoke-test.sh 'is referenced by no workflow at all'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/report/src/checklist.ts:108-120",
+          "quotedAssertion": "How cassette evidence comes to score a criterion whose own word is 'live' — the item OR-accepts the connector harness's blanket tag: :108 '    requiredGateTags: [' / :109 '      \"release-gate:jira-grafana-exactly-once\",' / :119 '      \"release-gate:connector-matrix\",' / :120 '    ],'. In both final reports all 28 linked records carry the second tag and none carries the first."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:218-221",
+          "quotedAssertion": "...which is checkable in the committed artifact: the jira-grafana-exactly-once item at :218 '      \"id\": \"jira-grafana-exactly-once\",' scores :221 '      \"verdict\": \"PASS\",' from 28 linkedEvidence entries whose gateTag is, without exception, 'release-gate:connector-matrix'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c8-c10-live-and-matrix-lanes.txt",
+          "quotedAssertion": "The exactly-once mechanism IS real and is re-run green at this pass's HEAD — this criterion is not a claim that the pipeline is unproven. LEG 2 records '✓ src/exactly-once/crash-recovery.test.ts > exactly-once under crash before/after the remote commit > NEVER produces a double-create — the real reconcileAmbiguousPost marker search finds the already-landed create' among 15 files / 95 tests, '# EXIT=0'. What none of it touches is a real Jira or a real Grafana."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The lane at the candidate, for completeness: job-log line 802 — ' ✓ src/exactly-once/jira-cassette-readback.test.ts (5 tests) 37ms'; line 794 — ' ✓ src/exactly-once/crash-recovery.test.ts (4 tests) 2529ms'; line 791 — ' ✓ src/exactly-once/grafana-cassette.test.ts (3 tests) 41ms'; totals at lines 808-809 — ' Test Files  15 passed (15)' / '      Tests  95 passed (95)'. Every one of those is a cassette or a local fake."
+        }
+      ],
+      "notes": "UNMET, and this is the headline finding of the pass. Conjuncts: Jira exactly-once; Grafana exactly-once; read-back; LIVE; across the span 16/18/19/20. The Grafana side has one genuinely containerized mutation with a read-back revision — the requirement-traceability binding cited under criterion 4 — so 'live' is not wholly absent from this criterion's subject matter. The Jira side has nothing. Its exactly-once and read-back evidence is cassette replay; the Data Center containers have never been started by any CI run in this repository's history; and phase 19, which this criterion names inside its own span, has no closeout record and not one ticked exit criterion. A criterion cannot be borne by a phase that has not been built. WHY THIS IS UNMET RATHER THAN EVIDENCE-NEEDS-LIVE: the softer class is for a complete harness waiting on an owner-gated channel. That is true of the Grafana half and of the Jira Cloud sandbox, but it is not true of the 19 conjunct — there is no Data Center adapter surface finished enough for a live run to certify, so this is not one dispatch away from closing. Reading 'pass live (16/18/19/20)' down to 'cassettes for Jira plus one containerized Grafana dashboard mutation' loses the guarantee the clause states, and the closeout protocol classifies that as UNMET rather than as a wording correction. WHAT IS NOT BEING CLAIMED: nothing here says the exactly-once pipeline is wrong. It is proven, hard, against fault-injected cassettes including a genuine RED-then-GREEN replay-with-changed-payload vector, and re-proven green at this pass's HEAD. The defect is about the word 'live' and about a named dependency phase that does not exist yet. DEPLOY RELEVANCE, stated plainly because this phase gates shipping: the release's Jira exactly-once story has never touched a real Jira.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/23-jira-live-exactly-once-never-run.md"
+    },
+    {
+      "index": 8,
+      "text": "Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero `NOT_IMPLEMENTED` remains **outside the recorded deferral allowlist** (`e2e/live/src/knownDeferredAllowlist.ts`), which is what the live sweep actually scores against (09/16, Gap 1/Gap 2's explicit phase-23 obligation). **Wording corrected 2026-07-30.** The clause read \"zero `NOT_IMPLEMENTED` remains\" full stop, while `connection capabilities` still returns it and the sweep passes only because the allowlist exempts it. The tick was therefore describing something stronger than the evidence produced — the exact aspirational bookkeeping this roadmap's third ground rule forbids. The check is unchanged; the claim now matches it.",
+      "textSha256": "fcbb4aaf97937e97334110bc66ca1b67c142386c9ac843a1612aa35e7cdacdc8",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c8-c10-live-and-matrix-lanes.txt",
+          "quotedAssertion": "The sweep lane re-run at this pass's HEAD — it runs in no per-push channel, so this is the only current execution of it. LEG 1: '✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — genuine integration (real dispatch, real cli-entry.ts, real MCP server) > finds exactly the 1 remaining tracked gap and reports PASS (the allowlist matches today's live reality)'; the fail-first arm '✓ src/notImplementedSweepGate.test.ts > runNotImplementedSweepGate — FAIL-FIRST proof: a new, unlisted gap must fail the gate > genuinely reports FAIL when the live-discovered set contains an id absent from the (deliberately shrunk) allowlist' with its control '> control: the same real findings against the real, full allowlist report PASS'; and '✓ src/knownDeferredAllowlist.test.ts > KNOWN_DEFERRED_ALLOWLIST — schema sanity > has exactly 1 CLI-command entry and no remaining gateway-family or gateway-protocol entries'. ' Test Files  7 passed (7)', '# EXIT=0'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/knownDeferredAllowlist.ts:52-80",
+          "quotedAssertion": "The allowlist the corrected wording names, at HEAD — one CLI entry and two empty arrays: :52 'export const KNOWN_DEFERRED_CLI_COMMANDS: readonly KnownDeferredEntry[] = [' / :54 '    id: \"cli.connection-capabilities\",' / :55 '    kind: \"cli-command\",' / :76 '];' / :78 'export const KNOWN_DEFERRED_GATEWAY_FAMILIES: readonly KnownDeferredEntry[] = [];' / :80 'export const KNOWN_DEFERRED_GATEWAY_PROTOCOL: readonly KnownDeferredEntry[] = [];'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/notImplementedSweepGate.ts:108-112",
+          "quotedAssertion": "What the gate compares, and — recorded because the file's own header claims more — what it does NOT: :108 '  const newUnlistedFindings = liveFindingIds.filter((id) => !allowlistIds.has(id));' / :109 '  const staleAllowlistEntries = [...allowlistIds].filter((id) => !liveSet.has(id)).sort();' / :112 '    verdict: newUnlistedFindings.length === 0 ? \"PASS\" : \"FAIL\",'. Only the first list feeds the verdict. The direction the criterion cares about — a NEW NOT_IMPLEMENTED outside the allowlist — is the one that fails the gate."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/gatewayFamilyCompleteness.ts:138",
+          "quotedAssertion": "The '8-family gateway MCP tool surface' half is behavioural, against the real production registry rather than a grep: :138 'export function checkFamilyWiringAtProductionEntrypoint(' and the registry it diffs against is built by buildRealGatewayToolRegistry at :123, with the tool-surface names taken from FAMILY_SPECS. Its live sibling boots the real MCP stdio server and calls a real tool through it (:201-259, checkToolsCallSupported)."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/live/src/cliNotImplementedSweep.ts:180",
+          "quotedAssertion": "The 'full CLI surface' half drives real dispatch rather than matching test names: :136 records 'result.exitCode === EXIT_NOT_IMPLEMENTED' over 18 real ParsedCommand probes, and the production-wiring half at :172-182 calls the real buildRealCliDependencies(), including :180 '    capabilityDiscoveryWired: deps.connection?.discoverCapabilities !== undefined,' — the one false among six, which is exactly the deferral the corrected wording exempts."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The same lane at the release candidate: job-log line 825 — ' ✓ src/cliNotImplementedSweep.test.ts (15 tests) 19ms'; line 826 — ' ✓ src/notImplementedSweepGate.test.ts (7 tests) 144ms'; line 827 — ' ✓ src/gatewayFamilyCompleteness.test.ts (9 tests) 45ms'; line 831 — ' ✓ src/knownDeferredAllowlist.test.ts (5 tests) 7ms'; totals at lines 833-834 — ' Test Files  7 passed (7)' / '      Tests  64 passed (64)'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:479-482",
+          "quotedAssertion": "The scored item at the candidate: :479 '      \"id\": \"gateway-cli-surface-complete\",' / :482 '      \"verdict\": \"PASS\",' over five linked records, two of them tagged 'release-gate:gateway-cli-surface-complete' — the dedicated tag the sweep gate withholds on a FAIL verdict by design, so its presence is itself the PASS."
+        }
+      ],
+      "notes": "The wording this criterion carries was corrected on 2026-07-30, before this pass, and the correction is sound: the sweep scores against the allowlist, and the allowlist at HEAD is one CLI command. THREE DISCLOSURES. (a) e2e/report/src/checklist.ts:124-126 still carries the PRE-correction description ('zero NOT_IMPLEMENTED remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).') so the generated report, and both committed final reports, print the stronger claim the roadmap has already retracted. Cosmetic in effect — the check is unchanged, as the correction itself says — but it means a reader of the artifact sees the old wording. Filed here rather than fixed; a closeout pass does not fix. (b) notImplementedSweepGate.ts's own header at :26-30 says it matches the allowlist 'by set equality' and reports PASS only when the live set is EXACTLY the allowlisted set, and knownDeferredAllowlist.ts:12-15 repeats it. The verdict line does not do that: a stale allowlist entry — a deferral that has been CLOSED — is carried as staleAllowlistEntries and explicitly excluded from the verdict (:62-63, 'NOT itself a FAIL: a shrinking gap set is good news'). The exact-set property is recovered only in the test, at notImplementedSweepGate.test.ts:28 'expect(result.staleAllowlistEntries).toEqual([]);'. The overclaim is in the comments, not in the criterion, and the direction this criterion asserts is the direction the gate genuinely fails on. (c) SCOPE, from the files themselves. knownDeferredAllowlist.ts:82-88 records that gateway.provider.dispatch is tracked but deliberately outside the sweep's matched set because 'The sweep structurally cannot find this one: the tools ARE registered and their dispatch path IS real, so there is no stub to discover' — and its body at :114-118 concedes the per-connection register() call genuinely remains, needing live credentials. Separately, cliNotImplementedSweep.ts's probe list excludes help, doctor, cancel and evidence, because probing them needs a live supervisor connection; so 'full CLI surface' means the 18 probeable commands. None of this is hidden by the code — each limit is written down where it applies — and the criterion as corrected is about the allowlist, which is what the sweep scores. This criterion is one of three that phase 09's and phase 01's merged records discharge against; nothing measured here disturbs it."
+    },
+    {
+      "index": 9,
+      "text": "No development-engine attribution in any project-controlled shared artifact (08/10/17).",
+      "textSha256": "5cbf03399f94a58938702f22c4f7259b4ef6b2976a9f7ffaaf088b79bd2ca6f5",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c9-git-matrix-attribution.txt",
+          "quotedAssertion": "The git lane re-run at this pass's HEAD, because it runs in no per-push channel. The strongest vector, against the REAL publication routine rather than a harness re-implementation: '✓ test/publish-attribution-leak-scenario.test.ts > git matrix: publish-time attribution-leak scenarios (live) > THE STRONGEST FAIL-FIRST PROOF: a real leaking commit is rejected by the REAL publishLocal belt-and-suspenders, and the branch ref is deleted (never left dangling)'; its non-degenerate control '> a clean commit publishes for real: branch appears in the user repo, working tree stays byte-identical'; and the renderer-side vector '✓ test/branch-commit-golden-scenarios.test.ts > git matrix: branch/commit golden scenarios (live) > THE FAIL-FIRST VECTOR: a seeded attribution-leaking slug/outcome is BLOCKED by the REAL nameBranch/renderCommit'. ' Test Files  12 passed (12)', '# EXIT=0'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:41-47",
+          "quotedAssertion": "The seeded leak is planted by raw git plumbing, deliberately bypassing 17's renderer, so the scenario tests the belt-and-suspenders rather than the thing that would already have refused it: :41 '    await plumbing.run(' / :43 '        \"commit\",' / :44 '        \"--allow-empty\",' / :46 '        \"-m\",' / :47 '        \"feat: leaky feature\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/src/scenarios/publish-attribution-leak-scenario.ts:72",
+          "quotedAssertion": "...and the pass condition needs BOTH the typed refusal and the ref actually being cleaned up, so a publication that merely threw would still fail: :64-70 '    const branchDeleted =' / '      (' / '        await plumbing.run([\"rev-parse\", \"--verify\", \"refs/heads/feat/leaky-feature\"], {' / '          cwd: userRepo.dir,' / '          allowFailure: true,' / '        })' / '      ).exitCode !== 0;' / :72 '    const passed = caught instanceof PublishedAttributionLeakError && branchDeleted;'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/test/neutral-rendering-assertion.test.ts:21-26",
+          "quotedAssertion": "The RED-before-GREEN vectors at the assertion level, one per attribution shape: :21 '  it('RED: a seeded \"Generated with\" commit body is caught', () => {' / :23 '    const findings = findAttributionLeaks(leaking);' / :25 '    expect(findings.some((f) => f.token === \"Generated with\")).toBe(true);' / :26 '    expect(() => assertNeutralRendering(leaking)).toThrow(AttributionLeakError);'. Siblings at :29-33 (Co-Authored-By trailer) and :36-38 (robot emoji), with the GREEN control at :41-44 '  it(\"GREEN: a clean commit body passes with zero findings\", () => {' / '    expect(findAttributionLeaks(clean)).toEqual([]);'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/src/neutral-rendering-assertion.ts:21-23",
+          "quotedAssertion": "The scanner is 02's, not a fork — which is what stops this harness drifting away from what production actually refuses: :21-23 '  return scanForAttributionTokens(text);'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The same lane at the release candidate: job-log line 707 — ' ✓ test/neutral-rendering-assertion.test.ts (6 tests) 8ms'; line 712 — ' ✓ test/publish-attribution-leak-scenario.test.ts (2 tests) 281ms'; line 711 — ' ✓ test/branch-commit-golden-scenarios.test.ts (3 tests) 24ms'; totals at lines 720-721 — ' Test Files  12 passed (12)' / '      Tests  36 passed (36)'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:482-527",
+          "quotedAssertion": "The scored item at the candidate: :527 '      \"id\": \"no-engine-attribution\",' / :482 '      \"verdict\": \"PASS\",' over 24 linked records, all carrying 'release-gate:git-matrix' — the git harness's blanket tag, which checklist.ts:155-163 documents as covering exactly these two scenarios."
+        }
+      ],
+      "notes": "Non-vacuous in the way that matters: the leaking commit is real, planted by git plumbing, and it is the PRODUCTION publishLocal path that refuses it, with the branch ref deleted afterwards so a half-published leak is not left behind. Both halves of the criterion's surface are covered — the renderer refuses to PRODUCE an attributed branch name or commit, and publication refuses to SHIP one that arrived by another route. Scope, stated: 'any project-controlled shared artifact' is exercised here as branch names, commit subjects and commit bodies. Rendered PR-title/PR-body/review-comment artifacts are covered by 17's own corpus and, for the demo run, by criterion 11's lint invocation. The lane runs in no per-push CI channel, which is why the tick rests on a local re-run at this pass's HEAD in addition to the release-candidate run — see the lane-and-channel audit for the full map of which lane has which channel."
+    },
+    {
+      "index": 10,
+      "text": "No user checkout, remote Git repository, or unauthorized provider resource modified anywhere in the matrix (assertion-harness log).",
+      "textSha256": "98773c44526dfae1246c511fc0eb17d846f3a1b21606db3b985e309e4880b362",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c8-c10-live-and-matrix-lanes.txt",
+          "quotedAssertion": "The two lanes carrying the provider and installation halves, re-run at this pass's HEAD. LEG 2 (connector): '✓ src/connector-security/tenant-boundary.test.ts > tenant/org boundary — checkGrafanaConnectionDoctor > a token bound to an org OUTSIDE the connection's declared org allowlist is refused — the tenant boundary cannot be crossed by presenting a valid token for a different tenant', with its positive control '> a token whose org IS in the connection's declared org allowlist is accepted' and its fail-closed sibling '> an empty org allowlist fails closed — never implicitly 'any org is fine''; ' Test Files  15 passed (15)', '# EXIT=0'. LEG 3 (installation): '✓ test/uninstall-preserving-edits-scenario.test.ts > installation matrix: uninstall-preserving-user-edits scenario (live) > a real user edit to CLAUDE.md survives a real uninstall, byte-for-byte'; ' Test Files  12 passed (12)', '# EXIT=0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c9-git-matrix-attribution.txt",
+          "quotedAssertion": "The user-checkout half, from the git lane's own re-run at the same HEAD: '✓ test/checkout-invariance-scenario.test.ts > git matrix: checkout-invariance scenarios (live) > a real control-clone + fetch cycle leaves the source user repo byte-identical', and the clean-publish case '> a clean commit publishes for real: branch appears in the user repo, working tree stays byte-identical'. ' Test Files  12 passed (12)', '# EXIT=0'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-grafana/src/auth/connection-doctor.ts:63-72",
+          "quotedAssertion": "ANTI-VACUITY, checked because the sibling tenant-boundary fixture in packages/gates IS a tautology over two literals (that is phase 21's own filed defect, 21-tenant-boundary-manifest-entries-tautological.md). This one is not: the comparison under test is production code, and only the identity lookup is injected. :63-65 '  if (deps.orgAllowlist.length === 0) {' / '    return { ok: false, reason: \"connection has an empty org allowlist — refusing to proceed\" };' / '  }' / :66-67 '  const orgIdStr = String(tokenInfo.orgId);' / '  if (!deps.orgAllowlist.includes(orgIdStr)) {'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/git/src/scenarios/checkout-invariance-scenario.ts:25-30",
+          "quotedAssertion": "'No user checkout modified' is enforced by 07's own invariance harness throwing, not by a comparison the test performs itself: :25 '    const result = await withTreeInvariance(userRepo.dir, async () => {' wrapping the real :26-29 'const clone = await ensureControlClone(plumbing, {' / '        sourceRepoPath: userRepo.dir,' / '        controlDir,' / '      });' and :30 '      const fetchedObjectId = await fetchRefresh(plumbing, controlDir, \"main\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/installation/src/scenarios/uninstall-preserving-edits-scenario.ts:45-63",
+          "quotedAssertion": "The installation half's verdict comes from reading the file back off disk, not from the installer's own report of what it did: :45 '    assertUserEditsPreserved(uninstallResult.outcomes, [\"CLAUDE.md\"]);' then :49-50 '    const afterUninstallContent = await readFile(claudeMdPath, \"utf8\");' / '    const contentPreserved = afterUninstallContent.includes(USER_EDIT_MARKER);' and :63 '    requirePassed(contentPreserved, \"installation-matrix/uninstall-preserving-edits\", detail);'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/installation/test/user-edit-assertion.test.ts:20-27",
+          "quotedAssertion": "...and the RED counterpart, so the GREEN above means something: :20 '  it(\"RED: a broken-installer double that reports 'removed' for a drifted (user-edited) path is caught\", () => {' / :27 '    expect(violations).toEqual([{ relPath: \"CLAUDE.md\", action: \"removed\" }]);' / :29-31 '    expect(() => assertUserEditsPreserved(brokenDoubleOutcomes, [\"CLAUDE.md\"])).toThrow(' / '      UserEditOverwrittenError,' / '    );'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "All three lanes at the release candidate: job-log line 718 — ' ✓ test/checkout-invariance-scenario.test.ts (1 test) 105ms'; line 805 — ' ✓ src/connector-security/tenant-boundary.test.ts (5 tests) 28ms'; line 668 — ' ✓ test/uninstall-preserving-edits-scenario.test.ts (1 test) 90ms'; line 660 — ' ✓ test/user-edit-assertion.test.ts (6 tests) 8ms'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:776-779",
+          "quotedAssertion": "The scored item, and the largest evidence set in the report: :776 '      \"id\": \"no-unauthorized-mutation\",' / :779 '      \"verdict\": \"PASS\",' over 72 linked records — 28 release-gate:connector-matrix, 24 release-gate:git-matrix and 20 release-gate:installation-matrix."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/report/src/checklist.ts:188-206",
+          "quotedAssertion": "The installation lane has no checklist item of its own and is folded in here BY DECLARED CHOICE rather than smuggled — quoting it because a reader of the report should know why 20 installation records score a criterion about unauthorized mutation: :188-190 '      // `e2e/matrix/installation`'s harness (roadmap/23 work item 3) has no' / '      // dedicated checklist item of its own (there is no' / '      // \"install-matrix\"-slugged item in this 15-item list).' and :198-199 '      // which is this item's own description almost verbatim. DELIBERATE' / '      // CHOICE (documented per this work item's own instruction)'."
+        }
+      ],
+      "notes": "CONJUNCTS, evidenced separately: user checkout (07's withTreeInvariance around a real control-clone + fetch, plus a byte-identity re-check on the clean publish path); remote Git repository (structural — neither throwaway repository in these scenarios has a remote configured, so there is nothing to push to, and the publication routine's 'never checked out, never pushed' invariant is 08's); unauthorized provider resource (the connector-security suite, whose tenant-boundary arm drives real production enforcement). SCOPE STATED RATHER THAN OVERCLAIMED: 'provider resource' here means the matrix's own mock and container endpoints. The criterion says 'anywhere in the matrix', so the wording and the evidence agree — this is not a claim that a real Jira or Grafana tenant was left unmodified, which would need the live channels criterion 7 shows do not exist. RECIPROCAL CHECK, because the same-named fixture elsewhere is known-vacuous: phase 21's closeout filed 21-tenant-boundary-manifest-entries-tautological.md against packages/gates/src/security-fixture-manifest.ts, whose entries call a generic assertTenantBoundary(\"tenant-a\",\"tenant-b\") — two literals. The connector-matrix test cited above is a different bearer and does not share that flaw; deleting the org-allowlist comparison from checkGrafanaConnectionDoctor reddens it. One cosmetic note recorded rather than fixed: checkout-invariance-scenario.test.ts's second assertion matches the string 'byte-identical' against a hardcoded detail literal in the scenario, so that line is decorative; the load-bearing part is withTreeInvariance throwing and outcome.passed."
+    },
+    {
+      "index": 11,
+      "text": "A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle (rendered PR-title/PR-body/review-comment artifacts retrievable via `evidence <change-set-id>`), never an opened PR (Gap 6, by design).",
+      "textSha256": "24bf19f5b31154727d997cad3ac88d29a4eddac3a1a7640bc95a28820c7b810c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1477-1566",
+          "quotedAssertion": "The scored item at the candidate: :1477 '      \"id\": \"demo-branch-evidence-handoff\",' / :1556 '      \"verdict\": \"PASS\",' with :1489 '          \"gateTag\": \"release-gate:demo-branch-evidence-handoff\",' / :1566 '          \"exitStatus\": 0'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/demoRun.ts:197",
+          "quotedAssertion": "The branch is produced by 08's real local-publication routine over real git subprocesses in throwaway repositories, and 'never an opened PR' is STRUCTURAL rather than asserted — neither repository has a remote, so there is nothing to push to: :197 '  const remoteInteractions = (await countRemotes(userRepo)) + (await countRemotes(controlRepo));', with countRemotes shelling out to real `git remote` at :89-91."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/demoRun.ts:119-123",
+          "quotedAssertion": "'Verified neutral' on the branch name routes through 17's real lint rather than a local string list — the doc comment at :119-121 records that nameBranch 'routes the candidate through 17's regenerate-once lint before returning', and :123 is the call."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/demoRun.ts:177",
+          "quotedAssertion": "...and the three rendered handoff artifacts are put through the real lint pipeline, not inspected by hand: :177 '    const outcome = lint(artifact.content, artifact.kind, DEFAULT_COMMUNICATION_POLICY);'. Its assertion lives in that module's own suite, which requires the rendered artifacts to produce zero lint findings."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/demoBranchEvidenceHandoff.ts:33",
+          "quotedAssertion": "What the handoff check decides, in full, so its strength is on the record: :114-116 '  if (record.pullRequestOpened) {' / '    reasons.push(\"a pull request was opened — Gap 6 requires the branch and bundle, never a PR.\");' / '  }' and the 'concise' clause, which is a subject-length bound: :121-122 '  record.commits.forEach((commit, index) => {' / '    if (commit.subject.length > MAX_COMMIT_SUBJECT_LENGTH) {' with :33 'export const MAX_COMMIT_SUBJECT_LENGTH = 72;'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/demoBranchEvidenceHandoff.ts:138-194",
+          "quotedAssertion": "...and how the evidence bundle is verified — by existence of the rendered artifacts, through an injected predicate: :138 '    const missing = record.evidenceBundle.filter((path) => !input.pathExists(path));', wired in production at :194 '    pathExists: (candidate) => existsSync(candidate),'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "Both modules executing at the release candidate: job-log line 955 — ' ✓ src/demoBranchEvidenceHandoff.test.ts (14 tests) 10ms'; line 957 — ' ✓ src/demoRun.test.ts (5 tests) 617ms'; and the emitter line 933 — '[attestation] release-gate:demo-branch-evidence-handoff: PASS'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/commands/real-handlers.ts:214-226",
+          "quotedAssertion": "The retrieval path the criterion's parenthetical names is real and is production code — it is 09's, not this phase's: :214 '/** `evidence <change-set-id>` — a real query over 04's journal from this phase's own build onward (roadmap/09 §In scope); degrades gracefully to an empty-but-valid report. */' / :219 '  const report = await queryEvidence({ journal: deps.journal, changeSetId: cmd.changeSetId });' / :226 '      stdout: `no evidence recorded yet for change set \"${cmd.changeSetId}\"\\n`,'."
+        }
+      ],
+      "notes": "TICKED, WITH THE SHARPEST DISCLOSURE IN THIS RECORD, and a reviewer should read this note before accepting the tick. CONJUNCTS: a verified neutral local branch; concise commits; an evidence-backed handoff; the bundle retrievable via `evidence <change-set-id>`; never an opened PR. The first three are borne against real subsystems — 08's publishLocal, 17's nameBranch and lint, real git subprocesses. The fifth is borne structurally and measured (remoteInteractions counts real `git remote` output and the repositories have none). THE FOURTH IS THE WEAK ONE. The demo run writes its three rendered artifacts into a mkdtemp directory and 'retrievable' is checked as existsSync on those absolute temp paths; DemoRunRecord carries no change-set id at all, and the string `evidence <change-set-id>` appears in this package only inside two doc comments. So the production CLI path quoted above — which does exist, is real, and is what phase 09's own record evidences — is never invoked by this demo. Read the parenthetical as naming the CLASS of artifact the bundle contains, and the criterion is met; read it as requiring the demo to demonstrate that retrieval, and it is not. THREE SMALLER DISCLOSURES. (a) `pullRequestOpened` is a hardcoded literal false at demoRun.ts:225 with no code path that could set it true, so the check's PR clause is unfalsifiable in production and is exercised only over a hand-built record in demoBranchEvidenceHandoff.test.ts:82-86; the load-bearing fact is remoteInteractions. (b) 'neutral' in the handoff check itself uses a six-string lowercase marker list re-declared locally (demoBranchEvidenceHandoff.ts:42-49) rather than 02's ATTRIBUTION_TOKENS, which is a fork that can drift — the git matrix under criterion 9 deliberately refuses the same fork. (c) demoRun.ts:44-48 states its own scope plainly, that the code change is seeded rather than engine-authored, and that the engine-authored path belongs to e2e/live. WHY THIS IS STILL A TICK RATHER THAN A DOWNGRADE, said explicitly: phase 09's merged closeout record discharges one of its own criteria against this box (its citation quotes this criterion's wording and requires it to be ticked), so unticking it would fail a MERGED record's discharge check. Per this repository's standing rule a closeout pass does not unpick a merged record on its own authority — it reports. The finding above is reported here, in the roadmap box's annotation, and to the orchestrator, and it is the one item in this record a reviewer may reasonably want escalated rather than accepted."
+    },
+    {
+      "index": 12,
+      "text": "ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate.",
+      "textSha256": "342a5c38e322c666f0461d8bb79a08d92e8703e11d416388391fada9755b518f",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 91002998165, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639/job/91002998165",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "A real ARM64 runner, a real build+test, at the release candidate — not a documented substitute. job-log lines 997-998 — ' Test Files  605 passed (605)' / '      Tests  5802 passed | 1 skipped (5803)'. The record the job then writes and uploads reports the architecture it OBSERVED rather than the one it was asked for: line 1882 — '  \"arch\": \"aarch64\",'; line 1883 — '  \"kernel\": \"Linux 6.17.0-1020-azure\",'; line 1885 — '  \"conclusion\": \"success\",'; and the upload at line 1909 — 'Artifact arm64-run-record.zip successfully finalized. Artifact ID 8774915106'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run set -euo pipefail\" (ARM64 record ingest)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "...and the gate really ingested that record rather than trusting a claim: job-log lines 472-482 — 'found successful ci.yml run 30581597639 for 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb on attempt 1/30', followed by the catted record at lines 474-484 including '  \"jobName\": \"unit-test+coverage (ubuntu-24.04-arm)\",', '  \"commitSha\": \"6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb\",', '  \"arch\": \"aarch64\",', '  \"conclusion\": \"success\",'. The ingest step's own comment, quoted in the same log, records that a miss fails soft — the record is simply absent and arm64-verification FAILs in scoring — rather than erroring the gate."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-24.04-arm), job 89923390404, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30249293110/job/89923390404",
+          "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+          "quotedAssertion": "The same leg was green at the v1.0.0 candidate too, on a push whose head_sha IS that candidate: job-log lines 822-823 — ' Test Files  557 passed (557)' / '      Tests  4672 passed (4672)'; the observed architecture at line 1656 — '  \"arch\": \"aarch64\",'; and the upload at line 1683 — 'Artifact arm64-run-record.zip successfully finalized. Artifact ID 8646353253'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496-1589",
+          "quotedAssertion": "The scored item at the candidate: :1496 '      \"id\": \"arm64-verification\",' / :1589 '      \"verdict\": \"PASS\",' with :1508 '          \"gateTag\": \"release-gate:arm64-verification\",' / :1580 '          \"exitStatus\": 0'. The 2435cb9 report carries the same item and verdict."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The consuming check at the candidate: job-log line 925 — ' ✓ src/arm64Verification.test.ts (41 tests) 40ms'; emitter line 934 — '[attestation] release-gate:arm64-verification: PASS'."
+        }
+      ],
+      "notes": "The criterion is a disjunction — real hardware/CI, OR an explicitly documented substitute — and the STRONGER disjunct is what happened: GitHub's hosted ubuntu-24.04-arm runners executed lint, typecheck and the full coverage-gated suite at both release candidates, and the record carries the architecture the machine reported rather than the one the workflow intended. Three notes. (a) A DOC IN THIS REPOSITORY STILL SAYS THE OPPOSITE, and it is stale in the conservative direction: docs/compatibility-matrix.md:95 opens its ARM64 close-out with '**Honest status: ARM64 has not been hardware-verified.**' and :117-118 tells a reader not to cite ARM64 as hardware-verified. That document was last touched 2026-07-26, the day before the v1.0.0 candidate, and it has not caught up. The evidence is right and the doc is wrong; that staleness is one of the concrete instances behind criterion 14's UNMET, and it is filed there rather than fixed here. (b) The committed interim e2e/release-gate-report.json also scores this item FAIL — same staleness, same cause. (c) This criterion is the discharge target of phase 01's merged record, whose citation quotes it and requires it to be ticked. Nothing measured here disturbs that; if anything the direct CI-job citations above are stronger than the release-gate item the merged record leaned on."
+    },
+    {
+      "index": 13,
+      "text": "Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).",
+      "textSha256": "891bff97aa37663f83866d4d4c980a55ff2b077066d47ee9de8cbf0faf0b4e91",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/vendor-support-windows.json",
+          "quotedAssertion": "The re-confirmation record itself, six targets, each carrying '\"confirmedOn\": \"2026-07-25\"' — two days before the v1.0.0 cut and five before v1.5.0. The versioned targets and their windows: jira-dc-10.3 to '2026-12-05', jira-dc-11.3 to '2027-12-03', grafana-12.4 to '2027-05-24', grafana-13.1 to '2027-03-20'; jira-cloud and grafana-cloud are continuous. grafana-13.1 is the one honest exception and it says so in its own fixtureRefresh note, carrying '\"tagPublished\": false' because grafana/grafana-oss:13.1.0 was still unpublished on Docker Hub when the probe re-confirmed it."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/versionSupportWindows.ts:171-174",
+          "quotedAssertion": "An expired window is a hard FAIL, and a fixtureRefresh note does NOT rescue one — the first reason is pushed unconditionally: :171 '    if (record.lifecycle === \"versioned\") {' / :174 '      if (remaining <= 0) {' / :175-178 '        reasons.push(' / '          `${target}: vendor support for ${record.pinnedVersion} ended ${endsOn}, ` +' / '            `on or before the release cut (${input.releaseCutDate}) — shipping an out-of-support version.`,' / '        );' and then, separately, :179-184 '        if (record.fixtureRefresh === undefined) {' -> '\"19's deferred note requires fixtures be refreshed when a support window moves.\"'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/versionSupportWindows.ts:73-162",
+          "quotedAssertion": "...and 'current at release time' is enforced as a freshness bound rather than left to judgement: :162 '    } else if (age > maxAgeDays) {' / :163-166 '      reasons.push(' / '        `${target}: re-confirmation is ${Math.floor(age)} days stale at the release cut ` +' / '          `(confirmed ${record.confirmedOn}, limit ${maxAgeDays} days) — not \"current at release time\".`,' / '      );', with :73 'const DEFAULT_MAX_RECORD_AGE_DAYS = 30;'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/versionSupportWindows.ts:63-70",
+          "quotedAssertion": "The target list the check requires a record for, so a target cannot be quietly dropped to avoid an expiry: :63 'export const REQUIRED_SUPPORT_WINDOW_TARGETS = [' / :64 '  \"jira-cloud\",' / :65 '  \"jira-dc-10.3\",' / :66 '  \"jira-dc-11.3\",' / :67 '  \"grafana-cloud\",' / :68 '  \"grafana-12.4\",' / :69 '  \"grafana-13.1\",' / :70 '] as const;'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/provisioning/src/supportWindows.ts:64-71",
+          "quotedAssertion": "The 'fixtures refreshed if vendor support windows moved' clause, EXECUTED rather than merely provided for: Grafana 11.6 left vendor support on 2026-06-25, the probe surfaced it, and 11.6 is absent from the provisioning target list that remains — :64 'export const SUPPORT_WINDOW_TARGETS: readonly SupportWindowTargetSpec[] = [' / :69 '  { target: \"grafana-12.4\", pinnedVersion: \"12.4.0\", image: \"grafana/grafana-oss\", tag: \"12.4.0\" },' / :70 '  { target: \"grafana-13.1\", pinnedVersion: \"13.1.0\", image: \"grafana/grafana-oss\", tag: \"13.1.0\" },' / :71 '];'. The withdrawal is the criterion in action, not a scope cut."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "Both sides executing at the release candidate: job-log line 929 — ' ✓ src/versionSupportWindows.test.ts (19 tests) 15ms'; line 625 — ' ✓ test/supportWindows.test.ts (16 tests) 16ms'; and the emitter line 935 — '[attestation] release-gate:jira-grafana-version-support-windows: PASS'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1515-1598",
+          "quotedAssertion": "The scored item at the candidate: :1515 '      \"id\": \"jira-grafana-version-support-windows\",' / :1589 '      \"verdict\": \"PASS\",' with :1527 '          \"gateTag\": \"release-gate:jira-grafana-version-support-windows\",' / :1598 '          \"exitStatus\": 0'."
+        }
+      ],
+      "notes": "Both clauses borne. 'Re-confirmed current at release time' is a numeric check against the run's own wall-clock date with a 30-day freshness bound, and at both cuts the record was two and five days old. 'Fixtures refreshed if vendor support windows moved' is not a provision for a hypothetical — it fired: Grafana 11.6 left support on 2026-06-25, versionSupportWindows.ts reported the matrix as shipping an out-of-support version while the commitment stood, and 11.6 was withdrawn from the provisioning targets, the compatibility matrix, docs/vendor-support-policy.json and the containerized traceability binding rather than the check being weakened. TWO DATED FACTS A LATER READER NEEDS. (1) At this pass's date, 2026-08-04, no listed window has expired — the nearest is jira-dc-10.3 on 2026-12-05. (2) The FRESHNESS bound is the live one: every record is confirmedOn 2026-07-25, so against the 30-day limit and a wall-clock cut date this item begins to FAIL on 2026-08-25 unless the windows are re-confirmed. That is not a defect in a release-time criterion, which is scored at the cut, but it is a dated obligation and it belongs on the record rather than in a reviewer's head. SCOPE NUANCE on the 11.6 withdrawal, recorded because the carve-out is easy to overread: 'unreferenced by any supported target' is true of the support-window list, and docker/grafana/11.6/ is deliberately retained; e2e/provisioning/test/grafana-oss.live.test.ts still enumerates an 11.6 boot case, and that lane runs in no CI channel at all (see the lane-and-channel audit), so nothing executes it either way."
+    },
+    {
+      "index": 14,
+      "text": "`docs/compatibility-matrix.md`, `operator-guide.md`, `security-posture.md`, and `upgrade-guide.md` are committed, and every claim in them cites a passing CI run or `EvidenceRecord` from the release candidate — no aspirational text.",
+      "textSha256": "68a74fbad0db0c5a297ae70c76739f06f60d0f9582a62afa2821bc86d2480177",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/compatibility-matrix.md:128",
+          "quotedAssertion": "THE DECISIVE MEASUREMENT. The document's own 'at a glance' section pins its authority to a release-gate report that is neither the release candidate nor the verdict: :125-127 'Cross-referenced against the current release-gate-report snapshot' / '(`releaseCandidateObjectId: 008ae4b2848d3d3c84a5b2d19100f12e073235e3`,' / '`scoringMode: \"interim\"`) — every one of its 15 checklist items is currently' / :128 '`EVIDENCE-PENDING` (\"zero EvidenceRecord matched this item's required gate tags for the'. 008ae4b2 is a 2026-07-24 engine-re-baseline commit, three days before the v1.0.0 candidate; both committed final reports say final mode, 15 PASS, 0 FAIL."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/compatibility-matrix.md:140-145",
+          "quotedAssertion": "...and the same document still lists as OWED, before a tag that shipped on 2026-07-27, the very things the gate scored: :140-145 '- **EVIDENCE-PENDING (owed before `v1.0.0` tag):** Grafana OSS 13.1 (vendor-side, not' / '  actionable from this repo); the full Jira Cloud/DC + Grafana Cloud live-conformance matrix' / '  as a release-candidate-scoped run; Jira DC / Grafana vendor support-window' / '  re-confirmation; ARM64 hardware verification; the exact pinned engine/SDK version's' / '  citation into a live `engine-pin-lint` CI run for this exact release commit; every' / '  release-gate-report checklist item currently marked `EVIDENCE-PENDING`.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/compatibility-matrix.md:95-99",
+          "quotedAssertion": "The ARM64 section refuses a fact this record evidences twice over under criterion 12: :95-97 '**Honest status: ARM64 has not been hardware-verified.** This host is x86_64' / '(`docs/engine-baseline.md` header records the exact kernel string; no ARM64 hardware or' / 'emulated ARM64 environment was available to this session).' and the instruction at :117-118 'run exists, ARM64 support is a documented, CI-gated intent, not a verified fact — do not' / 'cite it as hardware-verified in any release announcement.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/security-posture.md:220-222",
+          "quotedAssertion": "The second doc scopes itself out of the shipped release line: :220 '## Pending re-review — the approval model is being amended (2026-07-28)' / :222 'Everything below this heading reviews the security posture **as shipped in `crabgic@1.3.0`**, in which' / :225-226 '**This document has not yet been re-reviewed' / 'against that model, and the sign-off below does not cover it.**'"
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/releaseDocsCommitted.ts:13-16",
+          "quotedAssertion": "WHY THE GATE DID NOT CATCH ANY OF IT — the check narrows the criterion in its own doc comment, and honestly: :13-16 ' * Three separable, mechanically checkable obligations come out of that' / ' * sentence, and this module checks exactly those three — no more (an' / ' * emitter that tried to judge prose quality would be unfalsifiable, and a' / ' * FAIL it produced would not be actionable):'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/releaseDocsCommitted.ts:45-138",
+          "quotedAssertion": "...and those three are: files exist and are git-tracked; each doc cites at least ONE repo-rooted path that resolves; and no placeholder marker. The whole of the 'no aspirational text' clause is one regular expression — :45 'const PLACEHOLDER_MARKER = /\\b(TODO|TBD|FIXME|XXX)\\b/;'. The per-doc citation floor is :138 '  if (cited.length === 0)', i.e. one citation per document, not one per claim; and a citation is any backticked repo-rooted path, so a GitHub Actions run URL, a run id and an EvidenceRecord object id are not recognised as citations at all."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/attestation/src/releaseDocsCommitted.ts:30-35",
+          "quotedAssertion": "The one deliberate carve-out, quoted because it is defensible and is NOT the reason this criterion fails: :30-35 ' * DELIBERATELY NOT CHECKED: whether an `EVIDENCE-PENDING` marker is' / ' * present. `docs/compatibility-matrix.md`'s own preamble establishes that' / ' * marking a claim `EVIDENCE-PENDING` explicitly is how this repo satisfies' / ' * \"no aspirational text\", not how it violates it — an honest disclosure of' / ' * a gap is the opposite of an aspirational claim. Failing a doc for' / ' * disclosing a gap would incentivise deleting the disclosure.' That reasoning is right. The failure here is the OTHER conjunct: the citations the criterion demands are absent, and one snapshot section is not a disclosure but a contradiction."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1534-1589",
+          "quotedAssertion": "The item nonetheless scored PASS at the candidate — :1534 '      \"id\": \"release-docs-committed\",' / :1589 '      \"verdict\": \"PASS\",' — which is the whole point: the bearer is structurally incapable of judging the clause it is scoring, so a green item here is not evidence for this criterion."
+        }
+      ],
+      "notes": "UNMET. CONJUNCTS: the four docs are committed — true, uncontested, and the only conjunct the gate actually checks; every claim in them cites a passing CI run or EvidenceRecord FROM THE RELEASE CANDIDATE — false; no aspirational text — arguably true, since the pending markers are honest disclosures rather than claims. MEASURED, across all four documents at this pass's HEAD: zero citations of a GitHub Actions run URL or run id, zero citations of an EvidenceRecord id or object id, and no mention anywhere of either release candidate, 2435cb9 or 6b9dd7b. docs/compatibility-matrix.md carries 13 EVIDENCE-PENDING markers; docs/upgrade-guide.md cites code paths only; docs/operator-guide.md's 'run id' references are crabgic run ids, not CI ones. NO WORDING-MISMATCH ESCAPE IS AVAILABLE, and this is worth being explicit about because it is the tempting move. §In scope's docs bullet just names the four files; the citation demand exists only in the criterion, so 'correcting' the criterion to match §In scope would delete a guarantee rather than reconcile a drift, which the protocol classifies as UNMET. Nor is this a case of a stale doc being harmless: the compatibility matrix's snapshot section actively contradicts both final reports, and its ARM64 section instructs readers not to cite as verified a fact this very record evidences from two real aarch64 CI jobs. THE REMEDY IS A DOCS PASS, NOT A CHECK CHANGE. releaseDocsCommitted.ts is honest about what it can decide and its EVIDENCE-PENDING carve-out is correct reasoning; nothing here proposes tightening it into an unfalsifiable prose judge. What is owed is updating the four documents to cite the runs and records that now exist. That is a fix, and a closeout pass files rather than fixes.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/23-release-docs-claims-not-rc-cited.md"
+    },
+    {
+      "index": 15,
+      "text": "Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit (plugin already quarantine-approved per 12); `v1.0.0` tag created; `CHANGELOG.md` entry present; `npm view crabgic` re-check passes.",
+      "textSha256": "8e68acedb146856b2d670457fec724d42073d4092a0b919db29c5e8d96d5fea5",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The byte-identical-tarball clause, run with the genuine from-clean-checkout rebuild enabled — the step's env block in the log carries 'CRABGIC_RELEASE_REBUILD_CHECKOUTS: 1', which is what selects the rebuilding populator over the copy-current-dist one. job-log line 864 — '     ✓ two independent clean checkouts of the exact same commit produce byte-identical tarballs  1017ms'; its fail-first sibling at line 865 — '     ✓ FAIL-FIRST PROOF, real end to end: perturbing one checkout's copied dist by one byte after populateBuildOutput fails the real comparator  984ms'; the composed gate at line 857 — '     ✓ runs every real constituent check, reports today's real overall verdict, and journals matching evidence  103924ms'; lane totals at lines 883-884 — ' Test Files  19 passed (19)' / '      Tests  183 passed (183)'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c15-registry-ground-truth.txt",
+          "quotedAssertion": "The provenance, published and re-check clauses, checked against the npm registry itself rather than against a workflow's report of itself. '$ npm view crabgic versions --json' returns a list beginning '\"1.0.0\",' and ending '\"1.5.0\"'; '$ npm view crabgic@1.0.0 dist.attestations --json' returns '\"url\": \"https://registry.npmjs.org/-/npm/v1/attestations/crabgic@1.0.0\",' / '\"provenance\": {' / '\"predicateType\": \"https://slsa.dev/provenance/v1\"'; the same for 1.5.0; every query '# exit=0'. Read-only throughout — nothing was published, tagged or dispatched."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / publish crabgic to npm (provenance-attested), job 91005463475, steps \"Publish with provenance\" and \"Re-check the published package\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91005463475",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The publication half as it actually ran: job-log line 415 — 'npm notice publish Signed provenance statement with source and build information from GitHub Actions'; line 416 — 'npm notice publish Provenance statement published to transparency log: https://search.sigstore.dev/?logIndex=2294583510'; line 417 — '+ crabgic@1.5.0'. Then the `npm view` re-check clause, post-publish and version-exact: line 445 — 'registry serves crabgic@1.5.0 on attempt 2 — 'package published' met post-publish'; line 449 — '{ latest: '1.5.0' }'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/release/src/reproducibleBuildCheck.ts:92",
+          "quotedAssertion": "Why the rebuild flag matters and why a copy-only run cannot pass quietly — the result records which populator ran: :92 '    rebuiltFromCleanCheckout: options.populateBuildOutput.rebuildsFromCleanCheckout,'. releaseGateSummary.ts turns that field into a blocking reason, so a copy-only run is refused rather than quietly passed."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/release/src/tarballComparator.ts:48",
+          "quotedAssertion": "The comparison is independent of npm's own reported shasum — both tarballs are re-read and hashed here — and a read error propagates rather than being coerced into a false 'they differ': :48 '    match: a.hash === b.hash,'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/release/src/marketplacePinCheck.ts:17",
+          "quotedAssertion": "The SHA-pinned-marketplace-entry clause, and the exact relaxation it allows: an ancestor pin passes only when every path changed between the pin and the candidate is under the plugin's own manifest directory. :154-155 record that this is 'deliberately NOT \"accept any ancestor\": a pin left at a previous release still fails, because that range touches packaged files', and :17 'const DIGEST_EXCLUDED_PATH = /^packages\\/plugin\\/\\.claude-plugin\\//' is the excluded prefix. At 6b9dd7b the span 39ef7d19..6b9dd7b changes exactly that one file, so the condition holds."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/c1-c15-checkout-candidate-skew.txt",
+          "quotedAssertion": "...which is NOT true at the v1.0.0 candidate, and that is the concrete cost of the skew. The transcript's read-only git queries show '$ git diff --name-only 94f419b066284d223249429ba46d78c0bd47309c 2435cb955809a5420f396043e5bc7003282491fa' returning five paths of which four are outside the plugin manifest directory, so at the ATTESTED candidate the entry pinned its own parent and the digest-neutral condition fails. The re-point to the release commit lands in b035227, one of the two commits the run actually had checked out. The v1.5.0 span, by contrast, is '$ git diff --name-only 39ef7d192d9098c1258681d33441093bc53381c7 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb' -> 'packages/plugin/.claude-plugin/marketplace.json', one file."
+        },
+        {
+          "kind": "test",
+          "ref": "CHANGELOG.md:323",
+          "quotedAssertion": "The CHANGELOG clause, at the heading shape changelogEntryCheck.ts's own pattern requires (a level-1-to-3 heading whose version is not a prefix of a longer token): :323 '## 1.0.0'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1553-1589",
+          "quotedAssertion": "The scored item at the candidate: :1553 '      \"id\": \"reproducible-build\",' / :1589 '      \"verdict\": \"PASS\",' over three linked records all tagged 'release-gate:reproducible-build'. The v1.0.0 report carries the same item, PASS, with two."
+        }
+      ],
+      "notes": "SEVEN CONJUNCTS, and each has its own bearer above: byte-identical tarballs from two clean checkouts (the rebuild leg, with the env flag that makes it a real rebuild and the summary reason that blocks a copy-only run); provenance attestation (the registry's own dist.attestations for BOTH 1.0.0 and 1.5.0, plus the Sigstore transparency-log line); package published (npm view crabgic versions); SHA-pinned marketplace entry cut at the release commit; the v1.0.0 tag; the CHANGELOG entry; and the npm view re-check. THREE THINGS DISCLOSED RATHER THAN LEFT TO BE FOUND. (a) THE v1.0.0 TAG PUBLISH RUN IS RED, and what failed in it is not what a reader would assume. Run 30249669814's job log shows the publish itself succeeding with provenance and then the POST-publish re-check erroring 'npm error 404 Not Found - GET https://registry.npmjs.org/crabgic - Not found' — the registry had not begun serving a brand-new package name. The package is published, the attestation is on it, and the same re-check run today passes; the transcript records both the failure and the current state so neither is hidden. (b) THE MARKETPLACE PIN CLAUSE PASSED AT v1.0.0 ONLY BECAUSE OF THE CHECKOUT SKEW. At the attested candidate the entry pins its own parent and the digest-neutral test fails; the tree the run executed had already been re-pointed. The v1.5.0 citation is skew-free and is why this criterion is ticked on that bearer. (c) AT THIS PASS'S HEAD THE COMMITTED MARKETPLACE ENTRY MATCHES NO TAGGED RELEASE. Its digest was rewritten after the v1.5.0 tag, in 2ff3bce (PR #50), while version and commit were left alone; the digest is correct for HEAD's plugin content but the pinned commit is now hundreds of files behind, so checkMarketplacePin at HEAD reports mismatched. That does not untick a release-time criterion, and it is not a defect in this phase's evidence — but it is deploy-relevant current-state drift and it belongs on the record. TWO SCOPE FACTS: no module in e2e/release verifies a real provenance attestation (publishDryRunCheck.ts:12-15 says so about itself), which is exactly why the registry query above is cited instead; and in gate position publicationCheck runs pre-publish, where it verifies the version is PUBLISHABLE rather than published, the published half being established post-publish and by the registry."
+    },
+    {
+      "index": 16,
+      "text": "Release artifact records the exact pinned engine/SDK version (`@anthropic-ai/claude-agent-sdk`, exact-pinned per 01's `engine-pin-lint` policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; `docs/compatibility-matrix.md` states the pinned version alongside the tested Claude Code engine version range — evidenced by the `engine-pin-lint` CI run and the tarball manifest check cited in the release-gate report.",
+      "textSha256": "52b9965023c0900a4b2e86679a44420cb66d408579d3b9ad3bd90707f0caa92e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / engine-pin-lint, job 91002998151, step \"engine-pin-lint (fails on any ^/~/range specifier for the pinned engine dependency)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639/job/91002998151",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The engine-pin-lint CI run the criterion names, green at the release candidate, and its verdict line states the scope it swept: job-log line 164 — 'engine-pin-lint: PASS — checked 18 manifest(s), no range-specified engine-bundling dependency found (watched: @anthropic-ai/claude-agent-sdk).'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / engine-pin-lint, job 89923390171, step \"engine-pin-lint (fails on any ^/~/range specifier for the pinned engine dependency)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30249293110/job/89923390171",
+          "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+          "quotedAssertion": "The same at the v1.0.0 candidate, on a push whose head_sha IS that candidate: job-log line 165 — 'engine-pin-lint: PASS — checked 18 manifest(s), no range-specified engine-bundling dependency found (watched: @anthropic-ai/claude-agent-sdk).'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/package.json:28",
+          "quotedAssertion": "The exact pin the release artifact records, in the package that bundles the engine: :28 '    \"@anthropic-ai/claude-agent-sdk\": \"0.3.218\",' — an exact specifier, no range operator."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/package.json:49",
+          "quotedAssertion": "...and in the published package itself, identically: :49 '    \"@anthropic-ai/claude-agent-sdk\": \"0.3.218\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/release/src/enginePinCheck.ts:25-26",
+          "quotedAssertion": "The baseline the release gate holds those to: :25 'export const EXPECTED_SDK_PIN = \"0.3.218\";' / :26 'export const SDK_DEPENDENCY_NAME = \"@anthropic-ai/claude-agent-sdk\";'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/release/src/enginePinCheck.ts:70-86",
+          "quotedAssertion": "How the 'identical in both from-clean-checkout' clause is implemented, quoted exactly because it is weaker than the criterion's word 'tarballs': the module exports the engine package twice through the SAME CheckoutExporter seam reproducibleBuildCheck uses and compares the two package.json pins. :70-77 '  const dirA = await options.exporter.exportCheckout(' / '    options.commitIsh,' / '    options.enginePackageSubPath,' / '  );' / '  const dirB = await options.exporter.exportCheckout(' / '    options.commitIsh,' / '    options.enginePackageSubPath,' / '  );' / :79-80 '    const pinA = readSdkPin(join(dirA, \"package.json\"));' / '    const pinB = readSdkPin(join(dirB, \"package.json\"));' / :84-85 '      match: pinA === pinB,' / '      matchesBaseline: pinA === EXPECTED_SDK_PIN && pinB === EXPECTED_SDK_PIN,'."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/compatibility-matrix.md:13",
+          "quotedAssertion": "The compatibility-matrix conjunct — the pinned version stated alongside the tested range, in one row: :13 begins '| `@anthropic-ai/claude-agent-sdk`  | **0.3.207 – 0.3.218** — deliberately **not** extended alongside the CLI range' and states within the same cell that 'the SDK transport still runs the engine binary bundled with `0.3.218`, which reports `2.1.218 (Claude Code)`' and that '`EXPECTED_SDK_PIN` (`e2e/release/src/enginePinCheck.ts`) stays `0.3.218` accordingly.' The Claude Code engine range it sits beside is :12's '**2.1.207 – 2.1.220** (accepted range)'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"Run npm run test:e2e:release-evidence\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006/job/91004033370",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The check executing at the release candidate, inside the same lane as the tarball comparison it is meant to sit beside: job-log line 872 — ' ✓ src/enginePinCheck.test.ts (6 tests) 52ms'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1586-1589",
+          "quotedAssertion": "The scored item at the candidate: :1586 '      \"id\": \"engine-pin-recorded\",' / :1589 '      \"verdict\": \"PASS\",' over two linked records tagged 'release-gate:engine-pin-recorded'."
+        }
+      ],
+      "notes": "FIVE CONJUNCTS: the artifact records the exact pin; the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; the compatibility matrix states the pin alongside the tested engine range; evidenced by the engine-pin-lint CI run; and by a tarball manifest check cited in the release-gate report. Four are plainly borne. THE SECOND NEEDS A PRECISE STATEMENT, because the module named after it does not do quite what the criterion says. enginePinCheck.ts does not open either tarball: it takes two independent `git archive` exports of the same commit and compares the pin string in each package.json. Its `match` field is therefore near-tautological — two exports of one commit can only disagree on an exporter bug — and the load-bearing assertion in that module is `matchesBaseline`, which pins both to the literal 0.3.218. What actually carries 'identical in both from-clean-checkout tarballs' is the sibling check: reproducibleBuildCheck packs both clean checkouts and tarballComparator asserts the two archives are BYTE-identical, which entails identical manifests and so identical pins, and is strictly stronger than the clause. The conjunct is met by that route rather than by the module named for it, and a reader should know which. TWO SMALLER DISCLOSURES. (a) docs/compatibility-matrix.md:14, the row headed 'Pinned release version (exact, in the published package)', is explicitly EVIDENCE-PENDING and declines to restate a literal, deferring to engine-pin-lint. The conjunct is nonetheless satisfied by :13, which does state 0.3.218 alongside both ranges; the pending row is a second, weaker place the same fact could have lived, and its staleness is filed under criterion 14. (b) enginePinCheck.ts's own header at :9-11 claims packages/cli does not declare the SDK directly and that it arrives transitively. That is false at HEAD — packages/cli/package.json:49 declares it — and the check is unaffected because it reads packages/engine-claude regardless. Recorded, not fixed. Also note readSdkPin returns whatever specifier string it finds and does not itself reject a range; the '^/~/range' policy is enforced by scripts/check-engine-pin.mjs in the engine-pin-lint job, which is the citation above."
+    }
+  ]
+}
