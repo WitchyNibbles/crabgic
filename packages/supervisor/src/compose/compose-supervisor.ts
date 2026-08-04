@@ -42,9 +42,11 @@ import {
 import {
   AuthorizationEnvelopeSchema,
   ChangeSetSchema,
+  RequirementSchema,
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
+  type Requirement,
   type WorkUnit,
 } from "@crabgic/contracts";
 import { createFileRegistry } from "../registries/file-registry.js";
@@ -75,7 +77,11 @@ export const WORK_UNITS_FILE_NAME = "work-units.json";
 export const AUTHORIZATION_ENVELOPES_FILE_NAME = "authorization-envelopes.json";
 /** Written by the CLI's intake wiring only — the daemon has no read of its own yet; `contract.approve`, served from the gateway MCP process, is the reader. */
 export const INTENT_CONTRACTS_FILE_NAME = "intent-contracts.json";
-/** The `Requirement` records (roadmap/24). Unlike the contract above, the DAEMON is a reader: seal verification resolves a work unit's requirements before it will accept that unit's completion. */
+/**
+ * The `Requirement` records (roadmap/24). Unlike the contract above, the DAEMON is a reader: seal verification resolves a work unit's requirements before it will accept that unit's completion.
+ *
+ * Annotation (2026-08-04): that reader now actually exists. Between phase 24 and this date the sentence above described an intent, not the code — this constant was declared here and the file was never opened, so `SupervisorDependencies.requirements` was `undefined` in the shipped daemon and the completion funnel verified zero requirements per unit (defect `24-daemon-requirements-registry-unwired.md`). `composeSupervisor` builds the registry below, and `SupervisorDependencies.requirements` is no longer optional.
+ */
 export const REQUIREMENTS_FILE_NAME = "requirements.json";
 
 /** A `SupervisorDependencies` whose `liveWorkers` map is mutable — the composition root owns the map so the execution driver (slice D) can register/retire `TerminableWorker` handles as workers spawn and settle. */
@@ -175,6 +181,17 @@ export async function composeSupervisor(
     path: join(stateRoot, AUTHORIZATION_ENVELOPES_FILE_NAME),
     schema: AuthorizationEnvelopeSchema,
   });
+  // The acceptance bar (roadmap/24), read from the file INTAKE wrote at
+  // `packages/cli/src/bootstrap.ts` — the same state root, the same constant.
+  // A FOURTH durable registry beside the three above, for the same
+  // cross-process reason and one stronger: the daemon does not merely display
+  // these records, it refuses a completion that does not match them. Omitting
+  // it did not fail loudly, it degraded the acceptance bar to empty; that is
+  // why the field it feeds is now required rather than optional.
+  const requirements = createFileRegistry<Requirement>({
+    path: join(stateRoot, REQUIREMENTS_FILE_NAME),
+    schema: RequirementSchema,
+  });
   const workers = createWorkersRegistry();
   const artifactIndex = createArtifactIndexRegistry();
   const liveWorkers = new Map<string, TerminableWorker>();
@@ -208,6 +225,7 @@ export async function composeSupervisor(
     changeSets,
     workUnits,
     envelopes,
+    requirements,
     workers,
     artifactIndex,
     liveWorkers,

@@ -1,0 +1,45 @@
+roadmap/24 defect fix (daemon requirements registry unwired) — RED capture, step 1
+captured (UTC): 2026-08-04T16:02:01Z
+HEAD:           3dec9bf2caa6b94bd817aee414f9458c37750fd9
+cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
+command:        npm run typecheck
+exit status:    2
+
+DELIBERATELY RED. The new type fixture
+`packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts`
+is written BEFORE the production change, so it fails on the CURRENT tree: both
+`requirements` and `envelopes` are optional members of `SupervisorDependencies`
+today (`packages/supervisor/src/router/build-router.ts:66` and `:73`), so a
+literal that omits either one is legal and the `@ts-expect-error` directives
+guarding those omissions are unused.
+
+This is the exact compile-time claim exit criterion 8 makes one layer down, at
+`@crabgic/scheduler`'s public entry points — and the exact claim that did NOT
+hold at the composition root, which is what the defect record
+`24-daemon-requirements-registry-unwired.md` reports.
+
+Verbatim output:
+
+    > crabgic-monorepo@0.0.0 typecheck
+    > tsc -b
+
+    packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(61,5): error TS2578: Unused '@ts-expect-error' directive.
+    packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(76,5): error TS2578: Unused '@ts-expect-error' directive.
+
+Line 61 is the fixture omitting `requirements`; line 76 is the fixture omitting
+`envelopes`. The third case in the file (both supplied) compiles cleanly on this
+same run — it is the positive control that makes the two failures attributable to
+the omission rather than to a broken fixture.
+
+CAPTURE SCOPE, stated exactly. This run was taken against the file as first
+drafted, carrying BOTH fixtures. The file is then split across this PR's two
+commits so that each commit compiles on its own: the `requirements` fixture and
+the control land with the requirements fix, and the `envelopes` fixture is added
+by the follow-on `envelopes`-requiredness commit (whose own RED capture is
+`fix-unwired-envelopes-red.txt`). Both directives were measured unused here, at
+`3dec9bf` with no production change — the split changes which commit each lands
+in, not what was measured.
+
+The matching GREEN measurement, and the falsification that restores `?` and
+measures that TS2578 really does come back, are captured at
+`docs/evidence/phase-24/fix-unwired-falsification.txt`.

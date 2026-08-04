@@ -1,0 +1,51 @@
+roadmap/24 defect fix (daemon requirements registry unwired) — RED capture, step 2
+captured (UTC): 2026-08-04T16:05:25Z
+HEAD:           3dec9bf2caa6b94bd817aee414f9458c37750fd9
+cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
+command:        npx vitest run packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts
+exit status:    1
+
+DELIBERATELY RED, AND THIS IS THE DEFECT REPRODUCED. The new suite
+`packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts` drives a work
+unit that DECLARES a requirement through the shipped composition —
+`composeSupervisor` + `createRealRunDispatcher` — against a fake adapter that
+always reports `succeeded`. Nothing in the fixture builds a criteria seal by
+hand: the requirement records are written through independently constructed file
+registries at the intake state-root paths, and the approval seal is appended to
+the real journal before the daemon boots.
+
+On the current tree `composeSupervisor` builds no requirements registry, so
+`SupervisorDependencies.requirements` is `undefined` and
+`packages/cli/src/daemon/run-dispatcher.ts:562-565` takes its `[]` arm — the
+acceptance bar is empty for every unit, and both refusal cases complete
+`succeeded`.
+
+Verbatim output:
+
+    RUN  v4.1.10 /home/eimi/projects/wt-p24fix
+         Coverage enabled with v8
+
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (3 tests | 2 failed) 148ms
+        × A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement 72ms
+        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 37ms
+
+    FAIL  |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts > the SHIPPED daemon composition verifies a work unit's acceptance bar (defect 24-daemon-requirements-registry-unwired) > A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to include 'failed'
+    ❯ src/daemon/composed-daemon-seal-enforcement.test.ts:304:22
+
+    FAIL  |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts > the SHIPPED daemon composition verifies a work unit's acceptance bar (defect 24-daemon-requirements-registry-unwired) > B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+    ❯ src/daemon/composed-daemon-seal-enforcement.test.ts:335:41
+
+    Test Files  1 failed (1)
+         Tests  2 failed | 1 passed (3)
+
+The journaled attempt-status sequence `[ 'dispatched', 'succeeded' ]` IS the
+measurement the defect record reports ("`dispatchAttempt` with `requirements: []`
+plus a live approval seal naming a requirement returns `succeeded`, zero
+refusals") — reproduced here through the composition root rather than through a
+scoped probe, and committed rather than remembered.
+
+Case C (matching record + seal, zero refusals) is the 1 passing test on this same
+run. It is the control: it passes both before and after the fix, so the
+implementation cannot satisfy A and B by refusing unconditionally.

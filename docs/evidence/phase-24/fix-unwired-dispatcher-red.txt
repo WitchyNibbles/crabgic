@@ -1,0 +1,43 @@
+roadmap/24 defect fix (daemon requirements registry unwired) — RED capture, step 3
+captured (UTC): 2026-08-04T16:06:44Z
+HEAD:           3dec9bf2caa6b94bd817aee414f9458c37750fd9
+cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
+command:        npx vitest run packages/cli/src/daemon/run-dispatcher.test.ts -t "acceptance bar"
+exit status:    1
+
+PARTIALLY RED, DELIBERATELY, AND THE SPLIT IS THE POINT.
+
+Two dispatcher-level cases were added to `run-dispatcher.test.ts` beneath the
+composed-daemon bearer. Both build the dependency bundle BY HAND, so neither can
+see composition — stated in the block's own doc comment so no future reader cites
+them as wiring evidence.
+
+  * "refuses a unit whose declared requirement has no record" — RED here. On the
+    current tree `resolveRequirements` silently drops an unresolvable id, and
+    `packages/scheduler/src/executor.ts` accepts an empty presented set by design
+    (a chore unit legitimately owns none), so the unit completes `succeeded`.
+    This is the SECOND half of the defect: wiring the registry alone does not
+    close it, because the file registry is ENOENT-tolerant and an absent
+    `requirements.json` still resolves to `[]`.
+
+  * "regression guard: a post-approval criteria edit is refused when a registry
+    IS supplied" — GREEN on this same run, before any production change. That is
+    honest and expected: hand the dispatcher a seeded registry and the existing
+    phase-24 machinery already refuses. Its vacuity trap IS the defect —
+    production handed it `undefined`, so the code path this guard exercises never
+    ran in the shipped daemon.
+
+Verbatim output:
+
+    RUN  v4.1.10 /home/eimi/projects/wt-p24fix
+         Coverage enabled with v8
+
+    ❯ |crabgic| src/daemon/run-dispatcher.test.ts (58 tests | 1 failed | 56 skipped) 97ms
+        × refuses a unit whose declared requirement has no record, rather than judging it against nothing 54ms
+
+    FAIL  |crabgic| src/daemon/run-dispatcher.test.ts > createRealRunDispatcher — the acceptance bar it resolves per attempt (roadmap/24) > refuses a unit whose declared requirement has no record, rather than judging it against nothing
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+    ❯ src/daemon/run-dispatcher.test.ts:1866:41
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed | 56 skipped (58)
