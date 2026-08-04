@@ -1,0 +1,81 @@
+# Defect-record index — 29 records, as of 2026-08-04
+
+One row per defect record in this directory. The **record is the authority**; this table is a dated
+convenience snapshot maintained by the closeout integrator (`../README.md` §Layout reserves this
+path for that role). When a record gains a remediation addendum, its row here is updated in the same
+PR.
+
+**This index is bookkeeping inside the closeout claim-space (`docs/evidence/criteria-closeout/`).
+Nothing in it is evidence, and it must never be cited as evidence.** The records, the README, the
+frozen baseline and this file are all written by the same closeout passes, so citing any of them
+would be a pass vouching for itself. No closeout record, roadmap annotation, transcript or future
+defect record may cite this file — name a defect record in prose and cite its underlying evidence
+directly. Deliberately, no row below carries a `path:NN` reference: a citation here would dress
+bookkeeping up as evidence.
+
+## Status vocabulary
+
+A closed, disjoint vocabulary — the same discipline the annotation labels follow. Every value below
+was derived from the record's own text, never from a census or a summary.
+
+- **fixed** — the record itself carries a dated remediation addendum. The summary carries any scope
+  bound the addendum states.
+- **owner-gated** — the record states that the missing evidence cannot be produced locally: it needs
+  an owner-authorised run against a paid or licensed external system (the Claude subscription,
+  `@live` / `engine-live`, a vendor sandbox or licence, a live container dispatch).
+- **open** — neither of the above.
+
+Two boundaries worth stating, because both are load-bearing:
+
+- A record that needs **owner input on a design decision** is `open`, not `owner-gated`. The
+  distinction is whether an owner-authorised _run_ is the missing evidence, not whether an owner has
+  a call to make. Where that applies it is named in the summary.
+- **`open` means "this record does not evidence a remedy" — not "no remedy exists."** The two are
+  genuinely different states and this table cannot tell them apart on its own, so read an `open`
+  row as a statement about the record, never as a survey of the codebase. The `24-` row was exactly
+  that case when this index was first drafted: the fix had shipped and was annotated in the
+  production source, but the record itself said nothing, so the row read `open`. The remedy was to
+  close the gap rather than to record it — that record now carries its dated addendum and the row
+  reads `fixed`. The distinction is kept here because the next such row will not be noticed as
+  quickly.
+
+| Record                                                    | Phase | Criterion             | Summary                                                                                                                                                                                                                                                                          | Status      |
+| --------------------------------------------------------- | ----- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `02-gateway-literal-scan-scope.md`                        | 02    | 8                     | The sole-definition-site scan covers only `.ts` under `packages/*/src`, so the plugin's shipped MCP manifest hand-types the gateway server name unchecked.                                                                                                                       | open        |
+| `04-journal-crash-suite-ci-job-absent.md`                 | 04    | 1                     | The named `journal-crash-suite` CI job and artifact have never existed; the 1k-iteration run is proven only by local transcripts, and CI runs the suite at 25 iterations.                                                                                                        | open        |
+| `09-json-output-snapshot-coverage.md`                     | 09    | 7                     | Only three `--json` shapes are snapshotted, so "every `--json` output schema" is unmet for `doctor`, `evidence`, `status` and every later-wired command family.                                                                                                                  | open        |
+| `10-plugin-live-smoke-unrun.md`                           | 10    | 7                     | The `@live` plugin smoke suite exists and is wired, but has never been run against the current five-subagent plugin; needs one owner-approved live dispatch.                                                                                                                     | owner-gated |
+| `12-capability-tools-stub-mcp-client.md`                  | 12    | 5                     | No test at HEAD resolves `capability.audit`/`capability.approve` over an MCP client; the clause's original test was deleted in an unrelated refactor and never replaced.                                                                                                         | open        |
+| `14-gate-registry-never-composed.md`                      | 14    | systemic (also 15/24) | No production code creates a gate registry or reaches the `verifying`/`final_verifying` stage, so every registered gate handler is unreachable in the shipped system. Owner input needed on scope, not on a run.                                                                 | open        |
+| `14-ratchet-property-report-not-ci-archived.md`           | 14    | 2                     | The monotonicity property runs on every push, but the "CI-archived" fast-check report the criterion names is emitted by nothing and uploaded by no workflow.                                                                                                                     | open        |
+| `15-enforced-budget-not-bound-to-approved-envelope.md`    | 15    | 3                     | Enforced budgets are hash-linked to the intake journal anchor, not to the approved `AuthorizationEnvelope`, so the gate holds a candidate to what intake committed rather than to what a human signed.                                                                           | open        |
+| `16-threat-model-signoff-not-landed.md`                   | 16    | 12                    | The gateway security review was performed twice and recorded elsewhere, but no sign-off ever landed in `docs/threat-model.md`, whose §5 is now stale on the upstream-MCP-client containment.                                                                                     | open        |
+| `17-wiki-markup-lint-corpus-untested.md`                  | 17    | 5                     | No test runs `toWikiMarkup`'s output through the blocking lint against 17's corpus; an ad-hoc probe passed 8 of 8, so the property holds but nothing guards it.                                                                                                                  | open        |
+| `18-cassette-parity-is-a-tautology.md`                    | 18    | 9                     | The "recorded cassette" is byte-identical to the hand-authored fake and the suite asserts that it is, so the parity assertion cannot fail; a real recording needs a Jira Cloud sandbox.                                                                                          | owner-gated |
+| `18-flow-never-replayed-on-a-cassette.md`                 | 18    | 1                     | The only Cloud cassette is a seven-call read scenario, so the board→…→attachment flow is proven on fakes and replayed from no cassette at all.                                                                                                                                   | open        |
+| `18-per-issue-write-order-not-preserved.md`               | 18    | 10                    | Same-issue writes of different kinds took different mutex keys and ran concurrently. Remedied by PR #84, 2026-08-04, **for single-issue writes**; `bulk:` targets stay unserialized, so the criterion stays unticked.                                                            | fixed       |
+| `18-revision-comparator-no-integration-fixture.md`        | 18    | 6                     | The revision comparator has zero production callers and no milestone poll exists, so "between two milestone polls" is delivered by no code path.                                                                                                                                 | open        |
+| `19-conformance-suite-not-edition-fixture-backed.md`      | 19    | 1                     | The conformance suite has no cassette code path, pins Data Center to 10.3, and the two per-edition cassettes are byte-identical; capture needs a licensed Data Center instance.                                                                                                  | owner-gated |
+| `19-unrecognized-edition-fallback-kind-unproven.md`       | 19    | 3                     | Nothing asserts the typed `unsupported` kind on the unrecognized-edition branch, and the discovery→client join is exercised by no test; two mutations leave the whole repo green.                                                                                                | open        |
+| `19-unsupported-fields-and-cassette-conjuncts.md`         | 19    | 2                     | An undiscovered custom field on a Data Center connection returns kind `validation` attributed to provider `jira-cloud`; the cassette conjunct needs a licensed Data Center instance.                                                                                             | owner-gated |
+| `19-wikimarkup-output-never-linted-against-17s-corpus.md` | 19    | 4                     | No `lint()` call anywhere takes converter output as its argument, and the "golden-file diff" is a seven-item in-file array; shares its missing bearer with phase 17's record.                                                                                                    | open        |
+| `20-docker-recipe-backed-flow-never-run.md`               | 20    | 1                     | The cassette clause is met, but the seven-kind flow has never run against a Docker-recipe-provisioned Grafana; the nearest live binding covers one resource kind, OSS only.                                                                                                      | owner-gated |
+| `21-drift-ci-blank-dispatch-input-false-positive.md`      | 21    | 3 (not a blocker)     | An unsupplied workflow input reaches the drift CLI as `""` and is taken as an observed version, so the scheduled job's steady state is a permanently red two-connector false positive.                                                                                           | open        |
+| `21-material-amendment-halt-not-wired-to-phase-11.md`     | 21    | 1                     | The halt is produced by the test's own helper; nothing wires the material-amendment signal to phase 11's stop condition, and there is no halted run to excerpt.                                                                                                                  | open        |
+| `21-tenant-boundary-manifest-entries-tautological.md`     | 21    | 5                     | Both tenant-boundary manifest entries assert over two string literals, so their verdict is a compile-time constant; phase 20's real, exported tenant-boundary scenario is not registered.                                                                                        | open        |
+| `22-learn-cli-conformance-golden.md`                      | 22    | 6                     | Phase 09's conformance harness still records the `learn` verbs as `NOT_IMPLEMENTED` stubs, there is no learn dispatch test, and no golden pins the four `--json` payloads.                                                                                                       | open        |
+| `22-no-bypass-scope.md`                                   | 22    | 8                     | The gate-firing test uses no engine, "no bypass path exists" is asserted in a doc comment rather than enforced, and the shipped `learn approve` never persists its ChangeSet toward publish.                                                                                     | open        |
+| `22-redteam-suite-membership.md`                          | 22    | 2                     | Three of the five named behaviours pass outside the tagged `@learning-redteam` suite, and "grader-drift attempt blocked" has no case of its own under any name.                                                                                                                  | open        |
+| `23-jira-live-exactly-once-never-run.md`                  | 23    | 7                     | The Jira exactly-once story has never touched a real Jira; `jira-datacenter-smoke.yml` has zero runs ever, and the criterion's span names phase 19, which is not yet built out.                                                                                                  | owner-gated |
+| `23-limit-park-resume-not-live-evidenced.md`              | 23    | 6                     | Every crash-recovery and park-resume scenario drives the fake engine, and the one live park/resume probe excludes the cross-process restart by design, so authorising a live run alone would not close it.                                                                       | owner-gated |
+| `23-release-docs-claims-not-rc-cited.md`                  | 23    | 14                    | None of the four release documents cites a CI run or `EvidenceRecord` from the release candidate, and the compatibility matrix still reports every checklist item as `EVIDENCE-PENDING`.                                                                                         | open        |
+| `24-daemon-requirements-registry-unwired.md`              | 24    | 5, 6                  | The shipped daemon composed no requirements registry, so seal verification resolved an empty set for every work unit. Remedied by PR #85, 2026-08-04, **for the requirements seam only** — criterion 7's gate gap is not discharged by it and stays open under the `14-` record. | fixed       |
+
+## Counts
+
+29 records: **2 fixed**, **7 owner-gated**, **20 open**.
+
+Neither `fixed` row clears its criterion. `18-per-issue-write-order-not-preserved.md` is fixed for
+single-issue writes with `bulk:` targets deliberately still unserialized; `24-daemon-requirements-registry-unwired.md`
+is fixed for the requirements seam with the final-gate half still unreached. `fixed` here means the
+record evidences a remedy, not that the box may be ticked.

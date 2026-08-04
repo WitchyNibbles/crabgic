@@ -57,6 +57,34 @@ and need owner approval to run; **19** (7) is not yet started;
 > also the single phase exempt from the ticks-need-a-record rule; that exemption was removed
 > from `scripts/check-criteria-closeout.mjs` in the same change, so no phase holds one now.
 
+> **Updated 2026-08-04 (wave close, integrator pass).** Phase 19 now carries a record as well —
+> closed at **2 of 7**, with four defect records — so **twenty-three** of the twenty-five phases
+> are recorded. The two without records, **00** (5 criteria) and **06** (10), are
+> live-engine-gated and wait on owner approval; nothing else remains unrecorded. Running tally:
+> **211 criteria; 169 ticked, 42 not.** Eight phases closed at full marks (01, 03, 05, 07, 08,
+> 11, 13, 24); ten carry exactly one unticked box; five closed well short — 18 at 6/10, 19 at
+> 2/7, 21 at 4/6, 22 at 5/8, and 23 — the release gate itself — at 13 of 16.
+>
+> The wave's closeouts filed **twenty-nine defect records**, indexed at
+> `docs/evidence/criteria-closeout/defects/INDEX.md`. That index is bookkeeping inside the
+> claim-space and is never evidence — cite a record's underlying evidence, never the index.
+> **Two** of those records are `fixed`, and neither fix clears its criterion. The Jira Cloud
+> connector's per-issue write-order loss is remedied by PR #84 for single-issue writes, with
+> `bulk:` targets deliberately left unserialized, so that box stays unticked. Phase 24's daemon
+> composing no requirements registry is remedied by PR #85 — the registry is now built at the
+> composition root, the dependency field is no longer optional so omitting it will not compile,
+> and resolution is strict, since a tolerant registry over an absent file would have reproduced
+> the defect silently. Its sibling half is **not** discharged: no production code creates a gate
+> registry or reaches `verifying`/`final_verifying`, so phase 24's final gate stays unreached.
+> Seven further records are **owner-gated** — their missing evidence needs an owner-authorised
+> run against a paid or licensed system — and the remaining twenty are open.
+>
+> One bookkeeping lesson is recorded rather than smoothed over. Phase 24's fix shipped on
+> 2026-08-04 and was annotated in the production source, but its defect record was never given
+> the dated addendum the convention asks for, so for a time the code was right and the record
+> said nothing. This pass appended that addendum. The index states the distinction it exposed:
+> `open` there means "this record does not evidence a remedy", never "no remedy exists".
+
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
 clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8, and

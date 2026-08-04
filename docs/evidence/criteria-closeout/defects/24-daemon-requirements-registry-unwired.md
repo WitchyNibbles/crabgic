@@ -97,3 +97,44 @@ requirement set. Separately, register the criteria-seal gate in production (crit
 Needs no live engine, no Docker and no owner subscription — this is ordinary in-repo wiring work.
 
 Out of scope for a criteria-closeout pass, which files defects rather than fixing them.
+
+## Remedied by PR #85, 2026-08-04 — the requirements seam only
+
+Everything above is left verbatim; this section is appended, not merged into it. The fix landed in
+`6a62729` ("fix(supervisor,cli): wire the requirements registry into the daemon and make its
+omission unexpressible") and was recorded here late — this addendum is the record catching up with
+the code, added by the wave-close integrator pass.
+
+Three changes, and the third is the one that matters most:
+
+1. **The daemon composes the registry.** `packages/supervisor/src/compose/compose-supervisor.ts:191`
+   builds it from `REQUIREMENTS_FILE_NAME` under the state root and `:228` passes it into the
+   dependency bundle. The `:81` doc comment that this record quoted as describing an intent rather
+   than the code now carries a dated annotation at `:83` saying so in its own words.
+
+2. **Omission is unexpressible, not merely unlikely.**
+   `packages/supervisor/src/router/build-router.ts:89` declares
+   `readonly requirements: Registry<Requirement>;` — no longer optional, so a composition root that
+   forgets it fails to compile. This closes the exact escape this record identified: "Requiredness at
+   a call site does not survive an optional field on the dependency bundle that feeds it."
+
+3. **Resolution is strict, because wiring alone would not have sufficed.** The ternary this record
+   quoted has been replaced by `resolveRequirementsStrict`
+   (`packages/supervisor/src/registries/requirements-registry.ts:98-112`) at
+   `packages/cli/src/daemon/run-dispatcher.ts:594` and `:696`. A registry that tolerates an absent
+   or incomplete file would still hand back `[]` for a declared id and reproduce this defect exactly
+   — silently, and with the compile-time guarantee in (2) satisfied. Instead `:110` throws
+   `UnresolvedRequirementError` when any declared id resolves to no record, so an incoherent
+   acceptance basis fails loudly rather than verifying nothing.
+
+### What this does NOT discharge
+
+**Criterion 7's gate gap is untouched by this fix.** `registerCriteriaSealGate` still has no
+production call site, because nothing in production creates a gate registry or moves a run into
+`verifying`/`final_verifying` at all. That is the other half of the seam this record's
+"phase-level pattern" section named, and it is filed separately as
+`docs/evidence/criteria-closeout/defects/14-gate-registry-never-composed.md`, which records why
+registering the gate into a registry nothing fires would be harness-only vacuity rather than a fix.
+
+So phase 24's enforcement is no longer inert in the shipped daemon on the **per-unit completion
+funnel**; the **final gate** remains unreached.
