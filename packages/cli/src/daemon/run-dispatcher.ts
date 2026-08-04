@@ -570,12 +570,26 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         // without this would have left it standing.
         //
         // A throw settles the whole RUN `failed` through `beginDriving`'s
-        // `.catch` below. A per-unit `failed` carrying a typed reason was
-        // considered and rejected here: `CriteriaSealFailureReason` is a
-        // 3-member vocabulary owned by `@crabgic/contracts` (ledger-adjacent),
-        // phase 24 specified semantics for TAMPER but never for unresolvable
-        // ids, and widening it needs its own ruling rather than a decision
-        // taken at a call site.
+        // `.catch` below — deliberately RUN-level, and NOT the per-unit
+        // `failed`-with-typed-reason that a tamper earns. The two conditions
+        // are different in kind (orchestrator ruling, 2026-08-04):
+        //
+        //   - TAMPER means the approved criteria changed after approval. That
+        //     is a verdict on ONE unit's OUTPUT against its bar, so it belongs
+        //     to that unit — which is exactly what phase 24 specifies.
+        //   - AN UNRESOLVABLE DECLARED ID means the run's acceptance basis is
+        //     INCOHERENT: the registry does not contain what intake declared.
+        //     That is an integrity failure of the run's INPUTS, not a verdict
+        //     on anybody's output. If the requirement source cannot be
+        //     resolved, EVERY unit's verification in this run is untrustworthy,
+        //     not just the one that happened to trip it — so settling the
+        //     remaining units and reporting success would be wrong.
+        //
+        // Hence no synthetic seal failure and no growth of
+        // `CriteriaSealFailureReason`, which is a 3-member vocabulary owned by
+        // `@crabgic/contracts` (ledger-adjacent). Phase 24 specified per-unit
+        // semantics for tamper and was SILENT here; the silence is filled by
+        // the ruling above rather than by a decision taken at a call site.
         resolveCriteriaSeal: async (ctx) => ({
           requirements: resolveRequirementsStrict(
             deps.requirements,
@@ -672,11 +686,13 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             // The SAME bar the fresh dispatch is held to — a park-resume must
             // not become a way to complete against an unverified one.
             criteriaSeal: {
-              // Strict on BOTH seams — see the dispatch site above. A
-              // park-resume that resolved leniently would be a second entry
-              // point into the acceptance funnel that skipped the check the
-              // first one makes, which is the donor regression phase 24's
-              // required-verifier threading exists to prevent.
+              // Strict on BOTH seams — see the dispatch site above for the
+              // inputs-incoherent vs verdict-on-output reasoning, and for why
+              // this refusal is run-level rather than per-unit. A park-resume
+              // that resolved leniently would be a second entry point into the
+              // acceptance funnel that skipped the check the first one makes,
+              // which is the donor regression phase 24's required-verifier
+              // threading exists to prevent.
               requirements: resolveRequirementsStrict(
                 deps.requirements,
                 ctx.workUnit.requirementIds,

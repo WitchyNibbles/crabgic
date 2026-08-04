@@ -86,6 +86,14 @@ export class UnresolvedRequirementError extends Error {
  *
  * An empty `requirementIds` still resolves to `[]` without throwing — that is
  * the chore unit the executor documents, not a missing record.
+ *
+ * WHAT THE THROW MEANS TO A CALLER (orchestrator ruling, 2026-08-04): this is
+ * an INPUTS-incoherent condition, not a verdict on any unit's output. The
+ * registry does not contain what intake declared, so every acceptance
+ * judgement in that run is untrustworthy — not merely the one that tripped it.
+ * Callers should fail the whole run rather than convert this into a per-unit
+ * outcome; see `packages/cli/src/daemon/run-dispatcher.ts`'s dispatch seam.
+ * Tamper is the opposite case and stays per-unit, as roadmap/24 specifies.
  */
 export function resolveRequirementsStrict(
   registry: Pick<Registry<Requirement>, "get">,
