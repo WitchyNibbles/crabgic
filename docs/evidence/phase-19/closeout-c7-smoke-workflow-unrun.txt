@@ -1,0 +1,64 @@
+UTC:  2026-08-04T16:17:05Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (several; each command is echoed with its own exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criterion 7
+  ("DC 10.3 and 11.3 container recipes boot and pass a smoke test in CI, reusable
+   unmodified by 23's disposable-environment tooling - CI artifact.").
+
+  Four conjuncts: (a) 10.3 boots+passes in CI, (b) 11.3 ditto, (c) reusable unmodified by
+  23, (d) CI artifact.
+
+  STOP: this pass is NOT authorised to dispatch `jira-datacenter-smoke`, nor to boot any
+  container locally. Nothing below starts anything.
+
+$ gh run list --workflow=jira-datacenter-smoke.yml --limit 20
+exit=0   <- EMPTY: the workflow has never run, not once
+
+$ gh run list --workflow=ci.yml --limit 2   (control: gh itself works)
+in_progress		fix(jira): preserve per-issue write order — serialize every issue-scoped write on issue:<key>	CI	fix/jira-per-issue-write-order	pull_request	30928471047	2m11s	2026-08-04T16:18:14Z
+completed	success	docs(roadmap): refresh the completion ledger for the closeout wave (#83)	CI	main	push	30922070286	4m11s	2026-08-04T15:02:26Z
+exit=0
+
+$ git grep -n "workflow_dispatch" -- .github/workflows/jira-datacenter-smoke.yml
+.github/workflows/jira-datacenter-smoke.yml:6:# job's shape (manual `workflow_dispatch` trigger — a multi-minute
+.github/workflows/jira-datacenter-smoke.yml:14:  workflow_dispatch: {}
+exit=0   <- dispatch-only; this pass is NOT authorised to dispatch it
+
+$ git grep -rn "jira-datacenter-smoke" -- .github/
+.github/workflows/gates-conformance.yml:15:# `engine-live`/`jira-datacenter-smoke`'s manual-dispatch-only pattern
+.github/workflows/jira-datacenter-smoke.yml:1:name: jira-datacenter-smoke
+.github/workflows/jira-datacenter-smoke.yml:17:  jira-datacenter-smoke:
+.github/workflows/jira-datacenter-smoke.yml:18:    name: jira-datacenter-smoke (${{ matrix.edition }})
+.github/workflows/perf-conformance.yml:14:# `engine-live`/`jira-datacenter-smoke`'s manual-dispatch-only pattern (those
+.github/workflows/release-e2e.yml:11:# HONESTY NOTE (mirrors `engine-live.yml`/`jira-datacenter-smoke.yml`'s own
+exit=0   <- no other workflow chains it
+
+$ git diff --stat 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..3dec9bf2caa6b94bd817aee414f9458c37750fd9 -- docker/jira-datacenter/ e2e/provisioning/test/jira-datacenter-wiring.test.ts
+exit=0   <- EMPTY: both the recipes and 23's wiring test are byte-unchanged since the v1.5.0 release-gate run that executed the wiring test
+
+$ git grep -nE "docker compose|docker run|composeRunner|RealComposeRunner" -- e2e/provisioning/test/jira-datacenter-wiring.test.ts
+e2e/provisioning/test/jira-datacenter-wiring.test.ts:27: * (b) USED TO SHELL OUT TO `docker compose config`, on the stated reasoning
+e2e/provisioning/test/jira-datacenter-wiring.test.ts:68:      // harness while `docker compose config` still reported the file valid.
+exit=0   <- the wiring test boots NOTHING; it parses the compose YAML and drives a FakeComposeRunner
+
+READING:
+  - Conjuncts (a), (b) and (d): the recipes, `smoke-test.sh` and the workflow all exist,
+    but `jira-datacenter-smoke.yml` has NEVER RUN - `gh run list` returns an empty list,
+    while the control query against `ci.yml` returns runs, so this is a real emptiness and
+    not a broken query. The workflow is `workflow_dispatch`-only and no other workflow
+    chains it. No CI artifact exists, and the image tags `atlassian/jira-software:10.3` /
+    `:11.3` have therefore never been validated by anything.
+  - Conjunct (c) IS evidenced, and without booting anything:
+    `e2e/provisioning/test/jira-datacenter-wiring.test.ts` parses BOTH compose files at the
+    exact paths phase 19 shipped and asserts the service name, the edition-pinned image
+    tag, the healthcheck and the named volume that 23's harness drives. It EXECUTED in the
+    v1.5.0 release-gate run - job 91004033370, job-log line 626:
+        ' [checkmark] test/jira-datacenter-wiring.test.ts (5 tests) 39ms'
+    and both the recipes and that test file are byte-unchanged between that run's commit
+    (6b9dd7b) and this record's HEAD, per the `git diff --stat` above.
+
+CLASSIFICATION: EVIDENCE-NEEDS-CI, box stays unticked. The channel is implemented and
+ready; it has simply never been run, and running it is owner-gated authorisation, not
+credentials - the workflow's own design requires no secret.

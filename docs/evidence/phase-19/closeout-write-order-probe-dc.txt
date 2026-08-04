@@ -1,0 +1,257 @@
+UTC:  2026-08-04T16:11:54Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  npx vitest run packages/connectors-jira/src/testkit/zz-closeout-probe-p19.test.ts --coverage.enabled=false --reporter=verbose
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - probe P-WO. Phase 19's Data Center client reuses phase 18's plan builders
+VERBATIM (`jira-datacenter-resource-client.ts:7-29`), minting per-kind canonical targets
+from the shared `resource-client/canonical-target.ts`, and the gateway's mutation pipeline
+serializes on `plan.canonicalTarget` and is deployment-agnostic. The merged phase-18 defect
+record on per-issue write ordering therefore predicts the same overlap on Data Center.
+
+  Data Center has NO write-order test at all - `git grep -nEi "write-?order|maxInFlight|
+  inFlight|OVERLAP" -- packages/connectors-jira/` returns hits only in 18's Cloud-only
+  `rate-limit-and-write-order.test.ts` and in the token manager's single-flight cache. So
+  there is nothing to cite and nothing to debunk; this probe is the first measurement.
+
+  NO phase-19 exit criterion covers write ordering, so this is recorded as a dated roadmap
+  ANNOTATION and in the closeout record's notes - not as a `defectRef` (which is
+  UNMET-only and must hang off a criterion box). The fix is owned by a separate pass on
+  branch `fix/jira-per-issue-write-order`; this pass measures and records only.
+
+  The probe is a DELIBERATELY RED measurement (`expect(maxInFlight).toBe(1)`). Its failure
+  IS the finding. It is NOT committed to `packages/` - a closeout pass does not add
+  production tests - so its full source is reproduced verbatim below.
+
+----- probe source, verbatim (packages/connectors-jira/src/testkit/zz-closeout-probe-p19.test.ts, created and deleted in this pass) -----
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import {
+  GatewayHttpClient,
+  IdempotencyKeyLock,
+  executeMutationPlan,
+  type HttpTransportRequest,
+  type HttpTransportResponse,
+} from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
+import { toADF } from "@crabgic/renderer";
+import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js";
+import { buildFieldMetadataIndex } from "../capability/field-metadata.js";
+import { createJiraDatacenterMutationApplyClient } from "../resource-client/datacenter/jira-mutation-apply-client-dc.js";
+import { createJiraDatacenterResourceClient } from "../resource-client/datacenter/jira-datacenter-resource-client.js";
+import { JiraPlanPayloadRegistry } from "../resource-client/plan-payload-registry.js";
+import type { JiraDatacenterHttpContext } from "../resource-client/datacenter/jira-datacenter-http-context.js";
+
+const BASE_URL = "https://closeout-probe-dc.invalid";
+const ENVELOPE_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const FULL_ACTIONS = [
+  "issue.create",
+  "issue.update",
+  "issue.transition",
+  "issue.link",
+  "issue.rank",
+  "issue.bulkUpdate",
+  "issue.bulkTransition",
+  "comment.create",
+  "comment.update",
+  "worklog.create",
+  "attachment.upload",
+  "board.create",
+  "board.update",
+  "sprint.create",
+  "sprint.start",
+  "sprint.complete",
+  "sprint.moveIssues",
+] as const;
+
+let journalDir: string;
+let journal: JournalStore;
+beforeEach(async () => {
+  journalDir = await mkdtemp(join(tmpdir(), "p19-probe-"));
+  journal = createJournalStore({ journalDir });
+});
+afterEach(async () => {
+  await rm(journalDir, { recursive: true, force: true });
+});
+
+function buildDc(sendRequest: (req: HttpTransportRequest) => Promise<HttpTransportResponse>, ip: string) {
+  const connection = buildExternalConnection({
+    provider: "jira-datacenter",
+    deploymentType: "datacenter",
+    baseUrl: BASE_URL,
+  });
+  const httpClient = new GatewayHttpClient({
+    allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(BASE_URL).origin] },
+    resolveHostAddresses: async () => [ip],
+    sendRequest,
+    sleep: async () => undefined,
+  });
+  const ctx: JiraDatacenterHttpContext = {
+    connection,
+    httpClient,
+    authHeaderProvider: async () => ({ authorization: "Bearer dc-pat" }),
+  };
+  const payloadRegistry = new JiraPlanPayloadRegistry();
+  const resourceClient = createJiraDatacenterResourceClient({
+    ctx,
+    fieldMetadataIndex: buildFieldMetadataIndex([]),
+    payloadRegistry,
+    dcFeatures: { edition: "10.3", availableActions: FULL_ACTIONS, availableFields: "discovered-only" },
+  });
+  const applyClient = createJiraDatacenterMutationApplyClient({
+    ctx,
+    payloadRegistry,
+    attachmentStaging: new AttachmentStagingRegistry(),
+    issueMarkerReconciler: { findByMarker: async () => undefined },
+    commentMarkerReconciler: () => ({ findByMarker: async () => undefined }),
+  });
+  return { httpClient, resourceClient, applyClient };
+}
+
+describe("CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue", () => {
+  it("measures whether issue.update and comment.create on PROJ-1 overlap on the wire (Data Center)", async () => {
+    const events: string[] = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const sendRequest = async (req: HttpTransportRequest): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      events.push(`start:${req.method}:${req.url.pathname}`);
+      await new Promise((r) => setTimeout(r, 25));
+      inFlight -= 1;
+      events.push(`end:${req.method}:${req.url.pathname}`);
+      return { status: 200, headers: {}, bodyText: JSON.stringify({ id: "50001" }) };
+    };
+    const { httpClient, resourceClient, applyClient } = buildDc(sendRequest, "203.0.113.200");
+
+    const updatePlan = resourceClient.issues.planUpdate("PROJ-1", "rev-1", { summary: "s" }, ENVELOPE_ID);
+    const commentPlan = resourceClient.comments.planCreate(
+      "PROJ-1",
+      toADF("probe comment"),
+      "probe-marker",
+      ENVELOPE_ID,
+    );
+    // eslint-disable-next-line no-console
+    console.log("PROBE canonicalTarget issue.update   =", updatePlan.canonicalTarget);
+    // eslint-disable-next-line no-console
+    console.log("PROBE canonicalTarget comment.create =", commentPlan.canonicalTarget);
+
+    const apply = (plan: Parameters<typeof executeMutationPlan>[0]) =>
+      executeMutationPlan(
+        plan,
+        {
+          provider: "jira-datacenter",
+          buildRequest: (p) => applyClient.buildRequest(p),
+          parseResponse: (p, r) => applyClient.parseResponse(p, r),
+          verify: async () => true,
+        },
+        { journal, httpClient, lock: new IdempotencyKeyLock() },
+      );
+
+    await Promise.all([apply(updatePlan), apply(commentPlan)]);
+    // eslint-disable-next-line no-console
+    console.log("PROBE maxInFlight =", maxInFlight);
+    // eslint-disable-next-line no-console
+    console.log("PROBE events =", JSON.stringify(events));
+    expect(maxInFlight).toBe(1);
+  });
+
+  it("control: two issue.update writes to the SAME issue (identical canonicalTarget), Data Center", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const sendRequest = async (): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 25));
+      inFlight -= 1;
+      return { status: 200, headers: {}, bodyText: JSON.stringify({ id: "1" }) };
+    };
+    const { httpClient, resourceClient, applyClient } = buildDc(sendRequest, "203.0.113.201");
+    const a = resourceClient.issues.planUpdate("PROJ-1", "rev-1", { summary: "a" }, ENVELOPE_ID);
+    const b = resourceClient.issues.planUpdate("PROJ-1", "rev-2", { summary: "b" }, ENVELOPE_ID);
+    // eslint-disable-next-line no-console
+    console.log("PROBE control canonicalTargets =", JSON.stringify([a.canonicalTarget, b.canonicalTarget]));
+    const apply = (plan: Parameters<typeof executeMutationPlan>[0]) =>
+      executeMutationPlan(
+        plan,
+        {
+          provider: "jira-datacenter",
+          buildRequest: (p) => applyClient.buildRequest(p),
+          parseResponse: (p, r) => applyClient.parseResponse(p, r),
+          verify: async () => true,
+        },
+        { journal, httpClient, lock: new IdempotencyKeyLock() },
+      );
+    await Promise.all([apply(a), apply(b)]);
+    // eslint-disable-next-line no-console
+    console.log("PROBE control maxInFlight =", maxInFlight);
+    expect(maxInFlight).toBe(1);
+  });
+});
+----- end of probe source -----
+
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p19
+
+stdout | src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire (Data Center)
+PROBE canonicalTarget issue.update   = issue:PROJ-1
+PROBE canonicalTarget comment.create = issue:PROJ-1:comment
+
+stdout | src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire (Data Center)
+PROBE maxInFlight = 2
+PROBE events = ["start:PUT:/rest/api/2/issue/PROJ-1","start:POST:/rest/api/2/issue/PROJ-1/comment","end:PUT:/rest/api/2/issue/PROJ-1","end:POST:/rest/api/2/issue/PROJ-1/comment"]
+
+stdout | src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > control: two issue.update writes to the SAME issue (identical canonicalTarget), Data Center
+PROBE control canonicalTargets = ["issue:PROJ-1","issue:PROJ-1"]
+
+stdout | src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > control: two issue.update writes to the SAME issue (identical canonicalTarget), Data Center
+PROBE control maxInFlight = 1
+
+ × |@crabgic/connectors-jira| src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire (Data Center) 103ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ |@crabgic/connectors-jira| src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > control: two issue.update writes to the SAME issue (identical canonicalTarget), Data Center 82ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/connectors-jira| src/testkit/zz-closeout-probe-p19.test.ts > CLOSEOUT PROBE P-WO (phase 19): two REAL DC connector-built writes to the SAME issue > measures whether issue.update and comment.create on PROJ-1 overlap on the wire (Data Center)
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/testkit/zz-closeout-probe-p19.test.ts:133:25
+    131|     // eslint-disable-next-line no-console
+    132|     console.log("PROBE events =", JSON.stringify(events));
+    133|     expect(maxInFlight).toBe(1);
+       |                         ^
+    134|   });
+    135|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  18:11:54
+   Duration  3.45s (transform 2.36s, setup 0ms, import 3.05s, tests 186ms, environment 0ms)
+
+# EXIT=1  (deliberately RED)
+
+READING:
+  - `issue.update` on PROJ-1 mints canonical target `issue:PROJ-1`; `comment.create` on the
+    SAME issue mints `issue:PROJ-1:comment`. Two different serialization keys, so the
+    pipeline lets them overlap: `maxInFlight = 2`, and the event trace shows both requests
+    open before either closes.
+  - The REST v2 paths in the trace (`/rest/api/2/issue/PROJ-1`,
+    `/rest/api/2/issue/PROJ-1/comment`) confirm the real Data Center apply client was
+    driven, not Cloud's.
+  - CONTROL: two `issue.update` writes to the same issue share `issue:PROJ-1` and DO
+    serialize - `maxInFlight = 1`. So the pipeline's serialization works; the defect is in
+    the per-kind canonical-target minting the DC client inherits from 18.

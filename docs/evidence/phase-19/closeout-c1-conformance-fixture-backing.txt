@@ -1,0 +1,117 @@
+UTC:  2026-08-04T16:05:41Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (several; each command is echoed with its own exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criterion 1
+  ("Parameterized conformance suite green on both `cloud` and `datacenter`
+   (10.3 and 11.3) fixture-backed runs - CI job artifact.").
+
+  Four conjuncts. This transcript establishes that three of them hold and that the
+  parenthetical one - "(10.3 and 11.3) fixture-backed" - has no bearer at all.
+
+  PART A: the scoped local re-run (cloud + datacenter both green).
+  PART B: probe P1 - is the suite's `datacenter` half actually deployment-specific?
+  PART C: the search trail for the missing 10.3/11.3 fixture backing.
+
+===================== PART A - scoped local re-run =====================
+$ npx vitest run --coverage.enabled=false --reporter=verbose \
+    packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts \
+    packages/connectors-jira/src/testkit/fake-cassette-parity-dc.test.ts
+
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p19
+
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity-dc.test.ts > fake vs. cassette parity — DC edition 10.3 > the hand-authored fake and the recorded per-edition cassette drive the DC JiraResourceClient to byte-identical typed results 9ms
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity-dc.test.ts > fake vs. cassette parity — DC edition 10.3 > sanity: the cassette fixture actually resolves and is non-trivial 1ms
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity-dc.test.ts > fake vs. cassette parity — DC edition 11.3 > the hand-authored fake and the recorded per-edition cassette drive the DC JiraResourceClient to byte-identical typed results 2ms
+ ✓ |@crabgic/connectors-jira| src/testkit/fake-cassette-parity-dc.test.ts > fake vs. cassette parity — DC edition 11.3 > sanity: the cassette fixture actually resolves and is non-trivial 0ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=cloud > board → sprint → epic → issue → link → comment(rich text) → worklog → attachment applies through the real mutation pipeline and records successfully 63ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=cloud > issue.transition resolves the target status server-side and applies successfully 9ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=cloud > a 412 precondition-failed response on issue.update fails as a typed conflict, never a silent overwrite 8ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=datacenter > board → sprint → epic → issue → link → comment(rich text) → worklog → attachment applies through the real mutation pipeline and records successfully 56ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=datacenter > issue.transition resolves the target status server-side and applies successfully 9ms
+ ✓ |@crabgic/connectors-jira| src/testkit/parameterized-conformance.integration.test.ts > parameterized Jira conformance suite — deploymentType=datacenter > a 412 precondition-failed response on issue.update fails as a typed conflict, never a silent overwrite 7ms
+
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+   Start at  18:18:24
+   Duration  1.18s (transform 1.20s, setup 0ms, import 1.84s, tests 166ms, environment 0ms)
+
+# EXIT=0
+
+===================== PART B - probe P1 (vacuity attack) =====================
+QUESTION: does the `datacenter` half of the parameterized suite assert anything that
+is actually Data-Center-specific, or only that SOME client pair satisfies 18's contract?
+
+METHOD: in `packages/connectors-jira/src/testkit/conformance-harness.ts:63`, widen the
+Cloud branch's condition so the CLOUD resource-client + apply-client pair is returned
+for BOTH deployment types:
+
+    -  if (deploymentType === "cloud") {
+    +  if (deploymentType === "cloud" || deploymentType === "datacenter") {
+
+then run the whole `@crabgic/connectors-jira` project. (Scratch edit; reverted.)
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false
+ Test Files  47 passed (47)
+      Tests  456 passed (456)
+# EXIT=0
+
+RESULT: GREEN. Substituting Cloud's REST v3 client pair for the Data Center one leaves
+the parameterized conformance suite - and every other suite in the package - passing.
+The suite therefore proves CONTRACT conformance, not DC-ness; it asserts no REST path,
+and the scripted fake transport answers any request. DC-ness is carried elsewhere
+(`reads-dc.test.ts:36-43`'s `not.toContain("/rest/api/3/")`, and the URL assertions in
+`jira-mutation-apply-client-dc.test.ts`). This is recorded as a SCOPE note, not as a
+falsification: the harness genuinely constructs the DC client pair for `"datacenter"`
+(`conformance-harness.ts:88-123`) and the run is genuinely green, so conjuncts (a) and
+(b) stand.
+
+===================== PART C - the missing 10.3/11.3 fixture backing =====================
+$ md5sum packages/connectors-jira/fixtures/datacenter/10.3/read-scenario.cassette.json packages/connectors-jira/fixtures/datacenter/11.3/read-scenario.cassette.json
+0494d8e13d9ccf60d938d3faa2d4cf6c  packages/connectors-jira/fixtures/datacenter/10.3/read-scenario.cassette.json
+0494d8e13d9ccf60d938d3faa2d4cf6c  packages/connectors-jira/fixtures/datacenter/11.3/read-scenario.cassette.json
+exit=0
+
+$ git grep -n "edition:" -- packages/connectors-jira/src/testkit/conformance-harness.ts
+packages/connectors-jira/src/testkit/conformance-harness.ts:93:      edition: "10.3",
+exit=0
+
+$ git grep -nE "cassette|Cassette" -- packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts packages/connectors-jira/src/testkit/conformance-harness.ts
+exit=1   <- no match: the conformance suite has no cassette code path at all
+
+$ git grep -rln "fixtures/datacenter" -- packages/ e2e/
+e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts
+packages/connectors-jira/src/testkit/scripted-read-scenario-dc.ts
+exit=0
+
+$ ls packages/connectors-jira/fixtures/datacenter/10.3 packages/connectors-jira/fixtures/datacenter/11.3
+packages/connectors-jira/fixtures/datacenter/10.3:
+read-scenario.cassette.json
+
+packages/connectors-jira/fixtures/datacenter/11.3:
+read-scenario.cassette.json
+exit=0
+
+READING OF PART C:
+  1. The conformance harness pins its Data Center run to `edition: "10.3"`. There is no
+     11.3 conformance variant of any kind.
+  2. The conformance suite contains no cassette code path - the word does not occur in
+     either file. It is driven entirely by `FakeProviderScriptEntry` literals written
+     inline in the test.
+  3. The only DC cassettes in the tree are a 7-call READ scenario
+     (project/board/sprint/search/get/comments/worklogs). They contain no create, link,
+     worklog, attachment, transition or 412 - none of the operations the conformance
+     suite asserts.
+  4. The 10.3 and 11.3 cassettes are BYTE-IDENTICAL (md5 0494d8e13d9ccf60d938d3faa2d4cf6c
+     for both). "10.3 and 11.3 fixture-backed" is therefore not merely absent from the
+     conformance suite; the two per-edition fixtures that do exist are the same bytes, so
+     nothing anywhere in the tree distinguishes 10.3 from 11.3 on the wire.
+
+  Nearest thing that does exist, named for completeness and NOT cited as satisfying the
+  criterion: `e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts:107-121`
+  replays each per-edition cassette through the real DC resource client. It is the READ
+  scenario, not the conformance suite, and it lives in a lane outside the default
+  `npm test` fan-out.

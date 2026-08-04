@@ -1,0 +1,254 @@
+UTC:  2026-08-04T16:08:02Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (several; each command is echoed with its own exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criterion 2
+  ("DC-only unsupported actions/fields return typed `unsupported` - fixture-proven
+   cassette test, zero raw-fallback occurrences.").
+
+  Four conjuncts: (a) actions, (b) fields, (c) fixture-proven CASSETTE test,
+  (d) zero raw-fallback.
+
+===================== PART A - probe P2a: per-gate mutation battery =====================
+QUESTION: the action gate is one shared helper (`assertActionSupported`) invoked through
+17 `gate("...")` call sites in `jira-datacenter-resource-client.ts`. How many of those 17
+call sites are individually protected by a test that would go RED if the call were
+dropped?
+
+METHOD: for each of the 17 call sites, delete THAT ONE line and run the whole
+`@crabgic/connectors-jira` project. (Scratch edits; each reverted before the next.)
+
+----- probe script, verbatim (scratch, never committed to the repository) -----
+#!/usr/bin/env bash
+# P2a: per-gate mutation probe. For each of the 17 `gate("...")` call sites in the
+# DC resource client, delete THAT ONE call and run the whole connectors-jira project.
+set -u
+WT=/home/eimi/projects/wt-p19
+F=$WT/packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.ts
+cp "$F" /tmp/gate-orig-p19.ts
+cd "$WT"
+for L in 114 118 122 130 134 138 142 151 167 191 220 224 228 235 248 267 273; do
+  ACTION=$(sed -n "${L}p" "$F" | tr -d ' ')
+  python3 - "$F" "$L" <<'PY'
+import sys
+p,l=sys.argv[1],int(sys.argv[2])
+lines=open('/tmp/gate-orig-p19.ts').read().split('\n')
+lines[l-1]=''
+open(p,'w').write('\n'.join(lines))
+PY
+  OUT=$(npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false 2>&1 | grep -E "^ Test Files")
+  echo "line $L  $ACTION  -> $OUT"
+  cp /tmp/gate-orig-p19.ts "$F"
+done
+cp /tmp/gate-orig-p19.ts "$F"
+----- end of probe script -----
+
+$ bash gate-probe-p19.sh
+line 114  gate("board.create");  ->  Test Files  1 failed | 46 passed (47)
+line 118  gate("board.update");  ->  Test Files  47 passed (47)
+line 122  gate("issue.rank");  ->  Test Files  47 passed (47)
+line 130  gate("sprint.create");  ->  Test Files  1 failed | 46 passed (47)
+line 134  gate("sprint.start");  ->  Test Files  47 passed (47)
+line 138  gate("sprint.complete");  ->  Test Files  47 passed (47)
+line 142  gate("sprint.moveIssues");  ->  Test Files  47 passed (47)
+line 151  gate("issue.create");  ->  Test Files  47 passed (47)
+line 167  gate("issue.update");  ->  Test Files  47 passed (47)
+line 191  gate("issue.transition");  ->  Test Files  47 passed (47)
+line 220  gate("issue.link");  ->  Test Files  47 passed (47)
+line 224  gate("issue.bulkUpdate");  ->  Test Files  47 passed (47)
+line 228  gate("issue.bulkTransition");  ->  Test Files  47 passed (47)
+line 235  gate("comment.create");  ->  Test Files  47 passed (47)
+line 248  gate("comment.update");  ->  Test Files  47 passed (47)
+line 267  gate("worklog.create");  ->  Test Files  1 failed | 46 passed (47)
+line 273  gate("attachment.upload");  ->  Test Files  47 passed (47)
+
+RESULT: 3 of 17. Only `board.create` (line 114), `sprint.create` (line 130) and
+`worklog.create` (line 267) are individually redden-capable - they are the three actions
+the two unsupported-action tests happen to call. The other FOURTEEN gate call sites can be
+deleted one at a time with the entire package suite staying green.
+
+This does not falsify conjunct (a): the mechanism genuinely throws
+`ConnectorError.unsupported` and `jira-datacenter-resource-client.test.ts:129-144` asserts
+the canonical kind. It bounds it. A future edit that drops a gate on, say,
+`issue.transition` or `attachment.upload` would land green.
+
+===================== PART B - probe P2b: the FIELDS conjunct, measured =====================
+QUESTION: what does a DC connection actually return when a write names an undiscovered
+custom field? The criterion says typed `unsupported`; roadmap/19 In-scope repeats it
+("Unrecognized fields or actions return typed `unsupported`").
+
+METHOD: drive three custom-field write paths through the REAL Data Center resource client
+(`createJiraDatacenterResourceClient`, full `availableActions`, empty field-metadata index)
+and print the thrown error's canonical kind and provider attribution.
+
+----- probe source, verbatim (scratch, never committed to the repository) -----
+// P2b — drive a custom-field write through the REAL Data Center resource client
+// and record the canonical ConnectorError kind + provider attribution.
+import {
+  createJiraDatacenterResourceClient,
+  buildFieldMetadataIndex,
+  JiraPlanPayloadRegistry,
+} from "@crabgic/connectors-jira";
+import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
+import { buildExternalConnection } from "@crabgic/testkit";
+import { toADF } from "@crabgic/renderer";
+
+const BASE_URL = "https://dc-field-probe.invalid";
+const ENVELOPE_ID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+const FULL_ACTIONS = [
+  "issue.create","issue.update","issue.transition","issue.link","issue.rank",
+  "issue.bulkUpdate","issue.bulkTransition","comment.create","comment.update",
+  "worklog.create","attachment.upload","board.create","board.update",
+  "sprint.create","sprint.start","sprint.complete","sprint.moveIssues",
+];
+
+const connection = buildExternalConnection({
+  provider: "jira-datacenter", deploymentType: "datacenter", baseUrl: BASE_URL,
+});
+const fake = createFakeProviderTransport({ responses: [] });
+const httpClient = new GatewayHttpClient({
+  allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(BASE_URL).origin] },
+  resolveHostAddresses: async () => ["203.0.113.230"],
+  sendRequest: fake.send,
+  sleep: async () => undefined,
+});
+const client = createJiraDatacenterResourceClient({
+  ctx: { connection, httpClient, authHeaderProvider: async () => ({ authorization: "Bearer x" }) },
+  fieldMetadataIndex: buildFieldMetadataIndex([]),
+  payloadRegistry: new JiraPlanPayloadRegistry(),
+  dcFeatures: { edition: "10.3", availableActions: FULL_ACTIONS, availableFields: "discovered-only" },
+});
+
+function report(label, fn) {
+  try {
+    fn();
+    console.log(`${label}: NO THROW — the write was accepted`);
+  } catch (err) {
+    console.log(
+      `${label}: kind=${JSON.stringify(err.kind)} provider=${JSON.stringify(err.provider)} retryable=${JSON.stringify(err.retryable)}`,
+    );
+    console.log(`${label}: message=${JSON.stringify(err.message)}`);
+  }
+}
+
+console.log("dcFeatures.availableFields is the literal:", JSON.stringify("discovered-only"));
+report("issues.planUpdate  customfield_99999 (undiscovered)", () =>
+  client.issues.planUpdate("PROJ-1", "rev-1", { customfield_99999: "x" }, ENVELOPE_ID),
+);
+report("issues.planCreate  customfield_99999 (undiscovered)", () =>
+  client.issues.planCreate(
+    { projectKeyOrId: "PROJ", issueType: "Story", summaryAdf: toADF("s"), fields: { customfield_99999: "x" } },
+    ENVELOPE_ID,
+  ),
+);
+report("issues.planBulkUpdate customfield_99999 (undiscovered)", () =>
+  client.issues.planBulkUpdate(["PROJ-1"], { customfield_99999: "x" }, ENVELOPE_ID),
+);
+----- end of probe source -----
+
+$ node field-probe-p19.mjs
+dcFeatures.availableFields is the literal: "discovered-only"
+issues.planUpdate  customfield_99999 (undiscovered): kind="validation" provider="jira-cloud" retryable=false
+issues.planUpdate  customfield_99999 (undiscovered): message="custom field \"customfield_99999\" is not present in discovered field metadata"
+issues.planCreate  customfield_99999 (undiscovered): kind="validation" provider="jira-cloud" retryable=false
+issues.planCreate  customfield_99999 (undiscovered): message="custom field \"customfield_99999\" is not present in discovered field metadata"
+issues.planBulkUpdate customfield_99999 (undiscovered): kind="validation" provider="jira-cloud" retryable=false
+issues.planBulkUpdate customfield_99999 (undiscovered): message="custom field \"customfield_99999\" is not present in discovered field metadata"
+# EXIT=0
+
+RESULT: `kind = "validation"`, NOT `unsupported`. And the provider attribution is
+`"jira-cloud"` on a Data Center connection - the shared gate
+`packages/connectors-jira/src/capability/field-metadata.ts:67,74` hardcodes
+`JIRA_PROVIDER_NAME`, which is `"jira-cloud"`.
+
+Two divergences from the criterion's own words, both measured rather than read. No
+DC-context test exercises a field rejection at all.
+
+===================== PART C - probe P2c: the README's cited bearer is dead code ==========
+The phase-19 evidence README's criterion-2 row offers `isActionSupportedForDcEdition`'s
+fast-check property as the "never guesses" proof. That function has zero production
+callers.
+
+METHOD: replace its body with `return true;` and run the package suite.
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false
+ FAIL  |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > isActionSupportedForDcEdition > returns false (never a guess, never a raw-endpoint fallback) for ANY action on an unrecognized edition
+ FAIL  |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > isActionSupportedForDcEdition > never emits a guessed action for a fuzzed action string on a known edition unless it is actually listed
+ Test Files  1 failed | 46 passed (47)
+      Tests  2 failed | 454 passed (456)
+# EXIT=1  (deliberately RED - the failure IS the finding)
+
+RESULT: only its OWN test file reddens. Nothing else in the repository observes the
+function's behaviour. The real gate is client-internal `assertActionSupported`, which
+deliberately consults `dcFeatures.availableActions` directly (see the doc comment at
+`jira-datacenter-resource-client.ts:71-82`). The README's mapping is therefore a
+dead-code bearer and is NOT relied on by this closeout.
+
+===================== PART D - the search trail =====================
+EMPTINESS PROOF scoped to packages/connectors-jira/src/resource-client/datacenter/ (non-test sources)
+
+$ grep -nEo "url\(`[^`]*`\)|url\(\"[^\"]*\"\)" packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+125:url("/rest/api/2/issue")
+155:url("/rest/api/2/issueLink")
+162:url("/rest/agile/1.0/issue/rank")
+169:url("/rest/api/2/bulk/issues/fields")
+176:url("/rest/api/2/bulk/issues/transition")
+219:url(`/rest/api/2/issue/${encodeURIComponent(issueKey)}/attachments`)
+230:url("/rest/agile/1.0/board")
+237:url(`/rest/agile/1.0/board/${issueKeyFromCanonicalTarget(plan.canonicalTarget)}`)
+244:url("/rest/agile/1.0/sprint")
+252:url(`/rest/agile/1.0/sprint/${issueKeyFromCanonicalTarget(plan.canonicalTarget)}`)
+exit=0   <- every request path is a literal under /rest/api/2/ or /rest/agile/1.0/
+
+$ git grep -nE "raw\.request|rawEndpoint|rawFallback|plan\.(url|endpoint|path)" -- packages/connectors-jira/src/resource-client/datacenter/
+exit=1   <- no raw/unlisted-endpoint construction under the DC directory
+
+$ git grep -n "assertAllowedJiraOperation" -- packages/connectors-jira/src/resource-client/datacenter/
+packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:11:import { assertAllowedJiraOperation } from "../../security/preflight-capability-guard.js";
+packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:26: * switch, SAME `assertAllowedJiraOperation` belt-and-suspenders re-check,
+packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:344:      assertAllowedJiraOperation(plan.action);
+exit=0
+
+$ git grep -n "isActionSupportedForDcEdition" -- packages/ e2e/
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:4:  isActionSupportedForDcEdition,
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:49:describe("isActionSupportedForDcEdition", () => {
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:51:    expect(isActionSupportedForDcEdition("10.3", "issue.create")).toBe(true);
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:52:    expect(isActionSupportedForDcEdition("11.3", "issue.create")).toBe(true);
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:59:          expect(isActionSupportedForDcEdition(edition, action as never)).toBe(false);
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts:71:        expect(isActionSupportedForDcEdition("10.3", action as never)).toBe(expected);
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:64:export function isActionSupportedForDcEdition(edition: string, action: JiraAction): boolean {
+packages/connectors-jira/src/index.ts:206:  isActionSupportedForDcEdition,
+exit=0   <- UNFILTERED (test files included): own module, its own test, and the index.ts barrel. ZERO production callers.
+
+$ git grep -n "availableFields" -- packages/ e2e/
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:25:  readonly availableFields: "discovered-only";
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:34:  { edition: "10.3", availableActions: JIRA_ACTIONS, availableFields: "discovered-only" },
+packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:35:  { edition: "11.3", availableActions: JIRA_ACTIONS, availableFields: "discovered-only" },
+packages/connectors-jira/src/provider/register-datacenter.test.ts:116:        availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:68:        availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:135:      dcFeatures: { edition: "10.3", availableActions: [], availableFields: "discovered-only" },
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:208:        availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:268:          availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:292:          availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:313:          availableFields: "discovered-only",
+packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:334:          availableFields: "discovered-only",
+packages/connectors-jira/src/testkit/conformance-harness.ts:113:      availableFields: "discovered-only",
+packages/connectors-jira/src/testkit/scripted-read-scenario-dc.ts:136:    dcFeatures: { edition: "10.3", availableActions: [], availableFields: "discovered-only" },
+exit=0   <- declaration, two literal entries, and test/harness fixtures only. No production code branches on it.
+
+$ git grep -nE "kind.*unsupported|toBe\(\"unsupported\"\)" -- packages/connectors-jira/src/testkit/
+exit=1   <- no cassette-backed test in the testkit asserts a typed unsupported
+
+READING OF PART D:
+  - Conjunct (d) "zero raw-fallback occurrences" HOLDS: every DC request path is a
+    literal under `/rest/api/2/` or `/rest/agile/1.0/`; nothing constructs a path from
+    plan data; and `jira-mutation-apply-client-dc.ts:344` re-checks 18's closed
+    allowlist, whose forged-action table explicitly includes `"raw.request"`
+    (`security/preflight-capability-guard.test.ts:15-30`). Emptiness proof scoped to
+    `packages/connectors-jira/src/resource-client/datacenter/`; re-run at merge time.
+  - Conjunct (c) "fixture-proven CASSETTE test" has NO bearer: the only DC cassettes are
+    the happy-path read scenario (see the criterion-1 transcript), and no testkit test
+    asserts a typed `unsupported` at all.
+  - `DcEditionEntry.availableFields` is the literal `"discovered-only"` for both editions
+    and no production code branches on it - a dead data member.
