@@ -74,3 +74,16 @@ exit=0
 # Emptiness proof re-run against the new tip: no path this record cites was touched by 86408b2.
 $ comm -12 <(git diff --name-only 3dec9bf 86408b2 | sort) <(every cited repo path, sorted)
 exit=0 (no output above means no cited path moved)
+
+# ---- Re-run note, 2026-08-04T17:28:39Z ----
+# origin/main advanced again to 6a62729 (PR #85) mid-review; rebased a second time.
+# Re-measured at HEAD cffc3d692fa6eecfa929fb9c7bf4216c59bcaab7:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+51
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+262
+exit=0
+# Emptiness proof, re-run against the newest tip. PR #85 touches packages/supervisor and
+# packages/cli; this record cites neither.
+$ comm -12 <(git diff --name-only 86408b2 6a62729 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved)

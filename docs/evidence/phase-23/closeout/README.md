@@ -2,7 +2,8 @@
 
 Produced by the per-criterion closeout pass for `roadmap/23-release-hardening.md`. First captured
 at `3dec9bf2caa6b94bd817aee414f9458c37750fd9`; re-verified after this branch was rebased onto
-`86408b2` (PR #84), which touched no path this record cites. Everything here is evidence, not claim: the record
+`86408b2` (PR #84) and then `6a62729` (PR #85), neither of which touched a path this record
+cites. Everything here is evidence, not claim: the record
 itself lives at `docs/evidence/criteria-closeout/phase-23.json` and cites these files.
 
 ## The two archived release-gate reports, committed verbatim
@@ -60,7 +61,7 @@ deliberately RED and say so.
 | `c8-c10-live-and-matrix-lanes.txt`       | The `e2e/live` sweep lane and the connector and installation matrix lanes, re-run at this HEAD. None of them runs in any per-push CI channel.           |
 | `c9-git-matrix-attribution.txt`          | The git-invariance and neutral-rendering lane, re-run at this HEAD, including the fail-first attribution vectors.                                       |
 | `c6-c7-live-gap.txt`                     | What the orchestration matrix actually drives (a fake engine), what its "supervisor restart" actually is, and the absence of any live Jira channel.     |
-| `c1-c15-checkout-candidate-skew.txt`     | The two commits between `2435cb9` and `dbb83fd`, and the concrete consequence for the marketplace-pin clause. Carries a dated re-run note after this branch was rebased onto `86408b2`. |
+| `c1-c15-checkout-candidate-skew.txt`     | The two commits between `2435cb9` and `dbb83fd`, and the concrete consequence for the marketplace-pin clause. Carries dated re-run notes after each rebase onto a newer `main`. |
 | `c15-registry-ground-truth.txt`          | `npm view` against the real registry — versions, dist-tags and the SLSA provenance attestation on both 1.0.0 and 1.5.0. Read-only queries only.         |
 | `lane-and-channel-audit.txt`             | Which CI channel, if any, executes each release lane — including the two workflows with **zero** runs in this repository's entire history.              |
 | `c13-drift-ci-attribution.txt`           | Why drift-CI has been red since 2026-08-02 — phase 21's deliberate red, then a known blank-input false positive. The vendor-support-window step **succeeds**; no window moved. |
