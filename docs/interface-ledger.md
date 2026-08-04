@@ -606,7 +606,7 @@ registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
 - `06-claude-engine-adapter.md` §In scope "Gateway wiring (Gap 11, Gap 2)," line 17; §Exit criteria, line
   101 — "zero hand-typed `"crabgic_gateway"` literals anywhere in `packages/engine-claude` — `gateway-name-
   reference.test`."
-- `09-cli-and-doctor.md` §Interfaces consumed, line 129 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` —
+- `09-cli-and-doctor.md` §Interfaces consumed, line 138 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"` —
   `gateway mcp`'s server identity."*
 - `10-plugin-and-installer.md` §In scope — ".mcp.json entry keyed `GATEWAY_MCP_SERVER_NAME`"; §Work items 2 —
   golden-file test against the constant.
