@@ -143,7 +143,7 @@ consistent leaf-counting gives 11).
   *"No MCP `learning.*` tool family exists… a model-invokable promotion tool would violate this section's
   tested invariant"*; §Exit criteria, line 96 — *"a grep-based CI check over `packages/gateway`'s registered
   tool names confirms no `learning.*` MCP tool exists to route around it (Gap 1)."*
-- `02-contracts-and-schemas.md` §Out of scope, line 36 — MCP tool implementations "owned by 16/11/12; this
+- `02-contracts-and-schemas.md` §Out of scope, line 45 — MCP tool implementations "owned by 16/11/12; this
   phase only names the server constant."
 - `06-claude-engine-adapter.md` §Out of scope, line 30 — names the full Phase-16-owned family list
   (`tracker.*, observability.*, evidence.get, evidence.attach, result.submit's server-side handler, forwarded
@@ -459,7 +459,7 @@ implementation at 06:42/116 — 06 added 2026-07-15)
 - `03-envelope-compiler-engine-adapter.md` §In scope, `EngineAdapter` interface bullet, line 16 — *"returning
   exactly `supportsJsonSchema`, `supportsSessionResume`, `permissionModel`, `sandboxModel`, `engineVersion`
   (Gap 7 — retires this phase's earlier `structuredOutput`/`sessionResume` draft names)"*; §Exit criteria,
-  line 91 — same five fields, "(Gap 7)."
+  line 125 — same five fields, "(Gap 7)."
 - `11-intake-contract-approval.md` §Interfaces consumed, line 122 — *"`EngineAdapter.capabilities()` —
   `engineVersion`, `supportsJsonSchema`, `supportsSessionResume` (field names per Gap 7)."*
 - `23-release-hardening.md` §Interfaces consumed, row "03," line 63 — the same five field names listed
@@ -533,8 +533,8 @@ gap's Verified-in — 13 added 2026-07-15)
   graceful degradation before 12" (pre-existing text, left unedited, and cited by Phase 12 as sufficient
   corroboration).
 - `13-scheduler-packets-context.md` §Out of scope, line 40 — *"Doc-research task-packet generation (12) —
-  consumed by 11's drafting flow, never directly by this phase (Gap 9)"*; §In scope, line 21 and §Out of
-  scope line 32 also cite "(Gap 9)" directly for the related "manager subagents are never this phase's
+  consumed by 11's drafting flow, never directly by this phase (Gap 9)"*; §In scope, line 23 and §Out of
+  scope line 34 also cite "(Gap 9)" directly for the related "manager subagents are never this phase's
   vocabulary" clarification.
 
 **Where the 4 resolvers disagreed:** Near-unanimous on the core fix (redirect the citation from 13 to 11); one
@@ -656,7 +656,7 @@ open, explicitly-tracked question: Phase 00 runs a dedicated probe and records t
 - `03-envelope-compiler-engine-adapter.md` §In scope, "Envelope compiler" bullet, line 18 — the four literals
   quoted verbatim, *"no space before the colon, per adaptation Appendix B; the word-boundary rule… is a
   separate mechanism, not stretched to justify a third, unverified colon-spacing notation (Gap 12)"*; §Risks
-  & open questions, line 101 — the identical constraint restated as a build-blocking condition on
+  & open questions, line 135 — the identical constraint restated as a build-blocking condition on
   generalization.
 
 **Where the 4 resolvers disagreed:** No material disagreement — all four independently proposed the identical
