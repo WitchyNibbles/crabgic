@@ -294,12 +294,17 @@
         {
           "kind": "test",
           "ref": "packages/cli/src/daemon/run-dispatcher.ts:561-567",
-          "quotedAssertion": "The read path the integration test deliberately reuses, so 'blocked' means blocked in production and not only in a fixture: 'resolveCriteriaSeal: async (ctx) => ({' / 'requirements:' / 'approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),' — resolved per attempt rather than cached for the run."
+          "quotedAssertion": "The per-attempt read path the integration test reuses: 'resolveCriteriaSeal: async (ctx) => ({' / 'approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),' — resolved per attempt rather than cached for the run, so a re-approval after a material amendment is picked up rather than judged against a stale bar. SCOPE: this evidences the latest-seal-wins semantics the criterion names, NOT that the surrounding enforcement is live in the shipped daemon. The same span's 'deps.requirements === undefined' / '? []' branch always takes the empty arm under composeSupervisor — see defect docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md."
         },
         {
           "kind": "artifact",
           "ref": "docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt",
           "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  9 passed (9)' — scoped local re-run of the integration file plus the journal anchor suite at this record's HEAD."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md",
+          "quotedAssertion": "Records a SCOPE BOUND on this tick, not the tick itself: \"In the shipped daemon composition, seal verification resolves an **empty** requirement set for every work unit.\" The criterion's own channel is the integration test, which is real and non-vacuous; the daemon wiring is separate work."
         }
       ],
       "notes": "The integration test simulates the material-amendment path by its journal EFFECT (two seals for the same ChangeSet, appended in approve → re-approve order) rather than by driving materiality-classifier and the amendment guard end-to-end. That machinery is explicitly out of this phase's scope ('consumed as the sanctioned change path, not modified'), and what the criterion asks about is the seal semantics, which is what is exercised. Noted so the tick is not read as a claim about the amendment machinery itself."
