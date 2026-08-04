@@ -55,22 +55,44 @@ describe("writeSerializationTarget — every issue-scoped shape collapses to iss
   });
 });
 
-describe("writeSerializationTarget — non-issue-scoped targets pass through unchanged", () => {
+describe("writeSerializationTarget — every other target passes through unchanged", () => {
   const passthrough: ReadonlyArray<readonly [string, string]> = [
     ["boards.planUpdate / planRankIssues", boardTarget(7)],
     ["sprints.planStart / planComplete / planMoveIssues", sprintTarget(3)],
-    // The remaining shapes are minted inline by the plan builders rather
-    // than by a `*Target` helper (`./issue-plans.ts:63,189,210`,
-    // `./board-sprint-plans.ts:13,76`) — none of them names an existing
-    // issue, so none may be folded onto an issue's mutex.
+    // Minted inline by the plan builders rather than by a `*Target`
+    // helper (`./issue-plans.ts:63`, `./board-sprint-plans.ts:13,76`).
+    // These name no existing issue — there is nothing to serialize
+    // against yet.
     ["issues.planCreate", "project:PROJ:new-issue"],
     ["boards.planCreate", "project:PROJ:new-board"],
     ["sprints.planCreate", "board:7:new-sprint"],
-    ["issues.planBulkUpdate / planBulkTransition", "bulk:PROJ-1,PROJ-2"],
   ];
 
   it.each(passthrough)("%s (%s) is returned unchanged", (_label, canonicalTarget) => {
     expect(writeSerializationTarget(canonicalTarget)).toBe(canonicalTarget);
+  });
+
+  /**
+   * `bulk:` is the one passthrough that is NOT "not an issue write" — it
+   * is a write to several existing, named issues (`./issue-plans.ts:189`,
+   * `:210`), and the keys are in the target string. It passes through
+   * because a mutex key is a single string and no single key can mean
+   * "PROJ-1 and PROJ-2 at once"; folding it onto either one would be
+   * wrong. The residual this leaves is deliberate, and asserted rather
+   * than merely described so it cannot quietly change.
+   */
+  it("KNOWN RESIDUAL: a bulk target is left unserialized against its own member issues", () => {
+    const bulk = "bulk:PROJ-1,PROJ-2";
+    expect(writeSerializationTarget(bulk)).toBe(bulk);
+    // The residual, stated as the assertion it is: a bulk write touching
+    // PROJ-1 does NOT take PROJ-1's mutex, so it can race a single-issue
+    // write to PROJ-1.
+    expect(writeSerializationTarget(bulk)).not.toBe(
+      writeSerializationTarget(issueTarget("PROJ-1")),
+    );
+    // And two bulk plans over the same issues in a different order mint
+    // different keys, so they do not serialize against each other either.
+    expect(writeSerializationTarget("bulk:PROJ-2,PROJ-1")).not.toBe(writeSerializationTarget(bulk));
   });
 
   it("returns an unrecognized shape unchanged rather than guessing", () => {

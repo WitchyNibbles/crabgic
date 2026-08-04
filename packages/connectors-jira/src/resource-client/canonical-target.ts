@@ -59,11 +59,27 @@ const ISSUE_TARGET_PREFIX = "issue:";
  * the serialization key only, surfaced to the pipeline through
  * `MutationApplyClient.serializationTarget`.
  *
- * Every non-issue-scoped shape is returned UNCHANGED — board/sprint
- * targets, and the create-shaped targets that name no existing issue
- * (`project:<key>:new-issue`, `project:<key>:new-board`,
- * `board:<id>:new-sprint`, `bulk:<keys>`). Cross-issue parallelism is
- * therefore untouched.
+ * Every other shape is returned UNCHANGED, for two different reasons:
+ *
+ *   - Board/sprint targets (`board:<id>`, `sprint:<id>`) and the
+ *     create-shaped targets that name no existing issue
+ *     (`project:<key>:new-issue`, `project:<key>:new-board`,
+ *     `board:<id>:new-sprint`) are simply not issue-scoped writes.
+ *   - `bulk:<key>,<key>,…` (`./issue-plans.ts:189`, `:210` —
+ *     `issue.bulkUpdate`/`issue.bulkTransition`) IS a write to existing,
+ *     named issues, and the keys are right there in the target. It
+ *     passes through anyway because a mutex key is a single string:
+ *     there is no key that means "all of PROJ-1 and PROJ-2 at once," and
+ *     folding a bulk plan onto any ONE of its issues would be wrong.
+ *     Expressing it needs multi-key lock acquisition in 16's
+ *     `WriteSerializer`, which this change does not attempt.
+ *
+ * KNOWN RESIDUAL, therefore — per-issue write order is preserved for
+ * SINGLE-issue writes only. A `bulk:` write touching PROJ-1 still races
+ * a single-issue write to PROJ-1, and two `bulk:` plans whose key lists
+ * overlap (or list the same keys in a different order, which mints a
+ * different target string) still race each other. Cross-issue
+ * parallelism between single-issue writes is untouched, as intended.
  */
 export function writeSerializationTarget(canonicalTarget: string): string {
   if (!canonicalTarget.startsWith(ISSUE_TARGET_PREFIX)) return canonicalTarget;

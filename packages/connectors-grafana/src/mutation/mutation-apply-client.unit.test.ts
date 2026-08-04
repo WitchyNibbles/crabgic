@@ -261,3 +261,25 @@ describe("createGrafanaMutationApplyClient — direct unit coverage of edge bran
     await expect(applyClient.reconcileAmbiguous!(plan, new Error("x"))).resolves.toBeUndefined();
   });
 });
+
+/**
+ * 18's per-issue write-order fix added an OPTIONAL
+ * `MutationApplyClient.serializationTarget` hook, which decouples the
+ * write-mutex key from `canonicalTarget`. This connector deliberately
+ * does NOT implement it: its targets are flat `<kind>:<id>` over seven
+ * top-level kinds with no parent/sub-resource nesting
+ * (`./canonical-target.ts`), so `canonicalTarget` is already the correct
+ * mutex granularity and the gateway's default
+ * (`resource: plan.canonicalTarget`) is exactly right.
+ *
+ * The gateway's own default-path tests pin the PIPELINE's behaviour when
+ * the hook is absent; only this test pins that it IS absent here. Wiring
+ * the hook into this connector would otherwise change its serialization
+ * granularity with nothing going red.
+ */
+describe("createGrafanaMutationApplyClient — write serialization", () => {
+  it("omits serializationTarget, so the gateway keys the write mutex on canonicalTarget", () => {
+    const { applyClient } = buildClient();
+    expect(applyClient.serializationTarget).toBeUndefined();
+  });
+});

@@ -540,3 +540,76 @@ git status --short
       Tests  6 failed | 49 passed (55)
 
 ----- end of probe output -----
+
+------------------------------------------------------------------------------
+(4) REVIEW ROUND 2 — two further probes, added after adversarial review
+------------------------------------------------------------------------------
+UTC:  2026-08-04T16:43:56Z
+HEAD: 2b0d8be22e9eed64cd5dc9f88e9e3764680c7d23
+CWD:  worktree of WitchyNibbles/crabgic, branch fix/jira-per-issue-write-order
+
+  Review found that this PR's own new prose gave a FALSE justification for one
+  of the passthrough shapes. The original comment said the create-shaped
+  passthrough targets "name no existing issue, so none may be folded onto an
+  issue's mutex" — and swept `bulk:<key>,<key>,…` in with them. That is wrong:
+  `bulk:` is minted by `issue-plans.ts:189`/`:210` for
+  `issue.bulkUpdate`/`issue.bulkTransition`, i.e. a write to EXISTING, named
+  issues, whose keys are in the target string.
+
+  The BEHAVIOUR is unchanged and correct — a mutex key is a single string, no
+  single key can mean "PROJ-1 and PROJ-2 at once," and folding a bulk plan onto
+  any one of its members would be wrong. Only the grounds were wrong, and they
+  concealed a real residual, now named in the code and asserted in the suite:
+
+    KNOWN RESIDUAL — per-issue write order is preserved for SINGLE-issue writes
+    only. A `bulk:` write touching PROJ-1 still races a single-issue write to
+    PROJ-1, and two `bulk:` plans whose key lists overlap (or list the same keys
+    in a different ORDER, which mints a different target string) still race each
+    other.
+
+  PROBE 5  add `serializationTarget` to the GRAFANA apply client
+           (the reverse of a deletion probe: this connector must NOT have it)
+           CMD:  npx vitest run packages/connectors-grafana/src/mutation/mutation-apply-client.unit.test.ts --coverage.enabled=false --reporter=verbose
+           -> EXIT 1, 1 failed / 12 passed
+           -> "omits serializationTarget, so the gateway keys the write mutex on
+               canonicalTarget"
+              → expected [Function serializationTarget] to be undefined
+
+           Why this test exists: the gateway's two DEFAULT-PATH cases pin the
+           PIPELINE's behaviour when the hook is absent, using synthetic
+           providers. NOTHING pinned that Grafana itself omits it, so wiring the
+           hook into that connector would have changed its serialization
+           granularity with nothing going red. This probe is the proof that the
+           new one-line assertion is not vacuous.
+
+  PROBE 6  make `writeSerializationTarget` fold `bulk:` onto its FIRST member
+           issue (i.e. "fix" the residual wrongly, as a single-key mutex forces)
+           CMD:  npx vitest run packages/connectors-jira/src/resource-client/canonical-target.test.ts --coverage.enabled=false --reporter=verbose
+           -> EXIT 1, 1 failed / 13 passed
+           -> "KNOWN RESIDUAL: a bulk target is left unserialized against its own
+               member issues"
+              → expected 'issue:PROJ-1' to be 'bulk:PROJ-1,PROJ-2'
+
+           The residual is therefore ASSERTED, not merely described in a comment
+           — it cannot change silently in either direction.
+
+  Both probes restored the tree afterwards. Note for anyone re-running probe 5
+  or 6 from these notes: `git checkout -- packages/connectors-grafana/` (a
+  DIRECTORY restore) also reverts uncommitted TEST edits in that directory. That
+  happened here on a first attempt and produced a spurious EXIT 0 / "12 passed"
+  with the new test silently absent. The runs recorded above are the re-runs
+  with the test present. Restore by explicit FILE path, not by directory.
+
+----- probe 5 output: failing lines + summary -----
+ × |@crabgic/connectors-grafana| src/mutation/mutation-apply-client.unit.test.ts > createGrafanaMutationApplyClient — write serialization > omits serializationTarget, so the gateway keys the write mutex on canonicalTarget 5ms
+   → expected [Function serializationTarget] to be undefined
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+
+----- probe 6 output: failing lines + summary -----
+ × |@crabgic/connectors-jira| src/resource-client/canonical-target.test.ts > writeSerializationTarget — every other target passes through unchanged > KNOWN RESIDUAL: a bulk target is left unserialized against its own member issues 4ms
+   → expected 'issue:PROJ-1' to be 'bulk:PROJ-1,PROJ-2' // Object.is equality
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+
+----- end of probe output -----
