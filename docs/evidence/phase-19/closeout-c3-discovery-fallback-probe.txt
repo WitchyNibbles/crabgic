@@ -122,3 +122,90 @@ What IS proven for an unrecognized edition is a SAFE SNAPSHOT - `edition: "unkno
 and valuable guarantee, and it is a different one from "falls back to typed `unsupported`".
 Reading the criterion down to the snapshot guarantee would lose the typed-error guarantee,
 so this is UNMET, not a wording correction.
+
+================================================================================
+RE-CUT - 2026-08-04T19:34:00Z, HEAD 29e71dc (this branch merged with main @ 86408b2)
+================================================================================
+Two corrections to how PARTS B and C above were measured. Neither changes the result;
+both change how much the result is worth.
+
+CORRECTION 1 - the probes were run WITHOUT `npm run build`. This repo's cross-package
+consumers import `@crabgic/connectors-jira` through its BUILT `dist/`, so a source-only
+mutation can leave a stale `dist` in front of every out-of-package test. Reported by
+adversarial review. Re-measured below WITH a rebuild between mutation and test run.
+
+CORRECTION 2 - PART B's severing as literally written (`: undefined`) does NOT COMPILE:
+it leaves `resolveDcEditionFeatures` and `discoverJiraDatacenterCapabilitySnapshot`
+imported and unused, which `tsc` rejects. A probe that does not compile is a probe whose
+result nobody can reproduce. The re-cut severing below is compile-clean: the VALUE import
+is dropped (the `DcEditionEntry` type import is kept) and the join becomes
+`.then(() => undefined)`.
+
+Scope note measured rather than assumed: no symbol mutated by ANY probe in this pass has a
+consumer outside `packages/connectors-jira`.
+
+$ git grep -ln "resolveJiraDatacenterAuthHeaderProvider\|createJiraDatacenterResourceClient\|isActionSupportedForDcEdition\|buildConformanceHarness\|JiraDatacenterConnectionRegistry" -- packages/ e2e/ | grep -v "^packages/connectors-jira/"
+exit=1   <- no cross-package consumer of any mutated symbol
+
+--------------------------------------------------------------------------------
+RE-CUT PART B - probe P3, compile-clean severing, rebuilt
+--------------------------------------------------------------------------------
+The edit, in packages/connectors-jira/src/provider/jira-datacenter-connection-registry.ts:
+
+    -import {
+    -  resolveDcEditionFeatures,
+    -  type DcEditionEntry,
+    -} from "../capability/dc-edition-feature-matrix.js";
+    +import type { DcEditionEntry } from "../capability/dc-edition-feature-matrix.js";
+    ...
+    -            .then((snapshot) => resolveDcEditionFeatures(snapshot.edition))
+    +            .then(() => undefined)
+
+$ npx tsc -b
+exit=0   <- compiles clean, unlike the severing PART B described
+
+$ npm run lint   (compile/lint cleanliness of the severed tree)
+> crabgic-monorepo@0.0.0 lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run build
+⚡ Done in 75ms
+bundle-cli: emitted 11 file(s) into packages/cli/dist
+exit=0
+
+$ npx vitest run --coverage.enabled=false   (WHOLE REPOSITORY, post-rebuild)
+ Test Files  625 passed (625)
+      Tests  6216 passed (6216)
+
+RESULT, unchanged: GREEN repository-wide with a rebuild in between. The
+discovery -> resolveDcEditionFeatures -> client join is observed by nothing.
+
+--------------------------------------------------------------------------------
+RE-CUT PART C - probe P3b, rebuilt
+--------------------------------------------------------------------------------
+The edit splits `assertActionSupported`'s condition and downgrades ONLY the
+`dcFeatures === undefined` branch to `ConnectorError.validation`, leaving the
+recognized-edition branch throwing `ConnectorError.unsupported`.
+
+$ npx tsc -b
+exit=0
+
+$ npm run lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run build
+⚡ Done in 73ms
+bundle-cli: emitted 11 file(s) into packages/cli/dist
+exit=0
+
+$ npx vitest run --coverage.enabled=false   (WHOLE REPOSITORY, post-rebuild)
+ Test Files  625 passed (625)
+      Tests  6216 passed (6216)
+
+RESULT, unchanged: GREEN repository-wide with a rebuild in between. The canonical kind of
+the unrecognized-edition fallback is asserted by nothing. Both conclusions in the
+CONCLUSION section above stand, now on a compile-clean and correctly-rebuilt measurement.

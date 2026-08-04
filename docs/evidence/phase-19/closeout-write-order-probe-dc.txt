@@ -255,3 +255,30 @@ READING:
   - CONTROL: two `issue.update` writes to the same issue share `issue:PROJ-1` and DO
     serialize - `maxInFlight = 1`. So the pipeline's serialization works; the defect is in
     the per-kind canonical-target minting the DC client inherits from 18.
+
+================================================================================
+POSTSCRIPT - 2026-08-04T19:41:06Z, after PR #84 merged (86408b26b25173322a358da80590f171cb401a13)
+================================================================================
+The measurement above stands as taken: at HEAD 3dec9bf, Data Center overlapped at
+maxInFlight = 2 and had no write-order test at all. Both statements were true when the
+probe ran (3dec9bf was pushed 15:02Z; the probe ran 16:11Z; #84 merged 17:03Z).
+
+Both are now STALE ON MAIN, and this postscript is how that is recorded rather than by
+editing the body. PR #84 - the separate pass this transcript names - landed the fix:
+
+  - `packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts`
+    gained `serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget)`,
+    so every issue-scoped DC write now serializes on `issue:<key>` regardless of kind;
+  - `packages/connectors-jira/src/testkit/write-order.integration.test.ts` is new - the DC
+    write-order test whose absence this transcript reports;
+  - `packages/connectors-jira/src/resource-client/canonical-target.test.ts` is new too.
+
+$ git grep -lnE "write-order|maxInFlight" origin/main -- packages/connectors-jira/
+origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+origin/main:packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts
+origin/main:packages/connectors-jira/src/testkit/write-order.integration.test.ts
+exit=0
+
+This closeout pass did not write, review or verify that fix - it only measured the defect
+and recorded it. The RED probe above is kept because it is the diagnosis the fix answers,
+and because a reader needs to see what was measured, not only that something was fixed.

@@ -37,6 +37,17 @@ When this phase is done, every Jira capability phase 18 built against Jira Cloud
   > `fix/jira-per-issue-write-order`, and the Cloud-side defect record filed by phase 18's closeout
   > is the diagnosis of record. This bullet's own text is left verbatim, per annotate-never-rewrite.
 
+  > **Second line, 2026-08-04 (same pass, later the same day).** PR #84 merged at 17:03Z —
+  > after the HEAD this closeout is pinned to (15:02Z) and after the probe above ran
+  > (16:11Z) — and fixes it. `jira-mutation-apply-client-dc.ts` now declares
+  > `serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget)`, so
+  > every issue-scoped Data Center write serializes on `issue:<key>` regardless of kind,
+  > and `packages/connectors-jira/src/testkit/write-order.integration.test.ts` is the DC
+  > write-order test whose absence the first line reports. So "Data Center has no
+  > write-order test at all" is true of this record's HEAD and **stale on main**; the
+  > committed transcript carries the same correction as a dated postscript. This pass
+  > measured the defect and did not write, review or verify the fix.
+
 - **Rendering:** `wikiMarkupRenderProfile` — DC has no ADF, so `RenderedArtifact` (P02/17) content is serialized to Jira wiki markup instead; built here, golden-corpus tested, required to pass 17's blocking-artifact lint unchanged.
 - **Same resource/prohibition/high-impact-capability matrix as 18** — assignment, reporter change, closing transitions, sprint completion, attachments, bulk mutations, issue creation (P02's canonical labels) — reused verbatim, not redefined here.
 - **Conformance:** 18's Cloud-only suite generalized into one suite parameterized over `JiraDeploymentType`; identical assertions, both values.
@@ -127,6 +138,31 @@ action-gate call sites can each be deleted individually with the package suite g
 Two probes came back the *other* way and are what cleared criteria 5 and 6: removing `customCaPem`
 reddens with a real TLS verification error, and deleting the basic-auth guard reddens four suites
 across three layers.
+
+Citation re-resolution, round 2. A resolver was built and run on this record before it was first
+pushed; it reported zero problems and **it was wrong**. It verified that each quoted fragment
+*exists* in the cited file and never that the `:NN` marker written beside it is *the line the text
+is on*, nor that the marker falls inside the declared span — two checks, not one. Adversarial review
+found 19 defects of exactly that shape. The resolver now line-anchors every fragment, and on the
+corrected record: **54 resolvable citations, 7 `ci-run`, 190 quoted fragments (195 with no minimum
+length), 190 found in their source, 157 carrying a line marker, 157 markers naming the correct line,
+190 within their declared span, zero problems.** It is mutation-tested in three directions — a
+marker shifted by one line, a span narrowed around a correct marker, and a flipped assertion — all
+caught. Round 1's own first pass had already found 9 defects (7 backslash-escaped apostrophes, a
+fabricated quote, a wrong job-log line); those are fixed too. A second checker cross-reads the
+committed transcripts against this record — 41 `git grep -n` output lines verified against the
+commit each transcript's own RULING-3 header pins, zero disagreements — because a transcript and a
+record written in the same PR disagreeing about one line number is a free detector this pass had and
+did not use the first time.
+
+This branch merges `main` @ `86408b2` (#84). That PR landed after the pass ran and touched
+`packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts`, shifting
+one cited line. The record's `pass.headSha` therefore names the merge commit, so every citation
+resolves against the tree this branch actually lands as; every *measurement* was taken at
+`3dec9bf`, which each committed transcript pins in its own header, and the `ci-run` citations name
+the commit their run executed at. Criterion 2's emptiness proof was re-run against post-#84 `main`
+rather than assumed — it holds unchanged — and criterion 3's two probes were re-cut compile-clean
+and with `npm run build` between mutation and test run, reaching the same result.
 
 Correction to `docs/evidence/phase-19/README.md`, recorded here rather than by editing that file
 (2026-08-04). Its criterion-2 row cites `isActionSupportedForDcEdition`'s property test as the

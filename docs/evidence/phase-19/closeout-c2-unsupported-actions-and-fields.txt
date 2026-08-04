@@ -252,3 +252,93 @@ READING OF PART D:
     asserts a typed `unsupported` at all.
   - `DcEditionEntry.availableFields` is the literal `"discovered-only"` for both editions
     and no production code branches on it - a dead data member.
+
+
+================================================================================
+POSTSCRIPT - 2026-08-04T19:41:06Z, after PR #84 merged (86408b26b25173322a358da80590f171cb401a13)
+================================================================================
+Everything above is verbatim at HEAD 3dec9bf and is NOT rewritten - the line numbers in
+PART D's grep output are the ones that were true when the commands ran. PR #84 landed
+after that HEAD and touched `jira-mutation-apply-client-dc.ts`, which is INSIDE PART D's
+declared emptiness-proof scope, so the proof is re-run here rather than assumed. The
+closeout record's own notes said to re-run it at merge time; this is that re-run.
+
+Two line numbers in PART D shifted by #84's six added lines. The record's citation was
+updated from :344 to :345 to match; PART D's own text is left alone, per
+annotate-never-rewrite.
+
+RE-RUN of criterion 2's emptiness proof against main AFTER PR #84 merged (86408b2).
+PR #84 touched packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts,
+which is INSIDE this proof's declared scope, so the proof is re-run rather than assumed.
+
+$ git log --oneline -1 origin/main
+86408b2 fix(jira): preserve per-issue write order — serialize every issue-scoped write on issue:<key> (#84)
+exit=0
+
+$ git diff --stat 3dec9bf origin/main -- packages/connectors-jira/src/resource-client/datacenter/
+ .../src/resource-client/datacenter/jira-mutation-apply-client-dc.ts | 6 ++++++
+ 1 file changed, 6 insertions(+)
+exit=0
+
+$ git show origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts | grep -nEo "url\(`[^`]*`\)|url\(\"[^\"]*\"\)"
+126:url("/rest/api/2/issue")
+156:url("/rest/api/2/issueLink")
+163:url("/rest/agile/1.0/issue/rank")
+170:url("/rest/api/2/bulk/issues/fields")
+177:url("/rest/api/2/bulk/issues/transition")
+220:url(`/rest/api/2/issue/${encodeURIComponent(issueKey)}/attachments`)
+231:url("/rest/agile/1.0/board")
+238:url(`/rest/agile/1.0/board/${issueKeyFromCanonicalTarget(plan.canonicalTarget)}`)
+245:url("/rest/agile/1.0/sprint")
+253:url(`/rest/agile/1.0/sprint/${issueKeyFromCanonicalTarget(plan.canonicalTarget)}`)
+exit=0   <- still ten literal paths, all under /rest/api/2/ or /rest/agile/1.0/
+
+$ git grep -nE "raw\.request|rawEndpoint|rawFallback|plan\.(url|endpoint|path)" origin/main -- packages/connectors-jira/src/resource-client/datacenter/
+exit=1   <- still no raw/unlisted-endpoint construction under the DC directory
+
+$ git grep -n "assertAllowedJiraOperation" origin/main -- packages/connectors-jira/src/resource-client/datacenter/
+origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:11:import { assertAllowedJiraOperation } from "../../security/preflight-capability-guard.js";
+origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:27: * switch, SAME `assertAllowedJiraOperation` belt-and-suspenders re-check,
+origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:345:      assertAllowedJiraOperation(plan.action);
+exit=0   <- the closed-allowlist re-check survives #84 (line moved 344 -> see above)
+
+--- what #84 actually changed in this file ---
+$ git diff 3dec9bf origin/main -- packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+diff --git a/packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts b/packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+index 5879f4f..fc43619 100644
+--- a/packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
++++ b/packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+@@ -10,6 +10,7 @@ import type { AttachmentStagingRegistry } from "../../attachments/attachment-sta
+ import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";
+ import { assertAllowedJiraOperation } from "../../security/preflight-capability-guard.js";
+ import { assertSafeAdfDocument } from "../adf-guard.js";
++import { writeSerializationTarget } from "../canonical-target.js";
+ import type { JiraAction } from "../actions.js";
+ import type { JiraPlanPayloadRegistry } from "../plan-payload-registry.js";
+ import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";
+@@ -345,6 +346,11 @@ export function createJiraDatacenterMutationApplyClient(
+       return buildRequestForAction(plan, deps);
+     },
+     parseResponse: (plan, response) => parseResponseForAction(plan, response),
++    // Identical to Cloud's — DC reuses 18's plan builders and the same
++    // `../canonical-target.ts`, so it inherits the same per-issue
++    // write-order requirement (roadmap/19 §In scope: "the gateway's
++    // cross-worker throttling … still serializes writes").
++    serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget),
+     verify: (plan) => verifyForAction(deps.ctx, plan),
+     reconcileAmbiguous: async (plan) => {
+       const action = plan.action as JiraAction;
+exit=0
+
+--- and the DC write-order test #84 added, which did not exist at this record's HEAD ---
+$ git grep -ln "write-order\|maxInFlight" origin/main -- packages/connectors-jira/
+origin/main:packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts
+origin/main:packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts
+origin/main:packages/connectors-jira/src/testkit/write-order.integration.test.ts
+exit=0
+
+VERDICT: the emptiness proof HOLDS unchanged against post-#84 main. Still exactly ten
+request paths, all string literals under /rest/api/2/ or /rest/agile/1.0/; still no
+raw/unlisted-endpoint construction anywhere under the DC directory (`exit=1`); the closed
+-allowlist re-check is still there, moved 344 -> 345. #84 added one line to that file -
+a `serializationTarget` hook - and changed nothing this criterion depends on.
