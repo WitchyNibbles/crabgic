@@ -300,14 +300,9 @@
           "kind": "artifact",
           "ref": "docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt",
           "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  9 passed (9)' — scoped local re-run of the integration file plus the journal anchor suite at this record's HEAD."
-        },
-        {
-          "kind": "artifact",
-          "ref": "docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md",
-          "quotedAssertion": "Records a SCOPE BOUND on this tick, not the tick itself: \"In the shipped daemon composition, seal verification resolves an **empty** requirement set for every work unit.\" The criterion's own channel is the integration test, which is real and non-vacuous; the daemon wiring is separate work."
         }
       ],
-      "notes": "The integration test simulates the material-amendment path by its journal EFFECT (two seals for the same ChangeSet, appended in approve → re-approve order) rather than by driving materiality-classifier and the amendment guard end-to-end. That machinery is explicitly out of this phase's scope ('consumed as the sanctioned change path, not modified'), and what the criterion asks about is the seal semantics, which is what is exercised. Noted so the tick is not read as a claim about the amendment machinery itself."
+      "notes": "The integration test simulates the material-amendment path by its journal EFFECT (two seals for the same ChangeSet, appended in approve → re-approve order) rather than by driving materiality-classifier and the amendment guard end-to-end. That machinery is explicitly out of this phase's scope ('consumed as the sanctioned change path, not modified'), and what the criterion asks about is the seal semantics, which is what is exercised. Noted so the tick is not read as a claim about the amendment machinery itself. SCOPE BOUND (2026-08-02, adversarial review): this tick is carried by the integration test the criterion names; it is NOT a claim that the surrounding enforcement is live in the shipped daemon. composeSupervisor builds no requirements registry (it declares REQUIREMENTS_FILE_NAME at compose-supervisor.ts:79 — 'the DAEMON is a reader' — and never opens it; only bootstrap.ts:471, the intake process, does), and SupervisorDependencies.requirements is optional, so run-dispatcher.ts:562-565 always takes the [] arm under the daemon composition. Measured: dispatchAttempt with requirements: [] plus a live seal naming a requirement returns succeeded, zero refusals. With criterion 7's unregistered gate this is one seam. Filed as docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md — named in prose rather than cited, since a defect record written by this same pass sits inside the closeout claim-space and is not evidence for the claim."
     },
     {
       "index": 7,
