@@ -737,7 +737,9 @@ describe("executeMutationPlan — serializationTarget", () => {
 
     const outcome = await executeMutationPlan(
       plan,
-      buildHandlers({ serializationTarget: (p) => p.canonicalTarget.split(":").slice(0, 2).join(":") }),
+      buildHandlers({
+        serializationTarget: (p) => p.canonicalTarget.split(":").slice(0, 2).join(":"),
+      }),
       deps,
     );
 
