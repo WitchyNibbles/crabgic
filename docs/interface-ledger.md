@@ -132,7 +132,7 @@ consistent leaf-counting gives 11).
   description ("11 and 12 — already dependents of this phase — each register their own already-built
   handlers … into the same registry when those phases land, with no new cross-phase dependency edge
   required").
-- `11-intake-contract-approval.md` §Out of scope, line 59 — *"A `change_set.*` MCP tool family — deliberately
+- `11-intake-contract-approval.md` §Out of scope, line 85 — *"A `change_set.*` MCP tool family — deliberately
   does not exist anywhere in v1 (Gap 1 resolution); `project.inspect` is the sole ChangeSet-state read
   surface"*; §In scope, `project.inspect` bullet, line 23 — *"Also answers ChangeSet-state queries; no
   separate `change_set.*` tool family exists."*
@@ -236,7 +236,7 @@ implementation; Phase 03's own text no longer calls it "new" — it now reads "s
 - `02-contracts-and-schemas.md` §In scope — *"`renderer-core` module, inside `packages/contracts` (not a
   standalone package)"*; work item 6.
 - `03-envelope-compiler-engine-adapter.md` §In scope, line 16 — *"`packages/engine-core`, scaffolded empty by
-  01 — Gap 3; this phase is its first implementation"*; §Interfaces produced, line 38 — *"scaffolded empty
+  01 — Gap 3; this phase is its first implementation"*; §Interfaces produced, line 48 — *"scaffolded empty
   by 01; first populated here — Gap 3, header no longer says 'new.'"*
 - `23-release-hardening.md` header, "Primary package" row, line 8 — *"cross-cutting over all 18 workspace
   packages (Gap 3: `engine-core` counted, `renderer-core` is a `packages/contracts` module, not a 19th
@@ -278,7 +278,7 @@ prior set (02, 04, 09, 13) omitted the real writers/consumers)
   `WorkUnitAttemptStatus` row.
 - `09-cli-and-doctor.md` §Interfaces consumed — cites `WorkUnitAttemptStatus` (incl. `parked:rate_limit`, and
   `cancelled`) for `status --watch` rendering.
-- `13-scheduler-packets-context.md` §In scope "Limit parking" and §Risks & open questions, line 93 —
+- `13-scheduler-packets-context.md` §In scope "Limit parking" and §Risks & open questions, line 129 —
   *"`WorkUnitAttemptStatus: parked:rate_limit`, session retained — only reachable from, and returning to,
   `dispatched`"* / *"`cancelled` as the anticipated member per Gap 4's own text."*
 - `23-release-hardening.md` §In scope — *"limit-parked resume (`WorkUnitAttemptStatus: parked:rate_limit`)
@@ -377,7 +377,7 @@ attributes `approval_token_mint` to 09/12 only) — expanded 2026-07-15 after an
   all type against the identical 13-member list, verbatim.
 - `08-integration-publication.md` (journals `cas_ref_update`/`evidence_pointer`), `13-scheduler-packets-
   context.md` (`fanout_rationale`/`work_unit_transition`), `14-quality-security-gates.md` (`evidence_pointer`,
-  line 87 — *"Gap 5's own rationale rejected a 14th"*), `22-learning-system.md` (`learning_transition`) —
+  line 107 — *"Gap 5's own rationale rejected a 14th"*), `22-learning-system.md` (`learning_transition`) —
   each journals against specific named members drawn from the same closed list, none inventing an additional
   member.
 
@@ -422,7 +422,7 @@ precondition/ETag token, never rendered communication text.
 - `09-cli-and-doctor.md` §In scope, `evidence <change-set-id>` bullet — *"including rendered PR-title/PR-body/
   review-comment `RenderedArtifact`s (17) once attached… the human-facing handoff copy is retrieved here,
   never auto-posted anywhere."*
-- `14-quality-security-gates.md` §Risks & open questions, line 91 — *"Gap 6, confirmed no-op for this phase:
+- `14-quality-security-gates.md` §Risks & open questions, line 111 — *"Gap 6, confirmed no-op for this phase:
   the binding resolutions explicitly rejected tying this phase's repair-dispatch 'new diagnostic evidence'
   requirement to 17's rendered/lint-passed review-comment template… This file introduces no relationship to
   `packages/renderer` (17)."*
@@ -460,7 +460,7 @@ implementation at 06:42/116 — 06 added 2026-07-15)
   exactly `supportsJsonSchema`, `supportsSessionResume`, `permissionModel`, `sandboxModel`, `engineVersion`
   (Gap 7 — retires this phase's earlier `structuredOutput`/`sessionResume` draft names)"*; §Exit criteria,
   line 91 — same five fields, "(Gap 7)."
-- `11-intake-contract-approval.md` §Interfaces consumed, line 96 — *"`EngineAdapter.capabilities()` —
+- `11-intake-contract-approval.md` §Interfaces consumed, line 122 — *"`EngineAdapter.capabilities()` —
   `engineVersion`, `supportsJsonSchema`, `supportsSessionResume` (field names per Gap 7)."*
 - `23-release-hardening.md` §Interfaces consumed, row "03," line 63 — the same five field names listed
   verbatim.
@@ -532,7 +532,7 @@ gap's Verified-in — 13 added 2026-07-15)
 - `11-intake-contract-approval.md` §In scope, `project.inspect` bullet — "12 detection when available;
   graceful degradation before 12" (pre-existing text, left unedited, and cited by Phase 12 as sufficient
   corroboration).
-- `13-scheduler-packets-context.md` §Out of scope, line 38 — *"Doc-research task-packet generation (12) —
+- `13-scheduler-packets-context.md` §Out of scope, line 40 — *"Doc-research task-packet generation (12) —
   consumed by 11's drafting flow, never directly by this phase (Gap 9)"*; §In scope, line 21 and §Out of
   scope line 32 also cite "(Gap 9)" directly for the related "manager subagents are never this phase's
   vocabulary" clarification.
@@ -566,7 +566,7 @@ approval-preview surface (11:32–33); 11 added 2026-07-15
   transition)."*
 - `20-grafana-adapters.md` §In scope, line 19 — *"using 02's `HighImpactCapabilityFlag` labels verbatim
   (Grafana's 4 members never drifted from 02's wording, unlike Jira's, which Gap 10 corrects)."*
-- `19-jira-datacenter-adapter.md` §Interfaces consumed, line 57 — "P02's canonical labels (`closing
+- `19-jira-datacenter-adapter.md` §Interfaces consumed, line 88 — "P02's canonical labels (`closing
   transitions`, `bulk mutations`, among others)."
 - `23-release-hardening.md` §Interfaces consumed, row "18," line 78 — "canonical P02 labels: closing
   transitions, bulk mutations, etc."
