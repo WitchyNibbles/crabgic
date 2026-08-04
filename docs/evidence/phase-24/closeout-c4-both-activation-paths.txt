@@ -1,0 +1,54 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:08Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/cli/src/intake/standing-approval.test.ts packages/cli/src/intake/contract-approve-handler.test.ts packages/supervisor/src/intake/readiness-gate.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/supervisor| src/intake/readiness-gate.test.ts > transitionChangeSetToReady > blocks the ready transition — throws before touching the state machine — when a requirement is unmapped 8ms
+ ✓ |@crabgic/supervisor| src/intake/readiness-gate.test.ts > transitionChangeSetToReady > transitions to ready when every requirement is mapped 15ms
+ ✓ |@crabgic/supervisor| src/intake/readiness-gate.test.ts > transitionChangeSetToReady > seals every requirement's criteria at the ready transition 12ms
+ ✓ |@crabgic/supervisor| src/intake/readiness-gate.test.ts > transitionChangeSetToReady > refuses to seal — and so refuses to ready — when a declared requirement has no record 1ms
+ ✓ |@crabgic/supervisor| src/intake/readiness-gate.test.ts > transitionChangeSetToReady > still surfaces IllegalTransitionError for full coverage but an illegal source state 8ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > approves a contained envelope with no prompt and no token, and journals the authorizing digest 33ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > leaves no seal behind when the standing policy refuses (roadmap/24 exit criterion 4) 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > escalates an envelope reaching outside the policy, naming EVERY escaping dimension 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > escalates when no policy exists — absent means deny, never skip 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > escalates an unreadable policy, and says so rather than reporting it as absent 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > escalates a TRANSIENT policy failure without ever assuming an approval 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > escalates when the loader itself throws, instead of propagating a crash into intake 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > reports an unowned requirement as not_ready — no approval route fixes a planning gap 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > reports a missing IntentContract as not_ready rather than approving on a requirement set it cannot read 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > is idempotent for an already-ready ChangeSet: approves, journals NOTHING new, and never throws 15ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > still refuses a replay whose policy has NARROWED since it was approved 14ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > refuses to treat a failed ChangeSet as approvable 2ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > refuses to treat a cancelled ChangeSet as approvable 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > refuses to treat a blocked ChangeSet as approvable 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > refuses to treat a draft ChangeSet as approvable 1ms
+ ✓ |crabgic| src/intake/standing-approval.test.ts > applyStandingApproval > refuses a vacuous policy that grants nothing, rather than treating empty as permissive 1ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > fails closed for an unknown changeSetId 4ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > reports the token-was-consumed reason when the ChangeSet vanishes between the pre-check and the final transition (rare race) 21ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > fails closed for a scripted call with no pre-minted token (model self-approval fixture) 1ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > worker-context fixture: a legitimately-registered caller still cannot approve without the real token payload 1ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > CRITICAL C1: a valid token minted for a DIFFERENT ChangeSet's envelope cannot approve this ChangeSet (confused deputy) 18ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > CRITICAL C1: a caller-supplied digest that disagrees with the ChangeSet's real envelope hash fails closed even with an otherwise-valid token for that stale digest 1ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > approves and transitions to ready on a valid token with full requirement coverage 15ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > journals the approval seal — the full requirement-to-criteriaHash set — on the token path (roadmap/24 exit criterion 4) 15ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > leaves no seal behind when this path refuses the approval (roadmap/24 exit criterion 4) 2ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > verifies but refuses ready when a requirement is unmapped — never flips state, and the token is NOT consumed (L5) 13ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > verifies successfully but refuses when the ChangeSet is in an illegal source state for ready — never throws, returns approved:false, and does NOT consume the token (L5) 281ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > honors an injected clock — an expired token fails closed 2ms
+ ✓ |crabgic| src/intake/contract-approve-handler.test.ts > runContractApprove > replaying the same token a second time fails closed (single-use) 348ms
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  13:28:09
+   Duration  1.91s (transform 2.20s, setup 0ms, import 3.13s, tests 852ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0

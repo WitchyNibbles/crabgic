@@ -1,0 +1,29 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:13Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/criteria-seal-rollback.integration.test.ts packages/journal/src/criteria-seal-anchor.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > round-trips a seal for its own change set 19ms
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > returns undefined when no seal was ever recorded — the fail-closed input 1ms
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > never returns another change set's seal 8ms
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > returns the LATEST seal, so re-approval supersedes and rollback does not pass 11ms
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > ignores adjudication_decision entries that carry no seal at all 6ms
+ ✓ |@crabgic/journal| src/criteria-seal-anchor.test.ts > journalCriteriaSeal / findLatestCriteriaSeal > a sealed entry is an ordinary journal entry — the chain still verifies 6ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-rollback.integration.test.ts > latest-seal-wins blocks a rollback to a previously-approved criteria set (roadmap/24 exit criterion 6) > refuses a success judged against the SUPERSEDED revision, resolving the seal through findLatestCriteriaSeal 42ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-rollback.integration.test.ts > latest-seal-wins blocks a rollback to a previously-approved criteria set (roadmap/24 exit criterion 6) > accepts the same work unit judged against the CURRENT revision — re-approval supersedes, it does not brand every later completion a tamper 20ms
+ ✓ |@crabgic/scheduler| src/criteria-seal-rollback.integration.test.ts > latest-seal-wins blocks a rollback to a previously-approved criteria set (roadmap/24 exit criterion 6) > the FIRST approval alone still accepts revision A — the refusal above is superseding, not an artefact of the fixture 16ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  13:28:13
+   Duration  1.04s (transform 1.01s, setup 0ms, import 1.41s, tests 130ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0

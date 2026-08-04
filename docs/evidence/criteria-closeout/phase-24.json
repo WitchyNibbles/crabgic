@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "phase": "24",
+  "roadmapFile": "roadmap/24-sealed-acceptance-criteria.md",
+  "pass": {
+    "date": "2026-08-02",
+    "agent": "criteria-closeout pass, phase 24 (post-v1 phase)",
+    "headSha": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Approved requirements are durable: after process restart, every requirement of an approved ChangeSet resolves by id with its criteria and `criteriaHash` intact (integration test).",
+      "textSha256": "14dd9ecba24907c32c36ba47dc2cb38a13439fd3eff5db144535b093762756d7",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 839 — '✓  @crabgic/supervisor  src/intake/requirement-durability.integration.test.ts (2 tests) 68ms'; run summary line 1035 — ' Test Files  625 passed (625)'; line 1036 — '      Tests  6155 passed | 1 skipped (6156)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/requirement-durability.integration.test.ts:173-195",
+          "quotedAssertion": "The restart itself, then the criterion's three clauses. :174 'const reloadedRegistry = openRequirementsRegistry();' / :175 'const reloadedJournal = openJournal();' — every live object discarded and rebuilt over the same paths. Then, for every declared id: :180 'const reloaded = reloadedRegistry.get(id);' (resolves by id), :186 'expect(reloaded!.acceptanceCriteria).toStrictEqual(original.acceptanceCriteria);' and :187 'expect(reloaded!.criteriaHash).toBe(original.criteriaHash);' (criteria and criteriaHash intact), :190 'expect(reloaded!.criteriaHash).toBe(computeCriteriaHash(reloaded!.acceptanceCriteria));' (still self-consistent after the round trip), :193 'expect(verifyCriteriaSeal(reloaded!, seal).ok).toBe(true);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/requirement-durability.integration.test.ts:158-171",
+          "quotedAssertion": "Anti-vacuity on the word 'approved': the fixture really goes through the approval funnel with records read out of the DURABLE registry, not the in-memory build result. :159 'const ready = await transitionChangeSetToReady({' / :165 'requirements: resolveRequirements(requirements, declared),' / :167 'expect(ready.state).toBe(\"ready\");' / :171 'expect(built.declared).toHaveLength(DRAFTS.length);' — a degenerate empty requirement set would fail the last line, and an unmapped one would be refused by the gate before the seal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/requirement-durability.integration.test.ts:198-239",
+          "quotedAssertion": "The negative control: durability is not a synonym for trust. After approval the record is rewritten on disk WITH a recomputed hash — :228 'requirements.put({' / :230 'acceptanceCriteria: widened,' / :231 'criteriaHash: computeCriteriaHash(widened),' — and reloading still refuses: :237 'expect(checked.ok).toBe(false);' / :238 'expect(checked.reason).toBe(\"approval_seal_mismatch\");'. Without this, a registry that returned whatever is on disk would satisfy the positive case."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/bootstrap.ts:470-473",
+          "quotedAssertion": "The production wiring the fixture reuses, so 'durable' means the shipped path and not a test-only one: 'requirements: createFileRegistry<Requirement>({' / 'path: join(stateRoot, REQUIREMENTS_FILE_NAME),' / 'schema: RequirementSchema,'. The test opens its registry through the same 'createFileRegistry' factory (test :78)."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c1-requirement-durability.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  2 passed (2)' — scoped local re-run at this record's HEAD; header carries the UTC timestamp, the HEAD sha, the verbatim command and 'exit status: 0'."
+        }
+      ],
+      "notes": "SCOPE, stated so the tick is not read as wider than it is: the 'process restart' is simulated inside one process — every live object is discarded and rebuilt over the same on-disk paths, which is the only way a vitest fixture can do it. Nothing from phase 1 of the fixture is reachable from phase 2 except the bytes on disk (the test's own header says so), but no second OS process is spawned. This is the same shape phase 24's own work item 3 asked for ('build, persist, reload, resolve every approved requirement by id')."
+    },
+    {
+      "index": 2,
+      "text": "A `Requirement` without `criteriaHash` is unrepresentable — schema parse fails (unit test).",
+      "textSha256": "3164504bfe503b036d542f877ded0f8efbf19988f26c76428fb492e85d72342e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 440 — '✓  @crabgic/contracts  src/contracts/requirement.test.ts (10 tests) 13ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/requirement.test.ts:55-63",
+          "quotedAssertion": ":55 'it(\"rejects a missing criteriaHash — an unsealed requirement is unrepresentable (roadmap/24)\", () => {' / :56 'const { criteriaHash: _criteriaHash, ...rest } = validRequirement;' / :57 'expect(RequirementSchema.safeParse(rest).success).toBe(false);'; and the empty-string arm at :61 'const invalid = { ...validRequirement, criteriaHash: \"\" };' / :62 'expect(RequirementSchema.safeParse(invalid).success).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/requirement.test.ts:21-31",
+          "quotedAssertion": "The positive control that makes the two rejections mean 'because criteriaHash is missing' rather than 'because the fixture is invalid anyway': :23 'expect(RequirementSchema.safeParse(validRequirement).success).toBe(true);' over a fixture identical except for the field under test, and :29 'expect(RequirementSchema.safeParse(fixture).success).toBe(true);' across every declared section value."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/requirement.ts:59",
+          "quotedAssertion": "The shape itself, unrepresentable rather than policed by convention: 'criteriaHash: NonEmptyStringSchema,' inside a '.strict()' object — no '.optional()', which is what makes both rejections above structural."
+        },
+        {
+          "kind": "artifact",
+          "ref": "packages/contracts/schemas/requirement.json:90-104",
+          "quotedAssertion": "The generated JSON Schema agrees, so the guarantee survives the schema-export boundary too: the '\"required\": [' list at :90 contains '\"criteriaHash\",' at :98."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c2-requirement-schema.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  10 passed (10)' — scoped local re-run at this record's HEAD, verbose reporter, so each it() name is visible."
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "text": "Canonicalization is deterministic and content-sensitive per the property suite (fast-check, CI).",
+      "textSha256": "8ebe6bd790adcf2a08ba8cfe2538b1930fd8e9790c4d30f1cfaa3f51802fd8dd",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "The criterion names CI as its channel, so both property files are shown executing inside the job: line 867 — '✓  @crabgic/supervisor  src/intake/canonical-hash.test.ts (7 tests) 77ms'; line 413 — '✓  @crabgic/contracts  src/contracts/criteria-seal.test.ts (19 tests) 63ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/canonical-hash.test.ts:45-66",
+          "quotedAssertion": "The fast-check property the criterion names. :45 'it(\"property: identical values always hash identically, and any single scalar leaf mutation changes the hash\", () => {' / :57 'expect(canonicalHash(withExtra)).toBe(canonicalHash({ ...withExtra }));' (determinism) / :60 'expect(canonicalHash(withExtra)).not.toBe(canonicalHash(obj));' (content-sensitivity) / :64 '{ numRuns: 200 },'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/canonical-hash.test.ts:6-23",
+          "quotedAssertion": "The three example-based arms that pin what 'deterministic' and 'content-sensitive' mean here. :9 'expect(canonicalStringify(a)).toBe(canonicalStringify(b));' with keys permuted; :16 'expect(canonicalHash(base)).not.toBe(canonicalHash(perturbed));' for a single-field change; :22 'expect(canonicalHash(a)).not.toBe(canonicalHash(b));' for array-order, which this canonicalizer deliberately does NOT normalize."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/criteria-seal.test.ts:51-82",
+          "quotedAssertion": "The same two properties over the criteria-shaped input this phase actually hashes. :52 'expect(computeCriteriaHash(CRITERIA)).toBe(computeCriteriaHash(CRITERIA));' / :57 'expect(computeCriteriaHash(edited)).not.toBe(computeCriteriaHash(CRITERIA));' / :62 'expect(computeCriteriaHash(reordered)).not.toBe(computeCriteriaHash(CRITERIA));' / :71 'it(\"property: any two distinct criteria lists hash differently (fast-check)\", () => {' with :77 'fc.pre(JSON.stringify(a) !== JSON.stringify(b));' / :78 'return computeCriteriaHash(a) !== computeCriteriaHash(b);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/criteria-seal.ts:73-75",
+          "quotedAssertion": "What binds the property suite to the seal: 'export function computeCriteriaHash(acceptanceCriteria: readonly string[]): string {' / 'return canonicalHash([...acceptanceCriteria]);' — the criteria hash IS the canonicalizer, not an adjacent function."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/canonical-hash.ts:19",
+          "quotedAssertion": "And the supervisor property file exercises the SAME implementation rather than a twin, because the module is now a re-export: 'export { canonicalHash, canonicalStringify, type CanonicalJsonValue } from \"@crabgic/contracts\";'. Both cited suites therefore test packages/contracts/src/shared/canonical-hash.ts."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c3-property-guard-probe.txt",
+          "quotedAssertion": "Anti-vacuity instrumentation for both properties, per the guarded-assertion trap. 'PROBE A (canonical-hash.test.ts property guard \"!(extraKey in obj)\"): entered 200 of 200 cases' / 'PROBE B (criteria-seal.test.ts property precondition \"a !== b\"):      accepted 100 of 100 cases'. The probe source is committed verbatim in the same file and imports the real built functions. The count is fast-check-seed-dependent: an earlier run of the same probe reported 198 of 200. Either way the guard is entered in essentially every case, which is what the trap asks."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c3-canonicalization-property.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  26 passed (26)' — scoped local re-run of both property files at this record's HEAD."
+        }
+      ],
+      "notes": "The supervisor property's sensitivity assertion sits inside 'if (!(extraKey in obj))' and the contracts property behind an 'fc.pre'. Both guards were instrumented rather than assumed (see the probe artifact): 198/200 and 100/100. Neither is the phase-22 shape where a guard is never entered."
+    },
+    {
+      "index": 4,
+      "text": "Both activation paths journal the approval seal; absence of a seal for a post-phase approval is impossible to produce through either path (integration tests, one per path).",
+      "textSha256": "92025234edbff8635c2c7d115cfe572a3971a51f134f6e3295ead62c420adeed",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "Both per-path suites and the shared funnel suite executing in the job: line 929 — '✓  crabgic  src/intake/standing-approval.test.ts (16 tests) 82ms'; line 923 — '✓  crabgic  src/intake/contract-approve-handler.test.ts (13 tests) 115ms'; line 850 — '✓  @crabgic/supervisor  src/intake/readiness-gate.test.ts (5 tests) 42ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/standing-approval.test.ts:150-171",
+          "quotedAssertion": "PATH 1, standing approval. Not the decision label but the seal's full content, read back through the dispatcher's own reader: :165 'const seal = await findLatestCriteriaSeal(store, seeded.changeSet.id);' / :168 'expect(seal!.criteriaHashes).toStrictEqual({' / :169 '[seeded.requirement.id]: seeded.requirement.criteriaHash,' / :171 'expect(verifyCriteriaSeal(seeded.requirement, seal).ok).toBe(true);'. The 'toStrictEqual' is what rules out a seal that silently dropped a requirement."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/standing-approval.test.ts:179-187",
+          "quotedAssertion": "The 'impossible to produce' half for path 1 — a refusal must leave nothing behind: :185 'expect(outcome.status).toBe(\"escalate\");' / :186 'expect(await findLatestCriteriaSeal(store, seeded.changeSet.id)).toBeUndefined();'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:318-363",
+          "quotedAssertion": "PATH 2, the approval-token path, with the before/after control that makes it a statement about THIS call: :338 'expect(await findLatestCriteriaSeal(store, seed.id)).toBeUndefined();' before, then :353 'expect(result.approved).toBe(true);' / :358 'expect(seal!.criteriaHashes).toStrictEqual({' / :359 '[REQ_A]: reqA.criteriaHash,' / :360 '[REQ_B]: reqB.criteriaHash,' / :362 'expect(verifyCriteriaSeal(reqA, seal).ok).toBe(true);'. Two requirements, so a partial seal is detectable."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/intake/contract-approve-handler.test.ts:372-403",
+          "quotedAssertion": "The 'impossible to produce' half for path 2: a well-formed token minted for a different envelope is refused and leaves no seal — :400 'expect(result.approved).toBe(false);' / :401 'expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");' / :402 'expect(await findLatestCriteriaSeal(store, seed.id)).toBeUndefined();'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/readiness-gate.ts:84-101",
+          "quotedAssertion": "Why 'impossible' is structural and not merely twice-tested: the seal is taken inside the ONE funnel both callers share, before the transition. :84 'throw new UnsealableRequirementError(unsealable);' then :90 'await journalCriteriaSeal(options.journal, {' / :91 'changeSetId: options.changeSetId,' and only afterwards :101 'to: \"ready\",'. A repo-wide grep for a ChangeSet ready-transition outside this function returns nothing in production code."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/readiness-gate.test.ts:80-122",
+          "quotedAssertion": "The funnel's own two arms. :97 'expect(seal?.criteriaHashes[REQ_A]).toBe(reqA.criteriaHash);' / :98 'expect(seal?.criteriaHashes[REQ_B]).toBe(reqB.criteriaHash);' for the full set, and the refusal at :118 ').rejects.toThrow(UnsealableRequirementError);' / :121 'expect(changeSets.get(seed.id)?.state).toBe(\"awaiting_approval\");' — a declared requirement with no record cannot reach ready unsealed, it is refused outright."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c4-both-activation-paths.txt",
+          "quotedAssertion": "' Test Files  3 passed (3)' / '      Tests  34 passed (34)' — scoped local re-run of both per-path suites plus the shared funnel suite at this record's HEAD."
+        }
+      ],
+      "notes": "'Both activation paths' is verified two ways and they agree: per-path integration tests (one each, as the criterion demands), plus the structural argument that the only production writer of a ChangeSet 'ready' transition is transitionChangeSetToReady, which seals unconditionally before transitioning. The clause is bounded to activation: it says nothing about an in-process holder of a JournalStore appending a plausible seal directly — that is the phase's own disclosed same-process residual, still open (see the phase's Risks section and criterion 5's notes)."
+    },
+    {
+      "index": 5,
+      "text": "The headline tamper fixture: post-approval criteria edit → completion is never recorded `succeeded`; `failed` is recorded and the typed reason (`self_consistency_mismatch` or `approval_seal_mismatch`) is journaled (integration test).",
+      "textSha256": "df828499900c5343939f461a438d67b99ed3aba6d76a42602d5e3763f5bcc0a1",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 810 — '✓  @crabgic/scheduler  src/executor.test.ts (20 tests) 318ms'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:623-666",
+          "quotedAssertion": "The headline fixture, all three clauses. Post-approval edit (widened criteria, hash recomputed, so the record is self-consistent) against a SUCCEEDING adapter: :644 'expect(outcome.kind).toBe(\"failed\");' / :650 'expect(latest?.status).toBe(\"failed\");' (never succeeded) / :657 'expect(refusals).toHaveLength(1);' / :658 'expect(refusals[0]!.rationale).toContain(\"approval_seal_mismatch\");' / :659 'expect(refusals[0]!.rationale).toContain(REQ_ID);' — the typed reason read back OUT OF THE JOURNAL, not off the in-memory outcome."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:569-597",
+          "quotedAssertion": "What makes the assertion above journal-level rather than outcome-level: the helper reads the real file-backed store. :583 'for await (const entry of store.queryEntries({' / :584 'type: \"adjudication_decision\",' / :588 'if (entry.payload.decision !== \"criteria_seal_refused\") continue;' / :590 'rationale: entry.payload.rationale,'. The store is a real createJournalStore over a mkdtemp directory (file header :30-35)."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:599-621",
+          "quotedAssertion": "The negative control, without which 'a refusal was journaled' would be satisfied by a system that refuses everything: criteria that still match the seal are accepted — :617 'expect(outcome.kind).toBe(\"succeeded\");' / :618 'expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe(\"succeeded\");' / :620 'expect(await sealRefusals()).toHaveLength(0);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.test.ts:668-691",
+          "quotedAssertion": "The fail-closed arm, journaled with its own distinguishable reason: :681 'expect(outcome.diagnostics.join(\" \")).toContain(\"no_approval_seal\");' / :687 'expect(refusals).toHaveLength(1);' / :688 'expect(refusals[0]!.rationale).toContain(\"no_approval_seal\");'. Also the security bullet, asserted at :664-665: 'expect(refusals[0]!.rationale).not.toContain(\"Anything at all is acceptable\");' — ids and hashes reach the journal, the attacker-authored criteria text does not."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:247-264",
+          "quotedAssertion": "The implementation half, and its ordering: :247 'if (sealFailures.length > 0) {' then :257 'await journalSealRefusal(params, sealFailures);' immediately followed by :258 'await recordAttempt(' — the reason is journaled BEFORE the failed transition, so a crash between the two leaves the reason behind rather than a bare failed nothing accounts for."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:177-192",
+          "quotedAssertion": "The formatter is reason-AGNOSTIC, which is why the disjunction in the criterion is covered by the two journal-level cases above. :180 interpolates whatever CriteriaSealCheckResult.reason holds, with no branch on its value — '${checked.requirement.id}=${checked.result.reason ?? \"unknown\"}' — and the entry it writes is unconditional for every non-ok check: :184 'type: \"adjudication_decision\",' / :188 'decision: \"criteria_seal_refused\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/criteria-seal.test.ts:94-100",
+          "quotedAssertion": "The third reason, at unit level only (see notes): :94 'it(\"self_consistency_mismatch — criteria edited, stale hash left behind (the naive vector)\", () => {' / :99 'expect(result.reason).toBe(\"self_consistency_mismatch\");'. This is verifyCriteriaSeal's own output, not a journal read."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c5-tamper-reason-journaled.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  20 passed (20)' — scoped local re-run at this record's HEAD, verbose reporter, so all five 'acceptance-criteria seal enforcement' cases are named in the transcript."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/wi5-seal-reason-journaled-failing.txt",
+          "quotedAssertion": "The RED capture from the commit that made this clause true (06693e5, PR #48), committed by that PR: 'AssertionError: expected [] to have a length of 1 but got +0' against 'REFUSES a success whose criteria were rewritten after approval'. Historical: the line numbers and paths inside it are as of that PR's branch, not this HEAD."
+        }
+      ],
+      "notes": "TWO BOUNDS, both deliberate. (1) The journal-level assertions cover 'approval_seal_mismatch' and 'no_approval_seal'. 'self_consistency_mismatch' reaches the journal through the same reason-agnostic formatter (executor.ts:177-192 interpolates result.reason with no branch), but its only direct evidence is the unit test cited above — there is no journal-level fixture for it. The criterion is disjunctive ('self_consistency_mismatch OR approval_seal_mismatch') and the second disjunct is journal-evidenced, so it ticks as written; the gap is recorded here rather than papered over. (2) The typed reason rides in the payload's free-text 'rationale' rather than a typed payload member — journal-payloads.ts:118-121's own Gap-20 comment argues typed-over-prose for the seal itself, and ledger Gap 5's 'Boundary with Gap 20' paragraph sanctions JSON-in-rationale for phase-local vocabulary (phase 14's precedent). The criterion says 'journaled', not 'typed', so this is not a wording problem — but a machine consumer of the refusal reason would want an optional typed field, and today it would have to substring-match. Neither bound was fixed in this pass (closeout passes do not fix defects), and neither prevents an honest tick. Historical context: before 06693e5 this clause was FALSE — the reason was computed, returned on diagnostics, and written down nowhere."
+    },
+    {
+      "index": 6,
+      "text": "Rollback to a previously-approved criteria set after re-approval is blocked by latest-seal-wins (integration test).",
+      "textSha256": "10cbb25d1701183f068403b0b70331adc21b02125aacc4b6ce85b55492e13655",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 814 — '✓  @crabgic/scheduler  src/criteria-seal-rollback.integration.test.ts (3 tests) 97ms'; line 716 — '✓  @crabgic/journal  src/criteria-seal-anchor.test.ts (6 tests) 48ms'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/criteria-seal-rollback.integration.test.ts:105-142",
+          "quotedAssertion": "The rollback, end-to-end through dispatch. Two seals appended in order (and :108 'expect(revA.criteriaHash).not.toBe(revB.criteriaHash);' pins that the two revisions really differ — same type on both sides, two sha256 digests, so the comparison genuinely can fail), then :114 'const approvalSeal = await findLatestCriteriaSeal(store, CHANGE_SET_ID);' / :115 'expect(approvalSeal?.criteriaHashes[REQ_ID]).toBe(revB.criteriaHash);' (latest is in force), then the work unit presents the genuinely-once-approved revision A — :126 'criteriaSeal: { requirements: [revA], approvalSeal },' against a SUCCEEDING adapter — and :129 'expect(outcome.kind).toBe(\"failed\");' / :131 'expect(outcome.diagnostics.join(\" \")).toContain(\"approval_seal_mismatch\");' / :135 'expect((await getLatestAttempt(store, WORK_UNIT_ID))?.status).toBe(\"failed\");' / :138 'expect(rationales[0]).toContain(\"approval_seal_mismatch\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/criteria-seal-rollback.integration.test.ts:144-188",
+          "quotedAssertion": "The two controls that make the refusal 'superseding' rather than an artefact of the fixture. Same two seals, current revision presented: :162 'expect(outcome.kind).toBe(\"succeeded\");' / :164 'expect(await refusalRationales()).toHaveLength(0);'. And revision A with only the FIRST approval recorded: :187 'expect(outcome.kind).toBe(\"succeeded\");' — so revA is not intrinsically rejectable; it is rejected only once superseded."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/criteria-seal-rollback.integration.test.ts:67-70",
+          "quotedAssertion": "Anti-vacuity on the two revisions: :68 'function revision(acceptanceCriteria: readonly string[]): Requirement {' / :69 'return buildRequirement({ id: REQ_ID, acceptanceCriteria: [...acceptanceCriteria] });' — buildRequirement re-derives criteriaHash, so BOTH revisions are self-consistent and only the journal can tell them apart. A self_consistency_mismatch therefore could not be mistaken for the seal check here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/criteria-seal-anchor.test.ts:56-68",
+          "quotedAssertion": "The anchor-level proof the integration test composes with: :56 'it(\"returns the LATEST seal, so re-approval supersedes and rollback does not pass\", async () => {' / :67 'expect(seal?.criteriaHashes[REQUIREMENT_ID]).toBe(HASH_B);' after appending HASH_A then HASH_B."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/daemon/run-dispatcher.ts:561-567",
+          "quotedAssertion": "The per-attempt read path the integration test reuses: 'resolveCriteriaSeal: async (ctx) => ({' / 'approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),' — resolved per attempt rather than cached for the run, so a re-approval after a material amendment is picked up rather than judged against a stale bar. SCOPE: this evidences the latest-seal-wins semantics the criterion names, NOT that the surrounding enforcement is live in the shipped daemon. The same span's 'deps.requirements === undefined' / '? []' branch always takes the empty arm under composeSupervisor — see defect docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt",
+          "quotedAssertion": "' Test Files  2 passed (2)' / '      Tests  9 passed (9)' — scoped local re-run of the integration file plus the journal anchor suite at this record's HEAD."
+        }
+      ],
+      "notes": "The integration test simulates the material-amendment path by its journal EFFECT (two seals for the same ChangeSet, appended in approve → re-approve order) rather than by driving materiality-classifier and the amendment guard end-to-end. That machinery is explicitly out of this phase's scope ('consumed as the sanctioned change path, not modified'), and what the criterion asks about is the seal semantics, which is what is exercised. Noted so the tick is not read as a claim about the amendment machinery itself. SCOPE BOUND (2026-08-02, adversarial review): this tick is carried by the integration test the criterion names; it is NOT a claim that the surrounding enforcement is live in the shipped daemon. composeSupervisor builds no requirements registry (it declares REQUIREMENTS_FILE_NAME at compose-supervisor.ts:79 — 'the DAEMON is a reader' — and never opens it; only bootstrap.ts:471, the intake process, does), and SupervisorDependencies.requirements is optional, so run-dispatcher.ts:562-565 always takes the [] arm under the daemon composition. Measured: dispatchAttempt with requirements: [] plus a live seal naming a requirement returns succeeded, zero refusals. With criterion 7's unregistered gate this is one seam. Filed as docs/evidence/criteria-closeout/defects/24-daemon-requirements-registry-unwired.md — named in prose rather than cited, since a defect record written by this same pass sits inside the closeout claim-space and is not evidence for the claim."
+    },
+    {
+      "index": 7,
+      "text": "The seal gate fires under the existing `acceptance` tag at `final_verifying` and a mismatch produces a blocking, schema-valid `EvidenceRecord` through `fireOne` (gate-harness integration test).",
+      "textSha256": "de78989aa1f9cc1c2223802725294be140f286e35dab0b7dd0bcabdcc07ea681",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 570 — '✓  @crabgic/gates  src/criteria-seal-gate.test.ts (5 tests) 53ms'. This is the job that runs the suite; see notes for why the gates-conformance workflow is deliberately NOT cited here."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/criteria-seal-gate.test.ts:25-42",
+          "quotedAssertion": "The tag and the stage. Context at :27 'stage: \"final_verifying\" as const,' / :30 'journal,' — a real file-backed store from mkdtemp (:19). Then :39 'const results = await registry.fireByTag(\"acceptance\", context());' / :40 'expect(results).toHaveLength(1);' / :41 'expect(results[0]!.tag).toBe(\"acceptance\");' — registered under an existing tag, no new one invented."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/criteria-seal-gate.test.ts:62-92",
+          "quotedAssertion": "The mismatch producing a BLOCKING verdict that is still evidenced: :75 'expect(result!.verdict.passed).toBe(false);' / :76 'expect(result!.verdict.exitStatus).toBe(1);' / :77 'expect(result!.verdict.detail).toContain(\"approval_seal_mismatch\");' / :80 'expect(result!.evidence.gateVerdict).toBe(\"failed\");' — converted rather than thrown, so the refusal is on record. The never-sealed arm at :90-91 'expect(result!.verdict.passed).toBe(false);' / 'expect(result!.verdict.detail).toContain(\"no_approval_seal\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/criteria-seal-gate.test.ts:44-60",
+          "quotedAssertion": "The negative control — a gate that blocked unconditionally would satisfy the mismatch case vacuously: with a real journaled seal matching the requirement, :55 'expect(result!.verdict.passed).toBe(true);' / :56 'expect(result!.verdict.exitStatus).toBe(0);' / :58 'expect(result!.evidence.gateVerdict).toBe(\"passed\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/registry.ts:53-79",
+          "quotedAssertion": "'through fireOne' — fireOne is private to createGateRegistry, so fireByTag is the only way to reach it and every firing goes through it. :53 'async function fireOne(gate: RegisteredGate, context: GateContext): Promise<GateFireResult> {' / :54 'const verdict = await gate.handler(context);' / :55 'const evidence = await emitEvidence(context.journal, context, gate.tag, verdict);'; the call the harness test reaches it by, :79 'results.push(await fireOne(gate, context));'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/evidence.ts:29-56",
+          "quotedAssertion": "'schema-valid EvidenceRecord', enforced rather than asserted: :29 'const record: EvidenceRecord = EvidenceRecordSchema.parse({' — a malformed record throws instead of being emitted — and it is journaled at :51 'await journal.appendEntry({' / :52 'type: \"evidence_pointer\",' / :55 'payload: record,'. The blocking case still reaches this line because the handler returns a verdict rather than throwing."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c7-seal-gate-harness.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  5 passed (5)' — scoped local re-run at this record's HEAD, verbose reporter naming all five gate cases."
+        }
+      ],
+      "notes": "TWO SCOPE FACTS, both checked rather than assumed. (1) The gates-conformance workflow is NOT cited: I pulled its job log (run 30745540281, job 91490386361) and it runs exactly two files — 'npx vitest run packages/gates/src/gates-conformance.test.ts' and 'npx vitest run packages/gates/src/engine-conformance-binding.test.ts'. It never executes criteria-seal-gate.test.ts, so citing it would be the green-workflow-that-never-ran-the-check trap. The CI unit job above is the run that really executed this suite. (2) 'fires ... at final_verifying' is evidenced at harness level: the handler itself does not inspect context.stage, and no production composition root registers it — grep for registerCriteriaSealGate outside the test finds only the package's own barrel export. That is the same posture as phase 15's performance gate (nothing calls createGateRegistry in production either), and the criterion's own named channel is a 'gate-harness integration test', which is exactly what exists. The stage-guard that would reject a wrong stage lives in fireFinalCandidateVerification (final-candidate.ts:45), not in this gate."
+    },
+    {
+      "index": 8,
+      "text": "Verification is required by construction: omitting the verifier at any public dispatch/resume entry point fails compilation (type-level fixture in CI).",
+      "textSha256": "103188d50009945c240be534d492f3e0602c76bea0e6d88e23b35babdde62663",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91490386270, steps \"Run npm run typecheck\" (cold) and \"Run npm run typecheck\" (incremental)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "The 'in CI' half — the job log shows the compiler that scores the fixture running twice: line 158 '##[group]Run npm run typecheck' with line 164 '> tsc -b', and again at line 166 / line 172. packages/scheduler/tsconfig.json's 'include': ['src'] pulls the .test.ts fixture into that build, so an unused @ts-expect-error directive reds this job."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 819 — '✓  @crabgic/scheduler  src/criteria-seal-required.type.test.ts (5 tests) 13ms'. The runtime half; the compile-time half is the typecheck job above."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/criteria-seal-required.type.test.ts:78-151",
+          "quotedAssertion": "All four public-surface omissions, each asserted at compile time. :81 '// @ts-expect-error — roadmap/24 exit criterion 8: `criteriaSeal` is a' above :84 'const options: DispatchAttemptOptions = {'; :100 the same directive above :103 'dispatchAttempt({'; :118 above :122 'const options: ResumeAttemptOptions = {'; :138 above :141 'resumeAttempt({'. Both option TYPES and both CALLS, which is what 'any public dispatch/resume entry point' names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/criteria-seal-required.type.test.ts:153-177",
+          "quotedAssertion": "The control that rules out the phase-22 tautology shape — the four fixtures must fail for the omission and not for some unrelated type error: :153 'it(\"still accepts both option shapes once criteriaSeal IS supplied — the fixtures above fail for the omission, not for an unrelated type error\", () => {' / :155 'const criteriaSeal = { requirements: [], approvalSeal: undefined };' / :157 'const dispatchOptions: DispatchAttemptOptions = {' / :166 'const resumeOptions: ResumeAttemptOptions = {' — identical literals plus the one field, compiling clean."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:321-325",
+          "quotedAssertion": "The property being asserted, on the first public entry point: 'export interface DispatchAttemptOptions {' ... '/** The bar this attempt is judged against (roadmap/24) — REQUIRED, so no caller reaches the acceptance funnel without one. */' / 'readonly criteriaSeal: AttemptCriteriaSeal;' — no '?', under 'exactOptionalPropertyTypes' and 'strict'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:418-422",
+          "quotedAssertion": "And on the second public entry point: :418 'export interface ResumeAttemptOptions {' / :422 'readonly criteriaSeal: AttemptCriteriaSeal;'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:127-128",
+          "quotedAssertion": "The shared internal funnel both entry points feed carries it too, so there is no third way in: :127 'Required — see `AttemptCriteriaSeal`. Both public entry points thread it, so the acceptance funnel cannot be reached without a bar.' / :128 'readonly criteriaSeal: AttemptCriteriaSeal;'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c8-type-fixture-bites.txt",
+          "quotedAssertion": "The regression reproduced BY THIS PASS at this record's HEAD, not adopted from the implementing PR: making criteriaSeal optional on both option types yields four unused-directive errors — '(81,5): error TS2578: Unused' / '(100,7): error TS2578: Unused' / '(118,5): error TS2578: Unused' / '(138,7): error TS2578: Unused' — plus 'packages/scheduler/src/executor.ts(396,5): error TS2322: Type' and the same at (472,5), ending 'exit status: 2'. (The record redacts the single quotes TypeScript puts around the directive name, purely so the quoted fragment nests cleanly here.) Reverted immediately; the restored run is captured in the same file, and the file also carries the fixture's runtime pass."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/wi8-type-fixture-breaks-typecheck.txt",
+          "quotedAssertion": "The implementing PR's own capture of the same two breaks (committed in 06693e5), retained for the trail. Its deleted-directive break reports '(81,11): error TS2741: Property' — the raw compiler error the fixture suppresses — and its optional-field break reports the same four TS2578 sites this pass reproduced. Historical: captured on that PR's branch, though its line numbers still resolve exactly at this HEAD."
+        }
+      ],
+      "notes": "The 'four directives' claim is checked against reality rather than the doc comment: dispatchAttempt and resumeAttempt are the only exported entry points into consumeEvents, and both their option interfaces and both their call forms are covered. The fixture's failure mode on regression is TS2578 (unused directive), which is unconditional in TypeScript — not behind a compiler flag that could be turned off in tsconfig.base.json."
+    },
+    {
+      "index": 9,
+      "text": "`JournalEntryType` remains 13 members; all new journal writes use existing kinds (conformance guards compile unchanged; Gap 5 cited in the implementing PR).",
+      "textSha256": "2d03c30a163f0c2f1cc3fd64647bdafbead4901d20264847ef919f2d18288508",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 91490386248, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "job log line 446 — '✓  @crabgic/contracts  src/journal/journal-entry-type.test.ts (7 tests) 11ms'"
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / typecheck (ubuntu-latest), job 91490386270, steps \"Run npm run typecheck\" (cold) and (incremental)",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30745540255",
+          "commit": "d60398f6b1d3aca2f2efbb8adfbac081d6c16904",
+          "quotedAssertion": "'conformance guards compile unchanged' is a compile-time claim, so its channel is this job: line 164 '> tsc -b' (cold) and line 172 '> tsc -b' (incremental), both green. The 'satisfies Record<JournalEntryType, z.ZodTypeAny>' guard is what that build scores."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/journal/journal-entry-type.test.ts:19-70",
+          "quotedAssertion": "The count, the identity of the members, and the exhaustiveness descriptor. :20 'expect(JOURNAL_ENTRY_TYPES.length).toBe(13);' / :41 'expect(JOURNAL_ENTRY_TYPES).toEqual([' with the 13 names listed verbatim in order (:42-54) — a count-only assertion would pass a swapped member, this one does not — / :65 'expect(descriptorKeys).toEqual(memberKeys);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-payloads.ts:203-217",
+          "quotedAssertion": "The compile-time guard itself: 'export const JOURNAL_ENTRY_PAYLOAD_SCHEMAS = {' ... 'adjudication_decision: AdjudicationDecisionPayloadSchema,' ... '} satisfies Record<JournalEntryType, z.ZodTypeAny>;'. Adding a 14th member without a payload, or omitting one of the 13, fails tsc -b."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/codec/journal-payloads.ts:101-125",
+          "quotedAssertion": "How this phase avoided a 14th type: an OPTIONAL typed member on an existing payload. 'export const AdjudicationDecisionPayloadSchema = z' / '.object({' / 'decision: NonEmptyStringSchema,' ... 'criteriaSeal: CriteriaApprovalSealSchema.optional(),' / '})' / '.strict();' — optional, so every pre-phase-24 adjudication entry is still valid."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/criteria-seal-anchor.ts:44-53",
+          "quotedAssertion": "New write #1 (the seal), on an existing kind: 'await journal.appendEntry({' / 'type: \"adjudication_decision\",' / 'changeSetId: seal.changeSetId,' / 'payload: {' / 'decision: \"criteria_sealed\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/executor.ts:183-192",
+          "quotedAssertion": "New write #2 (the seal refusal, added by 06693e5), also on an existing kind: 'await params.journal.appendEntry({' / 'type: \"adjudication_decision\",' / 'payload: {' / 'decision: \"criteria_seal_refused\",' — a distinct discriminator inside the same member, which is the sanctioned shape."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/evidence.ts:51-56",
+          "quotedAssertion": "New write #3 (the seal gate's evidence), on an existing kind: 'await journal.appendEntry({' / 'type: \"evidence_pointer\",' / 'changeSetId: context.changeSetId,' / 'payload: record,'. Those three are the complete set of journal writes this phase introduced."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/journal/src/criteria-seal-anchor.test.ts:84-93",
+          "quotedAssertion": "A sealed entry is an ordinary entry, so the chain guard is unaffected: :84 'it(\"a sealed entry is an ordinary journal entry — the chain still verifies\", async () => {' / :91 'expect(report.valid).toBe(true);' / :92 'expect(report.firstInvalid).toBeUndefined();'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-24/closeout-c9-journal-entry-type-13.txt",
+          "quotedAssertion": "' Test Files  1 passed (1)' / '      Tests  7 passed (7)' — scoped local re-run at this record's HEAD."
+        }
+      ],
+      "notes": "The 'Gap 5 cited in the implementing PR' clause has no citation kind that fits (a PR body is neither a run nor a repository file), so it is verified here in prose. PR #37 (merged as 663dd08, 'feat: complete phase 24 — persist, seal, and enforce acceptance criteria (WI2-6)') says in its body: 'no 14th JournalEntryType (Gap 5 closes the entry-type union, not payload shapes), and typed rather than JSON-in-rationale (Gap 20)'. The same text is durable in git: 'git log -1 --format=%B 663dd08' carries 'No 14th JournalEntryType member (ledger Gap 5, closed at 13)' and 'Gap 5 closes the entry-type union, not payload shapes'. Ledger cross-check: Gap 5's own Resolution (2026-08-01) re-affirms the union closed at 13 and names this phase's criteriaSeal member as the Gap-20 boundary example, so the ruling and the implementation agree."
+    }
+  ]
+}

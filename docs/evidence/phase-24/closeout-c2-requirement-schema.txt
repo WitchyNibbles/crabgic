@@ -1,0 +1,30 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:03Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/contracts/src/contracts/requirement.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — valid fixture > parses a fully-valid fixture (roadmap/11 §In scope, Contract assembly bullet) 3ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — valid fixture > accepts every declared IntentContract section as a `section` value (roadmap/15:20 budget-sourcing tie-in) 1ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects an empty acceptanceCriteria array (min(1)) 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects a section value outside the closed IntentContract section vocabulary 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects a non-uuid entry in workUnitIds 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects a missing title 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects a missing criteriaHash — an unsealed requirement is unrepresentable (roadmap/24) 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — invalid-shape rejection > rejects an empty criteriaHash 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — unknown-key rejection (.strict()) > rejects an unknown top-level key 0ms
+ ✓ |@crabgic/contracts| src/contracts/requirement.test.ts > RequirementSchema — round-trip > parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output 1ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  13:28:04
+   Duration  199ms (transform 34ms, setup 0ms, import 81ms, tests 8ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0

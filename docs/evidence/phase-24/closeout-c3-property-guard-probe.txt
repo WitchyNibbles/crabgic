@@ -1,0 +1,88 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:54Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        node p24-guard-probe.mjs
+
+PROBE SOURCE (run from the repository root; committed verbatim below so the
+measurement is reproducible — FANOUT-BRIEF: 'instrument the guard and count
+how often it is entered ... commit the probe'):
+
+    /**
+     * roadmap/24 exit criterion 3 — anti-vacuity probe for the two fast-check
+     * properties this closeout cites.
+     *
+     * FANOUT-BRIEF vacuity trap: "if a property's assertions are guarded by a
+     * condition, instrument the guard and count how often it is entered before
+     * citing the property."
+     *
+     * Probe A — packages/supervisor/src/intake/canonical-hash.test.ts, the
+     * property at "identical values always hash identically, and any single
+     * scalar leaf mutation changes the hash". Its sensitivity assertion sits
+     * inside `if (!(extraKey in obj))`. Same arbitraries, same numRuns (200);
+     * counts how often that guard is entered.
+     *
+     * Probe B — packages/contracts/src/contracts/criteria-seal.test.ts, the
+     * property "any two distinct criteria lists hash differently". Its body is
+     * guarded by `fc.pre(JSON.stringify(a) !== JSON.stringify(b))`; a
+     * precondition that almost always rejects would leave the property
+     * evidencing nothing. Counts accepted vs. pre-rejected cases.
+     *
+     * Both probes import the REAL functions under test, not copies.
+     */
+    import fc from "fast-check";
+    import { canonicalHash } from "./packages/supervisor/dist/intake/canonical-hash.js";
+    import { computeCriteriaHash } from "./packages/contracts/dist/contracts/criteria-seal.js";
+    
+    let aTotal = 0;
+    let aGuardEntered = 0;
+    fc.assert(
+      fc.property(
+        fc.dictionary(fc.string({ minLength: 1 }), fc.oneof(fc.string(), fc.integer(), fc.boolean())),
+        fc.string({ minLength: 1 }),
+        fc.oneof(fc.string(), fc.integer(), fc.boolean()),
+        (obj, extraKey, extraValue) => {
+          aTotal += 1;
+          const withExtra = { ...obj, [extraKey]: extraValue };
+          if (canonicalHash(withExtra) !== canonicalHash({ ...withExtra })) return false;
+          if (!(extraKey in obj)) {
+            aGuardEntered += 1;
+            if (canonicalHash(withExtra) === canonicalHash(obj)) return false;
+          }
+          return true;
+        },
+      ),
+      { numRuns: 200 },
+    );
+    
+    let bTotal = 0;
+    let bAccepted = 0;
+    fc.assert(
+      fc.property(
+        fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 6 }),
+        fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 6 }),
+        (a, b) => {
+          bTotal += 1;
+          fc.pre(JSON.stringify(a) !== JSON.stringify(b));
+          bAccepted += 1;
+          return computeCriteriaHash(a) !== computeCriteriaHash(b);
+        },
+      ),
+    );
+    
+    console.log(
+      `PROBE A (canonical-hash.test.ts property guard "!(extraKey in obj)"): entered ${String(aGuardEntered)} of ${String(aTotal)} cases`,
+    );
+    console.log(
+      `PROBE B (criteria-seal.test.ts property precondition "a !== b"):      accepted ${String(bAccepted)} of ${String(bTotal)} cases`,
+    );
+    console.log("Both properties are non-vacuous: each guard/precondition admits the vast majority.");
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+PROBE A (canonical-hash.test.ts property guard "!(extraKey in obj)"): entered 200 of 200 cases
+PROBE B (criteria-seal.test.ts property precondition "a !== b"):      accepted 100 of 100 cases
+Both properties are non-vacuous: each guard/precondition admits the vast majority.
+
+----- end of output -----
+exit status: 0

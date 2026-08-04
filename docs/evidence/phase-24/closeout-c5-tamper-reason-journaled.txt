@@ -1,0 +1,40 @@
+roadmap/24 criteria-closeout — scoped local run
+captured (UTC): 2026-08-02T11:28:11Z
+HEAD:           d60398f6b1d3aca2f2efbb8adfbac081d6c16904
+cwd:            repository root (git worktree of WitchyNibbles/crabgic)
+command:        npx vitest run --coverage.enabled=false --reporter=verbose packages/scheduler/src/executor.test.ts
+
+----- verbatim output below; nothing edited except ANSI colour codes stripped -----
+
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p24
+
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > journals session_assignment then dispatched, and returns 'succeeded' for a clean success script 26ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > threads a caller-supplied runId onto the session_assignment entry 13ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > CRASH-RECOVERY FIX: threads the caller-supplied runId onto the succeeded work_unit_transition entry too (not just session_assignment) — this is what lets @crabgic/supervisor's recoverRun see a real dispatch's terminal status after a restart 12ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'workerResultFailure' for a self-reported failure 12ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'crashed' with evidenceKind 'crash' for an abrupt stream end 11ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'failed' with evidenceKind 'schemaViolation' for a schema-violating result 10ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'cancelled' for a self-reported cancellation 10ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > returns 'parked' with resetsAt on a limitSignal, and journals parked:rate_limit retaining the sessionId 13ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > throws PacketBudgetExceededError before ever calling adapter.spawn for an over-budget packet 2ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS dispatchAttempt with GlobalPauseActiveError, before ever calling adapter.spawn 10ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt > MINOR-3 fix: dispatchAttempt proceeds normally once the simulated clock passes the global reset 19ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > resumes the SAME session id and reaches a terminal outcome via the onResume continuation script 19ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'crashRepair' IS gated identically to dispatchAttempt — refused with a typed error once the cap is exhausted 30ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MAJOR-1 fix: resumeAttempt with trigger 'parkResume' never requires evidence and never consumes a repair slot, even after the cap would otherwise be exhausted 46ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > resumeAttempt > MINOR-3 fix: an active account-wide rate-limit pause BLOCKS resumeAttempt (both trigger kinds) with GlobalPauseActiveError, before ever calling adapter.resume 10ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > accepts a success whose criteria still match what was approved 16ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded 13ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success when the change set was never sealed — fail-closed, not fail-open 21ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > scopes the journaled refusal to the run, so a runId-filtered replay can still find it 14ms
+ ✓ |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > a unit with no requirements of its own is accepted — the seal constrains, it does not invent work 10ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  13:28:11
+   Duration  1.20s (transform 561ms, setup 0ms, import 771ms, tests 318ms, environment 0ms)
+
+
+----- end of output -----
+exit status: 0
