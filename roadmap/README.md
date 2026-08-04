@@ -18,17 +18,26 @@ Decomposition of the full v1 plan (see `docs/claude-code-adaptation.md`, esp. §
 scored 15 PASS / 0 FAIL in `final` mode at release candidate `2435cb9` with 160 linked
 `EvidenceRecord`s. `crabgic@1.0.0` is published with provenance.
 
-**Phases 00–22 have 186 unticked criteria, and that is a bookkeeping gap rather than a
-statement that the work is undone.** Much of it demonstrably is done — those phases'
-packages are built, tested and exercised by the release gate that just passed. What has
-never happened is the per-criterion verification the third ground rule demands: "each
-checkbox must map to a CI run, journal entry, or committed artifact."
+**Closeout status (2026-08-02): 211 criteria across the 25 phases; 161 ticked, 50 not.**
+Twenty-one phases now carry a per-criterion closeout record under
+`docs/evidence/criteria-closeout/`, each validated by `npm run check:criteria-closeout`.
+Four phases have no record yet: **00** (5 criteria) and **06** (10) are live-engine-gated
+and need owner approval to run; **19** (7) is not yet started;
+**23** (16, all ticked) predates the record format — see below.
 
-They are deliberately left unticked. Ticking them from general confidence would be exactly
-the aspirational bookkeeping that rule forbids, and would make every box in this repository
-worth less. Closing them honestly means walking each phase's criteria against its own
-recorded evidence, as 23 was — a real piece of work, and one nobody should shortcut by
-editing checkboxes.
+That closeout work is where the honesty lives. Walking each phase's criteria against its
+own recorded evidence produced **UNMET** classifications and filed defect records, not a
+clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8. Phase 24 closed
+9 of 9, but its record carries an explicit scope bound rather than a clean bill of health.
+It also surfaced production defects that green suites had hidden, including per-issue write
+ordering in the Jira Cloud connector and phase 24's completion funnel resolving an empty
+requirement set in the shipped daemon.
+
+An unticked box is a bookkeeping gap rather than a statement that the work is undone; much
+of it demonstrably is done. But ticking from general confidence is exactly the aspirational
+bookkeeping the third ground rule forbids, and would make every box in this repository worth
+less. The remaining criteria close the same way the others did — against recorded evidence,
+never by editing checkboxes.
 
 ## Phase index
 
