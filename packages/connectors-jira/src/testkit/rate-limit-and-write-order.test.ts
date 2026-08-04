@@ -16,6 +16,13 @@ import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
  * clients pass to `httpClient.request`) actually engages that stack's
  * Retry-After honoring and per-tenant+resource write serialization,
  * rather than accidentally bypassing it.
+ *
+ * Correction (2026-08-04): the paragraph above is true of the
+ * Retry-After case only. The two write-order cases below construct no
+ * connector, no plan, and no `executeMutationPlan` call — they exercise
+ * 16's transport with hand-written resource strings (phase 16's
+ * guarantee, closed there). The connector-level per-issue write-order
+ * proof lives in `./write-order.integration.test.ts`.
  */
 const BASE_URL = "https://rate-limit-test.atlassian.invalid";
 
@@ -56,7 +63,7 @@ describe("Retry-After is honored on a rate-limited GET", () => {
   });
 });
 
-describe("per-issue write order is preserved (write-serialized by canonicalTarget)", () => {
+describe("16's transport serializes two requests sharing a hand-written resource key (transport-level; connector wiring proven in write-order.integration.test.ts)", () => {
   it("two concurrent writes to the SAME issue never overlap on the wire", async () => {
     const connection = buildExternalConnection({ provider: "jira-cloud", baseUrl: BASE_URL });
     const events: string[] = [];

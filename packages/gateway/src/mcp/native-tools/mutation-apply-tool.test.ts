@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -179,5 +179,116 @@ describe("buildMutationApplyTool", () => {
       status: "recorded",
       appliedRevision: "reconciled-rev",
     });
+  });
+
+  /**
+   * The PRODUCTION bridge from `MutationApplyClient` to
+   * `MutationPipelineHandlers`. `packages/connectors-jira/src/testkit/
+   * write-order.integration.test.ts` calls `executeMutationPlan` directly
+   * and therefore does NOT cross this bridge — without the two cases
+   * below, the `serializationTarget` forwarding line in
+   * `./mutation-apply-tool.ts` could be deleted with every connector test
+   * still green while production regressed.
+   */
+  it("forwards the provider client's serializationTarget to the transport's `resource` key", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "serializing-provider",
+      baseUrl: "https://serializing-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("serializing-provider", {
+      buildRequest: () => ({
+        url: new URL("https://serializing-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+      serializationTarget: (plan) => plan.canonicalTarget.split(":").slice(0, 2).join(":"),
+    });
+
+    let requestSpy: ReturnType<typeof vi.spyOn> | undefined;
+    const buildHttpClient = async (_c: ExternalConnection) => {
+      const client = new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://serializing-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
+      });
+      requestSpy = vi.spyOn(client, "request");
+      return client;
+    };
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { canonicalTarget: "issue:EX-1:comment" }),
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(requestSpy).toHaveBeenCalledTimes(1);
+    expect((requestSpy?.mock.calls[0]?.[0] as { resource: string }).resource).toBe("issue:EX-1");
+  });
+
+  it("DEFAULT PATH: a provider client without serializationTarget still keys on canonicalTarget", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "plain-provider",
+      baseUrl: "https://plain-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    const plainClient: MutationApplyClient = {
+      buildRequest: () => ({
+        url: new URL("https://plain-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+    };
+    expect(plainClient.serializationTarget).toBeUndefined();
+    mutationApplyClients.register("plain-provider", plainClient);
+
+    let requestSpy: ReturnType<typeof vi.spyOn> | undefined;
+    const buildHttpClient = async (_c: ExternalConnection) => {
+      const client = new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://plain-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
+      });
+      requestSpy = vi.spyOn(client, "request");
+      return client;
+    };
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { canonicalTarget: "dashboard:abc123" }),
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect((requestSpy?.mock.calls[0]?.[0] as { resource: string }).resource).toBe(
+      "dashboard:abc123",
+    );
   });
 });
