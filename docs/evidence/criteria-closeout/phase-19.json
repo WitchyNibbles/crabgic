@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "phase": "19",
+  "roadmapFile": "roadmap/19-jira-datacenter-adapter.md",
+  "pass": {
+    "date": "2026-08-04",
+    "agent": "criteria-closeout pass (phase 19)",
+    "headSha": "7822fde732c1c374d49c1028c59e8e5d2fe3ee66"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Parameterized conformance suite green on both `cloud` and `datacenter` (10.3 and 11.3) fixture-backed runs — CI job artifact.",
+      "textSha256": "16079b1e3f404e93c3eb25e1fca534276d68e34bc4db573fb1f778830097730c",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts:53-55",
+          "quotedAssertion": "The \"both cloud and datacenter\" conjuncts, fully evidenced: :53 'describe.each([\"cloud\", \"datacenter\"] as const satisfies readonly JiraDeploymentType[])(' / :54 '  \"parameterized Jira conformance suite — deploymentType=%s\",' / :55 '  (deploymentType) => {' — ONE suite, both values, identical assertions."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts:71-87",
+          "quotedAssertion": "Why that green is non-vacuous: the plans are applied through 16's REAL pipeline, not a stand-in. :71 'const apply = (plan: Parameters<typeof executeMutationPlan>[0]) =>' / :72 '        executeMutationPlan(' and :87 'expect((await apply(boardPlan)).status).toBe(\"recorded\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/parameterized-conformance.integration.test.ts:44-47",
+          "quotedAssertion": "And the journal those outcomes are recorded into is a real on-disk store in a real temp dir, created per test: :44 'beforeEach(async () => {' / :45 '  journalDir = await mkdtemp(join(tmpdir(), \"eo-connectors-jira-parameterized-\"));' / :46 '  journal = createJournalStore({ journalDir });'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/conformance-harness.ts:88-92",
+          "quotedAssertion": "The datacenter half is not a fake parameterization at the construction level — the factory really selects this phase's client: :88 'const resourceClient = createJiraDatacenterResourceClient({' / :89 '    ctx,' / :90 '    fieldMetadataIndex: buildFieldMetadataIndex([]),' / :91 '    payloadRegistry,' / :92 '    dcFeatures: {'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/conformance-harness.ts:93",
+          "quotedAssertion": "The parenthetical conjunct's fatal problem, in one line — the harness pins the Data Center run to a single edition, and this is the file's ONLY `edition:` line: :93 '      edition: \"10.3\",'. There is no 11.3 conformance variant of any kind, and the suite has no cassette code path at all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/scripted-read-scenario-dc.ts:135-145",
+          "quotedAssertion": "What the only DC cassettes actually drive, i.e. why they cannot back a conformance run: a READ-ONLY scenario with an EMPTY action allowlist. :136 '    dcFeatures: { edition: \"10.3\", availableActions: [], availableFields: \"discovered-only\" },' then :139-145 'const projects = await client.projects.list();' / '  const boards = await client.boards.list(\"PROJ\");' / '  const sprints = await client.sprints.list(1);' — no create, link, worklog, attachment, transition or 412 anywhere."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/fake-cassette-parity-dc.test.ts:16-22",
+          "quotedAssertion": "The per-edition test's own honesty note about fixture provenance, which is why it cannot stand in as independent 10.3/11.3 backing: :16 ' * Honesty note (matching phase 20's Grafana precedent): these cassettes' / :17 ' * are hand-authored/MODELED fixtures reflecting Jira Data Center's' / :18 ' * documented REST v2/Agile response shapes, not live-captured recordings' / :19 ' * against a running 10.3/11.3 instance — no live DC license was available'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts:107-109",
+          "quotedAssertion": "The nearest real thing that exists, named so nobody mistakes it for this criterion's channel — a per-edition cassette replay of the READ scenario, in a lane outside the default npm test fan-out: :107 'describe(\"Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC live container for this pass)\", () => {' / :108 '  it.each([\"10.3\", \"11.3\"] as const)(' / :109 '    \"DC %s: the real cassette drives the real DC JiraResourceClient (REST v2 + Agile) to fully-typed results\",'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c1-conformance-fixture-backing.txt",
+          "quotedAssertion": "The measurement trail, with every command's own exit status. The byte-identity of the two per-edition cassettes: '0494d8e13d9ccf60d938d3faa2d4cf6c  packages/connectors-jira/fixtures/datacenter/10.3/read-scenario.cassette.json' and the same md5 for 11.3. The absence of any cassette path in the suite: 'exit=1   <- no match: the conformance suite has no cassette code path at all'. And probe P1's result: 'RESULT: GREEN. Substituting Cloud's REST v3 client pair for the Data Center one leaves'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 368 — ' ✓  @crabgic/connectors-jira  src/testkit/parameterized-conformance.integration.test.ts (6 tests) 166ms' (3 assertions × 2 deployment types). Run summary, job-log lines 1032-1033 — ' Test Files  625 passed (625)' / '      Tests  6215 passed | 1 skipped (6216)'. Cited for the CI-job-artifact conjunct and for the two deployment-type conjuncts only; the run contains no edition-fixture-backed execution of this suite, and could not, because no such mode exists in code."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/19-conformance-suite-not-edition-fixture-backed.md",
+      "notes": "Four conjuncts: (a) suite green on cloud, (b) on datacenter, (c) \"(10.3 and 11.3) fixture-backed runs\", (d) CI job artifact. (a), (b) and (d) are fully and non-vacuously evidenced. (c) has no bearer at all, on three independent measurements: the suite contains no cassette code path (git grep for cassette over both files exits 1); the harness pins the DC run to edition \"10.3\" and no 11.3 conformance variant exists; and the only DC cassettes are a 7-call read scenario whose two per-edition files are BYTE-IDENTICAL (md5 0494d8e13d9ccf60d938d3faa2d4cf6c), so nothing in the tree distinguishes 10.3 from 11.3 on the wire. roadmap/19 §Work items item 6 names the intended channel in its own words — the parameterized suite \"run in cassette-replay mode against datacenter\" — and that mode is unimplemented, so this is UNMET (channel absent) rather than EVIDENCE-NEEDS-LIVE (channel present but unrun). SCOPE FINDING recorded here because a finding that reaches only a scratch file does not exist (probe P1): widening conformance-harness.ts:63's condition so the CLOUD client pair is returned for \"datacenter\" too leaves the whole package green — 47/47 files, 456/456 tests. The suite therefore proves CONTRACT conformance, not Data-Center-ness; it asserts no REST path and the scripted fake transport answers any request. DC-ness is carried by reads-dc.test.ts:36-43 and the URL assertions in jira-mutation-apply-client-dc.test.ts. This bounds what (b)'s green means; it does not falsify it, since the harness genuinely constructs and drives the DC pair. WRITE-ORDERING RECIPROCITY, recorded against this box because it is the same pipeline. This phase's DC client reuses phase 18's plan builders verbatim and inherits their per-KIND canonical targets, so phase 18's per-issue write-ordering defect reciprocates structurally on Data Center. Measured for the first time by this pass: a concurrent issue.update + comment.create on the same issue mint issue:PROJ-1 and issue:PROJ-1:comment and OVERLAP on the wire, maxInFlight = 2, against a control of maxInFlight = 1 for two issue.updates. Data Center has no write-order test at all, so nothing claimed otherwise. No phase-19 criterion covers write ordering and defectRef is UNMET-only, so the finding lives in the committed transcript docs/evidence/phase-19/closeout-write-order-probe-dc.txt (deliberately RED, probe source included) and in a dated annotation on roadmap/19 §In scope's rate-limits bullet. The fix is owned by a separate pass on branch fix/jira-per-issue-write-order; this pass measured and recorded only. SECOND DATED LINE: PR #84 merged at 17:03Z — after this record's HEAD (15:02Z) and after the probe ran (16:11Z) — and fixes it. jira-mutation-apply-client-dc.ts now declares a serializationTarget so every issue-scoped DC write serializes on issue:<key> regardless of kind, and packages/connectors-jira/src/testkit/write-order.integration.test.ts is the DC write-order test whose absence the measurement reports. So \"Data Center has no write-order test at all\" is true of this record's HEAD and STALE ON MAIN; the committed transcript and the roadmap annotation both carry that correction as a dated second line rather than a rewrite. This pass did not write, review or verify the fix."
+    },
+    {
+      "index": 2,
+      "text": "DC-only unsupported actions/fields return typed `unsupported` — fixture-proven cassette test, zero raw-fallback occurrences.",
+      "textSha256": "bde5fefa4bf018ec83f5643787aa31379d9ee1c526c6ccf273fb045010c9a817",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:129-144",
+          "quotedAssertion": "The ACTIONS conjunct, with the canonical kind asserted rather than merely the error class: :129 'it(\"rejects a mutating action absent from the resolved DC edition's availableActions with typed unsupported, before any plan is built\", () => {' and the assertions at :141-142 'expect(err).toBeInstanceOf(ConnectorError);' / '      expect((err as ConnectorError).kind).toBe(\"unsupported\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.ts:84-90",
+          "quotedAssertion": "The production gate behind it, both branches typed and neither guessing: :84 '  if (dcFeatures === undefined || !dcFeatures.availableActions.includes(action)) {' / :85 '    throw ConnectorError.unsupported({' and the message at :88 '          ? `Jira Data Center action \"${action}\" is unsupported: this connection's edition/version has not been positively confirmed by discovery — refusing to guess`'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/field-metadata.ts:66-78",
+          "quotedAssertion": "The FIELDS conjunct's divergence, in the shared gate every DC custom-field write reaches: :66 '    if (metadata === undefined) {' / :67 '      throw ConnectorError.validation({' / :68 '        message: `custom field \"${fieldId}\" is not present in discovered field metadata`,' / :69 '        provider: JIRA_PROVIDER_NAME,' — kind `validation`, not `unsupported`, and JIRA_PROVIDER_NAME is \"jira-cloud\" even on a Data Center connection. The second throw at :73-78 has the same two problems."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:24-25",
+          "quotedAssertion": "Why the fields half has no per-edition mechanism either — a data member no production code branches on: :24 '  /** Reserved for a future edition whose custom-field surface genuinely differs — populated here as an explicit (currently unconstrained) allowlist rather than left undocumented; every current entry allows every field discovered via `../capability/field-metadata.ts` (that module's own discovered-vs-undiscovered gate is the actual field-level \"never guess\" enforcement point). */' / :25 '  readonly availableFields: \"discovered-only\";'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/jira-mutation-apply-client-dc.ts:345",
+          "quotedAssertion": "The zero-raw-fallback conjunct's belt-and-suspenders half, re-checked at the apply boundary before any request is built: :345 '      assertAllowedJiraOperation(plan.action);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/security/preflight-capability-guard.test.ts:21-31",
+          "quotedAssertion": "That guard's closed allowlist is forged-input-tested and names the raw-endpoint escape hatch explicitly: :21 '    \"user.delete\",' / :22 '    \"user.impersonate\",' / :28 '    \"raw.request\",' / :29 '    \"\",' / :30 '    \"issue.create; DROP TABLE\",' / :31 '  ])(\"rejects forged/out-of-scope action %j before any I/O\", (action) => {'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/dc-edition-feature-matrix.ts:64-66",
+          "quotedAssertion": "The bearer this record deliberately does NOT rely on, recorded so no future pass picks it up from the phase README: :64 'export function isActionSupportedForDcEdition(edition: string, action: JiraAction): boolean {' / :65 '  const entry = resolveDcEditionFeatures(edition);' / :66 '  return entry !== undefined && entry.availableActions.includes(action);' — zero production callers; replacing the body with `return true` reddens only its own test file."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c2-unsupported-actions-and-fields.txt",
+          "quotedAssertion": "The three probes and the emptiness proof, each command with its own exit status and both probe sources reproduced verbatim. The fields measurement: 'issues.planUpdate  customfield_99999 (undiscovered): kind=\"validation\" provider=\"jira-cloud\" retryable=false'. The per-gate battery's verdict: 'RESULT: 3 of 17. Only `board.create` (line 114), `sprint.create` (line 130) and'. The dead-export result: 'RESULT: only its OWN test file reddens. Nothing else in the repository observes the'. And the cassette emptiness: 'exit=1   <- no cassette-backed test in the testkit asserts a typed unsupported'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 364 — ' ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (10 tests) 33ms', and job-log line 361 — ' ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-mutation-apply-client-dc.test.ts (30 tests) 33ms'. Cited for the actions and zero-raw-fallback conjuncts only; no run anywhere exercises a Data Center field rejection or a cassette-backed unsupported, because neither test exists."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/19-unsupported-fields-and-cassette-conjuncts.md",
+      "notes": "Four conjuncts: (a) unsupported ACTIONS return typed unsupported, (b) unsupported FIELDS do, (c) it is a fixture-proven CASSETTE test, (d) zero raw-fallback occurrences. (a) and (d) hold; (b) and (c) do not. (b) is a measured product-behaviour divergence, not just a missing test: driving customfield_99999 through the REAL DC resource client on all three write entry points (planUpdate, planCreate, planBulkUpdate) returns kind=\"validation\" and provider=\"jira-cloud\" — wrong canonical kind AND wrong provider attribution on a Data Center connection. roadmap/19 §In scope says twice that unrecognized fields return typed unsupported. Note the phase already fixed this exact class of mis-attribution for unsafe-ADF rejections by pre-checking with JIRA_DATACENTER_PROVIDER_NAME at the DC plan-build boundary; the custom-field path was not given the same treatment. (c) has no bearer: the only DC cassettes are the happy-path read scenario and no testkit test asserts a typed unsupported at all. VACUITY WORK recorded so the tick on (a) is not over-read. The action gate is one shared helper reached through 17 gate(...) call sites; deleting each individually and running the whole package reddens for only THREE (board.create line 114, sprint.create line 130, worklog.create line 267) — the three actions the two unsupported-action tests happen to call. The other fourteen can each be dropped green. The mechanism is proven; per-action coverage is not. DEAD BEARER recorded so it is never picked up again: docs/evidence/phase-19/README.md's criterion-2 row offers isActionSupportedForDcEdition's fast-check property as the never-guess proof. That function has zero production callers (unfiltered grep: its own module, its own test, and the index.ts barrel export), and replacing its body with `return true` reddens only its own test file, 2 tests, with the other 46 files green. The real gate is client-internal assertActionSupported. That README row also silently drops the cassette conjunct and does not mention the wrong kind on the fields path; a dated correction is annotated on roadmap/19 §Exit criteria rather than by editing the README. (d) holds by emptiness plus guard, scoped to packages/connectors-jira/src/resource-client/datacenter/ and to be re-run at merge time: all ten request paths in jira-mutation-apply-client-dc.ts are string literals under /rest/api/2/ or /rest/agile/1.0/, a grep for raw.request|rawEndpoint|rawFallback|plan.(url|endpoint|path) over that directory exits 1, and the apply boundary re-checks 18's closed allowlist. RE-RUN AT MERGE TIME, as this note undertook: PR #84 merged after this record's HEAD and touched jira-mutation-apply-client-dc.ts, which is inside the proof's scope, so the proof was re-run against post-#84 main rather than assumed. It holds unchanged — still exactly ten literal request paths, still no raw/unlisted-endpoint construction (exit=1), and the closed-allowlist re-check still present, moved from line 344 to 345 by #84's six added lines. The citation above was updated to :345 and this branch merges main so every line number resolves against the tree it will land as. Full re-run appended to the criterion-2 transcript as a dated postscript."
+    },
+    {
+      "index": 3,
+      "text": "`DcEditionFeatureMatrix` resolves capability discovery correctly for both known editions (10.3, 11.3) and falls back to typed `unsupported` for an unrecognized edition — fixture-proven, no raw fallback.",
+      "textSha256": "beea11a3cced67b815d8e5fe284f3763ae407ce85266a8981a325b2cfe06016b",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/discovery-datacenter.test.ts:32-45",
+          "quotedAssertion": "The 10.3 conjunct, fixture-proven through the real transport rather than a stub: :32 'it(\"resolves edition 10.3 and marks writable when the matrix recognizes it\", async () => {' with the scripted serverInfo at :34 '{ status: 200, bodyText: JSON.stringify({ version: \"10.3.1\" }) },' and the assertions at :41-44 'expect(snapshot.edition).toBe(\"10.3\");' / '    expect(snapshot.isReadOnly).toBe(false);' / '    expect(snapshot.apiFamilies).toEqual([\"rest-v2\", \"agile-1.0\"]);' / '    expect(snapshot.permissions).toContain(\"BROWSE_PROJECTS\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/discovery-datacenter.test.ts:47-55",
+          "quotedAssertion": "The 11.3 conjunct: :47 'it(\"resolves edition 11.3 and marks writable\", async () => {' / :49 '      { status: 200, bodyText: JSON.stringify({ version: \"11.3.0\" }) },' / :53 '    expect(snapshot.edition).toBe(\"11.3\");' / :54 '    expect(snapshot.isReadOnly).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/discovery-datacenter.test.ts:57-66",
+          "quotedAssertion": "What IS proven for an unrecognized edition — a safe, fail-closed SNAPSHOT, which is a different guarantee from the typed error the criterion names: :57 'it(\"falls back to typed unsupported-safe read-only for an unrecognized edition/version — never guessed, never a raw fallback\", async () => {' / :59 '      { status: 200, bodyText: JSON.stringify({ version: \"8.20.1\" }) },' / :63-65 'expect(snapshot.edition).toBe(\"unknown\");' / '    expect(snapshot.isReadOnly).toBe(true);' / '    expect(snapshot.actions).toEqual([]);'. Note the assertions are about the snapshot, never about a ConnectorError kind."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/capability/discovery-datacenter.ts:66-67",
+          "quotedAssertion": "The production join this criterion's subject sits on: :66 '  const edition = normalizeDcEdition(serverInfo.version);' / :67 '  const featureEntry = resolveDcEditionFeatures(edition);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:146-160",
+          "quotedAssertion": "The only test that exercises the unrecognized-edition branch, and the reason the typed kind is unproven — it asserts the error CLASS and never the kind: :146 'it(\"rejects every mutating action when dcFeatures is undefined (unrecognized edition, safe default) — proven BEFORE real fixture data lands\", () => {' / :154-156 'expect(() =>' / '      client.boards.planCreate({ name: \"B\", type: \"scrum\", projectKeyOrId: \"PROJ\" }, ENVELOPE_ID),' / '    ).toThrow(ConnectorError);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/jira-datacenter-connection-registry.ts:87-93",
+          "quotedAssertion": "The only production path that can produce the unrecognized-edition condition, and the .catch that hides whether it ever ran: :87 '    const dcFeatures =' / :91 '        : await discoverJiraDatacenterCapabilitySnapshot(ctx)' / :92 '            .then((snapshot) => resolveDcEditionFeatures(snapshot.edition))' / :93 '            .catch(() => undefined));'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts:33-46",
+          "quotedAssertion": "Why no test has ever seen a successful discovery reach the client: the registry is registered with an EMPTY response script, so discovery throws and is swallowed, and the test asserts only that an entry exists. :33 '    const fake = createFakeProviderTransport({ responses: [] });' / :44 '    expect(entry.resourceClient).toBeDefined();' / :45 '    expect(registry.isRegistered(connection.id)).toBe(true);'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c3-discovery-fallback-probe.txt",
+          "quotedAssertion": "Both deciding measurements, repository-wide, with their commands and exit statuses. Probe P3b's verdict: 'RESULT: GREEN, repo-wide. The canonical KIND of the unrecognized-edition fallback is'. Probe P3's verdict: 'RESULT: GREEN, repo-wide. The discovery -> resolveDcEditionFeatures -> client join is'. Both runs report ' Test Files  625 passed (625)' and '      Tests  6216 passed (6216)'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 397 — ' ✓  @crabgic/connectors-jira  src/capability/discovery-datacenter.test.ts (3 tests) 18ms', and job-log line 393 — ' ✓  @crabgic/connectors-jira  src/capability/dc-edition-feature-matrix.test.ts (8 tests) 45ms'. Cited for the two known-edition conjuncts and the fixture-proven conjunct only; nothing in this run measures the canonical kind of the unrecognized-edition fallback, because no test does."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/19-unrecognized-edition-fallback-kind-unproven.md",
+      "notes": "Five conjuncts: (a) discovery correct for 10.3, (b) for 11.3, (c) falls back to typed unsupported for an unrecognized edition, (d) fixture-proven, (e) no raw fallback. (a), (b), (d) and (e) hold. (c) does not, on two independent repository-wide measurements. (i) Probe P3b: assertActionSupported has two branches; the recognized-edition branch has its canonical kind asserted at jira-datacenter-resource-client.test.ts:142, but the dcFeatures === undefined branch — which IS the unrecognized-edition fallback this criterion names — is exercised only by :146-160, which asserts .toThrow(ConnectorError) and never the kind. Splitting the condition and downgrading only that branch from ConnectorError.unsupported to ConnectorError.validation leaves 625 test files and 6216 tests green — the 3dec9bf tree's full count, measured there. The word \"typed\" is carried by nothing. That is not hypothetical in this phase: criterion 2's measurement found the fields path already returning validation where the roadmap says unsupported. (ii) Probe P3: the only production path from a discovered edition to the client's gate — the discovery -> resolveDcEditionFeatures -> client join at jira-datacenter-connection-registry.ts:87-93 — can be replaced with `undefined` with the same repo-wide green, because the registry test registers an empty response script (discovery throws, .catch swallows) and the other registration tests use skipDiscovery or dcFeaturesOverride. No test has ever seen a successful discovery reach the client. The call between tick and UNMET is deliberate and close. What IS proven for an unrecognized edition is a safe snapshot: edition \"unknown\", isReadOnly true, actions [] (discovery-datacenter.test.ts:57-66). That is a genuine, valuable, fail-closed guarantee. It is not the same guarantee as \"falls back to typed unsupported\", which names a P02 canonical ConnectorError kind reaching the caller — roadmap/19 §In scope and §Work items item 3 both say so explicitly. Reading the criterion down to the snapshot guarantee would lose the typed-error guarantee, which the protocol classifies as UNMET rather than a wording fix. Had the kind been asserted anywhere, gap (ii) alone would have been a note against a ticked box; it is the combination that leaves the conjunct with no bearer. Remedy is S, needs nothing live. MEASUREMENT RE-CUT after adversarial review, appended to the transcript: both probes were originally run without npm run build, and this repo's cross-package consumers import connectors-jira through its built dist, so the mutations were re-applied WITH a rebuild in between; and P3's severing as first written did not compile (unused imports), so it was re-cut compile-clean by dropping the value import and using .then(() => undefined). tsc -b, npm run lint and npm run build all exit 0 on the severed tree, and both re-measurements are GREEN repository-wide at the merged tree's own full baseline of 629 files / 6258 tests — the same result, now reproducible. A first draft of that re-cut was WITHDRAWN, and the withdrawal is disclosed in the transcript rather than quietly patched: it reported 625 files / 6216 tests under a header claiming the post-merge sha, but 625/6216 are the 3dec9bf tree's totals — the commands had run in the pre-merge worktree while the header was written from the branch tip. Four test files have been added since 3dec9bf, so 625 + 4 = 629 falsifies it arithmetically. Re-cut in the merged tree with its UNMUTATED baseline recorded alongside, so the two mutation runs have something to be compared against. Separately measured: no symbol mutated by any probe in this pass has a consumer outside packages/connectors-jira."
+    },
+    {
+      "index": 4,
+      "text": "`wikiMarkupRenderProfile` output passes 17's blocking-artifact-lint corpus — golden-file diff test, zero exceptions.",
+      "textSha256": "e517b4837ec7bd402f76cb571c6fb5f24edbceb00f373769c8804895f5183782",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:105-111",
+          "quotedAssertion": "The closest thing to the criterion's check, and why it is not it — lint() is applied to the INPUT candidate, and the converted output only ever meets toContain: :105 'const outcome = lint(candidate, \"jira_milestone_comment\", DEFAULT_COMMUNICATION_POLICY);' / :106 '    expect(outcome.ok).toBe(true);' / :108 '    const wikiMarkup = adfDocumentToWikiMarkup(toADF(candidate));' / :109 '    // The lint pass already vetted `candidate` itself — this serializer is a'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:63-71",
+          "quotedAssertion": "What the suite does prove instead — byte-parity between two serializers over a 7-item IN-FILE array, which is a real parity proof but is neither a golden FILE nor lint conformance: :63 'describe(\"adfDocumentToWikiMarkup — golden corpus parity with @crabgic/renderer's toWikiMarkup\", () => {' / :64 '  it.each(GOLDEN_CORPUS)(' / :65 '    \"produces byte-identical output to toWikiMarkup for corpus item %#\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/corpus.test.ts:56",
+          "quotedAssertion": "How 17's corpus is actually consumed everywhere it is consumed — the fixture's own candidate text is linted, never any converter's output: :56 '      const outcome = lint(fixture.candidate, fixture.kind, DEFAULT_COMMUNICATION_POLICY);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/git-engine/src/renderer-corpus-shared.test.ts:82",
+          "quotedAssertion": "The corpus's only other consumer, with the same shape: :82 '      const outcome = lint(fixture.candidate, fixture.kind, DEFAULT_COMMUNICATION_POLICY);'. Neither consumer converts anything, so the corpus has never met a wiki-markup serializer."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/renderer/src/golden.test.ts:89-107",
+          "quotedAssertion": "The nearest golden-FILE-shaped thing in the tree, and what it actually pins — byte stability of one output, not lint conformance of a corpus: :89 'describe(\"golden byte-stability — toADF / toWikiMarkup\", () => {' / :105 '  it(\"toWikiMarkup\", () => {' / :106 '    expect(toWikiMarkup(markdown)).toMatchSnapshot();' / :107 '  });'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.ts:14-18",
+          "quotedAssertion": "The serializer's own doc comment asserting the very property that is untested, which is what makes the absence worth filing rather than shrugging at: :14 ' * markup. `adfDocumentToWikiMarkup` is this phase's own serializer,' / :18 ' * corpus proves this for both serializers, since they both ultimately'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c4-wiki-lint-corpus-search.txt",
+          "quotedAssertion": "The tree-wide search trail with each command's own exit status. The decisive line: 'exit=1   <- no match anywhere in the tree: NO test lints either converter OUTPUT'. Also 'exit=1   <- 17 own wiki-markup suite still calls lint() zero times (its proposed remedy has not landed)' and 'exit=1   <- no golden FILE is diffed by the DC serializer suite; its GOLDEN_CORPUS is a 7-item in-file array'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 360 — ' ✓  @crabgic/connectors-jira  src/resource-client/datacenter/wiki-markup-render-profile.test.ts (34 tests) 108ms'. Cited to show what the suite that WOULD carry this criterion actually runs in CI: 34 green tests, none of which lints the serializer's output. A green run of this file is not evidence for this criterion."
+        }
+      ],
+      "defectRef": "docs/evidence/criteria-closeout/defects/19-wikimarkup-output-never-linted-against-17s-corpus.md",
+      "notes": "Three conjuncts: (a) the serializer's OUTPUT passes 17's blocking-artifact-lint CORPUS, (b) a golden-FILE diff test, (c) zero exceptions. Neither (a) nor (b) is met, which makes (c) vacuously true of a check that does not run. All three lint() call sites in the DC serializer suite (:105, :168, :389) lint the input candidate string and then convert; tree-wide, a grep for lint( taking adfDocumentToWikiMarkup/toWikiMarkup/wiki/wikiMarkup as its argument exits 1. 17's corpus (33 fixtures) has exactly two consumers, both linting inputs. No golden file is diffed by the DC suite; GOLDEN_CORPUS is a 7-item in-file array. This is the mirror of a merged phase-17 defect record on the same gap, which proved it tree-wide, committed its search trail, and explicitly left the mirror assertion to phase 19's own closeout. Still true at this HEAD: packages/renderer/src/wiki-markup.test.ts contains zero lint( calls, i.e. 17's proposed remedy has not landed, which is expected since a closeout pass files defects rather than fixing them. Because the parity test pins this phase's serializer output to toWikiMarkup's, the criterion's property reduces to \"does toWikiMarkup's output pass 17's corpus\" — exactly the absent check. That is why the severity is evidence-channel-only rather than a suspected mis-render: the phase-17 record's ad-hoc probe passed 8 of 8. What is missing is the standing check. Explicitly NOT re-filed: the DC-specific {code}/{noformat} fence-breakout residual is fixed and strongly tested (ZWSP neutralization, a 6-item benign-code golden, a pr_body-kind lint-interaction case and a 300-run property, wiki-markup-render-profile.test.ts:286-404). It is orthogonal to this criterion's missing bearer. Remedy is S and needs nothing live."
+    },
+    {
+      "index": 5,
+      "text": "Custom-CA/self-signed connection succeeds against a disposable self-signed test server, exercised library-level (16's transport invoked directly) — integration test artifact.",
+      "textSha256": "8e49cad0bb34a10fa047785a7edb7a6829f119a2c2f33361f48e4d15efd1c7ff",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts:54-71",
+          "quotedAssertion": "The disposable self-signed server is REAL, not a fixture: :55 '    cert = await generateSelfSignedCert();' / :56 '    server = createServer({ key: cert.keyPem, cert: cert.certPem }, (req, res) => {' / :57 '      if (req.headers[\"authorization\"] !== \"Bearer dc-pat-value\") {' / :63 '      res.end(JSON.stringify({ version: \"10.3.1\" }));'. It is torn down and the cert cleaned up at :68-71."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts:96-101",
+          "quotedAssertion": "16's transport invoked DIRECTLY with the custom CA, and a real dial rather than a mocked send: :96 '    const httpClient = new GatewayHttpClient({' / :98 '      customCaPem: cert.certPem,' / :99 '      resolveHostAddresses: async () => [\"203.0.113.60\"], // fake, non-loopback (SSRF-guard preflight)' / :100 '      sendRequest: realNetworkSendRequestPinnedTo(\"127.0.0.1\"), // real dial, pinned to the disposable server'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts:31-33",
+          "quotedAssertion": "What makes that a real dial: the send function is @crabgic/gateway's own sendHttpRequest, only address-pinned. :31 'function realNetworkSendRequestPinnedTo(pinnedAddress: string): typeof sendHttpRequest {' / :32 '  return (req: HttpTransportRequest) => sendHttpRequest({ ...req, pinnedAddress });' / :33 '}'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts:104-111",
+          "quotedAssertion": "The success assertion goes through this phase's own DC read helper and its real PAT auth-header provider, so the criterion's \"connection succeeds\" is an end-to-end parse, not a socket-opened check: :104 '    const result = await jiraDatacenterGetJson(' / :107 '      z.object({ version: z.string() }),' / :111 '    expect(result.version).toBe(\"10.3.1\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts:133-141",
+          "quotedAssertion": "The negative control that proves the success case is not simply \"any response is accepted\": a wrong PAT over the same verified TLS connection fails closed with the canonical kind. :140 '    ).rejects.toMatchObject({ kind: \"authentication\" });'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/gateway/src/transport/http-transport.ts:82-86",
+          "quotedAssertion": "Probe P5b's answer in the transport itself — pinning changes the connect address only, and deliberately preserves SNI so certificate validation still checks the real hostname: :82 '    hostname: req.pinnedAddress,' / :86 '    ...(isHttps ? { servername: req.url.hostname } : {}),'. Nothing in packages/gateway sets rejectUnauthorized."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c5-c6-tls-and-basic-auth.txt",
+          "quotedAssertion": "The scoped re-run and the vacuity attack, verbatim with commands and exit statuses. Probe P5a's result: 'RESULT: RED with a genuine TLS verification error. The custom-CA path is load-bearing and'. The failure line it produced: 'Error: self-signed certificate; if the root CA is installed locally, try running Node.js with --use-system-ca'. And the rejectUnauthorized sweep: 'e2e/attestation/src/live/tlsFrontedContainer.test.ts:173:  const unpinnedAgent = () => new Agent({ rejectUnauthorized: false });'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 379 — ' ✓  @crabgic/connectors-jira  src/testkit/custom-ca-self-signed.integration.test.ts (2 tests) 181ms'. The 181ms is consistent with a real TLS handshake against a real local server rather than a mocked transport. Run summary, job-log lines 1032-1033 — ' Test Files  625 passed (625)' / '      Tests  6215 passed | 1 skipped (6216)'."
+        }
+      ],
+      "notes": "Three conjuncts: (a) succeeds against a disposable self-signed server, (b) library-level with 16's transport invoked directly, (c) integration test artifact. All three evidenced, and the load-bearing one was measured rather than read. Probe P5a: deleting customCaPem from the success case's GatewayHttpClient — leaving the real https server, the real cert and the real pinned dial untouched — turns the test RED with 'Error: self-signed certificate'. So the custom-CA path is genuinely load-bearing and TLS verification is genuinely on. Had it stayed green this would have been reported as a live security finding rather than a tick. Probe P5b: the address pinning does not weaken verification. A repo-wide grep for rejectUnauthorized finds exactly one hit, in an unrelated owner-gated @live attestation test; packages/gateway never disables verification, and http-transport.ts:86 keeps SNI servername set to the real hostname so the certificate is still validated against it. Scope note: the SSRF-guard preflight is satisfied with a fake non-loopback resolver answer while the actual dial is pinned to 127.0.0.1. That is the gateway's own reachability-probe pattern, documented in the test's header at :24-29, and it is what lets a real local server stand in for a self-hosted DC target; the guard itself is not bypassed, only fed a stand-in resolution."
+    },
+    {
+      "index": 6,
+      "text": "Basic-auth guard rejects without `allowBasicAuth: true` and accepts with it while emitting a non-blocking doctor finding — unit + integration test.",
+      "textSha256": "f2057533a8d310cb9d87be9c86845835b4e23aaf522021e440f29293257a13b3",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/auth/jira-datacenter-auth.test.ts:64-82",
+          "quotedAssertion": "The unit rejection conjunct, with the canonical kind asserted: :65 '  it(\"rejects a basic-auth config with allowBasicAuth: false, pre-network, with canonical authentication\", async () => {' / :79 '      expect(err).toBeInstanceOf(ConnectorError);' / :80 '      expect((err as ConnectorError).kind).toBe(\"authentication\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/auth/jira-datacenter-auth.test.ts:106-120",
+          "quotedAssertion": "The unit acceptance conjunct — with allowBasicAuth true the provider is built AND produces a working header, so acceptance is proven by behaviour, not by absence of a throw: :106 '  it(\"builds a working basic-auth provider when authMode is basic and allowBasicAuth is true\", async () => {' / :119 '    expect(headers[\"authorization\"]).toContain(\"Basic \");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/auth/connection-doctor-datacenter.test.ts:34-57",
+          "quotedAssertion": "The doctor's rejection half, proven pre-network by a call-count rather than by a message match: :34 '  it(\"fails pre-network (no probe call) when basic auth is configured but not allowed\", async () => {' / :54 '    expect(result.ok).toBe(false);' / :55 '    expect(probeCalled).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/auth/connection-doctor-datacenter.test.ts:59-79",
+          "quotedAssertion": "The non-blocking-finding conjunct, asserted by behaviour and not by the finding's name: the run is OK and the finding is present in the same result. :59 '  it(\"succeeds with a non-blocking basicAuthActive: true finding when basic auth is explicitly allowed\", async () => {' / :77 '    expect(result.ok).toBe(true);' / :78 '    expect(result.basicAuthActive).toBe(true);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/auth/connection-doctor-datacenter.test.ts:15-32",
+          "quotedAssertion": "The negative control for that same field, so `basicAuthActive` is not simply always true — a PAT config yields :30 '    expect(result.ok).toBe(true);' / :31 '    expect(result.basicAuthActive).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts:56-84",
+          "quotedAssertion": "The integration conjunct at the registration boundary, asserted positively — no HTTP client is ever built for a disallowed config: :56 '  it(\"register() rejects pre-network (no HTTP client built) for a disallowed basic-auth config\", async () => {' / :82 '    ).rejects.toThrow(ConnectorError);' / :83 '    expect(httpClientBuilt).toBe(false);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/register-datacenter.test.ts:186-212",
+          "quotedAssertion": "The same guard through the ROUTED provider registration, with a buildHttpClient that throws if it is ever called: :186 '  it(\"rejects a disallowed basic-auth connection pre-network via the routed apply client too\", async () => {' / :208 '        buildHttpClient: async () => {' / :209 '          throw new Error(\"should never be called\");' / :212 '    ).rejects.toThrow(ConnectorError);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/jira-connection-config.test.ts:174-185",
+          "quotedAssertion": "The guard's own unit coverage includes the secret-leak property the phase's Security test-plan bullet demands: :175 '  it(\"never leaks the configured secret references in the thrown error's message\", () => {' / :182 '      expect((err as ConnectorError).message).not.toContain(\"JIRA_DC_USER\");' / :183 '      expect((err as ConnectorError).message).not.toContain(\"JIRA_DC_PASS\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/connectors-jira/src/provider/jira-datacenter-connection-registry.ts:77-80",
+          "quotedAssertion": "The production ordering the integration conjunct rests on, stated where it is implemented: :77 '    // Runs FIRST, synchronously inside `resolveJiraDatacenterAuthHeaderProvider`' / :78 '    // (via `assertBasicAuthPermitted`) — a disallowed basic-auth config' / :79 '    // throws here, before `buildHttpClient` is ever invoked.' / :80 '    const authHeaderProvider = resolveJiraDatacenterAuthHeaderProvider(config);'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c5-c6-tls-and-basic-auth.txt",
+          "quotedAssertion": "The scoped re-run and probe P6, verbatim with commands and exit statuses. P6's verdict: 'RESULT: FOUR suites redden across three layers - the auth resolver itself, the doctor, the' — with the four named failures and ' Test Files  4 failed | 43 passed (47)'. The honest scope statement about the integration conjunct is recorded in the same file under 'SCOPE NOTE, stated so nobody over-reads the \"integration\" conjunct'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92034932036, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30922070286",
+          "commit": "3dec9bf2caa6b94bd817aee414f9458c37750fd9",
+          "quotedAssertion": "job-log line 378 — ' ✓  @crabgic/connectors-jira  src/auth/jira-datacenter-auth.test.ts (9 tests) 16ms'; job-log line 386 — ' ✓  @crabgic/connectors-jira  src/auth/connection-doctor-datacenter.test.ts (5 tests) 9ms'; job-log line 392 — ' ✓  @crabgic/connectors-jira  src/provider/jira-datacenter-connection-registry.test.ts (3 tests) 19ms'; job-log line 371 — ' ✓  @crabgic/connectors-jira  src/provider/register-datacenter.test.ts (5 tests) 34ms'; job-log line 370 — ' ✓  @crabgic/connectors-jira  src/provider/jira-connection-config.test.ts (17 tests) 19ms'."
+        }
+      ],
+      "notes": "Four conjuncts: (a) rejects without allowBasicAuth: true, (b) accepts with it, (c) emits a non-blocking doctor finding, (d) unit AND integration test. All four evidenced, at three layers. Probe P6 (vacuity attack): deleting the assertBasicAuthPermitted(config) call at packages/connectors-jira/src/auth/jira-datacenter-auth.ts:90 reddens FOUR suites — jira-datacenter-auth, connection-doctor-datacenter, jira-datacenter-connection-registry and register-datacenter — 4 failed / 43 passed of 47 files. The guard is load-bearing at exactly the boundaries the criterion names. The non-blocking half is asserted by behaviour rather than by a finding's name: the allowed case returns ok: true AND basicAuthActive: true in the same result object, with a PAT-config control asserting basicAuthActive: false. The rejection half is proven pre-network by a call-count (expect(probeCalled).toBe(false)) and, at the registry, by expect(httpClientBuilt).toBe(false) — not by matching an error message. SCOPE NOTE so the \"integration\" conjunct is not over-read: the doctor's reachability probe is an injected seam, and no wire-level basic-auth round trip exists anywhere in the tree. The integration half is carried by the registry and routed-registration boundaries, where a disallowed config demonstrably never reaches buildHttpClient. That is exactly what roadmap/19 §In scope promises — \"is rejected pre-network with canonical authentication (P02)\" — so this reading needs no wording correction. Consumer-of-record note, not a defect: runJiraDatacenterConnectionDoctor has zero production callers today. roadmap/19 §Interfaces produced names its consumers as \"this phase's own test suite directly and, later, 23's CLI-wiring work behind connection doctor <id>\", so its current test-only reach is the declared design, not dead code."
+    },
+    {
+      "index": 7,
+      "text": "DC 10.3 and 11.3 container recipes boot and pass a smoke test in CI, reusable unmodified by 23's disposable-environment tooling — CI artifact.",
+      "textSha256": "b7217ec58170fbee8fbaf306f3cbaa9ef4db0dedd67ba26f50b5a426aa0b57e5",
+      "classification": "EVIDENCE-NEEDS-CI",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": ".github/workflows/jira-datacenter-smoke.yml:13-28",
+          "quotedAssertion": "The channel exists and is exactly what the criterion asks for — matrix over both editions, no secret required — and it is dispatch-only: :13 'on:' / :14 '  workflow_dispatch: {}' / :23 '      matrix:' / :24 '        edition: [\"10.3\", \"11.3\"]' / :27 '      - name: Boot, health-probe, and tear down Jira Data Center ${{ matrix.edition }}' / :28 '        run: docker/jira-datacenter/smoke-test.sh \"${{ matrix.edition }}\"'. It has never been dispatched."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/provisioning/test/jira-datacenter-wiring.test.ts:47-56",
+          "quotedAssertion": "The reusable-by-23 conjunct's bearer — 23's own harness resolving phase 19's compose files at the exact paths this phase shipped them at: :48 '  it.each([\"10.3\", \"11.3\"] as const)(' / :49 '    \"the %s docker-compose.yml exists at the path phase 19 shipped it at\",' / :51 '      const composeFile = join(JIRA_DC_ROOT, edition, \"docker-compose.yml\");' / :52 '      expect(existsSync(composeFile)).toBe(true);'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/provisioning/test/jira-datacenter-wiring.test.ts:57-88",
+          "quotedAssertion": "And the substantive half of that conjunct — the facts 23's harness actually drives, asserted per edition: :76 '      expect(jira, `the ${edition} recipe declares no \"jira\" service`).toBeDefined();' / :80 '      expect(jira?.image).toBe(`atlassian/jira-software:${edition}`);' / :86 '      expect(jira?.healthcheck?.test).toBeDefined();' / :87 '      expect(Object.keys(recipe.volumes ?? {}).length).toBeGreaterThan(0);'."
+        },
+        {
+          "kind": "test",
+          "ref": "e2e/provisioning/test/jira-datacenter-wiring.test.ts:26-35",
+          "quotedAssertion": "Why that test is not, and cannot be, the boot conjunct's evidence — it says so itself: :27 ' * (b) USED TO SHELL OUT TO `docker compose config`, on the stated reasoning' / :33 ' * nothing about the recipes. Worse, it broke this gate's own declared' / :35 ' * and is safe to run anywhere, including CI without a daemon\", and one test'. It parses YAML and drives a FakeComposeRunner; nothing boots."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-19/closeout-c7-smoke-workflow-unrun.txt",
+          "quotedAssertion": "The emptiness proof with its control, each command carrying its own exit status: '$ gh run list --workflow=jira-datacenter-smoke.yml --limit 20' followed by 'exit=0   <- EMPTY: the workflow has never run, not once', and immediately below it the control query against ci.yml returning real runs — so the emptiness is the workflow's, not the tool's. Also 'exit=0   <- EMPTY: both the recipes and 23's wiring test are byte-unchanged since the v1.5.0 release-gate run that executed the wiring test'."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "publish / release gate (must PASS before anything is published) / release-e2e (ReleaseGateReport generator), job 91004033370, step \"e2e (release-evidence lanes)\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006",
+          "commit": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "quotedAssertion": "The reusable-by-23 conjunct pinned to a real run rather than to the file's existence. job-log line 626 — ' ✓ test/jira-datacenter-wiring.test.ts (5 tests) 39ms', inside ' RUN  v4.1.10 /home/runner/work/crabgic/crabgic/e2e/provisioning' (job-log line 622), lane summary at job-log lines 634-635 — ' Test Files  8 passed (8)' / '      Tests  54 passed (54)'. The 5 tests match the file's 2+2+1 cases. Cited ONLY for the reusable-by-23 conjunct: this run boots no Jira container and the workflow that would has never run."
+        }
+      ],
+      "notes": "Four conjuncts: (a) 10.3 boots and passes a smoke test in CI, (b) 11.3 likewise, (c) reusable unmodified by 23's disposable-environment tooling, (d) CI artifact. (c) is evidenced; (a), (b) and (d) have no evidence and cannot acquire any in this pass. The channel is implemented and ready — .github/workflows/jira-datacenter-smoke.yml, a two-edition matrix over docker/jira-datacenter/{10.3,11.3}/docker-compose.yml driving docker/jira-datacenter/smoke-test.sh, requiring no secret by its own design. It has ZERO runs: gh run list --workflow=jira-datacenter-smoke.yml returns an empty list while the same query against ci.yml returns runs, so the emptiness is real and not a broken query. It is workflow_dispatch-only and no other workflow chains it. Consequence worth stating plainly: the image tags atlassian/jira-software:10.3 and :11.3 have never been validated by anything, not even for existence on Docker Hub. This pass is not authorised to dispatch the workflow or to boot a container locally, so the classification is EVIDENCE-NEEDS-CI and the box stays unticked. No defect record is filed: nothing is broken and nothing is missing from the tree — the gate is authorisation, not credentials and not code. Conjunct (c) is evidenced without booting anything, and pinned to a real run rather than to a file's existence: e2e/provisioning/test/jira-datacenter-wiring.test.ts parses both compose files at the exact paths phase 19 shipped and asserts the service name, the edition-pinned image tag, the healthcheck and the named volume that 23's harness drives, and it EXECUTED in the v1.5.0 release-gate run (job 91004033370, job-log line 626, 5 tests). Both the recipes and that test file are byte-unchanged between that run's commit 6b9dd7b and this record's HEAD, verified by git diff --stat. A green run conclusion alone would not have been that proof, which is why the job log was downloaded and the line quoted. Remedy: the owner or an authorised pass dispatches jira-datacenter-smoke; both matrix jobs must reach RUNNING; then cite both job logs and tick. e2e/provisioning/test/jira-datacenter-config.live.test.ts is @live and was not run."
+    }
+  ]
+}

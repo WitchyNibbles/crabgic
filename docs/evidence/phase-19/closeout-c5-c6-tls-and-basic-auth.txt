@@ -1,0 +1,131 @@
+UTC:  2026-08-04T16:16:20Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (several; each command is echoed with its own exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criteria 5 and 6
+  (5: "Custom-CA/self-signed connection succeeds against a disposable self-signed test
+   server, exercised library-level (16's transport invoked directly) - integration test
+   artifact."
+   6: "Basic-auth guard rejects without `allowBasicAuth: true` and accepts with it while
+   emitting a non-blocking doctor finding - unit + integration test.")
+
+===================== PART A - scoped local re-run =====================
+$ npx vitest run --coverage.enabled=false --reporter=verbose \
+    packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts \
+    packages/connectors-jira/src/auth/jira-datacenter-auth.test.ts \
+    packages/connectors-jira/src/auth/connection-doctor-datacenter.test.ts \
+    packages/connectors-jira/src/provider/register-datacenter.test.ts \
+    packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts \
+    packages/connectors-jira/src/provider/jira-connection-config.test.ts
+
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p19
+
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JIRA_DEPLOYMENT_TYPES / JIRA_AUTH_MODES > is the closed 2-member deployment-type union 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JIRA_DEPLOYMENT_TYPES / JIRA_AUTH_MODES > is the closed 3-member auth-mode union 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > parses a valid datacenter/pat config 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > defaults allowBasicAuth to false when omitted 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects an unknown deploymentType 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects an unknown authMode 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > carries an optional OAuth client-credentials secret-reference pair 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > leaves both OAuth secret refs undefined when omitted — they are optional, exactly like patSecretRef 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects a malformed oauthClientIdSecretRef rather than coercing it 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects a malformed oauthClientSecretRef rather than coercing it 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects a bare string for oauthClientIdSecretRef — a secret reference is a structured backend record, never a literal 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > rejects a bare string for oauthClientSecretRef — a secret reference is a structured backend record, never a literal 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > JiraConnectionConfigSchema > still rejects an unrecognized field after the OAuth pair was added 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > assertBasicAuthPermitted — pre-network authentication guard > rejects a basic-auth config with allowBasicAuth: false, with canonical authentication, before any network call 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > assertBasicAuthPermitted — pre-network authentication guard > accepts a basic-auth config with allowBasicAuth: true 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > assertBasicAuthPermitted — pre-network authentication guard > never even inspects allowBasicAuth for a non-basic authMode (pat) 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-connection-config.test.ts > assertBasicAuthPermitted — pre-network authentication guard > never leaks the configured secret references in the thrown error's message 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > buildJiraPatAuthHeaderProvider > resolves the PAT secret reference and returns a Bearer authorization header 2ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > buildJiraPatAuthHeaderProvider > caches the resolved token across calls (via JiraTokenManager reuse) 1ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > buildJiraPatAuthHeaderProvider > wraps an empty PAT as a ConnectorError.authentication failure 1ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > buildJiraBasicAuthHeaderProvider > resolves username/password secret references and returns a base64 Basic authorization header 1ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > rejects a basic-auth config with allowBasicAuth: false, pre-network, with canonical authentication 1ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > builds a working PAT provider when authMode is pat 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > throws a validation error when authMode is pat but no patSecretRef is configured 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > builds a working basic-auth provider when authMode is basic and allowBasicAuth is true 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > throws unsupported when authMode is oauth (not implemented for Data Center by this phase) 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > succeeds for a PAT config, reachable, with basicAuthActive: false 2ms
+ ✓ |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > fails pre-network (no probe call) when basic auth is configured but not allowed 1ms
+ ✓ |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > succeeds with a non-blocking basicAuthActive: true finding when basic auth is explicitly allowed 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > fails informatively when the reachability probe reports unreachable 0ms
+ ✓ |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > fails informatively when auth-header resolution itself fails, without throwing 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-datacenter-connection-registry.test.ts > JiraDatacenterConnectionRegistry > register() then get() returns a fully-wired entry 5ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-datacenter-connection-registry.test.ts > JiraDatacenterConnectionRegistry > get() throws JiraDatacenterConnectionNotRegisteredError for an unregistered connection id 0ms
+ ✓ |@crabgic/connectors-jira| src/provider/jira-datacenter-connection-registry.test.ts > JiraDatacenterConnectionRegistry > register() rejects pre-network (no HTTP client built) for a disallowed basic-auth config 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > JIRA_DATACENTER_PROVIDER_KEY > is a distinct key from Cloud's jira-cloud provider key (Gap: jira-cloud/jira-datacenter provider-key split) 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > registerJiraDatacenterProvider > registers both the GenericProviderClient and MutationApplyClient under JIRA_DATACENTER_PROVIDER_KEY 4ms
+ ✓ |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > registerJiraDatacenterProvider > a dispatch for an unregistered connection fails, never a silent no-op 1ms
+ ✓ |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > registerJiraDatacenterProvider > routes get/planCreate/planUpdate/planTransition/planComment and the apply client's parseResponse/verify/reconcileAmbiguous 6ms
+ ✓ |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > registerJiraDatacenterProvider > rejects a disallowed basic-auth connection pre-network via the routed apply client too 1ms
+(node:196017) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ |@crabgic/connectors-jira| src/testkit/custom-ca-self-signed.integration.test.ts > Jira Data Center connection over a disposable self-signed HTTPS server > succeeds end-to-end (custom-CA verified, PAT auth-header attached) — never falls back to an insecure/unverified connection 16ms
+ ✓ |@crabgic/connectors-jira| src/testkit/custom-ca-self-signed.integration.test.ts > Jira Data Center connection over a disposable self-signed HTTPS server > fails closed (never silently unauthenticated) when the PAT header is wrong 6ms
+
+ Test Files  6 passed (6)
+      Tests  41 passed (41)
+   Start at  18:18:35
+   Duration  1.03s (transform 2.49s, setup 0ms, import 4.48s, tests 227ms, environment 1ms)
+
+# EXIT=0
+
+===================== PART B - probe P5a: is the custom-CA path load-bearing? ============
+METHOD: delete `customCaPem: cert.certPem` from the SUCCESS case's `GatewayHttpClient`
+in `custom-ca-self-signed.integration.test.ts:98`, leaving everything else - including the
+real `node:https` server with the disposable self-signed cert and the real pinned dial -
+untouched. (Scratch edit; reverted.)
+
+$ npx vitest run --coverage.enabled=false packages/connectors-jira/src/testkit/custom-ca-self-signed.integration.test.ts
+ FAIL  ... > succeeds end-to-end (custom-CA verified, PAT auth-header attached) - never falls back to an insecure/unverified connection
+Error: self-signed certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+# EXIT=1  (deliberately RED - the expected result; the test passes only because the custom CA is supplied)
+
+RESULT: RED with a genuine TLS verification error. The custom-CA path is load-bearing and
+TLS verification is genuinely on. This is the answer that clears the criterion; had it
+stayed green it would have been a live security finding.
+
+===================== PART C - probe P5b: does the address pinning weaken TLS? ===========
+$ git grep -n "rejectUnauthorized" -- packages/ e2e/
+e2e/attestation/src/live/tlsFrontedContainer.test.ts:173:  const unpinnedAgent = () => new Agent({ rejectUnauthorized: false });
+exit=0
+
+  One hit, in an unrelated owner-gated @live attestation test. Nothing in
+  `packages/gateway` disables certificate verification. `http-transport.ts` documents and
+  implements the pinning as "connect to `pinnedAddress` but keep SNI `servername` set to
+  the real hostname (so certificate validation still checks the real hostname)" - see its
+  header comment and the `servername` spread at
+  `packages/gateway/src/transport/http-transport.ts:86`. The disposable-cert test
+  therefore performs a real, verified TLS handshake.
+
+===================== PART D - probe P6: is the basic-auth guard load-bearing? ===========
+METHOD: delete the `assertBasicAuthPermitted(config);` call at
+`packages/connectors-jira/src/auth/jira-datacenter-auth.ts:90` and run the package suite.
+(Scratch edit; reverted.)
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false
+ FAIL  |@crabgic/connectors-jira| src/auth/connection-doctor-datacenter.test.ts > runJiraDatacenterConnectionDoctor > fails pre-network (no probe call) when basic auth is configured but not allowed
+ FAIL  |@crabgic/connectors-jira| src/auth/jira-datacenter-auth.test.ts > resolveJiraDatacenterAuthHeaderProvider > rejects a basic-auth config with allowBasicAuth: false, pre-network, with canonical authentication
+ FAIL  |@crabgic/connectors-jira| src/provider/jira-datacenter-connection-registry.test.ts > JiraDatacenterConnectionRegistry > register() rejects pre-network (no HTTP client built) for a disallowed basic-auth config
+ FAIL  |@crabgic/connectors-jira| src/provider/register-datacenter.test.ts > registerJiraDatacenterProvider > rejects a disallowed basic-auth connection pre-network via the routed apply client too
+ Test Files  4 failed | 43 passed (47)
+      Tests  4 failed | 452 passed (456)
+# EXIT=1  (deliberately RED - the expected result)
+
+RESULT: FOUR suites redden across three layers - the auth resolver itself, the doctor, the
+registry, and the routed provider registration. The guard is load-bearing at every
+boundary the criterion's "unit + integration" conjunct names.
+
+SCOPE NOTE, stated so nobody over-reads the "integration" conjunct: the doctor's
+reachability probe is an injected seam, and no wire-level basic-auth round trip exists
+anywhere. The integration half is carried by the registry/registration boundary - a
+disallowed config never reaches `buildHttpClient`, asserted positively by
+`jira-datacenter-connection-registry.test.ts:83` (`expect(httpClientBuilt).toBe(false)`)
+and by `register-datacenter.test.ts:186-213`'s throwing `buildHttpClient`. That is exactly
+what roadmap/19 In-scope promises ("rejected pre-network"), so it needs no wording fix.

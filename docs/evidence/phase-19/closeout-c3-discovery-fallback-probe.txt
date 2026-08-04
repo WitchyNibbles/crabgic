@@ -1,0 +1,250 @@
+UTC:  2026-08-04T16:12:33Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (two probes; each command and exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criterion 3
+  ("`DcEditionFeatureMatrix` resolves capability discovery correctly for both known
+   editions (10.3, 11.3) and falls back to typed `unsupported` for an unrecognized
+   edition - fixture-proven, no raw fallback.").
+
+  Five conjuncts. (a) 10.3, (b) 11.3, (d) fixture-proven and (e) no-raw-fallback are
+  evidenced by `discovery-datacenter.test.ts` and the criterion-2 emptiness proof.
+  This transcript is about conjunct (c): "falls back to typed `unsupported` for an
+  unrecognized edition."
+
+===================== PART A - scoped local re-run =====================
+$ npx vitest run --coverage.enabled=false --reporter=verbose \
+    packages/connectors-jira/src/capability/discovery-datacenter.test.ts \
+    packages/connectors-jira/src/capability/dc-edition-feature-matrix.test.ts \
+    packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts
+
+----- verbatim output below; nothing edited -----
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p19
+
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > resolveDcEditionFeatures > resolves the 10.3 edition entry 1ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > resolveDcEditionFeatures > resolves the 11.3 edition entry 0ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > resolveDcEditionFeatures > returns undefined (never a guess) for an unrecognized edition 0ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > normalizeDcEdition > matches a full version string to its known edition prefix 0ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > normalizeDcEdition > returns 'unknown' (never a guess) for an unrecognized version 0ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > isActionSupportedForDcEdition > returns true for a known action on a known edition 0ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > isActionSupportedForDcEdition > returns false (never a guess, never a raw-endpoint fallback) for ANY action on an unrecognized edition 11ms
+ ✓ |@crabgic/connectors-jira| src/capability/dc-edition-feature-matrix.test.ts > isActionSupportedForDcEdition > never emits a guessed action for a fuzzed action string on a known edition unless it is actually listed 7ms
+ ✓ |@crabgic/connectors-jira| src/capability/discovery-datacenter.test.ts > discoverJiraDatacenterCapabilitySnapshot > resolves edition 10.3 and marks writable when the matrix recognizes it 6ms
+ ✓ |@crabgic/connectors-jira| src/capability/discovery-datacenter.test.ts > discoverJiraDatacenterCapabilitySnapshot > resolves edition 11.3 and marks writable 1ms
+ ✓ |@crabgic/connectors-jira| src/capability/discovery-datacenter.test.ts > discoverJiraDatacenterCapabilitySnapshot > falls back to typed unsupported-safe read-only for an unrecognized edition/version — never guessed, never a raw fallback 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > supports project/board/sprint/issue/comment/link/worklog/attachment via the SAME JiraResourceClient contract 18 established 6ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > reads dispatch through the DC (REST v2/Agile) transport, not Cloud's REST v3 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > planTransition resolves the transition's target status via the DC transitions read, refusing an unrecognized transitionId 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > rejects a mutating action absent from the resolved DC edition's availableActions with typed unsupported, before any plan is built 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > rejects every mutating action when dcFeatures is undefined (unrecognized edition, safe default) — proven BEFORE real fixture data lands 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > exercises every remaining plan* method (bulk update/transition, comment update, board update/rank, sprint update/start/complete/moveIssues) and every remaining read (comments/worklogs/sprints/boards/get-by-id) 5ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > MINOR-1 (adversarial-review): unsafe-ADF rejections at the PLAN-BUILD boundary are attributed to jira-datacenter > issues.planCreate's summaryAdf rejection is attributed to jira-datacenter, never jira-cloud 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > MINOR-1 (adversarial-review): unsafe-ADF rejections at the PLAN-BUILD boundary are attributed to jira-datacenter > issues.planUpdate's fields.description rejection is attributed to jira-datacenter 0ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > MINOR-1 (adversarial-review): unsafe-ADF rejections at the PLAN-BUILD boundary are attributed to jira-datacenter > comments.planCreate's bodyAdf rejection is attributed to jira-datacenter 1ms
+ ✓ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts > createJiraDatacenterResourceClient — resource-by-resource conformance > MINOR-1 (adversarial-review): unsafe-ADF rejections at the PLAN-BUILD boundary are attributed to jira-datacenter > comments.planUpdate's bodyAdf rejection is attributed to jira-datacenter 1ms
+
+ Test Files  3 passed (3)
+      Tests  21 passed (21)
+   Start at  18:18:37
+   Duration  986ms (transform 1.09s, setup 0ms, import 1.71s, tests 47ms, environment 0ms)
+
+# EXIT=0
+
+===================== PART B - probe P3: is the production chain wired? ==================
+QUESTION: the only production path from a discovered edition to the client's gate is
+`jira-datacenter-connection-registry.ts:87-93`:
+
+    const dcFeatures =
+      options.dcFeaturesOverride ??
+      (options.skipDiscovery
+        ? undefined
+        : await discoverJiraDatacenterCapabilitySnapshot(ctx)
+            .then((snapshot) => resolveDcEditionFeatures(snapshot.edition))
+            .catch(() => undefined));
+
+Does any test exercise it successfully?
+
+METHOD: replace that whole discovery expression with `undefined` and run first the
+package, then the entire repository suite. (Scratch edit; reverted.)
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false
+ Test Files  47 passed (47)
+      Tests  456 passed (456)
+# EXIT=0
+
+$ npx vitest run --coverage.enabled=false          (WHOLE REPOSITORY)
+ Test Files  625 passed (625)
+      Tests  6216 passed (6216)
+# EXIT=0
+
+RESULT: GREEN, repo-wide. The discovery -> resolveDcEditionFeatures -> client join is
+observed by nothing. `jira-datacenter-connection-registry.test.ts:24-47` registers with
+an EMPTY response script, so discovery throws, `.catch(() => undefined)` swallows it, and
+the entry is built with `dcFeatures === undefined`; the test asserts only that the entry
+exists. `register-datacenter.test.ts` uses `skipDiscovery: true` or `dcFeaturesOverride`.
+
+===================== PART C - probe P3b: is the "typed unsupported" TYPE measured? ======
+QUESTION: `assertActionSupported` (`jira-datacenter-resource-client.ts:83-94`) has two
+branches. The second (a recognized edition whose `availableActions` omits the action) has
+its canonical kind asserted at `jira-datacenter-resource-client.test.ts:142`. The FIRST -
+`dcFeatures === undefined`, i.e. the unrecognized-edition fallback this criterion names -
+is exercised only by `:146-160`, which asserts `.toThrow(ConnectorError)` and never the
+kind. Does anything measure that it is `unsupported`?
+
+METHOD: split the condition and downgrade the unrecognized-edition branch from
+`ConnectorError.unsupported` to `ConnectorError.validation`, leaving the other branch
+alone. Run the package, then the whole repository. (Scratch edit; reverted.)
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage.enabled=false
+ Test Files  47 passed (47)
+      Tests  456 passed (456)
+# EXIT=0
+
+$ npx vitest run --coverage.enabled=false          (WHOLE REPOSITORY)
+ Test Files  625 passed (625)
+      Tests  6216 passed (6216)
+# EXIT=0
+
+RESULT: GREEN, repo-wide. The canonical KIND of the unrecognized-edition fallback is
+asserted by nothing. It can be silently changed to `validation` - the same wrong kind the
+fields path already returns, see the criterion-2 transcript - with 625 test files and
+6216 tests still passing.
+
+===================== CONCLUSION =====================
+Conjunct (c) of criterion 3 has two independent, measured gaps:
+  (i) the typed kind on the unrecognized-edition branch is unasserted (P3b); and
+  (ii) the production join that turns discovery's `edition: "unknown"` into the client's
+       `dcFeatures === undefined` is unexercised (P3).
+What IS proven for an unrecognized edition is a SAFE SNAPSHOT - `edition: "unknown"`,
+`isReadOnly: true`, `actions: []` (`discovery-datacenter.test.ts:57-66`). That is a real
+and valuable guarantee, and it is a different one from "falls back to typed `unsupported`".
+Reading the criterion down to the snapshot guarantee would lose the typed-error guarantee,
+so this is UNMET, not a wording correction.
+
+================================================================================
+RE-CUT (superseded draft withdrawn) - 2026-08-04T20:26:41Z
+HEAD: 7822fde732c1c374d49c1028c59e8e5d2fe3ee66
+       (this branch merged with main @ 1ba27b9 - i.e. including #84, #85, #88, #89)
+CMD:  see each command echoed below, with its own exit status
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+================================================================================
+WITHDRAWN DRAFT, disclosed rather than quietly replaced. A first re-cut of this section
+was written claiming HEAD 29e71dc while reporting 625 files / 6216 tests. Those totals are
+the 3dec9bf tree's: the commands had been run in the pre-merge worktree while the header
+was written from the branch tip, so the artifact misstated the tree it measured. #84 alone
+adds two test files (`write-order.integration.test.ts`, `canonical-target.test.ts`), so
+625 could not have come from 29e71dc. Caught by adversarial review. The conclusions were
+unaffected, but a RULING-3 header must pin the sha the commands actually ran at, so the
+whole section is re-cut here in the merged tree rather than patched.
+
+Two corrections to how PARTS B and C above were measured. Neither changes the result;
+both change how much the result is worth.
+
+CORRECTION 1 - the probes in PARTS B and C were run WITHOUT `npm run build`. This repo's
+cross-package consumers import `@crabgic/connectors-jira` through its BUILT `dist/`, so a
+source-only mutation can leave a stale `dist` in front of every out-of-package test.
+Re-measured below WITH a rebuild between mutation and test run.
+
+CORRECTION 2 - PART B's severing as literally written (`: undefined`) does NOT COMPILE: it
+leaves `resolveDcEditionFeatures` and `discoverJiraDatacenterCapabilitySnapshot` imported
+and unused, which `tsc` rejects. A probe that does not compile is a probe nobody can
+reproduce. The severing below is compile-clean: the VALUE import is dropped (the
+`DcEditionEntry` type import is kept) and the join becomes `.then(() => undefined)`.
+
+Scope note, measured rather than assumed: no symbol mutated by ANY probe in this pass has
+a consumer outside `packages/connectors-jira`.
+
+$ git grep -ln "resolveJiraDatacenterAuthHeaderProvider\|createJiraDatacenterResourceClient\|isActionSupportedForDcEdition\|buildConformanceHarness\|JiraDatacenterConnectionRegistry" -- packages/ e2e/ | grep -v "^packages/connectors-jira/"
+exit=1   <- no cross-package consumer of any mutated symbol
+
+--------------------------------------------------------------------------------
+RE-CUT PART A - the UNMUTATED baseline of this tree, so the mutation runs mean something
+--------------------------------------------------------------------------------
+$ npm run build && npx vitest run --coverage.enabled=false
+ Test Files  629 passed (629)
+      Tests  6258 passed (6258)
+
+This is what a green repo-wide run looks like at THIS head. The two probe runs below
+report the same totals, which is the point: the mutation changes nothing.
+
+$ git diff --name-status 3dec9bf HEAD -- '*.test.ts' | grep '^A'
+A	packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts
+A	packages/connectors-jira/src/resource-client/canonical-target.test.ts
+A	packages/connectors-jira/src/testkit/write-order.integration.test.ts
+A	packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts
+exit=0   <- four test files added since 3dec9bf: 625 + 4 = 629. This is the arithmetic
+             the withdrawn draft failed.
+
+--------------------------------------------------------------------------------
+RE-CUT PART B - probe P3, compile-clean severing, rebuilt, in THIS tree
+--------------------------------------------------------------------------------
+The edit, in packages/connectors-jira/src/provider/jira-datacenter-connection-registry.ts:
+
+    -import {
+    -  resolveDcEditionFeatures,
+    -  type DcEditionEntry,
+    -} from "../capability/dc-edition-feature-matrix.js";
+    +import type { DcEditionEntry } from "../capability/dc-edition-feature-matrix.js";
+    ...
+    -            .then((snapshot) => resolveDcEditionFeatures(snapshot.edition))
+    +            .then(() => undefined)
+
+$ git rev-parse HEAD
+7822fde732c1c374d49c1028c59e8e5d2fe3ee66
+
+$ npx tsc -b
+exit=0
+
+$ npm run lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run build
+⚡ Done in 301ms
+bundle-cli: emitted 11 file(s) into packages/cli/dist
+exit=0
+
+$ npx vitest run --coverage.enabled=false   (WHOLE REPOSITORY, post-rebuild)
+ Test Files  629 passed (629)
+      Tests  6258 passed (6258)
+
+RESULT, unchanged from PART B above: GREEN repository-wide, at the FULL baseline count of
+629 files / 6258 tests, with a rebuild in between and a tree that compiles. The
+discovery -> resolveDcEditionFeatures -> client join is observed by nothing.
+
+--------------------------------------------------------------------------------
+RE-CUT PART C - probe P3b, rebuilt, in THIS tree
+--------------------------------------------------------------------------------
+The edit splits `assertActionSupported`'s condition and downgrades ONLY the
+`dcFeatures === undefined` branch to `ConnectorError.validation`, leaving the
+recognized-edition branch throwing `ConnectorError.unsupported`.
+
+$ git rev-parse HEAD
+7822fde732c1c374d49c1028c59e8e5d2fe3ee66
+
+$ npx tsc -b
+exit=0
+
+$ npm run lint
+> eslint . --ignore-pattern 'spikes/**'
+
+exit=0
+
+$ npm run build
+⚡ Done in 89ms
+bundle-cli: emitted 11 file(s) into packages/cli/dist
+exit=0
+
+$ npx vitest run --coverage.enabled=false   (WHOLE REPOSITORY, post-rebuild)
+ Test Files  629 passed (629)
+      Tests  6258 passed (6258)
+
+RESULT, unchanged from PART C above: GREEN repository-wide at 629 files / 6258 tests. The
+canonical kind of the unrecognized-edition fallback is asserted by nothing - including by
+the DC write-order test #84 added, which is in this tree and does not exercise it either.
+
+Both conclusions in the CONCLUSION section above stand, now on a compile-clean, correctly
+rebuilt measurement whose header pins the tree it actually ran in.

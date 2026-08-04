@@ -1,0 +1,73 @@
+UTC:  2026-08-04T16:14:10Z
+HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+CMD:  (several; each command is echoed with its own exit status below)
+CWD:  $REPO_ROOT (worktree of WitchyNibbles/crabgic)
+
+PURPOSE - criteria-closeout evidence for phase 19 exit criterion 4
+  ("`wikiMarkupRenderProfile` output passes 17's blocking-artifact-lint corpus -
+   golden-file diff test, zero exceptions.").
+
+  Three conjuncts: (a) the serializer's OUTPUT passes 17's lint CORPUS;
+  (b) a golden-FILE diff test; (c) zero exceptions.
+
+===================== PART A - scoped local re-run (what DOES exist) =====================
+$ npx vitest run --coverage.enabled=false --reporter=verbose \
+    packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts \
+    packages/renderer/src/corpus.test.ts
+
+ Test Files  2 passed (2)
+      Tests  68 passed (68)
+# EXIT=0
+
+  Both suites are green and both are real. They are simply about different things:
+  `corpus.test.ts` lints 17's corpus fixtures (the INPUT candidates), and
+  `wiki-markup-render-profile.test.ts` proves byte-parity between this phase's serializer
+  and 17's `toWikiMarkup` over a 7-item in-file array, plus a strong adversarial/escaping
+  battery. Neither runs converter OUTPUT through `lint()`.
+
+===================== PART B - the search trail =====================
+$ git grep -n "lint(" -- packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:96:  it("a jira_milestone_comment candidate that passes lint() converts to wiki markup with no structural violation reintroduced", () => {
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:105:    const outcome = lint(candidate, "jira_milestone_comment", DEFAULT_COMMUNICATION_POLICY);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:168:    const outcome = lint(candidate, "jira_milestone_comment", DEFAULT_COMMUNICATION_POLICY);
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:373:    // (same `renderWithRegeneration`/`lint()` pipeline, a 4-line template
+packages/connectors-jira/src/resource-client/datacenter/wiki-markup-render-profile.test.ts:389:    const outcome = lint(candidate, "pr_body", DEFAULT_COMMUNICATION_POLICY);
+exit=0   <- three call sites; each lints the INPUT candidate string, then converts
+
+$ git grep -nE "lint\(\s*(adfDocumentToWikiMarkup|toWikiMarkup|wiki|wikiMarkup)" -- packages/ e2e/
+exit=1   <- no match anywhere in the tree: NO test lints either converter OUTPUT
+
+$ git grep -n "lint(" -- packages/renderer/src/wiki-markup.test.ts
+exit=1   <- 17 own wiki-markup suite still calls lint() zero times (its proposed remedy has not landed)
+
+$ git grep -rln "fixtures/corpus" -- packages/ e2e/
+packages/git-engine/src/renderer-corpus-shared.test.ts
+packages/renderer/src/corpus.test.ts
+exit=0   <- the only consumers of 17 corpus; neither is a DC/wiki-markup test
+
+$ ls packages/renderer/fixtures/corpus | wc -l
+33
+exit=0
+
+$ git grep -nE "toMatchFileSnapshot|readFileSync.*golden" -- packages/connectors-jira/src/resource-client/datacenter/
+exit=1   <- no golden FILE is diffed by the DC serializer suite; its GOLDEN_CORPUS is a 7-item in-file array
+
+READING:
+  1. All three `lint()` call sites in the DC serializer suite lint the INPUT candidate
+     string and THEN convert; the converted output only ever meets `toContain` and
+     metacharacter helpers.
+  2. Tree-wide, no `lint(` call anywhere takes either converter's output as its argument.
+  3. 17's own `packages/renderer/src/wiki-markup.test.ts` still calls `lint()` zero times
+     - the remedy proposed by the merged phase-17 defect record on this same gap has not
+     landed (a closeout pass files defects, it does not fix them).
+  4. `packages/renderer/fixtures/corpus/` has 33 fixtures and exactly two consumers,
+     neither of which is a wiki-markup test.
+  5. No golden FILE is diffed by the DC serializer suite; `GOLDEN_CORPUS`
+     (`wiki-markup-render-profile.test.ts:44-62`) is a 7-item in-file array, and
+     `packages/renderer/src/golden.test.ts:105-107` snapshots one `toWikiMarkup` output -
+     byte stability, not lint conformance.
+
+  Because the parity test pins this phase's serializer output to `toWikiMarkup`'s, the
+  criterion's property reduces to "does `toWikiMarkup`'s output pass 17's corpus" - which
+  is exactly the absent check the merged phase-17 defect record documents, and which that
+  record explicitly left to phase 19's own closeout. Still absent at this HEAD.
