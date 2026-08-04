@@ -99,7 +99,7 @@ Emptiness proof scoped to `packages/connectors-jira/src/resource-client/datacent
 merge time): every request path built by `jira-mutation-apply-client-dc.ts` is a string literal
 under `/rest/api/2/` or `/rest/agile/1.0/` — ten of them, enumerated in the transcript — and
 `git grep -nE "raw\.request|rawEndpoint|rawFallback|plan\.(url|endpoint|path)"` over that directory
-exits 1. `jira-mutation-apply-client-dc.ts:344` additionally re-checks 18's closed allowlist
+exits 1. `jira-mutation-apply-client-dc.ts:345` additionally re-checks 18's closed allowlist
 `assertAllowedJiraOperation`, whose forged-action table explicitly includes `"raw.request"`
 (`security/preflight-capability-guard.test.ts:15-30`), and the DC apply client's own
 `:231` case asserts a forged out-of-scope action is rejected before any request is built.
