@@ -1,8 +1,22 @@
 # Phase-23 criteria-closeout pass — attributing drift-CI's red state, because criterion 13
 # is about vendor support windows and a red drift-CI could mean a window moved.
 # It does not. Read-only GitHub API queries; nothing was dispatched.
-# UTC: 2026-08-04T17:23:46Z
-# HEAD: fc8eb8110f4affe8796458d75849bb52484cbc1e
+# UTC: 2026-08-04T17:54:39Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b
+# branch tip at capture (PROVISIONAL — see the note): 729cd0cd623f18adcf8345a407937179f6b61e42
+#
+# WHY TWO IDS, AND WHY THE SECOND ONE IS LABELLED. A RULING-3 header exists so a reader can
+# resolve the tree a measurement ran against. A COMMIT ON AN UNMERGED BRANCH cannot do that
+# job: every rebase and every commit-message reword mints new object ids, and this branch
+# was rebased three times and reworded once during review. Two earlier captures of this file
+# pinned branch-tip ids (fc8eb811, then 4c1f4943) that are now unresolvable. The durable
+# anchor is the UPSTREAM BASE the branch sits on, which no rebase of mine rewrites — which
+# is exactly why every other transcript here, pinned at an upstream main commit, survived
+# all three rebases untouched. The branch tip is recorded for completeness and marked
+# provisional rather than quietly dropped.
+#
+# Nothing here depends on either id: every command below is a read-only query against
+# GitHub's own API for runs that already exist, so any reader can re-run it verbatim.
 
 $ gh api ".../actions/workflows/drift-ci.yml/runs?per_page=10" --jq ...
 30803087343	failure	schedule	3bb7ef8	2026-08-03T09:50:12Z

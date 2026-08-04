@@ -337,8 +337,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt",
-          "quotedAssertion": "The channel table, measured against the GitHub API rather than read off the workflow files: 'engine-live.yml              0' and 'jira-datacenter-smoke.yml    0'. Section 5 records that docker/jira-datacenter/smoke-test.sh 'is referenced only by jira-datacenter-smoke.yml (0 runs)' and that docker/grafana/smoke-test.sh 'is referenced by no workflow at all'."
+          "ref": "docs/evidence/phase-23/closeout/lane-and-channel-audit.txt:60-61",
+          "quotedAssertion": "The channel table, measured against the GitHub API rather than read off the workflow files: 'engine-live.yml              0' and 'jira-datacenter-smoke.yml    0'. Section 5's conclusion spans two lines, quoted as it is written: :60-61 '# -> docker/jira-datacenter/smoke-test.sh is referenced only by jira-datacenter-smoke.yml' / '#    (0 runs). docker/grafana/smoke-test.sh is referenced by no workflow at all.'"
         },
         {
           "kind": "test",

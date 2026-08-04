@@ -6,8 +6,17 @@
 # toContain("23-supplement.md"), which the now-universal rule satisfies on its own.
 # The assertion was tightened to the rule's own message. This probe proves the tightening
 # restored the bite: DELETE the rule and the suite must go RED.
-# UTC: 2026-08-04T17:21:14Z
-# HEAD: fc8eb8110f4affe8796458d75849bb52484cbc1e
+# UTC: 2026-08-04T17:55:03Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b
+# branch tip at capture (PROVISIONAL — see the note): 729cd0cd623f18adcf8345a407937179f6b61e42
+#
+# WHY TWO IDS. A commit on an unmerged branch is not a durable pin: rebases and
+# commit-message rewords mint new object ids, and this branch saw three rebases and one
+# reword during review. Two earlier captures of this file pinned branch-tip ids
+# (fc8eb811, then 4c1f4943) that no longer resolve. The upstream base does not move under
+# a rebase of mine, so it is the primary anchor; the branch tip is kept and labelled
+# provisional. This probe is local and repeatable — a reader with this branch checked out
+# re-runs it by deleting the same block and running the same command.
 
 ## LEG 1 (GREEN) — unmutated
 ## command: npx vitest run --coverage.enabled=false scripts/check-criteria-closeout.test.mjs
@@ -18,8 +27,8 @@
 
  Test Files  1 passed (1)
       Tests  142 passed (142)
-   Start at  19:21:14
-   Duration  963ms (transform 65ms, setup 0ms, import 97ms, tests 748ms, environment 0ms)
+   Start at  19:55:05
+   Duration  2.07s (transform 260ms, setup 0ms, import 339ms, tests 1.44s, environment 0ms)
 
 # EXIT=0
 
@@ -32,8 +41,8 @@
 
  RUN  v4.1.10 /home/eimi/projects/wt-p23
 
- ❯ |scripts| check-criteria-closeout.test.mjs (142 tests | 1 failed) 738ms
-     × rejects a second roadmap file claiming a phase number the baseline already pins 13ms
+ ❯ |scripts| check-criteria-closeout.test.mjs (142 tests | 1 failed) 1604ms
+     × rejects a second roadmap file claiming a phase number the baseline already pins 53ms
 
 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
 
@@ -61,8 +70,8 @@ AssertionError: expected 'docs/evidence/criteria-closeout/ cont…' to contain '
 
  Test Files  1 failed (1)
       Tests  1 failed | 141 passed (142)
-   Start at  19:21:26
-   Duration  935ms (transform 63ms, setup 0ms, import 91ms, tests 738ms, environment 0ms)
+   Start at  19:55:08
+   Duration  1.95s (transform 112ms, setup 0ms, import 167ms, tests 1.60s, environment 0ms)
 
 # EXIT=1
 
@@ -76,11 +85,10 @@ AssertionError: expected 'docs/evidence/criteria-closeout/ cont…' to contain '
 
  Test Files  1 passed (1)
       Tests  142 passed (142)
-   Start at  19:21:41
-   Duration  921ms (transform 60ms, setup 0ms, import 89ms, tests 731ms, environment 0ms)
+   Start at  19:55:11
+   Duration  2.05s (transform 162ms, setup 0ms, import 225ms, tests 1.60s, environment 0ms)
 
 # EXIT=0
 
 ## command: git status --porcelain -- packages/ e2e/ scripts/
- M scripts/check-criteria-closeout.test.mjs
-# (only the two de-grandfathering files under scripts/ may appear, and they are this PR's own change)
+# (nothing under packages/ or e2e/; scripts/ is restored byte-identical, so nothing there either)

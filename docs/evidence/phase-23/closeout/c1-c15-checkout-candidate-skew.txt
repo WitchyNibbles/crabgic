@@ -87,3 +87,52 @@ exit=0
 # packages/cli; this record cites neither.
 $ comm -12 <(git diff --name-only 86408b2 6a62729 | sort) <(every cited repo path, sorted)
 exit=0 (no output above means no cited path moved)
+
+# ---- Dated correction, 2026-08-04T17:43:53Z — TWO object ids above are orphaned. ----
+# The first re-run note above says "Re-measured at HEAD fc8eb8110f4affe8796458d75849bb52484cbc1e",
+# and the second says "Re-measured at HEAD cffc3d692fa6eecfa929fb9c7bf4216c59bcaab7". BOTH are
+# dead, for the same reason and to the same extent; the text below is written about the first
+# and applies verbatim to the second, which was the pre-reword id of the commit that carries it.
+# That was this branch's own first commit. It has since been rebased twice and its
+# successor's over-long commit header reworded, and every one of those rewrites mints new
+# object ids — so fc8eb811 is now unreachable from this branch and a reader cannot resolve
+# it. The note is left standing rather than edited, per the annotate-never-rewrite rule.
+#
+# What it recorded is still true and is re-proved here at a commit that IS on the branch,
+# HEAD 4c1f494332e0cf959e6c05befd036fea6faf76cb. The numbers move only because the branch is longer:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+52
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+263
+exit=0
+# And the emptiness proof, re-run once more against the newest tip:
+$ comm -12 <(git diff --name-only 3dec9bf 6a62729 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved across BOTH mid-review merges)
+#
+# NOTE for anyone auditing object ids in these transcripts mechanically: the 40-hex string
+# in c15-registry-ground-truth.txt is npm's dist.shasum for the published tarball, not a git
+# commit, and will correctly fail a git reachability check.
+
+# ---- Dated correction, 2026-08-04T17:55:30Z — the rule this file kept learning the hard way. ----
+# origin/main moved a third time (PRs #88, #89 -> 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b) and this branch was rebased again,
+# which orphaned 4c1f4943 as well — the very id the previous correction had just re-proved
+# things at. Recapturing at each new branch tip is a treadmill, so the two recaptured
+# transcripts here now pin the UPSTREAM BASE as their primary id and label the branch tip
+# provisional. This file's own re-run notes above keep their dead ids, annotated, because
+# an evidence transcript records what it recorded.
+#
+# The rule, stated once for whoever writes the next one: a RULING-3 HEAD: line must name an
+# object id a reader can still resolve AFTER the branch merges. A pre-merge branch commit is
+# not that. The seven transcripts in this directory that pinned an upstream main commit
+# survived all four rebases and the reword untouched; the two that pinned their own branch
+# tip died twice each.
+#
+# Re-proved once more at the current base, so nothing rests on a dead id:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..origin/main
+51
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..origin/main
+262
+exit=0
+# Emptiness proof across ALL FOUR mid-review merges (#84, #85, #88, #89):
+$ comm -12 <(git diff --name-only 3dec9bf origin/main | sort) <(every cited repo path, sorted)
+exit=0 (no output above means not one cited path has moved since this pass began)

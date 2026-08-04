@@ -2,8 +2,13 @@
 
 Produced by the per-criterion closeout pass for `roadmap/23-release-hardening.md`. First captured
 at `3dec9bf2caa6b94bd817aee414f9458c37750fd9`; re-verified after this branch was rebased onto
-`86408b2` (PR #84) and then `6a62729` (PR #85), neither of which touched a path this record
-cites. Everything here is evidence, not claim: the record
+`86408b2` (#84), `6a62729` (#85) and `1ba27b9` (#88/#89) as `main` moved under review — none of
+which touched a path this record cites. **Reading the `HEAD:` lines below:** the seven transcripts
+pinned at an upstream `main` commit are stable and resolve for any reader. The two recaptured ones
+pin the **upstream base** as their primary id and label the branch tip provisional, because a
+pre-merge branch commit is rewritten by every rebase and every commit-message reword — which
+happened four times and once respectively, killing two earlier pins. `c1-c15-checkout-candidate-skew.txt`
+carries the dated corrections naming each dead id. Everything here is evidence, not claim: the record
 itself lives at `docs/evidence/criteria-closeout/phase-23.json` and cites these files.
 
 ## The two archived release-gate reports, committed verbatim
