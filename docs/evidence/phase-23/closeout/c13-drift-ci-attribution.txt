@@ -1,0 +1,82 @@
+# Phase-23 criteria-closeout pass — attributing drift-CI's red state, because criterion 13
+# is about vendor support windows and a red drift-CI could mean a window moved.
+# It does not. Read-only GitHub API queries; nothing was dispatched.
+# UTC: 2026-08-04T17:54:39Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b
+# branch tip at capture (PROVISIONAL — see the note): 729cd0cd623f18adcf8345a407937179f6b61e42
+#
+# WHY TWO IDS, AND WHY THE SECOND ONE IS LABELLED. A RULING-3 header exists so a reader can
+# resolve the tree a measurement ran against. A COMMIT ON AN UNMERGED BRANCH cannot do that
+# job: every rebase and every commit-message reword mints new object ids, and this branch
+# was rebased three times and reworded once during review. Two earlier captures of this file
+# pinned branch-tip ids (fc8eb811, then 4c1f4943) that are now unresolvable. The durable
+# anchor is the UPSTREAM BASE the branch sits on, which no rebase of mine rewrites — which
+# is exactly why every other transcript here, pinned at an upstream main commit, survived
+# all three rebases untouched. The branch tip is recorded for completeness and marked
+# provisional rather than quietly dropped.
+#
+# Nothing here depends on either id: every command below is a read-only query against
+# GitHub's own API for runs that already exist, so any reader can re-run it verbatim.
+
+$ gh api ".../actions/workflows/drift-ci.yml/runs?per_page=10" --jq ...
+30803087343	failure	schedule	3bb7ef8	2026-08-03T09:50:12Z
+30743998864	failure	workflow_dispatch	30f931e	2026-08-02T10:34:09Z
+30743929773	failure	workflow_dispatch	30f931e	2026-08-02T10:32:00Z
+30743854535	success	workflow_dispatch	30f931e	2026-08-02T10:29:50Z
+30256034367	success	schedule	dbb83fd	2026-07-27T09:56:32Z
+exit=0
+
+# The 2026-08-02 dispatches are phase 21's own closeout evidence — that pass PRODUCED a red
+# check deliberately (its record says "PRODUCED, NOT REINTERPRETED"). The one that needs
+# attributing is the SCHEDULED run of 2026-08-03, which nobody drove.
+
+# Step outcomes of scheduled run 30803087343, job 91652051333:
+$ gh api .../actions/jobs/91652051333 --jq "(.steps[]|...)"
+1	success	Set up job
+2	success	Run actions/checkout@v4
+3	success	Run actions/setup-node@v4
+4	success	Run npm ci
+5	success	Run npm run build
+6	success	Re-confirm vendor support windows
+7	success	Upload vendor support-window record
+8	success	Restore drift debounce state
+9	failure	Run drift-CI job (fixture-modeled until 18/20/23's live sandboxes exist)
+10	success	Save drift debounce state (always — even on a red check)
+11	success	Upload DriftProposal artifact (for human review)
+21	skipped	Post Run actions/setup-node@v4
+22	success	Post Run actions/checkout@v4
+23	success	Complete job
+exit=0
+
+# DECISIVE FOR CRITERION 13: the vendor-support-window step SUCCEEDED and re-wrote all six
+# records. Job-log line 204 —
+#   support-window probe: wrote /home/runner/work/crabgic/crabgic/docs/evidence/phase-23/vendor-support-windows.json — 6 record(s)
+# No window has moved. The failure is one step later, line 262-263 —
+#   drift-ci: 1 DriftProposal(s) written to /home/runner/.local/state/crabgic/drift-ci/drift-proposals.json — human review required.
+#   ##[error]Process completed with exit code 1.
+
+# And the proposal itself, downloaded from artifact 8851635961, is a KNOWN false positive:
+$ gh api .../actions/artifacts/8851635961/zip | (unzip; cat)
+[
+  {
+    "connector": "jira",
+    "pinnedVersion": "1000.0.0",
+    "observedVersion": "",
+    "redactedDiff": "{\"connector\":\"jira\",\"pinnedVersion\":\"1000.0.0\",\"observedVersion\":\"\",\"addedKeys\":[],\"removedKeys\":[],\"pinnedShape\":{\"summary\":\"string\",\"description\":\"string\",\"status\":\"string\",\"assignee\":\"string\"},\"observedShape\":{\"summary\":\"string\",\"description\":\"string\",\"status\":\"string\",\"assignee\":\"string\"}}",
+    "recommendedFixtureUpdate": "update pinned jira fixture from 1000.0.0 to  (version bump only, no shape change)",
+    "detectedAt": "2026-08-03T09:51:11.458Z"
+  }
+]
+
+exit=0
+
+# observedVersion is the EMPTY STRING, and the recommendation is "version bump only, no
+# shape change" from the 1000.0.0 sentinel to nothing. That is exactly the already-filed
+# phase-21 defect 21-drift-ci-blank-dispatch-input-false-positive.md: on the schedule
+# trigger the inputs context is empty, GitHub sets the override env var to "" rather than
+# leaving it unset, and "" !== undefined so the override is taken. The pinned and observed
+# SHAPES are byte-identical in the proposal above — no real drift is being reported.
+
+# CONCLUSION: drift-CI red since 2026-08-02 is (a) phase 21's deliberately produced red for
+# the two dispatches and (b) the steady-state false positive that phase 21 already filed for
+# the schedule. It is NOT a vendor support-window move, and criterion 13 is unaffected.

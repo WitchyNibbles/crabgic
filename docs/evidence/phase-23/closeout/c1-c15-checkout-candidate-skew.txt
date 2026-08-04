@@ -1,0 +1,138 @@
+# Phase-23 criteria-closeout pass — the checkout-vs-candidate skew of release-e2e run
+# 30250453824, and what it actually changes. Read-only git queries.
+# UTC: 2026-08-04T16:23:56Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+
+# The run stamped every EvidenceRecord with objectId 2435cb95..., but GitHub records its
+# head_sha as dbb83fd7... — the tree it checked out and executed. The two commits between
+# them are:
+$ git log --oneline 2435cb955809a5420f396043e5bc7003282491fa..dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105
+dbb83fd test: describe the published state, now that crabgic@1.0.0 has shipped
+b035227 chore(release): pin the marketplace entry at the v1.0.0 release commit
+exit=0
+
+$ git diff --name-only 2435cb955809a5420f396043e5bc7003282491fa dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105
+e2e/release/src/publicationCheck.test.ts
+e2e/release/src/publishDryRunCheck.test.ts
+e2e/release/src/releaseGateSummary.test.ts
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# The one non-test file in that span is the marketplace pin, and the change is material to
+# the reproducible-build item, which scores checkMarketplacePin:
+$ git diff 2435cb955809a5420f396043e5bc7003282491fa dbb83fd7e7b05ad4e7c3ed11b53534125d7dd105 -- packages/plugin/.claude-plugin/marketplace.json
+diff --git a/packages/plugin/.claude-plugin/marketplace.json b/packages/plugin/.claude-plugin/marketplace.json
+index 00ef8da..dfccad0 100644
+--- a/packages/plugin/.claude-plugin/marketplace.json
++++ b/packages/plugin/.claude-plugin/marketplace.json
+@@ -13,7 +13,7 @@
+       "description": "Autonomous engineering orchestration for Claude Code — slash commands, review subagents, advisory hooks, gateway MCP registration.",
+       "version": "1.0.0",
+       "license": "Apache-2.0",
+-      "commit": "94f419b066284d223249429ba46d78c0bd47309c",
++      "commit": "2435cb955809a5420f396043e5bc7003282491fa",
+       "digest": "1a8891fec8b477499c43b241bdc61375ce76f03daa97be0dee3f1b7be27edb25"
+     }
+   ]
+exit=0
+
+# So at the ATTESTED candidate the entry pins 94f419b0..., its own parent, not the release
+# commit. marketplacePinCheck.ts accepts an ancestor pin only when every path changed
+# between the pin and the candidate is under packages/plugin/.claude-plugin/ (its
+# DIGEST_EXCLUDED_PATH / digest-neutral rule). At 2435cb9 that condition is FALSE:
+$ git diff --name-only 94f419b066284d223249429ba46d78c0bd47309c 2435cb955809a5420f396043e5bc7003282491fa
+e2e/live/src/gatewayFamilyCompleteness.ts
+package.json
+packages/cli/package.json
+packages/cli/src/index.ts
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# ...four of those five paths are outside packages/plugin/.claude-plugin/. The v1.5.0 gate
+# has no such skew: its head_sha IS the candidate (6b9dd7b), and its pin span is
+# digest-neutral by the same rule:
+$ git diff --name-only 39ef7d192d9098c1258681d33441093bc53381c7 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb
+packages/plugin/.claude-plugin/marketplace.json
+exit=0
+
+# Drift of the two candidates from this pass HEAD:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+47
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+258
+exit=0
+
+# ---- Re-run note, 2026-08-04T17:24:24Z ----
+# origin/main advanced to 86408b2 (PR #84) after this transcript was first captured, so this
+# branch was rebased and the two drift counts above moved by exactly one commit. Re-measured
+# at HEAD fc8eb8110f4affe8796458d75849bb52484cbc1e:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+49
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+260
+exit=0
+# Emptiness proof re-run against the new tip: no path this record cites was touched by 86408b2.
+$ comm -12 <(git diff --name-only 3dec9bf 86408b2 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved)
+
+# ---- Re-run note, 2026-08-04T17:28:39Z ----
+# origin/main advanced again to 6a62729 (PR #85) mid-review; rebased a second time.
+# Re-measured at HEAD cffc3d692fa6eecfa929fb9c7bf4216c59bcaab7:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+51
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+262
+exit=0
+# Emptiness proof, re-run against the newest tip. PR #85 touches packages/supervisor and
+# packages/cli; this record cites neither.
+$ comm -12 <(git diff --name-only 86408b2 6a62729 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved)
+
+# ---- Dated correction, 2026-08-04T17:43:53Z — TWO object ids above are orphaned. ----
+# The first re-run note above says "Re-measured at HEAD fc8eb8110f4affe8796458d75849bb52484cbc1e",
+# and the second says "Re-measured at HEAD cffc3d692fa6eecfa929fb9c7bf4216c59bcaab7". BOTH are
+# dead, for the same reason and to the same extent; the text below is written about the first
+# and applies verbatim to the second, which was the pre-reword id of the commit that carries it.
+# That was this branch's own first commit. It has since been rebased twice and its
+# successor's over-long commit header reworded, and every one of those rewrites mints new
+# object ids — so fc8eb811 is now unreachable from this branch and a reader cannot resolve
+# it. The note is left standing rather than edited, per the annotate-never-rewrite rule.
+#
+# What it recorded is still true and is re-proved here at a commit that IS on the branch,
+# HEAD 4c1f494332e0cf959e6c05befd036fea6faf76cb. The numbers move only because the branch is longer:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..HEAD
+52
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..HEAD
+263
+exit=0
+# And the emptiness proof, re-run once more against the newest tip:
+$ comm -12 <(git diff --name-only 3dec9bf 6a62729 | sort) <(every cited repo path, sorted)
+exit=0 (no output above means no cited path moved across BOTH mid-review merges)
+#
+# NOTE for anyone auditing object ids in these transcripts mechanically: the 40-hex string
+# in c15-registry-ground-truth.txt is npm's dist.shasum for the published tarball, not a git
+# commit, and will correctly fail a git reachability check.
+
+# ---- Dated correction, 2026-08-04T17:55:30Z — the rule this file kept learning the hard way. ----
+# origin/main moved a third time (PRs #88, #89 -> 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b) and this branch was rebased again,
+# which orphaned 4c1f4943 as well — the very id the previous correction had just re-proved
+# things at. Recapturing at each new branch tip is a treadmill, so the two recaptured
+# transcripts here now pin the UPSTREAM BASE as their primary id and label the branch tip
+# provisional. This file's own re-run notes above keep their dead ids, annotated, because
+# an evidence transcript records what it recorded.
+#
+# The rule, stated once for whoever writes the next one: a RULING-3 HEAD: line must name an
+# object id a reader can still resolve AFTER the branch merges. A pre-merge branch commit is
+# not that. The seven transcripts in this directory that pinned an upstream main commit
+# survived all four rebases and the reword untouched; the two that pinned their own branch
+# tip died twice each.
+#
+# Re-proved once more at the current base, so nothing rests on a dead id:
+$ git rev-list --count 6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb..origin/main
+51
+$ git rev-list --count 2435cb955809a5420f396043e5bc7003282491fa..origin/main
+262
+exit=0
+# Emptiness proof across ALL FOUR mid-review merges (#84, #85, #88, #89):
+$ comm -12 <(git diff --name-only 3dec9bf origin/main | sort) <(every cited repo path, sorted)
+exit=0 (no output above means not one cited path has moved since this pass began)

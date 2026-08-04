@@ -1,0 +1,94 @@
+# Phase-23 criteria-closeout pass — de-grandfathering, MUTATION PROBE.
+#
+# Removing the PRE_INDEX_TICKED_PHASES exemption made the ticks-need-a-record rule
+# universal, and that silently WEAKENED the self-test for a different rule (bypass 21a:
+# 'a second file sharing a phase number is pinned by nothing'). Its assertion was a bare
+# toContain("23-supplement.md"), which the now-universal rule satisfies on its own.
+# The assertion was tightened to the rule's own message. This probe proves the tightening
+# restored the bite: DELETE the rule and the suite must go RED.
+# UTC: 2026-08-04T17:55:03Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1ba27b95c89e51bb799c16d12cf96f3e9c19ab1b
+# branch tip at capture (PROVISIONAL — see the note): 729cd0cd623f18adcf8345a407937179f6b61e42
+#
+# WHY TWO IDS. A commit on an unmerged branch is not a durable pin: rebases and
+# commit-message rewords mint new object ids, and this branch saw three rebases and one
+# reword during review. Two earlier captures of this file pinned branch-tip ids
+# (fc8eb811, then 4c1f4943) that no longer resolve. The upstream base does not move under
+# a rebase of mine, so it is the primary anchor; the branch tip is kept and labelled
+# provisional. This probe is local and repeatable — a reader with this branch checked out
+# re-runs it by deleting the same block and running the same command.
+
+## LEG 1 (GREEN) — unmutated
+## command: npx vitest run --coverage.enabled=false scripts/check-criteria-closeout.test.mjs
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23
+
+
+ Test Files  1 passed (1)
+      Tests  142 passed (142)
+   Start at  19:55:05
+   Duration  2.07s (transform 260ms, setup 0ms, import 339ms, tests 1.44s, environment 0ms)
+
+# EXIT=0
+
+## LEG 2 (must be RED) — the duplicate-phase-number rule is DELETED from
+## scripts/check-criteria-closeout.mjs (the whole `entry.roadmapFile !== roadmap/${name}`
+## branch and its problems.push). Before the assertion was tightened, this deletion left
+## all 142 tests GREEN and the validator at exit 0.
+## command: npx vitest run --coverage.enabled=false scripts/check-criteria-closeout.test.mjs
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23
+
+ ❯ |scripts| check-criteria-closeout.test.mjs (142 tests | 1 failed) 1604ms
+     × rejects a second roadmap file claiming a phase number the baseline already pins 53ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |scripts| check-criteria-closeout.test.mjs > validateAllCloseoutRecords — this repository's own committed records > rejects a second roadmap file claiming a phase number the baseline already pins
+AssertionError: expected 'docs/evidence/criteria-closeout/ cont…' to contain 'roadmap/23-supplement.md is not the f…'
+
+- Expected
++ Received
+
+- roadmap/23-supplement.md is not the file the frozen baseline pins for phase 23
++ docs/evidence/criteria-closeout/ contains no phase-NN.json records
++ roadmap/23-supplement.md criterion 1 does not hash to the frozen original wording in docs/evidence/criteria-closeout/criteria-baseline.json — this phase has no closeout record, so nothing else pins it
++ roadmap/23-supplement.md has 1 ticked exit criteria and no docs/evidence/criteria-closeout/phase-23.json — a tick with no closeout record behind it is the aspirational bookkeeping roadmap/README.md's completion ledger refuses
+
+ ❯ check-criteria-closeout.test.mjs:2492:31
+    2490|     // the supplement from that second rule, which is the only reason …
+    2491|     // assertion used to pin this one.
+    2492|     expect(errors.join("\n")).toContain(
+       |                               ^
+    2493|       "roadmap/23-supplement.md is not the file the frozen baseline pi…
+    2494|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 141 passed (142)
+   Start at  19:55:08
+   Duration  1.95s (transform 112ms, setup 0ms, import 167ms, tests 1.60s, environment 0ms)
+
+# EXIT=1
+
+## LEG 3 — the rule is restored; the suite is green again and the working tree carries no
+## packages/ or e2e/ change from this probe.
+## command: npx vitest run --coverage.enabled=false scripts/check-criteria-closeout.test.mjs
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23
+
+
+ Test Files  1 passed (1)
+      Tests  142 passed (142)
+   Start at  19:55:11
+   Duration  2.05s (transform 162ms, setup 0ms, import 225ms, tests 1.60s, environment 0ms)
+
+# EXIT=0
+
+## command: git status --porcelain -- packages/ e2e/ scripts/
+# (nothing under packages/ or e2e/; scripts/ is restored byte-identical, so nothing there either)

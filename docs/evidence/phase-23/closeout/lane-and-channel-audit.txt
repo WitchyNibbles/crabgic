@@ -1,0 +1,70 @@
+# Phase-23 criteria-closeout pass — which CI channel, if any, executes each release lane.
+# The load-bearing question for this phase: a lane no CI job invokes is unrun evidence.
+# UTC: 2026-08-04T16:24:16Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+
+# 1. Total runs, ever, of every workflow in this repository (GitHub API, read-only).
+$ for w in $(ls .github/workflows/*.yml); do gh api ".../actions/workflows/$w/runs?per_page=1" --jq .total_count; done
+ci.yml                       276
+drift-ci.yml                 5
+engine-live.yml              0
+gates-conformance.yml        269
+jira-datacenter-smoke.yml    0
+learning-redteam.yml         268
+perf-conformance.yml         268
+publish.yml                  13
+release-e2e.yml              22
+exit=0
+
+# engine-live.yml and jira-datacenter-smoke.yml have never run, anywhere, ever. They are
+# the only channels for the @live engine suite and for the Jira Data Center containers.
+
+# 2. What the default per-push fan-out (`npm test`) actually covers.
+$ grep -n "projects:" -A 3 vitest.config.ts | head
+51:    projects: [
+52-      ...packageDirs.map((root) => ({
+53-        extends: true,
+54-        test: { root, name: readPackageName(root) },
+exit=0
+# -> packages/* plus e2e/report and scripts only. Every other e2e/ lane is reachable only
+#    through `npm run test:e2e` / `test:e2e:release-evidence` / a direct --config.
+
+$ grep -n "\"test:e2e" package.json
+21:    "test:e2e": "vitest run --config e2e/provisioning/vitest.config.ts && vitest run --config e2e/matrix/installation/vitest.config.ts && vitest run --config e2e/matrix/git/vitest.config.ts && vitest run --config e2e/matrix/orchestration/vitest.config.ts && vitest run --config e2e/matrix/connector/vitest.config.ts && vitest run --config e2e/live/vitest.config.ts && vitest run --config e2e/release/vitest.config.ts && vitest run --config e2e/attestation/vitest.config.ts",
+22:    "test:e2e:release-evidence": "vitest run --no-file-parallelism --config e2e/provisioning/vitest.config.ts && vitest run --no-file-parallelism --config e2e/matrix/installation/vitest.config.ts && vitest run --no-file-parallelism --config e2e/matrix/git/vitest.config.ts && vitest run --no-file-parallelism --config e2e/matrix/orchestration/vitest.config.ts && vitest run --no-file-parallelism --config e2e/matrix/connector/vitest.config.ts && vitest run --no-file-parallelism --config e2e/live/vitest.config.ts && vitest run --no-file-parallelism --config e2e/release/vitest.config.ts && vitest run --no-file-parallelism --config e2e/attestation/vitest.config.ts",
+exit=0
+
+# 3. Which workflow invokes test:e2e:release-evidence.
+$ grep -rn "test:e2e:release-evidence" .github/workflows/
+.github/workflows/release-e2e.yml:40:#   2. The harness step runs `npm run test:e2e:release-evidence`, the
+.github/workflows/release-e2e.yml:389:        run: npm run test:e2e:release-evidence
+exit=0
+
+# 4. Which workflow invokes any *.live.config.ts.
+$ grep -rn "vitest.live.config.ts" .github/workflows/ package.json e2e/package.json
+e2e/package.json:14:    "provisioning:test:live": "vitest run --config provisioning/vitest.live.config.ts",
+e2e/package.json:17:    "attestation:test:live": "vitest run --config attestation/vitest.live.config.ts"
+.github/workflows/engine-live.yml:5:# *.live.test.ts` via `vitest.live.config.ts` — against the real, pinned
+.github/workflows/release-e2e.yml:364:          if npx vitest run --config e2e/attestation/vitest.live.config.ts; then
+package.json:20:    "test:live": "vitest run --config vitest.live.config.ts",
+exit=0
+# -> e2e/attestation/vitest.live.config.ts is invoked by release-e2e.yml (warn-only step).
+#    root vitest.live.config.ts is invoked only by engine-live.yml, which has never run.
+#    e2e/live/vitest.live.config.ts and e2e/provisioning/vitest.live.config.ts are
+#    invoked by no workflow and by no npm script chain that CI runs.
+
+# 5. Which workflow invokes the two container smoke scripts.
+$ grep -rn "smoke-test.sh" .github/workflows/
+.github/workflows/jira-datacenter-smoke.yml:28:        run: docker/jira-datacenter/smoke-test.sh "${{ matrix.edition }}"
+exit=0
+# -> docker/jira-datacenter/smoke-test.sh is referenced only by jira-datacenter-smoke.yml
+#    (0 runs). docker/grafana/smoke-test.sh is referenced by no workflow at all.
+
+# 6. publish.yml calls release-e2e as a blocking gate, so every tag re-runs the matrix.
+$ grep -n "release-e2e\|scoring_mode\|needs:" .github/workflows/publish.yml | head -20
+43:  # This job is why a release cannot ship unscored again. `release-e2e` was
+53:  # overall-FAIL verdict, so `needs:` below turns the report into a gate.
+64:    uses: ./.github/workflows/release-e2e.yml
+66:      scoring_mode: final
+76:    needs: [release-gate]
+exit=0

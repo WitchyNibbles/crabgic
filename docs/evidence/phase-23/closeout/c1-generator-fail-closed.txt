@@ -1,0 +1,308 @@
+# Phase-23 criteria-closeout pass — criterion 1 reproduction: the release-gate report
+# generator's fail-closed (never PASS-by-default) path, GREEN then deliberately RED.
+# UTC: 2026-08-04T16:17:29Z
+# HEAD: 3dec9bf2caa6b94bd817aee414f9458c37750fd9
+# Run inside an isolated git worktree of that commit; no packages/ or e2e/ change is
+# committed by this pass — the RED leg below mutates e2e/report/src/generator.ts in the
+# working tree only and is reverted immediately after, as the closing git-status shows.
+
+## LEG 1 (GREEN) — command: npx vitest run --coverage.enabled=false --reporter=verbose e2e/report
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23
+
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > has exactly 15 items 25ms
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > every item id is unique 1ms
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > every item is required (roadmap/23 lists all 15 as unconditional release blockers) 1ms
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > every item declares >=1 non-empty requiredGateTags entry 3ms
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > every item has a non-empty description 1ms
+ ✓ |e2e-report| src/checklist.test.ts > RELEASE_GATE_CHECKLIST — models roadmap/23's 15 Exit-criteria items > every dedicated release-gate tag is unique across items (no two items share their own namespaced tag) 0ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateVerdictSchema > accepts exactly the tri-state PASS/FAIL/EVIDENCE-PENDING members 2ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateVerdictSchema > rejects any other string 2ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateEvidenceLinkSchema > round-trips a valid link 10ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateEvidenceLinkSchema > accepts an empty artifactDigests, exactly as EvidenceRecordSchema does 0ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateEvidenceLinkSchema > still rejects a digest entry that is an empty string 1ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateEvidenceLinkSchema > rejects unknown fields (.strict()) 0ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateReportSchema > round-trips a valid report 2ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateReportSchema > requires at least one item 1ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateReportSchema > rejects a schemaVersion other than the pinned literal 5ms
+ ✓ |e2e-report| src/schema.test.ts > ReleaseGateReportSchema > rejects unknown top-level fields (.strict()) 1ms
+ ✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > FAILs (never PASS-by-default) when zero evidence matched, in 'final' scoring mode 24ms
+ ✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > reports EVIDENCE-PENDING (never PASS-by-default) when zero evidence matched, in 'interim' scoring mode 3ms
+ ✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > PASSes when >=1 matched EvidenceRecord and every one is green (exitStatus === 0) 23ms
+ ✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > FAILs when any matched EvidenceRecord is negative, even alongside other green matches (both modes) 4ms
+ ✓ |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > never returns PASS when linkedEvidence would be empty — structural invariant 2ms
+ ✓ |e2e-report| src/generator.test.ts > computeOverallVerdict > is PASS only when every item is PASS 3ms
+ ✓ |e2e-report| src/generator.test.ts > computeOverallVerdict > is FAIL if any item is FAIL, regardless of the others 2ms
+ ✓ |e2e-report| src/generator.test.ts > computeOverallVerdict > is EVIDENCE-PENDING if no item is FAIL but >=1 is EVIDENCE-PENDING 4ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > FAILs every item closed (final mode) when the journal has zero evidence at all 4ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > reports EVIDENCE-PENDING for every item (interim mode) when the journal has zero evidence at all 2ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > matches an item to its EvidenceRecord by (gateTag, exact release-candidate objectId) and PASSes only that item 20ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > writes a schema-valid report to outFile and returns it 51ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > creates any missing parent directories for outFile 25ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > propagates a real FAIL (nonzero exitStatus evidence) all the way to the persisted report 7ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > defaults scoringMode to 'interim' when neither options nor env var supply one 7ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > honors CRABGIC_RELEASE_GATE_MODE=final when scoringMode isn't passed explicitly 3ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > ignores a garbage CRABGIC_RELEASE_GATE_MODE value and falls back to 'interim' 3ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > NEVER links or counts evidence captured against a DIFFERENT object ID 28ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > NEVER matches an EvidenceRecord whose gateTag isn't in the item's requiredGateTags, even at the right object ID 23ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > uses the injected clock for generatedAt 2ms
+ ✓ |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > defaults to the full 15-item RELEASE_GATE_CHECKLIST when none is supplied 2ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > resolves releaseCandidateObjectId via `git rev-parse HEAD` when neither options nor env var supply one 21ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > honors a non-empty CRABGIC_RELEASE_CANDIDATE_OBJECT_ID 9ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > treats an EMPTY CRABGIC_RELEASE_CANDIDATE_OBJECT_ID as unset, not as the object ID "" 19ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > still prefers an explicit option over any env value 7ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > reports the journal directory it resolved from CRABGIC_RELEASE_GATE_JOURNAL_DIR 6ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > falls back to the default journal directory when CRABGIC_RELEASE_GATE_JOURNAL_DIR is EMPTY, never to "" 5ms
+ ✓ |e2e-report| src/cli.test.ts > runReleaseGateReportCli > honors a non-empty CRABGIC_RELEASE_GATE_OUT_FILE 3ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_JOURNAL_DIR: absent -> default 11ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_JOURNAL_DIR: set -> used verbatim 1ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_JOURNAL_DIR: EMPTY -> default, never "" 2ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_JOURNAL_DIR: an explicit option still wins 1ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_OUT_FILE: absent -> default 3ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_OUT_FILE: set -> used verbatim 1ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_OUT_FILE: EMPTY -> default, never "" 3ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_OUT_FILE: an explicit option still wins 1ms
+ ✓ |e2e-report| src/cli.test.ts > resolveReleaseGateCliSettings — empty env values mean unset > CRABGIC_RELEASE_GATE_MODE: EMPTY -> 'interim' 1ms
+ ✓ |e2e-report| src/generator.property.test.ts > generateReleaseGateReport — property: never PASS on missing/incomplete evidence > for any random combination of checklist items x evidence sets x scoring mode, PASS implies >=1 linked green EvidenceRecord and zero linked negative ones 4000ms
+ ✓ |e2e-report| src/generator.property.test.ts > generateReleaseGateReport — property: idempotent over the same journal segment > re-running against the identical journal content + inputs yields a byte-identical report 963ms
+
+ Test Files  5 passed (5)
+      Tests  55 passed (55)
+   Start at  18:17:31
+   Duration  7.73s (transform 4.82s, setup 0ms, import 8.81s, tests 5.37s, environment 1ms)
+
+# EXIT=0
+
+## LEG 2 (deliberately RED) — the anti-vacuity probe. e2e/report/src/generator.ts:88 is
+## mutated from
+##   const verdict: ReleaseGateVerdict = scoringMode === "final" ? "FAIL" : "EVIDENCE-PENDING";
+## to
+##   const verdict: ReleaseGateVerdict = "PASS"; // MUTATION PROBE (reverted): PASS-by-default
+## i.e. the zero-linked-evidence branch is made to PASS by default. If the suite stayed
+## green here, criterion 1's 'each linked to >=1 EvidenceRecord' would be unevidenced.
+## command: npx vitest run --coverage.enabled=false e2e/report
+
+
+ RUN  v4.1.10 /home/eimi/projects/wt-p23
+
+ ❯ |e2e-report| src/generator.test.ts (15 tests | 8 failed) 53ms
+     × FAILs (never PASS-by-default) when zero evidence matched, in 'final' scoring mode 8ms
+     × reports EVIDENCE-PENDING (never PASS-by-default) when zero evidence matched, in 'interim' scoring mode 2ms
+     × never returns PASS when linkedEvidence would be empty — structural invariant 1ms
+     × FAILs every item closed (final mode) when the journal has zero evidence at all 3ms
+     × reports EVIDENCE-PENDING for every item (interim mode) when the journal has zero evidence at all 2ms
+     × matches an item to its EvidenceRecord by (gateTag, exact release-candidate objectId) and PASSes only that item 15ms
+     × NEVER links or counts evidence captured against a DIFFERENT object ID 7ms
+     × NEVER matches an EvidenceRecord whose gateTag isn't in the item's requiredGateTags, even at the right object ID 7ms
+ ❯ |e2e-report| src/cli.test.ts (22 tests | 2 failed) 54ms
+     × creates any missing parent directories for outFile 8ms
+     × propagates a real FAIL (nonzero exitStatus evidence) all the way to the persisted report 3ms
+ ❯ |e2e-report| src/generator.property.test.ts (2 tests | 1 failed) 1093ms
+     × for any random combination of checklist items x evidence sets x scoring mode, PASS implies >=1 linked green EvidenceRecord and zero linked negative ones 26ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |e2e-report| src/cli.test.ts > runReleaseGateReportCli > creates any missing parent directories for outFile
+AssertionError: expected 'PASS' to be 'EVIDENCE-PENDING' // Object.is equality
+
+Expected: "EVIDENCE-PENDING"
+Received: "PASS"
+
+ ❯ src/cli.test.ts:118:67
+    116|     });
+    117|     const written = JSON.parse(await readFile(nested, "utf-8")) as unk…
+    118|     expect(ReleaseGateReportSchema.parse(written).overallVerdict).toBe…
+       |                                                                   ^
+    119|   });
+    120|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  |e2e-report| src/cli.test.ts > runReleaseGateReportCli > propagates a real FAIL (nonzero exitStatus evidence) all the way to the persisted report
+AssertionError: expected 'PASS' to be 'FAIL' // Object.is equality
+
+Expected: "FAIL"
+Received: "PASS"
+
+ ❯ src/cli.test.ts:133:35
+    131|     });
+    132|
+    133|     expect(report.overallVerdict).toBe("FAIL");
+       |                                   ^
+    134|   });
+    135|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  |e2e-report| src/generator.property.test.ts > generateReleaseGateReport — property: never PASS on missing/incomplete evidence > for any random combination of checklist items x evidence sets x scoring mode, PASS implies >=1 linked green EvidenceRecord and zero linked negative ones
+Error: Property failed after 1 tests
+{ seed: 1994814972, path: "0:0:0:0:0", endOnFailure: true }
+Counterexample: [[{"hasEvidence":false,"greenCount":0,"negativeCount":0}],"interim"]
+Shrunk 4 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ ❯ buildError ../../node_modules/fast-check/lib/fast-check.js:2462:16
+ ❯ asyncThrowIfFailed ../../node_modules/fast-check/lib/fast-check.js:2474:8
+
+Caused by: AssertionError: expected 0 to be greater than 0
+ ❯ src/generator.property.test.ts:128:36
+ ❯ src/generator.property.test.ts:121:24
+ ❯ AsyncProperty.run ../../node_modules/fast-check/lib/fast-check.js:1217:19
+ ❯ asyncRunIt ../../node_modules/fast-check/lib/fast-check.js:2516:15
+ ❯ src/generator.property.test.ts:85:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > FAILs (never PASS-by-default) when zero evidence matched, in 'final' scoring mode
+AssertionError: expected 'PASS' to be 'FAIL' // Object.is equality
+
+Expected: "FAIL"
+Received: "PASS"
+
+ ❯ src/generator.test.ts:47:28
+     45|   it("FAILs (never PASS-by-default) when zero evidence matched, in 'fi…
+     46|     const result = scoreChecklistItem(ITEM, [], "final");
+     47|     expect(result.verdict).toBe("FAIL");
+       |                            ^
+     48|     expect(result.linkedEvidence).toEqual([]);
+     49|     expect(result.reason).toMatch(/fail-first/i);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > reports EVIDENCE-PENDING (never PASS-by-default) when zero evidence matched, in 'interim' scoring mode
+AssertionError: expected 'PASS' to be 'EVIDENCE-PENDING' // Object.is equality
+
+Expected: "EVIDENCE-PENDING"
+Received: "PASS"
+
+ ❯ src/generator.test.ts:54:28
+     52|   it("reports EVIDENCE-PENDING (never PASS-by-default) when zero evide…
+     53|     const result = scoreChecklistItem(ITEM, [], "interim");
+     54|     expect(result.verdict).toBe("EVIDENCE-PENDING");
+       |                            ^
+     55|     expect(result.linkedEvidence).toEqual([]);
+     56|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > scoreChecklistItem — fail-first / default-deny on zero linked evidence > never returns PASS when linkedEvidence would be empty — structural invariant
+AssertionError: expected 'PASS' not to be 'PASS' // Object.is equality
+ ❯ src/generator.test.ts:86:34
+     84|     for (const mode of ["interim", "final"] as const) {
+     85|       const result = scoreChecklistItem(ITEM, [], mode);
+     86|       expect(result.verdict).not.toBe("PASS");
+       |                                  ^
+     87|     }
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > FAILs every item closed (final mode) when the journal has zero evidence at all
+AssertionError: expected [ 'PASS', 'PASS' ] to deeply equal [ 'FAIL', 'FAIL' ]
+
+- Expected
++ Received
+
+  [
+-   "FAIL",
+-   "FAIL",
++   "PASS",
++   "PASS",
+  ]
+
+ ❯ src/generator.test.ts:180:48
+    178|       checklist,
+    179|     });
+    180|     expect(report.items.map((i) => i.verdict)).toEqual(["FAIL", "FAIL"…
+       |                                                ^
+    181|     expect(report.overallVerdict).toBe("FAIL");
+    182|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > reports EVIDENCE-PENDING for every item (interim mode) when the journal has zero evidence at all
+AssertionError: expected [ 'PASS', 'PASS' ] to deeply equal [ 'EVIDENCE-PENDING', …(1) ]
+
+- Expected
++ Received
+
+  [
+-   "EVIDENCE-PENDING",
+-   "EVIDENCE-PENDING",
++   "PASS",
++   "PASS",
+  ]
+
+ ❯ src/generator.test.ts:191:48
+    189|       checklist,
+    190|     });
+    191|     expect(report.items.map((i) => i.verdict)).toEqual(["EVIDENCE-PEND…
+       |                                                ^
+    192|     expect(report.overallVerdict).toBe("EVIDENCE-PENDING");
+    193|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > matches an item to its EvidenceRecord by (gateTag, exact release-candidate objectId) and PASSes only that item
+AssertionError: expected 'PASS' to be 'FAIL' // Object.is equality
+
+Expected: "FAIL"
+Received: "PASS"
+
+ ❯ src/generator.test.ts:208:24
+    206|     expect(a?.verdict).toBe("PASS");
+    207|     expect(a?.linkedEvidence).toHaveLength(1);
+    208|     expect(b?.verdict).toBe("FAIL"); // item-b still has zero evidence
+       |                        ^
+    209|     expect(report.overallVerdict).toBe("FAIL"); // one FAIL taints the…
+    210|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > NEVER links or counts evidence captured against a DIFFERENT object ID
+AssertionError: expected 'PASS' to be 'FAIL' // Object.is equality
+
+Expected: "FAIL"
+Received: "PASS"
+
+ ❯ src/generator.test.ts:226:38
+    224|       checklist,
+    225|     });
+    226|     expect(report.items[0]?.verdict).toBe("FAIL");
+       |                                      ^
+    227|     expect(report.items[0]?.linkedEvidence).toEqual([]);
+    228|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  |e2e-report| src/generator.test.ts > generateReleaseGateReport — end-to-end over a real @crabgic/journal JournalStore > NEVER matches an EvidenceRecord whose gateTag isn't in the item's requiredGateTags, even at the right object ID
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/generator.test.ts:240:61
+    238|       checklist,
+    239|     });
+    240|     expect(report.items.every((i) => i.verdict === "FAIL")).toBe(true);
+       |                                                             ^
+    241|   });
+    242|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  3 failed | 2 passed (5)
+      Tests  11 failed | 44 passed (55)
+   Start at  18:17:56
+   Duration  1.70s (transform 1.19s, setup 0ms, import 1.84s, tests 1.21s, environment 0ms)
+
+# EXIT=1
+
+## LEG 3 — the mutation is reverted; the working tree is clean of packages/ and e2e/ edits.
+## command: git status --porcelain -- packages/ e2e/
+# EXIT=0 (no output above means no packages/ or e2e/ modification remains)

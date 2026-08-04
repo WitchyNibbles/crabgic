@@ -1,0 +1,1612 @@
+{
+  "schemaVersion": 1,
+  "releaseCandidateObjectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+  "generatedAt": "2026-07-30T21:10:55.419Z",
+  "scoringMode": "final",
+  "items": [
+    {
+      "id": "quality-security-perf-learning-gates",
+      "description": "All applicable quality/security/perf/learning gates (14/15/22) pass on the release candidate with the coverage policy satisfied — not a synthetic fixture.",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "f3b2d1a5-e461-4e06-8235-94fa2234266d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c06eaf188304586370dfe79bc3e794b8cd86d34f54e8aebb1696be6b2938f492"
+          ],
+          "gateTag": "release-gate:not-implemented-sweep",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "e2f3a8ba-6ad5-4fed-83f4-5f84fafc3919",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:not-implemented-sweep",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "f73d398b-62c5-44d5-870f-d6c4c2eebf7d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:live-conformance",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "3 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "security-review-sign-off",
+      "description": "No unresolved CRITICAL/HIGH security finding; threat-model review sign-off recorded with implementation cross-references (03/16 keystones + 17's lint surface).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "0063864d-2a8e-426b-a39d-43a8ede6138f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:5fb76e8d8e61525cd45c2d31f501ab925dc8ae1c53169dad7ae741290957900c"
+          ],
+          "gateTag": "release-gate:security-review",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "requirement-traceability",
+      "description": "Every requirement linked to evidence from the exact final Git object ID and remote (Jira/Grafana) revisions (21's traceability report).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "36755de0-038f-4eca-8d84-53bef9a3087b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:9ef2d71b4dc10477068c7bb194578ebd3665d49253af3af8c35b18f95b6dafe7"
+          ],
+          "gateTag": "release-gate:requirement-traceability",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "performance-contracts",
+      "description": "Performance contracts satisfied rather than skipped, measured on a quiet host (15).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "ca72271e-9580-4c76-9f70-895ebf134dae",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:39d583fa27a986ae6480538e4d0902f3b7979f30d079bf3df6be8e3230a13697"
+          ],
+          "gateTag": "release-gate:performance-contracts",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "crash-recovery-concurrency",
+      "description": "Crash-recovery and concurrent change-set E2E scenarios pass live, including limit-parked resume across a supervisor restart (05/13).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "9ac56949-f7ce-4ba6-93f3-a6fd1ad6e548",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "b62eb908-3020-409b-bec6-7771ce326039",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "ab487c45-2fa7-43e4-b34c-9485c63f4072",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "760700d5-8132-487d-8701-3e05243b6252",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "913380b0-8d14-440a-a707-9f848b708c57",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "02cce7b9-c07b-4578-b6b1-196b0c071b4a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "3cd0d698-0d32-4bb4-9c13-4da1d2df5a53",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "9010c411-1d8b-4c55-82a6-bbc5d24f16fb",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "28e0e8d2-8470-4e34-84ae-4cc149cf3534",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "1c34205f-dd5c-46db-8085-1f293b561b33",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "cf75083a-0420-4357-8516-52995cf821c3",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d880bf04-45a1-4188-9b47-98e09a84613b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "11a1979e-b576-4edf-8bec-3a8e3b386a65",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "64d3eebc-7754-4b16-a162-9a30d2e3dfd9",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "b936e63d-727f-4252-a555-d7f1cfff59f7",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "7f0c9eb5-9748-40ee-9ade-6112754a16bf",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:crash-recovery-concurrency",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "16 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "jira-grafana-exactly-once",
+      "description": "Jira/Grafana exactly-once and read-back verification pass live (16/18/19/20).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "d713b6d8-bc49-48b8-9d87-bed09dabcf7b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:495d6d3b234d39aba0219c26790a797d0e5b2f5ad3ba706febc8591cd7687733"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6181f0d3-4ca2-4a04-b89a-e0265c28d952",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:a41bc7b6eb5c26ecd81f59c5d4aaa01b9322f01381bad852527415cc51edd73c"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d805b703-7ae8-4cfa-ba7d-e9d37f5a0753",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:6dcc309fb4c77baab3c357e909649c58a38e0e87cc962af491cf7c466dbf2e21"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "372f369b-939e-4bee-b576-52013d78ccc8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:36a6ad3b3b452ec1177c97064dc4aa4f3404d1625d5a5685306c2a604c7da5eb"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "42099997-cec7-48ea-bb94-7a8c84b8ef27",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b14c6b2f6a6b2c306fec8a0f007d554a684629638cbb539a0725cf7bc98eaec3"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "64341d14-e84e-44c9-99b4-513f6731ae1a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:3645c78f48d0fdc82fb5029a099160ba71cca2c65d4a2badaff8247e4344ff85"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5688a9d4-4583-43e7-991e-b76d29ce1ea5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6a50c3ac-061d-45c5-875a-71139fadd5f4",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "c5e997e9-491d-4478-870a-cbc2e2f181fe",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5c547a48-f54a-453a-a213-4691d7c6833c",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8ae18cdf-c67d-480d-bc0b-290443fae7ec",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "b8a56c7c-e521-4ee7-883a-753ecbd152cf",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "becf4fbb-58bd-4d7e-a20e-52052a0ff005",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "a514f53c-5b24-4d1a-942f-a09a85e8a38e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:621d51202f38693e32078404ea1baf179547c67ef85fe7f6b3fdb79b22659a63"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "317b3f18-cc51-457d-9a03-15d1325d2cea",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d7ccd335142666116640c9ea2576d5ac729ab69a13da83172f92680652ba062e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d0f0c2ce-d7c7-4565-abdd-8a03467c70e4",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c9fe475161744823edb6b200c546ca66046fb3d2c4b3f5452edcb5f888717709"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2db8ab1a-a364-4ce5-96c2-d3d6c84fe408",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:be6703163a3eedfab6246a3993506450f7f641fef3d8ae7ea92212c282c0f745"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "3d611be4-cd7d-4bce-a0fd-dcc8675e6137",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b4889cd264e886b4874cbdb3777b64f4042369e600d505c2ead057941079efe9"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "4fca1681-9e2d-4911-be13-9d331b0af0f6",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:3d9f4f6bce364da514bf284fbe98cbc7cb2b4c25105fb7e76c063a29d7d087e2"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "e1a3e551-c3e8-464d-be79-18799628ba37",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8da93f5ff0ba405af3c931c72e93ae53c62e2174822c5cdc3c9f251ffdf32119"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "7db24b32-f1be-467d-9cb9-2e723613b0b8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8827fb82d8c46cb701fdc7d7af752cab7c16e906048646b36596207ac44f0684"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "0fe502e6-0f81-498a-b41a-eb264e181e48",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b8cdf0128ac84c05597f9a591e8fa1ed0614b67e1514179541892daf006e118f"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "925703fe-262d-4903-89af-3b85b3cf40ad",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:43b8ce39d1edb1def6160c63515d577fbf17b289297af3d928870fa997c24af0"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "28b1f504-ae56-420a-bbaa-9a6068117132",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2bc1ceda1c1c928093c7cf926afa43a4273bd27207803095496e3ec708c2be6e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "040b7518-5ed4-4e74-8125-02a69656e89a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2bc1ceda1c1c928093c7cf926afa43a4273bd27207803095496e3ec708c2be6e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "f046304d-a80a-4e2c-b32e-b33069f02f0b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:f3889b008701412bee40d9446217cf3af73953e73504392150636b754ab0c7f6"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "a469f3fe-53d9-41be-86a1-dfc9638c9e95",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:5ea829b82e69df8e577b8019a03ae6a31f062e80261ef8f6734080f7f2df74fe"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "dbf57b90-5397-405a-8c50-e1174893ec4f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cd0e3c30575e85f5b1e1631aa617a644f8e10cd35892310d8004293af75ae6b3"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "28 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "gateway-cli-surface-complete",
+      "description": "Full 8-family gateway MCP tool surface + full CLI surface return real behavior — zero NOT_IMPLEMENTED remains (09/16, Gap 1/Gap 2's explicit phase-23 obligation).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "f3b2d1a5-e461-4e06-8235-94fa2234266d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c06eaf188304586370dfe79bc3e794b8cd86d34f54e8aebb1696be6b2938f492"
+          ],
+          "gateTag": "release-gate:not-implemented-sweep",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "23acce5b-ffa4-4135-a4f3-7b69c353e414",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c06eaf188304586370dfe79bc3e794b8cd86d34f54e8aebb1696be6b2938f492"
+          ],
+          "gateTag": "release-gate:gateway-cli-surface-complete",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "e2f3a8ba-6ad5-4fed-83f4-5f84fafc3919",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:not-implemented-sweep",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "32a8dc0d-5d17-43e3-88dc-2861ef95fd10",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:gateway-cli-surface-complete",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "f73d398b-62c5-44d5-870f-d6c4c2eebf7d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:live-conformance",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "5 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "no-engine-attribution",
+      "description": "No development-engine attribution in any project-controlled shared artifact (08/10/17).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "2d84200f-dc11-485d-adff-690f003479ab",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:eb410f3e9b168a8f396f5409bd92a98d7fc1b7570bdd827090e42d1e70b91efa",
+            "sha256:07e369a99b6f9fa4d45119661c21a70bd80634f0666aa96d6759d987a7e80105"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "ed495eb1-e84c-4681-b2a9-77d0a0fc77f8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:e89917a219782cb8989f85ce10248343e44db4bcd7248ad16914b2f76c138dfb",
+            "sha256:9fbb8a248fb0769c314245716ee1bc684c517b546f9d542f916de1775c5fb784"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "fc9e6573-c97e-4513-8d32-ede54c06f78e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d031ca56ebd304cef826b3d667dab5886fd723637d42a2db0b452a361ecb03b3",
+            "sha256:d1026760e4d3932007bf83f5836656655ba524813e59b561e8287d614fe7e1c0"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bf2e027a-87d1-419f-a7cf-9f3996fe1d75",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:05b61e61bca4fa1c57ec96c9c430592b6f69a8924c91eb9742b1a0d22ad7f6eb",
+            "sha256:364ab6c9e5eddb735d536572df04c0468139f3005b030e98f0a48b86abfef67f"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "be2101a3-2f52-43f5-b8bb-a37947a0a4a8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:696a76d31e776b01f5384641d9a38eb0828fa17f1eff0bb4687c259848e7e23b",
+            "sha256:614c2e9e56f48b5f041a7d58113169d695ef6215e56a43602d991ad923f25e5a"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6ca014dc-37bd-4858-9f94-978753341fc5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2f9af5ab7554d03f99c012c845fd85ea53b39f592d197dc3da74c0cf49a1778c",
+            "sha256:40c3ad014f8a6f69e400dc607ad9a852a1efa81cf86bbdcfdcb3e63f084819a4"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "22cec1bc-e538-49ce-a450-c8dc2efc48b8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:60117d85f68360f91403c550aca855acf5eb9f5fabdbebe9afcbae68f49f72b6",
+            "sha256:b7e89ef878f1aed16eca0ae60e82cc8dfa1f9e4e3f038838d9fcfef51d776cd5"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "91980d6c-41d5-43b3-9396-5e48e0b0a923",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d89e6e623e49dcd7a7709a25124edaa61ceef7c2b5ee8e84ab5a603c0c1962e8",
+            "sha256:f9310e29af0ce929708cb460a968c6b881eb5073db65227e4d560cb223c0749e"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8c47a355-9034-4350-be63-b33e722f4bd5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:1c28201452eb28ac1027e9afeaef9b64c9437c2578ed4cf5c34b961624ef0c5f",
+            "sha256:c14f323ae2c6aeb15d3cf6fe5b119c808db5e05ea585345a6a10f743c8dbe481"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5aabc822-3d48-440b-aa74-156918471a8d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:dca5ac1dc2bf155ccf66e2919e0f2535349132151ea20d31756bc049019264b3",
+            "sha256:f61d90a9506cbd40c33872c7c545fee4459da6ed4b20bb26a513a8917dca6b8d"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "3dc66d1f-9c20-4d95-aa32-0afff45f12ee",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:57dcc1f99f18076aa0730156266263e165161458e284af157c257a310b1fb59d",
+            "sha256:8df0817eee86748087e9ef9b7fa9eed7ff3cd79077235bf37e95ca8b690f1ee5"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6e576993-7c9a-4094-84f1-3ecead171592",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:740fdc248a44be0d0a606fa17ee475b36ce38ef460262225d3410d9c35c7cbd9",
+            "sha256:364ab6c9e5eddb735d536572df04c0468139f3005b030e98f0a48b86abfef67f"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5dd9236a-224a-4b17-aa9e-54bde281148d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:1c28201452eb28ac1027e9afeaef9b64c9437c2578ed4cf5c34b961624ef0c5f",
+            "sha256:a5e518ba7e1b2a5fa575abb46c6af1895f7f93c8b1aa37bbcbe0811eb632fe35"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "ffcf1225-33cf-462b-aa90-b5dd1f7b5415",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:dca5ac1dc2bf155ccf66e2919e0f2535349132151ea20d31756bc049019264b3",
+            "sha256:258deb748ada0da6737ea5bfd7e0f1814e8e0343ba75f4bf4bea6efeb861d655"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "32470513-6eeb-499c-a73a-5b3dc710f381",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:740fdc248a44be0d0a606fa17ee475b36ce38ef460262225d3410d9c35c7cbd9",
+            "sha256:3fa693097364ec7a20bcfa23f15b0719c8ad8a83908140d79064cc89debdc024"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2ba01880-589e-4d1c-90e8-e6df45376ab0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8cb4eba8e6d3afbe4d3d6e23fff8d05fe4b699880cd68f3bd78287c69d35aba6",
+            "sha256:e4b39caf2840708900de63f83fe982973702e542c7600afa526ea8487ce332dd"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "0ef048a1-10a9-49f3-8357-8ee4e47a6e43",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:696a76d31e776b01f5384641d9a38eb0828fa17f1eff0bb4687c259848e7e23b",
+            "sha256:4d7f9b38c6d515770fb0c1ce30d8908af98266783ef53de30a83b1e9111240e6"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5e58c558-7e28-403c-95b4-8831a44c32ec",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2f9af5ab7554d03f99c012c845fd85ea53b39f592d197dc3da74c0cf49a1778c",
+            "sha256:97a0f3f754742e164755521f5ad5480f233609d1a7492560819b132d7a107f6c"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8aa04fd6-a803-41be-840c-5ea3ba9aba30",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:60117d85f68360f91403c550aca855acf5eb9f5fabdbebe9afcbae68f49f72b6",
+            "sha256:8b8e5a99a481d336ceaedf76bf54e8a70800fac046385cf6101be93ac51da0df"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "15d34438-47ae-4075-8f88-e8f7b1b284c0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:e89917a219782cb8989f85ce10248343e44db4bcd7248ad16914b2f76c138dfb",
+            "sha256:3b4b48be05394c6dcda18cbaf342b967335960bdb34fab3147c1b51c170cef59"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bbc9769c-972f-4c61-9d30-77031a47f72c",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d031ca56ebd304cef826b3d667dab5886fd723637d42a2db0b452a361ecb03b3",
+            "sha256:719f26fe4a35162920db3423efa6231886c378ca5a950bb0dd5b8df6c868ed14"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "71b8c2bd-3695-423c-aee8-32d7ef6fe98e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d89e6e623e49dcd7a7709a25124edaa61ceef7c2b5ee8e84ab5a603c0c1962e8",
+            "sha256:c988e8f843e60c612fb966b8853d6407b32213ef6e213124fb1fadb627aa4926"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bef982b7-3914-46c2-8bad-3a0d172492df",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:05b61e61bca4fa1c57ec96c9c430592b6f69a8924c91eb9742b1a0d22ad7f6eb",
+            "sha256:568cb7c95457833ac19279f89f3616b991a9ae20cee09c9233fc8d028c850910"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "dd9fcd70-d6fd-43b5-bc72-c0067429fa4a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:13d451fe311bf5505503c9d94b5190f655f3b40e5252276c82a9fef401afb519",
+            "sha256:3d77b4433bdaa46e8a4745591a4eea70120d5b79dbd21e5afb39faf0ac56e818"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "24 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "no-unauthorized-mutation",
+      "description": "No user checkout, remote Git repository, or unauthorized provider resource modified anywhere in the matrix (assertion-harness log).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "4ee222af-17a3-4ca9-a626-3427d0cb6ad6",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0c5c69cfad550ed21ce6307bd7ae76c2b6a8cf275079f14bb2e7cf8d2fb6060f",
+            "sha256:c79e68868e2ab71e1252d1f7dc2a3649aa103b7a88ee2772f25c570533b63d46"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "cc9acb88-7ca6-4263-9581-853ca71ad12c",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:19d18ceb6ebae9619f189edb81addb0fda60501cd231abf9b8a7b3ab36654570",
+            "sha256:b20c9760c63639269b8d31843144c77f1a0c3cc4d97361d089af2bc3ecf2af62"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "01a72b8c-19a0-48a9-8e71-e6752ffeab05",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:568d944f00cccb5259639126e320d2e9cb5bac154c31291362f5856ce9a3660a",
+            "sha256:5acfd882551cf2043559b411a3f14a09a4c113651f72444a01c5cb00997f50c8"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "0570180d-d3bf-438f-8260-961bc36c696f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0d579f79faf7884ac4efb3dc8608e61a8e9d767ed22d4801fdc1211509b66b16",
+            "sha256:6915b19720cce5e7d1b93d813ca413f37fe553fdb2990cd1c107bbb868495a88"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "82d435f0-90c8-4590-8d24-fe7d3717a141",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:eda6ca0ddaa4347026321510fe5d168c6e7c13a4f1fb33dd60d39efa2fd04bec",
+            "sha256:d81edcc5db1a51726f63f3c0643e9d72e2e4c32bb3a28b3cf5f5a3ab25bedf48"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "58c7dbc3-0303-4d4b-96be-9580567f6e97",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0c5c69cfad550ed21ce6307bd7ae76c2b6a8cf275079f14bb2e7cf8d2fb6060f",
+            "sha256:c79e68868e2ab71e1252d1f7dc2a3649aa103b7a88ee2772f25c570533b63d46"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "acfb5d46-d8c3-4416-a7af-a9a8a0cf88ae",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:19d18ceb6ebae9619f189edb81addb0fda60501cd231abf9b8a7b3ab36654570",
+            "sha256:b20c9760c63639269b8d31843144c77f1a0c3cc4d97361d089af2bc3ecf2af62"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "54f39b83-176e-4386-a960-902f061e163f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0c5c69cfad550ed21ce6307bd7ae76c2b6a8cf275079f14bb2e7cf8d2fb6060f",
+            "sha256:c79e68868e2ab71e1252d1f7dc2a3649aa103b7a88ee2772f25c570533b63d46"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6edfe68e-2e00-49d8-a95b-ce0ebbe09d03",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:19d18ceb6ebae9619f189edb81addb0fda60501cd231abf9b8a7b3ab36654570",
+            "sha256:b20c9760c63639269b8d31843144c77f1a0c3cc4d97361d089af2bc3ecf2af62"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8223d471-98c0-413a-bb65-144476848a2f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:568d944f00cccb5259639126e320d2e9cb5bac154c31291362f5856ce9a3660a",
+            "sha256:5acfd882551cf2043559b411a3f14a09a4c113651f72444a01c5cb00997f50c8"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "445c69ff-4db5-4f9a-9827-f064d2fd1f08",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0d579f79faf7884ac4efb3dc8608e61a8e9d767ed22d4801fdc1211509b66b16",
+            "sha256:2afb199b53e396574ffbb0332afa026860776910a16193159a4a0563ca4127e7"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "75f0c92d-8609-4efc-960f-d4e94d4a566e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:eda6ca0ddaa4347026321510fe5d168c6e7c13a4f1fb33dd60d39efa2fd04bec",
+            "sha256:4b8a6fabd661199097306bbf6ec1a5accaab076bee4a7bca4fde9289a28eb7c0"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5671c893-253f-4dea-9bd5-20d177125756",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c29d1361ae39132cbe65c64c858ff5c31a5f4185f50bd6f47773a54f8ac7f380",
+            "sha256:2afb199b53e396574ffbb0332afa026860776910a16193159a4a0563ca4127e7"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "a6f1fc71-bcce-476b-abcb-af48c5279be9",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0b8572fb25beb3816471824fa0b95fae7cb55eb7c59a2de7d884473a5ba22f66",
+            "sha256:eb0b8e7002a143ae90cd40c829f188a42fe7a7d63cc202432f49ae4cc3c67b4e"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "c85f3e17-1f81-4758-b754-8a8a77f5a440",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:47925926f7e5bc157e79bdcba8badd6b6eb0dadd728f50cbcff9090d9dd570a4",
+            "sha256:eb0b8e7002a143ae90cd40c829f188a42fe7a7d63cc202432f49ae4cc3c67b4e"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "cc725f5d-e176-4791-9103-d7bb54e36213",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:90e03140e6353279945e5629c3c9681e2ea89642de48dba06d7e4390209a55d3",
+            "sha256:eb0b8e7002a143ae90cd40c829f188a42fe7a7d63cc202432f49ae4cc3c67b4e"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "c8f1f82f-192c-4801-8d0d-071b8234b366",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:90e03140e6353279945e5629c3c9681e2ea89642de48dba06d7e4390209a55d3",
+            "sha256:5d3c2d8111204fe61a3d9e99401617f11d642528b8c4f9165a5479456dd169bc"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2117395f-fe23-4481-8f8a-ccd38e416beb",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:0b8572fb25beb3816471824fa0b95fae7cb55eb7c59a2de7d884473a5ba22f66",
+            "sha256:fe2a7b524a9c196be2ca62997493993433ffe7d46f882461ffe9e0832c3ea3be"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "7c88f0b6-6b4f-48af-851a-5e630d1c3339",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:47925926f7e5bc157e79bdcba8badd6b6eb0dadd728f50cbcff9090d9dd570a4",
+            "sha256:fe2a7b524a9c196be2ca62997493993433ffe7d46f882461ffe9e0832c3ea3be"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "1e4357d6-979f-4a84-b94a-732d0b29d4c0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c29d1361ae39132cbe65c64c858ff5c31a5f4185f50bd6f47773a54f8ac7f380",
+            "sha256:b70d22da4016fe8f318d04b4e2e5fc96566f69c2a67f348d7cbbae337b182468"
+          ],
+          "gateTag": "release-gate:installation-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2d84200f-dc11-485d-adff-690f003479ab",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:eb410f3e9b168a8f396f5409bd92a98d7fc1b7570bdd827090e42d1e70b91efa",
+            "sha256:07e369a99b6f9fa4d45119661c21a70bd80634f0666aa96d6759d987a7e80105"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "ed495eb1-e84c-4681-b2a9-77d0a0fc77f8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:e89917a219782cb8989f85ce10248343e44db4bcd7248ad16914b2f76c138dfb",
+            "sha256:9fbb8a248fb0769c314245716ee1bc684c517b546f9d542f916de1775c5fb784"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "fc9e6573-c97e-4513-8d32-ede54c06f78e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d031ca56ebd304cef826b3d667dab5886fd723637d42a2db0b452a361ecb03b3",
+            "sha256:d1026760e4d3932007bf83f5836656655ba524813e59b561e8287d614fe7e1c0"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bf2e027a-87d1-419f-a7cf-9f3996fe1d75",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:05b61e61bca4fa1c57ec96c9c430592b6f69a8924c91eb9742b1a0d22ad7f6eb",
+            "sha256:364ab6c9e5eddb735d536572df04c0468139f3005b030e98f0a48b86abfef67f"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "be2101a3-2f52-43f5-b8bb-a37947a0a4a8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:696a76d31e776b01f5384641d9a38eb0828fa17f1eff0bb4687c259848e7e23b",
+            "sha256:614c2e9e56f48b5f041a7d58113169d695ef6215e56a43602d991ad923f25e5a"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6ca014dc-37bd-4858-9f94-978753341fc5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2f9af5ab7554d03f99c012c845fd85ea53b39f592d197dc3da74c0cf49a1778c",
+            "sha256:40c3ad014f8a6f69e400dc607ad9a852a1efa81cf86bbdcfdcb3e63f084819a4"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "22cec1bc-e538-49ce-a450-c8dc2efc48b8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:60117d85f68360f91403c550aca855acf5eb9f5fabdbebe9afcbae68f49f72b6",
+            "sha256:b7e89ef878f1aed16eca0ae60e82cc8dfa1f9e4e3f038838d9fcfef51d776cd5"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "91980d6c-41d5-43b3-9396-5e48e0b0a923",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d89e6e623e49dcd7a7709a25124edaa61ceef7c2b5ee8e84ab5a603c0c1962e8",
+            "sha256:f9310e29af0ce929708cb460a968c6b881eb5073db65227e4d560cb223c0749e"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8c47a355-9034-4350-be63-b33e722f4bd5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:1c28201452eb28ac1027e9afeaef9b64c9437c2578ed4cf5c34b961624ef0c5f",
+            "sha256:c14f323ae2c6aeb15d3cf6fe5b119c808db5e05ea585345a6a10f743c8dbe481"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5aabc822-3d48-440b-aa74-156918471a8d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:dca5ac1dc2bf155ccf66e2919e0f2535349132151ea20d31756bc049019264b3",
+            "sha256:f61d90a9506cbd40c33872c7c545fee4459da6ed4b20bb26a513a8917dca6b8d"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "3dc66d1f-9c20-4d95-aa32-0afff45f12ee",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:57dcc1f99f18076aa0730156266263e165161458e284af157c257a310b1fb59d",
+            "sha256:8df0817eee86748087e9ef9b7fa9eed7ff3cd79077235bf37e95ca8b690f1ee5"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6e576993-7c9a-4094-84f1-3ecead171592",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:740fdc248a44be0d0a606fa17ee475b36ce38ef460262225d3410d9c35c7cbd9",
+            "sha256:364ab6c9e5eddb735d536572df04c0468139f3005b030e98f0a48b86abfef67f"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5dd9236a-224a-4b17-aa9e-54bde281148d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:1c28201452eb28ac1027e9afeaef9b64c9437c2578ed4cf5c34b961624ef0c5f",
+            "sha256:a5e518ba7e1b2a5fa575abb46c6af1895f7f93c8b1aa37bbcbe0811eb632fe35"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "ffcf1225-33cf-462b-aa90-b5dd1f7b5415",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:dca5ac1dc2bf155ccf66e2919e0f2535349132151ea20d31756bc049019264b3",
+            "sha256:258deb748ada0da6737ea5bfd7e0f1814e8e0343ba75f4bf4bea6efeb861d655"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "32470513-6eeb-499c-a73a-5b3dc710f381",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:740fdc248a44be0d0a606fa17ee475b36ce38ef460262225d3410d9c35c7cbd9",
+            "sha256:3fa693097364ec7a20bcfa23f15b0719c8ad8a83908140d79064cc89debdc024"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2ba01880-589e-4d1c-90e8-e6df45376ab0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8cb4eba8e6d3afbe4d3d6e23fff8d05fe4b699880cd68f3bd78287c69d35aba6",
+            "sha256:e4b39caf2840708900de63f83fe982973702e542c7600afa526ea8487ce332dd"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "0ef048a1-10a9-49f3-8357-8ee4e47a6e43",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:696a76d31e776b01f5384641d9a38eb0828fa17f1eff0bb4687c259848e7e23b",
+            "sha256:4d7f9b38c6d515770fb0c1ce30d8908af98266783ef53de30a83b1e9111240e6"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5e58c558-7e28-403c-95b4-8831a44c32ec",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2f9af5ab7554d03f99c012c845fd85ea53b39f592d197dc3da74c0cf49a1778c",
+            "sha256:97a0f3f754742e164755521f5ad5480f233609d1a7492560819b132d7a107f6c"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8aa04fd6-a803-41be-840c-5ea3ba9aba30",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:60117d85f68360f91403c550aca855acf5eb9f5fabdbebe9afcbae68f49f72b6",
+            "sha256:8b8e5a99a481d336ceaedf76bf54e8a70800fac046385cf6101be93ac51da0df"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "15d34438-47ae-4075-8f88-e8f7b1b284c0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:e89917a219782cb8989f85ce10248343e44db4bcd7248ad16914b2f76c138dfb",
+            "sha256:3b4b48be05394c6dcda18cbaf342b967335960bdb34fab3147c1b51c170cef59"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bbc9769c-972f-4c61-9d30-77031a47f72c",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d031ca56ebd304cef826b3d667dab5886fd723637d42a2db0b452a361ecb03b3",
+            "sha256:719f26fe4a35162920db3423efa6231886c378ca5a950bb0dd5b8df6c868ed14"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "71b8c2bd-3695-423c-aee8-32d7ef6fe98e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d89e6e623e49dcd7a7709a25124edaa61ceef7c2b5ee8e84ab5a603c0c1962e8",
+            "sha256:c988e8f843e60c612fb966b8853d6407b32213ef6e213124fb1fadb627aa4926"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "bef982b7-3914-46c2-8bad-3a0d172492df",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:05b61e61bca4fa1c57ec96c9c430592b6f69a8924c91eb9742b1a0d22ad7f6eb",
+            "sha256:568cb7c95457833ac19279f89f3616b991a9ae20cee09c9233fc8d028c850910"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "dd9fcd70-d6fd-43b5-bc72-c0067429fa4a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:13d451fe311bf5505503c9d94b5190f655f3b40e5252276c82a9fef401afb519",
+            "sha256:3d77b4433bdaa46e8a4745591a4eea70120d5b79dbd21e5afb39faf0ac56e818"
+          ],
+          "gateTag": "release-gate:git-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d713b6d8-bc49-48b8-9d87-bed09dabcf7b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:495d6d3b234d39aba0219c26790a797d0e5b2f5ad3ba706febc8591cd7687733"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6181f0d3-4ca2-4a04-b89a-e0265c28d952",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:a41bc7b6eb5c26ecd81f59c5d4aaa01b9322f01381bad852527415cc51edd73c"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d805b703-7ae8-4cfa-ba7d-e9d37f5a0753",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:6dcc309fb4c77baab3c357e909649c58a38e0e87cc962af491cf7c466dbf2e21"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "372f369b-939e-4bee-b576-52013d78ccc8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:36a6ad3b3b452ec1177c97064dc4aa4f3404d1625d5a5685306c2a604c7da5eb"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "42099997-cec7-48ea-bb94-7a8c84b8ef27",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b14c6b2f6a6b2c306fec8a0f007d554a684629638cbb539a0725cf7bc98eaec3"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "64341d14-e84e-44c9-99b4-513f6731ae1a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:3645c78f48d0fdc82fb5029a099160ba71cca2c65d4a2badaff8247e4344ff85"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5688a9d4-4583-43e7-991e-b76d29ce1ea5",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "6a50c3ac-061d-45c5-875a-71139fadd5f4",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "c5e997e9-491d-4478-870a-cbc2e2f181fe",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "5c547a48-f54a-453a-a213-4691d7c6833c",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "8ae18cdf-c67d-480d-bc0b-290443fae7ec",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "b8a56c7c-e521-4ee7-883a-753ecbd152cf",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "becf4fbb-58bd-4d7e-a20e-52052a0ff005",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "a514f53c-5b24-4d1a-942f-a09a85e8a38e",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:621d51202f38693e32078404ea1baf179547c67ef85fe7f6b3fdb79b22659a63"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "317b3f18-cc51-457d-9a03-15d1325d2cea",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:d7ccd335142666116640c9ea2576d5ac729ab69a13da83172f92680652ba062e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "d0f0c2ce-d7c7-4565-abdd-8a03467c70e4",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:c9fe475161744823edb6b200c546ca66046fb3d2c4b3f5452edcb5f888717709"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "2db8ab1a-a364-4ce5-96c2-d3d6c84fe408",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:be6703163a3eedfab6246a3993506450f7f641fef3d8ae7ea92212c282c0f745"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "3d611be4-cd7d-4bce-a0fd-dcc8675e6137",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b4889cd264e886b4874cbdb3777b64f4042369e600d505c2ead057941079efe9"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "4fca1681-9e2d-4911-be13-9d331b0af0f6",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:3d9f4f6bce364da514bf284fbe98cbc7cb2b4c25105fb7e76c063a29d7d087e2"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "e1a3e551-c3e8-464d-be79-18799628ba37",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8da93f5ff0ba405af3c931c72e93ae53c62e2174822c5cdc3c9f251ffdf32119"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "7db24b32-f1be-467d-9cb9-2e723613b0b8",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8827fb82d8c46cb701fdc7d7af752cab7c16e906048646b36596207ac44f0684"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "0fe502e6-0f81-498a-b41a-eb264e181e48",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:b8cdf0128ac84c05597f9a591e8fa1ed0614b67e1514179541892daf006e118f"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "925703fe-262d-4903-89af-3b85b3cf40ad",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:43b8ce39d1edb1def6160c63515d577fbf17b289297af3d928870fa997c24af0"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "28b1f504-ae56-420a-bbaa-9a6068117132",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2bc1ceda1c1c928093c7cf926afa43a4273bd27207803095496e3ec708c2be6e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "040b7518-5ed4-4e74-8125-02a69656e89a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:2bc1ceda1c1c928093c7cf926afa43a4273bd27207803095496e3ec708c2be6e"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "f046304d-a80a-4e2c-b32e-b33069f02f0b",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:f3889b008701412bee40d9446217cf3af73953e73504392150636b754ab0c7f6"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "a469f3fe-53d9-41be-86a1-dfc9638c9e95",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:5ea829b82e69df8e577b8019a03ae6a31f062e80261ef8f6734080f7f2df74fe"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "dbf57b90-5397-405a-8c50-e1174893ec4f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cd0e3c30575e85f5b1e1631aa617a644f8e10cd35892310d8004293af75ae6b3"
+          ],
+          "gateTag": "release-gate:connector-matrix",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "72 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "demo-branch-evidence-handoff",
+      "description": "A verified neutral local branch with concise commits and evidence-backed handoff produced by the demo run — the branch plus its evidence bundle, never an opened PR (Gap 6, by design).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "cdc25260-62ad-4cd9-bcbb-0370cb06aab0",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:9a76d0b1c2ca0c201ce7af22242d97262fa1c583205d57a96e62bc8ef0be32ff"
+          ],
+          "gateTag": "release-gate:demo-branch-evidence-handoff",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "arm64-verification",
+      "description": "ARM64 build+test verified on real hardware/CI, or an explicitly documented substitute recorded — closes 01's deferred ARM64 gate.",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "d05e4cf2-c6fd-41ae-a6c4-72f4d0013c7d",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:c1413518afff43a34fde76611d25b7b5fb9279f9143c1b1f097dbeb49c797eb8"
+          ],
+          "gateTag": "release-gate:arm64-verification",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "jira-grafana-version-support-windows",
+      "description": "Jira DC / Grafana version-support windows re-confirmed current at release time; fixtures refreshed if vendor support windows moved (19's deferred note).",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "2ee1ea6d-39de-4ec3-ad07-9faa618df129",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:0dcb072939604303f454513e79a3e0da1e8ef98804b52b67311b821002d69d65"
+          ],
+          "gateTag": "release-gate:jira-grafana-version-support-windows",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "release-docs-committed",
+      "description": "docs/compatibility-matrix.md, operator-guide.md, security-posture.md, and upgrade-guide.md are committed, and every claim in them cites a passing CI run or EvidenceRecord from the release candidate — no aspirational text.",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "786a2034-4bc5-4070-a351-643c7fd04984",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:cc139cf95e1753e5ff50df697a7669fff733afca5d43897b541502b1acf9697a",
+            "sha256:358c368edeb9b256481e892b8780e563bc9eb76d7a97f39b18380cea53e9f1ad"
+          ],
+          "gateTag": "release-gate:release-docs-committed",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "1 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "reproducible-build",
+      "description": "Reproducible build: two independent from-clean-checkout builds of the release tag produce byte-identical tarball hashes; npm provenance attestation present; package published; SHA-pinned marketplace entry cut at the release commit; v1.0.0 tag created; CHANGELOG.md entry present; npm view crabgic re-check passes.",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "efc3be52-63d5-4132-8747-aa85bb680f0a",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:97063f1a26ba8a9d7001a4b9550a2b749daf6052b5dc886d5bdf3dd7d43eed5c",
+            "sha256:8dceb00c04a723f36403d9cceefc559cc014a64985e5df379babb220302c9488"
+          ],
+          "gateTag": "release-gate:reproducible-build",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "413286eb-18da-4ba6-85fc-1b3148e112fb",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:reproducible-build",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "f0515934-09ef-4036-9029-99af8dc01357",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:reproducible-build",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "3 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    },
+    {
+      "id": "engine-pin-recorded",
+      "description": "Release artifact records the exact pinned engine/SDK version (@anthropic-ai/claude-agent-sdk, exact-pinned per 01's engine-pin-lint policy); the reproducible-build verification asserts the pin is identical in both from-clean-checkout tarballs; docs/compatibility-matrix.md states the pinned version alongside the tested Claude Code engine version range — evidenced by the engine-pin-lint CI run and the tarball manifest check cited in the release-gate report.",
+      "required": true,
+      "verdict": "PASS",
+      "linkedEvidence": [
+        {
+          "evidenceRecordId": "5fa6f330-2016-4a04-a326-3e046d71dc80",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [
+            "sha256:8dceb00c04a723f36403d9cceefc559cc014a64985e5df379babb220302c9488"
+          ],
+          "gateTag": "release-gate:engine-pin-recorded",
+          "exitStatus": 0
+        },
+        {
+          "evidenceRecordId": "14508c80-7f9d-4551-86b6-8aca2e555e4f",
+          "objectId": "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb",
+          "artifactDigests": [],
+          "gateTag": "release-gate:engine-pin-recorded",
+          "exitStatus": 0
+        }
+      ],
+      "reason": "2 linked EvidenceRecord(s), none a negative run, for the release candidate object ID."
+    }
+  ],
+  "overallVerdict": "PASS"
+}
