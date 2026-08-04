@@ -1,9 +1,22 @@
 roadmap/24 defect fix — RED capture for the SEVERABLE `envelopes` requiredness step
 captured (UTC): 2026-08-04T16:14:10Z
-HEAD:           74951481d302f098efe3b6c241f5ed6a1696c09a
+HEAD:           74951481d302f098efe3b6c241f5ed6a1696c09a  — SEE THE CORRECTION BELOW
 cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
 command:        npm run typecheck
 exit status:    2
+
+CORRECTION (2026-08-04, adversarial review of PR #85). The sha in the header is
+NOT a commit on this branch. It was the tip when this measurement was taken, and
+was then amended away by a commitlint fix (the subject exceeded 100 characters);
+it survives only as a loose object and will not exist in a fresh clone. The
+measurement itself is unaffected and is left exactly as captured rather than
+rewritten — but do not try to check it out.
+
+The same claim is re-measured at a reachable sha as **M1b** in
+`fix-unwired-falsification.txt` (HEAD `f7dacd5e`, a real commit on this branch):
+restoring `?` on both fields reports `TS2578: Unused '@ts-expect-error'
+directive.` at fixture lines 61 AND 76, so the `envelopes` fixture is shown to
+bite there too. Cite that one.
 
 DELIBERATELY RED. Taken at the tip of the requirements-registry commit, BEFORE
 the envelopes change — so it measures the second field in isolation, on a tree

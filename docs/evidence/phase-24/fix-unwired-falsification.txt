@@ -1,17 +1,26 @@
 roadmap/24 defect fix (daemon requirements registry unwired) — FALSIFICATION MEASUREMENTS
-captured (UTC): 2026-08-04T16:14:10Z – 2026-08-04T16:22:53Z
-HEAD:           4f561c6c2b033de7b09a09fceacd605f5966969e (tip of the fix branch, both commits applied)
+captured (UTC): 2026-08-04T19:04Z – 2026-08-04T19:12Z
+HEAD:           f7dacd5ed0ea9c96dddf63d05436171cf2c769bc
 cwd:            repository root (git worktree of WitchyNibbles/crabgic, branch fix/daemon-requirements-registry)
 
-Four deletions, each measured, each reverted. The method is the brief's: do not
+RECAPTURED IN FULL at the sha above, which is a real commit on this branch and
+the direct parent of the commit adding this file — so every measurement here is
+reproducible from a fresh clone. The first version of this transcript cited
+`4f561c6c`, a sha that was amended away during a commitlint fix and survived
+only as a loose object; an adversarial review of PR #85 caught that, and the
+whole file is re-measured rather than patched. Line numbers below are current
+(the dispatcher's two seams moved from 581/681 to 595/697 when the ruling
+comment landed).
+
+Five deletions, each measured and reverted. The method is the brief's: do not
 read the tests, DELETE the code and watch which suites redden. A claim-bearing
 test that stays green when its bearer is removed is evidencing nothing.
 
 IMPORTANT METHOD NOTE. `@crabgic/*` packages resolve through `dist`, not `src`,
 so every behavioural measurement below was preceded by `npx tsc -b --force`.
-A first pass of measurement 3 was run WITHOUT rebuilding and produced a
-misleading `Cannot read properties of undefined (reading 'get')`; it was
-discarded and re-run. Only the rebuilt runs are reported here.
+An early pass run WITHOUT rebuilding produced a misleading
+`Cannot read properties of undefined (reading 'get')`; it was discarded rather
+than reported. PR #84 hit the same hazard independently.
 
 ────────────────────────────────────────────────────────────────────────────
 M1 — revert ONLY the `composeSupervisor` wiring line. Compile-time claim.
@@ -29,35 +38,44 @@ M1b — ALSO restore `?` on both fields. Falsifies the type fixture itself.
      command:     npx tsc -b --force
      exit status: 2
 
+    packages/supervisor/src/compose/compose-supervisor.ts(191,9): error TS6133: 'requirements' is declared but its value is never read.
     packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(61,5): error TS2578: Unused '@ts-expect-error' directive.
     packages/supervisor/src/router/supervisor-dependencies-required.type.test.ts(76,5): error TS2578: Unused '@ts-expect-error' directive.
     packages/cli/src/daemon/run-dispatcher.ts(463,22): error TS18048: 'deps.envelopes' is possibly 'undefined'.
-    packages/cli/src/daemon/run-dispatcher.ts(581,13): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
-    packages/cli/src/daemon/run-dispatcher.ts(681,17): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
+    packages/cli/src/daemon/run-dispatcher.ts(595,13): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
+    packages/cli/src/daemon/run-dispatcher.ts(697,17): error TS2345: Argument of type 'Registry<...> | undefined' is not assignable to parameter of type 'Pick<Registry<...>, "get">'.
 
      Line 61 is the `requirements` fixture, line 76 the `envelopes` one. This
      measurement exists because the brief records a prior "type-level proof"
      whose doc comment claimed a compile failure that, when tested, gave
      `tsc` exit 0. This one bites: both directives report unused, and the two
-     TS2345s at :581/:681 are the strict resolver refusing an optional
+     TS2345s at :595/:697 are the strict resolver refusing an optional
      registry — the daemon's two seams, dispatch and park-resume.
+
+     This measurement also re-covers the separate `envelopes` RED capture,
+     whose own transcript cited an amended sha for the same reason M1 did.
 
 ────────────────────────────────────────────────────────────────────────────
 M2 — revert ALL FOUR production files to `origin/main` (optionality restored,
      wiring removed, lenient resolver back). Behavioural claim.
-     commands:    npx tsc -b --force  (exit 2 — the two TS2578 above)
+     commands:    npx tsc -b --force  (exit 2; 5 errors — the two TS2578 above
+                  plus the three at the now-uncast `run-dispatcher.ts` seams)
                   npx vitest run packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts
      exit status: 1
 
-    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (3 tests | 2 failed) 143ms
-        × A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement 70ms
-        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 36ms
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests | 3 failed) 177ms
+        × A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement 68ms
+        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 39ms
+        × D — refuses when only SOME declared requirements resolve: a partial bar is not a bar 33ms
 
     AssertionError: expected [ 'dispatched', 'succeeded' ] to include 'failed'
     AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
 
-     A and B redden; C (the clean-pass control) stays green, which is what makes
-     the two refusals attributable rather than an implementation that refuses
+         Tests  3 failed | 1 passed (4)
+
+     A, B and D redden; C (the clean-pass control) stays green, which is what
+     makes the refusals attributable rather than an implementation that refuses
      unconditionally. `[ 'dispatched', 'succeeded' ]` is the defect: the shipped
      daemon accepting a completion against an empty acceptance bar.
 
@@ -66,29 +84,56 @@ M3 — delete ONLY `resolveRequirementsStrict`'s throw (collect the missing ids,
      then drop them silently — i.e. make it behave as `resolveRequirements`).
      Everything else — the wiring, the requiredness — left in place.
      commands:    npx tsc -b --force  (exit 0)
-                  npx vitest run .../composed-daemon-seal-enforcement.test.ts .../run-dispatcher.test.ts
+                  npx vitest run <composed> <run-dispatcher> <requirements-registry>
      exit status: 1
 
-    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (3 tests | 1 failed) 166ms
-        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 40ms
-    ❯ |crabgic| src/daemon/run-dispatcher.test.ts (58 tests | 1 failed) 1725ms
-        × refuses a unit whose declared requirement has no record, rather than judging it against nothing 32ms
+    ❯ |@crabgic/supervisor| src/registries/requirements-registry.test.ts (10 tests | 4 failed) 21ms
+        × refuses when only SOME declared ids are missing, and names only the missing one 6ms
+        × names EVERY missing id when more than one is unresolvable 1ms
+        × carries no subject when none is supplied, rather than inventing one 1ms
+        × differs from resolveRequirements, which drops the same unresolvable id silently 1ms
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests | 2 failed) 583ms
+        × B — refuses a declared requirement with no record: nothing succeeds and the drive error names the unresolvable id 135ms
+        × D — refuses when only SOME declared requirements resolve: a partial bar is not a bar 97ms
+    ❯ |crabgic| src/daemon/run-dispatcher.test.ts (58 tests | 1 failed) 3314ms
+        × refuses a unit whose declared requirement has no record, rather than judging it against nothing 116ms
 
-    AssertionError: expected [ 'dispatched', 'succeeded' ] to not include 'succeeded'
+    Test Files  3 failed (3)
+         Tests  7 failed | 65 passed (72)
 
-     Test Files  2 failed (2)
-          Tests  2 failed | 59 passed (61)
+     Exactly the missing-record family reddens, at all three layers; A and C
+     stay green. This is the measurement that proves B is not redundant with A:
+     wiring the registry without strict resolution would leave A green and the
+     defect half-standing, because the file registry is ENOENT-tolerant and an
+     absent `requirements.json` resolves to `[]` just as `undefined` did.
 
-     EXACTLY B reddens, at both layers; A and C stay green. This is the
-     measurement that proves B is not redundant with A: wiring the registry
-     without strict resolution would leave A green and the defect half-standing,
-     because the file registry is ENOENT-tolerant and an absent
-     `requirements.json` resolves to `[]` just as `undefined` did.
+────────────────────────────────────────────────────────────────────────────
+M4 — the ADVERSARIAL REVIEWER'S OWN SURVIVING MUTANT, re-run.
+     Refuse only when EVERY declared id is unresolvable:
+     `if (missing.length > 0 && resolved.length === 0) throw …`
+     commands:    npx tsc -b --force  (exit 0)
+                  npx vitest run <composed> <run-dispatcher> <requirements-registry>
+     exit status: 1
+
+    ❯ |@crabgic/supervisor| src/registries/requirements-registry.test.ts (10 tests | 2 failed) 14ms
+        × refuses when only SOME declared ids are missing, and names only the missing one 4ms
+        × differs from resolveRequirements, which drops the same unresolvable id silently 1ms
+    ❯ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests | 1 failed) 233ms
+        × D — refuses when only SOME declared requirements resolve: a partial bar is not a bar 56ms
+
+    Test Files  2 failed | 1 passed (3)
+         Tests  3 failed | 69 passed (72)
+
+     THIS MUTANT SURVIVED THE ORIGINAL SUITE — 399/399 green, per the review of
+     PR #85. A unit declaring [R1, R2] with only R2 missing was judged against a
+     PARTIAL bar, silently: this PR's own bug class, one notch smaller. It now
+     dies at both layers. The `missing.length > 0` boundary needed a case that
+     bites at "1 of 2", not only at "1 of 1".
 
 ────────────────────────────────────────────────────────────────────────────
 RESTORED. `git checkout HEAD -- packages/supervisor packages/cli` followed by
 `npx tsc -b --force` (exit 0); `git status --short` reports a clean tree at
-`4f561c6c2b033de7b09a09fceacd605f5966969e`.
+`f7dacd5ed0ea9c96dddf63d05436171cf2c769bc`.
 
 WHAT THESE MEASUREMENTS DO NOT COVER, disclosed rather than implied: gate
 registration and the whole post-completion verification pipeline. No production
