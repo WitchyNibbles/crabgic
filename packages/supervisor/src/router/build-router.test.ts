@@ -10,6 +10,8 @@ import { createChangeSetsRegistry } from "../registries/change-sets-registry.js"
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
+import { createRequirementsRegistry } from "../registries/requirements-registry.js";
+import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { transitionRun } from "../run-lifecycle/run-transition.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
@@ -34,6 +36,8 @@ function buildDeps() {
     workUnits: createWorkUnitsRegistry(),
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
+    requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
   };
 }

@@ -62,7 +62,7 @@ import {
   findLiveRunForChangeSet,
   findPublishedRunForChangeSet,
   provisionWorkerDirs,
-  resolveRequirements,
+  resolveRequirementsStrict,
   transitionRun,
   DISPATCHER_DRAINING_REASON,
   type DrainOptions,
@@ -460,7 +460,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
 
     // The envelope is the authorization boundary every packet is bounded
     // against — dispatching without it would mean dispatching unbounded.
-    const envelope = deps.envelopes?.get(changeSet.authorizationEnvelopeId);
+    const envelope = deps.envelopes.get(changeSet.authorizationEnvelopeId);
     if (envelope === undefined) {
       return {
         ok: false,
@@ -558,11 +558,44 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         // append-only journal at approval time. Resolved per attempt rather
         // than cached for the run, so a re-approval after a material
         // amendment is picked up rather than judged against a stale bar.
+        //
+        // STRICT resolution, deliberately (2026-08-04). A declared requirement
+        // id that resolves to no record is a REFUSAL, not an empty bar: the
+        // registry is file-backed and ENOENT-tolerant, and the executor accepts
+        // an empty presented set by design (a chore unit owns none), so
+        // dropping unresolvable ids here would let a deleted or never-written
+        // `requirements.json` silently downgrade a sealed acceptance bar to no
+        // bar at all. That was the second half of defect
+        // `24-daemon-requirements-registry-unwired.md`, and wiring the registry
+        // without this would have left it standing.
+        //
+        // A throw settles the whole RUN `failed` through `beginDriving`'s
+        // `.catch` below — deliberately RUN-level, and NOT the per-unit
+        // `failed`-with-typed-reason that a tamper earns. The two conditions
+        // are different in kind (orchestrator ruling, 2026-08-04):
+        //
+        //   - TAMPER means the approved criteria changed after approval. That
+        //     is a verdict on ONE unit's OUTPUT against its bar, so it belongs
+        //     to that unit — which is exactly what phase 24 specifies.
+        //   - AN UNRESOLVABLE DECLARED ID means the run's acceptance basis is
+        //     INCOHERENT: the registry does not contain what intake declared.
+        //     That is an integrity failure of the run's INPUTS, not a verdict
+        //     on anybody's output. If the requirement source cannot be
+        //     resolved, EVERY unit's verification in this run is untrustworthy,
+        //     not just the one that happened to trip it — so settling the
+        //     remaining units and reporting success would be wrong.
+        //
+        // Hence no synthetic seal failure and no growth of
+        // `CriteriaSealFailureReason`, which is a 3-member vocabulary owned by
+        // `@crabgic/contracts` (ledger-adjacent). Phase 24 specified per-unit
+        // semantics for tamper and was SILENT here; the silence is filled by
+        // the ruling above rather than by a decision taken at a call site.
         resolveCriteriaSeal: async (ctx) => ({
-          requirements:
-            deps.requirements === undefined
-              ? []
-              : resolveRequirements(deps.requirements, ctx.workUnit.requirementIds),
+          requirements: resolveRequirementsStrict(
+            deps.requirements,
+            ctx.workUnit.requirementIds,
+            ctx.workUnit.id,
+          ),
           approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),
         }),
         buildPacket: (ctx) =>
@@ -653,10 +686,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             // The SAME bar the fresh dispatch is held to — a park-resume must
             // not become a way to complete against an unverified one.
             criteriaSeal: {
-              requirements:
-                deps.requirements === undefined
-                  ? []
-                  : resolveRequirements(deps.requirements, ctx.workUnit.requirementIds),
+              // Strict on BOTH seams — see the dispatch site above for the
+              // inputs-incoherent vs verdict-on-output reasoning, and for why
+              // this refusal is run-level rather than per-unit. A park-resume
+              // that resolved leniently would be a second entry point into the
+              // acceptance funnel that skipped the check the first one makes,
+              // which is the donor regression phase 24's required-verifier
+              // threading exists to prevent.
+              requirements: resolveRequirementsStrict(
+                deps.requirements,
+                ctx.workUnit.requirementIds,
+                ctx.workUnit.id,
+              ),
               approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),
             },
             sessionRef,

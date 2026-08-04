@@ -58,19 +58,35 @@ export interface SupervisorDependencies {
   /**
    * The approved AuthorizationEnvelopes. Needed by the run dispatcher —
    * compiling a worker profile and bounding a TaskPacket both require the
-   * envelope the DAG was approved under. Optional so the pre-existing
-   * construction sites (which predate `run.dispatch`) keep compiling;
-   * deliberately NOT exposed as a router operation, since an envelope is
-   * an authorization boundary and is never listed over the wire.
+   * envelope the DAG was approved under. Deliberately NOT exposed as a router
+   * operation, since an envelope is an authorization boundary and is never
+   * listed over the wire.
+   *
+   * REQUIRED, since 2026-08-04, for the same reason `requirements` below is:
+   * it was optional so "the pre-existing construction sites keep compiling",
+   * which is precisely the sentence that let the sibling field go unbuilt in
+   * the shipped daemon. Nothing here is behavioural — production already
+   * supplies it — the class of omission is simply no longer expressible.
    */
-  readonly envelopes?: Registry<AuthorizationEnvelope>;
+  readonly envelopes: Registry<AuthorizationEnvelope>;
   /**
-   * The `Requirement` records (roadmap/24). Needed by the run dispatcher to
-   * resolve the acceptance bar a completion is verified against. Optional for
-   * the same reason `envelopes` is — the construction sites that predate
-   * `run.dispatch` keep compiling — and, like it, never listed over the wire.
+   * The `Requirement` records (roadmap/24) — the acceptance bar a completion
+   * is verified against. Never listed over the wire.
+   *
+   * REQUIRED, since 2026-08-04, and the history is the reason. It was declared
+   * optional so "the construction sites that predate `run.dispatch` keep
+   * compiling" — and `composeSupervisor` then simply never built one, so
+   * `packages/cli/src/daemon/run-dispatcher.ts` resolved an EMPTY requirement
+   * set for every work unit in the shipped daemon while every phase-24 test
+   * stayed green. Phase 24 had already made the verifier required at
+   * `@crabgic/scheduler`'s entry points (exit criterion 8); requiredness at a
+   * call site does not survive an optional field on the bundle that feeds it,
+   * and the phase file warns about exactly this shape twice ("one path
+   * threaded it, the daemon path did not"). Defect record:
+   * `24-daemon-requirements-registry-unwired.md`. Compile-time fixture:
+   * `./supervisor-dependencies-required.type.test.ts`.
    */
-  readonly requirements?: Registry<Requirement>;
+  readonly requirements: Registry<Requirement>;
   readonly workers: WorkersRegistry;
   readonly artifactIndex: Registry<ArtifactIndexEntry>;
   readonly liveWorkers: ReadonlyMap<string, TerminableWorker>;

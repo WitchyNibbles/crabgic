@@ -18,6 +18,8 @@ import { createChangeSetsRegistry } from "../registries/change-sets-registry.js"
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
+import { createRequirementsRegistry } from "../registries/requirements-registry.js";
+import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { readPeerCredentialsLinux } from "../peer-auth/peer-credentials.js";
 import { PROTOCOL_VERSION } from "../protocol/wire-schema.js";
 import { MAX_LINE_BYTES } from "../protocol/line-framer.js";
@@ -49,6 +51,8 @@ function buildDeps() {
     workUnits: createWorkUnitsRegistry(),
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
+    requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
   };
 }

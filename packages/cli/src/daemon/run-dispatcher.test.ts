@@ -19,15 +19,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AuthorizationEnvelopeSchema,
   ChangeSetSchema,
+  RequirementSchema,
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
+  type Requirement,
   type WorkUnit,
   RUN_LIFECYCLE_STATES,
   EnvelopePolicySchema,
   isRunLifecycleAbsorbing,
 } from "@crabgic/contracts";
-import { createJournalStore, recordAttempt, type JournalStore } from "@crabgic/journal";
+import {
+  createJournalStore,
+  journalCriteriaSeal,
+  recordAttempt,
+  type JournalStore,
+} from "@crabgic/journal";
 import {
   createArtifactIndexRegistry,
   createFileRegistry,
@@ -42,6 +49,7 @@ import {
   buildAuthorizationEnvelope,
   buildChangeSet,
   buildFakeEngineScript,
+  buildRequirement,
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
@@ -79,6 +87,8 @@ interface Seeded {
   readonly changeSet?: ChangeSet | undefined;
   readonly workUnits?: readonly WorkUnit[] | undefined;
   readonly envelope?: AuthorizationEnvelope | undefined;
+  /** The `Requirement` records available to the daemon (roadmap/24). Absent = the file is never written, which is exactly the missing-record condition. */
+  readonly requirements?: readonly Requirement[] | undefined;
   readonly run?: boolean | undefined;
 }
 
@@ -113,12 +123,23 @@ function buildDeps(
   });
   if (seeded.envelope !== undefined) envelopes.put(seeded.envelope);
 
+  // File-backed for the same reason the three above are: in production this
+  // registry is opened by `composeSupervisor` over the file INTAKE wrote, in a
+  // different process. An in-memory stand-in here would hide the only failure
+  // mode that actually shipped.
+  const requirements = createFileRegistry<Requirement>({
+    path: join(dir, "requirements.json"),
+    schema: RequirementSchema,
+  });
+  for (const requirement of seeded.requirements ?? []) requirements.put(requirement);
+
   return {
     journal,
     runs,
     changeSets,
     workUnits,
     envelopes,
+    requirements,
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     liveWorkers: new Map<string, TerminableWorker>(),
@@ -1769,5 +1790,127 @@ describe("createRealRunDispatcher — resume of an all-terminal run", () => {
     });
 
     expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+  });
+});
+
+/**
+ * roadmap/24's acceptance bar, at the DISPATCHER layer.
+ *
+ * HONEST SCOPE, stated so a future reader cannot cite this block for more than
+ * it carries. These tests build the dependency bundle by hand, so they prove
+ * only what the dispatcher does with a registry it is GIVEN. They are
+ * structurally incapable of seeing whether the composition root supplies one —
+ * which is the defect that actually shipped
+ * (`24-daemon-requirements-registry-unwired.md`). The bearer for the wiring is
+ * `./composed-daemon-seal-enforcement.test.ts`, which goes through
+ * `composeSupervisor`. This block is a regression guard beneath it.
+ */
+describe("createRealRunDispatcher — the acceptance bar it resolves per attempt (roadmap/24)", () => {
+  const REQ_ID = "aaaaaaaa-1111-4111-8111-111111111111";
+
+  function unitDeclaring(): WorkUnit {
+    return buildWorkUnit({
+      id: UNIT_ID,
+      changeSetId: CHANGE_SET_ID,
+      dependsOn: [],
+      attemptStatus: "pending",
+      requirementIds: [REQ_ID],
+    });
+  }
+
+  function succeedingAdapter(): Record<string, unknown> {
+    return {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    };
+  }
+
+  async function statusesFor(deps: ReturnType<typeof buildDeps>): Promise<readonly string[]> {
+    const found: string[] = [];
+    for await (const entry of deps.journal.queryEntries({
+      type: "work_unit_transition",
+      workUnitId: UNIT_ID,
+    })) {
+      if (entry.type !== "work_unit_transition") continue;
+      found.push(entry.payload.status);
+    }
+    return found;
+  }
+
+  /**
+   * RED before the fix. A declared requirement with no record silently resolved
+   * to nothing — `resolveRequirements` drops unresolvable ids, which is right
+   * for the approval funnel (the readiness gate refuses them itself) and wrong
+   * here, where nothing downstream refuses: the executor accepts an empty
+   * presented set BY DESIGN, because a chore unit legitimately owns none.
+   */
+  it("refuses a unit whose declared requirement has no record, rather than judging it against nothing", async () => {
+    const deps = buildDeps({ ...fullySeeded(), workUnits: [unitDeclaring()], run: false });
+    const errors: string[] = [];
+    const dispatcher = newDispatcher(deps, {
+      ...succeedingAdapter(),
+      onDriveError: (_runId: string, err: unknown) => {
+        errors.push(err instanceof Error ? err.message : String(err));
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    await dispatcher.drain({ timeoutMs: 20_000, graceMs: 1_000 });
+
+    expect(await statusesFor(deps)).not.toContain("succeeded");
+    expect(errors.join(" ")).toContain(REQ_ID);
+  });
+
+  /**
+   * GREEN even before the fix, once the deps bundle is seeded — and that is
+   * precisely why it is labelled a regression guard rather than evidence of
+   * wiring. Its vacuity trap IS the defect: hand it a registry and it passes;
+   * production handed it `undefined` and it never ran.
+   */
+  it("regression guard: a post-approval criteria edit is refused when a registry IS supplied", async () => {
+    const approved = buildRequirement({
+      id: REQ_ID,
+      acceptanceCriteria: ["The login form submits"],
+    });
+    const tampered = buildRequirement({
+      id: REQ_ID,
+      acceptanceCriteria: ["The login form submits", "and it silently skips auth"],
+    });
+    expect(tampered.criteriaHash).not.toBe(approved.criteriaHash);
+
+    const deps = buildDeps({
+      ...fullySeeded(),
+      workUnits: [unitDeclaring()],
+      requirements: [tampered],
+      run: false,
+    });
+    await journalCriteriaSeal(deps.journal, {
+      changeSetId: CHANGE_SET_ID,
+      criteriaHashes: { [REQ_ID]: approved.criteriaHash },
+    });
+
+    const dispatcher = newDispatcher(deps, succeedingAdapter());
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    await dispatcher.drain({ timeoutMs: 20_000, graceMs: 1_000 });
+
+    const statuses = await statusesFor(deps);
+    expect(statuses).toContain("failed");
+    expect(statuses).not.toContain("succeeded");
+
+    const rationales: string[] = [];
+    for await (const entry of deps.journal.queryEntries({ type: "adjudication_decision" })) {
+      if (entry.type !== "adjudication_decision") continue;
+      if (entry.payload.decision !== "criteria_seal_refused") continue;
+      rationales.push(entry.payload.rationale);
+    }
+    expect(rationales).toHaveLength(1);
+    expect(rationales[0]).toContain("approval_seal_mismatch");
+    expect(rationales[0]).toContain(REQ_ID);
   });
 });

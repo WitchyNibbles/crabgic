@@ -26,6 +26,8 @@ import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
+  createRequirementsRegistry,
+  createAuthorizationEnvelopesRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -58,6 +60,8 @@ beforeEach(async () => {
     workUnits: createWorkUnitsRegistry(),
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
+    requirements: createRequirementsRegistry(),
+    envelopes: createAuthorizationEnvelopesRegistry(),
     liveWorkers: new Map(),
   });
   const runtimeDir = join(root, "run");
