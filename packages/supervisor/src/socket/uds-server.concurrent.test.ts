@@ -20,6 +20,7 @@ import { createChangeSetsRegistry } from "../registries/change-sets-registry.js"
 import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createWorkersRegistry } from "../registries/workers-registry.js";
 import { createArtifactIndexRegistry } from "../registries/artifact-index-registry.js";
+import { createRequirementsRegistry } from "../registries/requirements-registry.js";
 import { readPeerCredentialsLinux } from "../peer-auth/peer-credentials.js";
 import { transitionRun } from "../run-lifecycle/run-transition.js";
 import { startSupervisorServer, type SupervisorServer } from "./uds-server.js";
@@ -63,6 +64,7 @@ describe("two concurrent same-uid connections (CLI + gateway stand-ins) — one 
       workUnits: createWorkUnitsRegistry(),
       workers: createWorkersRegistry(),
       artifactIndex: createArtifactIndexRegistry(),
+      requirements: createRequirementsRegistry(),
       liveWorkers: new Map(),
     });
 

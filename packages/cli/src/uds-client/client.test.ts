@@ -14,6 +14,7 @@ import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildSupervisorRouter,
   createArtifactIndexRegistry,
+  createRequirementsRegistry,
   createChangeSetsRegistry,
   createRunsRegistry,
   createWorkUnitsRegistry,
@@ -50,6 +51,7 @@ function buildDeps(): SupervisorDependencies {
     workUnits: createWorkUnitsRegistry(),
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
+    requirements: createRequirementsRegistry(),
     liveWorkers: new Map(),
   };
 }

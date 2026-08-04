@@ -201,7 +201,12 @@ async function intakeAndApprove() {
   expect(outcome.standing?.status).toBe("approved");
   expect(changeSets.get(CHANGE_SET_ID)?.state).toBe("ready");
 
-  return { changeSets, workUnits, envelopes };
+  // The `Requirement` records intake persisted. Returned so the dispatcher
+  // below is built over the SAME registry — the acceptance bar approval sealed
+  // is the bar completion is judged against, which is the whole point of the
+  // loop being closed (roadmap/24; defect
+  // `24-daemon-requirements-registry-unwired.md`).
+  return { changeSets, workUnits, envelopes, requirements };
 }
 
 function buildDispatcher(
@@ -215,6 +220,7 @@ function buildDispatcher(
     changeSets: registries.changeSets,
     workUnits: registries.workUnits,
     envelopes: registries.envelopes,
+    requirements: registries.requirements,
     workers: createWorkersRegistry(),
     artifactIndex: createArtifactIndexRegistry(),
     liveWorkers: new Map(),
@@ -279,6 +285,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
         changeSets,
         workUnits,
         envelopes,
+        requirements,
         workers: createWorkersRegistry(),
         artifactIndex: createArtifactIndexRegistry(),
         liveWorkers: new Map(),
@@ -403,6 +410,7 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
         changeSets: registries.changeSets,
         workUnits: registries.workUnits,
         envelopes: registries.envelopes,
+        requirements: registries.requirements,
         workers: createWorkersRegistry(),
         artifactIndex: createArtifactIndexRegistry(),
         liveWorkers: new Map(),
