@@ -187,11 +187,11 @@ function changeSetFixture(integrationOrder: readonly string[]): ChangeSet {
   });
 }
 
-function unitFixture(id: string, title: string): WorkUnit {
+function unitFixture(id: string, title: string, dependsOn: readonly string[] = []): WorkUnit {
   return buildWorkUnit({
     id,
     changeSetId: CHANGE_SET_ID,
-    dependsOn: [],
+    dependsOn: [...dependsOn],
     attemptStatus: "pending",
     requirementIds: [REQ_ID],
     title,
@@ -516,7 +516,18 @@ describe("a completed run walks to published_local through a fired gate (defect 
       requirement: approved,
       workUnits: [
         unitFixture(UNIT_A_ID, "rewrite the base export"),
-        unitFixture(UNIT_B_ID, "rewrite the base export differently"),
+        // SEQUENTIAL BY DEPENDENCY, deliberately. This case's subject is
+        // conflict detection against the ADVANCING integration tip, not the
+        // scheduler's concurrency: dispatching both units in one round adds a
+        // second variable (two concurrent `git worktree add`s racing the control
+        // clone's shared `.git/config` lock) that has nothing to do with the
+        // claim, and this test failed once on `ubuntu-24.04-arm` with the run
+        // `failed` rather than `blocked` — a shape only reachable BEFORE the
+        // pipeline runs. `dependsOn` makes the drive deterministic; the conflict
+        // is unaffected, because every attempt worktree is cut at the frozen
+        // base regardless of round, so B's candidate still diverges from A's
+        // integrated tip.
+        unitFixture(UNIT_B_ID, "rewrite the base export differently", [UNIT_A_ID]),
       ],
       changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
       envelope: buildAuthorizationEnvelope({
@@ -534,6 +545,11 @@ describe("a completed run walks to published_local through a fired gate (defect 
     composed = await bootDaemon({ collide: true });
     const runId = await dispatchAndSettle(composed);
 
+    // ASSERTED FIRST, on purpose: the pipeline's own reason is what makes a
+    // failure here diagnosable. A bare state mismatch ("expected failed to be
+    // blocked") says nothing about WHY, and that is exactly what one CI run on
+    // `ubuntu-24.04-arm` produced before this ordering existed.
+    expect(driveErrors.join(" | ")).toContain(SHARED_FILE_PATH);
     expect(composed.deps.runs.get(runId)?.runState).toBe("blocked");
     expect(publishedBranches()).toEqual([]);
     // No gate fired: the walk never reached `final_verifying`.
@@ -565,6 +581,5 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(parsed.resolutionWorkUnits).toHaveLength(1);
     expect(parsed.resolutionWorkUnits[0]?.role).toBe("merge-conflict-resolution");
     expect(parsed.resolutionWorkUnits[0]?.ownedPaths).toEqual([SHARED_FILE_PATH]);
-    expect(driveErrors.join(" ")).toContain(SHARED_FILE_PATH);
   }, 180_000);
 });

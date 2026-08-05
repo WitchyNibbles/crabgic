@@ -265,3 +265,36 @@ above report `6325 passed (6325)`. The FILE count agrees (634 both places). The
 16-test delta and the one skip are environment-dependent (platform-gated cases),
 not a discrepancy in this change — but no claim in this file should be read as
 asserting the local total holds in CI, or vice versa.
+
+================================================================================
+ADDED 2026-08-05 — A REAL CI FAILURE, DIAGNOSED AND CLOSED (not a flake)
+================================================================================
+The first push of the transcript-only commit (`ef42776`) turned `learning-redteam
+(ubuntu-24.04-arm)` RED. Run 31028561863, job 92383145931:
+
+  job-log line 268: `     × T4 — a REAL cross-unit conflict settles the run blocked, with the typed resolution units journaled 137ms`
+  job-log line 377: `AssertionError: expected 'failed' to be 'blocked' // Object.is equality`
+  job-log line 393: ` Test Files  1 failed | 117 passed (118)`
+
+The SAME test passed on `ubuntu-latest` in the same push, and 22 consecutive local
+runs (12 with `-t T4`, 10 whole-file) did not reproduce it — so it was not
+diagnosable from the assertion, and `failed` is not a state the conflict path can
+produce: a conflict settles `blocked` at `integrating`, so `failed` means the walk
+never got there.
+
+TWO CHANGES, and the reasoning for each:
+
+1. **T4 is now sequential by DAG dependency.** Its subject is conflict detection
+   against the ADVANCING integration tip, not the scheduler's concurrency.
+   Dispatching both units in one round adds a variable that has nothing to do with
+   the claim — two concurrent `git worktree add`s racing the control clone's shared
+   `.git/config` lock, which is the most plausible route to a pre-pipeline `failed`.
+   `dependsOn` removes it. The conflict is unaffected: every attempt worktree is
+   cut at the frozen base regardless of round, so B's candidate still diverges from
+   A's integrated tip.
+2. **The pipeline's own reason is asserted FIRST**, so the next failure of this
+   test reports WHY rather than only a state mismatch.
+
+HONEST RESIDUAL: the root cause was not confirmed, only removed from this test's
+path. If a pre-pipeline `failed` recurs anywhere, the drive-error assertion added
+above is what will name it.
