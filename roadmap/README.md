@@ -78,6 +78,35 @@ and need owner approval to run; **19** (7) is not yet started;
 > registry or reaches `verifying`/`final_verifying`, so phase 24's final gate stays unreached.
 > Seven further records are **owner-gated** — their missing evidence needs an owner-authorised
 > run against a paid or licensed system — and the remaining twenty are open.
+
+> **Updated 2026-08-05 (all phases recorded).** **All twenty-five phases now carry a per-criterion
+> closeout record** — the first time in this repository's history. Phases 00 and 06 closed at
+> **13 of 15** on one scoped local live batch of **10 haiku invocations**, measured by a
+> process-poll ledger rather than estimated. Phase 00 closed 5/5 with **zero** live spend: its
+> spikes were already committed live and in-range, and the non-vacuity proof is a re-tally of the
+> committed fixture **bytes** reproducing §9 exactly. Phase 06 closed 8/10; its two remaining
+> criteria name the `engine-live` CI job, which **cannot run** — the plugin lane `execFile`s a bare
+> `claude` from `PATH`, the SDK packages export no `bin`, and the workflow installs no CLI, so a
+> dispatch reds on `ENOENT` after paying for the whole suite. Running tally: **211 criteria; 182
+> ticked, 29 not.**
+>
+> Four production defects were found and fixed this wave, each by deleting code and measuring what
+> reddened rather than by reading a test's name: per-issue write ordering in both Jira connectors;
+> phase 24's completion funnel verifying zero requirements in the shipped daemon; the ADF secret
+> scan never inspecting a link `href` or an unknown member; and phase 21's tenant-boundary gate
+> asserting over two string literals. **A fifth change is larger than a fix:** before this wave no
+> run had ever reached `published_local` — production could not produce its terminal artifact.
+> Phase 08's `preflightMerge`/`applyCasUpdate`/`publishLocal` had no production callers at all,
+> worker output was never committed, and the criteria-seal gate fired nowhere. The lifecycle now
+> walks `running → verifying → integrating → final_verifying → published_local`, and the published
+> tip is compared against the gate-verified object in **production**, not only in a test.
+>
+> The defect index now holds **thirty-seven** records: three `fixed`, seven owner-gated, twenty-seven
+> open. `fixed` means *the record evidences a remedy* — never that a box may be ticked. Deployment
+> posture lives in `docs/deploy-posture.md` and is **conditional, not clear**: as-shipped `Read`
+> exposure of the sensitive roots is BINDING, but the deny rules and sandbox `denyRead` are **not**
+> what refuses them, so the only barrier is one unlisted-tool auto-deny. And a gated release would
+> fail today on a red `check:e2e-types`.
 >
 > One bookkeeping lesson is recorded rather than smoothed over. Phase 24's fix shipped on
 > 2026-08-04 and was annotated in the production source, but its defect record was never given
