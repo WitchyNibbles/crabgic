@@ -600,10 +600,12 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    > the entry `registry.list("security")` reported as tenant-boundary coverage,
    > which could not fail — plus the extra depth in
    > `e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts`, which
-   > has no per-push net of its own (`workspaces` is `packages/*`, the root
-   > `vitest.config.ts` projects are `packages/*` plus `e2e/report`, and the only
-   > workflow naming `e2e/matrix` is `release-e2e.yml`). The enforcement was
-   > tested; the gate was not.
+   > has no per-push net of its own (`workspaces` is `packages/*`; the root
+   > `vitest.config.ts` declares exactly three projects — the `packages/*`
+   > directories, `e2e/report` at `vitest.config.ts:71`, and `scripts` at
+   > `vitest.config.ts:84` — none of which is or contains `e2e/matrix`; and the
+   > only workflow naming `e2e/matrix` is `release-e2e.yml`). The enforcement
+   > was tested; the gate was not.
    >
    > This annotation governs every mention of `assertTenantBoundary` or
    > `jira-tenant-boundary` elsewhere in this file (the exit-criterion mapping
