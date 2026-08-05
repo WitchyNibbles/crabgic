@@ -109,7 +109,12 @@ async function buildAnnotationHarness(idempotencyKey: string) {
     verify: (plan, applied) => applyClient.verify!(plan, applied),
     reconcileAmbiguous: (plan, cause) => applyClient.reconcileAmbiguous!(plan, cause),
   };
-  const deps: MutationPipelineDeps = { journal, httpClient, lock: new IdempotencyKeyLock() };
+  const deps: MutationPipelineDeps = {
+    journal,
+    httpClient,
+    lock: new IdempotencyKeyLock(),
+    tenantAllowlist: undefined,
+  };
   return { payloadStore, handlers, deps, fakeTransport };
 }
 

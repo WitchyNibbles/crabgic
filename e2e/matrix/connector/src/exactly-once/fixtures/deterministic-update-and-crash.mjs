@@ -91,6 +91,10 @@ const outcome = await executeMutationPlan(plan, handlers, {
   journal,
   httpClient,
   lock: new IdempotencyKeyLock(),
+  // DEFECT 21: tenant-unscoped. Untyped here (or outside `tsc -b`), so stated
+  // explicitly rather than left to default — an omitted key would read as
+  // `undefined` anyway, but silence is what let this hole exist.
+  tenantAllowlist: undefined,
 });
 appendFileSync(`${sideEffectFile}.outcomes.jsonl`, `${JSON.stringify(outcome)}\n`);
 process.exit(0);

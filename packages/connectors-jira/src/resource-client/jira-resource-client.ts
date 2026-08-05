@@ -38,7 +38,19 @@ export interface CreateJiraResourceClientDeps {
   readonly fieldMetadataIndex: FieldMetadataIndex;
   /** Shared with `./jira-mutation-apply-client.ts` — see `./plan-payload-registry.ts`'s doc comment. */
   readonly payloadRegistry: JiraPlanPayloadRegistry;
-  /** Overrides the derived `tenant` used on every built `RemoteMutationPlan` — defaults to the connection's first `projectAllowlist` entry, or its own `id`. */
+  /**
+   * Overrides the derived `tenant` used on every built `RemoteMutationPlan`
+   * — defaults to the connection's first `tenantAllowlist` entry, then its
+   * first `projectAllowlist` entry, then its own `id`.
+   *
+   * DEFECT 21: `tenantAllowlist` leads the chain because the gateway's
+   * mutation pipeline now refuses a plan whose declared tenant is outside
+   * that list. Deriving from `projectAllowlist` while the operator scoped
+   * the connection by tenant would make every plan this client builds
+   * out-of-allowlist by construction. An explicit value here still wins —
+   * and an explicit OUT-of-allowlist value is exactly the case the
+   * pipeline check refuses.
+   */
   readonly tenant?: string;
   /**
    * MAJOR-2 fix (roadmap/21 adversarial-validation round): optional bridge
@@ -65,7 +77,16 @@ export interface CreateJiraResourceClientDeps {
  */
 export function createJiraResourceClient(deps: CreateJiraResourceClientDeps): JiraResourceClient {
   const { ctx, fieldMetadataIndex, payloadRegistry } = deps;
-  const tenant = deps.tenant ?? ctx.connection.projectAllowlist?.[0] ?? ctx.connection.id;
+  // DEFECT 21 — `tenantAllowlist` leads, so a tenant-scoped connection
+  // produces in-allowlist plans by default and only an explicit override can
+  // be refused by the gateway's admission check. Duplicated verbatim in
+  // `./datacenter/jira-datacenter-resource-client.ts` (a separate copy of
+  // this derivation) — both are pinned by their own tests.
+  const tenant =
+    deps.tenant ??
+    ctx.connection.tenantAllowlist?.[0] ??
+    ctx.connection.projectAllowlist?.[0] ??
+    ctx.connection.id;
   const externalConnectionId = ctx.connection.id;
   const planCtx: JiraPlanBuildContext = { tenant, externalConnectionId, payloadRegistry };
 

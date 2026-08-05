@@ -113,7 +113,12 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         reconcileAmbiguous: (p, cause) =>
           applyClient.reconcileAmbiguous?.(p, cause) ?? Promise.resolve(undefined),
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
 
     expect(outcome.status).toBe("recorded");
@@ -129,7 +134,12 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         parseResponse: (p, r) => applyClient.parseResponse(p, r),
         verify: async () => true,
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
     expect(replay.status).toBe("replayed");
     expect(replay.appliedRevision).toBe("PROJ-500");
@@ -172,7 +182,12 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         reconcileAmbiguous: (p, cause) =>
           applyClient.reconcileAmbiguous?.(p, cause) ?? Promise.resolve(undefined),
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
 
     expect(outcome.status).toBe("blocked");
@@ -262,7 +277,12 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         reconcileAmbiguous: (p, cause) =>
           applyClient.reconcileAmbiguous?.(p, cause) ?? Promise.resolve(undefined),
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
 
     expect(outcome.status).toBe("recorded");

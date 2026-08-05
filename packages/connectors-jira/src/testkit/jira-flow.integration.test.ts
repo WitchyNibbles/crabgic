@@ -101,7 +101,7 @@ describe("board → sprint → epic → issue → link → comment(ADF) → work
           parseResponse: (p, r) => applyClient.parseResponse(p, r),
           verify: (p, a) => applyClient.verify?.(p, a) ?? Promise.resolve(true),
         },
-        { journal, httpClient: ctx.httpClient, lock },
+        { journal, httpClient: ctx.httpClient, lock, tenantAllowlist: undefined },
       );
 
     // 1. board
@@ -239,7 +239,12 @@ describe("transitions", () => {
         parseResponse: (p, r) => applyClient.parseResponse(p, r),
         verify: (p, a) => applyClient.verify?.(p, a) ?? Promise.resolve(true),
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
 
     expect(outcome.status).toBe("recorded");
@@ -278,7 +283,12 @@ describe("concurrent-edit conflicts", () => {
         parseResponse: (p, r) => applyClient.parseResponse(p, r),
         verify: (p, a) => applyClient.verify?.(p, a) ?? Promise.resolve(true),
       },
-      { journal, httpClient: ctx.httpClient, lock: new IdempotencyKeyLock() },
+      {
+        journal,
+        httpClient: ctx.httpClient,
+        lock: new IdempotencyKeyLock(),
+        tenantAllowlist: undefined,
+      },
     );
 
     expect(outcome.status).toBe("failed");
