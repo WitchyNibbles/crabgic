@@ -1,0 +1,241 @@
+PHASE-06 CLOSEOUT — BEARER / VACUITY MUTATION PROBES (c5, c6, c8, c9)
+=====================================================================
+RULING-3 header
+---------------
+date (UTC):    2026-08-05T19:31:04Z
+UPSTREAM BASE (stable — resolves for any reader, now and after merge): 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+commands:      echoed verbatim inline, per probe
+exit status:   every RESTORE verified by md5 + an empty `git status --porcelain`; the tree is
+               byte-identical to the UPSTREAM BASE at the end (final section).
+
+METHOD, per the wave brief:
+  * baseline -> mutation -> restore, all three at the SAME tree. The baseline is not padding: it
+    is what makes the mutation number legible.
+  * restore with an EXPLICIT SOURCE and an EXPLICIT PATH (`git checkout HEAD -- <path>`), because
+    `git checkout -- <path>` restores from the INDEX and has silently destroyed a probe's own
+    fresh test before.
+  * check the TEST COUNT, not the exit code. All four probes hold their count constant
+    (314/314, 724/724, 314/314, 961/961), so no assertion silently vanished.
+  * check `tsc -b`'s exit code too: a mutation that does not compile measures the OLD dist and
+    returns the old code wearing the new code's label. All four report EXIT=0.
+  * the rebuild question is discharged by measurement, not ritual — see the consumer census
+    reproduced at the end. Probe B's symbol DOES cross a package boundary, so probe B rebuilds.
+
+# PHASE-06 BEARER PROBES
+# date_utc: 2026-08-05T19:25:05Z
+# UPSTREAM BASE (stable): 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+# every run below is at this same tree; restores verified by md5 + git status
+
+===== PROBE A (c9) — delete the version gate from adapter.resume() =====
+SCOPE: packages/engine-claude. Discharge: the mutated site is a CALL inside adapter.ts,
+package-local; no other package's suite can observe it except through engine-claude's dist,
+and the question asked is only WHICH engine-claude suite pins the criterion.
+$ md5sum packages/engine-claude/src/adapter.ts (baseline)
+0d0fcbb6c105c6364cbae17121c80209  packages/engine-claude/src/adapter.ts
+### A0 BASELINE (unmutated)
+$ npx vitest run --config vitest.config.ts packages/engine-claude
+ Test Files  18 passed (18)
+      Tests  314 passed (314)
+--- end A0 BASELINE (unmutated) ---
+
+$ git diff --numstat packages/engine-claude/src/adapter.ts
+0	1	packages/engine-claude/src/adapter.ts
+# tsc -b EXIT=0  (a non-compiling mutation would measure the OLD dist)
+### A1 MUTATED (resume version gate deleted)
+$ npx vitest run --config vitest.config.ts packages/engine-claude
+     × resume() also refuses synchronously outside the accepted range 6ms
+ FAIL  |@crabgic/engine-claude| src/adapter.test.ts > ClaudeEngineAdapter — version gate refusal (roadmap/06 exit criterion) > resume() also refuses synchronously outside the accepted range
+ Test Files  1 failed | 17 passed (18)
+      Tests  1 failed | 313 passed (314)
+--- end A1 MUTATED (resume version gate deleted) ---
+
+$ git checkout HEAD -- packages/engine-claude/src/adapter.ts
+$ md5sum packages/engine-claude/src/adapter.ts
+0d0fcbb6c105c6364cbae17121c80209  packages/engine-claude/src/adapter.ts
+$ git status --porcelain
+(empty => restored)
+
+===== PROBE B (c6) — change the recorded 0.96 utilization to 0.97 in testkit =====
+SCOPE: rebuild + packages/testkit packages/engine-claude packages/scheduler.
+RATE_LIMIT_ALLOWED_WARNING_96 DOES cross package boundaries (scheduler, e2e/matrix),
+so this probe rebuilds first — a src-only run would under-report.
+$ md5sum packages/testkit/src/fake-engine/rate-limit-fixtures.ts (baseline)
+9c78462e1c30880879437a5da498970e  packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+### B0 BASELINE (unmutated)
+$ npx vitest run --config vitest.config.ts packages/testkit packages/engine-claude packages/scheduler
+ Test Files  62 passed (62)
+      Tests  724 passed (724)
+--- end B0 BASELINE (unmutated) ---
+
+$ git diff -U0 packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+index 1d896cc..771dfc9 100644
+--- a/packages/testkit/src/fake-engine/rate-limit-fixtures.ts
++++ b/packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+@@ -28 +28 @@ export const RATE_LIMIT_ALLOWED_WARNING_96: RateLimitEventPayload = {
+-  utilization: 0.96,
++  utilization: 0.97,
+# tsc -b EXIT=0
+### B1 MUTATED (recorded utilization 0.96 -> 0.97)
+$ npx vitest run --config vitest.config.ts packages/testkit packages/engine-claude packages/scheduler
+     × the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99} 10ms
+ FAIL  |@crabgic/testkit| src/fake-engine/rate-limit-fixtures.test.ts > RECORDED_RATE_LIMIT_PAYLOADS > the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99}
+ Test Files  1 failed | 61 passed (62)
+      Tests  1 failed | 723 passed (724)
+--- end B1 MUTATED (recorded utilization 0.96 -> 0.97) ---
+
+$ git checkout HEAD -- packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+$ md5sum packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+9c78462e1c30880879437a5da498970e  packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+$ git status --porcelain
+?? docs/evidence/phase-06/closeout/
+(empty => restored)
+
+===== PROBE C (c5) — downgrade the 'absent' reason to 'invalid' in result-validation.ts =====
+SCOPE: packages/engine-claude (engine-claude's validateWorkerResult is package-local;
+scheduler carries its OWN copy in worker-result-validation.ts — see the discharge census).
+$ md5sum packages/engine-claude/src/result-validation.ts (baseline)
+6038e5a6c2bc2441ed7f7744edd2a3c5  packages/engine-claude/src/result-validation.ts
+### C0 BASELINE (unmutated)
+$ npx vitest run --config vitest.config.ts packages/engine-claude
+ Test Files  18 passed (18)
+      Tests  314 passed (314)
+--- end C0 BASELINE (unmutated) ---
+
+$ git diff -U0 packages/engine-claude/src/result-validation.ts
+diff --git a/packages/engine-claude/src/result-validation.ts b/packages/engine-claude/src/result-validation.ts
+index faee0ef..22e8aa8 100644
+--- a/packages/engine-claude/src/result-validation.ts
++++ b/packages/engine-claude/src/result-validation.ts
+@@ -96 +96 @@ export function validateWorkerResult(result: EngineResultEvent): WorkerResultVal
+-      reason: "absent",
++      reason: "invalid",
+# tsc -b EXIT=0
+### C1 MUTATED (reason 'absent' -> 'invalid')
+$ npx vitest run --config vitest.config.ts packages/engine-claude
+     × subtype 'success' with structuredOutput absent is a schemaViolation, never a silent pass 13ms
+     × structuredOutput absent under a different (non-retries-exhausted) subtype is still 'absent', never a silent pass 1ms
+ FAIL  |@crabgic/engine-claude| src/structured-output-violation.test.ts > validateWorkerResult — reason 'absent' (docs/engine-baseline.md §5's OBSERVED violation shape) > subtype 'success' with structuredOutput absent is a schemaViolation, never a silent pass
+ FAIL  |@crabgic/engine-claude| src/structured-output-violation.test.ts > validateWorkerResult — reason 'absent' (docs/engine-baseline.md §5's OBSERVED violation shape) > structuredOutput absent under a different (non-retries-exhausted) subtype is still 'absent', never a silent pass
+ Test Files  1 failed | 17 passed (18)
+      Tests  2 failed | 312 passed (314)
+--- end C1 MUTATED (reason 'absent' -> 'invalid') ---
+
+$ git checkout HEAD -- packages/engine-claude/src/result-validation.ts
+$ md5sum packages/engine-claude/src/result-validation.ts
+6038e5a6c2bc2441ed7f7744edd2a3c5  packages/engine-claude/src/result-validation.ts
+$ git status --porcelain
+?? docs/evidence/phase-06/closeout/
+(empty => restored)
+
+===== PROBE D (c8) — plant ONE hand-typed gateway server-name literal in engine-claude/src =====
+SCOPE: packages/engine-claude packages/contracts (02's sole-definition-site scanner lives in contracts).
+$ md5sum packages/engine-claude/src/version-gate.ts (baseline)
+a50b8bbb73dc21f42eadba82423f0a21  packages/engine-claude/src/version-gate.ts
+### D0 BASELINE (unmutated)
+$ npx vitest run --config vitest.config.ts packages/engine-claude packages/contracts
+ Test Files  68 passed (68)
+      Tests  961 passed (961)
+--- end D0 BASELINE (unmutated) ---
+
+$ git diff --numstat packages/engine-claude/src/version-gate.ts
+4	0	packages/engine-claude/src/version-gate.ts
+# tsc -b EXIT=0
+### D1 MUTATED (one hand-typed literal planted)
+$ npx vitest run --config vitest.config.ts packages/engine-claude packages/contracts
+     × is the sole definition site of the literal under packages/*/src (exit criterion) 136ms
+     × the Gap-11 literal appears nowhere in this package's source, this scanner included 22ms
+ FAIL  |@crabgic/contracts| src/gateway/server-name.test.ts > GATEWAY_MCP_SERVER_NAME > is the sole definition site of the literal under packages/*/src (exit criterion)
+ FAIL  |@crabgic/engine-claude| src/gateway-name-reference.test.ts > zero hand-typed gateway server-name literals under packages/engine-claude/src > the Gap-11 literal appears nowhere in this package's source, this scanner included
+ Test Files  2 failed | 66 passed (68)
+      Tests  2 failed | 959 passed (961)
+--- end D1 MUTATED (one hand-typed literal planted) ---
+
+$ git checkout HEAD -- packages/engine-claude/src/version-gate.ts
+$ md5sum packages/engine-claude/src/version-gate.ts
+a50b8bbb73dc21f42eadba82423f0a21  packages/engine-claude/src/version-gate.ts
+$ git status --porcelain
+?? docs/evidence/phase-06/closeout/
+(empty => restored)
+
+===== FINAL TREE STATE =====
+$ git status --porcelain
+?? docs/evidence/phase-06/closeout/
+(empty => every probe restored)
+$ git diff --stat HEAD
+(empty => no residue)
+
+=====================================================================================
+WHAT THE FOUR PROBES ESTABLISH
+=====================================================================================
+
+PROBE A -> c9 ("`spawn`/`resume` refuse to start outside the accepted version range —
+               `version-gate.test`")
+
+  Deleting `assertEngineVersionAccepted(this.engineVersionResolver());` from
+  `ClaudeEngineAdapter.resume()` reddened EXACTLY ONE test:
+      "resume() also refuses synchronously outside the accepted range"
+  and that test lives in `packages/engine-claude/src/adapter.test.ts:233`, NOT in
+  `version-gate.test.ts`. Every one of `version-gate.test.ts`'s 20 tests stayed GREEN.
+
+  FINDING, and it is a real one. The criterion's SUBSTANCE holds, on both conjuncts:
+  `adapter.test.ts:217` pins `spawn()`'s refusal (and additionally proves ZERO sdkQuery calls and
+  ZERO journal appends), `adapter.test.ts:233` pins `resume()`'s. Both run in the default gate.
+  But the suite the criterion NAMES does not test `spawn` or `resume` at all — it tests the pure
+  helper `assertEngineVersionAccepted` plus a baseline-document sync check. A reader following the
+  criterion's own pointer would find no spawn/resume assertion there.
+  This is a bearer-NAME defect, not a missing guarantee: the box is ticked on the measured
+  substance, and the pointer drift is filed as a defect.
+
+PROBE B -> c6 ("`limitSignal` fires against phase-00's captured (or an equivalently
+               live-triggered) rate-limit shape — `limit-signal.test`")
+
+  Changing the recorded `utilization` from the captured 0.96 to 0.97 reddened EXACTLY ONE test:
+      "the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99}"
+  in `packages/testkit/src/fake-engine/rate-limit-fixtures.test.ts:33`.
+  `limit-signal.test.ts` stayed GREEN.
+
+  FINDING. `limit-signal.test.ts:52-56` asserts `expect(event).toEqual({ type, sessionId,
+  ...payload })` — a TAUTOLOGY over whatever the constant happens to hold. The named suite
+  therefore pins the normalizer's passthrough, which is real, but it does NOT bind the CAPTURED
+  VALUES, so on its own it cannot carry "against phase-00's captured shape".
+  What DOES carry that conjunct is `packages/engine-claude/src/event-normalizer.test.ts:90-113`,
+  which reads the COMMITTED phase-00 fixtures off disk
+  (`event-normalizer.test.ts:18` builds `../../../spikes/fixtures/<name>` URLs) and asserts
+  `expect(rateLimitMessages).toHaveLength(16)` with every one normalizing to a `limitSignal`.
+  That file also stayed green under this mutation — which is the proof of INDEPENDENCE: the
+  fixture-backed suite and the hand-typed constants are two genuinely separate sources, so
+  perturbing one does not move the other.
+  Secondary finding: `rate-limit-fixtures.test.ts:11-19`'s first case compares
+  `RECORDED_RATE_LIMIT_PAYLOADS` against its own four members — the brief's "tautology over a
+  literal". Its value-pinning cases (`:29`, `:39`) are the non-vacuous ones, and they are what
+  probe B reddened. Both findings are filed as a defect; the box is ticked on the measured,
+  fixture-backed substance.
+
+PROBE C -> c5 ("Schema-violating `structured_output` triggers a typed failure entering the
+               repair-attempt path, never a silent pass — `structured-output-violation.test`")
+
+  Downgrading the typed reason `"absent"` to `"invalid"` in `result-validation.ts` reddened
+  EXACTLY the two cases that assert that reason, both in the NAMED suite:
+      "subtype 'success' with structuredOutput absent is a schemaViolation, never a silent pass"
+      "structuredOutput absent under a different (non-retries-exhausted) subtype is still 'absent', ..."
+  CLEAN. The named bearer binds the specific typed reason, not merely "it threw something" — the
+  brief's "assert the typed kind, not just the throw" bar is met. The suite also carries the
+  does-not-fail control the brief asks for: `structured-output-violation.test.ts:127-129` asserts
+  the well-formed case is the ONLY one returning `valid`, so "everything is a violation" would not
+  satisfy these tests.
+
+PROBE D -> c8 ("`WorkerSdkOptions.mcpServers` key and `strictMcpConfig` reference
+               `GATEWAY_MCP_SERVER_NAME` byte-for-byte; zero hand-typed `"crabgic_gateway"`
+               literals anywhere in `packages/engine-claude` — `gateway-name-reference.test`")
+
+  Planting ONE hand-typed literal in `packages/engine-claude/src/version-gate.ts` reddened TWO
+  tests, in two packages:
+      "the Gap-11 literal appears nowhere in this package's source, this scanner included"
+        (`gateway-name-reference.test.ts:46` — the criterion's named bearer)
+      "is the sole definition site of the literal under packages/*/src (exit criterion)"
+        (phase 02's independent scanner in `packages/contracts`)
+  CLEAN, and doubly so. The emptiness proof is scoped to EXACTLY the path the criterion names —
+  `gateway-name-reference.test.ts:27` sets `SRC_DIR` to the test file's own directory,
+  `packages/engine-claude/src` — and it is re-run per push, so it cannot rot. Its needle is
+  derived from the imported constant (`:26`), never hand-typed, so the scanner does not exempt
+  itself. Non-vacuity is asserted in-file at `:60-63`.

@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "phase": "06",
+  "roadmapFile": "roadmap/06-claude-engine-adapter.md",
+  "pass": {
+    "date": "2026-08-05",
+    "agent": "criteria-closeout pass, phases 00 and 06 (the last two phases without a closeout record)",
+    "headSha": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "03's full envelope-conformance fixture set passes on the pinned live engine — suite `envelope-conformance.live.test`, run in the `engine-live` CI job.",
+      "textSha256": "e5a64e99ef88deace7b2a17ae0b0c6ea8907163433ed5b8550ee55bbaed06e48",
+      "classification": "EVIDENCE-NEEDS-CI",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "THE FIRST CLAUSE IS SATISFIED, and this pass produced the evidence: a green scoped live run of exactly four named files against the pinned engine, ' Test Files  4 passed (4)' / '      Tests  12 passed (12)' / '# EXIT=0', with 'envelope-conformance.live.test.ts' among the four named on the command line. The measured cost was 10 model-serving invocations, all haiku ('MODEL: haiku, 11/11.  Zero opus, zero sonnet.'), inside a 110s wall clock with '# WATCHDOG_FIRED=0'. Section 3b's per-invocation ledger attributes envelope-conformance's share as exactly two engine spawns."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-engine-live-enoent.txt",
+          "quotedAssertion": "WHY THE SECOND CLAUSE CANNOT BE CLOSED. The transcript establishes the ENOENT chain link by link. LINK 1, PATH resolution: 'plugin-load.live.test.ts:32:    const { stdout } = await execFileAsync(\"claude\", [\"plugin\", \"validate\", resolvePluginRoot()], {'. LINK 2, no bin: '@anthropic-ai/claude-agent-sdk 0.3.218 bin: undefined' and '@anthropic-ai/claude-agent-sdk-linux-x64 0.3.218 bin: undefined'. LINK 3, no shim: \"exit=1   <- 1 = NO MATCH: npm ci links no 'claude' shim\". LINK 4, no install step. Recorded as a POSITIVE enumeration of the workflow's whole step list rather than as one grep's silence, because an earlier draft of that line mis-annotated the grep's exit status and this pass corrected it in place, in the transcript, before committing: 'them and count: NONE of them installs a `claude` CLI. That is an enumeration of the whole' / '      step list, not the silence of one grep.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/envelope-conformance.live.test.ts:150-234",
+          "quotedAssertion": "The suite the criterion names, and the honest meaning of \"passes\" for it — the 7 fixtures split into two enforcement classes, which the file discloses in its own header at :15-30. The adapter-gate class: :157 'it(`${fixture.name}: the real adapter refuses the raw profile before any engine call (deny)`, async () => {' with :161-163 'expect(() =>' / '          ctx.adapter.spawn(taskPacketWithObjective(\"noop\", []), profile, allowAll),' / '        ).toThrow();'. The engine-permission class: :178 'it(\"path-escape (relative + absolute): the engine denies an Edit outside the owned path (deny)\", async () => {' with :222 'expect(result?.permissionDenials.length ?? 0).toBeGreaterThan(0);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/envelope-conformance.live.test.ts:237-278",
+          "quotedAssertion": "Part B, the genuine ENGINE-level enforcement arm on a footgun-clean profile — and the arm that also pins the catalog-removal fact the whole batch's boundedness rests on: :238 'it(\"compound-command smuggling denied + Agent→Task catalog-removal (baseline §3, §4.2)\", async () => {' / :258 'expect(init?.tools.length ?? 0).toBeGreaterThan(0);' — the non-vacuity sanity check, so the two absence assertions that follow are sound — / :259 'expect(init?.tools).not.toContain(\"Task\");' / :260 'expect(init?.tools).not.toContain(\"Agent\");'."
+        },
+        {
+          "kind": "test",
+          "ref": ".github/workflows/engine-live.yml:22-53",
+          "quotedAssertion": "The job the criterion names, and why nothing local can stand in for it: :48 '      - name: Run @live conformance suite' / :50 '          CRABGIC_LIVE: \"1\"' / :53 '        run: npm run test:live'. Its trigger is `workflow_dispatch: {}` only (:26), by design — :22-23 '# Trigger stays manual (`workflow_dispatch`): live runs consume the owner's' / '# subscription and are started deliberately, never as a push side effect.'"
+        }
+      ],
+      "notes": "SPLIT CRITERION, honestly partial, and the split is in the criterion's own text. CLAUSE 1 — \"03's full envelope-conformance fixture set passes on the pinned live engine\" — IS satisfied, by a green run this pass produced and committed. CLAUSE 2 — \"run in the `engine-live` CI job\" — is not, and cannot be by anything local. The box therefore stays unticked, because reading clause 2 down to \"it passed somewhere\" would drop a guarantee, and the protocol classifies that as unmet rather than as a wording fix. WHY NO DISPATCH, measured rather than assumed: a dispatch today reds on ENOENT, because the plugin lane sharing this job spawns `claude` from PATH, the SDK packages expose no `bin`, and the workflow installs no CLI. A red closes nothing here and closes nothing for c10, whose text requires green. A PLAN ERROR THIS PASS FOUND AND CORRECTED, recorded because the corrected version is what a future reader needs: the plan asserted the 15 engine-claude files all run BEFORE the plugin lane, so the ENOENT would arrive only after the spend. Measured, that ordering is FALSE — `plugin-load.live.test.ts` ran FIRST of the 17. It makes no difference, and the reason is the interesting part: `npm run test:live` carries no `--bail`, so all 17 files run regardless of order and the full spend happens whether the plugin lane fails first or last. The hazard survives; the plan's reasoning for it did not. DISCLOSURE CARRIED FORWARD from wi5 §5.1, because it is the honest meaning of \"passes\" for this fixture set: 5 of the 7 fixtures are denied at the adapter's own `assertNoFootguns` gate before any engine call, and only 2 reach the engine's permission layer. Both classes resolve to the overall `deny` every fixture's baseline-derived `expected` names, so parity holds at the overall-verdict level — but a reader should not imagine 7 live engine spawns. There are 2.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/06-engine-live-plugin-cli-unresolvable-on-ci.md"
+    },
+    {
+      "index": 2,
+      "text": "Masked secret never appears in worker env or transcript — `secret-mask.live.test`.",
+      "textSha256": "195f72260ad6240698743d01d2146514b299c96b6eae12be62a1c54b9ccd76e5",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "The green run, produced by this pass: ' Test Files  4 passed (4)' / '      Tests  12 passed (12)' / '# EXIT=0', over a command that names 'packages/engine-claude/src/live/secret-mask.live.test.ts' explicitly. Section 3b's ledger attributes its cost as one invocation, entry 10: 'max-turns=3  allow \"Bash(echo:*)\"    secret-mask (direct query)'. The pre-run baseline in section 1 shows a clean tree and records bwrap 0.9.0 plus the SDK-bundled engine at '2.1.218 (Claude Code)', so the run happened at the pinned version rather than against the host's out-of-range 2.1.221 PATH binary."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/secret-mask.live.test.ts:109-118",
+          "quotedAssertion": "BOTH conjuncts of \"never in worker env or transcript\", asserted separately. TRANSCRIPT: :110 'expect(transcriptText(result.messages)).not.toContain(REAL_SECRET);'. ENV/FILESYSTEM SPILL: :115-118 'const worktreeHits = scanForSecrets(readTree(scratch.worktreePath));' / '      const homeHits = scanForSecrets(readTree(scratch.homeDir));' / '      expect(worktreeHits).toEqual([]);' / '      expect(homeHits).toEqual([]);'. The scan deliberately EXCLUDES the worker's own `CLAUDE_CONFIG_DIR`, which :112-114 names as the material's one sanctioned home — so the assertion is about leakage, not about the credential existing at all."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/secret-mask.live.test.ts:102-107",
+          "quotedAssertion": "THE EXECUTED-CALL GUARD, which is what makes the two absence assertions above non-vacuous — a refused or idle session would satisfy `not.toContain` for free. :102 '      // Executed-call guard: the echo of the masked var must have actually run.' / :103 '      assertBashAttempted(' / :105 '        (command) => command.includes(\"echo\") && command.includes(\"CRABGIC_SECRET_X\"),' / :106 '        \"secret-mask: echo of the masked env var\",'. This is baseline §2's rewritten pattern, adopted after the original hermeticity probe was found vacuous for exactly this reason."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/live-harness.ts:786-798",
+          "quotedAssertion": "The guard's own failure mode, so a missing probe call is a RED rather than a silent pass: :793 '  if (attempted.length === 0) {' / :794 '    throw new ExecutedCallGuardError(' / :795 '      `no Bash tool_use matching the expected shape was attempted for: ${context}`,'. The error class states the principle at packages/engine-claude/src/live/live-harness.ts:104-105 '`executed-call guard failed: ${message} — an absence assertion is only sound when the ` +' / '        \"probing call demonstrably ran (docs/engine-baseline.md §2).\",'."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:278-280",
+          "quotedAssertion": "CORROBORATION ONLY, not the bearer — phase 00's own sandbox spike ran the masking probes for real at an in-range engine. :278 '## 6. Sandbox probes (work item 5) — full suite run, bwrap + socat installed mid-phase' and :280 '**Host update mid-phase:** bubblewrap 0.9.0 and socat were installed by the orchestrator (`/usr/bin/bwrap`, `/usr/bin/socat`) partway through this phase. All six sandbox sub-probes below were run **for real**, superseding the originally-anticipated \"absent, mostly UNRESOLVED\" path.' Cited as a second, independent observation of the same subject, not as this criterion's evidence."
+        }
+      ],
+      "notes": "Closed by a green run this pass produced. THE CHANNEL QUESTION FIRST, because it decides whether a local run is sufficient: c2's text names a suite (`secret-mask.live.test`) and NO CI job — unlike c1 and c10, which name `engine-live` explicitly. So a green run at the pinned engine is the strongest evidence this criterion's own text asks for, and a CI dispatch would add provenance, not substance. WHY IT HAD NEVER BEEN GREEN BEFORE: docs/evidence/phase-06/wi5-live.md records that the phase-time attempt made exactly one live invocation (the canary) and aborted at rate-limit utilization 0.87. That abort was correct and was ruled correct; it simply left this box unevidenced. NON-VACUITY is the part worth checking on a criterion whose subject is an ABSENCE. Two `not.toContain` / `toEqual([])` assertions would be satisfied for free by a session that refused the prompt or never ran the probe — so the test carries an executed-call guard (:103) that turns exactly that case into a red. This is not theoretical: baseline §2's line 41 records the original hermeticity probe being vacuous for precisely this reason (the model refused it as suspected prompt injection and made zero Bash calls), which is where the pattern comes from. COST: one invocation, haiku, `maxTurns: 3` (:98), bounded further by the harness's 90s abort controller."
+    },
+    {
+      "index": 3,
+      "text": "`failIfUnavailable` aborts (fails closed) when `bwrap` is unavailable — `sandbox-unavailable.live.test`.",
+      "textSha256": "136f605162af0e043e25869d1a2ae447766add10c16b4c18dd4e03202947ebe2",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "The green run: ' Test Files  4 passed (4)' / '      Tests  12 passed (12)' / '# EXIT=0', over a command naming 'packages/engine-claude/src/live/sandbox-unavailable.live.test.ts'. Section 3b's ledger, entry 11: 'max-turns=1  READ_ONLY profile       sandbox-unavailable', with the accounting note that this entry 'aborts at sandbox init, before any turn — that is the very thing c3 asserts, so it costs an engine process and ZERO model traffic'. The pre-run baseline records 'bubblewrap 0.9.0' present on the host, which is what makes the PATH-starving mechanism a genuine test rather than an accident."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/sandbox-unavailable.live.test.ts:50-66",
+          "quotedAssertion": "The mechanism and the assertion. :60-62 '      // Starve PATH to just Node's own directory: bwrap/socat (/usr/bin) become' / '      // unresolvable, while the SDK still finds Node (absolute) to launch the' / '      // pinned bundled engine.' / :63 '      process.env.PATH = NODE_ONLY_PATH;' / :65 '      const handle = ctx.adapter.spawn(packet, profile, allowAll);' / :66 '      await expect(collectEngineEvents(handle.events)).rejects.toThrow();'. The test's name states the fail-closed DIRECTION it pins: :50 'it(\"query() throws (never degrades to unsandboxed) with PATH starved of bwrap/socat\", async () => {'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/sandbox-unavailable.live.test.ts:41-68",
+          "quotedAssertion": "The restore discipline, which matters because this test mutates a process-global that later files in the same run depend on: :41 'beforeEach(() => {' / :42 '  savedPath = process.env.PATH;' / :45 'afterEach(() => {' / :46 '  process.env.PATH = savedPath;', with a second restore inside the test's own `finally` at :68 '      process.env.PATH = savedPath;'. Belt and suspenders, so a throw cannot leave the suite's PATH starved."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/sandbox-unavailable.live.test.ts:1-15",
+          "quotedAssertion": "THE PRECONDITION THE PROBE DEPENDS ON, named in the file's own header — the criterion is about `failIfUnavailable`, so the profile under test must actually carry it: :3-5 ' * aborts (fails closed) when `bwrap` is unavailable\"). Runs through the REAL' / ' * adapter with the compiled `READ_ONLY` profile — whose sandbox block carries' / ' * `enabled: true` + `failIfUnavailable: true` (see the golden' and :13-14 ' * unsandboxed run (baseline §6). ZERO model invocations: the throw happens at' / ' * sandbox init, before any turn.' The live ledger corroborates it independently: entry 11's captured command line in docs/evidence/phase-06/closeout/closeout-live-batch.txt carries the compiled sandbox block with failIfUnavailable set."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:293",
+          "quotedAssertion": "CORROBORATION ONLY — the phase-00 sandbox section this criterion's engine-side behaviour rests on: :293 '### Behavior note: egress denial shape'. Cited as background on the sandbox layer, not as this criterion's bearer; the bearer is the live run above."
+        }
+      ],
+      "notes": "Closed by a green run this pass produced. Like c2, the criterion names a suite and no CI job, so a green run at the pinned engine is what its own text asks for. THE INTERESTING PROPERTY OF THIS ONE is that it is nearly free: it costs one engine PROCESS and ZERO model invocations, because the whole point is that `query()` throws at sandbox init before any turn. That also makes it the cheapest possible check of the batch's own harness, and it is why it was named first in the command's file list. WHY IT IS A REAL PROBE AND NOT A TAUTOLOGY, checked rather than assumed: the host genuinely HAS bwrap (`/usr/bin/bwrap`, 0.9.0, recorded in the transcript's pre-run baseline), so the throw is caused by the deliberate PATH starving and not by an absent dependency; and the profile genuinely carries `failIfUnavailable: true`, visible both in the committed golden the header names and, live, in the ledger's own recorded command line. Without either of those the test would pass for the wrong reason, which per the brief is a finding rather than evidence. ON THE BREADTH OF THE ASSERTION: `rejects.toThrow()` is deliberately loose about the error TYPE. What it pins precisely is the DIRECTION — that the engine refuses rather than silently degrading to an unsandboxed run — and that is the guarantee the criterion names. A degradation would turn this line red immediately, which is the property that matters for a fail-closed control."
+    },
+    {
+      "index": 4,
+      "text": "kill -9 → `resume` continues in the same worktree with context intact; `forkSession` leaves the original transcript untouched — `crash-recovery.live.test`.",
+      "textSha256": "c3b9d382cf90c25a758a4e9194c92c489a7436dac0fcc3f75174f90dab7acd4f",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "The green run: ' Test Files  4 passed (4)' / '      Tests  12 passed (12)' / '# EXIT=0', over a command naming 'packages/engine-claude/src/live/crash-recovery.live.test.ts'. Section 3b's ledger attributes six of the eleven engine processes to this file and identifies each arm from its own captured command line: 'max-turns=3  Bash(sleep:*)           crash-recovery, kill -9 arm: the spawn' / 'max-turns=3  --resume=<same id>      crash-recovery, kill -9 arm: the resume' / 'max-turns=6                          crash-recovery, fork arm: the original' / 'max-turns=6  --resume --fork-session crash-recovery, fork arm: the fork' / 'max-turns=3  allow \"Read\"            crash-recovery, concurrent arm: session A' / 'max-turns=3  allow \"Read\"            crash-recovery, concurrent arm: session B'. The `--resume=` and `--fork-session` flags in those captured lines are independent, engine-side corroboration that the resume and fork paths really executed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/crash-recovery.live.test.ts:236-282",
+          "quotedAssertion": "CONJUNCT 1 — kill -9 mid-turn, then resume in the SAME worktree with context intact. The kill is genuinely mid-turn, driven off the observed tool_use rather than a wall-clock sleep: :249-252 '            event.type === \"toolUse\" &&' / '            event.toolName === \"Bash\" &&' / '            typeof event.toolInput.command === \"string\" &&' / '            (event.toolInput.command as string).includes(\"sleep\")' then :256 '            sigkill(enginePids);'. The two guards that stop a no-op kill passing as a crash are :255 '            expect(enginePids.length).toBeGreaterThan(0);' and :271 '      expect(killed).toBe(true);'. The three post-resume identity assertions are :278-280 'expect(resumed.sessionRef.sessionId).toBe(handle.sessionRef.sessionId);' / '      expect(resumed.sessionRef.worktreePath).toBe(handle.sessionRef.worktreePath);' / '      expect(resumed.sessionRef.configDir).toBe(handle.sessionRef.configDir);' — that middle line is the \"same worktree\" half — and CONTEXT INTACT is :282 '      expect(textOf(resumedEvents)).toContain(\"42\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/crash-recovery.live.test.ts:308-322",
+          "quotedAssertion": "CONJUNCT 2 — `forkSession` leaves the original transcript untouched, asserted as literal BYTE identity rather than as a summary property: :308 '      const originalTranscriptPath = transcriptPathForSession(original.sessionRef);' / :309 '      const originalBytesBefore = readFileSync(originalTranscriptPath, \"utf8\");' and, after the fork, :322 '      expect(readFileSync(originalTranscriptPath, \"utf8\")).toBe(originalBytesBefore);'. The fork's own distinctness is :316-319 '      expect(forked.sessionRef.sessionId).not.toBe(original.sessionRef.sessionId);' / '      const forkTranscriptPath = transcriptPathForSession(forked.sessionRef);' / '      expect(forkTranscriptPath).not.toBe(originalTranscriptPath);' / '      expect(readFileSync(forkTranscriptPath, \"utf8\").length).toBeGreaterThan(0);' — that last line rules out \"the fork wrote nothing\" satisfying the isolation claim for free."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/crash-recovery.live.test.ts:400-428",
+          "quotedAssertion": "THE THIRD ARM, which the criterion text does not name but which is what rules out cross-session interleaving being mistaken for context integrity. Pre-assigned ids honored: :401-403 '      expect(initSessionId(eventsA)).toBe(handleA.sessionRef.sessionId);' / '      expect(initSessionId(eventsB)).toBe(handleB.sessionRef.sessionId);' / '      expect(handleA.sessionRef.sessionId).not.toBe(handleB.sessionRef.sessionId);'. No-interleave, each absence PAIRED with a positive control on the same transcript so a refused session cannot satisfy the absence half: :425-428 '      expect(textA).toContain(FIXTURE_MARKER_ALPHA);' / '      expect(textA).not.toContain(FIXTURE_MARKER_ZETA);' / '      expect(textB).toContain(FIXTURE_MARKER_ZETA);' / '      expect(textB).not.toContain(FIXTURE_MARKER_ALPHA);'. Executed-call guards for each session's Read sit at :409-420."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/crash-recovery.live.test.ts:348-359",
+          "quotedAssertion": "A TEST-DESIGN VACUITY ALREADY FOUND AND FIXED IN THIS FILE, quoted because it is why the concurrent arm is trustworthy: :348-350 '      // WHY each session READS A SEEDED FILE rather than echoing a token: the' / '      // original framing told each session to \"remember the secret word' / '      // ALPHA777 and reply with exactly the single word: ALPHA777\". The REAL' and :357-359 '      // failed on a TEST-DESIGN defect, not a product defect. DO NOT' / '      // reintroduce that framing. Reading a file that genuinely exists in the' / '      // working directory and reporting what it says IS such a task — and it'. The engine had REFUSED the original framing, so the assertion was failing on the harness rather than on the subject."
+        }
+      ],
+      "notes": "Closed by a green run this pass produced. CONJUNCTIVE, and each conjunct is cited separately: the kill-9/resume arm, the forkSession-isolation arm, and — beyond the criterion's own text — the concurrent no-interleave arm. Six of the batch's eleven engine processes belong to this file, making it the batch's dominant cost and the reason the scope was four files rather than more. THE PID-WALK KILL MECHANISM HAD NEVER EXECUTED LIVE BEFORE THIS RUN (wi5 §8 records it as unexercised). It behaved: :255's `expect(enginePids.length).toBeGreaterThan(0)` and :271's `expect(killed).toBe(true)` both held, so the SIGKILL genuinely landed on the engine's descendants mid-`sleep`, and the resume genuinely recovered the marker. Had the walk misbehaved that would have been a TEST defect to file rather than a subject failure, and the two would have been distinguished per the brief's \"the subject held; the test did not\" ruling. It did not arise. WHY THE ASSERTIONS ARE NON-VACUOUS, checked rather than assumed: the fork-isolation claim is byte identity of the original transcript (:322), not a summary property, and it is paired with :319's proof that the fork's OWN transcript is non-empty — so \"the fork did nothing\" cannot satisfy it. Every no-interleave absence is paired with a positive control on the same transcript (:425-428). And :348-362 records a real earlier vacuity in this very arm — the engine REFUSED the original token-echo framing, failing the test on its design rather than on the product — which is exactly why the current framing reads a file that genuinely exists on disk."
+    },
+    {
+      "index": 5,
+      "text": "Schema-violating `structured_output` triggers a typed failure entering the repair-attempt path, never a silent pass — `structured-output-violation.test`.",
+      "textSha256": "c2f3ad4d4a4f82f889e73f575f8b7f25915a696a00c80f50cdd799ccd88cf427",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "job-log line 521 — ' ✓  @crabgic/engine-claude  src/structured-output-violation.test.ts (9 tests) 13ms'.  Anchored on the package label as well as the filename, per the anti-boilerplate rule: the bare `✓ ... .test.ts` line shape repeats hundreds of times in this log, so the filename alone would not identify the location. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space), ANSI escapes removed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/structured-output-violation.test.ts:34-52",
+          "quotedAssertion": "THE OBSERVED violation shape — the one baseline §5 actually recorded live — with its typed REASON asserted, not merely the presence of a failure: :34 'describe(\"validateWorkerResult — reason 'absent' (docs/engine-baseline.md §5's OBSERVED violation shape)\", () => {' / :37 '    expect(validation.kind).toBe(\"schemaViolation\");' / :39 '      expect(validation.reason).toBe(\"absent\");' / :40 '      expect(validation.diagnostics.length).toBeGreaterThan(0);'. The second case at :44 pins that the same reason applies under a DIFFERENT subtype, so `absent` is not being inferred from `subtype === \"success\"` alone."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/structured-output-violation.test.ts:126-139",
+          "quotedAssertion": "THE \"NEVER A SILENT PASS\" PROPERTY, with the does-not-fail control the brief requires — without it, \"everything is a violation\" would satisfy the suite equally well: :127 '  it(\"a well-formed structuredOutput under subtype 'success' is the ONLY case that returns 'valid'\", () => {' / :129 '    expect(valid.kind).toBe(\"valid\");' / :136-138 '    expect(absent.kind).toBe(\"schemaViolation\");' / '    expect(invalid.kind).toBe(\"schemaViolation\");' / '    expect(retriesExhausted.kind).toBe(\"schemaViolation\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/structured-output-violation.test.ts:76-87",
+          "quotedAssertion": "The redaction half, which matters because a diagnostic is what the repair attempt is fed: :76 '  it(\"diagnostics carry only path+code, never the offending value (redaction — roadmap/06 §Security 'redact values, keep paths')\", () => {' / :83 '        expect(diagnostic).not.toContain(SECRET);' / :85 '      expect(validation.diagnostics.some((d) => d.startsWith(\"summary:\"))).toBe(true);'. That last line is the positive control: it proves a diagnostic for the offending FIELD was produced, so the `not.toContain` is not satisfied by an empty diagnostics array."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/adapter.test.ts:485-500",
+          "quotedAssertion": "THE PIPELINE PROOF — that the typed failure is reached from the REAL adapter's normalized output, not only from a hand-built event: :485 'describe(\"ClaudeEngineAdapter — pipeline proof: adapter output feeds W3's validateWorkerResult\", () => {' / :486 '  it(\"a scripted result with no structured_output normalizes into an EngineResultEvent that validateWorkerResult flags as a schemaViolation\", async () => {' / :500 '    const validation = validateWorkerResult(resultEvent);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/attempt-policy.ts:111",
+          "quotedAssertion": "CORROBORATION for \"entering the repair-attempt path\" — the downstream consumer that treats a schemaViolation as retryable evidence: :111 '  \"schemaViolation\",' inside the retryable-evidence set, with the routing at packages/scheduler/src/executor.ts:214 '      if (validation.kind === \"schemaViolation\") {'. Cited as corroboration, NOT as this criterion's bearer: the repair loop is phase 13's scope and phase 06 owns the typed failure that enters it."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-bearer-probes.txt",
+          "quotedAssertion": "PROBE C measured the named bearer rather than reading it. Downgrading the typed reason `\"absent\"` to `\"invalid\"` in `result-validation.ts` reddened exactly the two cases that assert it, both in the NAMED suite — the transcript's C1 block lists them as '× subtype' cases naming `structuredOutput absent` — at 'Tests  2 failed | 312 passed (314)' against a 'Tests  314 passed (314)' baseline. The count is constant, so no assertion vanished; '# tsc -b EXIT=0', so the mutation compiled and the measurement is of the new code rather than a stale dist; the restore is verified by md5 plus an empty `git status --porcelain`. Verdict: 'CLEAN. The named bearer binds the specific typed reason, not merely \"it threw something\"'."
+        }
+      ],
+      "notes": "CLEAN, and measured. The criterion names a specific typed outcome, so per the brief the probe is to CHANGE THE KIND and see whether anything reddens — `expect(...).toThrow(SomeError)` passes for every kind and would not be a bearer. Probe C did exactly that and reddened exactly the two cases that assert the reason. Both conjuncts hold: the TYPED FAILURE is asserted by kind AND by reason across all three reasons `validateWorkerResult` produces (`absent` :39, `invalid` :62, `retriesExhausted` :106), and NEVER A SILENT PASS is asserted as a sole-valid property at :127-138 — the does-not-fail control that rules out \"everything is a violation\" satisfying the suite. ON \"ENTERING THE REPAIR-ATTEMPT PATH\": within phase 06's scope the typed union member IS the entry token, and two further citations show it is genuinely reached and genuinely consumed — `adapter.test.ts:486` proves the REAL adapter's normalized output lands on it, and `attempt-policy.ts:111` / `executor.ts:214` show phase 13 routing that member into a retry. The repair loop itself belongs to phase 13, so those are corroboration rather than this criterion's bearer. ONE THING TO KNOW ABOUT THE UNDERLYING FACT, carried forward rather than glossed: baseline §5's line 268 records that the `error_max_structured_output_retries` retry-exhaustion path has never been OBSERVED live — it is an SDK-typed possibility only, and `result-validation.ts:63-66` says so at the constant that names it. The criterion is still fully satisfied because its subject is the OBSERVED shape — `subtype: success` with `structured_output` absent — which :34's describe names explicitly and which §5 did observe."
+    },
+    {
+      "index": 6,
+      "text": "`limitSignal` fires against phase-00's captured (or an equivalently live-triggered) rate-limit shape — `limit-signal.test`.",
+      "textSha256": "cded982882ad18cda65a493c21d03c2000b49b1ec6a41c3a3887c3ef4cdd35e8",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "job-log line 520 — ' ✓  @crabgic/engine-claude  src/limit-signal.test.ts (23 tests) 12ms'.  The suite the criterion names, green in the default gate at this record's HEAD. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space), ANSI escapes removed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/event-normalizer.test.ts:90-113",
+          "quotedAssertion": "THE BEARER OF THE \"AGAINST PHASE-00'S CAPTURED SHAPE\" CONJUNCT — the only suite that reads the committed phase-00 fixtures off disk rather than a hand-typed constant. :90 'describe(\"normalizeSdkMessage — every committed rate_limit_event sample across 02/03/04/05 (baseline §8: 16 total)\", () => {' / :96-98 '      \"03-permissions.transcripts.sanitized.json\",' / '      \"04-sandbox.transcripts.sanitized.json\",' / '      \"05-structured-output.transcripts.sanitized.json\",' / :108 '  it(\"has exactly 16 samples, each normalizing to a limitSignal event without throwing\", () => {' / :110 '    expect(rateLimitMessages).toHaveLength(16);' / :112 '      expect(normalizeSdkMessage(message, \"fallback\")?.type).toBe(\"limitSignal\");'. The 16 is baseline §8's own count, recorded at its line 343."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/event-normalizer.test.ts:17-18",
+          "quotedAssertion": "The line that makes the previous citation a FIXTURE-BACKED claim rather than a name: :17 'function fixtureUrl(name: string): URL {' / :18 '  return new URL(`../../../spikes/fixtures/${name}`, import.meta.url);'. The suite resolves the real `spikes/fixtures/` directory phase 00 committed; there is no in-repo copy or re-typed transcript in between."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/limit-signal.test.ts:33-58",
+          "quotedAssertion": "THE \"limitSignal FIRES\" CONJUNCT, in the suite the criterion names: :33 'describe(\"rateLimitEventToLimitSignal — baseline §8 verbatim payloads (via @crabgic/testkit)\", () => {' / :39-43 '    expect(event).toEqual({' / '      type: \"limitSignal\",' / '      sessionId: \"session-1\",' / '      ...RATE_LIMIT_ALLOWED_FIVE_HOUR,' / '    });' and the three warning variants through :46-50's `it.each`, with :57 '    expect(event.status).toBe(\"allowed_warning\");'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/limit-signal.test.ts:219-252",
+          "quotedAssertion": "The SECOND channel baseline §8's line 378 REQUIRES phase 06 to detect, asserted against the baseline's verbatim sample: :219 'describe(\"detectLimitErrorString — error-string fallback channel (docs/engine-baseline.md §8 verbatim)\", () => {' / :220-221 '  const BASELINE_SAMPLE =' / '    \"Agent terminated early due to an API error: You've hit your session limit · resets 2:10pm (Europe/Madrid)\";' / :225 '    expect(detection.matched).toBe(true);'. The FOUR negative controls at :232-252 are what stop this being a substring match on the word \"limit\": :237 '  it(\"does NOT match a limit phrase with no accompanying resets phrase\", () => {' / :242 '  it(\"does NOT match a resets phrase with no accompanying limit phrase\", () => {' / :232 '  it(\"does NOT match a benign sentence merely discussing rate limiting\", () => {' / :247 '  it(\"does NOT match an unrelated error string\", () => {'."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:364",
+          "quotedAssertion": "Phase 00's own record of WHICH suites are supposed to assert against this exact multi-variant set — so the conjunct's intent is checked against the source rather than guessed: :364 '**These original-pass payloads are what the COMMITTED fixtures hold as of this re-baseline** (restored per the \"Fixture-retention decision\" above) — downstream consumers (`packages/engine-claude/src/event-normalizer.test.ts`, `packages/testkit/src/fake-engine/parity.test.ts`) assert against this exact multi-variant set, and both suites are green against the restored files.'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-bearer-probes.txt",
+          "quotedAssertion": "PROBE B IS THE FINDING. Changing the recorded `utilization` from the captured 0.96 to 0.97 reddened EXACTLY ONE test — '× the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99}', in `rate-limit-fixtures.test.ts` — at 'Tests  1 failed | 723 passed (724)' against a 'Tests  724 passed (724)' baseline. `limit-signal.test.ts` stayed GREEN. The transcript's verdict, which names lines 52-56 of packages/engine-claude/src/limit-signal.test.ts as the tautological span: 'a TAUTOLOGY over whatever the constant happens to hold. The named suite' and 'therefore pins the normalizer's passthrough, which is real, but it does NOT bind the CAPTURED'. This probe rebuilt first ('# tsc -b EXIT=0') because the mutated symbol DOES cross package boundaries into scheduler and e2e/matrix, so a src-only run would have under-reported."
+        }
+      ],
+      "notes": "TICKED ON MEASURED SUBSTANCE, with a bearer finding disclosed. Both conjuncts hold and both run per push — but NOT both in the suite the criterion names, and this pass measured that rather than assuming it. CONJUNCT \"limitSignal FIRES\": fully carried by `limit-signal.test`, including the error-string fallback channel with four negative controls that stop it degrading into a substring match on \"limit\". CONJUNCT \"AGAINST PHASE-00'S CAPTURED SHAPE\": NOT carried by `limit-signal.test`. Probe B showed why — perturbing the recorded 0.96 utilization left that suite entirely green, because its assertions are `toEqual({ ...payload })` spreads, i.e. tautologies over whatever the constant holds. What genuinely carries the conjunct is `event-normalizer.test.ts:90-113`, which reads the committed `spikes/fixtures/` transcripts off disk (:18) and asserts all 16 recorded samples normalize to a `limitSignal`. THAT SUITE STAYING GREEN UNDER PROBE B IS THE PROOF OF INDEPENDENCE, not a gap: the fixture-backed suite and the hand-typed constants are two genuinely separate sources, so perturbing one does not move the other — exactly the property the brief's \"check whether your two fixtures are the same bytes\" rule exists to establish. Baseline line 364 independently names `event-normalizer.test.ts` as the intended consumer of this fixture set, so this is the wiring phase 00 asked for, not a substitute this pass went looking for. SECOND, SMALLER FINDING: `rate-limit-fixtures.test.ts:11-19`'s first case compares `RECORDED_RATE_LIMIT_PAYLOADS` against its own four members — the brief's \"tautology over a literal\", in a file whose doc comment calls itself a \"§8 verbatim schema check\". Its value-pinning cases at :29 and :39 ARE non-vacuous, and are what probe B reddened. Both findings are filed as a defect record and named there in prose. The box is ticked because the criterion's substance is fully and non-vacuously evidenced per push; what drifted is where a reader is pointed to find it."
+    },
+    {
+      "index": 7,
+      "text": "Fake-vs-live parity: identical fixture verdicts across `packages/testkit`'s fake engine and the real engine — `fake-live-parity.test`.",
+      "textSha256": "b8d36d3faec1ce4dab7c859076abe883418bf16e1c4e496eadece5de4e6aaacd",
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "THE PARITY PROOF, and why it is now a proof at all. Section 4 records that before this run the criterion was VACUOUS in the brief's documented cassette-parity shape, quoting git rather than the wi5 prose alone: '$ git log --oneline -- packages/engine-claude/src/live/fixtures/live-verdicts.json' followed by '(two commits, both non-live: the phase-06 landing commit and one unrelated touch.)'. Then the run: the file's mtime is '2026-08-05 21:21:08' and the transcript states 'is INSIDE this run's window (19:19:32Z-19:21:22Z). The file was genuinely rewritten by the live run; this is not a no-op that left it untouched.' And the result: '$ git status --porcelain -- packages/engine-claude/src/live/fixtures/live-verdicts.json' at 'exit=0   <- NO OUTPUT: byte-identical to HEAD', with the digest 'ada6ddd1cc98cf10146a8c9629b6c95c' matching the PRE-run digest recorded in section 1. Verdict: 'the diff IS clean. The real engine produced, fixture-for-fixture, the same verdicts the fake engine derives.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/envelope-conformance.live.test.ts:137-148",
+          "quotedAssertion": "THE MECHANISM that turns a green live run into the parity proof, and the guard that stops a FAILED run from corrupting the fixture: :137 'afterAll(async () => {' / :144 '  if (!isLiveEnabled() || verdicts.size !== CONFORMANCE_FIXTURES.length) {' / :145 '    return;' / :147 '  await writeLiveVerdicts(verdicts, \"live\");'. The comment at :138-140 states why the guard exists: '  // Guard (F3 fix): a module-level `afterAll` runs even when `beforeAll`' / '  // threw (vitest semantics) — e.g. no CRABGIC_LIVE, or a canary abort. Persisting' / '  // in that case would write the still-empty `verdicts` map and truncate the'. So the file is rewritten only on a genuinely green run in which every expected verdict was recorded."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/fake-live-parity.test.ts",
+          "quotedAssertion": "The offline half — the suite the criterion names — which locks the fake engine's per-fixture verdicts against that same committed `live-verdicts.json`. Green in the default gate at this record's HEAD (job-log line 525, cited separately). Before this pass its comparison ran fake-against-fake-derived bytes; after it, the committed bytes have been independently reproduced by the real engine, so the same assertions now compare two genuinely independent observations rather than one source under two names."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "job-log line 525 — ' ✓  @crabgic/engine-claude  src/fake-live-parity.test.ts (8 tests) 19ms'.  The offline half green in the default gate, at the same commit the live half was run against. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space), ANSI escapes removed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/live-harness.ts:818",
+          "quotedAssertion": "The single path both halves resolve to, which is what makes the byte comparison meaningful rather than a comparison of two different files: :818 'export const LIVE_VERDICTS_PATH = join(HARNESS_DIR, \"fixtures\", \"live-verdicts.json\");'. `writeLiveVerdicts` writes it and the offline parity suite reads it."
+        }
+      ],
+      "notes": "THIS WAS THE TRAP CRITERION, and it is worth stating plainly what was wrong with it. `fake-live-parity.test` was green in CI for weeks while proving nothing about parity: it compared the fake engine's verdicts against `live-verdicts.json`, and that file had been DERIVED BY THE FAKE ENGINE. Two names, one source — the brief's cassette-parity pattern exactly. docs/evidence/phase-06/wi5-live.md §6 admits it in prose, and `git log` over the path confirms only two commits, neither from a live run. HOW THE BATCH CLOSED IT: `envelope-conformance.live.test.ts:147` writes that same committed path from real-engine observations, guarded at :144 so only a genuinely green run persists. The run was green; the file's mtime moved into the run's window, proving it was actually rewritten rather than left alone; and `git status` on it came back EMPTY. So a fake-derived file and a real-engine-derived file are byte-identical, and the parity claim now rests on two independent observations. THE COUNTERFACTUAL WAS PRE-COMMITTED, and it matters that it was: had the diff been non-empty, that would have been a genuine fake/live divergence — c7 would have gone UNMET with the diff filed as a defect, and the new bytes would NOT have been committed to force the offline test green. It did not arise. ONE RESIDUAL, stated because it would otherwise read as provenance and is not: the `source` field in the regenerated file reads \"live\" both before and after, since the phase-time write already labelled the fake-derived bytes that way. The label therefore proves nothing on its own; the mtime, the green run and the clean diff are what prove it. That mislabelling is filed as a defect. CHANNEL NOTE: c7 names a suite and no CI job, so a green local run at the pinned engine is the strongest evidence its own text asks for — unlike c1, whose second clause names `engine-live` explicitly."
+    },
+    {
+      "index": 8,
+      "text": "`WorkerSdkOptions.mcpServers` key and `strictMcpConfig` reference `GATEWAY_MCP_SERVER_NAME` byte-for-byte; zero hand-typed `\"crabgic_gateway\"` literals anywhere in `packages/engine-claude` — `gateway-name-reference.test`.",
+      "textSha256": "6febc1356fdbb1fb743c29101254581f180fccc2130c3e1ac4d3d8d89ec4c79e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "job-log line 524 — ' ✓  @crabgic/engine-claude  src/gateway-name-reference.test.ts (3 tests) 18ms'.  DISAMBIGUATION MATTERS HERE: a file named `gateway-name-reference.test.ts` appears in FOUR packages in this same log — `@crabgic/connectors-grafana` at line 353, `@crabgic/connectors-jira` at 403, `@crabgic/gateway` at 634 — so the quote is anchored on the `@crabgic/engine-claude` package label, which is what identifies the location. The bare filename would have matched the wrong suite. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space), ANSI escapes removed."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/gateway-name-reference.test.ts:66-93",
+          "quotedAssertion": "CONJUNCT 1 — both named `Options` members, in one case: :67 '  it(\"mcpServers is keyed by GATEWAY_MCP_SERVER_NAME and strictMcpConfig is true\", () => {' / :92 '    expect(Object.keys(options.mcpServers ?? {})).toEqual([GATEWAY_MCP_SERVER_NAME]);' — byte-for-byte against the imported constant, and `toEqual` over the whole key array rather than `toContain`, so a second stray key would also fail — / :93 '    expect(options.strictMcpConfig).toBe(true);'. The options come from the real assembler over a real compiled envelope (:72 '    const profile = compileEnvelope(firstCase.envelope);' / :73 '    const options = assembleWorkerOptions({'), not from a hand-built literal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/gateway-name-reference.test.ts:27-58",
+          "quotedAssertion": "CONJUNCT 2 — the zero-literal scan, scoped to exactly the path the criterion names: :45 'describe(\"zero hand-typed gateway server-name literals under packages/engine-claude/src\", () => {' / :46 '  it(\"the Gap-11 literal appears nowhere in this package's source, this scanner included\", () => {' / :51 '      const occurrences = content.split(LITERAL).length - 1;' / :57 '    expect(violations).toEqual([]);'. `SRC_DIR` is the test file's own directory (:27 'const SRC_DIR = dirname(fileURLToPath(import.meta.url));'), i.e. `packages/engine-claude/src` — the criterion's exact scope, neither wider nor narrower, and not a written-out path that could drift."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/gateway-name-reference.test.ts:19-26",
+          "quotedAssertion": "WHY THE SCAN DOES NOT EXEMPT ITSELF, which is the subtle failure this design avoids: :26 'const LITERAL = GATEWAY_MCP_SERVER_NAME;' — the needle is DERIVED from the imported constant, never hand-typed, so the scanner file contains zero occurrences and is scanned on the same terms as every other file. The header states the consequence at packages/engine-claude/src/gateway-name-reference.test.ts:19-22 ' *     `GATEWAY_MCP_SERVER_NAME` constant, never hand-typed, so this file' / ' *     carries zero occurrences too and 02's own sole-definition-site' / ' *     scanner (`packages/contracts/src/gateway/server-name.test.ts`) stays' / ' *     green with no allowlist entry.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/gateway-name-reference.test.ts:60-63",
+          "quotedAssertion": "THE NON-VACUITY GUARD, without which an emptiness proof over a mistyped or empty directory would pass for free: :60 '  it(\"this scanner's own directory actually resolves (sanity: the scan is not vacuous)\", () => {' / :61 '    expect(statSync(SRC_DIR).isDirectory()).toBe(true);' / :62 '    expect(collectTsFiles(SRC_DIR).length).toBeGreaterThan(1);'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-bearer-probes.txt",
+          "quotedAssertion": "PROBE D measured that the emptiness proof BITES, rather than trusting its silence. Planting ONE hand-typed literal in `packages/engine-claude/src/version-gate.ts` reddened TWO tests in two packages: '× is the sole definition site of the literal under packages/*/src (exit criterion)' (phase 02's independent scanner in `packages/contracts`) and '× the Gap-11 literal appears nowhere in this package's source, this scanner included' (this criterion's named bearer), at 'Tests  2 failed | 959 passed (961)' against a 'Tests  961 passed (961)' baseline. '# tsc -b EXIT=0'; restore verified by md5 and an empty `git status --porcelain`. Transcript verdict: 'CLEAN, and doubly so.'"
+        }
+      ],
+      "notes": "CLEAN on both conjuncts, and the emptiness proof was measured rather than trusted. The brief's rule is that emptiness proofs ROT and must be scoped to the exact paths cited and re-run at merge time; this one is structurally immune to both problems. It is scoped BY CONSTRUCTION to `packages/engine-claude/src` — the criterion's exact scope — because `SRC_DIR` is the test file's own directory rather than a written-out path that could drift as files move; and it runs in the default gate on every push, so it re-verifies itself at merge time without anyone remembering to. PROBE D confirmed it bites, reddening not only the named bearer but also phase 02's independent sole-definition-site scanner in `packages/contracts` — two separate checks catching the same planted literal, which is a stronger result than either alone. THE DESIGN DETAIL WORTH NOTING is that the needle is derived from the imported constant (:26), so the scanner is not exempt from its own rule and needs no allowlist entry in phase 02's scanner. A hand-typed needle would have been the very violation the criterion prohibits. Non-vacuity is additionally asserted in-file at :60-63, so a mistyped or empty directory cannot make the scan pass for free. ON THE FIRST CONJUNCT'S WORDING: the criterion says the `mcpServers` key and `strictMcpConfig` \"reference `GATEWAY_MCP_SERVER_NAME` byte-for-byte\", which reads oddly for `strictMcpConfig` since that member is a boolean rather than a name. Both members are asserted at :92-93 — the key against the constant, the flag as `true` — which is what interface-ledger Gap 11 governs and what the test's own name states. No wording correction is claimed: the reading is the natural one and the evidence covers both members."
+    },
+    {
+      "index": 9,
+      "text": "`spawn`/`resume` refuse to start outside `docs/engine-baseline.md`'s accepted version range — `version-gate.test`.",
+      "textSha256": "bf3a36f0485e5cb7ed09353811055443a9a87d86e7e5db2f8bb630f551c8c18b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/adapter.test.ts:216-232",
+          "quotedAssertion": "CONJUNCT 1, `spawn` refuses — and this is the ACTUAL bearer, in `adapter.test.ts`, not in the suite the criterion names. :216 'describe(\"ClaudeEngineAdapter — version gate refusal (roadmap/06 exit criterion)\", () => {' / :217 '  it(\"spawn() throws EngineVersionRejectedError synchronously, before any sdkQuery call or journal append\", () => {' / :225-227 '    expect(() => adapter.spawn(buildPacket(), READ_ONLY_PROFILE, allowAdjudicate)).toThrow(' / '      EngineVersionRejectedError,' / '    );' / :229-230 '    expect(calls).toHaveLength(0);' / '    expect(orderLog).toHaveLength(0);'. Those last two lines are stronger than a bare refusal: they prove ZERO sdkQuery invocations and ZERO journal appends, i.e. the refusal precedes every side effect."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/adapter.test.ts:233-252",
+          "quotedAssertion": "CONJUNCT 2, `resume` refuses — cited separately because the criterion names both verbs and a spawn-only bearer would have dropped half of it. :233 '  it(\"resume() also refuses synchronously outside the accepted range\", () => {' / :236 '      buildConfig({ engineVersionResolver: () => \"0.0.1\", sdkQuery }),' / :249 '    ).toThrow(EngineVersionRejectedError);' / :250 '    expect(calls).toHaveLength(0);'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/adapter.ts:424-429",
+          "quotedAssertion": "The production call site, with the comment that names this very criterion: :426-428 '    // Synchronous, BEFORE any engine invocation (exit criterion:' / '    // \"spawn/resume refuse to start outside the accepted version range\" —' / '    // zero sdkQuery calls, zero journal entries, proven by a probe).' / :429 '    assertEngineVersionAccepted(this.engineVersionResolver());'. The same call opens `resume()` at :453 and `fork()` at :481 — three entry points, so the fork path is gated too even though the criterion names only two."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/version-gate.test.ts:108-128",
+          "quotedAssertion": "WHAT THE NAMED SUITE ACTUALLY DOES, and it is the OTHER half of this criterion — \"outside `docs/engine-baseline.md`'s accepted version range\": :108 'describe(\"baseline-sync — docs/engine-baseline.md must agree with these constants\", () => {' / :109 '  const baselineText = readFileSync(BASELINE_DOC_PATH, \"utf8\");' / :111 '  it(\"the document's headline 'Accepted range' statement matches ACCEPTED_ENGINE_VERSION_RANGE\", () => {' / :113 '    expect(baselineText).toContain(`Accepted range:** **${expected}**`);' / :127 '    expect(baselineText).toContain(`claude\\` CLI **${TESTED_ENGINE_VERSION}**`);'. So the named suite pins the range against the DOCUMENT per push; `adapter.test.ts` pins the spawn/resume refusal."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/version-gate.test.ts:62-78",
+          "quotedAssertion": "The refusal semantics the gate is built on, asserted by typed REASON and not merely by throwing — the brief's \"assert the typed kind\" bar: :62 '  it(\"refuses a version above the range\", () => {' / :63 '    expect(() => assertEngineVersionAccepted(\"2.1.221\")).toThrow(EngineVersionRejectedError);' / :70 '  it(\"marks an out-of-range refusal with reason 'out-of-range'\", () => {' / :76-77 '      expect((error as EngineVersionRejectedError).reason).toBe(\"out-of-range\");' / '      expect((error as EngineVersionRejectedError).version).toBe(\"2.1.221\");'. 2.1.221 is not an arbitrary choice: it is the version the host's PATH `claude` has actually drifted to, so this case pins refusal of a real, present-day out-of-range engine."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "job-log line 523 — ' ✓  @crabgic/engine-claude  src/version-gate.test.ts (20 tests) 12ms'.  The named suite, green per push. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space), ANSI escapes removed."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-bearer-probes.txt",
+          "quotedAssertion": "PROBE A IS THE FINDING, and it is decisive. Deleting `assertEngineVersionAccepted(this.engineVersionResolver());` from `ClaudeEngineAdapter.resume()` reddened EXACTLY ONE test — '× resume() also refuses synchronously outside the accepted range' — at 'Tests  1 failed | 313 passed (314)' against a 'Tests  314 passed (314)' baseline. That test is in `adapter.test.ts`. The transcript states the consequence: 'Every one of `version-gate.test.ts`'s 20 tests stayed GREEN.' and 'the suite the criterion NAMES does not test `spawn` or `resume` at all'. '# tsc -b EXIT=0'; restore verified by md5 and an empty `git status --porcelain`."
+        }
+      ],
+      "notes": "TICKED ON MEASURED SUBSTANCE, with a bearer-name finding disclosed — and this pass considers it the finding most worth a reader's attention. THE SUBSTANCE IS FULLY EVIDENCED, both conjuncts, in the default gate: `spawn` refuses (`adapter.test.ts:217`) and `resume` refuses (`:233`), each proving ZERO sdkQuery calls and — for spawn — zero journal appends, so the refusal precedes every side effect. Production wires it at three entry points (`adapter.ts:429`, `:453`, `:481`), so `fork` is gated too. And the range the refusal is measured against is pinned to the baseline DOCUMENT per push (`version-gate.test.ts:113` reads the file off disk and asserts the constants match it), which is what stops the gate drifting from the record it cites. BUT THE SUITE THE CRITERION NAMES DOES NOT TEST spawn OR resume. Probe A settles that by measurement rather than by reading: deleting the gate from `resume()` reddened one test, in `adapter.test.ts`, while all 20 of `version-gate.test.ts`'s tests stayed green. `version-gate.test` tests the pure helper `assertEngineVersionAccepted` plus the document-sync check — both genuinely load-bearing, and together they carry the criterion's \"outside the baseline's accepted range\" half — but a reader following the criterion's own pointer would find no spawn/resume assertion there and could reasonably conclude the guarantee was unpinned. It IS pinned; it is pinned somewhere else. This is a POINTER defect, not a missing guarantee, so the box is ticked on the substance and the drift is filed as a defect record, named there in prose. Worth stating for anyone tempted to treat this as pedantic: the brief's own de-grandfathering finding is that coverage MIGRATES between rules with no test failing. A criterion pointing at a suite that does not contain its assertion is precisely how the next reader fails to notice when the real bearer is deleted."
+    },
+    {
+      "index": 10,
+      "text": "`engine-live` CI job (01) runs the `@live`-tagged suite end to end against the pinned version — evidenced by a green CI run.",
+      "textSha256": "3dd8e4a8240f067b2f174f9269cb990eec9a73c5458855ce82d667f694aee7bb",
+      "classification": "EVIDENCE-NEEDS-CI",
+      "ticked": false,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-engine-live-enoent.txt",
+          "quotedAssertion": "Why this cannot be closed now, measured link by link. Zero runs exist: '$ gh run list --workflow=engine-live.yml --limit 10' returns 'exit=0   <- exit 0 with EMPTY output: zero runs in the workflow's entire history'. A dispatch would red on ENOENT, and the transcript proves each link: 'plugin-load.live.test.ts:32:    const { stdout } = await execFileAsync(\"claude\", [\"plugin\", \"validate\", resolvePluginRoot()], {'; '@anthropic-ai/claude-agent-sdk 0.3.218 bin: undefined'; \"exit=1   <- 1 = NO MATCH: npm ci links no 'claude' shim\"; and, for the install surface, the positive enumeration 'them and count: NONE of them installs a `claude` CLI. That is an enumeration of the whole'. And the red would not be cheap — 'All 17 files ran here' and 'So on CI a plugin ENOENT does NOT stop the engine-claude files: every one of them still runs, still authenticates, and still spends.'"
+        },
+        {
+          "kind": "test",
+          "ref": ".github/workflows/engine-live.yml:38-53",
+          "quotedAssertion": "The job's entire install and run surface, which is what the ENOENT finding rests on: :38-39 '      - name: Install sandbox runtime deps (bubblewrap + socat, baseline §6)' / '        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat' / :46 '      - run: npm ci' / :47 '      - run: npx tsc -b' / :48 '      - name: Run @live conformance suite' / :53 '        run: npm run test:live'. Nothing between checkout and the test step puts a `claude` on PATH."
+        },
+        {
+          "kind": "test",
+          "ref": ".github/workflows/engine-live.yml:54-60",
+          "quotedAssertion": "The artifact a future green run would produce, and which this criterion's evidence should cite once it exists: :54-55 '      - name: Upload live-run journal record' / '        if: success()' / :58-60 '          name: engine-live-run-record' / '          path: packages/engine-claude/live-run-record.json' / '          if-no-files-found: error'. The `if: success()` is why a red run leaves no artifact at all, and `if-no-files-found: error` is why a green run that somehow skipped the finalizer would also fail."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/zz-live-run-record.live.test.ts",
+          "quotedAssertion": "CI's finalizer, which writes the `{engineVersion, runId, suiteDigest}` record the workflow uploads. Deliberately NOT run by this pass's local batch — the batch named four files and this is not one of them — because that record is the CI job's own end-to-end artifact, and producing it locally would misrepresent a local run as the CI evidence c10 asks for. The `zz-` prefix is what orders it last within its own lane."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-06/closeout/closeout-live-batch.txt",
+          "quotedAssertion": "What a local run CAN and CANNOT establish, stated in the transcript's own section 6: 'CLOSES (EVIDENCE-REPRODUCED): c2 secret-mask, c3 sandbox-unavailable, c4 crash-recovery, c7 parity.' with 'None of those four criteria names a CI job, so a green local run at the pinned engine is the strongest evidence their own text asks for.' and 'DOES NOT CLOSE: c1 and c10. Both name the `engine-live` CI job by name, and nothing local can satisfy \"run in the `engine-live` CI job\" / \"evidenced by a green CI run\".'"
+        }
+      ],
+      "notes": "CANNOT BE CLOSED BY ANYTHING LOCAL, and cannot be closed by a red run either — the criterion's own text says \"evidenced by a green CI run\", so a red dispatch would close it no better than no dispatch at all. The workflow has ZERO runs in its history, which is exactly why the ENOENT defect has never surfaced. THE DECISION NOT TO DISPATCH, with the reasoning that survives review: a dispatch today is guaranteed red, because the plugin lane sharing this job resolves `claude` from PATH, the SDK packages expose no `bin`, and the workflow installs no CLI. The cost is not avoided by the red arriving early — `npm run test:live` carries no `--bail`, so all 17 files run regardless of order (measured: 17 of 17 ran in a zero-spend, gate-refused run this pass captured), meaning the full engine-claude suite — roughly 60-90 haiku invocations — is spent to reach a millisecond failure, and spent AGAIN on the eventual real dispatch. TWO PRECONDITIONS, both ordinary defect-fix work outside a closeout pass: (1) a pinned CLI install step in `engine-live.yml`, pinned INSIDE the accepted 2.1.207-2.1.220 range and never `@latest`, since the registry is already at 2.1.221+ and an out-of-range CLI would put the plugin lane on an unverified engine in violation of the baseline ground rule; (2) the spawn case's three already-filed test defects — its 120s self-timeout against a measured ~185s need, its unbounded tree-walking prompt, and its unpinned model. A closeout pass files defects; it does not fix them. WHEN A GREEN RUN EXISTS, this criterion's evidence should be the run URL plus the per-file job-log lines under the one-space rule, plus the uploaded `engine-live-run-record` artifact — not the run conclusion, since a green workflow proves the workflow passed and not that any particular file executed in it.",
+      "defectRef": "docs/evidence/criteria-closeout/defects/06-engine-live-plugin-cli-unresolvable-on-ci.md"
+    }
+  ]
+}
