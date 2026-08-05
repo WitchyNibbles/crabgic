@@ -64,3 +64,14 @@ packages/gates/goldens/
 # exempted.
 docs/evidence/phase-06/read-exposure-determination.json
 docs/evidence/phase-06/read-exposure-determination.run1-not-attempted.json
+
+# R7-P2: docs/evidence/phase-06/edit-input-stability-determination.json is the
+# same case, one file further on — written by
+# `packages/engine-claude/src/live/edit-input-stability.live.test.ts` under the
+# identical fixed 2-space `JSON.stringify` + trailing-newline contract, with its
+# sha256 pinned by `r7-p2-edit-input-stability-transcript.md` AND its md5 pinned
+# by that transcript's mutation battery, which restores the file seven times and
+# checks the hash after every restore. Prettier collapses its `preKeys`/
+# `postKeys` arrays onto one line, which would break both pins and put every
+# fresh probe run at odds with `prettier --check`. Scoped to this one file.
+docs/evidence/phase-06/edit-input-stability-determination.json

@@ -1,0 +1,171 @@
+{
+  "probe": "packages/engine-claude/src/live/edit-input-stability.live.test.ts",
+  "question": "R7-P2: is the `tool_input` the engine hands PostToolUse byte-identical to the one it handed PreToolUse for the `Edit` tool, and if not, would the merged PostToolUse audit abort a legitimate worker?",
+  "readWith": [
+    "packages/engine-claude/src/hooks.ts (the audit whose soundness this measures)",
+    "packages/engine-claude/src/tool-adjudication-hook.ts (ADJUDICATED_BUILTIN_TOOLS — what put Edit in scope)",
+    "packages/engine-claude/src/live/adjudication-bridge.live.test.ts (the same measurement for Bash and Write)",
+    "docs/security-posture.md (the residual sentence this closes)",
+    "docs/evidence/phase-06/read-exposure-determination.json (the two profile facts this probe leans on)"
+  ],
+  "adjudicatedBuiltins": [
+    "Bash",
+    "Edit",
+    "Write"
+  ],
+  "secrecyDiscipline": "Nothing sensitive is in this probe's reach: every file it touches it seeded itself, inside an os.tmpdir() scratch worktree, containing synthetic R7P2-<label>-<runtag> markers only. No real HOME path, credential or user file is read. REDACTION CONTRACT: the scratch root is replaced by `<scratch>` and the real home by the four-character literal text `$HOME` — so a `~` below is a REAL tilde the compiler emitted, never a redaction. This payload was assertSanitized-checked before it was written.",
+  "turnBudget": {
+    "cap": 12,
+    "reservedForPhase10PluginSmoke": 4,
+    "spent": 5,
+    "ledger": [
+      {
+        "arm": "canary",
+        "turns": 1,
+        "cap": 1
+      },
+      {
+        "arm": "edit-input-stability",
+        "turns": 4,
+        "cap": 5
+      }
+    ]
+  },
+  "verdicts": {
+    "byteStability": {
+      "verdict": "STABLE",
+      "question": "For every Edit tool call with both hook payloads captured under the same tool_use_id, is JSON.stringify(pre.tool_input) === JSON.stringify(post.tool_input)?",
+      "editPairsCompared": 1,
+      "writePairsCompared": 1
+    },
+    "productionConsequence": {
+      "verdict": "NO-ABORT",
+      "question": "Replaying the REAL hooks.ts audit (createInMemoryAdjudicationAuditLog + createPostToolUseAuditHook, wired as adapter.ts wires them) over the captured payloads: does it record a violation — i.e. would AdjudicationAuditViolationError have killed a legitimate worker?",
+      "violationsAcrossEditPairs": 0,
+      "whatANoAbortDoesNotMean": "NO-ABORT is not a claim that the audit is a strong control. It is order-insensitive (deepEqual, hooks.ts) and name-keyed rather than tool_use_id-keyed (its own KEYING LIMITATION note), so it tolerates differences this probe's byte comparison would catch. The reverse probe C4 is what shows the replay can fail at all."
+    },
+    "controls": {
+      "C1 correlated Edit pairs (>=1 required, else vacuous)": 1,
+      "C2 Edit effect observed on disk": true,
+      "C3 correlated Write pairs in the same run": 1,
+      "C4/C5 asserted in their own test above": true
+    },
+    "residuals": [
+      "n = 1. One arm, one sample, one engine version, one model. `read-exposure.live.test.ts` records the same caveat for the same reason: the budget is the owner's money, not a retry allowance.",
+      "The driven Edit names an ABSOLUTE file_path. `adjudication-bridge.live.test.ts`'s Write case drives a RELATIVE path in its objective text, so whether a relative path form is resolved between the two hooks — which would be a structural difference and an abort — is unmeasured for Edit. The absolute form was chosen because read-exposure's ARM-P measured it succeeding under this exact profile; a refused Edit would have spent turns and measured nothing.",
+      "`replace_all` was not requested in the prompt, so whether the engine injects a default for it is measured only for whatever form the worker actually emitted — the artifact records the key sets of both payloads so a reader can see which case was sampled.",
+      "MultiEdit / NotebookEdit and the whole Grep/Glob family are outside ADJUDICATED_BUILTIN_TOOLS and outside this measurement."
+    ]
+  },
+  "arm": {
+    "description": "The compiled STANDARD_IMPLEMENTATION_ENVELOPE profile VERBATIM (runtime roots resolved, sandbox enabled), with capture-only PreToolUse/PostToolUse hooks installed and a driven Read -> Edit -> Write sequence inside the owned path.",
+    "maxTurns": 5,
+    "turnsSpent": 4,
+    "model": "sonnet",
+    "ranWithSandbox": true,
+    "permissionsAllow": [
+      "Edit(//<scratch>/worktree/packages/example/src/**)",
+      "Write(//<scratch>/worktree/packages/example/src/**)",
+      "Bash(npm run test:*)",
+      "Bash(npm run build:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "mcp__crabgic_gateway__*"
+    ],
+    "permissionsDenyCount": 26,
+    "initToolCatalog": [
+      "Bash",
+      "CronCreate",
+      "CronDelete",
+      "CronList",
+      "DesignSync",
+      "Edit",
+      "EnterWorktree",
+      "ExitWorktree",
+      "Monitor",
+      "NotebookEdit",
+      "PushNotification",
+      "Read",
+      "RemoteTrigger",
+      "ReportFindings",
+      "ScheduleWakeup",
+      "SendMessage",
+      "Skill",
+      "TaskCreate",
+      "TaskGet",
+      "TaskList",
+      "TaskOutput",
+      "TaskStop",
+      "TaskUpdate",
+      "ToolSearch",
+      "Workflow",
+      "Write"
+    ],
+    "editInCatalog": true,
+    "attemptedToolCalls": [
+      "Read file_path",
+      "Edit file_path+old_string+new_string+replace_all",
+      "Write file_path+content"
+    ],
+    "finalText": "1. Read: SUCCEEDED\n2. Edit: SUCCEEDED\n3. Write: SUCCEEDED",
+    "hookPayloadsCaptured": 6,
+    "pairs": [
+      {
+        "toolName": "Read",
+        "preKeys": [
+          "file_path"
+        ],
+        "postKeys": [
+          "file_path"
+        ],
+        "preInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-edit-target.txt\"}",
+        "postInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-edit-target.txt\"}",
+        "byteIdentical": true,
+        "structurallyEqual": true,
+        "productionAuditViolations": 0
+      },
+      {
+        "toolName": "Edit",
+        "preKeys": [
+          "file_path",
+          "old_string",
+          "new_string",
+          "replace_all"
+        ],
+        "postKeys": [
+          "file_path",
+          "old_string",
+          "new_string",
+          "replace_all"
+        ],
+        "preInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-edit-target.txt\",\"old_string\":\"R7P2-BEFORE-49480b6a\",\"new_string\":\"R7P2-AFTER-49480b6a\",\"replace_all\":false}",
+        "postInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-edit-target.txt\",\"old_string\":\"R7P2-BEFORE-49480b6a\",\"new_string\":\"R7P2-AFTER-49480b6a\",\"replace_all\":false}",
+        "byteIdentical": true,
+        "structurallyEqual": true,
+        "productionAuditViolations": 0
+      },
+      {
+        "toolName": "Write",
+        "preKeys": [
+          "file_path",
+          "content"
+        ],
+        "postKeys": [
+          "file_path",
+          "content"
+        ],
+        "preInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-write-49480b6a.txt\",\"content\":\"R7P2-WRITE-49480b6a\"}",
+        "postInputRedacted": "{\"file_path\":\"<scratch>/worktree/packages/example/src/eo-r7p2-write-49480b6a.txt\",\"content\":\"R7P2-WRITE-49480b6a\"}",
+        "byteIdentical": true,
+        "structurallyEqual": true,
+        "productionAuditViolations": 0
+      }
+    ],
+    "controls": {
+      "C1 correlated Edit pairs": 1,
+      "C2 edit effect present on disk": true,
+      "C3 correlated Write pairs": 1
+    },
+    "secretScanHits": {}
+  }
+}
