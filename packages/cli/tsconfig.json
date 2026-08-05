@@ -16,6 +16,7 @@
     { "path": "../engine-claude" },
     { "path": "../engine-core" },
     { "path": "../git-engine" },
+    { "path": "../gates" },
     { "path": "../gateway" },
     { "path": "../journal" },
     { "path": "../learning" },

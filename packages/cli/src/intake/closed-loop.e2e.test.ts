@@ -45,12 +45,14 @@ import {
   createWorkUnitsRegistry,
   type IntakeRequest,
   type RunDispatcher,
+  type RunsRegistry,
 } from "@crabgic/supervisor";
 import { FakeEngineAdapter, buildFakeEngineScript, buildWorkerResult } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 import { dispatchCommand } from "../commands/dispatch.js";
 import { createRealRunDispatcher } from "../daemon/run-dispatcher.js";
+import { createFakePostCompletionGitEffects } from "../daemon/test-support/fake-post-completion-git-effects.js";
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
 const PLACEHOLDER_CREDENTIAL = "not-a-real-token";
@@ -85,7 +87,10 @@ afterEach(async () => {
  * and no timeout to tune. The journal assertion below is then made with no
  * polling at all: if `drain` resolved early it fails.
  */
-async function drainAndAssertDriven(dispatcher: RunDispatcher): Promise<void> {
+async function drainAndAssertDriven(
+  dispatcher: RunDispatcher,
+  driven?: { readonly runs: RunsRegistry; readonly runId: string },
+): Promise<void> {
   const outcome = await dispatcher.drain({ timeoutMs: 30_000 });
   expect(outcome.unsettledRunIds).toEqual([]);
   expect(outcome.cancelledRunIds).toEqual([]);
@@ -97,6 +102,15 @@ async function drainAndAssertDriven(dispatcher: RunDispatcher): Promise<void> {
     if (entry.type === "work_unit_transition") statuses.push(entry.payload.status);
   }
   expect(statuses.some((status) => isWorkUnitAttemptStatusTerminal(status))).toBe(true);
+
+  // AND THE LOOP ACTUALLY CLOSES (2026-08-05). Until the post-completion
+  // pipeline existed, a fully-successful drive left its run wedged in `running`
+  // forever and this helper could assert nothing beyond "some unit finished" —
+  // so "closed loop" named a loop that stopped one step short of its own
+  // terminal artifact. Defect `14-gate-registry-never-composed.md`.
+  if (driven !== undefined) {
+    expect(driven.runs.get(driven.runId)?.runState).toBe("published_local");
+  }
 }
 
 function intakeRequest(): IntakeRequest {
@@ -249,6 +263,12 @@ function buildDispatcher(
           buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
         ),
       ),
+    // The git half of the post-completion pipeline, faked for the same reason
+    // `prepareRun`/`createAttemptWorktree` are: this suite has no repository.
+    // The gate registry, the `final_verifying` firing and the
+    // verdict -> lifecycle mapping have NO seam, so the loop below still closes
+    // through a genuinely fired gate. Real git: `../daemon/composed-post-completion.e2e.test.ts`.
+    postCompletionGitEffects: createFakePostCompletionGitEffects(),
   });
 
   return { dispatcher, runs };
@@ -312,6 +332,8 @@ describe("closed loop — entered through the shipped `run` command", () => {
             }),
           ),
         ),
+      // Same git-boundary seam as the sibling cases; the gate firing is real.
+      postCompletionGitEffects: createFakePostCompletionGitEffects(),
     });
 
     // The ONLY fake: the UDS hop. `run.dispatch` lands on the same real
@@ -368,7 +390,7 @@ describe("closed loop — entered through the shipped `run` command", () => {
 
     // A real run exists, and real work actually ran under it.
     expect(runs.get(parsed.dispatch.runId!)?.runState).toBe("running");
-    await drainAndAssertDriven(dispatcher);
+    await drainAndAssertDriven(dispatcher, { runs, runId: parsed.dispatch.runId! });
   });
 });
 
@@ -384,7 +406,7 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
     expect(outcome.runId).toMatch(/^[0-9a-f-]{36}$/);
     expect(runs.get(outcome.runId!)?.runState).toBe("running");
 
-    await drainAndAssertDriven(dispatcher);
+    await drainAndAssertDriven(dispatcher, { runs, runId: outcome.runId! });
   });
 
   /**

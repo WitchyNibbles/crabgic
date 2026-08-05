@@ -87,6 +87,7 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
+import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
 import { createRealRunDispatcher, type RealRunDispatcherOptions } from "./run-dispatcher.js";
 
 const PROJECT_HASH = "sealenforce0001";
@@ -222,6 +223,13 @@ async function bootDaemon(): Promise<ComposedSupervisor> {
         } as never,
         prepareRun: () => Promise.resolve("a".repeat(40)),
         createAttemptWorktree: () => Promise.resolve(join(root, "worktree")),
+        // The GIT half of the post-completion pipeline, faked for the same
+        // reason every other git seam here is: this suite has no repository.
+        // The gate registry, the `final_verifying` firing and the
+        // verdict → lifecycle mapping are NOT faked — they are production code
+        // with no seam — so case C still reddens if the seal gate stops being
+        // registered. Real git is covered by `./composed-post-completion.e2e.test.ts`.
+        postCompletionGitEffects: createFakePostCompletionGitEffects(),
         // ALWAYS succeeds — so a `failed` attempt can only be the funnel.
         createAdapter: () =>
           Promise.resolve(

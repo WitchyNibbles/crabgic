@@ -124,6 +124,21 @@ export type {
 export { preflightMerge } from "./merge-preflight.js";
 export type { PreflightMergeOptions, PreflightResult } from "./merge-preflight.js";
 
+export {
+  COLLECTION_EXCLUDE_PATHSPECS,
+  CRABGIC_INTEGRATION_REF_PREFIX,
+  buildIntegrationCommit,
+  buildIntegrationRef,
+  commitAuthorshipEnv,
+  commitWorktreeCandidate,
+  neutralCommitIdentity,
+} from "./candidate-commit.js";
+export type {
+  BuildIntegrationCommitOptions,
+  CommitWorktreeCandidateOptions,
+  CommitWorktreeCandidateResult,
+} from "./candidate-commit.js";
+
 export { applyCasUpdate } from "./cas-ref-update.js";
 export type {
   ApplyCasUpdateOptions,
