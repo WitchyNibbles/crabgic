@@ -81,6 +81,7 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
       subject: "feat: add the worker output",
       body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
       identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
     });
 
     expect(result.status).toBe("committed");
@@ -120,6 +121,7 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
       subject: "feat: nothing happened",
       body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
       identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
     });
 
     expect(result.status).toBe("nothing-to-commit");
@@ -149,6 +151,7 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
       subject: "feat: only provisioning changed",
       body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
       identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
     });
 
     expect(result.status).toBe("nothing-to-commit");
@@ -156,6 +159,87 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
       fixture.baseObjectId,
     );
     expect(COLLECTION_EXCLUDE_PATHSPECS.length).toBeGreaterThan(0);
+  });
+
+  it("HARDENING — work the worker committed ITSELF is returned as the candidate, never silently dropped", async () => {
+    const fixture = await buildWorktreeFixture();
+    // Today no worker can commit (the compiled profile grants no `git commit`),
+    // so this state is unreachable through the shipped path. It is asserted
+    // anyway because the alternative failure is silent and severe: a unit whose
+    // work never reaches the integration ref, inside a run that reports SUCCESS
+    // and publishes. The repository already carries a tracked residual where
+    // enabling the OS sandbox auto-allows `Bash`, so "clean implies unchanged"
+    // is an inference from a permission boundary rather than a fact.
+    writeFileSync(join(fixture.worktreePath, "src", "self.txt"), "worker committed this\n", "utf8");
+    fixtureGit(fixture.worktreePath, ["add", "--all"]);
+    // Identity comes from the repo-local config `createWorktree` already wrote
+    // (linked worktrees share `.git/config`) — no `git config` call here.
+    fixtureGit(fixture.worktreePath, ["commit", "-q", "-m", "worker's own commit", "--no-verify"]);
+    const selfCommitted = fixtureGit(fixture.worktreePath, ["rev-parse", "HEAD"]).trim();
+    expect(selfCommitted).not.toBe(fixture.baseObjectId);
+    // The worktree is now CLEAN — which is precisely the trap.
+    expect(fixtureGit(fixture.worktreePath, ["status", "--porcelain"]).trim()).toBe("");
+
+    const result = await commitWorktreeCandidate(plumbing, {
+      worktreePath: fixture.worktreePath,
+      subject: "feat: nothing left to stage",
+      body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
+      identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
+    });
+
+    expect(result.status).toBe("committed");
+    if (result.status !== "committed") return;
+    expect(result.objectId).toBe(selfCommitted);
+    // No second, empty commit was made on top of it.
+    expect(fixtureGit(fixture.repoDir, ["rev-parse", fixture.ref]).trim()).toBe(selfCommitted);
+    expect(
+      fixtureGit(fixture.repoDir, ["ls-tree", "-r", "--name-only", result.objectId]).split("\n"),
+    ).toContain("src/self.txt");
+  });
+
+  it("HARDENING — the same holds when the tip is ahead AND only excluded provisioning is dirty", async () => {
+    const fixture = await buildWorktreeFixture();
+    writeFileSync(join(fixture.worktreePath, "src", "self.txt"), "worker committed this\n", "utf8");
+    fixtureGit(fixture.worktreePath, ["add", "--all"]);
+    // Identity comes from the repo-local config `createWorktree` already wrote
+    // (linked worktrees share `.git/config`) — no `git config` call here.
+    fixtureGit(fixture.worktreePath, ["commit", "-q", "-m", "worker's own commit", "--no-verify"]);
+    const selfCommitted = fixtureGit(fixture.worktreePath, ["rev-parse", "HEAD"]).trim();
+    // Dirty (so the first guard does not fire) but nothing STAGEABLE (so the
+    // second guard does) — the arm that would otherwise drop the work.
+    mkdirSync(join(fixture.worktreePath, "node_modules", "left-pad"), { recursive: true });
+    writeFileSync(
+      join(fixture.worktreePath, "node_modules", "left-pad", "index.js"),
+      "module.exports = 1;\n",
+      "utf8",
+    );
+    expect(fixtureGit(fixture.worktreePath, ["status", "--porcelain"]).trim()).not.toBe("");
+
+    const result = await commitWorktreeCandidate(plumbing, {
+      worktreePath: fixture.worktreePath,
+      subject: "feat: only provisioning is dirty",
+      body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
+      identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
+    });
+
+    expect(result.status).toBe("committed");
+    if (result.status !== "committed") return;
+    expect(result.objectId).toBe(selfCommitted);
+  });
+
+  it("refuses a flag-shaped baseObjectId before git is ever invoked", async () => {
+    const fixture = await buildWorktreeFixture();
+    await expect(
+      commitWorktreeCandidate(plumbing, {
+        worktreePath: fixture.worktreePath,
+        subject: "feat: nope",
+        body: "Why: nope\nRisk: nope\nCompat: nope\nVerification: nope",
+        identity: IDENTITY,
+        baseObjectId: "--upload-pack=touch /tmp/pwned",
+      }),
+    ).rejects.toThrow(InvalidObjectIdError);
   });
 
   it("commits a real edit even when provisioned node_modules sits beside it, and excludes the provisioning", async () => {
@@ -173,6 +257,7 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
       subject: "feat: add the worker output",
       body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
       identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
     });
 
     expect(result.status).toBe("committed");

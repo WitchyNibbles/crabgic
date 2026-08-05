@@ -24,6 +24,7 @@ import {
   createGitPlumbing,
   createNodeGitSpawn,
   createWorktree,
+  UnsafeGitRefError,
   type GitPlumbing,
 } from "@crabgic/git-engine";
 import {
@@ -128,6 +129,7 @@ describe("collectCandidate", () => {
       workUnit: unit(),
       changeSet: changeSet(),
       branchType: "chore",
+      baseObjectId,
       worktreePath: await attemptWorktree(),
     });
     expect(result.status).toBe("nothing-to-commit");
@@ -141,6 +143,7 @@ describe("collectCandidate", () => {
       workUnit: unit({ title: "co-authored-by somebody else" }),
       changeSet: changeSet(),
       branchType: "chore",
+      baseObjectId,
       worktreePath: await attemptWorktree({ edit: "export const shared = 2;\n" }),
     });
 
@@ -200,6 +203,7 @@ describe("integrateCandidate", () => {
       workUnit: unit(),
       changeSet: changeSet(),
       branchType: "chore",
+      baseObjectId,
       worktreePath: await attemptWorktree({ edit: content }),
     });
     if (collected.status !== "collected")
@@ -258,6 +262,38 @@ describe("integrateCandidate", () => {
     expect(runFixtureGit(controlDir, ["show", `${integrated.tipObjectId}:src/shared.ts`])).toBe(
       "export const shared = 2;\n",
     );
+  });
+
+  it("BLOCKS when the lint refuses the INTEGRATION commit message, distinctly from refusing the collection", async () => {
+    const ref = buildIntegrationRef(RUN_ID);
+    const begun = await effects.beginIntegration({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      baseObjectId,
+    });
+    if (begun.status !== "begun") throw new Error("integration did not begin");
+    // The candidate is collected under a CLEAN title, so the collection
+    // succeeded; the integration commit is then rendered from a hostile one.
+    // That separation is the point: the two commits go through `renderCommit`
+    // independently, and only the integration commit reaches the published
+    // branch, so its refusal is the one that must not be skippable.
+    const candidateObjectId = await candidateFor("export const shared = 2;\n");
+
+    const integrated = await effects.integrateCandidate({
+      ref,
+      tipObjectId: baseObjectId,
+      candidateObjectId,
+      workUnit: unit({ title: "co-authored-by somebody else" }),
+      changeSet: changeSet(),
+      branchType: "chore",
+      runId: RUN_ID,
+    });
+
+    expect(integrated.status).toBe("blocked");
+    if (integrated.status !== "blocked") return;
+    expect(integrated.reason).toContain("policy_blocked");
+    // The ref did NOT advance: nothing was landed under a refused message.
+    expect(runFixtureGit(controlDir, ["rev-parse", ref]).trim()).toBe(baseObjectId);
   });
 
   it("surfaces a conflict discovered DURING the rebuild as a conflict, not an opaque block", async () => {
@@ -348,6 +384,37 @@ describe("publishCandidate", () => {
     ).toBe("main");
   });
 
+  it("tolerates an unreadable user checkout when listing existing branches, and still refuses to claim a publication", async () => {
+    const begun = await effects.beginIntegration({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      baseObjectId,
+    });
+    if (begun.status !== "begun") throw new Error("integration did not begin");
+    // A `projectDir` that is not a repository at all: the existing-branch census
+    // must degrade to "assume none" rather than throwing, and the publish must
+    // then BLOCK rather than report success against a repo it never wrote to.
+    const notARepo = join(dirs[0]!, "not-a-repo");
+    mkdirSync(notARepo, { recursive: true });
+    const detached = createRealPostCompletionGitEffects({
+      plumbing,
+      controlDir,
+      projectDir: notARepo,
+      serviceEmail: SERVICE_EMAIL,
+      journal,
+    });
+
+    const published = await detached.publishCandidate({
+      ref: begun.ref,
+      branchType: "chore",
+      slugSource: "add the shared export",
+    });
+
+    expect(published.status).toBe("blocked");
+    if (published.status !== "blocked") return;
+    expect(published.reason.length).toBeGreaterThan(0);
+  });
+
   it("applies a collision suffix rather than colliding with a branch the user repo already has", async () => {
     const begun = await effects.beginIntegration({
       runId: RUN_ID,
@@ -371,6 +438,54 @@ describe("publishCandidate", () => {
     expect(runFixtureGit(projectDir, ["rev-parse", published.branchName]).trim()).toBe(
       published.objectId,
     );
+  });
+});
+
+describe("retractPublishedBranch", () => {
+  it("removes a branch this pipeline published, leaving the user checkout otherwise untouched", async () => {
+    const begun = await effects.beginIntegration({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      baseObjectId,
+    });
+    if (begun.status !== "begun") throw new Error("integration did not begin");
+    const published = await effects.publishCandidate({
+      ref: begun.ref,
+      branchType: "chore",
+      slugSource: "add the shared export",
+    });
+    if (published.status !== "published") throw new Error("publication did not happen");
+    expect(runFixtureGit(projectDir, ["rev-parse", "--verify", published.branchName]).trim()).toBe(
+      published.objectId,
+    );
+    const headBefore = runFixtureGit(projectDir, ["rev-parse", "HEAD"]).trim();
+
+    await effects.retractPublishedBranch({ branchName: published.branchName });
+
+    // Gone, read back out of real git.
+    expect(() =>
+      runFixtureGit(projectDir, ["rev-parse", "--verify", `refs/heads/${published.branchName}`]),
+    ).toThrow();
+    expect(
+      runFixtureGit(projectDir, ["for-each-ref", "--format=%(refname:short)", "refs/heads/"])
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0),
+    ).toEqual(["main"]);
+    // Only refs/ moved — HEAD is where it was.
+    expect(runFixtureGit(projectDir, ["rev-parse", "HEAD"]).trim()).toBe(headBefore);
+  });
+
+  it("is a no-op rather than a throw when the branch is already gone — a retraction must not mask the refusal that provoked it", async () => {
+    await expect(
+      effects.retractPublishedBranch({ branchName: "chore/never-existed" }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses a flag-shaped branch name before git is ever invoked", async () => {
+    await expect(
+      effects.retractPublishedBranch({ branchName: "--upload-pack=touch /tmp/pwned" }),
+    ).rejects.toThrow(UnsafeGitRefError);
   });
 });
 

@@ -518,15 +518,26 @@ describe("a completed run walks to published_local through a fired gate (defect 
         unitFixture(UNIT_A_ID, "rewrite the base export"),
         // SEQUENTIAL BY DEPENDENCY, deliberately. This case's subject is
         // conflict detection against the ADVANCING integration tip, not the
-        // scheduler's concurrency: dispatching both units in one round adds a
-        // second variable (two concurrent `git worktree add`s racing the control
-        // clone's shared `.git/config` lock) that has nothing to do with the
-        // claim, and this test failed once on `ubuntu-24.04-arm` with the run
-        // `failed` rather than `blocked` — a shape only reachable BEFORE the
-        // pipeline runs. `dependsOn` makes the drive deterministic; the conflict
-        // is unaffected, because every attempt worktree is cut at the frozen
-        // base regardless of round, so B's candidate still diverges from A's
-        // integrated tip.
+        // scheduler's concurrency, and this test failed once on
+        // `ubuntu-24.04-arm` with the run `failed` rather than `blocked` — a
+        // shape only reachable BEFORE the pipeline runs, since a conflict
+        // settles `blocked` at `integrating`.
+        //
+        // THE CAUSE IS UNCONFIRMED. The most plausible candidate is per-round
+        // concurrency in attempt provisioning — two `git worktree add`s racing
+        // the control clone's shared `.git/config` lock — but the measurement
+        // does not support asserting it: `configureGitIdentity` already retries
+        // that exact failure signature 30 times with jitter, and exhausting
+        // those retries takes longer than the 137 ms the failing run reported.
+        // So `dependsOn` removes concurrency from THIS test's path rather than
+        // fixing a diagnosed defect. What IS established is that the failure is
+        // not a race inside the new walk: the pipeline is one sequential async
+        // function per run, and T3 above still dispatches two units
+        // concurrently, so that coverage is retained per push.
+        //
+        // The conflict is unaffected either way: every attempt worktree is cut
+        // at the frozen base regardless of round, so B's candidate still
+        // diverges from A's integrated tip.
         unitFixture(UNIT_B_ID, "rewrite the base export differently", [UNIT_A_ID]),
       ],
       changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),

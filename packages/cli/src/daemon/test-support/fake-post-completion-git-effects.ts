@@ -73,8 +73,17 @@ export function createFakePostCompletionGitEffects(
       return Promise.resolve({
         status: "published",
         branchName: `${input.branchType}/fake-published`,
+        // The SAME tip `resolveIntegratedObjectId` reports, so the pipeline's
+        // fail-closed published-vs-verified comparison is satisfied here the way
+        // real git satisfies it. A fake that returned some other id would make
+        // every suite using it fail that comparison — which is the comparison
+        // doing its job.
         objectId: tip,
       });
+    },
+    retractPublishedBranch(input) {
+      calls?.push(`retract:${input.branchName}`);
+      return Promise.resolve();
     },
   };
 }

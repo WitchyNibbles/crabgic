@@ -271,6 +271,7 @@ export async function runPostCompletionPipeline(
       changeSet: input.changeSet,
       branchType,
       worktreePath,
+      baseObjectId: input.baseObjectId,
     });
     if (collected.status === "blocked") {
       await transition("blocked");
@@ -413,6 +414,40 @@ export async function runPostCompletionPipeline(
   if (published.status !== "published") {
     await transition("failed");
     return { status: "failed", reason: `publication was blocked: ${published.reason}` };
+  }
+
+  // THE WALK'S CENTRAL BINDING, ENFORCED IN PRODUCTION AND NOT ONLY IN A TEST.
+  //
+  // Everything above is worth exactly this much: the artifact that reached the
+  // user's repository must be the artifact the gates verified. `objectId` is
+  // what `fireFinalCandidateVerification` was fired against and what every
+  // `EvidenceRecord` from that firing is hash-bound to; `published.objectId` is
+  // `publishLocal`'s own `rev-parse` of the new branch in the USER's repo — a
+  // different repository, resolved independently. Under correct operation they
+  // are necessarily equal (the integration ref is run-scoped and this pipeline
+  // is the only writer, sequentially). A divergence therefore means the
+  // published tree is NOT the verified one, which is the one outcome this whole
+  // change exists to make impossible.
+  //
+  // FAIL CLOSED, AND RETRACT. The branch is deleted before the run is failed —
+  // the same posture `publishLocal` applies to its own attribution re-check,
+  // which removes the ref rather than leaving a tainted branch behind. Failing
+  // without retracting would leave an unverified branch sitting in the user's
+  // repo, which is worse than not publishing at all.
+  //
+  // This is what makes the binding an enforced invariant rather than a claim
+  // three assertions in one file happen to check: mutating the id the gate
+  // fires against is now refused by the code, not merely caught by a test.
+  if (published.objectId !== objectId) {
+    await deps.git.retractPublishedBranch({ branchName: published.branchName });
+    await transition("failed");
+    return {
+      status: "failed",
+      reason:
+        `the published branch "${published.branchName}" resolved to ${published.objectId}, which is ` +
+        `NOT the candidate final verification passed (${objectId}) — the branch has been retracted ` +
+        `and the run failed rather than leave an unverified artifact published.`,
+    };
   }
 
   await deps.onStep?.("before-published-local");

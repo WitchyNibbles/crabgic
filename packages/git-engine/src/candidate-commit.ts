@@ -103,11 +103,23 @@ export interface CommitWorktreeCandidateOptions {
   readonly subject: string;
   readonly body: string;
   readonly identity: GitIdentity;
+  /**
+   * The object id this worktree's branch was CREATED at (07's frozen intake
+   * freeze). Required, not optional: it is the only way to tell "the worker
+   * changed nothing" apart from "the worker committed its own work", and those
+   * two must not be confused — see {@link commitWorktreeCandidate}'s
+   * ALREADY-COMMITTED WORK note.
+   */
+  readonly baseObjectId: string;
 }
 
 export type CommitWorktreeCandidateResult =
   | { readonly status: "committed"; readonly objectId: string }
-  /** Nothing committable: the worker changed nothing, or its only changes were excluded provisioning (see {@link COLLECTION_EXCLUDE_PATHSPECS}). */
+  /**
+   * Nothing to integrate: the branch tip is still exactly `baseObjectId`, so
+   * the worker changed nothing, or its only changes were excluded provisioning
+   * (see {@link COLLECTION_EXCLUDE_PATHSPECS}).
+   */
   | { readonly status: "nothing-to-commit" };
 
 /**
@@ -123,16 +135,44 @@ export type CommitWorktreeCandidateResult =
  * untracked content is provisioned `node_modules` is dirty and yet has nothing
  * to commit, and `git commit` on an empty index fails rather than producing an
  * empty commit.
+ *
+ * ALREADY-COMMITTED WORK IS STILL A CANDIDATE — never silently dropped.
+ * "Nothing to commit" is not the same claim as "nothing to integrate", and
+ * conflating them would be the worst failure this module could have: a unit
+ * whose work never reached the integration ref, inside a run that reports
+ * SUCCESS and publishes. Today a worker cannot commit at all (the compiled
+ * profile grants no `git commit`), so a clean worktree does mean tip == base —
+ * but that is an inference from a permission boundary, and this repository
+ * already carries a tracked residual where enabling the OS sandbox
+ * auto-allows `Bash` (`docs/security-posture.md`'s sandbox note). So the
+ * clean arm RESOLVES THE TIP and compares it, rather than assuming: a tip
+ * ahead of the base is returned as the candidate. Both arms are measured, and
+ * the assumption is nowhere.
  */
 export async function commitWorktreeCandidate(
   plumbing: GitPlumbing,
   options: CommitWorktreeCandidateOptions,
 ): Promise<CommitWorktreeCandidateResult> {
-  if (!(await isWorktreeDirty(plumbing, options.worktreePath))) {
-    return { status: "nothing-to-commit" };
-  }
+  assertObjectId("baseObjectId", options.baseObjectId);
 
   const env = { ...CONTROL_CONTEXT_ENV, ...commitAuthorshipEnv(options.identity) };
+
+  /** The worktree branch's current tip — `HEAD`, resolved out of real git rather than inferred. */
+  const resolveTip = async (): Promise<string> => {
+    const revParse = await plumbing.run(["rev-parse", "--verify", OPTION_TERMINATOR, "HEAD"], {
+      cwd: options.worktreePath,
+      env: CONTROL_CONTEXT_ENV,
+    });
+    return revParse.stdout.trim();
+  };
+
+  if (!(await isWorktreeDirty(plumbing, options.worktreePath))) {
+    // Clean, but NOT necessarily unchanged — see ALREADY-COMMITTED WORK above.
+    const tip = await resolveTip();
+    return tip === options.baseObjectId
+      ? { status: "nothing-to-commit" }
+      : { status: "committed", objectId: tip };
+  }
 
   await plumbing.run(["add", "--all", OPTION_TERMINATOR, ".", ...COLLECTION_EXCLUDE_PATHSPECS], {
     cwd: options.worktreePath,
@@ -146,7 +186,12 @@ export async function commitWorktreeCandidate(
     allowFailure: true,
   });
   if (staged.exitCode === 0) {
-    return { status: "nothing-to-commit" };
+    // Dirty, but nothing STAGED — the same two-claims distinction as the clean
+    // arm above, so the tip is resolved here too rather than assumed.
+    const tip = await resolveTip();
+    return tip === options.baseObjectId
+      ? { status: "nothing-to-commit" }
+      : { status: "committed", objectId: tip };
   }
 
   // `--no-verify` and `--no-gpg-sign` are belt-and-suspenders beside
@@ -166,11 +211,7 @@ export async function commitWorktreeCandidate(
     { cwd: options.worktreePath, env },
   );
 
-  const revParse = await plumbing.run(["rev-parse", "--verify", OPTION_TERMINATOR, "HEAD"], {
-    cwd: options.worktreePath,
-    env: CONTROL_CONTEXT_ENV,
-  });
-  return { status: "committed", objectId: revParse.stdout.trim() };
+  return { status: "committed", objectId: await resolveTip() };
 }
 
 export interface BuildIntegrationCommitOptions {

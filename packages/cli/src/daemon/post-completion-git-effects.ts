@@ -52,8 +52,10 @@ import {
   buildIntegrationRef,
   commitWorktreeCandidate,
   isBranchType,
+  assertSafeRefPositional,
   nameBranch,
   neutralCommitIdentity,
+  OPTION_TERMINATOR,
   preflightMerge,
   publishLocal,
   renderCommit,
@@ -94,6 +96,8 @@ export interface PostCompletionGitEffects {
     readonly changeSet: ChangeSet;
     readonly branchType: BranchType;
     readonly worktreePath: string;
+    /** The frozen base the worktree branch was cut at — lets `commitWorktreeCandidate` tell "changed nothing" apart from "committed its own work". */
+    readonly baseObjectId: string;
   }): Promise<CollectCandidateResult>;
   /** Creates the run-scoped integration ref at the run's frozen base. */
   beginIntegration(input: {
@@ -119,6 +123,17 @@ export interface PostCompletionGitEffects {
     readonly branchType: BranchType;
     readonly slugSource: string;
   }): Promise<PublishCandidateResult>;
+  /**
+   * Deletes a branch this pipeline just created in the user's repo.
+   *
+   * Only ever called to RETRACT a publication the pipeline then refused — the
+   * same fail-closed shape `publishLocal` already applies to its own
+   * attribution re-check, which deletes the ref before throwing rather than
+   * leaving a tainted branch for a caller to stumble on. Never a general
+   * branch-deletion capability: the only branch name it is ever handed is one
+   * `publishCandidate` returned moments earlier.
+   */
+  retractPublishedBranch(input: { readonly branchName: string }): Promise<void>;
 }
 
 export interface RealPostCompletionGitEffectsOptions {
@@ -277,6 +292,7 @@ export function createRealPostCompletionGitEffects(
         subject: rendered.subject,
         body: rendered.body,
         identity,
+        baseObjectId: input.baseObjectId,
       });
       if (committed.status === "nothing-to-commit") return { status: "nothing-to-commit" };
       return { status: "collected", objectId: committed.objectId };
@@ -366,6 +382,12 @@ export function createRealPostCompletionGitEffects(
             changeSet: input.changeSet,
             branchType: input.branchType,
           });
+          // DEFENSIVE, and unreachable through this surface: the rebuild renders
+          // from the SAME `workUnit`/`changeSet` as the first attempt, so a
+          // message that rendered once renders again. Kept because a future
+          // caller could vary the inputs per attempt, and a silent `undefined`
+          // here would be a lost refusal. Not covered by a test, deliberately —
+          // contorting one would test the contortion.
           if (!rebuilt.ok) return { blocked: true, reason: rebuilt.reason };
           return { newValue: rebuilt.objectId };
         },
@@ -376,6 +398,12 @@ export function createRealPostCompletionGitEffects(
         if (rebuildConflict !== undefined) {
           return { status: "conflict", resolutionUnits: rebuildConflict };
         }
+        // The remaining blocked shape is `applyCasUpdate` exhausting its bounded
+        // rebuild budget against a ref that keeps racing ahead. That loop's own
+        // termination is pinned in `packages/git-engine`'s `cas-ref-update.test.ts`
+        // (`attempts` bounded at `maxAttempts`); reproducing it here would need a
+        // hook to advance the ref on every attempt, so this arm is covered there
+        // rather than at this composition layer.
         return { status: "blocked", reason: applied.reason };
       }
       return { status: "integrated", tipObjectId: applied.objectId };
@@ -416,6 +444,20 @@ export function createRealPostCompletionGitEffects(
         branchName: published.branchName,
         objectId: published.objectId,
       };
+    },
+
+    async retractPublishedBranch(input) {
+      // `update-ref -d` in the USER repo — the same primitive `publishLocal`
+      // uses to remove a branch its own attribution re-check refused. The
+      // branch name is validated as a ref positional before it reaches git,
+      // and `allowFailure` is deliberate: a retraction that cannot complete
+      // must not mask the refusal that provoked it, which the caller reports
+      // either way.
+      assertSafeRefPositional("branchName", input.branchName);
+      await plumbing.run(
+        ["update-ref", "-d", OPTION_TERMINATOR, `refs/heads/${input.branchName}`],
+        { cwd: projectDir, allowFailure: true },
+      );
     },
   };
 }

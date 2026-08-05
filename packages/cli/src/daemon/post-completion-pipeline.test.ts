@@ -110,6 +110,8 @@ async function run(options: {
   readonly registry: GateRegistry;
   readonly git?: PostCompletionGitEffects;
   readonly requirements?: readonly Requirement[];
+  readonly requirementsOverride?: Registry<Requirement>;
+  readonly runsOverride?: RunsRegistry;
   readonly statuses?: ReadonlyMap<string, WorkUnitAttemptStatus>;
   readonly worktrees?: ReadonlyMap<string, string>;
 }): Promise<PostCompletionOutcome> {
@@ -127,8 +129,9 @@ async function run(options: {
     },
     {
       journal,
-      runs,
-      requirements: requirementsRegistry(options.requirements ?? []),
+      runs: options.runsOverride ?? runs,
+      requirements:
+        options.requirementsOverride ?? requirementsRegistry(options.requirements ?? []),
       workUnitRegistry: workUnitRegistry(units),
       registry: options.registry,
       git: options.git ?? createFakePostCompletionGitEffects(),
@@ -480,6 +483,237 @@ describe("a cancel racing the pipeline is stood down, never written over", () =>
   });
 });
 
+describe("THE CENTRAL BINDING — the published artifact must be the verified one", () => {
+  it("retracts the branch and FAILS when the published tip is not the candidate the gates passed", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    // The publish reports a DIFFERENT object id from the one
+    // `resolveIntegratedObjectId` handed the gate — exactly what probe D's
+    // mutation produces, and what a mid-pipeline ref hijack would produce.
+    const divergent: PostCompletionGitEffects = {
+      ...createFakePostCompletionGitEffects({ calls }),
+      publishCandidate: () =>
+        Promise.resolve({
+          status: "published",
+          branchName: "chore/divergent",
+          objectId: "d".repeat(40),
+        }),
+    };
+
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: divergent,
+    });
+
+    expect(outcome.status).toBe("failed");
+    expect(runs.get(RUN_ID)?.runState).toBe("failed");
+    expect(runs.get(RUN_ID)?.runState).not.toBe("published_local");
+    if (outcome.status !== "failed") return;
+    // Names BOTH ids, so the divergence is diagnosable rather than a bare refusal.
+    expect(outcome.reason).toContain("d".repeat(40));
+    expect(outcome.reason).toContain("chore/divergent");
+    // RETRACTED, not merely failed: an unverified branch left in the user's repo
+    // is worse than not publishing at all.
+    expect(calls).toContain("retract:chore/divergent");
+  });
+
+  it("CONTROL — a matching tip publishes and retracts nothing", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: createFakePostCompletionGitEffects({ calls }),
+    });
+
+    expect(outcome.status).toBe("published");
+    expect(runs.get(RUN_ID)?.runState).toBe("published_local");
+    expect(calls.filter((call) => call.startsWith("retract:"))).toEqual([]);
+  });
+});
+
+describe("errors that are not lifecycle outcomes", () => {
+  it("RETHROWS a transition failure that is not an illegal-edge race", async () => {
+    await seedRunningRun();
+    // A journal/registry write failing is a genuine background problem, not an
+    // absorbing-state race — it must NOT be laundered into a `raced` outcome.
+    const exploding = {
+      ...runs,
+      upsert: () => {
+        throw new Error("registry write exploded");
+      },
+    } as unknown as RunsRegistry;
+
+    await expect(
+      run({ units: [unit(UNIT_A)], registry: passingRegistry(), runsOverride: exploding }),
+    ).rejects.toThrow("registry write exploded");
+  });
+
+  it("stringifies a non-Error thrown by the requirements resolver", async () => {
+    await seedRunningRun();
+    const hostile = {
+      get: () => {
+        throw "not an Error at all";
+      },
+      put: () => undefined,
+      list: () => [],
+      query: () => [],
+    } as unknown as Registry<Requirement>;
+
+    const outcome = await run({
+      units: [unit(UNIT_A, { requirementIds: [REQ_ID] })],
+      registry: passingRegistry(),
+      requirementsOverride: hostile,
+    });
+
+    expect(outcome.status).toBe("failed");
+    if (outcome.status !== "failed") return;
+    expect(outcome.reason).toContain("not an Error at all");
+  });
+
+  it("stringifies a non-Error thrown by a gate handler", async () => {
+    await seedRunningRun();
+    const registry = createGateRegistry();
+    registry.register("acceptance", "throws-a-string", () => {
+      throw "gate threw a bare string";
+    });
+
+    const outcome = await run({ units: [unit(UNIT_A)], registry });
+
+    expect(outcome.status).toBe("failed");
+    expect(runs.get(RUN_ID)?.runState).toBe("failed");
+    if (outcome.status !== "failed") return;
+    expect(outcome.reason).toContain("gate threw a bare string");
+  });
+});
+
+describe("a cancel racing each pipeline transition stands the pipeline down", () => {
+  /** Cancels the run from inside whichever git effect the pipeline calls next. */
+  function cancelInside(
+    where: keyof PostCompletionGitEffects,
+    calls?: string[],
+  ): PostCompletionGitEffects {
+    const base = createFakePostCompletionGitEffects(calls === undefined ? {} : { calls });
+    const cancel = async (): Promise<void> => {
+      await transitionRun({
+        journal,
+        runs,
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        to: "cancelled",
+      });
+    };
+    if (where === "integrateCandidate") {
+      return {
+        ...base,
+        integrateCandidate: async (input) => {
+          const result = await base.integrateCandidate(input);
+          await cancel();
+          return result;
+        },
+      };
+    }
+    return {
+      ...base,
+      publishCandidate: async (input) => {
+        const result = await base.publishCandidate(input);
+        await cancel();
+        return result;
+      },
+    };
+  }
+
+  it("before `verifying` — a run already cancelled is never dragged into the walk", async () => {
+    await seedRunningRun();
+    await transitionRun({
+      journal,
+      runs,
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      to: "cancelled",
+    });
+
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: createFakePostCompletionGitEffects({ calls }),
+    });
+
+    expect(outcome.status).toBe("raced");
+    if (outcome.status !== "raced") return;
+    expect(outcome.reason).toContain("begin verification");
+    expect(runs.get(RUN_ID)?.runState).toBe("cancelled");
+    // Nothing was collected: the pipeline stood down before doing any work.
+    expect(calls).toEqual([]);
+  });
+
+  it("before `final_verifying` — no gate fires and nothing publishes", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: cancelInside("integrateCandidate", calls),
+    });
+
+    expect(outcome.status).toBe("raced");
+    if (outcome.status !== "raced") return;
+    expect(outcome.reason).toContain("begin final verification");
+    expect(runs.get(RUN_ID)?.runState).toBe("cancelled");
+    expect(calls.filter((call) => call.startsWith("resolve:"))).toEqual([]);
+    expect(calls.filter((call) => call.startsWith("publish:"))).toEqual([]);
+  });
+
+  it("before `published_local` — the cancel stands even though the branch was created", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: cancelInside("publishCandidate", calls),
+    });
+
+    expect(outcome.status).toBe("raced");
+    if (outcome.status !== "raced") return;
+    expect(outcome.reason).toContain("record publication");
+    // The cancel is NOT overwritten with `published_local`.
+    expect(runs.get(RUN_ID)?.runState).toBe("cancelled");
+    expect(calls.filter((call) => call.startsWith("publish:"))).toHaveLength(1);
+  });
+});
+
+describe("a run with nothing to integrate", () => {
+  it("publishes an empty candidate, sourcing the branch slug from the ChangeSet's own rollback strategy", async () => {
+    await seedRunningRun();
+    // No work units at all — so `ordered[0]` is undefined and the slug source
+    // falls back. Publishing anyway is the deliberate choice recorded in the
+    // pipeline's doc comment: state-machine integrity first, and the branch
+    // honestly records "verified, empty" rather than inventing a new terminal.
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [],
+      changeSet: buildChangeSet({
+        id: CHANGE_SET_ID,
+        state: "ready",
+        integrationOrder: [],
+        rollbackStrategy: "revert the integration commit",
+      }),
+      registry: passingRegistry(),
+      git: createFakePostCompletionGitEffects({ calls }),
+    });
+
+    expect(outcome.status).toBe("published");
+    expect(runs.get(RUN_ID)?.runState).toBe("published_local");
+    // The gate still fired against the ref's tip, which is the frozen base.
+    expect(calls.filter((call) => call.startsWith("resolve:"))).toHaveLength(1);
+    expect(calls.filter((call) => call.startsWith("integrate:"))).toEqual([]);
+    if (outcome.status !== "published") return;
+    expect(outcome.objectId).toBe(BASE);
+  });
+});
+
 describe("integrationOrderFor", () => {
   it("follows the ChangeSet's own integrationOrder", () => {
     const a = unit(UNIT_A);
@@ -508,6 +742,25 @@ describe("integrationOrderFor", () => {
         a,
       ]).map((u) => u.id),
     ).toEqual([UNIT_A]);
+  });
+
+  it("appends UNNAMED units in stable id order regardless of the order they arrive in", () => {
+    const a = unit(UNIT_A);
+    const b = unit(UNIT_B);
+    // `integrationOrder` names neither, so both fall through to the stable
+    // id-order tail. Supplied HIGH id first, so the comparator's `a.id > b.id`
+    // arm decides — a plain "keep the input order" implementation would return
+    // [B, A] and fail this.
+    expect(integrationOrderFor(changeSet([]), [b, a]).map((u) => u.id)).toEqual([UNIT_A, UNIT_B]);
+    expect(integrationOrderFor(changeSet([]), [a, b]).map((u) => u.id)).toEqual([UNIT_A, UNIT_B]);
+  });
+
+  it("dedupes a work unit supplied twice rather than integrating it twice", () => {
+    const a = unit(UNIT_A);
+    // A duplicated entry makes the comparator compare a unit with itself; the
+    // `seen` set is what stops the same candidate integrating twice, which would
+    // preflight it against a tip that already contains it.
+    expect(integrationOrderFor(changeSet([]), [a, a]).map((u) => u.id)).toEqual([UNIT_A]);
   });
 });
 
