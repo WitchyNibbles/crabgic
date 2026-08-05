@@ -1,12 +1,15 @@
 import { ConnectorError } from "@crabgic/contracts";
 import { assertAllowedJiraOperation, containsSecretShapedContent } from "@crabgic/connectors-jira";
 import {
+  checkGrafanaConnectionDoctor,
   createGrafanaProviderAdapter,
+  FAULT_INJECTION_MATRIX,
   GrafanaPlanPayloadStore,
   GrafanaRollbackSnapshotStore,
   redactSecretBearingObject,
   REDACTED_PLACEHOLDER,
 } from "@crabgic/connectors-grafana";
+import type { FaultInjectionScenario } from "@crabgic/connectors-grafana";
 import { mapHttpStatusToConnectorError } from "@crabgic/gateway";
 import type { GateHandler, GateVerdict } from "./types.js";
 import type { GateRegistry } from "./registry.js";
@@ -23,20 +26,11 @@ import type { GateRegistry } from "./registry.js";
  * exported guard/redaction primitives 16/18/20 already ship (not a
  * descriptive string, not a fake always-pass stub) — see each entry's own
  * comment for exactly what it re-exercises.
+ *
+ * Six entries. The tenant-boundary category is borne by ONE entry, phase
+ * 20's — see `grafanaTenantBoundaryVerify` and the ruling comment above the
+ * `grafana-tenant-boundary` entry for why there is no Jira twin.
  */
-
-const TENANT_BOUNDARY_PROVIDER = "gates";
-
-/** Generic, connector-agnostic tenant-boundary guard (this phase's own addition — no equivalent existed pre-21): a `RemoteMutationPlan.tenant` must match the caller's authorized tenant before a mutation may proceed. */
-export function assertTenantBoundary(planTenant: string, callerTenant: string): void {
-  if (planTenant !== callerTenant) {
-    throw ConnectorError.permission({
-      message: `remote mutation plan targets tenant "${planTenant}" but the caller is scoped to tenant "${callerTenant}" — refusing (tenant-boundary fixture)`,
-      provider: TENANT_BOUNDARY_PROVIDER,
-      retryable: false,
-    });
-  }
-}
 
 /** Exported for direct unit testing (`./security-fixture-manifest.test.ts`) of both the pass/fail shapes — not otherwise part of the phase's public consumption surface. */
 export function pass(command: string, detail: string): GateVerdict {
@@ -80,16 +74,38 @@ export function verdictFromAssertion(
 
 const JIRA_FORGED_ADMIN_DELETE_ID = "jira-forged-admin-delete";
 const GRAFANA_FORGED_ADMIN_DELETE_ID = "grafana-forged-admin-delete";
-const JIRA_TENANT_BOUNDARY_ID = "jira-tenant-boundary";
 const GRAFANA_TENANT_BOUNDARY_ID = "grafana-tenant-boundary";
 const JIRA_REDACTION_ID = "jira-redaction";
 const GRAFANA_REDACTION_ID = "grafana-redaction";
 const GATEWAY_REDACTION_ID = "gateway-redaction";
 
+/**
+ * RULING (tenant-boundary is Grafana-only, and that is a decision, not an
+ * oversight). There is exactly ONE tenant-boundary entry, phase 20's. The
+ * criterion's "16/18/20's security fixtures (… tenant boundary …)" reads as
+ * the fixtures those phases actually built, and only 20 built a
+ * tenant-boundary one (`roadmap/20-grafana-adapters.md` §Interfaces produced).
+ *
+ * The opposite case, named so the distinction is legible: a Jira entry would
+ * NOT be "one more gate" — it would be a gates-owned guard with no production
+ * call path, i.e. dead code cited as a bearer, which is the same vacuity this
+ * file is being repaired for. Nothing in `packages/connectors-jira` or
+ * `@crabgic/gateway` enforces a tenant boundary today: `plan.tenant` is
+ * derived (`jira-resource-client.ts:68`) and consumed only as a
+ * per-tenant+resource write-mutex key (`gateway/src/transport/http-client.ts:139`),
+ * and `ExternalConnection.tenantAllowlist`
+ * (`packages/contracts/src/contracts/external-connection.ts:85`) is declared
+ * but enforced by zero production code.
+ *
+ * The spec was silent on what to do when a named phase never shipped the
+ * fixture; the silence is filled by this ruling. A Jira entry returns only
+ * together with real Jira-side enforcement — and the residual is pinned by
+ * test T2 in `./security-fixture-manifest.test.ts`, so re-adding one is a
+ * deliberate edit rather than a drift.
+ */
 export const REQUIRED_SECURITY_FIXTURE_IDS = [
   JIRA_FORGED_ADMIN_DELETE_ID,
   GRAFANA_FORGED_ADMIN_DELETE_ID,
-  JIRA_TENANT_BOUNDARY_ID,
   GRAFANA_TENANT_BOUNDARY_ID,
   JIRA_REDACTION_ID,
   GRAFANA_REDACTION_ID,
@@ -115,6 +131,71 @@ const GRAFANA_FORGED_OPERATION_NAMES = [
 ] as const;
 
 const SECRET_MARKER_FOR_FIXTURE_CHECK = "sk-fixture-secret-should-never-leak-9f8e7d";
+
+/** Identity used by the positive control below: in-allowlist org, sufficient role — enforcement MUST accept it. */
+const CONTROL_ORG_ID = 7;
+
+/**
+ * The tenant-boundary gate. Drives phase 20's own `tenantBoundaryBreachScenario`
+ * out of `FAULT_INJECTION_MATRIX` — the scenario calls the real
+ * `checkGrafanaConnectionDoctor` with an out-of-allowlist org and self-verifies
+ * — and then runs a positive control through the doctor directly.
+ *
+ * Why the control exists: the scenario alone passes on ANY refusal, so an
+ * enforcement that refused everything would keep this gate green while being
+ * just as broken. The control asserts the opposite case — an in-allowlist
+ * identity IS accepted — so the gate can only pass when enforcement
+ * discriminates. (Brief: pin a "fails" ruling with a "does not fail" control;
+ * it lives inside the gate rather than only in a test, because the gate is the
+ * standing artifact.)
+ *
+ * Why an empty selection FAILS: a `for` loop over zero scenarios would pass
+ * vacuously, which is the exact class of defect this function replaces.
+ *
+ * Both parameters default to the real matrix and the real doctor; they are
+ * injectable for the direct unit tests (same convention as `verdictFromAssertion`).
+ * ⚠️ Injected-path tests cannot prove the DEFAULT path stays coupled to
+ * `packages/connectors-grafana` — the deletion probe
+ * `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt` is that proof.
+ */
+export async function grafanaTenantBoundaryVerify(
+  scenarios: readonly FaultInjectionScenario[] = FAULT_INJECTION_MATRIX,
+  doctor: typeof checkGrafanaConnectionDoctor = checkGrafanaConnectionDoctor,
+): Promise<GateVerdict> {
+  const selected = scenarios.filter((scenario) => scenario.category === "tenant-boundary");
+  if (selected.length === 0) {
+    return fail(
+      GRAFANA_TENANT_BOUNDARY_ID,
+      "no tenant-boundary scenario was selected from the fault-injection matrix — an empty selection would pass vacuously, so this gate refuses instead",
+    );
+  }
+
+  for (const scenario of selected) {
+    const result = await scenario.run();
+    if (!result.passed) {
+      return fail(
+        GRAFANA_TENANT_BOUNDARY_ID,
+        `tenant-boundary scenario "${scenario.name}" FAILED: ${result.detail}`,
+      );
+    }
+  }
+
+  const control = await doctor({
+    fetchTokenInfo: async () => ({ orgId: CONTROL_ORG_ID, role: "Editor" }),
+    orgAllowlist: [String(CONTROL_ORG_ID)],
+  });
+  if (!control.ok) {
+    return fail(
+      GRAFANA_TENANT_BOUNDARY_ID,
+      `positive control broken — enforcement refused an in-allowlist identity (org ${CONTROL_ORG_ID}, role Editor), so the refusals above prove nothing: ${control.reason}`,
+    );
+  }
+
+  return pass(
+    GRAFANA_TENANT_BOUNDARY_ID,
+    `refused as expected: ${selected.map((scenario) => scenario.name).join("; ")}; positive control accepted an in-allowlist identity (org ${control.orgId}, role ${control.role})`,
+  );
+}
 
 export const SECURITY_FIXTURE_MANIFEST: readonly SecurityFixtureEntry[] = [
   {
@@ -162,28 +243,15 @@ export const SECURITY_FIXTURE_MANIFEST: readonly SecurityFixtureEntry[] = [
     },
   },
   {
-    id: JIRA_TENANT_BOUNDARY_ID,
-    category: "tenant-boundary",
-    sourcePhase: "18",
-    blocking: true,
-    verify: async () =>
-      verdictFromAssertion(
-        JIRA_TENANT_BOUNDARY_ID,
-        () => assertTenantBoundary("tenant-a", "tenant-b"),
-        "cross-tenant Jira mutation plan refused",
-      ),
-  },
-  {
+    // Re-exercises 20's `tenantBoundaryBreachScenario` (out-of-allowlist org
+    // refused by the real `checkGrafanaConnectionDoctor`) plus a positive
+    // control that an in-allowlist identity is accepted. See the RULING above
+    // `REQUIRED_SECURITY_FIXTURE_IDS` for why there is no Jira twin.
     id: GRAFANA_TENANT_BOUNDARY_ID,
     category: "tenant-boundary",
     sourcePhase: "20",
     blocking: true,
-    verify: async () =>
-      verdictFromAssertion(
-        GRAFANA_TENANT_BOUNDARY_ID,
-        () => assertTenantBoundary("tenant-a", "tenant-b"),
-        "cross-tenant Grafana mutation plan refused",
-      ),
+    verify: async () => grafanaTenantBoundaryVerify(),
   },
   {
     id: JIRA_REDACTION_ID,

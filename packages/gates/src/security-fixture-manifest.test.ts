@@ -161,9 +161,7 @@ describe("tenant-boundary gate is derived from phase 20's real breach scenario",
     // and no Jira/gateway tenant enforcement exists to gate, so a Jira entry
     // would be dead code cited as a bearer. Re-adding one requires real
     // Jira-side enforcement AND a deliberate edit here.
-    const tenantEntries = SECURITY_FIXTURE_MANIFEST.filter(
-      (e) => e.category === "tenant-boundary",
-    );
+    const tenantEntries = SECURITY_FIXTURE_MANIFEST.filter((e) => e.category === "tenant-boundary");
     expect(tenantEntries).toHaveLength(1);
     expect(tenantEntries[0]!.id).toBe("grafana-tenant-boundary");
     expect(tenantEntries[0]!.sourcePhase).toBe("20");
