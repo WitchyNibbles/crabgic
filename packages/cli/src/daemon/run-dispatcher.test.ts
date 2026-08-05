@@ -54,6 +54,7 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
+import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
 import { createRealRunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
@@ -208,6 +209,11 @@ function newDispatcher(
     // Seams at the git boundary: no clone, no freeze, no `worktree add`.
     prepareRun: () => Promise.resolve("a".repeat(40)),
     createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+    // ...and the git half of the post-completion pipeline, for the same reason.
+    // NOT the gate registry, the `final_verifying` firing or the
+    // verdict → lifecycle mapping: those have no seam, so every completed drive
+    // in this file still fires the composed gate for real.
+    postCompletionGitEffects: createFakePostCompletionGitEffects(),
     ...overrides,
   });
 }
@@ -1100,19 +1106,74 @@ describe("createRealRunDispatcher — a published change set", () => {
   /**
    * Same-run resume, observed end to end (scheduler-level seeding is pinned
    * in `run-driver.test.ts`; this pins the dispatcher path). Same daemon,
-   * SAME RUN: dispatch a unit to success, then `resume` the run — the exact
-   * re-drive crash recovery and limit-park re-dispatch perform. Nothing
-   * updates the stored WorkUnit's `attemptStatus`, but `driveRun` seeds from
-   * the journal, so the already-succeeded unit is not re-selected and no
-   * second engine is stood up. (This is what the now-removed in-memory
-   * attempt cache used to provide; journal-seeding does it restart-safely.)
+   * SAME RUN: nothing updates the stored WorkUnit's `attemptStatus`, but
+   * `driveRun` seeds from the journal, so an already-succeeded unit is not
+   * re-selected on a re-drive and no second engine is stood up. (This is what
+   * the now-removed in-memory attempt cache used to provide; journal-seeding
+   * does it restart-safely.)
+   *
+   * REWRITTEN 2026-08-05, and the reason matters. This case used to drive a
+   * SINGLE unit to success and then `resume` the same run twice — which worked
+   * only because an all-succeeded run stayed wedged in `running` forever, the
+   * exact deferral `../daemon/post-completion-pipeline.ts` closes. A completed
+   * drive now walks to `published_local`, an absorbing state, so `resume` on
+   * that run is correctly refused and the old scenario is unreachable. The
+   * CLAIM is unchanged and is now carried by a scenario that still exists: two
+   * units, one succeeding and one rate-limit parked with a reset window in the
+   * future, so drive 1 ends `parked`, the run stays legitimately in flight, and
+   * the resume re-drives it. If the succeeded unit were re-selected it would
+   * take a THIRD adapter.
    */
-  it("a same-daemon, same-run resume does not re-run the succeeded unit: no second adapter", async () => {
-    const deps = buildDeps({ ...fullySeeded(), run: false });
+  it("a same-daemon, same-run resume does not re-run the succeeded unit: no third adapter", async () => {
+    const PARKED_UNIT_ID = "55555555-5555-4555-8555-555555555555";
+    const SESSION = "66666666-6666-4666-8666-666666666666";
+    const worktreePath = join(dir, "worktree");
+    let clock = 1000; // strictly before the parked unit's reset window
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: PARKED_UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
     const adaptersCreatedFor: string[] = [];
     const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
       createAdapter: (ctx: { workUnit: { id: string } }) => {
         adaptersCreatedFor.push(ctx.workUnit.id);
+        if (ctx.workUnit.id === PARKED_UNIT_ID) {
+          return Promise.resolve(
+            new FakeEngineAdapter(
+              buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                failure: {
+                  kind: "limitSignal",
+                  payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                },
+                onResume: buildFakeEngineScript({
+                  sessionId: SESSION,
+                  projectDirectory: worktreePath,
+                  worktreePath,
+                  structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+                }),
+              }),
+            ),
+          );
+        }
         return Promise.resolve(
           new FakeEngineAdapter(
             buildFakeEngineScript({
@@ -1125,38 +1186,25 @@ describe("createRealRunDispatcher — a published change set", () => {
 
     const first = await dispatcher.dispatch(CHANGE_SET_ID);
     expect(first.accepted).toBe(true);
-    // Drive 1 has run once the unit's terminal transition is journaled.
-    await vi.waitFor(
-      async () => {
-        const transitions: unknown[] = [];
-        for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
-          transitions.push(entry);
-        }
-        expect(transitions.length).toBeGreaterThanOrEqual(1);
-      },
-      { timeout: 10_000 },
-    );
-    expect(adaptersCreatedFor).toEqual([UNIT_ID]);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
 
-    // Resume the SAME run once the in-flight claim is released.
-    const runId = (first as { runId?: string }).runId!;
-    await vi.waitFor(
-      async () => {
-        expect((await dispatcher.resume(runId)).accepted).toBe(true);
-      },
-      { timeout: 10_000 },
-    );
-    // Drive 2 settled once the claim is free again (a third resume is
-    // accepted). A hit journals nothing, so the claim is the only signal.
-    await vi.waitFor(
-      async () => {
-        expect((await dispatcher.resume(runId)).accepted).toBe(true);
-      },
-      { timeout: 10_000 },
-    );
-    // THE FACT: the succeeded unit never got a second engine across either
-    // resume — it was journal-seeded `succeeded` and not re-selected.
-    expect(adaptersCreatedFor).toEqual([UNIT_ID]);
+    // Drive 1 has settled: one unit succeeded, the other parked. The run stays
+    // `running` because a parked run is resumable, not finished.
+    await dispatcher.whenIdle();
+    expect([...adaptersCreatedFor].sort()).toEqual([UNIT_ID, PARKED_UNIT_ID].sort());
+    expect(deps.runs.get(runId)?.runState).toBe("running");
+
+    // The reset window has passed — the resume re-drives the SAME run.
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // THE FACT: exactly two adapters across BOTH drives. The succeeded unit was
+    // journal-seeded `succeeded` and never re-selected; the parked one was
+    // resumed through its RETAINED adapter rather than given a fresh one.
+    expect(adaptersCreatedFor).toHaveLength(2);
+    expect([...adaptersCreatedFor].sort()).toEqual([UNIT_ID, PARKED_UNIT_ID].sort());
   });
 });
 
@@ -1775,22 +1823,85 @@ describe("createRealRunDispatcher — resume of an all-terminal run", () => {
   });
 
   /**
-   * THE SCOPE GUARD. An all-succeeded run in `running` is the documented
-   * `completed → verifying` deferral, not a dead end. Refusing it would change
-   * what a green test elsewhere measures and would pre-empt a wiring decision
-   * this fix has no business making.
+   * An all-succeeded run in `running` is still accepted, and since 2026-08-05
+   * for a REASON rather than in lieu of one.
+   *
+   * It used to be "the documented `completed → verifying` deferral, not a dead
+   * end" — accepted because refusing would have pre-empted a wiring decision.
+   * That wiring now exists (`./post-completion-pipeline.ts`), so the re-drive
+   * genuinely advances the run instead of leaving it wedged in `running`
+   * forever. Where it advances TO is the honest part: these units succeeded
+   * under a PREVIOUS daemon, so their attempt worktrees are not retained here
+   * and their work cannot be collected — the run settles `failed`, which makes
+   * the change set retryable, rather than publishing a candidate that silently
+   * omits the work it claims to carry.
    */
-  it("does not refuse an all-succeeded run — that is the verifying deferral, not a dead end", async () => {
+  it("accepts an all-succeeded run in `running` and settles it — the wedge is gone", async () => {
     const deps = runningRun();
     await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
     await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "succeeded", RUN_ID);
 
+    const driveErrors: string[] = [];
     const dispatcher = newDispatcher(deps, {
       createAdapter: () => new Promise(() => undefined),
+      onDriveError: (_runId: string, err: unknown) => {
+        driveErrors.push(err instanceof Error ? err.message : String(err));
+      },
     });
 
     expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+    await dispatcher.whenIdle();
+    // NOT `running`: the wedge this pipeline exists to remove.
+    expect(deps.runs.get(RUN_ID)?.runState).not.toBe("running");
+    expect(deps.runs.get(RUN_ID)?.runState).toBe("failed");
+    // Attributable: the refusal names the unit whose work could not be collected.
+    expect(driveErrors.join(" ")).toContain(UNIT_ID);
+    expect(driveErrors.join(" ")).toMatch(/worktree is not retained/i);
   });
+
+  /**
+   * THE THIRD DEAD END, and the residual it pins. A run left mid-pipeline —
+   * `verifying`, `integrating` or `final_verifying` — is what a daemon crash
+   * during post-completion leaves behind. Its work units all succeeded, so
+   * `classifyResume`'s two dead ends do not see it; and the attempt worktrees
+   * the collect step reads are held only in the process that started the
+   * pipeline. Restart-safe pipeline resume is deliberately deferred, so this
+   * must REFUSE and name the exit rather than answer `accepted: true` to a
+   * re-drive that cannot advance it.
+   */
+  it.each(["verifying", "integrating", "final_verifying"] as const)(
+    "refuses a resume of a run stranded mid-pipeline in %s, and names the exit",
+    async (stranded) => {
+      const deps = buildDeps({ ...fullySeeded(), run: false });
+      deps.runs.upsert({
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        runState: stranded,
+        updatedAt: "2026-08-05T00:00:00.000Z",
+      });
+      await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+      await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "succeeded", RUN_ID);
+
+      let adaptersCreated = 0;
+      const dispatcher = newDispatcher(deps, {
+        createAdapter: () => {
+          adaptersCreated += 1;
+          return new Promise(() => undefined);
+        },
+      });
+
+      const result = await dispatcher.resume(RUN_ID);
+      expect(result.accepted).toBe(false);
+      // The refusal is ATTRIBUTABLE: it names the state, the reason a re-drive
+      // cannot help, and `cancel` as the exit — not a generic "cannot resume".
+      expect(result.reason).toContain(stranded);
+      expect(result.reason).toMatch(/attempt worktrees/i);
+      expect(result.reason).toContain(`crabgic cancel ${RUN_ID}`);
+      // And no drive was started.
+      expect(adaptersCreated).toBe(0);
+      expect(deps.runs.get(RUN_ID)?.runState).toBe(stranded);
+    },
+  );
 });
 
 /**

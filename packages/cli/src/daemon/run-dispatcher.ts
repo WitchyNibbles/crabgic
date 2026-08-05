@@ -99,6 +99,12 @@ import {
   type WorkerDispatchContext,
 } from "@crabgic/scheduler";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
+import { composeGateRegistry } from "./compose-gate-registry.js";
+import {
+  createRealPostCompletionGitEffects,
+  type PostCompletionGitEffects,
+} from "./post-completion-git-effects.js";
+import { runPostCompletionPipeline, type PostCompletionStep } from "./post-completion-pipeline.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
 const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
@@ -203,6 +209,23 @@ export interface RealRunDispatcherOptions {
    * unit) deterministically. Defaults to the real wall clock.
    */
   readonly nowSeconds?: () => number;
+  /**
+   * Seam: the GIT half of the post-completion pipeline (collect / integrate /
+   * publish). Defaults to `createRealPostCompletionGitEffects` over the control
+   * clone and the user checkout. Injected by tests that script a succeeding
+   * worker over fake git seams, so they need no real repository.
+   *
+   * THE SEAM STOPS HERE, AND THAT IS THE POINT. There is deliberately NO option
+   * to substitute the gate registry, the `final_verifying` firing, or the
+   * verdict → run-lifecycle mapping: `composeGateRegistry` is called
+   * unconditionally below and the pipeline owns the mapping. A seam above the
+   * firing would let a test supply its own registry and pass while production
+   * registered nothing — the exact harness-only reach defect
+   * `14-gate-registry-never-composed.md` documents.
+   */
+  readonly postCompletionGitEffects?: PostCompletionGitEffects;
+  /** Test-only OBSERVER of the pipeline's internal checkpoints (`onStep`, the same pattern 07's git primitives use). Cannot substitute, skip or alter anything. */
+  readonly onPostCompletionStep?: (step: PostCompletionStep) => void | Promise<void>;
 }
 
 type ResolvedRun =
@@ -213,6 +236,17 @@ type ResolvedRun =
       readonly envelope: AuthorizationEnvelope;
     }
   | { readonly ok: false; readonly reason: string };
+
+/**
+ * One settled drive, plus the two values the post-completion pipeline needs and
+ * `drive` is the only place that knows: the run's ONE frozen base object id, and
+ * the control clone the candidates and the integration ref live in.
+ */
+interface DrivenRun {
+  readonly result: DriveRunResult;
+  readonly baseObjectId: string;
+  readonly controlDir: string;
+}
 
 type PolicyGate =
   | { readonly ok: true; readonly policy: EnvelopePolicy; readonly digest: string }
@@ -257,6 +291,40 @@ function terminalDeadEndReason(
     `outcome (${counts}), so a re-drive has nothing left to dispatch and resuming cannot ` +
     `advance it. Waiting will not change that — cancel the run ` +
     `(\`crabgic cancel ${runId}\`) and dispatch the change set again.`
+  );
+}
+
+/**
+ * The three non-absorbing run-lifecycle states `./post-completion-pipeline.ts`
+ * owns. A run resting in one of them is mid-pipeline: its drive completed, the
+ * pipeline started, and this daemon then stopped (a crash, or a hard shutdown).
+ */
+const PIPELINE_STAGES: readonly RunLifecycleState[] = [
+  "verifying",
+  "integrating",
+  "final_verifying",
+];
+
+/**
+ * The refusal a mid-pipeline `resume` earns, in the register PR #46 established:
+ * name what is in the way, say why re-driving cannot help, and name the exit
+ * that works.
+ *
+ * A RE-DRIVE CANNOT ADVANCE THIS RUN, and the reason is structural rather than a
+ * missing feature: the pipeline collects each unit's work from the attempt
+ * worktree path held in this dispatcher's in-process retained map, which does
+ * not survive a restart; and `verifying → verifying` is not an edge, so a
+ * re-drive that reached the pipeline would fail on its first transition anyway.
+ * Answering `accepted: true` here would be the same lie PR #46 removed from the
+ * stranded-park path. Restart-safe pipeline resume (durable worktree-ref
+ * recovery) is the deliberate follow-on.
+ */
+function midPipelineReason(runId: string, state: RunLifecycleState): string {
+  return (
+    `run "${runId}" cannot be resumed: it is ${state}, mid-way through post-completion ` +
+    `verification/integration, and the attempt worktrees that work would be collected from are ` +
+    `held only in the daemon process that started the pipeline. Re-driving cannot advance it — ` +
+    `cancel the run (\`crabgic cancel ${runId}\`) and dispatch the change set again.`
   );
 }
 
@@ -312,6 +380,16 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    */
   const inFlight = new Set<string>();
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
+
+  /**
+   * THE gate registry — one instance per dispatcher, built unconditionally, with
+   * no option to substitute it. This is the production composition root phase
+   * 14's registry never had (defect `14-gate-registry-never-composed.md`:
+   * `createGateRegistry` had zero production call sites). Deleting this line
+   * makes `fireFinalCandidateVerification`'s `requireAtLeastOne` throw and every
+   * completed run fail closed, which is what the deletion probe measures.
+   */
+  const gateRegistry = composeGateRegistry(deps);
 
   /**
    * The detached drives themselves, keyed by runId — the promise half of what
@@ -477,7 +555,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     workUnits: readonly WorkUnit[],
     envelope: AuthorizationEnvelope,
     policy: EnvelopePolicy,
-  ): Promise<DriveRunResult> {
+  ): Promise<DrivenRun> {
     const controlDir = resolveGitControlDir(xdgEnv, projectHash);
     const worktreesRootDir = resolveWorktreesRootDir(xdgEnv, projectHash);
 
@@ -544,7 +622,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       cacheRoot: `${resolveXdgCacheHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
     });
 
-    return await driveRun(
+    const result = await driveRun(
       { runId, changeSetId: changeSet.id, workUnits },
       {
         journal: deps.journal,
@@ -709,6 +787,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         },
       },
     );
+    // `baseObjectId` and `controlDir` are resolved HERE and nowhere else, so the
+    // post-completion pipeline integrates against the same frozen base every
+    // attempt was cut from rather than re-deriving it.
+    return { result, baseObjectId, controlDir };
   }
 
   /**
@@ -731,11 +813,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * onto the declared `running → failed`/`running → cancelled` edges needs
    * none of the deferred `verifying` wiring.
    *
-   * `completed` and `parked` still stay `running`, on unchanged grounds: a
-   * completed DAG (now genuinely all-SUCCEEDED) has `verifying` as its
-   * successor, owned by the verification pipeline rather than invented here;
-   * and a parked run is resumable and must stay in-flight for `resume` to
-   * reach it.
+   * `completed` NO LONGER stays `running` (2026-08-05). Its successor
+   * `verifying` was "owned by the verification pipeline rather than invented
+   * here" — and that pipeline did not exist, so no run had ever reached
+   * `published_local` and every fully-successful run sat in `running` until an
+   * operator cancelled it. `./post-completion-pipeline.ts` is that pipeline;
+   * `completed` now hands off to it from `beginDriving`'s settle chain, which is
+   * why this function still returns `undefined` for it — the pipeline owns the
+   * whole walk INCLUDING its terminal, so there is no single state to return.
+   * Defect record: `14-gate-registry-never-composed.md`.
+   *
+   * `parked` still stays `running`, on unchanged grounds: a parked run is
+   * resumable and must stay in-flight for `resume` to reach it.
    */
   function terminalStateFor(stopped: DriveRunResult["stopped"]): RunLifecycleState | undefined {
     switch (stopped) {
@@ -791,6 +880,67 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   }
 
   /**
+   * Runs the post-completion pipeline for an all-SUCCEEDED drive, and reports
+   * anything short of publication through `onDriveError`.
+   *
+   * NEVER REJECTS for a pipeline outcome, and rejects for nothing else it can
+   * help: this runs on the not-awaited drive chain. A `failed`/`blocked` outcome
+   * has already been journaled by the pipeline itself (it owns its own
+   * terminals), so there is nothing for `settleRunState` to add — only the
+   * operator-facing reason, which is what `onDriveError` carries. A genuine
+   * THROW out of the pipeline (a journal write failing, a git binary missing)
+   * propagates to `beginDriving`'s own `.catch`, which settles the run `failed`
+   * on the legal `verifying|integrating|final_verifying → failed` edge.
+   */
+  async function runCompletedPipeline(
+    runId: string,
+    resolved: Extract<ResolvedRun, { ok: true }>,
+    driven: DrivenRun,
+  ): Promise<void> {
+    const worktreePathByUnitId = new Map<string, string>();
+    for (const [workUnitId, retained] of retainedByRun.get(runId) ?? []) {
+      worktreePathByUnitId.set(workUnitId, retained.worktreePath);
+    }
+
+    const outcome = await runPostCompletionPipeline(
+      {
+        runId,
+        changeSet: resolved.changeSet,
+        workUnits: resolved.workUnits,
+        baseObjectId: driven.baseObjectId,
+        statusById: driven.result.statusById,
+        worktreePathByUnitId,
+      },
+      {
+        journal: deps.journal,
+        runs: deps.runs,
+        requirements: deps.requirements,
+        workUnitRegistry: deps.workUnits,
+        // NOT injectable — see `RealRunDispatcherOptions.postCompletionGitEffects`.
+        registry: gateRegistry,
+        git:
+          options.postCompletionGitEffects ??
+          createRealPostCompletionGitEffects({
+            plumbing,
+            controlDir: driven.controlDir,
+            projectDir,
+            serviceEmail,
+            journal: deps.journal,
+          }),
+        ...(options.onPostCompletionStep !== undefined
+          ? { onStep: options.onPostCompletionStep }
+          : {}),
+      },
+    );
+
+    if (outcome.status === "published") return;
+    onDriveError(
+      runId,
+      new Error(`run "${runId}" did not publish (${outcome.status}): ${outcome.reason}`),
+    );
+  }
+
+  /**
    * Hands the resolved DAG to the driver in the background and reports
    * ownership immediately. Shared by `dispatch` and `resume` so the
    * not-awaited discipline, the error routing and the in-flight bookkeeping
@@ -810,15 +960,22 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     // though: `drain` has to be able to wait for exactly this promise, and
     // "not awaited by the request" is a different thing from "unreachable".
     const settled = drive(runId, resolved.changeSet, resolved.workUnits, resolved.envelope, policy)
-      .then(async (result) => {
+      .then(async (driven) => {
         // The run's lifecycle state must reflect how its drive ended, or a
         // failed/blocked run stays `running` and blocks every retry (F5).
-        const to = terminalStateFor(result.stopped);
+        const to = terminalStateFor(driven.result.stopped);
         if (to !== undefined) await settleRunState(runId, changeSetId, to);
+        // An all-SUCCEEDED drive hands off to the post-completion pipeline,
+        // which owns the rest of the walk to `published_local`. It runs BEFORE
+        // `clearRetainedRun` below, because the retained per-run map is where
+        // each unit's attempt worktree path lives and the collect step needs it.
+        else if (driven.result.stopped === "completed") {
+          await runCompletedPipeline(runId, resolved, driven);
+        }
         // Retained adapters are kept ONLY while the run is parked (so a later
         // `resume` can continue the session); any other outcome means the run
         // will not resume those sessions, so free them now.
-        if (result.stopped !== "parked") clearRetainedRun(runId);
+        if (driven.result.stopped !== "parked") clearRetainedRun(runId);
       })
       .catch(async (err: unknown) => {
         onDriveError(runId, err);
@@ -964,8 +1121,15 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * work and a parked unit whose adapter IS retained is resumable, so either
    * makes the whole resume worth accepting regardless of what else the run
    * holds. Stranded parks come next. The terminal dead end is last, and an
-   * all-SUCCEEDED run is deliberately NOT one of them: that run is waiting on
-   * the `completed → verifying` wiring, a deferral, not a dead end.
+   * all-SUCCEEDED run is deliberately NOT one of them.
+   *
+   * An all-SUCCEEDED run in `running` used to be "waiting on the `completed →
+   * verifying` wiring, a deferral, not a dead end". Since 2026-08-05 that wiring
+   * exists, so re-driving such a run genuinely advances it: `driveRun` reports
+   * `completed` again and the settle chain hands off to the post-completion
+   * pipeline. Accepting it is now correct for a REASON rather than in lieu of
+   * one. A run already INSIDE the pipeline is refused before this function is
+   * reached — see `PIPELINE_STAGES`/`midPipelineReason`.
    */
   async function classifyResume(
     runId: string,
@@ -1154,6 +1318,12 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           accepted: false,
           reason: `run "${runId}" is ${run.runState} and cannot be resumed`,
         };
+      }
+      // Mid-pipeline is a THIRD dead end, alongside `classifyResume`'s two — and
+      // it is decided from the run's own state rather than from its work units,
+      // because every unit already succeeded. See `midPipelineReason`.
+      if (PIPELINE_STAGES.includes(run.runState)) {
+        return { accepted: false, reason: midPipelineReason(runId, run.runState) };
       }
       // Claimed synchronously, for the same reason `dispatch` does it (F1):
       // an `async` body still runs to its FIRST `await` synchronously, so
