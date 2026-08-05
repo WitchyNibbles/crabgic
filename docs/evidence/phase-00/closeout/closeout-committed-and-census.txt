@@ -1,0 +1,272 @@
+PHASE-00 CLOSEOUT — COMMITTEDNESS PROOFS, VERDICT CENSUS, UNRESOLVED CENSUS
+===========================================================================
+RULING-3 header
+---------------
+date (UTC):    2026-08-05T19:31:42Z
+UPSTREAM BASE (stable — resolves for any reader, now and after merge): 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+commands:      echoed verbatim inline
+exit status:   per-command, inline. ZERO live invocations were made for phase 00 — nothing in this
+               section required one. Not one of the eight `spikes/*.mjs` scripts was re-run.
+
+WHY NO SPIKE WAS RE-RUN. Spikes 01-06 and 08 are LIVE (they invoke the engine). Their verdicts and
+fixtures are already committed and merged at engine 2.1.218, inside the accepted range, and phase
+00's criteria ask for exactly that committed evidence. Re-running them would spend roughly 30 live
+invocations to reproduce a record that already exists. Spike 07 makes zero live calls by design,
+but it only re-scans the other scripts' fixtures, so re-running it would add nothing that the
+committed `07-ratelimit.verdicts.json` does not already say. Phase 00 closes for ZERO spend.
+
+
+SECTION 1 — "COMMITTED" IS A CLAIM ABOUT GIT, NOT ABOUT A WORKING TREE (criteria c1 and c3)
+===========================================================================================
+`ls` cannot distinguish a gitignored build output from a committed file. Every fixture c1 and c3
+rest on is therefore proved with `git log` over the path plus `git cat-file -e HEAD:<path>`.
+
+$ git log --oneline --all -- spikes/fixtures/01-auth.verdicts.json | wc -l
+2   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/01-auth.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/02-hermeticity.verdicts.json | wc -l
+3   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/02-hermeticity.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/03-permissions.verdicts.json | wc -l
+2   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/03-permissions.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/04-sandbox.verdicts.json | wc -l
+4   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/04-sandbox.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/05-structured-output.verdicts.json | wc -l
+2   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/05-structured-output.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/06-sessions.verdicts.json | wc -l
+3   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/06-sessions.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/07-ratelimit.verdicts.json | wc -l
+4   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/07-ratelimit.verdicts.json
+exit=0   <- the blob exists AT HEAD
+$ git log --oneline --all -- spikes/fixtures/08-tool-catalog-env.verdicts.json | wc -l
+2   <- non-zero: the path HAS history, i.e. it is genuinely committed
+$ git cat-file -e HEAD:spikes/fixtures/08-tool-catalog-env.verdicts.json
+exit=0   <- the blob exists AT HEAD
+  ^ All EIGHT verdict fixtures are committed and present at HEAD. c1 names SEVEN probe scripts
+    (roadmap/00's seven In-scope probes = spikes 01-07); 08 is the orchestrator-directed
+    tool-taxonomy follow-up that baseline §4 records, listed here for completeness.
+
+The sanitized transcript/catalog/payload fixtures c3's index names, same treatment:
+
+$ git cat-file -e HEAD:spikes/fixtures/02-hermeticity.transcript.sanitized.jsonl  &&  git log --oneline --all -- spikes/fixtures/02-hermeticity.transcript.sanitized.jsonl | wc -l
+exit=0   history=5
+$ git cat-file -e HEAD:spikes/fixtures/03-permissions.transcripts.sanitized.json  &&  git log --oneline --all -- spikes/fixtures/03-permissions.transcripts.sanitized.json | wc -l
+exit=0   history=3
+$ git cat-file -e HEAD:spikes/fixtures/04-sandbox.transcripts.sanitized.json  &&  git log --oneline --all -- spikes/fixtures/04-sandbox.transcripts.sanitized.json | wc -l
+exit=0   history=5
+$ git cat-file -e HEAD:spikes/fixtures/05-structured-output.transcripts.sanitized.json  &&  git log --oneline --all -- spikes/fixtures/05-structured-output.transcripts.sanitized.json | wc -l
+exit=0   history=3
+$ git cat-file -e HEAD:spikes/fixtures/06-sessions.raw.sanitized.json  &&  git log --oneline --all -- spikes/fixtures/06-sessions.raw.sanitized.json | wc -l
+exit=0   history=3
+$ git cat-file -e HEAD:spikes/fixtures/08-tool-catalog-env.catalogs.sanitized.json  &&  git log --oneline --all -- spikes/fixtures/08-tool-catalog-env.catalogs.sanitized.json | wc -l
+exit=0   history=2
+
+$ ls spikes/fixtures | wc -l ; git ls-files spikes/fixtures | wc -l
+18
+18
+exit=0   <- the two counts agree, so NOTHING in spikes/fixtures/ is an untracked local artifact
+
+$ git check-ignore -v spikes/fixtures/01-auth.verdicts.json
+exit=1   <- 1 = NOT gitignored
+
+SECTION 2 — THE PRINTED VERDICT SHAPE (c1: "prints a PASS/FAIL/UNRESOLVED verdict")
+==================================================================================
+c1 asks that each script PRINT a PASS/FAIL/UNRESOLVED verdict and that the committed output be
+referenced from the baseline. The committed `*.verdicts.json` files ARE those printed verdict
+blocks. Enumerated mechanically rather than asserted:
+
+$ for f in spikes/fixtures/0[1-7]-*.verdicts.json; do echo -n "$f  "; node -e "..."; done
+spikes/fixtures/01-auth.verdicts.json                n=2  PASS=2   allowed-vocabulary-only=true
+spikes/fixtures/02-hermeticity.verdicts.json         n=4  PASS=4   allowed-vocabulary-only=true
+spikes/fixtures/03-permissions.verdicts.json         n=8  PASS=8   allowed-vocabulary-only=true
+spikes/fixtures/04-sandbox.verdicts.json             n=6  PASS=6   allowed-vocabulary-only=true
+spikes/fixtures/05-structured-output.verdicts.json   n=2  PASS=2   allowed-vocabulary-only=true
+spikes/fixtures/06-sessions.verdicts.json            n=4  PASS=4   allowed-vocabulary-only=true
+spikes/fixtures/07-ratelimit.verdicts.json           n=3  PASS=1 UNRESOLVED=2   allowed-vocabulary-only=true
+exit=0
+
+$ node -e "<sum the same over all 8 scripts>"
+files=10  sub-probes=39  PASS=36 UNRESOLVED=3
+files: 01-auth.verdicts.json 02-hermeticity.verdicts.json 03-permissions.verdicts.json 04-sandbox.verdicts.json 05-structured-output.verdicts.json 06-sessions.verdicts.json 07-ratelimit.verdicts.json 08-tool-catalog-env.verdicts.json 09-human-interaction-tool.verdicts.json 10-stop-hook.verdicts.json
+exit=0
+
+SECTION 3 — THE COMMITTED FIXTURES INDEPENDENTLY REPRODUCE BASELINE §9's TALLY
+=============================================================================
+This is the cross-check that makes c1 non-vacuous. §9 states, as the FINAL/citable tally:
+"30 PASS, 2 UNRESOLVED, 0 FAIL, across the same 32 recorded sub-probes in 8 scripts". That number
+is re-derived here from the committed fixture bytes, not read back out of the prose:
+
+$ node -e "<tally the EIGHT baseline-suite scripts, 01-08, excluding 09/10 per §9's own carve-out>"
+scripts=8  sub-probes=32  PASS=30  UNRESOLVED=2  FAIL=0
+exit=0
+  ^ 8 scripts, 32 sub-probes, 30 PASS, 2 UNRESOLVED, 0 FAIL — EXACTLY §9's tally, recomputed from
+    the committed bytes. The prose and the fixtures agree; neither is taking the other's word.
+
+  Spikes 09 and 10 add 4 and 3 sub-probes respectively (39 total across all ten fixture files, with
+  3 UNRESOLVED). §9 line 402 explicitly carves them out: "The two facts that round did record
+  (§14, §15) were gathered outside the eight-script spike suite — like §12's plugin-key fact — and
+  are deliberately NOT counted among the 32 recorded sub-probes." The extra UNRESOLVED belongs to
+  spike 09 and is baseline §18.2's interactive-session `AskUserQuestion` item, which carries its own
+  mitigation at §18's line 694. Naming it here so the 32-vs-39 gap is not mistaken for a
+  discrepancy.
+
+$ node -e "<name the UNRESOLVED sub-probe ids across ALL ten fixture files>"
+07-ratelimit.verdicts.json  id=ratelimit.trigger-safety-and-simulation-strategy
+07-ratelimit.verdicts.json  id=ratelimit.exhausted-variant-shape
+09-human-interaction-tool.verdicts.json  id=human-interaction-tool.present-interactive
+exit=0
+  ^ The two that §9 counts are 07's, exactly as §9 line 404 names them. Each carries an explicit
+    MITIGATION note in its own section: baseline §8 line 378 for the exhausted-variant shape, and
+    the same §8 block plus line 343 ("No dedicated live trigger was run") for trigger-safety.
+
+SECTION 4 — c5 CONJUNCT 1: EVERY UNRESOLVED ITEM IN THE DOC CARRIES A MITIGATION
+===============================================================================
+c5 reads: "Every `UNRESOLVED:` entry in the baseline doc carries an explicit mitigation note; no
+downstream phase may cite an UNRESOLVED item as settled fact (Hard Rule 1)."
+
+Conjunct 1, taken on the STRONGEST available reading (every UNRESOLVED item anywhere in the doc,
+not merely the literal `UNRESOLVED:` heading form):
+
+$ grep -n 'MITIGATION' docs/engine-baseline.md
+116:**Re-baseline (2026-07-24, engine 2.1.218): catalog explicitly re-captured, BYTE-IDENTICAL.** Spike 08 was re-run 
+118:- **Residual MITIGATION (downgraded from blocking):** a one-time catalog capture on a clean, non-dev-workstation i
+270:- **MITIGATION (partial UNRESOLVED):** phase 06 should treat "no `structured_output` field, `subtype: success`" as
+378:- **MITIGATION:** the next time any worker naturally hits a limit while streaming, capture the raw message sequenc
+694:**MITIGATION (non-blocking, belongs on §11's owed list):** capture the interactive catalog properly before this f
+exit=0
+
+$ grep -cn 'UNRESOLVED:' docs/engine-baseline.md   # the literal colon form
+372:### Still UNRESOLVED: the exhausted/blocked variant
+  ^ Pairing, item by item:
+      §5  line 268 (`error_max_structured_output_retries` retry-exhaustion "remains
+                    UNRESOLVED/unobserved")            -> MITIGATION at line 270
+      §8  line 372 ("### Still UNRESOLVED: the exhausted/blocked variant" — the one occurrence of
+                    the literal `UNRESOLVED:` form)     -> MITIGATION at line 378
+      §8/§9 `ratelimit.trigger-safety-and-simulation-strategy` (line 404)
+                                                        -> the documented simulation/no-trigger
+                                                           strategy at line 343 + §8's line-378
+                                                           block ("Never trigger deliberately on
+                                                           the owner's subscription; a
+                                                           dedicated/metered test account or
+                                                           off-hours window is the only acceptable
+                                                           deliberate path.")
+      §18.2 line 685 (interactive `AskUserQuestion` "recorded as **UNRESOLVED**, not PASS")
+                                                        -> MITIGATION at line 694
+      §4.4 line 118  (residual catalog-capture mitigation) -> satisfied, recorded at line 116/442
+    Four UNRESOLVED items, four mitigation notes. Conjunct 1 HOLDS on both the narrow (literal
+    `UNRESOLVED:`) and the broad (every UNRESOLVED item) reading.
+
+SECTION 5 — c5 CONJUNCT 2: THE NOTATION-AWARE CENSUS (a repo-wide NEGATIVE claim)
+================================================================================
+Conjunct 2 — "no downstream phase may cite an UNRESOLVED item as settled fact" — is a repo-wide
+negative. A single grep would return a SMALLER answer with no error, which is the failure shape
+that reads as "clean". So it was censused by NOTATION, not by one pattern.
+
+Notations covered, each searched over the whole tracked tree (`git grep` sees no `node_modules`),
+with directory pathspecs and grep-side filtering rather than a `packages/*/src` wildmatch — that
+form does not cross `/` and silently skips nested paths:
+
+  rejected (bare, quote-agnostic)  236 files / 542 lines
+  RATE_LIMIT                        17 files /  91 lines
+  rate_limit                       123 files / 388 lines
+  rateLimit                         33 files / 124 lines
+  limitSignal                       41 files
+  detectLimitErrorString             5 files
+  exhausted                         61 files / 107 lines
+  error_max_structured_output_retries 7 files / 15 lines
+  AskUserQuestion                   18 files / 20 lines outside baseline+spikes
+  UNRESOLVED                        33 files
+  trigger-safety                     4 files
+  exhausted-variant                  4 files
+  "observed live"                   13 files /  14 lines
+  "live-captured"                    9 files /  10 lines
+  "confirmed live"                   4 files /   8 lines
+  "captured live"                    0
+  "as observed"                     13 files /  14 lines
+  "baseline §8"                     22 files /  41 lines
+  "baseline §5"                      7 files /   8 lines
+  deliberate-trigger prose (trigger/exhaust/burn-quota verb forms)  5 lines, ALL negations
+
+Intersecting the `rejected` hits with the rate-limit notations yields 46 candidate files; the
+code-side census is 44 lines. Every one was read.
+
+RESULT: CONJUNCT 2 IS CLEAN. Zero violations. Every site touching a `'rejected'` rate-limit shape,
+a deliberately-triggered limit, interactive `AskUserQuestion` presence, or
+`error_max_structured_output_retries` is explicitly hedged as SDK-typed / hand-built /
+unobserved-live / fake-engine-only / not-probe-verified.
+
+STRONGEST INDIVIDUAL SITES — each quote below was re-verified BY LINE by this pass (the quoted
+text is on exactly the line named; 10/10 EXACT):
+
+  packages/engine-claude/src/limit-signal.ts:8
+    ` *    "allowed_warning"`; no `"rejected"` sample was ever observed live) and`
+      -> the production module states the UNRESOLVED status in its own header.
+
+  packages/testkit/src/fake-engine/rate-limit-fixtures.test.ts:21
+    `  it("no payload carries status 'rejected' (baseline §8: never synthesize the unobserved variant)", () => {`
+      -> the hedge is ENFORCED BY AN EXECUTABLE TEST, not merely written in prose. The brief's
+         "assert a residual, don't just describe it" rule, already satisfied here.
+
+  packages/engine-claude/src/live/live-harness.ts:623
+    `      throw new LiveRateLimitAbortError('a rate_limit_event reported status "rejected".');`
+      -> INVERTED POLARITY, and the strongest form of compliance available: the live harness treats
+         a `rejected` status as a reason to ABORT the suite rather than as an observation to
+         record. Reached from `assertRateLimitSafe` at :620-624, alongside the
+         RATE_LIMIT_ABORT_UTILIZATION = 0.85 guard at :134.
+
+  packages/plugin/src/manager-protocol.test.ts:97
+    `  it("carries the graceful-degradation clause docs/engine-baseline.md §18.2 requires", () => {`
+      -> §18.2's UNRESOLVED interactive-`AskUserQuestion` status is likewise pinned by a test, so
+         shipped behaviour cannot come to depend on it silently.
+
+  packages/engine-claude/src/result-validation.ts:66
+    ` * confirmed sample.`  (closing ` * SDK-typed (`sdk.d.ts` 0.3.210 `SDKResultError.subtype`),
+      unobserved live` / ` * per docs/engine-baseline.md §5 — cited as a possibility, never a` at
+      :64-65)
+      -> §5's UNRESOLVED retry-exhaustion path, hedged at the constant that names it.
+
+POSITIVE STRUCTURAL PROOF, which the brief prefers over "grep found nothing": phase 06 implemented
+BOTH channels baseline §8's directive prescribes, in one file, rather than building on the
+unobserved half alone.
+
+  packages/engine-claude/src/limit-signal.ts:82
+    `export function rateLimitEventToLimitSignal(`            <- channel 1, the typed
+                                                                 rate_limit_event status path
+  packages/engine-claude/src/limit-signal.ts:41
+    `const RATE_LIMIT_STATUSES: readonly RateLimitStatus[] = ["allowed", "allowed_warning", "rejected"];`
+  packages/engine-claude/src/limit-signal.ts:223
+    `export function detectLimitErrorString(text: string): LimitErrorStringDetection {`
+                                                             <- channel 2, the error-string
+                                                                fallback §8 line 378 REQUIRES
+                                                                ("phase 06 must ALSO detect the
+                                                                error-string channel ... since that
+                                                                is how an actual exhaustion has
+                                                                been observed to surface")
+
+  So the code follows the mitigation rather than treating the UNRESOLVED shape as settled: the
+  `'rejected'` enum member exists as an SDK-typed possibility, and the channel that has ACTUALLY
+  been observed is implemented beside it.
+
+TWO NITS, reported because a bucket named "clean" must not hide them. Neither is a Hard Rule 1
+violation and neither changes c5's classification:
+  1. `e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:194` builds a
+     `{ ...RATE_LIMIT_ALLOWED_WARNING_96, status: "rejected" }` payload and feeds it through
+     `FakeEngineAdapter` — which is EXACTLY what §8's mitigation prescribes ("exercised only
+     against fake-engine fixtures"), so it is compliant. It just lacks the one-line in-file comment
+     its sibling `packages/scheduler/src/run-driver.test.ts:456-459` carries. Structurally hedged,
+     not verbally hedged; the weakest hedge in the tree.
+  2. `docs/evidence/phase-06/wi2-event-normalizer.md:141-142` still describes the PRE-Finding-6
+     injection scope, which `wi6-security-hardening.md:222-225` and `event-normalizer.ts:75-79`
+     reversed. That misstates the injection scope, not any UNRESOLVED status; wi2's own :176-180
+     carry-forward is correctly hedged. Filed as a defect.

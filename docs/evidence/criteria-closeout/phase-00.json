@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "phase": "00",
+  "roadmapFile": "roadmap/00-engine-spikes.md",
+  "pass": {
+    "date": "2026-08-05",
+    "agent": "criteria-closeout pass, phases 00 and 06 (the last two phases without a closeout record)",
+    "headSha": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "Every probe script (`spikes/0N-*.mjs`, seven scripts) runs against the pinned engine and prints a PASS/FAIL/UNRESOLVED verdict — evidenced by the script's committed console output referenced from `docs/engine-baseline.md`.",
+      "textSha256": "9f0a60adfbd2fd5b6ec86b199d68ac313ceddd50ef60646fdc7b237535a178ca",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:12",
+          "quotedAssertion": "The baseline names the producing scripts and the fixture convention, i.e. the \"referenced from docs/engine-baseline.md\" conjunct: :12 '**Producing scripts:** `spikes/01-auth.mjs` … `spikes/08-tool-catalog-env.mjs` (re-runnable; see `spikes/README.md`; 01–07 map to roadmap/00's seven In-scope probes, 08 is the orchestrator-directed tool-taxonomy follow-up).' and, on the same line, '**Fixtures:** `spikes/fixtures/*.verdicts.json` (one array per script)'. This is the line that maps the criterion's \"seven scripts\" to 01–07 by name."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:4",
+          "quotedAssertion": "The \"against the pinned engine\" conjunct: :4 '**Tested version (full spike suite):** `claude` CLI **2.1.218** (Claude Code), `@anthropic-ai/claude-agent-sdk` **0.3.218**'. 2.1.218 is inside the accepted range quoted at :6, so the recorded verdicts were produced at a pinned, in-range engine."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:386",
+          "quotedAssertion": "The tally the printed verdicts roll up to: :386 '**Current (2026-07-24, engine 2.1.218 — this is the FINAL/citable tally):** 30 PASS, 2 UNRESOLVED, 0 FAIL, across the same 32 recorded sub-probes in 8 scripts.' Cited for the PASS/FAIL/UNRESOLVED vocabulary and the per-script breakdown at :390-400."
+        },
+        {
+          "kind": "artifact",
+          "ref": "spikes/fixtures/07-ratelimit.verdicts.json",
+          "quotedAssertion": "One committed printed-verdict block, quoted to show the shape the criterion asks for is literally what is committed: this file is the array spike 07 prints, and it carries the two UNRESOLVED ids by name — 'ratelimit.trigger-safety-and-simulation-strategy' and 'ratelimit.exhausted-variant-shape' — alongside a PASS for 'ratelimit.structured-event-shape'. 07 is the one In-scope script that makes ZERO live calls by design (:12, :339), which is why it is the one quoted here rather than a live script's fixture."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-00/closeout/closeout-committed-and-census.txt",
+          "quotedAssertion": "SECTION 1 proves COMMITTEDNESS as a claim about git rather than about a working tree, per the brief: for each of the eight `*.verdicts.json` paths it runs, for each, the pair whose first instance reads '$ git log --oneline --all -- spikes/fixtures/01-auth.verdicts.json | wc -l' (non-zero) and '$ git cat-file -e HEAD:spikes/fixtures/01-auth.verdicts.json' (exit=0), plus '$ ls spikes/fixtures | wc -l ; git ls-files spikes/fixtures | wc -l' returning '18' / '18' — the counts agree, so nothing there is an untracked local artifact — and '$ git check-ignore -v spikes/fixtures/01-auth.verdicts.json' at 'exit=1   <- 1 = NOT gitignored'. SECTION 2 enumerates every fixture's verdict vocabulary, each line reporting 'allowed-vocabulary-only=true'. SECTION 3 re-derives the tally from the committed bytes: 'scripts=8  sub-probes=32  PASS=30  UNRESOLVED=2  FAIL=0'."
+        }
+      ],
+      "notes": "Three conjuncts, each evidenced separately. (a) RUNS AGAINST THE PINNED ENGINE — baseline :4 records the full suite re-run at 2.1.218, inside :6's accepted 2.1.207–2.1.220. (b) PRINTS A PASS/FAIL/UNRESOLVED VERDICT — the committed `*.verdicts.json` files ARE those printed blocks, and the transcript's SECTION 2 confirms mechanically that every one of the seven In-scope scripts uses only that three-word vocabulary and nothing else. (c) COMMITTED OUTPUT REFERENCED FROM THE BASELINE — proved by `git log`/`git cat-file`, never by `ls`, per the brief's rule that \"committed\" is a claim about git; the reference itself is baseline :12 plus the per-section 'Fixture:' lines (:33, :56, :88, :380) and §13's index. WHY THIS IS NOT VACUOUS, which is the part worth reading: the transcript's SECTION 3 re-derives 8 scripts / 32 sub-probes / 30 PASS / 2 UNRESOLVED / 0 FAIL from the committed fixture bytes and gets EXACTLY §9's published tally. The prose and the fixtures are two independent sources here and they agree, so neither is taking the other's word. The 39-sub-probe figure across all ten fixture files is NOT a discrepancy: spikes 09 and 10 were added 2026-07-27 and §9 line 402 explicitly carves them out of the 32. ZERO live invocations were spent on this criterion — spikes 01–06 and 08 are live and their verdicts are already committed and merged at an in-range engine, so re-running them would spend roughly 30 invocations to reproduce a record that already exists."
+    },
+    {
+      "index": 2,
+      "text": "`docs/engine-baseline.md` merged, naming the tested version + accepted range, the auth decision, the hermeticity verdict, and the Bash colon-spacing verdict.",
+      "textSha256": "b0130ed7070a5aef46ae905627dec11f7f6be2105a56b1dc3964cd81d20637e0",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:4-6",
+          "quotedAssertion": "CONJUNCT 1, version + range, both halves on their own lines: :4 '**Tested version (full spike suite):** `claude` CLI **2.1.218** (Claude Code), `@anthropic-ai/claude-agent-sdk` **0.3.218**' and :6 '**Accepted range:** **2.1.207–2.1.220**'. The range is a span rather than a point by deliberate decision, and :6 states the discipline that keeps it honest: 'if a future re-run inside this range ever surfaces a genuine behavioral delta, that re-run must narrow the range at the version where the delta first appears'."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:25",
+          "quotedAssertion": "CONJUNCT 2, the auth decision: :25 '**Go/no-go call (updated 2026-07-24):** BOTH mechanisms are now live-confirmed. The `.credentials.json` fallback remains the recommended v1 default (no interactive `setup-token` step required per worker), but the primary `CLAUDE_CODE_OAUTH_TOKEN`/handoff-file path is no longer a blocking gap — either may be cited as settled fact by phase 05/06.' The §1 heading itself (:16) records it as RESOLVED 2026-07-24, and the two-row table at :22-23 carries a **PASS** for each mechanism."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:50",
+          "quotedAssertion": "CONJUNCT 3, the hermeticity verdict, with its own non-vacuity guard named in the same line: :50 '**All four PASS on executed-call evidence — no partial-hermeticity surprise on settings/hooks/CLAUDE.md/.mcp.json.**' The executed-call guard matters because :41 records that the FIRST version of this probe was vacuous — the model refused it and made zero Bash calls, so every marker-absence assertion was guaranteed by the refusal rather than by hermeticity. The verdict cited here is the rewritten probe's."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:81-84",
+          "quotedAssertion": "CONJUNCT 4, the Bash colon-spacing verdict, quoted with BOTH arms because a one-armed version would not distinguish a matching anchor from an anchor that matches nothing: :81 '- `Bash(cargo check:*)` (**no space** before the colon) → **matched and allowed** `cargo check --workspace`.' / :82 '- `Bash(cargo check :*)` (**space** before the colon) → **did NOT match**; the command was denied.' / :84 '**Verdict: the no-space form is required**, consistent with the doc's four literal examples.' The prefix tested (:79) is deliberately OUTSIDE the adaptation doc's four confirmed literals, which is what makes it a generalization result rather than a restatement."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/version-gate.test.ts:108-128",
+          "quotedAssertion": "MERGED-NESS, enforced mechanically rather than asserted: the shipped code fails closed if the document and the constants ever drift apart. :111 'it(\"the document's headline 'Accepted range' statement matches ACCEPTED_ENGINE_VERSION_RANGE\", () => {' / :112 'const expected = `${ACCEPTED_ENGINE_VERSION_RANGE.min}–${ACCEPTED_ENGINE_VERSION_RANGE.max}`;' / :113 'expect(baselineText).toContain(`Accepted range:** **${expected}**`);' — and :109 'const baselineText = readFileSync(BASELINE_DOC_PATH, \"utf8\");' reads the real document off disk. :126-128 does the same for the tested version. So the four contents this criterion names are not merely present in a file someone could have edited: two of them are pinned per push against the code."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92413322812, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31037500615",
+          "commit": "9abc3fd911186cd83bbd02b2d905f613da2ca8e3",
+          "quotedAssertion": "The baseline-sync guard runs per push. job-log line 523 — ' ✓  @crabgic/engine-claude  src/version-gate.test.ts (20 tests) 12ms'. Totals, job-log lines 1052-1053 — ' Test Files  634 passed (634)' / '      Tests  6360 passed | 1 skipped (6361)'. Byte-compared against the downloaded raw log under the one-space rule (strip the ISO timestamp and exactly one separator space) with ANSI escapes removed."
+        }
+      ],
+      "notes": "Four named contents = four conjuncts, and all four are present in the merged document: version+range (:4/:6), the auth decision (:25, §1 RESOLVED), the hermeticity verdict (:50), the colon-spacing verdict (:84). MERGED is proved by the file's own history rather than by its presence in a checkout. The strongest part of this evidence is not that the four statements exist — it is that `version-gate.test.ts` READS THE DOCUMENT and asserts two of the four against the shipped constants on every push (:109, :113, :128), so a silent divergence between the record and the code is impossible. ONE HONEST QUALIFICATION, recorded because the criterion says \"naming the tested version + accepted range\" and the two are not equally strong: :9 states that the 2026-07-25 narrow re-baseline extended the range's upper end to 2.1.220 WITHOUT re-running the spike suite — 'none of the eight `spikes/*.mjs` scripts was re-run, no fixture was regenerated, and §9's verdict tally is unchanged' — so the range's top end rests on a weaker evidentiary base than its 2.1.218 point. The document says this itself, in the same paragraph, and §11 keeps the full-suite re-run at 2.1.220 on the owed list. The criterion asks that the range be NAMED, which it is, and the doc's own disclosure is what makes the naming honest; this is a disclosure, not a shortfall."
+    },
+    {
+      "index": 3,
+      "text": "`spikes/fixtures/` committed, sanitized (no live token/path substrings — checked by the security test above), and referenced by path from the baseline doc.",
+      "textSha256": "19de24f560f86b629f2d8249da1fb8184c9ce058a0a0888540012239645d68cf",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:473-482",
+          "quotedAssertion": "CONJUNCT 3, \"referenced by path from the baseline doc\" — §13's index, which lists every fixture as a repository path. The first and last entries: :473 '- `spikes/fixtures/01-auth.verdicts.json`' and :482 '- `spikes/fixtures/10-stop-hook.verdicts.json`, `10-stop-hook.payloads.sanitized.json` (added 2026-07-27, §19 — captured at 2.1.220/CLI; payload paths redacted to `$HOME` before the sanitization scan, since the fixture's value is the payload SHAPE, not the host's paths)'. Ten bullets, one per script."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:471",
+          "quotedAssertion": "CONJUNCT 2, sanitized, with the scan's own scope named: :471 'All fixtures (both the freshly-regenerated ones and the restored four) were re-scanned for `sk-ant-*`/OAuth-token-blob/`$HOME`-path substrings with zero hits (§1 covers the one fixture — `01-auth.verdicts.json` — that required a script fix to stay clean after the handoff-file resolution).'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:494",
+          "quotedAssertion": "The same conjunct restated with the pattern set spelled out, and the extra token-prefix check: :494 'All fixtures pass the sanitization scan (`sk-ant-*` token shapes, OAuth `accessToken`/`refreshToken` JSON blobs, literal `$HOME` path substring) with zero hits at time of writing (2026-07-24 re-baseline); `spikes/01-auth.mjs` additionally checked for the first 8 characters of the real OAuth token used this pass (the token path is now PASS, §1) — no hit found, confirming the $HOME-leak fix (§1) did not leave any token-prefix residue either.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:29",
+          "quotedAssertion": "WHY THE SANITIZATION CLAIM IS NOT SELF-CONGRATULATORY — the scan has actually FIRED and forced a fix, which is the strongest form of evidence that it bites: :29 records that the first re-run 'wrote the literal real `$HOME` path (via `tokenSource = \\`file:${TOKEN_HANDOFF_FILE}\\``) into the committed verdict fixture, tripping the script's own `$HOME`-leak scan (`scanForSecrets`, exit code 1)', and that after the fix 'Re-run after the fix produced a clean sanitization scan; the committed`spikes/fixtures/01-auth.verdicts.json` contains no real path.' A scan nobody has ever seen fail is not yet known to be non-vacuous; this one has been seen to fail."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-00/closeout/closeout-committed-and-census.txt",
+          "quotedAssertion": "CONJUNCT 1, committed, proved for every path §13's index names — the eight `*.verdicts.json` files plus the six sanitized transcript/catalog fixtures — each with a `git cat-file -e HEAD:` probe — the first instance reads '$ git cat-file -e HEAD:spikes/fixtures/01-auth.verdicts.json' — at 'exit=0', and a non-zero `git log` history count, and the whole-directory check '$ ls spikes/fixtures | wc -l ; git ls-files spikes/fixtures | wc -l' returning '18' / '18'."
+        }
+      ],
+      "notes": "Three conjuncts. (a) COMMITTED — proved per path with `git log` + `git cat-file -e HEAD:`, plus the directory-level 18/18 agreement between `ls` and `git ls-files` showing nothing there is a local build artifact. The brief's rule that `ls` cannot distinguish a gitignored output from a committed file is why this is done mechanically. (b) SANITIZED, checked by the security test — :471 and :494 record zero hits across the three pattern classes, and :29 shows the scan has genuinely fired and forced a script fix rather than never having been exercised. (c) REFERENCED BY PATH — §13's ten-bullet index (:473-482) plus the per-section 'Fixture:' lines. NOT UPGRADED TO EVIDENCE-REPRODUCED, deliberately: re-running `spikes/07-ratelimit.mjs` to re-scan the fixtures was available at zero live cost, and was NOT done, because it would only re-derive what the committed `07-ratelimit.verdicts.json` already records — and running it would rewrite a committed fixture, which is not something a closeout pass should do to manufacture a stronger label. The classification is EVIDENCE-EXISTS because the evidence genuinely pre-exists this pass; only the committedness proofs are new."
+    },
+    {
+      "index": 4,
+      "text": "Rate-limit error/event shape captured verbatim in the baseline doc, or a documented simulation strategy recorded if a real limit could not be triggered safely.",
+      "textSha256": "ac5f4b37d0b59e2f6ca2cb79c71fcc6274a7342b3333d1bdeffdb0b6de801d02",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:347-359",
+          "quotedAssertion": "THE FIRST DISJUNCT, satisfied — the shape captured VERBATIM, four distinct payloads. :356 '{\"status\":\"allowed\",\"resetsAt\":1784135400,\"rateLimitType\":\"five_hour\",\"overageStatus\":\"rejected\",\"overageDisabledReason\":\"org_level_disabled\",\"isUsingOverage\":false}' and the three `allowed_warning` siblings at :357 (utilization 0.96), :358 (0.98) and :359 (0.99), each carrying 'surpassedThreshold':0.9. The envelope shape is at :350 '{\"type\":\"rate_limit_event\",\"rate_limit_info\":{...},\"uuid\":\"<uuid>\",\"session_id\":\"<uuid>\"}'. :347 names the four committed transcript fixtures these were read out of, so the quotes are anchored to files, not to memory."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:343",
+          "quotedAssertion": "THE SECOND DISJUNCT, also satisfied — the documented reason no real limit was triggered, and the finding that made triggering unnecessary: :343 '**No dedicated live trigger was run** — the owner's subscription (the same account every spike authenticates as) hit a session limit earlier on 2026-07-15 before this phase began, and mid-phase the limit was hit AGAIN, interrupting this phase's own fix round; deliberately exhausting it further was and remains unsafe. However, a validation-round audit found that **the structured signal shape did not need triggering: it was already captured incidentally** — the SDK streams `rate_limit_event` messages during ordinary, non-limited operation, and this phase's own committed transcripts contain **16 of them**.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:378",
+          "quotedAssertion": "THE SIMULATION STRATEGY ITSELF, for the one variant the verbatim capture does not cover: :378 '- **MITIGATION:** the next time any worker naturally hits a limit while streaming, capture the raw message sequence verbatim into `spikes/fixtures/07-ratelimit.live-capture.sanitized.jsonl` and update the `ratelimit.exhausted-variant-shape` verdict. Never trigger deliberately on the owner's subscription; a dedicated/metered test account or off-hours window is the only acceptable deliberate path. Until captured, phase 13 must treat the `'rejected'`-transition handling as built on the SDK's _typed_ promise, exercised only against fake-engine fixtures, and phase 06 must ALSO detect the error-string channel (sentence naming the limit kind + localized reset time) as a fallback signal, since that is how an actual exhaustion has been observed to surface.' This is the recorded strategy the criterion's second disjunct asks for: opportunistic capture, an explicit no-deliberate-trigger rule, a named acceptable path, and a directive for what downstream phases may build on meanwhile."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:374-376",
+          "quotedAssertion": "The one exhausted-limit sample that DOES exist, recorded verbatim in the error-string channel rather than the structured one: :374 opens 'Every committed event carries `status` `'allowed'` or `'allowed_warning'`; a live `'rejected'` sample — and whatever terminal result/error message accompanies an actually-refused request in-stream — has not been captured', and :376 gives it as '> `Agent terminated early due to an API error: You've hit your session limit · resets 2:10pm (Europe/Madrid)`'. So even the un-captured variant is documented by the one real observation available, not left blank."
+        }
+      ],
+      "notes": "The criterion is a DISJUNCTION — \"captured verbatim in the baseline doc, OR a documented simulation strategy recorded if a real limit could not be triggered safely\" — and this pass verified BOTH halves hold rather than picking whichever was easier. Half one: four distinct `rate_limit_info` payloads are quoted verbatim in §8 (:356-359) across 16 committed samples in four named transcript fixtures. Half two: :343 documents why no deliberate trigger was run (the owner's own subscription; it had already been exhausted twice during the phase) and :378 records the resulting strategy in full. Satisfying a disjunction twice over is worth stating explicitly because the two halves cover DIFFERENT variants: the verbatim capture covers `allowed`/`allowed_warning`, and the strategy covers the `rejected`/exhausted variant that has never been observed in-stream. Neither half alone would cover the criterion's whole subject, which is exactly why the doc has both. On the safety judgement itself: not triggering was the right call and remains binding — `packages/engine-claude/src/live/live-harness.ts:623` implements it in code by ABORTING the live suite on a `rejected` status rather than recording it."
+    },
+    {
+      "index": 5,
+      "text": "Every `UNRESOLVED:` entry in the baseline doc carries an explicit mitigation note; no downstream phase may cite an UNRESOLVED item as settled fact (Hard Rule 1).",
+      "textSha256": "276f611bc7e83b3c8ff36b13befc47e688034ee7b7402d90b64bc9fa31de60d5",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:404",
+          "quotedAssertion": "CONJUNCT 1 and CONJUNCT 2 both stated as the document's own standing rule, in §9's tally section: :404 'Remaining UNRESOLVED (unchanged by the re-baseline): `ratelimit.trigger-safety-and-simulation-strategy` and `ratelimit.exhausted-variant-shape` (§8, opportunistic capture only — never deliberately trigger against the owner's subscription). Every `UNRESOLVED` carries an explicit mitigation note in its section (Hard Rule 1). No downstream phase may cite an `UNRESOLVED` item as settled fact.' The two ids are named here, which is what makes the census below scopeable."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:372",
+          "quotedAssertion": "CONJUNCT 1, the one occurrence in the document of the criterion's literal `UNRESOLVED:` form, and its paired mitigation: the heading :372 '### Still UNRESOLVED: the exhausted/blocked variant' is followed by the MITIGATION block at :378. On the narrow reading of the criterion — every literal `UNRESOLVED:` entry — this single pairing discharges it."
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:268-270",
+          "quotedAssertion": "CONJUNCT 1 on the BROAD reading — a second UNRESOLVED item, in §5, also carrying a mitigation: :268 records that 'This retry-exhaustion path itself remains UNRESOLVED/unobserved', and :270 pairs it with '- **MITIGATION (partial UNRESOLVED):** phase 06 should treat \"no `structured_output` field, `subtype: success`\" as a normal, expected failure-to-produce-structured-output shape requiring its own repair-attempt trigger (not just the `error_max_structured_output_retries` subtype) — that success-shaped absence is what was actually observed. Re-probe the retry-exhaustion path specifically (e.g. a schema the model will keep trying to satisfy but structurally cannot) if that distinct shape needs its own repair-path branch.'"
+        },
+        {
+          "kind": "test",
+          "ref": "docs/engine-baseline.md:685-694",
+          "quotedAssertion": "CONJUNCT 1, the fourth and last UNRESOLVED item, in §18.2: :685 'The complementary claim — that `AskUserQuestion` **is** present in an **interactive (TUI)** session, which is what the manager session runs as — is recorded as **UNRESOLVED**, not PASS. `spikes/09` cannot capture it, and says so:'. Its mitigation is at :694 '**MITIGATION (non-blocking, belongs on §11's owed list):** capture the interactive catalog properly before this fact is ever made load-bearing — a pty harness that reads the TUI's own tool-list surface, or an engine build that logs the request payload under a debug filter.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/testkit/src/fake-engine/rate-limit-fixtures.test.ts:21-24",
+          "quotedAssertion": "CONJUNCT 2's strongest single site, and the reason this pass calls the conjunct CLEAN rather than merely un-violated: the prohibition is enforced by an executable test, not written in prose. :21 '  it(\"no payload carries status 'rejected' (baseline §8: never synthesize the unobserved variant)\", () => {' with the loop body at :22-24 asserting 'expect(payload.status).not.toBe(\"rejected\");' over every recorded payload. So a future edit that quietly synthesized the unobserved variant into the shared fixture list would go red in the default gate."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/live/live-harness.ts:620-624",
+          "quotedAssertion": "CONJUNCT 2 enforced with INVERTED polarity, which is stronger still — the live harness treats the UNRESOLVED status as a reason to abort rather than as an observation to record: :620 'function assertRateLimitSafe(snapshot: RateLimitSnapshot): void {' / :622 'if (status === \"rejected\") {' / :623 'throw new LiveRateLimitAbortError('a rate_limit_event reported status \"rejected\".');'. The utilization guard beside it is `RATE_LIMIT_ABORT_UTILIZATION = 0.85` (:134). This is baseline :378's \"never trigger deliberately\" mitigation implemented as code."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/limit-signal.ts:6-12",
+          "quotedAssertion": "CONJUNCT 2 in the production module that consumes the UNRESOLVED fact — it states the status in its own header instead of building on it silently: :8 ' *    \"allowed_warning\"`; no `\"rejected\"` sample was ever observed live) and'. Read with :6-12, the header cites baseline §8 by name and quotes its directive 'Do not synthesize a guessed shape.'"
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-claude/src/limit-signal.ts:41-223",
+          "quotedAssertion": "THE POSITIVE STRUCTURAL PROOF the brief prefers over \"grep found nothing\": the module implements the channel that HAS been observed, beside the typed one that has not. :223 'export function detectLimitErrorString(text: string): LimitErrorStringDetection {' is the error-string fallback the baseline requires at docs/engine-baseline.md:378 'phase 06 must ALSO detect the error-string channel'; :82 'export function rateLimitEventToLimitSignal(' is the typed channel; :41 'const RATE_LIMIT_STATUSES: readonly RateLimitStatus[] = [\"allowed\", \"allowed_warning\", \"rejected\"];' carries `rejected` as an SDK-typed possibility only. Two channels, one file, mitigation followed rather than assumed away."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-00/closeout/closeout-committed-and-census.txt",
+          "quotedAssertion": "SECTION 4 pairs all four UNRESOLVED items with their mitigation lines (§5 line 270, §8 line 378, §8-§9 trigger-safety line 343 plus line 378, §18.2 line 694) and states that conjunct 1 'HOLDS on both the narrow (literal `UNRESOLVED:`) and the broad (every UNRESOLVED item) reading'. SECTION 5 is the notation-aware census for conjunct 2: a per-notation table (bare `rejected` 236 files / 542 lines; `rate_limit` 123 files; `AskUserQuestion` 18 files; `error_max_structured_output_retries` 7 files; `\"captured live\"` 0; and 17 more), the 46-file candidate intersection, 'RESULT: CONJUNCT 2 IS CLEAN. Zero violations.', and the two nits reported rather than buried. SECTION 3 names the UNRESOLVED sub-probe ids read out of the committed fixtures: 'ratelimit.trigger-safety-and-simulation-strategy', 'ratelimit.exhausted-variant-shape', and spike 09's 'human-interaction-tool.present-interactive'."
+        }
+      ],
+      "notes": "Conjunctive, and the second conjunct is a repo-wide NEGATIVE claim, so it was censused by NOTATION rather than by one grep — the brief's own hardest-won lesson, since a grep that cannot express a second notation returns a SMALLER answer with no error and reads as clean. CONJUNCT 1 holds on both readings: the literal `UNRESOLVED:` form occurs exactly once (:372, mitigation :378), and on the broad reading there are four UNRESOLVED items in the document (§5 :268, §8 :372, §9's trigger-safety id, §18.2 :685) and four mitigation notes (:270, :378, :343+:378, :694). CONJUNCT 2 IS CLEAN: 20 notations swept over the whole tracked tree, 46 candidate files intersected and read, 44 code-side `'rejected'`-shape lines classified one by one; every site is explicitly hedged as SDK-typed, hand-built, unobserved-live, fake-engine-only, or not-probe-verified. TWO SITES DO BETTER THAN HEDGING IN PROSE and are why this is recorded as clean rather than merely un-violated: `rate-limit-fixtures.test.ts:21` makes the prohibition an executable assertion, and `live-harness.ts:623` inverts the polarity by ABORTING the live suite on a `rejected` status. TWO NITS, reported because a bucket labelled clean must not hide anything: `e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts:194` builds a `rejected` payload for the FAKE engine — which is precisely what :378's mitigation prescribes, so it is compliant — but lacks the one-line comment its sibling `packages/scheduler/src/run-driver.test.ts:456-459` carries; and `docs/evidence/phase-06/wi2-event-normalizer.md:141-142` still describes the pre-Finding-6 injection scope that `event-normalizer.ts:75-79` reversed, which misstates the injection scope rather than any UNRESOLVED status. Both are filed as a defect record; neither changes this classification. Had either been a genuine reliance on an UNRESOLVED fact as settled, conjunct 2 would be UNMET and this box would stay unticked — that was the pre-agreed handling and it did not have to be used."
+    }
+  ]
+}

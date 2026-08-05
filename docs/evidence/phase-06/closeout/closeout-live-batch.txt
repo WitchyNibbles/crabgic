@@ -1,0 +1,270 @@
+PHASE-06 CLOSEOUT — SCOPED LOCAL LIVE BATCH (c2, c3, c4, c7)
+============================================================
+RULING-3 header
+---------------
+date (UTC):                      2026-08-05T19:19:32Z .. 2026-08-05T19:21:22Z
+UPSTREAM BASE (stable — resolves for any reader, now and after merge): 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+branch tip at capture (PROVISIONAL — this pass's own first commit does not exist yet): n/a; every
+  command below was run against a worktree checked out at the UPSTREAM BASE above, tree clean
+  (proved in section 1).
+verbatim command:                see section 2
+exit status:                     0  (GREEN)
+model:                           haiku for every invocation (pinned by the harness, LIVE_MODEL)
+engine:                          2.1.218, the SDK-bundled binary — NOT the host's PATH claude 2.1.221
+                                 (which is outside the accepted 2.1.207-2.1.220 range)
+
+WHY THIS BATCH EXISTS
+---------------------
+roadmap/06 exit criteria c2 (secret-mask), c3 (sandbox-unavailable) and c4 (crash-recovery)
+name a `@live` suite but NOT a CI job. Nothing had ever run them green: docs/evidence/phase-06/
+wi5-live.md records that the phase-time attempt made exactly ONE live invocation (the canary) and
+aborted at rate-limit utilization 0.87. c7 (fake-vs-live parity) was VACUOUS for a related reason
+— see section 4.
+
+Deliberately NOT run: sandbox-hermeticity, path-anchor*, read-exposure, edit-input-stability,
+sandbox-containment, the two shadowing probes, parked-resume-write-authority, and zz-live-run-record.
+No 00/06 criterion names them, several already carry committed determinations, and running them
+would be pure double-spend. `npm run test:live` was NEVER invoked bare: it runs all 17 files.
+
+
+1. PRE-RUN BASELINE  (brief: record the unmutated baseline beside every measurement)
+-----------------------------------------------------------------------------------
+# PRE-BATCH BASELINE (RULING-3 companion)
+# date_utc: 2026-08-05T19:18:57Z
+# upstream base: 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+# branch tip at capture: 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+# uptime:  21:18:57 up 1 day,  3:11,  0 user,  load average: 0.41, 0.29, 2.12
+
+$ bwrap --version; socat -V | head -1
+bubblewrap 0.9.0
+socat by Gerhard Rieger and contributors - see www.dest-unreach.org
+exit=0
+
+$ node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --version
+2.1.218 (Claude Code)
+exit=0
+
+$ git status --porcelain -- packages/engine-claude/src/live/fixtures/live-verdicts.json
+exit=0 (no output above => file clean at HEAD before the run)
+
+$ md5sum packages/engine-claude/src/live/fixtures/live-verdicts.json
+ada6ddd1cc98cf10146a8c9629b6c95c  packages/engine-claude/src/live/fixtures/live-verdicts.json
+
+$ git status --porcelain   # whole worktree, pre-run
+exit=0 (empty => clean tree)
+
+$ md5sum $HOME/.claude/settings.json $HOME/.claude/.credentials.json $HOME/.claude/.eo-oauth-token  # owner-config integrity, PRE (digests elided)
+<md5-elided>  $HOME/.claude/settings.json
+<md5-elided>  $HOME/.claude/.credentials.json
+<md5-elided>  $HOME/.claude/.eo-oauth-token
+
+2. THE COMMAND  (exactly four named files; --bail 1; setsid + process-GROUP watchdog)
+------------------------------------------------------------------------------------
+$ rm -f /tmp/eo-live-canary-marker.json        # force a fresh canary (live-harness.ts:734)
+$ setsid env CRABGIC_LIVE=1 CRABGIC_LIVE_RUN_ID=closeout-p06-local-20260805T1919 \
+    npx vitest run --config vitest.live.config.ts --bail 1 \
+      packages/engine-claude/src/live/sandbox-unavailable.live.test.ts \
+      packages/engine-claude/src/live/secret-mask.live.test.ts \
+      packages/engine-claude/src/live/envelope-conformance.live.test.ts \
+      packages/engine-claude/src/live/crash-recovery.live.test.ts
+
+Bounding, per the brief's measured ruling that `--max-turns` does NOT bind a subagent's nested
+loop:
+  * PRE-CHECK, run BEFORE spending anything — none of the four files can spawn a subagent.
+    Every profile they use comes from `compileEnvelope`, and
+    `packages/engine-core/src/compiler/permission-profile.ts:40` puts "Agent" in
+    MANDATORY_FIXED_DENY, which the engine enforces by CATALOG-REMOVAL of the live `Task` tool
+    (docs/engine-baseline.md §4.1-§4.2). envelope-conformance.live.test.ts:259-260 asserts that
+    removal live. secret-mask uses a direct query whose only allow entry is `Bash(echo:*)`.
+    This is what makes the batch bounded at all: no nested subagent loop can exist.
+  * setsid, so the watchdog kills the process GROUP (`kill -- -<pgid>`), not just the wrapper.
+    An orphaned engine has been measured spending 48.8s past a wrapper-only kill.
+  * a 30-minute wall ceiling, and a 20-invocation ledger ceiling.
+  * the harness's own canary: 1 invocation, aborts at utilization >= 0.85, and asserts the
+    SDK-resolved engine reports exactly 2.1.218 before any probe runs (live-harness.ts:707-713).
+
+3. RESULT
+---------
+RUN_ID=closeout-p06-local-20260805T1919
+child pid/pgid=2423331
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/ad1b1803-e069-487d-929f-1343a7cbee31/scratchpad/wt-p0006
+
+ Test Files  4 passed (4)
+      Tests  12 passed (12)
+   Start at  21:19:32
+   Duration  94.64s (transform 653ms, setup 0ms, import 1.92s, tests 92.30s, environment 0ms)
+
+# EXIT=0
+# WATCHDOG_FIRED=0
+# WALL_SECONDS=110
+# ENGINE_PROCESS_SPAWNS=11
+NOTE on attribution: vitest's default reporter suppresses per-test names on success, so this
+transcript shows totals rather than a per-`it()` list. Attribution is exact anyway, because the
+four files are NAMED on the command line and the run reports `Test Files 4 passed (4)` — no fifth
+file could have contributed, and with `--bail 1` no file could have been skipped after a failure.
+The three CRABGIC_SDK_CAN_USE_TOOL_SHADOWED warnings are elided above; they are the known,
+already-documented bare-allowedTools shadowing note (docs/engine-baseline.md §4.5), not failures.
+
+3b. THE INVOCATION LEDGER — MEASURED, not estimated
+----------------------------------------------------
+Method: a 0.25s poller recorded every DISTINCT pid of the SDK's bundled engine binary for the
+whole run. One such process is launched per adapter spawn / resume / fork and per direct query,
+so the distinct-pid count is a real invocation count rather than a static guess. Paths are
+redacted to <WORKTREE>/$HOME and the long --settings/--mcp-config blobs are cut for width; the
+unredacted capture contained no `sk-ant-` or OAuth-blob substring (scanned, 0 hits).
+
+19:19:33 pid=2423418 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 1 --model haiku --setting-sources= --permission-mode dontAsk
+19:19:37 pid=2423507 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 3 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools mcp__crabgic_gateway__*,Bash(sleep:*) --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-HYm8bX/worktree/.git/**),Write(///tmp/eo-live-HYm8bX/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=1c62dcad-176b-48fd-aea1-6fdad937628c
+19:19:47 pid=2423658 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 3 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --resume=1c62dcad-176b-48fd-aea1-6fdad937628c --allowedTools mcp__crabgic_gateway__*,Bash(sleep:*) --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-HYm8bX/worktree/.git/**),Write(///tmp/eo-live-HYm8bX/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages
+19:19:54 pid=2423883 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 6 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools mcp__crabgic_gateway__* --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-kCfUfs/worktree/.git/**),Write(///tmp/eo-live-kCfUfs/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=90818ee0-56a5-44b4-a079-347c58f9e181
+19:20:07 pid=2424107 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 6 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --resume=90818ee0-56a5-44b4-a079-347c58f9e181 --allowedTools mcp__crabgic_gateway__* --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-kCfUfs/worktree/.git/**),Write(///tmp/eo-live-kCfUfs/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --fork-session --session-id=0889295f-364b-4571-b8da-e0dd5927c3c9
+19:20:18 pid=2424237 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 3 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools mcp__crabgic_gateway__*,Read --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-anyI8P/worktree/.git/**),Write(///tmp/eo-live-anyI8P/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=b2c2b7e0-203d-435d-8ad5-87c35f3871ea
+19:20:18 pid=2424239 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 3 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools mcp__crabgic_gateway__*,Read --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-anyI8P/worktree/.git/**),Write(///tmp/eo-live-anyI8P/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=11ac44c7-3246-4451-bc64-d5416c69bb39
+19:20:29 pid=2424538 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 8 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools Edit(///tmp/eo-live-QWJQTi/worktree/packages/example/src/**),Write(///tmp/eo-live-QWJQTi/worktree/packages/example/src/**),mcp__crabgic_gateway__* --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-QWJQTi/worktree/.git/**),Write(///tmp/eo-live-QWJQTi/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=eb68097c-a05a-49d8-b223-31ff2a5a30f0
+19:20:54 pid=2424879 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 4 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools Edit(///tmp/eo-live-s6su0v/worktree/packages/example/src/**),Write(///tmp/eo-live-s6su0v/worktree/packages/example/src/**),Bash(npm run test:*),Bash(npm run build:*),Bash(git status:*),Bash(git diff:*),mcp__crabgic_gateway__* --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-s6su0v/worktree/.git/**),Write(///tmp/eo-live-s6su0v/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=d7ece601-a78f-4de6-a2e8-95efb3f6e040
+19:21:09 pid=2425152 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 3 --model haiku --allowedTools Bash(echo:*) --setting-sources= --permission-mode dontAsk
+19:21:16 pid=2425326 <WORKTREE>/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --output-format stream-json --verbose --input-format stream-json --max-turns 1 --model haiku --json-schema {"type":"object"} --permission-prompt-tool stdio --allowedTools mcp__crabgic_gateway__* --disallowedTools Agent,WebFetch,WebSearch,Bash(git push:*),Bash(curl:*),Bash(wget:*),Read(~/.local/state/crabgic/**),Read(~/.cache/crabgic/**),Read(~/.ssh/**),Read(~/.aws/**),Edit(~/.local/state/crabgic/**),Edit(~/.cache/crabgic/**),Edit(~/.ssh/**),Edit(~/.aws/**),Write(~/.local/state/crabgic/**),Write(~/.cache/crabgic/**),Write(~/.ssh/**),Write(~/.aws/**),Edit(///tmp/eo-live-d5G7vV/worktree/.git/**),Write(///tmp/eo-live-d5G7vV/worktree/.git/**) --setting-sources= --strict-mcp-config --permission-mode dontAsk --include-partial-messages --session-id=2f679f71-649b-44d6-9fc1-422d2a55b407
+
+Attribution of the 11 engine processes:
+   1  max-turns=1                          the harness canary
+   2  max-turns=3  Bash(sleep:*)           crash-recovery, kill -9 arm: the spawn
+   3  max-turns=3  --resume=<same id>      crash-recovery, kill -9 arm: the resume
+   4  max-turns=6                          crash-recovery, fork arm: the original
+   5  max-turns=6  --resume --fork-session crash-recovery, fork arm: the fork
+   6  max-turns=3  allow "Read"            crash-recovery, concurrent arm: session A
+   7  max-turns=3  allow "Read"            crash-recovery, concurrent arm: session B
+   8  max-turns=8                          envelope-conformance, path-escape spawn
+   9  max-turns=4                          envelope-conformance, Part B spawn
+  10  max-turns=3  allow "Bash(echo:*)"    secret-mask (direct query)
+  11  max-turns=1  READ_ONLY profile       sandbox-unavailable
+
+  ENGINE PROCESSES:            11
+  MODEL-SERVING INVOCATIONS:   10   (#11 aborts at sandbox init, before any turn — that is the
+                                     very thing c3 asserts, so it costs an engine process and
+                                     ZERO model traffic)
+  MODEL:                       haiku, 11/11.  Zero opus, zero sonnet. Verified by
+                               `grep -v -- '--model haiku' ledger | wc -l` => 0.
+  WALL CLOCK:                  110s.  Watchdog did NOT fire; no wrapper kill; therefore the cost
+                               above is BOUNDED, not UNKNOWN.
+  LEDGER CEILING (20):         not approached.
+  The five adapter-gate envelope-conformance fixtures spawn no process at all: the adapter's
+  `assertNoFootguns` throws synchronously inside `spawn`, before any engine call. That is why 7
+  fixtures cost 2 invocations.
+
+  Predicted before the run: canary 1 + sandbox-unavailable 0 + secret-mask 1 +
+  envelope-conformance 2 + crash-recovery 6 = 10.  Measured: 10 model-serving.  Exact.
+
+4. c7 — THE PARITY PROOF, AND WHY IT WAS VACUOUS UNTIL THIS RUN
+---------------------------------------------------------------
+c7 reads: "Fake-vs-live parity: identical fixture verdicts across `packages/testkit`'s fake engine
+and the real engine — `fake-live-parity.test`."
+
+BEFORE this run the criterion was VACUOUS, in exactly the shape the wave brief documents as
+"cassette parity that cannot fail". `packages/engine-claude/src/fake-live-parity.test.ts` compares
+the fake engine's per-fixture verdicts against the committed
+`packages/engine-claude/src/live/fixtures/live-verdicts.json` — and that file was FAKE-DERIVED.
+docs/evidence/phase-06/wi5-live.md §6 admits it, and git confirms the file was never regenerated
+by a live run:
+
+$ git log --oneline -- packages/engine-claude/src/live/fixtures/live-verdicts.json
+29b3c46 feat: wire learn-* by binding promotion to an ongoing intake
+55874d8 feat: phase 06 Claude Code worker runtime (SDK transport)
+exit=0
+(two commits, both non-live: the phase-06 landing commit and one unrelated touch.)
+
+So the "two INDEPENDENT sources" the criterion asks for were one source. The real-engine half had
+never been observed.
+
+WHAT THIS RUN DID. `envelope-conformance.live.test.ts:147` calls
+`writeLiveVerdicts(verdicts, "live")` into that same committed path, from an `afterAll` that is
+guarded (`:144`) to persist ONLY on a genuinely green run where every expected verdict was
+recorded. So a green live run REGENERATES the file from real-engine observations, and `git diff`
+clean on it afterwards is the parity proof — byte identity between a fake-derived file and a
+real-engine-derived one.
+
+$ stat -c '%y %n' packages/engine-claude/src/live/fixtures/live-verdicts.json
+2026-08-05 21:21:08.468778355 +0200 packages/engine-claude/src/live/fixtures/live-verdicts.json
+  ^ 21:21:08 local (19:21:08Z) is INSIDE this run's window (19:19:32Z-19:21:22Z). The file was
+    genuinely rewritten by the live run; this is not a no-op that left it untouched.
+
+$ git status --porcelain -- packages/engine-claude/src/live/fixtures/live-verdicts.json
+exit=0   <- NO OUTPUT: byte-identical to HEAD
+
+$ md5sum packages/engine-claude/src/live/fixtures/live-verdicts.json
+ada6ddd1cc98cf10146a8c9629b6c95c  packages/engine-claude/src/live/fixtures/live-verdicts.json
+  ^ identical to the PRE-RUN digest recorded in section 1 (ada6ddd1cc98cf10146a8c9629b6c95c).
+
+$ cat packages/engine-claude/src/live/fixtures/live-verdicts.json
+{
+  "engineVersion": "2.1.218",
+  "fixtures": {
+    "blanket-mcp-deny-footgun": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "compound-command-smuggling": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "deny-wins-cross-level": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "deny-wins-same-level": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    },
+    "path-escape-absolute": {
+      "detail": "the pinned engine recorded a permission denial for the attempted out-of-owned-path tool call (executed-call guarded)",
+      "mechanism": "engine-permission-deny",
+      "verdict": "deny"
+    },
+    "path-escape-relative": {
+      "detail": "the pinned engine recorded a permission denial for the attempted out-of-owned-path tool call (executed-call guarded)",
+      "mechanism": "engine-permission-deny",
+      "verdict": "deny"
+    },
+    "process-wrapper-smuggling": {
+      "detail": "real ClaudeEngineAdapter.spawn refused the raw fixture profile at its synchronous assertNoFootguns gate, before any engine invocation",
+      "mechanism": "adapter-footgun-gate",
+      "verdict": "deny"
+    }
+  },
+  "source": "live"
+}
+
+VERDICT: the diff IS clean. The real engine produced, fixture-for-fixture, the same verdicts the
+fake engine derives. c7's parity claim is now backed by two genuinely independent observations
+instead of one. Had the diff been non-empty that would have been a real fake/live divergence and
+a finding — the bytes would NOT have been force-committed to make the offline test green.
+
+RESIDUAL, stated plainly: `source` in the regenerated file reads "live" both before and after,
+because the phase-time write already labelled the fake-derived bytes that way. The label is
+therefore not itself evidence of provenance; the mtime + the green run + the clean diff are.
+This is filed as a defect (06-live-verdicts-source-label-not-provenance).
+
+
+5. OWNER-CONFIG INTEGRITY
+-------------------------
+$ md5sum $HOME/.claude/settings.json $HOME/.claude/.credentials.json $HOME/.claude/.eo-oauth-token
+  (before and after the batch; digests deliberately not printed)
+$ diff <pre> <post>
+exit=0   <- 3/3 byte-UNCHANGED. The batch read the owner's OAuth handoff file and copied nothing
+            back; every worker ran against an isolated CLAUDE_CONFIG_DIR under os.tmpdir().
+
+
+6. WHAT THIS TRANSCRIPT DOES AND DOES NOT CLOSE
+-----------------------------------------------
+CLOSES (EVIDENCE-REPRODUCED): c2 secret-mask, c3 sandbox-unavailable, c4 crash-recovery, c7 parity.
+None of those four criteria names a CI job, so a green local run at the pinned engine is the
+strongest evidence their own text asks for.
+
+DOES NOT CLOSE: c1 and c10. Both name the `engine-live` CI job by name, and nothing local can
+satisfy "run in the `engine-live` CI job" / "evidenced by a green CI run". `engine-live` has ZERO
+runs in its history, and a dispatch today would red on ENOENT before reaching any assertion —
+see docs/evidence/phase-06/closeout/closeout-engine-live-enoent.txt.

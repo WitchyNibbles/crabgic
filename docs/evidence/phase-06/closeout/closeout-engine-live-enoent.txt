@@ -1,0 +1,233 @@
+PHASE-06 CLOSEOUT — WHY AN `engine-live` DISPATCH REDS ON ENOENT TODAY (c1, c10)
+================================================================================
+RULING-3 header
+---------------
+date (UTC):   2026-08-05T19:27:16Z
+UPSTREAM BASE (stable — resolves for any reader, now and after merge): 9abc3fd911186cd83bbd02b2d905f613da2ca8e3
+commands:     each is echoed verbatim below with its own exit status
+exit status:  this transcript is a SEARCH, not a test run; per-command statuses are inline.
+
+c1 and c10 are the only two phase-06 criteria whose text names the `engine-live` CI job. This pass
+did NOT dispatch it. That is not caution about the known-red spawn case — it is because a dispatch
+today fails on ENOENT before any assertion, having first burned the entire engine-claude live
+suite. Four links, each measured here.
+
+LINK 1 — the plugin live lane spawns `claude` FROM PATH
+-------------------------------------------------------
+$ git grep -n 'execFileAsync("claude"' -- packages/plugin
+packages/plugin/src/live/plugin-inventory-probe.ts:63:    const result = await execFileAsync("claude", args, { timeout: 30_000 });
+packages/plugin/src/live/plugin-load.live.test.ts:32:    const { stdout } = await execFileAsync("claude", ["plugin", "validate", resolvePluginRoot()], {
+exit=0
+
+$ sed -n "30,34p;63,67p" packages/plugin/src/live/plugin-load.live.test.ts
+  it("`claude plugin validate` accepts this package's own manifest (non-strict: two known, intentional unknown-field warnings for the marketplace's own `commit`/`digest` extension fields)", async () => {
+    assertLiveEnabled();
+    const { stdout } = await execFileAsync("claude", ["plugin", "validate", resolvePluginRoot()], {
+      timeout: 30_000,
+    });
+    // about the plugin under test changes.
+    const invocation = execFileAsync(
+      "claude",
+      [
+        "--plugin-dir",
+exit=0
+
+$ sed -n "60,66p" packages/plugin/src/live/plugin-inventory-probe.ts
+  ];
+  let stdout: string;
+  try {
+    const result = await execFileAsync("claude", args, { timeout: 30_000 });
+    stdout = result.stdout;
+  } catch (err) {
+    const maybeStdout = (err as { stdout?: string }).stdout;
+exit=0
+  ^ plugin-load.live.test.ts:32 and :65 pass the bare string "claude" to execFile, i.e. PATH
+    resolution. plugin-inventory-probe.ts:63 does the same, and plugin-load.live.test.ts's second
+    case calls it, so ALL THREE of that file's cases depend on a `claude` on PATH.
+
+LINK 2 — the SDK packages export NO `bin`, so `npm ci` puts no `claude` on PATH
+------------------------------------------------------------------------------
+$ node -e "for (const p of [\"@anthropic-ai/claude-agent-sdk\",\"@anthropic-ai/claude-agent-sdk-linux-x64\"]) { const j = require(`./node_modules/${p}/package.json`); console.log(j.name, j.version, \"bin:\", JSON.stringify(j.bin)); }"
+@anthropic-ai/claude-agent-sdk 0.3.218 bin: undefined
+@anthropic-ai/claude-agent-sdk-linux-x64 0.3.218 bin: undefined
+exit=0
+
+$ ls node_modules/.bin | grep -x claude
+exit=1   <- 1 = NO MATCH: npm ci links no 'claude' shim
+
+$ ls node_modules/.bin | grep -i claude
+exit=1   <- 1 = no claude-anything either
+  ^ Both SDK packages report `bin: undefined`. The engine binary DOES ship inside
+    @anthropic-ai/claude-agent-sdk-linux-x64 (the SDK transport launches it by absolute path,
+    which is why the four-file local batch works), but it is not exposed as a PATH command.
+
+LINK 3 — `engine-live.yml` installs no claude CLI
+-------------------------------------------------
+$ grep -n 'run:\|uses:\|name:' .github/workflows/engine-live.yml
+1:name: engine-live
+30:    name: engine-live (@live conformance suite vs pinned engine)
+34:      - uses: actions/checkout@v4
+35:      - uses: actions/setup-node@v4
+38:      - name: Install sandbox runtime deps (bubblewrap + socat, baseline §6)
+39:        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat
+40:      - name: Fail fast without auth secret
+41:        run: |
+46:      - run: npm ci
+47:      - run: npx tsc -b
+48:      - name: Run @live conformance suite
+53:        run: npm run test:live
+54:      - name: Upload live-run journal record
+56:        uses: actions/upload-artifact@v4
+58:          name: engine-live-run-record
+exit=0
+
+$ grep -nE "claude-code|npm i(nstall)? -g|setup-token" .github/workflows/engine-live.yml
+11:# provisioned via `claude setup-token`; adaptation §5.7). The suite's own
+exit=0
+  ^ CORRECTION, 2026-08-05, made before this transcript was committed. An earlier draft of this
+    line annotated the grep as "1 = NO MATCH". THAT WAS WRONG: the grep exits 0 because it DOES
+    match, once. The single hit is line 11, a COMMENT about how the owner provisions the
+    repository secret out of band -- "# provisioned via `claude setup-token`; adaptation
+    Section 5.7" -- not an install step and not a step at all. The conclusion is unchanged and is
+    now stated positively rather than as an absence, per the rule that a positive structural
+    proof does not depend on a pattern being right:
+
+      the workflow's steps are EXHAUSTIVELY the six listed above at :34, :35, :38-39, :40-45,
+      :46, :47, :48-53, :54-60 -- checkout, setup-node 24, apt-get bubblewrap+socat, the
+      auth-secret guard, `npm ci`, `npx tsc -b`, the test step, and the artifact upload. Read
+      them and count: NONE of them installs a `claude` CLI. That is an enumeration of the whole
+      step list, not the silence of one grep.
+
+    A GitHub `ubuntu-latest` runner therefore has no `claude` on PATH, so every case in
+    plugin-load.live.test.ts ENOENTs within milliseconds and `npm run test:live` (:53) exits red.
+
+    Recorded rather than quietly fixed because it is the exact failure the closeout discipline
+    exists to catch: an annotation that asserted an exit status the command's own output
+    contradicted, two lines above it.
+
+LINK 4 — the plugin lane's red does NOT spare the spend (and the file order is NOT the include order)
+-----------------------------------------------------------------------------------------------------
+$ sed -n '26,29p;31,32p' vitest.live.config.ts
+    include: [
+      "packages/engine-claude/src/live/**/*.live.test.ts",
+      "packages/plugin/src/live/**/*.live.test.ts",
+    ],
+    fileParallelism: false,
+    maxConcurrency: 1,
+exit=0
+
+$ ls packages/engine-claude/src/live/*.live.test.ts | wc -l
+15
+$ ls packages/plugin/src/live/*.live.test.ts | wc -l
+2
+exit=0   <- 15 engine-claude files + 2 plugin files = the 17 that the bare test:live script runs
+
+CORRECTION TO THIS PASS'S OWN PLAN, measured rather than assumed. The plan asserted that all 15
+engine-claude files run BEFORE vitest reaches the plugin lane, "config include order", and
+concluded the ENOENT red would arrive only after the whole suite had been paid for. THAT ORDERING
+CLAIM IS FALSE. Measured below: `plugin-load.live.test.ts` ran FIRST of the 17.
+
+PROVENANCE OF THE MEASUREMENT, stated plainly because it was an accident. While generating this
+transcript I wrote a shell backtick inside a DOUBLE-quoted string, so bash command-substituted it
+and actually executed the bare 17-file lane. It spent NOTHING: `CRABGIC_LIVE` was unset, so the
+harness's fail-closed gate threw in every file before any engine call. Verified afterwards — the
+canary marker `/tmp/eo-live-canary-marker.json` still carried its 19:19:36Z mtime from this pass's
+sanctioned batch, no `/tmp/eo-live-*` scratch dir remained, and no engine process was alive. The
+accident is disclosed rather than hidden because the datum it produced corrects a plan error, and
+because it is itself evidence that the fail-closed gate works. Verbatim, unmodified:
+
+> vitest run --config vitest.live.config.ts
+
+
+ RUN  v4.1.10 <WORKTREE>
+
+ ❯ packages/plugin/src/live/plugin-load.live.test.ts (3 tests | 3 failed) 6ms
+     × `claude plugin validate` accepts this package's own manifest (non-strict: two known, intentional unknown-field warnings for the marketplace's own `commit`/`digest` extension fields) 4ms
+     × lists every required skill, subagent, and the gateway MCP server 0ms
+     × a subagent (eo-explore) is spawnable in a real session 0ms
+ ❯ packages/engine-claude/src/live/edit-input-stability.live.test.ts (3 tests | 3 skipped) 5ms
+ ❯ packages/engine-claude/src/live/mcp-adjudication-shadowing.live.test.ts (2 tests | 2 skipped) 5ms
+ ❯ packages/engine-claude/src/live/path-anchor.live.test.ts (20 tests | 20 skipped) 7ms
+ ❯ packages/engine-claude/src/live/sandbox-containment.live.test.ts (11 tests | 11 skipped) 9ms
+ ❯ packages/engine-claude/src/live/path-anchor-differential.live.test.ts (6 tests | 6 skipped) 5ms
+ ❯ packages/engine-claude/src/live/crash-recovery.live.test.ts (3 tests | 3 skipped) 5ms
+ ❯ packages/engine-claude/src/live/envelope-conformance.live.test.ts (7 tests | 7 skipped) 7ms
+ ❯ packages/engine-claude/src/live/sandbox-hermeticity.live.test.ts (4 tests | 4 skipped) 5ms
+ ❯ packages/engine-claude/src/live/parked-resume-write-authority.live.test.ts (1 test | 1 skipped) 5ms
+ ❯ packages/engine-claude/src/live/adjudication-bridge.live.test.ts (2 tests | 2 skipped) 5ms
+ ❯ packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts (3 tests | 3 skipped) 5ms
+ ❯ packages/engine-claude/src/live/secret-mask.live.test.ts (1 test | 1 skipped) 4ms
+ ❯ packages/engine-claude/src/live/sandbox-unavailable.live.test.ts (1 test | 1 skipped) 5ms
+ ❯ packages/plugin/src/live/plugin-negative-space.live.test.ts (1 test | 1 failed) 5ms
+     × reports the plugin absent (no --plugin-dir, not otherwise installed): zero skills/agents/mcp servers 3ms
+ ❯ packages/engine-claude/src/live/zz-live-run-record.live.test.ts (1 test | 1 skipped) 5ms
+ ❯ packages/engine-claude/src/live/read-exposure.live.test.ts (5 tests | 5 skipped) 11ms
+
+ Test Files  17 failed (17)
+      Tests  4 failed | 70 skipped (74)
+   Start at  21:27:25
+   Duration  9.20s (transform 1.24s, setup 0ms, import 7.11s, tests 98ms, environment 1ms)
+
+READ THAT OUTPUT CAREFULLY — it establishes three things:
+
+  (a) FILE ORDER IS NOT INCLUDE ORDER. `plugin-load.live.test.ts` is line 1 of the run;
+      `plugin-negative-space.live.test.ts` is 16th of 17. vitest does not order files by which
+      include pattern matched them, so the plan's "the expensive files run first" is wrong in
+      both directions — the two plugin files are scattered, not appended.
+
+  (b) THE ORDER DOES NOT MATTER, WHICH IS THE REAL POINT. `npm run test:live` is
+      `vitest run --config vitest.live.config.ts` with NO `--bail`. All 17 files ran here
+      (`Test Files  17 failed (17)`). So on CI a plugin ENOENT does NOT stop the engine-claude
+      files: every one of them still runs, still authenticates, and still spends. The full
+      ~60-90-invocation cost is paid whether the plugin lane fails first, last, or in the middle.
+      The hazard therefore survives the correction — the plan's conclusion was right for a
+      reason the plan got wrong.
+
+  (c) THE FAIL-CLOSED GATE IS REAL, and is why this accident cost nothing. Every engine-claude
+      file reports `N tests | N skipped` with a failed suite, and the four plugin cases report
+      `× ... 0-4ms` — a `LiveEnvNotEnabledError` from `assertLiveEnabled`, thrown in `beforeAll`
+      before any engine call. The harness's own message states the intent:
+      "CRABGIC_LIVE is not set to '1' — the @live conformance suite refuses to run and MUST fail
+      red, never skip silently (the engine-live CI job must go red, not vacuously green,
+      without it)."
+      On a real CI dispatch `CRABGIC_LIVE=1` IS set (engine-live.yml:50), so this gate would not
+      fire and nothing would stand between the run and the spend.
+
+LINK 5 — this has never surfaced because the workflow has never run
+-------------------------------------------------------------------
+$ gh run list --workflow=engine-live.yml --limit 10
+exit=0   <- exit 0 with EMPTY output: zero runs in the workflow's entire history
+
+CONSEQUENCE FOR THIS CLOSEOUT
+-----------------------------
+c1's FIRST clause ("03's full envelope-conformance fixture set passes on the pinned live engine")
+IS now satisfied — the local batch proved it; see closeout-live-batch.txt. Its SECOND clause
+("run in the `engine-live` CI job") and the whole of c10 ("evidenced by a green CI run") cannot be
+satisfied by anything local, and cannot be satisfied by a red run either, because c10's own text
+says green. Both boxes therefore stay UNTICKED, classified EVIDENCE-NEEDS-CI.
+
+A dispatch would cost roughly 60-90 haiku invocations (the 15 engine-claude files; the four this
+pass ran measured 10 model-serving invocations by themselves, and several of the other eleven
+carry larger ledgers — the read-exposure probe spent a capped 30) to reach a guaranteed
+millisecond ENOENT red that closes nothing, and the same cost would be paid again on the eventual
+real dispatch. Two ordinary defect-fix PRs are the precondition: a pinned, IN-RANGE CLI install
+step in engine-live.yml (never `@latest` — the registry is at 2.1.221+, outside the accepted
+2.1.207-2.1.220), and the spawn case's three already-filed test defects. A closeout pass files
+defects; it does not fix them.
+
+SECOND, SEPARATE FINDING FOUND WHILE READING THAT WORKFLOW — a stale accepted range
+-----------------------------------------------------------------------------------
+$ sed -n '8p' .github/workflows/engine-live.yml
+# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.210).
+exit=0
+
+$ grep -n "Accepted range" docs/engine-baseline.md | head -1
+6:**Accepted range:** **2.1.207–2.1.220**. The 2026-07-24 re-run reproduced every PASS verdict from the 2.1.207–2.1.210 pass with zero F
+
+$ grep -n "ACCEPTED_ENGINE_VERSION_RANGE" packages/engine-claude/src/version-gate.test.ts | head -2
+27:    expect(ACCEPTED_ENGINE_VERSION_RANGE).toEqual({ min: "2.1.207", max: "2.1.220" });
+  ^ The workflow comment still says 2.1.207-2.1.210. docs/engine-baseline.md's header says
+    2.1.207-2.1.220, and version-gate.test.ts:27 pins the code constant to 2.1.220. The comment is
+    stale by two re-baselines. It is a comment, so nothing enforces it and nothing breaks today —
+    but it is exactly the drift the engine-fact ground rule exists to catch, and it will mislead
+    whoever writes the pinned-CLI install step this defect record asks for. Filed as a defect.
