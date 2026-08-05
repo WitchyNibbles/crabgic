@@ -32,6 +32,37 @@ import { containsSecretShapedContent } from "../security/secret-patterns.js";
  *    structural safety, not content; see `../security/secret-
  *    patterns.ts`, the same pattern set `../attachments/attachment-
  *    pipeline.ts` scans attachment bytes/filenames against).
+ *  - secret-shaped content ANYWHERE in the document's JSON
+ *    serialization — see the hardening note below.
+ *
+ * HARDENING (secret scan scope): the extracted-text scan above sees only
+ * `node.text`. Two shapes therefore transited it untouched:
+ *
+ *  - a link mark's `attrs.href`. `validateAdfSafeSubset` checks a href's
+ *    SCHEME only (`../../../renderer/src/adf.ts`'s `isSafeHref`) — a
+ *    perfectly well-formed `https:` URL with a secret in its query string
+ *    is structurally valid, and this deliberate scheme-vs-content division
+ *    of labour means neither side was scanning it.
+ *  - an unknown extra member on a node (`{type:"text", text:"hi",
+ *    note:"AKIA..."}`). `validateAdfSafeSubset` walks only
+ *    `type`/`marks`/`content`, so unknown members are structurally
+ *    invisible — yet Cloud's `./jira-mutation-apply-client.ts` spreads the
+ *    payload record wholesale into the request body, so they ship.
+ *
+ * Both reach a real Jira request: on Cloud the outbound body IS
+ * `JSON.stringify` of this same document, and on Data Center the href is
+ * emitted literally inside the wiki `[text|href]` construct
+ * (`./datacenter/wiki-markup-render-profile.ts`). Scanning the whole
+ * serialization therefore covers exactly the bytes that ship, and closes
+ * both shapes by construction rather than enumerating attribute names —
+ * an href-only check would leave the unknown-member path open.
+ *
+ * The extracted-text scan is KEPT, never replaced: `JSON.stringify`
+ * escapes control characters, so a pattern like `aws_secret_access_key\s*=`
+ * matching across a real newline no longer matches once that newline has
+ * become the two-character escape `\n`. Serialization-only scanning would
+ * be strictly WEAKER on the text path; the union is strictly stronger than
+ * either alone. (See `../security/secret-patterns.ts`.)
  *
  * Never echoes the raw document or the matched secret text in the
  * thrown error — only a bounded, structural finding summary.
@@ -61,6 +92,32 @@ function extractPlainText(node: AdfNode, into: string[]): void {
   }
   for (const child of node.content ?? []) {
     extractPlainText(child, into);
+  }
+}
+
+/**
+ * `JSON.stringify` throws `TypeError` on a circular structure. This guard's
+ * documented contract is that it throws only typed `ConnectorError`s, and a
+ * document we cannot serialize is a document we cannot scan — so failing
+ * closed (reject) is the only safe mapping. Never returns the document.
+ *
+ * Residual, stated rather than implied: a cycle routed through `content`
+ * exhausts the stack inside the shared recursive walkers above long before
+ * reaching here, and surfaces as a `RangeError`. That is pre-existing
+ * behaviour of `validateAdfSafeSubset`/`extractPlainText`, not of this
+ * check; it is pinned by a test in `./adf-guard.test.ts` so it cannot drift
+ * silently. Cycles through members those walkers skip (e.g. `attrs`) do
+ * reach here and are mapped below.
+ */
+function serializeForSecretScan(candidate: AdfDocument, label: string, provider: string): string {
+  try {
+    return JSON.stringify(candidate);
+  } catch {
+    throw ConnectorError.policyBlocked({
+      message: `${label}: ADF document is not JSON-serializable (circular or otherwise unencodable structure) — refusing to emit an unscannable document`,
+      provider,
+      retryable: false,
+    });
   }
 }
 
@@ -95,6 +152,19 @@ export function assertSafeAdfDocument(
   if (containsSecretShapedContent(textParts.join("\n"))) {
     throw ConnectorError.policyBlocked({
       message: `${label}: embedded secret-shaped content detected in ADF text`,
+      provider,
+      retryable: false,
+    });
+  }
+
+  // Runs AFTER the text scan, never instead of it — so a text-borne secret
+  // keeps its existing, more specific message and the `\s`-bearing patterns
+  // keep an unescaped subject to match against. Deliberately scans the whole
+  // serialization rather than an enumerated attribute list; see the module
+  // doc comment. `candidate` is never mutated — the same object is returned.
+  if (containsSecretShapedContent(serializeForSecretScan(candidate, label, provider))) {
+    throw ConnectorError.policyBlocked({
+      message: `${label}: embedded secret-shaped content detected in ADF document serialization`,
       provider,
       retryable: false,
     });
