@@ -52,3 +52,15 @@ packages/scheduler/goldens/
 # traceability-view fixture — identical rationale to the golden
 # directories above.
 packages/gates/goldens/
+
+# R7-P1: docs/evidence/phase-06/read-exposure-determination*.json are written
+# by `packages/engine-claude/src/live/read-exposure.live.test.ts` with the same
+# fixed 2-space `JSON.stringify` + trailing-newline contract as the golden
+# directories above, and the committed transcript pins their sha256. Prettier
+# collapses their short arrays onto one line, which would put every fresh probe
+# run permanently at odds with `prettier --check` and silently invalidate the
+# pinned digests — identical rationale to the machine-generated JSON above.
+# Scoped to these two files, not to docs/evidence/, so no other artifact is
+# exempted.
+docs/evidence/phase-06/read-exposure-determination.json
+docs/evidence/phase-06/read-exposure-determination.run1-not-attempted.json
