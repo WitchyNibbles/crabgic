@@ -298,3 +298,114 @@ TWO CHANGES, and the reasoning for each:
 HONEST RESIDUAL: the root cause was not confirmed, only removed from this test's
 path. If a pre-pipeline `failed` recurs anywhere, the drive-error assertion added
 above is what will name it.
+
+################################################################################
+CORRECTION 2026-08-05 — the "after `npm run build`" rows above are VOID, and the
+whole probe set is re-cut below with compiling mutations and recorded exit codes.
+Annotating, not rewriting: everything above stands as originally captured.
+################################################################################
+
+WHAT WAS WRONG. Probes A and B present "after `npm run build`" as a distinct
+measurement and record NO exit code for it. Both mutations **cannot compile**.
+Re-measured deliberately:
+
+    probe A mutation:  npm run typecheck -> exit 1 ; npm run build -> exit 1
+      packages/cli/src/daemon/compose-gate-registry.ts(50,30): error TS6133: 'registerCriteriaSealGate' is declared but its value is never read.
+      packages/cli/src/daemon/compose-gate-registry.ts(51,15): error TS6196: 'Requirement' is declared but never used.
+      packages/cli/src/daemon/compose-gate-registry.ts(52,10): error TS6133: 'resolveRequirementsStrict' is declared but its value is never read.
+      packages/cli/src/daemon/compose-gate-registry.ts(112,37): error TS6133: 'deps' is declared but its value is never read.
+
+    probe B mutation:  npm run typecheck -> exit 1 ; npm run build -> exit 1
+      packages/cli/src/daemon/run-dispatcher.ts(895,18): error TS6133: 'runCompletedPipeline' is declared but its value is never read.
+
+So those stages ran against a STALE `dist`, and "src-only == after-build" was not
+two measurements. This is the same hazard the file already names in probe C take
+1's void — recorded there and missed here, which is exactly why an exit code
+belongs beside every build stage rather than only beside the ones that failed
+loudly.
+
+THE NUMBERS SURVIVE — every reddening suite imports the mutated modules from
+`src` within its own package, and the re-cut runs below reproduce 10/4 and 7/3.
+Nothing concluded from probes A–D changes. What changes is that those two rows
+were not evidence for what they claimed to be evidence for.
+
+AN UNPLANNED FINDING, worth more than the row it replaces: `noUnusedLocals` means
+`tsc -b` **REFUSES both deletions outright**. Deleting the gate registration or
+the settle-chain invocation is not merely caught by a reddening test — it does
+not compile. That is a stronger guard than any assertion, and it was invisible
+until the exit codes were checked.
+
+--------------------------------------------------------------------------------
+RE-CUT PROBE SET — captured 2026-08-05T18:22Z .. 18:33Z at HEAD `16860d4`
+--------------------------------------------------------------------------------
+# UPSTREAM BASE (stable — resolves for any reader): f985511
+# branch tip at capture (PROVISIONAL): 16860d4
+#
+# Every mutation below COMPILES (`typecheck exit=0`, `build exit=0` recorded for
+# each), so every stage is a measurement rather than a stale dist. A2/B2/E
+# disable a line behind a runtime-false guard instead of deleting it, which is
+# what keeps every identifier referenced under `noUnusedLocals`.
+#
+# ONE PROCESS AT A TIME. An earlier attempt at this re-cut ran a backgrounded
+# probe script concurrently with foreground probes over the SAME worktree; the
+# two mutated and restored the same files, and both sets of numbers were
+# contaminated. Discarded and re-run serially. Recorded because a contaminated
+# probe looks exactly like a real one.
+
+BASELINE                                        Tests 6344 passed (6344) / Files 634 passed (634)
+
+A2  registration disabled                       Tests   10 failed | 6334 passed  / Files 4 failed | 630 passed
+B2  settle-chain invocation disabled            Tests    7 failed | 6337 passed  / Files 3 failed | 631 passed
+C2  per-unit executor seal check neutered       Tests    6 failed | 6338 passed  / Files 4 failed | 630 passed
+D   gate fired against the frozen base          Tests   12 failed | 6332 passed  / Files 4 failed | 630 passed
+E   published-vs-verified check disabled        Tests    1 failed | 6343 passed  / Files 1 failed | 633 passed
+F   clean arm reverted to assuming tip == base  Tests    1 failed | 6343 passed  / Files 1 failed | 633 passed
+
+A2/B2/C2 reproduce the original blast radii exactly (10/4, 7/3, 6/4), and A2's
+and C2's failure sets remain near-disjoint — coverage still has not migrated.
+
+PROBE D IS NOW FOUR TIMES LARGER, and that is the point of this round's change.
+Before the published-vs-verified enforcement existed, firing the gate against the
+frozen base reddened 3 tests in 1 file — the three e2e assertions that compare
+against an independently `rev-parse`d tip. It now reddens **12 tests across 4
+files**, because production itself refuses the divergence: the run fails, so every
+case that expects a publication fails too. The binding moved from "pinned by three
+assertions in one file" to "enforced by the code", which is measurable rather than
+asserted.
+
+E and F are the new enforcements' own pins, each reddening exactly the one test
+written for it:
+  E -> "retracts the branch and FAILS when the published tip is not the candidate the gates passed"
+  F -> "HARDENING — work the worker committed ITSELF is returned as the candidate, never silently dropped"
+
+--------------------------------------------------------------------------------
+A SECOND FLAKE, IN THE SAME FILE — the arm residual is NOT arm-specific
+--------------------------------------------------------------------------------
+The RESTORED stage of this re-cut (clean tree, `git status --porcelain -- packages/`
+empty, `build exit=0`) reported:
+
+      Tests  1 failed | 6343 passed (6344)
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T3 — two units: the evidence objectId is the tip whose tree holds BOTH edits, never a per-unit candidate
+
+Load average at the time: 10.69 / 12.11 / 11.85. The immediately following
+full-suite run was 634 files / 6344 tests green, as were 3 whole-file runs and 25
+further whole-file runs under 6 spinning CPU hogs — it does not reproduce in
+isolation at all.
+
+WHAT THIS UPDATES. The earlier residual was recorded as an `ubuntu-24.04-arm`
+observation on T4. It is neither arm-specific nor T4-specific: both occurrences
+are two-unit cases in this file, and both happened during a FULL-SUITE run (634
+files in parallel), never in a scoped one. The trigger is whole-suite contention,
+not the platform.
+
+STILL NOT DIAGNOSED, and deliberately not papered over. Two things were added so
+the next occurrence names its own cause instead of presenting as an unexplained
+state mismatch:
+  - T4 asserts the pipeline's own reason BEFORE the run state (added earlier).
+  - `dispatchAndSettle` now asserts `drain`'s outcome carries no unsettled and no
+    cancelled run ids. `drain` at its deadline terminates live workers and settles
+    the run `cancelled`, so a timeout under contention would previously have
+    surfaced as whatever downstream assertion happened to notice. That candidate
+    is now ruled in or out directly.
+No claim in this file depends on either flake's outcome; the reddening measurements
+above were all taken from runs whose restore stages were independently green.

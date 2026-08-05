@@ -275,7 +275,16 @@ async function dispatchAndSettle(daemon: ComposedSupervisor): Promise<string> {
   if (dispatcher === undefined) throw new Error("the composed daemon has no run dispatcher");
   const outcome = await dispatcher.dispatch(CHANGE_SET_ID);
   expect(outcome.accepted).toBe(true);
-  await dispatcher.drain({ timeoutMs: 120_000, graceMs: 2_000 });
+  const drained = await dispatcher.drain({ timeoutMs: 120_000, graceMs: 2_000 });
+  // ASSERTED, not ignored. `drain` at its deadline TERMINATES live workers and
+  // settles the run `cancelled` — so a drain that hit its timeout under
+  // full-suite contention would surface downstream as an unexplained run-state
+  // mismatch in whichever case ran, rather than as the timeout it actually was.
+  // Two flakes in this file (T4 on `ubuntu-24.04-arm`, T3 locally at load ~12)
+  // were both diagnosed only as far as "some state was wrong"; naming this cause
+  // rules it in or out on the next occurrence instead of leaving it a candidate.
+  expect(drained.unsettledRunIds).toEqual([]);
+  expect(drained.cancelledRunIds).toEqual([]);
   if (outcome.runId === undefined) throw new Error("an accepted dispatch minted no run id");
   return outcome.runId;
 }
