@@ -593,7 +593,7 @@ wire-prefix from it (pending — see below). Phase 02 enforces itself as the sol
 repo-wide grep/golden-value CI check.
 
 **Phases affected:** 02, 03, 06, 09, 10, 11, 12, 16, 23 — 11/12 import the constant for tool-registry
-registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
+registration (11:155, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15; 11 citation corrected 2026-08-05
 
 **Verified in:**
 - `02-contracts-and-schemas.md` §In scope — *"`GATEWAY_MCP_SERVER_NAME` constant: `"crabgic_gateway"` — the single
@@ -610,8 +610,8 @@ registration (11:68, 12:43) and 23 release-gates it; 11/12/23 added 2026-07-15
   `gateway mcp`'s server identity."*
 - `10-plugin-and-installer.md` §In scope — ".mcp.json entry keyed `GATEWAY_MCP_SERVER_NAME`"; §Work items 2 —
   golden-file test against the constant.
-- `11-intake-contract-approval.md` §Interfaces consumed, line 68 — *"`GATEWAY_MCP_SERVER_NAME = "crabgic_gateway"`,
-  constant owned by 02 — Gap 11"*; imports the constant to register `project.inspect`/`contract.approve` into
+- `11-intake-contract-approval.md` §Interfaces consumed, line 155 — *"`GATEWAY_MCP_SERVER_NAME` constant
+  (Gap 11) — wire-level tool naming"*; imports the constant to register `project.inspect`/`contract.approve` into
   the shared tool registry (Gap 1).
 - `12-stack-detection-quarantine.md` §Interfaces consumed, line 43 — *"`GATEWAY_MCP_SERVER_NAME` constant
   (`"crabgic_gateway"`)"* used for its `capability.audit`/`capability.approve` tool-registry registration.
