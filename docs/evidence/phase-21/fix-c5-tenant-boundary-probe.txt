@@ -1,0 +1,525 @@
+Phase 21, exit criterion 5 — the tenant-boundary gate: deletion probe, BEFORE and AFTER the fix
+===============================================================================================
+
+RULING-3 provenance
+-------------------
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): a7988c11952980807dfd2ba4958c1616a0b1abc5
+#   (origin/main at capture: "docs(ledger): refresh 22 stale line anchors (pointer drift only) (#90)")
+# branch tip at capture (PROVISIONAL — a pre-merge branch commit; see note): a8a27c2c75216de7c1bde1fb985306572a03a104
+#
+# PROBE 1 ran at a7988c1 — which IS the upstream base, so its numbers stay checkable forever.
+# PROBE 2 ran at a8a27c2, this branch's fix commit. That id is provisional: if the branch is
+# rebased it dies. The claim it establishes is re-provable at any tree by re-running the same
+# script (the mutation is a mechanical `sed -i '63,72d'` on one file), and the same mutation is
+# also pinned per-push by the tests committed in a8a27c2.
+#
+# Both probes were run by the same script, so the two are directly comparable:
+#   /tmp/.../scratchpad/probe-tenant.sh  (baseline -> mutation -> restore, at ONE head)
+# Every measurement is preceded by `npm run build`, because @crabgic/gates imports
+# @crabgic/connectors-grafana through packages/connectors-grafana/dist/ — a src-only edit is
+# invisible to the gates suite until the workspace is rebuilt, and would UNDER-REPORT the
+# blast radius.
+# The restore is always `git checkout -- <explicit file path>`, never a directory: a directory
+# restore during a probe can silently delete uncommitted new tests and produce a false green.
+# Test COUNTS are recorded at every stage for the same reason — an exit code alone cannot tell
+# a probe that passed from a probe whose assertions vanished.
+#
+# No @live test, no CRABGIC_LIVE, no engine-live dispatch: the whole probe is container-free
+# and network-free (the doctor's token-info fetch is an injected callback).
+
+THE MUTATION (identical in both probes)
+---------------------------------------
+Delete packages/connectors-grafana/src/auth/connection-doctor.ts:63-72 — the empty-allowlist
+fail-closed branch and the org-membership refusal. With it gone, a token bound to org 999 with
+allowlist ["7"] falls through to the role check, Admin >= Editor, and the doctor returns ok:true.
+
+WHAT THE TWO PROBES SHOW, IN ONE TABLE
+--------------------------------------
+                                    | probe 1 (a7988c1, BEFORE)   | probe 2 (a8a27c2, AFTER)
+  packages/gates baseline           | 46 files / 247 tests, green | 46 files / 252 tests, green
+  packages/gates UNDER the deletion | 46 files / 247 tests, GREEN | 4 failed | 248 passed (252)
+                                    |   <-- THE DEFECT            |   <-- the gate now bites
+  connectors-grafana under deletion | 3 failed / 405 passed (408) | 3 failed / 405 passed (408)
+  after restore (both packages)     | 83 files / 655 tests, green | 83 files / 660 tests, green
+
+The four gates failures in probe 2 are:
+  - the manifest it.each row "grafana-tenant-boundary passes when invoked directly"  (the
+    standing gate itself)
+  - T1 (the entry's verdict must carry phase 20's real scenario identity AND pass)
+  - T3 (the default-path control)
+  - T6 — worth naming, because its failure is informative rather than incidental: T6 injects
+    only a doctor stub and keeps the REAL matrix, so with enforcement deleted it fails at the
+    scenario loop instead of at the positive control. It reddens because it, too, is coupled to
+    the default matrix.
+
+Probe 1's own counts are the defect statement: deleting all of the enforcement the
+"grafana-tenant-boundary" and "jira-tenant-boundary" gates claimed to cover changed NOTHING in
+packages/gates — 247 tests before, 247 tests after, exit 0 both times.
+
+See also the ADDENDUM at the end of this file: what the tautology did and did NOT cost, sized;
+and the per-push CI job-log proof that the new assertions execute in a real push run.
+
+
+###############################################################################
+# PROBE 1 — BEFORE THE FIX, at a7988c1 (the tautology, measured)
+###############################################################################
+
+======== 0. PROVENANCE ========
+# 2026-08-05T12:35:21Z
+$ git rev-parse HEAD
+a7988c11952980807dfd2ba4958c1616a0b1abc5
+$ git status --porcelain -- packages/ e2e/ scripts/
+(exit=0)
+
+======== 1. BASELINE (unmutated) — npm run build ========
+# 2026-08-05T12:35:21Z
+EXIT=0
+
+======== 1a. BASELINE — npx vitest run packages/gates --coverage.enabled=false ========
+# 2026-08-05T12:35:22Z
+ Test Files  46 passed (46)
+      Tests  247 passed (247)
+EXIT=0
+
+======== 1b. BASELINE — npx vitest run packages/connectors-grafana --coverage.enabled=false ========
+# 2026-08-05T12:35:30Z
+ Test Files  37 passed (37)
+      Tests  408 passed (408)
+EXIT=0
+
+======== 1c. BASELINE — the two tenant-boundary-relevant gates test names ========
+# 2026-08-05T12:35:33Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+EXIT=0
+
+======== 2. MUTATION — delete the org-allowlist enforcement, connection-doctor.ts:63-72 ========
+# 2026-08-05T12:35:35Z
+$ sed -n '63,72p' packages/connectors-grafana/src/auth/connection-doctor.ts   (the block about to be deleted)
+  if (deps.orgAllowlist.length === 0) {
+    return { ok: false, reason: "connection has an empty org allowlist — refusing to proceed" };
+  }
+  const orgIdStr = String(tokenInfo.orgId);
+  if (!deps.orgAllowlist.includes(orgIdStr)) {
+    return {
+      ok: false,
+      reason: `token is bound to org ${orgIdStr}, which is outside this connection's org allowlist`,
+    };
+  }
+$ git diff --stat -- packages/connectors-grafana/src/auth/connection-doctor.ts
+ packages/connectors-grafana/src/auth/connection-doctor.ts | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+======== 2a. MUTATION — npm run build (MANDATORY: gates reads connectors-grafana through dist/) ========
+# 2026-08-05T12:35:35Z
+EXIT=0
+
+======== 2b. MUTATION — npx vitest run packages/gates --coverage.enabled=false ========
+# 2026-08-05T12:35:54Z
+ Test Files  46 passed (46)
+      Tests  247 passed (247)
+EXIT=0
+
+======== 2c. MUTATION — npx vitest run packages/connectors-grafana --coverage.enabled=false (control: the deletion is real) ========
+# 2026-08-05T12:36:02Z
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |@crabgic/connectors-grafana| src/auth/connection-doctor.test.ts > checkGrafanaConnectionDoctor — token scope + org binding (work item 1) > fails when the token's org is outside the allowlist
+ FAIL  |@crabgic/connectors-grafana| src/auth/connection-doctor.test.ts > checkGrafanaConnectionDoctor — token scope + org binding (work item 1) > fails when the org allowlist is empty (refuses rather than trusting any org)
+ FAIL  |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > a token bound to an out-of-allowlist org is refused before any resource access
+ Test Files  2 failed | 35 passed (37)
+      Tests  3 failed | 405 passed (408)
+EXIT=1
+
+======== 2d. MUTATION — packages/gates/src/security-fixture-manifest.test.ts, verbose ========
+# 2026-08-05T12:36:05Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+EXIT=0
+
+======== 3. RESTORE — by explicit FILE path (never a directory: a directory restore would delete uncommitted new tests) ========
+# 2026-08-05T12:36:07Z
+$ git checkout -- packages/connectors-grafana/src/auth/connection-doctor.ts
+EXIT=0
+$ git status --porcelain -- packages/ e2e/ scripts/
+
+======== 3a. RESTORE — npm run build ========
+# 2026-08-05T12:36:07Z
+EXIT=0
+
+======== 3b. RESTORE — npx vitest run packages/gates packages/connectors-grafana --coverage.enabled=false (counts must match the baseline) ========
+# 2026-08-05T12:36:25Z
+ Test Files  83 passed (83)
+      Tests  655 passed (655)
+EXIT=0
+
+======== 3c. RESTORE — security-fixture-manifest.test.ts, verbose (counts must match 1c) ========
+# 2026-08-05T12:36:34Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+EXIT=0
+
+======== END ========
+# 2026-08-05T12:36:36Z
+
+###############################################################################
+# RED STAGE A — T1/T2 written, implementation absent (uncommitted tree at a7988c1)
+# $ npx vitest run packages/gates/src/security-fixture-manifest.test.ts --coverage.enabled=false --reporter=verbose
+# DELIBERATELY RED. EXIT=1
+###############################################################################
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison 3ms
+   → expected 'refused as expected (cross-tenant Gra…' to match /out-of-allowlist org/
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T2: exactly ONE tenant-boundary entry exists, and it is phase 20's Grafana one (deliberate residual) 2ms
+   → expected [ { …(5) }, { …(5) } ] to have a length of 1 but got 2
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 'refused as expected (cross-tenant Gra…' to match /out-of-allowlist org/
+AssertionError: expected [ { …(5) }, { …(5) } ] to have a length of 1 but got 2
+ Test Files  1 failed (1)
+      Tests  2 failed | 16 passed (18)
+
+###############################################################################
+# RED STAGE B — T3-T6 added against the not-yet-existing grafanaTenantBoundaryVerify
+# DELIBERATELY RED: 6 failed | 16 passed (22) at runtime, plus tsc TS2305.
+###############################################################################
+### npx vitest run packages/gates/src/security-fixture-manifest.test.ts
+    199|     const verdict = await grafanaTenantBoundaryVerify(breachNotRefused…
+       |                           ^
+    200|     expect(verdict.passed).toBe(false);
+    201|     expect(verdict.detail).toContain("breach NOT refused");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary
+TypeError: grafanaTenantBoundaryVerify is not a function
+ ❯ src/security-fixture-manifest.test.ts:206:27
+    204|   it("T6: an always-refuse doctor FAILS the gate — a refuse-everything…
+    205|     const alwaysRefuse = async () => ({ ok: false as const, reason: "s…
+    206|     const verdict = await grafanaTenantBoundaryVerify(undefined, alway…
+       |                           ^
+    207|     expect(verdict.passed).toBe(false);
+    208|     expect(verdict.detail).toContain("positive control");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 16 passed (22)
+   Start at  14:38:14
+   Duration  1.36s (transform 882ms, setup 0ms, import 1.23s, tests 15ms, environment 0ms)
+
+VITEST EXIT=1
+
+### npm run typecheck (gates project)
+packages/gates/src/security-fixture-manifest.test.ts(6,3): error TS2305: Module '"./security-fixture-manifest.js"' has no exported member 'grafanaTenantBoundaryVerify'.
+TSC EXIT=2
+
+###############################################################################
+# PROBE 2 — AFTER THE FIX, at a8a27c2 (the coupling proof)
+###############################################################################
+
+======== 0. PROVENANCE ========
+# 2026-08-05T12:41:49Z
+$ git rev-parse HEAD
+a8a27c2c75216de7c1bde1fb985306572a03a104
+$ git status --porcelain -- packages/ e2e/ scripts/
+(exit=0)
+
+======== 1. BASELINE (unmutated) — npm run build ========
+# 2026-08-05T12:41:49Z
+EXIT=0
+
+======== 1a. BASELINE — npx vitest run packages/gates --coverage.enabled=false ========
+# 2026-08-05T12:42:06Z
+ Test Files  46 passed (46)
+      Tests  252 passed (252)
+EXIT=0
+
+======== 1b. BASELINE — npx vitest run packages/connectors-grafana --coverage.enabled=false ========
+# 2026-08-05T12:42:14Z
+ Test Files  37 passed (37)
+      Tests  408 passed (408)
+EXIT=0
+
+======== 1c. BASELINE — the two tenant-boundary-relevant gates test names ========
+# 2026-08-05T12:42:17Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T2: exactly ONE tenant-boundary entry exists, and it is phase 20's Grafana one (deliberate residual) 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T4: an empty tenant-boundary selection FAILS rather than passing vacuously over zero scenarios 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T5: an unrefused breach propagates — a failing scenario result FAILS the gate 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary 0ms
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+EXIT=0
+
+======== 2. MUTATION — delete the org-allowlist enforcement, connection-doctor.ts:63-72 ========
+# 2026-08-05T12:42:19Z
+$ sed -n '63,72p' packages/connectors-grafana/src/auth/connection-doctor.ts   (the block about to be deleted)
+  if (deps.orgAllowlist.length === 0) {
+    return { ok: false, reason: "connection has an empty org allowlist — refusing to proceed" };
+  }
+  const orgIdStr = String(tokenInfo.orgId);
+  if (!deps.orgAllowlist.includes(orgIdStr)) {
+    return {
+      ok: false,
+      reason: `token is bound to org ${orgIdStr}, which is outside this connection's org allowlist`,
+    };
+  }
+$ git diff --stat -- packages/connectors-grafana/src/auth/connection-doctor.ts
+ packages/connectors-grafana/src/auth/connection-doctor.ts | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+======== 2a. MUTATION — npm run build (MANDATORY: gates reads connectors-grafana through dist/) ========
+# 2026-08-05T12:42:19Z
+EXIT=0
+
+======== 2b. MUTATION — npx vitest run packages/gates --coverage.enabled=false ========
+# 2026-08-05T12:42:33Z
+     × grafana-tenant-boundary passes when invoked directly 6ms
+     × T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison 1ms
+     × T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement 1ms
+     × T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly
+ FAIL  |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison
+ FAIL  |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement
+ FAIL  |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary
+Received: "tenant-boundary scenario "a token bound to an out-of-allowlist org is refused before any resource access" FAILED: tenant-boundary breach NOT refused"
+ Test Files  1 failed | 45 passed (46)
+      Tests  4 failed | 248 passed (252)
+EXIT=1
+
+======== 2c. MUTATION — npx vitest run packages/connectors-grafana --coverage.enabled=false (control: the deletion is real) ========
+# 2026-08-05T12:42:45Z
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |@crabgic/connectors-grafana| src/auth/connection-doctor.test.ts > checkGrafanaConnectionDoctor — token scope + org binding (work item 1) > fails when the token's org is outside the allowlist
+ FAIL  |@crabgic/connectors-grafana| src/auth/connection-doctor.test.ts > checkGrafanaConnectionDoctor — token scope + org binding (work item 1) > fails when the org allowlist is empty (refuses rather than trusting any org)
+ FAIL  |@crabgic/connectors-grafana| src/fixtures/fault-injection.test.ts > FAULT_INJECTION_MATRIX — every scenario self-verifies as passing > a token bound to an out-of-allowlist org is refused before any resource access
+ Test Files  2 failed | 35 passed (37)
+      Tests  3 failed | 405 passed (408)
+EXIT=1
+
+======== 2d. MUTATION — packages/gates/src/security-fixture-manifest.test.ts, verbose ========
+# 2026-08-05T12:42:48Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 4ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T2: exactly ONE tenant-boundary entry exists, and it is phase 20's Grafana one (deliberate residual) 0ms
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T4: an empty tenant-boundary selection FAILS rather than passing vacuously over zero scenarios 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T5: an unrefused breach propagates — a failing scenario result FAILS the gate 0ms
+ × |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed (1)
+      Tests  4 failed | 17 passed (21)
+EXIT=1
+
+======== 3. RESTORE — by explicit FILE path (never a directory: a directory restore would delete uncommitted new tests) ========
+# 2026-08-05T12:42:50Z
+$ git checkout -- packages/connectors-grafana/src/auth/connection-doctor.ts
+EXIT=0
+$ git status --porcelain -- packages/ e2e/ scripts/
+
+======== 3a. RESTORE — npm run build ========
+# 2026-08-05T12:42:50Z
+EXIT=0
+
+======== 3b. RESTORE — npx vitest run packages/gates packages/connectors-grafana --coverage.enabled=false (counts must match the baseline) ========
+# 2026-08-05T12:43:06Z
+ Test Files  83 passed (83)
+      Tests  660 passed (660)
+EXIT=0
+
+======== 3c. RESTORE — security-fixture-manifest.test.ts, verbose (counts must match 1c) ========
+# 2026-08-05T12:43:20Z
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > contains every required fixture id, all marked blocking 2ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > covers all three named categories (forged admin/delete, tenant boundary, redaction) from all of 16/18/20 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > failing-first proof: removing any ONE required entry fails the completeness check 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — completeness > registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > pass() builds a passed=true GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > pass/fail verdict builders > fail() builds a passed=false GateVerdict 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > passes when the assertion throws a ConnectorError (the expected refusal) 1ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > fails when the assertion does NOT throw at all 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > verdictFromAssertion — all three branches > re-throws when the assertion throws something OTHER than a ConnectorError 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-forged-admin-delete passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-tenant-boundary passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > jira-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > grafana-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > security fixture manifest — each entry's verify handler is a REAL, live check (not a stub) > gateway-redaction passes when invoked directly 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T2: exactly ONE tenant-boundary entry exists, and it is phase 20's Grafana one (deliberate residual) 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T4: an empty tenant-boundary selection FAILS rather than passing vacuously over zero scenarios 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T5: an unrefused breach propagates — a failing scenario result FAILS the gate 0ms
+ ✓ |@crabgic/gates| src/security-fixture-manifest.test.ts > tenant-boundary gate is derived from phase 20's real breach scenario > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary 0ms
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+EXIT=0
+
+======== END ========
+# 2026-08-05T12:43:22Z
+
+
+###############################################################################
+# ADDENDUM — 2026-08-05
+###############################################################################
+
+A. WHAT THE TAUTOLOGY COST, SIZED HONESTLY
+------------------------------------------
+It is NOT true that the enforcement had no per-push net, and nothing in this file should be
+read that way. `checkGrafanaConnectionDoctor`'s org-allowlist check IS exercised on every push,
+by phase 20's own package suites inside `npm test` — which is exactly why the same deletion
+reddens 3 tests in `packages/connectors-grafana` in BOTH probes above:
+
+  connection-doctor.test.ts  "fails when the token's org is outside the allowlist"
+  connection-doctor.test.ts  "fails when the org allowlist is empty (refuses rather than
+                              trusting any org)"
+  fault-injection.test.ts    "a token bound to an out-of-allowlist org is refused before any
+                              resource access"
+
+Those three are in the default fan-out and were green-under-deletion nowhere.
+
+What the tautology actually cost is narrower and still real:
+
+  1. THE STANDING BLOCKING GATE. `registry.list("security")` reported tenant-boundary coverage
+     that could not fail. That is the guarantee phase 21 criterion 5 is about — fixtures
+     "graduated from one-off phase-exit checks to standing, continuously-run gates" — and it
+     was absent. A blocking gate that cannot fail is worse than an absent one, because it
+     reads as coverage.
+  2. THE `e2e/matrix` DEPTH. `e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts`
+     exists but has no per-push net of its own: `package.json`'s `workspaces` is `["packages/*"]`;
+     the root `vitest.config.ts` declares exactly THREE projects — the `packages/*` directories,
+     `e2e/report` (vitest.config.ts:71) and `scripts` (vitest.config.ts:84) — none of which is or
+     contains `e2e/matrix`; and the only workflow that names `e2e/matrix` is `release-e2e.yml`.
+     Verified in this tree, not assumed.
+
+So the honest statement is: the enforcement was tested; the GATE was not. This addendum exists
+because an inflated residual is its own kind of dishonesty, and this file will outlive the
+argument that produced it.
+
+B. PER-PUSH CI PROOF (byte-compared from the downloaded job logs)
+-----------------------------------------------------------------
+The bearer is `.github/workflows/ci.yml` job `test` (display name `unit-test+coverage`), which
+runs `npm run build && npm test`. NOT `gates-conformance.yml`, which runs exactly two other
+files and never this one.
+
+A green workflow is not this proof; the quoted line is. Both lines below are the raw job-log
+line with the leading timestamp and ONE separator space stripped, and ANSI colour codes removed
+(vitest's own content begins with one space before the check mark).
+
+BEFORE — origin/main @ a7988c11952980807dfd2ba4958c1616a0b1abc5, run 30944660528,
+job 92111526601 "unit-test+coverage (ubuntu-latest)":
+
+ ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (16 tests) 17ms
+
+AFTER — this branch, PR #94, run 31007535429 (headSha 1c51e5f600dc76f999306ccf8e6be618961a807a),
+job 92311088519 "unit-test+coverage (ubuntu-latest)", log line 570:
+
+ ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (21 tests) 21ms
+
+16 -> 21 in the same job on the same runner label. That count IS the proof the new assertions
+executed in a real per-push run: 16 original tests, minus the dropped `jira-tenant-boundary`
+it.each row, plus T1-T6 = 21.
+
+Provenance note. 1c51e5f is one commit behind this branch's tip; the only later commit is
+docs-only (`git diff --name-only 1c51e5f <tip>` lists exactly this file and phase-21/README.md),
+so the code that produced the quoted line is the code this branch lands. The tip's own CI run
+shows the same line; it is deliberately NOT quoted here, because re-citing each new tip is how a
+transcript ends up chasing itself.
+
+Whole-job totals in the AFTER run:
+
+ Test Files  629 passed (629)
+      Tests  6262 passed | 1 skipped (6263)

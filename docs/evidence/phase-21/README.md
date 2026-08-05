@@ -561,6 +561,58 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    two tenant strings) so both the `jira-tenant-boundary` and
    `grafana-tenant-boundary` manifest entries share the identical, real
    enforcement logic rather than two independently-authored copies.
+
+   > **Annotated 2026-08-05 — item 4 above is superseded by a fix; the original
+   > text stays verbatim, per this file's own convention (`d0a6520`).**
+   >
+   > Two things in item 4 did not hold. First, "real enforcement logic": both
+   > entries called `assertTenantBoundary("tenant-a", "tenant-b")` — two unequal
+   > literals — so the guard always threw and both blocking verdicts were
+   > compile-time constants. Measured before the fix: deleting the whole
+   > org-allowlist enforcement at
+   > `packages/connectors-grafana/src/auth/connection-doctor.ts:63-72` and
+   > rebuilding reddened 3 tests in phase 20 and left `packages/gates` entirely
+   > green at 46 files / 247 tests. Second, the justification ("neither connector
+   > package exported a dedicated tenant-boundary assertion function") is true of
+   > an assertion _function_ and beside the point: phase 20 exported a
+   > self-verifying _scenario_,
+   > `packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:61-74`'s
+   > `tenantBoundaryBreachScenario`, whose own file comment addresses phase 21 by
+   > name. The phase-21 closeout pass filed a defect record for this (prose
+   > reference: `21-tenant-boundary-manifest-entries-tautological`).
+   >
+   > Fixed 2026-08-05: the manifest now carries ONE tenant-boundary entry, whose
+   > `verify` runs 20's real scenario plus a positive control that an
+   > in-allowlist identity is accepted. `assertTenantBoundary` and the
+   > `jira-tenant-boundary` entry are removed — phase 18 shipped no
+   > tenant-boundary fixture, and no Jira/gateway tenant enforcement exists to
+   > gate, so a gates-side Jira guard would have been dead code cited as a
+   > bearer. Same deletion, after the fix: `packages/gates` goes red with 4
+   > failures alongside phase 20's 3. Both measurements, baseline through restore,
+   > are in `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt`.
+   >
+   > **Sized honestly, so nobody reads this as bigger than it is.** The
+   > enforcement itself was never untested per-push: `checkGrafanaConnectionDoctor`'s
+   > org-allowlist check is exercised on every push by phase 20's own package
+   > suites inside `npm test`, which is precisely why the same deletion reddens
+   > `connection-doctor.test.ts` ×2 and `fault-injection.test.ts` ×1 in both
+   > measurements. What the tautology cost is the **standing blocking gate** —
+   > the entry `registry.list("security")` reported as tenant-boundary coverage,
+   > which could not fail — plus the extra depth in
+   > `e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts`, which
+   > has no per-push net of its own (`workspaces` is `packages/*`; the root
+   > `vitest.config.ts` declares exactly three projects — the `packages/*`
+   > directories, `e2e/report` at `vitest.config.ts:71`, and `scripts` at
+   > `vitest.config.ts:84` — none of which is or contains `e2e/matrix`; and the
+   > only workflow naming `e2e/matrix` is `release-e2e.yml`). The enforcement
+   > was tested; the gate was not.
+   >
+   > This annotation governs every mention of `assertTenantBoundary` or
+   > `jira-tenant-boundary` elsewhere in this file (the exit-criterion mapping
+   > bullet at `README.md:398-399` and the file inventory at `README.md:467`);
+   > those lines record what was true when this file was captured and are left
+   > verbatim.
+
 5. **`GRAFANA_FORGED_OPERATION_NAMES` in `security-fixture-manifest.ts`
    duplicates a subset of the list already inline in `connectors-grafana/src/
    security/no-delete-admin.test.ts`** (phase 20's own fixture) rather than

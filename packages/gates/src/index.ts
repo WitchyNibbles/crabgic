@@ -192,7 +192,6 @@ export type { DriftCiCliOptions } from "./drift/cli.js";
 
 // Cross-gate wiring: security fixture manifest (work item 6)
 export {
-  assertTenantBoundary,
   registerSecurityFixtureManifest,
   REQUIRED_SECURITY_FIXTURE_IDS,
   SECURITY_FIXTURE_MANIFEST,
