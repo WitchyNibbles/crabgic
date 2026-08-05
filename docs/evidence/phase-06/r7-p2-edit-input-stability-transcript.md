@@ -167,7 +167,14 @@ guard that invocation would have stamped a `NOT RUN` stub over a real
 measurement — the failure `read-exposure.live.test.ts` documents and guards the
 same way.
 
-## 4. Mutation battery over the verdict derivation — 6 mutations, all caught, zero turns
+## 4. Mutation battery over the verdict derivation — 6 mutations, zero turns
+
+**Read "caught" in two senses, because they are not the same and the table below
+distinguishes them.** All six mutations change the DERIVED VERDICT, which is what
+makes the derivation non-vacuous. Only M3–M6 additionally turn the SUITE red; M1
+and M2 move the verdict to `UNSTABLE-*` while the suite stays green, and that is
+correct by design — a byte-only instability is a finding to record, not a
+production failure, so the file must report it without going red.
 
 Because the derivation is a pure function of the artifact, every mutation is
 applied to the artifact and the file re-run with the arm suppressed. **Baseline

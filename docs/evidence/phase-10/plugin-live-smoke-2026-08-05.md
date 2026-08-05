@@ -33,6 +33,26 @@ read, printed or persisted.
 
 ---
 
+## 0. What this run supersedes in the repo (dated correction, 2026-08-05)
+
+**`docs/evidence/criteria-closeout/defects/10-plugin-live-smoke-unrun.md` now
+carries a claim this run falsifies, and this is the dated correction beside it.**
+That record's own title — line 1, _"`plugin.live-smoke` has never run against the
+current plugin"_ — and its status table at line 30, _"A recorded execution against
+the CURRENT plugin | **No**"_, were both true when written on 2026-08-02 and are
+**superseded as of 2026-08-05**: the suite HAS now been run against the current
+five-subagent plugin, at an in-range engine, and this file is that execution.
+
+What the record still gets right, and why criterion 7 stays unticked anyway: the
+run is **3 of 4 green**, so there is still no green `plugin.live-smoke` to cite.
+What changed is the REASON — from "never executed" to "executed, and one case is
+red on its own timeout" (§3), which is a defect in the test rather than in the
+deliverable. The record is not edited here: a closeout pass owns those files, and
+per this repo's own rule a merged record gets a dated correction beside it rather
+than a silent rewrite. Its filename (`-unrun`) is now also inaccurate.
+
+---
+
 ## 1. Why the engine had to be pinned, and what it cost
 
 The criterion says "in a real session **on the 06 baseline range**". The accepted
@@ -183,10 +203,34 @@ Two aggravating factors, both disclosed rather than smoothed over:
   ledger's `spent` still reads 5.
 - Killing the wrapper did not kill the engine underneath it (`spawnSync` with
   inherited stdio, no signal forwarding), so the orphaned run kept spending for
-  ~48s past the timeout. Without the wrapper, `execFile`'s own timeout would have
-  killed `claude` directly. **The wrapper made the overspend worse**, and a future
-  run of this shape should forward signals or set `--max-turns`. No orphan process
+  ~48s past the timeout — independently re-measured as **48.8s** during review of
+  this PR. Without the wrapper, `execFile`'s own timeout would have killed
+  `claude` directly. **The wrapper made the overspend worse.** No orphan process
   survived the session (`ps` verified clean afterwards).
+
+**What would actually bound a run of this shape — corrected 2026-08-05, because
+the first version of this file got it wrong.** It recommended "forward signals or
+set `--max-turns`". The second half is **measured wrong** and is exactly the blind
+spot the rest of this section documents: an independent review of this PR found
+that `--max-turns` does parse at both 2.1.218 and 2.1.221 (it is hidden from
+`--help`, which refines `docs/engine-baseline.md:424`'s "absent from help"), but
+that **`--max-turns` enforcement and `num_turns` read the same top-level loop
+counter**, while a subagent's loop carries its **own** `maxTurns` from the agent's
+frontmatter (built-in default 200). This run's parent spent ~2 top-level turns, so
+a process-level `--max-turns 12` would very likely **not** have stopped any of the
+51 nested round trips. Recommending it would have handed the next run a bound that
+does not bind. What would:
+
+1. **`maxTurns:` in the subagent's own frontmatter.**
+   `packages/plugin/agents/eo-explore.md:5` pins `model: haiku` and nothing else —
+   no `maxTurns` appears anywhere under `packages/plugin/agents/`. That is the only
+   place a nested loop's length is actually settable.
+2. **`--max-budget-usd`**, which is denominated in the thing the owner is actually
+   spending rather than in a counter that cannot see the nested loop.
+3. **A process-group kill** (or signal forwarding) in whatever wrapper runs it, so
+   a timeout ends the spend instead of orphaning it — the defect above.
+4. **A bounded prompt.** §4 defect 2: the cheapest fix of the four, because it
+   removes the 50 tool calls rather than capping them.
 
 Consequence, stated plainly: **the cap was honored under the stated convention and
 breached in substance.** Nothing further was run after this was discovered; the
