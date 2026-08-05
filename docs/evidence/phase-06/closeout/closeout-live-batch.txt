@@ -77,6 +77,36 @@ loop:
     (docs/engine-baseline.md §4.1-§4.2). envelope-conformance.live.test.ts:259-260 asserts that
     removal live. secret-mask uses a direct query whose only allow entry is `Bash(echo:*)`.
     This is what makes the batch bounded at all: no nested subagent loop can exist.
+
+    ANNOTATION 2026-08-05, narrowing the two sentences above to what they actually prove. An
+    independent review of PR #105 pointed out, correctly, that the claim is slightly wider than
+    its evidence, so the claim is annotated here rather than rewritten.
+
+      * PROVEN for the EIGHT compiled-envelope processes (ledger entries 2-9 and 11): their
+        profiles all come from `compileEnvelope`, so `Agent` is in MANDATORY_FIXED_DENY and the
+        engine removes `Task` from the catalog. That removal is asserted LIVE in this very run at
+        envelope-conformance.live.test.ts:259-260, against a non-empty catalog (:258), so it is a
+        measurement and not an inference.
+
+      * NOT proven the same way for the TWO direct queries -- the canary (entry 1) and
+        secret-mask (entry 10). `runDirectQuery` (live-harness.ts:450-490) passes no
+        `disallowedTools` at all. Their subagent-safety rests on a DIFFERENT and weaker basis:
+        `permissionMode: "dontAsk"` auto-denying an unlisted tool, which docs/engine-baseline.md
+        line 66 records as measured for `Write` and which is GENERALIZED here to `Task`; plus
+        `maxTurns` 1 and 3 respectively, an abort controller, and prompts with nothing in them a
+        subagent would help with ("Reply with the single word: ok"; one `echo`).
+
+      * AND THE SHARP POINT, which is the part worth carrying forward: a `Task` subagent runs
+        INSIDE the parent engine process. So the distinct-pid ledger in section 3b could not have
+        counted nested traffic for those two invocations even if it had occurred -- the method
+        that bounds the eight does not bound the two. What bounds the two is the turn cap and the
+        prompt, which is a real bound but a different one.
+
+    This is not a spend finding: the prediction was exact (10 predicted, 10 measured) and the run
+    took 110s, so nothing unaccounted-for happened. It is a PROOF finding. The honest form of the
+    sentence above is "no nested subagent loop can exist in the eight compiled-envelope
+    invocations, and the two direct queries are bounded by turn caps and trivial prompts rather
+    than by catalog-removal."
   * setsid, so the watchdog kills the process GROUP (`kill -- -<pgid>`), not just the wrapper.
     An orphaned engine has been measured spending 48.8s past a wrapper-only kill.
   * a 30-minute wall ceiling, and a 20-invocation ledger ceiling.

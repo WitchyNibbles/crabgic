@@ -307,7 +307,7 @@
         {
           "kind": "test",
           "ref": "packages/engine-claude/src/gateway-name-reference.test.ts:19-26",
-          "quotedAssertion": "WHY THE SCAN DOES NOT EXEMPT ITSELF, which is the subtle failure this design avoids: :26 'const LITERAL = GATEWAY_MCP_SERVER_NAME;' — the needle is DERIVED from the imported constant, never hand-typed, so the scanner file contains zero occurrences and is scanned on the same terms as every other file. The header states the consequence at packages/engine-claude/src/gateway-name-reference.test.ts:19-22 '     *     `GATEWAY_MCP_SERVER_NAME` constant, never hand-typed, so this file' / '     *     carries zero occurrences too and 02's own sole-definition-site' / '     *     scanner (`packages/contracts/src/gateway/server-name.test.ts`) stays' / '     *     green with no allowlist entry.'"
+          "quotedAssertion": "WHY THE SCAN DOES NOT EXEMPT ITSELF, which is the subtle failure this design avoids: :26 'const LITERAL = GATEWAY_MCP_SERVER_NAME;' — the needle is DERIVED from the imported constant, never hand-typed, so the scanner file contains zero occurrences and is scanned on the same terms as every other file. The header states the consequence at packages/engine-claude/src/gateway-name-reference.test.ts:19-22 ' *     `GATEWAY_MCP_SERVER_NAME` constant, never hand-typed, so this file' / ' *     carries zero occurrences too and 02's own sole-definition-site' / ' *     scanner (`packages/contracts/src/gateway/server-name.test.ts`) stays' / ' *     green with no allowlist entry.'"
         },
         {
           "kind": "test",

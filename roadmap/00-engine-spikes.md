@@ -101,9 +101,10 @@ Citation re-resolution, and the numbers that make it worth trusting. Every quote
 purpose-built **four-rule** resolver — content, line-anchoring, group consecutiveness, and
 repeat-text detection — run against the tree this branch lands as: **86 citations, 80 of them
 resolvable paths, 174 marker groups, 329 quoted fragments, 329 content-verified, 230 line-anchored,
-27 ranged groups verified consecutive, 41 fragments flagged as repeat-text and therefore
-position-verified rather than merely content-verified, 4 resolved through a cross-file marker, 7
-matched only after joining wrapped lines, and 0 problems.**
+**230 of 230 byte-exact against the raw cited line with zero whitespace-only matches**, 27 ranged
+groups verified consecutive, 41 fragments flagged as repeat-text and therefore position-verified
+rather than merely content-verified, 4 resolved through a cross-file marker, 7 matched only after
+joining wrapped lines, and 0 problems.**
 
 Its first run found **65 problems in this record's own first draft.** Of those, 5 were resolver
 defects (English possessives mis-read as opening quotes; same-line multi-fragment groups; a marker
@@ -112,10 +113,23 @@ marker; no cross-file `file.ts:NN` handling; no wrapped-line fallback) and **34 
 citation defects** — including three CROSS-FILE quotes attributed to the wrong file, two TEMPLATE
 strings (`<path>`) quoted as if verbatim, ten quotes falling outside their own declared span, three
 off-by-one comment-block ranges, and a two-line YAML comment quoted as one unmatchable fragment.
-All are corrected above. The resolver was then **mutation-tested eight ways** — falsified quote,
+All are corrected above. The resolver was then **mutation-tested nine ways** — falsified quote,
 moved span, wrong range head with every fragment real, right content in the wrong file, a real
-quote pushed outside its span, a marker past EOF, an unattributed cross-file quote, and a
-prose-only reword that must NOT fire — **8/8 behaved as required, control included.**
+quote pushed outside its span, a marker past EOF, an unattributed cross-file quote, a re-indented
+fragment, and a prose-only reword that must NOT fire — **9/9 behaved as required, control
+included.**
+
+One defect got past all of that and was found by an INDEPENDENT REVIEWER, which is worth recording
+because it names this resolver's real blind spot. Four fragments in `phase-06.json`'s c8 citation 4
+were quoted with **five** leading spaces where `gateway-name-reference.test.ts` lines 19-22 carry
+exactly **one**: right content, right line numbers, **wrong bytes**. The resolver matched them
+because it compared whitespace-COLLAPSED text, so indentation was invisible to it — the same class
+as the job-log one-space whitespace ruling. Fixed two ways: the four fragments are re-indented, and
+the resolver now re-checks every line-anchored fragment as an EXACT substring of the raw line and
+reports any that matches only after collapsing. That check is mutation M9 above, and it is what
+produces the 230/230 byte-exact figure. A resolver's silence is only worth what its last mutation
+test bought — this one had bought eight, and the ninth existed because a reviewer measured what it
+did not.
 
 The prose is checked separately, because nothing else reads it: a sweeper resolved every `path:NN`
 reference in these annotations and this pass's four defect records — **80 references, 80 resolved,
