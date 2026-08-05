@@ -502,14 +502,22 @@ job 92111526601 "unit-test+coverage (ubuntu-latest)":
 
  ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (16 tests) 17ms
 
-AFTER — this branch, PR #94, run 31007535429, job 92311088519
-"unit-test+coverage (ubuntu-latest)", log line 570:
+AFTER — this branch, PR #94, run 31007535429 (headSha 1c51e5f600dc76f999306ccf8e6be618961a807a),
+job 92311088519 "unit-test+coverage (ubuntu-latest)", log line 570:
 
  ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (21 tests) 21ms
 
 16 -> 21 in the same job on the same runner label. That count IS the proof the new assertions
 executed in a real per-push run: 16 original tests, minus the dropped `jira-tenant-boundary`
-it.each row, plus T1-T6 = 21. Whole-job totals in the AFTER run:
+it.each row, plus T1-T6 = 21.
+
+Provenance note. 1c51e5f is one commit behind this branch's tip; the only later commit is
+docs-only (`git diff --name-only 1c51e5f <tip>` lists exactly this file and phase-21/README.md),
+so the code that produced the quoted line is the code this branch lands. The tip's own CI run
+shows the same line; it is deliberately NOT quoted here, because re-citing each new tip is how a
+transcript ends up chasing itself.
+
+Whole-job totals in the AFTER run:
 
  Test Files  629 passed (629)
       Tests  6262 passed | 1 skipped (6263)
