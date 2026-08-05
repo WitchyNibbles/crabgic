@@ -103,11 +103,16 @@ was taken independently of it and agrees with it.
 The tenant-boundary **gate** is inert, but it is **not** true that real tenant enforcement has no
 per-push net at all. `checkGrafanaConnectionDoctor`'s org-allowlist check is exercised by phase 20's
 own package suites, which are inside the default `npm test` fan-out and therefore run on every push
-via `.github/workflows/ci.yml`. What has no per-push net is the adapter-level scenario under
+via `.github/workflows/ci.yml`. What has no **per-push** net is the adapter-level scenario under
 `e2e/matrix/connector/`: `e2e/` is not an npm workspace and is not in `vitest.config.ts`'s `projects`,
-so it runs only through `npm run test:e2e`, which only `.github/workflows/release-e2e.yml` invokes —
-and that workflow is `workflow_dispatch` only. **The loss is the standing blocking gate, not the
-enforcement's only test.** Stated this way so the residual is not inflated past what was measured.
+so no push-triggered job runs it. It is **not** unrun, though — `.github/workflows/release-e2e.yml:389`
+runs it via `npm run test:e2e:release-evidence`, and that workflow is reachable two ways: manually
+(`.github/workflows/release-e2e.yml:71`, `workflow_dispatch`) **and** as a called workflow (`.github/workflows/release-e2e.yml:85`,
+`workflow_call`), which the tag-triggered `.github/workflows/publish.yml:64-66` invokes with
+`scoring_mode: final` as the gate that must pass before anything is published. **So the connector e2e
+lane does run, blocking, at every gated release — it simply does not run per push.** **The loss is the
+standing blocking gate, not the enforcement's only test.** Stated this way so the residual is neither
+inflated nor understated past what was measured.
 
 ---
 
