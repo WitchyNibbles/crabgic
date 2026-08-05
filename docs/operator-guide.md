@@ -8,6 +8,9 @@ missing. Exactly one command is in that state today: `connection capabilities` (
 
 ## 1. Installing
 
+**Before installing anywhere that matters (2026-08-05):** deployment is not yet certified. See
+`docs/deploy-posture.md` for the one blocking item and the honest residual list.
+
 ```
 crabgic install [--dry-run] [--json]
 ```

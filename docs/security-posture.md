@@ -49,6 +49,12 @@ names something concrete").
 This mirrors 14's own gate semantics (`docs/evidence/phase-14/README.md`: a CRITICAL/HIGH
 finding blocks; a fixed finding, re-verified, does not).
 
+**Deploy-certification note (2026-08-05, owner ruling — annotation; the sign-off above is
+unedited).** The sign-off records the phase-23 verdict of 2026-07-24 in its own scope. It predates
+`docs/engine-baseline.md` §14.4 (2026-08-01) and it does not certify deployment. Deployment is
+currently **NOT certified**, blocking on the unmeasured Read-tool sensitive-root exposure. See
+`docs/deploy-posture.md`, the sole authority on deploy certification.
+
 ## CRITICAL/HIGH findings found and fixed
 
 Every row below was raised by an independent adversarial-validation pass against an
