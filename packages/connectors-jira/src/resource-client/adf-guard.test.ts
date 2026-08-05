@@ -304,6 +304,55 @@ describe("assertSafeAdfDocument", () => {
     });
 
     /**
+     * PINS THE UNION. Every other secret fixture in this file puts its secret
+     * in `node.text`, where `JSON.stringify` reproduces it verbatim — so the
+     * serialization scan ALONE satisfies all of them, and deleting the
+     * extracted-text scan would leave the whole package green. Coverage
+     * migrating between two overlapping checks is exactly how a pin gets
+     * destroyed by the commit that widens coverage.
+     *
+     * This subject is the asymmetric one. `aws_secret_access_key\s*=`
+     * (`../security/secret-patterns.ts`) matches across a LITERAL newline in
+     * the extracted text, but in the serialization that newline is the
+     * two-character escape `\n`, which `\s*` cannot match. Verified by
+     * execution, not by reading: the raw text hits pattern 3 and the
+     * serialized document hits nothing.
+     *
+     * So this test reddens under a serialization-ONLY guard, which is the
+     * whole reason `adf-guard.ts` keeps both scans. Do not "simplify" it by
+     * moving the secret into a member the serializer reproduces verbatim —
+     * that would silently return this file to having no text-scan pin at all.
+     */
+    it("still rejects a text-only secret shape that JSON escaping hides from the serialization scan", () => {
+      // Assembled at runtime, like the sentinel above, to stay clear of the
+      // repo's own pre-commit secret scanner. The literal newline between the
+      // key name and the `=` is load-bearing — it is what `\s*` matches in the
+      // text and what becomes an inert `\n` escape in the serialization.
+      const textOnlySecret = `${["aws", "secret", "access", "key"].join("_")}\n= example-value-not-a-real-key`;
+      const doc = {
+        type: "doc",
+        version: 1,
+        content: [{ type: "paragraph", content: [{ type: "text", text: textOnlySecret }] }],
+      };
+
+      // The asymmetry itself, asserted rather than assumed: the serialization
+      // genuinely does NOT contain a subject the pattern can match.
+      expect(JSON.stringify(doc)).not.toContain(
+        `${["aws", "secret", "access", "key"].join("_")}\n`,
+      );
+
+      let thrown: unknown;
+      try {
+        assertSafeAdfDocument(doc, "test");
+        throw new Error("expected throw");
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(ConnectorError);
+      expect((thrown as ConnectorError).kind).toBe("policy_blocked");
+    });
+
+    /**
      * Residual pinned rather than merely described: a cycle through `content`
      * is rejected by stack exhaustion inside the shared structural walker,
      * NOT by this guard, and therefore not as a `ConnectorError`. Encoded so
@@ -322,7 +371,7 @@ describe("assertSafeAdfDocument", () => {
      * alone they prove nothing — their evidential value exists only PAIRED
      * with the four assertions above reddening at the same commit, and with
      * the post-green reverse probe recorded in
-     * docs/evidence/phase-18/adf-serialization-secret-scan-probe.md.
+     * docs/evidence/phase-18/adf-serialization-secret-scan.txt.
      *
      * The querystring-heavy Atlassian URL is the point: a control using a
      * bare `https://example.com` could not detect a guard that had become
