@@ -3,6 +3,31 @@
 > **NO. Deployment is NOT certified.**
 > **One blocking item: R7-P1 — the Read-tool sensitive-root exposure is unmeasured.**
 > Owner ruling, 2026-08-05.
+>
+> ---
+>
+> **AMENDED 2026-08-05, after measurement (R7-P1, PR #96). The block is resolved as stated; the
+> posture is now conditional, not blocked.**
+>
+> R7-P1 has been measured — 30 authorized engine turns, recorded in `docs/engine-baseline.md` §20 and
+> `docs/evidence/phase-00/r7-p1-read-exposure-transcript.md`. **Two verdicts, not one:**
+>
+> - **As shipped: BINDING.** `Read` was refused on all three sensitive roots under the compiled
+>   profile verbatim, attributably, with a positive control succeeding in every arm. **The exposure
+>   this document blocked on does not exist in the shipped configuration.**
+> - **The backstop: ABSENT.** The `Read(...)` deny triplets and the sandbox's `filesystem.denyRead`
+>   are **not** what refuses them. One arm added `Read` to `permissions.allow` and changed nothing
+>   else — sandbox enabled, all 26 deny entries and all 6 `denyRead` entries byte-identical — and the
+>   worker read the control state file. The sole barrier is out-of-cwd `Read` matching no allow rule
+>   under `dontAsk`: **defence-in-depth of depth one.**
+>
+> **Consequent posture: deployable for the trusted-operator, single-tenant case, with two named
+> conditions** — (1) do **not** add a broad `Read`/`Grep`/`Glob` allow, which is precisely what
+> `docs/claude-code-adaptation.md` Appendix B sketches and which removes the only working barrier;
+> and (2) treat the `tenantAllowlist` finding below as blocking for any **multi-tenant** deployment.
+>
+> ⚠️ **Not a clean bill of health.** A control that is trusted and inert is the failure mode this
+> whole exercise exists to surface, and §20.2 is an instance of it.
 
 This document is the **sole authority** on deploy certification. Dated rulings only; annotate,
 never rewrite. It supersedes — **without editing** — the 2026-07-24 sign-off in
@@ -70,8 +95,12 @@ document, and this document is not evidence that it was.
 | `bulk:<keys>` write-order       | Same-issue writes are now serialized (PR #84, 2026-08-04), but `bulk:` targets are still not serialized against their member issues; that needs multi-key acquisition in 16's `WriteSerializer`. Phase 18 criterion 10 stays unticked — `roadmap/18-jira-cloud-adapter.md:143`.                                                                                                                                                                                               |
 | Gate registry never composed    | Nothing in production ever moves a run to `verifying`, `integrating` or `final_verifying`, so the criteria-seal gate and 15's perf gate fire nowhere. Measured below.                                                                                                                                                                                                                                                                                                         |
 | Tenant-boundary **gates** inert | The two standing blocking-gate entries are tautological: `packages/gates/src/security-fixture-manifest.ts:172` and `packages/gates/src/security-fixture-manifest.ts:184` are the byte-identical `() => assertTenantBoundary("tenant-a", "tenant-b"),` — two literals, so the verdict is a constant. Deleting every tenant enforcement in both connector packages leaves both gates green. Phase 21 criterion 5 is UNMET — `roadmap/21-connector-evidence-integration.md:157`. |
-| ADF `href` secret-scan gap      | `packages/connectors-jira/src/resource-client/adf-guard.ts:58-65` walks only `node.text` and `node.content`. A secret placed in a link mark's `href` attribute is never seen by the scan.                                                                                                                                                                                                                                                                                     |
-| Live evidence: phases 00 and 06 | Neither has a closeout record (23 of 25 phases do). `engine-live.yml` has **zero runs ever**, and the repository has **no `CLAUDE_CODE_OAUTH_TOKEN` secret** — `gh secret list` returns only `NPM_TOKEN` (created 2026-07-26), verified 2026-08-05. CI dispatch of the live lane is therefore impossible today, and that is an owner action, not agent work.                                                                                                                  |
+
+> _Amended 2026-08-05 (PR #94):_ the tautological entries are **replaced** — the gate now drives phase 20's real `tenantBoundaryBreachScenario`, and deleting the org-allowlist check reddens it (4 failures where 247 tests previously stayed green). Per-push execution proved by job-log test count 16 → 21. **The residual moves one layer down:** nothing pins the scenario's own verdict — see `20-fault-injection-scenarios-have-unpinned-oracles.md`.
+> | `tenantAllowlist` declared, inert | **🔴 Blocking for MULTI-TENANT deployment.** `packages/contracts/src/contracts/external-connection.ts:85` declares `tenantAllowlist`; nothing reads it. A repo-wide grep for any tenant equality or inclusion comparison over production source returns **zero hits** — there is no tenant comparison anywhere — and the tenant value actually used derives from `projectAllowlist`, never from this field. The **schema publishes** the field, so an operator who sets it reasonably concludes cross-tenant access is refused, and nothing refuses it. Filed 2026-08-05 as `21-tenant-allowlist-declared-not-enforced.md`; unfixed. Worse than an unimplemented feature, because the contract invites the belief. |
+> | ADF `href` secret-scan gap | `packages/connectors-jira/src/resource-client/adf-guard.ts:58-65` walks only `node.text` and `node.content`. A secret placed in a link mark's `href` attribute is never seen by the scan. |
+> _Amended 2026-08-05 (PR #95):_ **closed.** The guard now additionally scans the document's whole JSON serialization — which on Cloud _is_ the outbound body — while keeping the extracted-text scan, since JSON escaping defeats the `\s`-bearing patterns. This also closed an **unknown-extra-member** smuggling path that `validateAdfSafeSubset`'s `type`/`marks`/`content` walk never visited, and Data Center's `[text|href]` wiki-markup path, pinned by its own apply-boundary test. False-positive risk measured at zero over 250 real URLs, 37 fixture JSONs and 1,000,000 synthetic high-entropy segments.
+> | Live evidence: phases 00 and 06 | Neither has a closeout record (23 of 25 phases do). `engine-live.yml` has **zero runs ever**, and the repository has **no `CLAUDE_CODE_OAUTH_TOKEN` secret** — `gh secret list` returns only `NPM_TOKEN` (created 2026-07-26), verified 2026-08-05. CI dispatch of the live lane is therefore impossible today, and that is an owner action, not agent work. |
 
 ### Measurement behind the gate-registry row
 

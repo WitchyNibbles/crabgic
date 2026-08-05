@@ -734,3 +734,76 @@ Note `last_assistant_message` is present — this is the field a regex-classifyi
 - `decision: "block"` on a `Stop` hook ceasing to prevent the turn ending, or `reason` ceasing to reach the model (§19.1) — the autonomy gate silently becomes advisory, and the protocol loses its enforcement layer.
 - **`stop_hook_active` ceasing to be set on re-entry (§19.2) — treat as a release blocker, not a drift note.** The gate would lose its loop guard. Its own defense-in-depth (it also fails open on every error path) reduces but does not eliminate the wedge risk.
 - The `Stop` payload losing `cwd` (§19.3), which is how the gate resolves the project.
+
+---
+
+## 20. `Read` measured — as-shipped BINDING, the deny/sandbox backstop ABSENT (R7-P1, 2026-08-05)
+
+**This section amends §3 and §14.4 without editing them.** Both are cited by line number from
+`docs/deploy-posture.md`, so this evidence is appended rather than inserted — the same discipline
+`docs/interface-ledger.md` gets. Read §14.4 with this section beside it.
+
+**Probe:** `packages/engine-claude/src/live/read-exposure.live.test.ts`. Owner-authorized; **30 of 30**
+engine turns; engine 2.1.220 via the SDK transport. **Two verdicts, deliberately not one** — §14.4 was
+itself corrected for drawing a single over-broad conclusion, and the same mistake was available here.
+
+### 20.1 As shipped: BINDING
+
+Under the compiled profile verbatim, runtime roots resolved as `run-dispatcher.ts` does, sandbox
+enabled: `Read` was refused on all three sensitive targets (`~/.ssh`, `~/.aws`, the control state
+root), attributably, with a positive control succeeding in **every** arm. **crabgic as it ships does
+not expose them.**
+
+### 20.2 The backstop: ABSENT
+
+One arm added `Read` to `permissions.allow` and **changed nothing else** — sandbox still enabled, all
+26 `permissions.deny` entries and all 6 `sandbox.filesystem.denyRead` entries byte-identical (verified
+from the artifact, not from prose). The worker then read the control state file.
+
+So the only thing binding as-shipped is **out-of-cwd `Read` matching no allow rule under `dontAsk`** —
+defence-in-depth of depth one. ⚠️ `docs/claude-code-adaptation.md` Appendix B's own sketch shows
+unconditional `Read`/`Grep`/`Glob` allows: **the change that removes the sole working barrier is
+already written down as the obvious one.**
+
+### 20.3 Two successes, two DIFFERENT facts — do not conflate them
+
+- **The state root is a covering-rule failure.** Rules aimed squarely at it existed on **both** layers
+  (`permissions.deny`, `disallowedTools`, and `sandbox.filesystem.denyRead`) and did not stop the read —
+  79 bytes, marker observed. **ABSENT rests on this target alone, and survives on it.**
+- **`~/.ssh` is a coverage gap, not a failed deny.** `SSH_DENY_PATH`/`AWS_DENY_PATH`
+  (`packages/engine-core/src/compiler/xdg-default-paths.ts:54,57`) are **tilde-only by construction**,
+  with no resolved-absolute sibling — unlike state and cache, which carry both — and `~` resolves to the
+  **worker's provisioned HOME** (`packages/supervisor/src/worker-lifecycle/worker-provisioning.ts:28`).
+  Nothing was ever aimed at the operator's real `~/.ssh` to fail.
+
+### 20.4 Production finding, and why the remedy is smaller than it looks
+
+The compiled profile carries **no deny of any kind, on either layer, over the operator's real `~/.ssh`
+and `~/.aws`** — the same hazard `xdg-default-paths.ts:31-46`'s own carry-forward discharged for state
+and cache and left open for these two.
+
+⚠️ **Closing it restores the _intended_ defence-in-depth, not an _effective_ one.** §20.3's state-root
+result shows a resolved-absolute deny does not stop a `Read` on this engine anyway, and as-shipped
+auto-deny already refuses these paths. The remedy buys **configuration intent, in both worlds**. Worth
+doing; do not oversell it.
+
+### 20.5 What this amends
+
+- **§3's row** "`dontAsk` auto-denies an unlisted tool (`Write`, not in any allow rule)" is **narrowed
+  for `Read`**: auto-deny is **directory-scoped**, not tool-wide — in-worktree `Read` succeeded with no
+  allow rule anywhere, in three arms.
+- **§14.4's Limits** ("It does not measure `Read`…") is **discharged for `Read`** by this section.
+- **§14.4's item 1** parenthetical — that the sandbox's own `denyRead`/`denyWrite` lists are "a
+  different mechanism that does bind" — is true for shell-issued writes and **measured FALSE for the
+  engine's `Read` tool with the sandbox enabled.** Item 1's advice to keep the deny entries still
+  stands; its stated reason does not.
+- A **new engine fact**: a path-scoped `Read(...)` deny **does** match — unlike §14.4's `Write` result —
+  but only in its **tilde** form, resolved against the worker's own HOME.
+
+### 20.6 Limits
+
+n=1 per arm. **Nothing here is positively attributable to the sandbox**: the sandbox-on/off differential
+is null, and the `Bash cat` arm was stopped by the permission layer before bwrap could matter — the
+sandbox half of ABSENT rests on one negative. Allow-matching proved sufficient for `Read` but **not**
+for `Bash`. **Not measured:** whether the tilde deny still binds once `Read` is allowed (dropped for
+budget). Evidence: `docs/evidence/phase-00/r7-p1-read-exposure-transcript.md`.
