@@ -591,6 +591,20 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    > failures alongside phase 20's 3. Both measurements, baseline through restore,
    > are in `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt`.
    >
+   > **Sized honestly, so nobody reads this as bigger than it is.** The
+   > enforcement itself was never untested per-push: `checkGrafanaConnectionDoctor`'s
+   > org-allowlist check is exercised on every push by phase 20's own package
+   > suites inside `npm test`, which is precisely why the same deletion reddens
+   > `connection-doctor.test.ts` ×2 and `fault-injection.test.ts` ×1 in both
+   > measurements. What the tautology cost is the **standing blocking gate** —
+   > the entry `registry.list("security")` reported as tenant-boundary coverage,
+   > which could not fail — plus the extra depth in
+   > `e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts`, which
+   > has no per-push net of its own (`workspaces` is `packages/*`, the root
+   > `vitest.config.ts` projects are `packages/*` plus `e2e/report`, and the only
+   > workflow naming `e2e/matrix` is `release-e2e.yml`). The enforcement was
+   > tested; the gate was not.
+   >
    > This annotation governs every mention of `assertTenantBoundary` or
    > `jira-tenant-boundary` elsewhere in this file (the exit-criterion mapping
    > bullet at `README.md:398-399` and the file inventory at `README.md:467`);

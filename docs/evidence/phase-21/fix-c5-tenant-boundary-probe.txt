@@ -56,6 +56,9 @@ Probe 1's own counts are the defect statement: deleting all of the enforcement t
 "grafana-tenant-boundary" and "jira-tenant-boundary" gates claimed to cover changed NOTHING in
 packages/gates — 247 tests before, 247 tests after, exit 0 both times.
 
+See also the ADDENDUM at the end of this file: what the tautology did and did NOT cost, sized;
+and the per-push CI job-log proof that the new assertions execute in a real push run.
+
 
 ###############################################################################
 # PROBE 1 — BEFORE THE FIX, at a7988c1 (the tautology, measured)
@@ -447,3 +450,66 @@ EXIT=0
 
 ======== END ========
 # 2026-08-05T12:43:22Z
+
+
+###############################################################################
+# ADDENDUM — 2026-08-05
+###############################################################################
+
+A. WHAT THE TAUTOLOGY COST, SIZED HONESTLY
+------------------------------------------
+It is NOT true that the enforcement had no per-push net, and nothing in this file should be
+read that way. `checkGrafanaConnectionDoctor`'s org-allowlist check IS exercised on every push,
+by phase 20's own package suites inside `npm test` — which is exactly why the same deletion
+reddens 3 tests in `packages/connectors-grafana` in BOTH probes above:
+
+  connection-doctor.test.ts  "fails when the token's org is outside the allowlist"
+  connection-doctor.test.ts  "fails when the org allowlist is empty (refuses rather than
+                              trusting any org)"
+  fault-injection.test.ts    "a token bound to an out-of-allowlist org is refused before any
+                              resource access"
+
+Those three are in the default fan-out and were green-under-deletion nowhere.
+
+What the tautology actually cost is narrower and still real:
+
+  1. THE STANDING BLOCKING GATE. `registry.list("security")` reported tenant-boundary coverage
+     that could not fail. That is the guarantee phase 21 criterion 5 is about — fixtures
+     "graduated from one-off phase-exit checks to standing, continuously-run gates" — and it
+     was absent. A blocking gate that cannot fail is worse than an absent one, because it
+     reads as coverage.
+  2. THE `e2e/matrix` DEPTH. `e2e/matrix/connector/src/connector-security/tenant-boundary.test.ts`
+     exists but has no per-push net of its own: `package.json`'s `workspaces` is `["packages/*"]`,
+     the root `vitest.config.ts` projects are `packages/*` plus `e2e/report`, and the only
+     workflow that names `e2e/matrix` is `release-e2e.yml`. Verified in this tree, not assumed.
+
+So the honest statement is: the enforcement was tested; the GATE was not. This addendum exists
+because an inflated residual is its own kind of dishonesty, and this file will outlive the
+argument that produced it.
+
+B. PER-PUSH CI PROOF (byte-compared from the downloaded job logs)
+-----------------------------------------------------------------
+The bearer is `.github/workflows/ci.yml` job `test` (display name `unit-test+coverage`), which
+runs `npm run build && npm test`. NOT `gates-conformance.yml`, which runs exactly two other
+files and never this one.
+
+A green workflow is not this proof; the quoted line is. Both lines below are the raw job-log
+line with the leading timestamp and ONE separator space stripped, and ANSI colour codes removed
+(vitest's own content begins with one space before the check mark).
+
+BEFORE — origin/main @ a7988c11952980807dfd2ba4958c1616a0b1abc5, run 30944660528,
+job 92111526601 "unit-test+coverage (ubuntu-latest)":
+
+ ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (16 tests) 17ms
+
+AFTER — this branch, PR #94, run 31007535429, job 92311088519
+"unit-test+coverage (ubuntu-latest)", log line 570:
+
+ ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (21 tests) 21ms
+
+16 -> 21 in the same job on the same runner label. That count IS the proof the new assertions
+executed in a real per-push run: 16 original tests, minus the dropped `jira-tenant-boundary`
+it.each row, plus T1-T6 = 21. Whole-job totals in the AFTER run:
+
+ Test Files  629 passed (629)
+      Tests  6262 passed | 1 skipped (6263)
