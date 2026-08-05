@@ -1,0 +1,238 @@
+Deletion / mutation probes for the gate-registry composition and the
+post-completion lifecycle walk.
+
+Defect addressed (named in prose, not cited — it lives in the closeout
+claim-space): 14-gate-registry-never-composed.
+
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): f985511
+#   (`f985511` was `origin/main` when this branch was cut, and remains an
+#    ancestor of it: `git merge-base --is-ancestor f985511 origin/main` exits 0.)
+# branch tip at capture (PROVISIONAL — a rebase orphans it): 4468a3b
+# Captured UTC: 2026-08-05T16:23Z .. 2026-08-05T16:47Z
+# Host: Linux 6.6.87.2-microsoft-standard-WSL2, git version 2.43.0, vitest 4.1.10
+# Load at capture: `uptime` reported load average 3.27 / 9.63 / 8.61 at 18:20 local.
+
+Every probe below is baseline -> mutation -> restore. Restores use an explicit
+SOURCE and an explicit PATH (`git checkout HEAD -- <path>`), never a directory
+and never the index, and every stage reports the TEST COUNT rather than an exit
+status — a probe that "passes" because an assertion silently vanished looks
+identical to one that passes because the code is correct.
+
+Command, verbatim, for every measurement stage:
+
+    npx vitest run --coverage.enabled=false
+
+filtered through `grep -E "Test Files |     Tests |^ FAIL " | sort -u`.
+
+================================================================================
+BASELINE (unmutated, after `npm run build`)
+================================================================================
+      Tests  6325 passed (6325)
+ Test Files  634 passed (634)
+
+exit status: 0
+
+================================================================================
+PROBE A — delete the `registerCriteriaSealGate` call in the production
+composition root (`packages/cli/src/daemon/compose-gate-registry.ts`).
+================================================================================
+`git diff --stat` under the mutation:
+
+ packages/cli/src/daemon/compose-gate-registry.ts | 8 --------
+ 1 file changed, 8 deletions(-)
+
+RESULT (after `npm run build`):
+
+      Tests  11 failed | 6314 passed (6325)
+ Test Files  5 failed | 629 passed (634)
+
+ FAIL  |crabgic| src/daemon/compose-gate-registry.test.ts > the registered gate set is pinned > registers EXACTLY the criteria-seal gate, under the existing `acceptance` tag
+ FAIL  |crabgic| src/daemon/compose-gate-registry.test.ts > the composed requirements reader > resolves the WHOLE change set's requirement union, not one unit's — the blind spot the gate exists to cover
+ FAIL  |crabgic| src/daemon/compose-gate-registry.test.ts > the composed requirements reader > reads the records WHEN IT FIRES, so a post-registration tamper is caught
+ FAIL  |crabgic| src/daemon/compose-gate-registry.test.ts > the composed requirements reader > REFUSES rather than shrinking the bar when a declared id resolves to no record
+ FAIL  |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts > ... > C — control: matching record and seal complete normally, with zero refusals journaled
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T1 — one unit: the run publishes, and the acceptance evidence binds the independently-resolved branch tip
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T3 — two units: the evidence objectId is the tip whose tree holds BOTH edits, never a per-unit candidate
+ FAIL  |crabgic| src/intake/closed-loop.e2e.test.ts > ... > takes an intake request all the way to a driven run with no human asked
+ FAIL  |crabgic| src/intake/closed-loop.e2e.test.ts > ... > drives an approved change set through to a journaled work-unit transition
+
+ONE UNRELATED FAILURE IN THE SAME RUN, named rather than quietly dropped:
+
+ FAIL  |@crabgic/supervisor| src/idle-budget/idle-budget.integration.test.ts > ... > RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler
+
+That suite asserts an RSS/CPU budget over a 5s-paced window and is a LOAD FLAKE
+(the run was taken at load average ~9.6). It is unrelated to the mutation: it is
+green in the baseline above, green in the restore below, and green in the two
+other probes' runs. The mutation's real blast radius is therefore 10 tests / 4
+files, and the counts above are reported as measured rather than adjusted.
+
+RESTORE (`git checkout HEAD -- packages/cli/src/daemon/compose-gate-registry.ts`,
+then `npm run build`):
+
+      Tests  6325 passed (6325)
+ Test Files  634 passed (634)
+
+`git status --porcelain -- packages/` after the restore: EMPTY.
+The three new test files are still on disk after the restore (checked by name,
+because a directory-scoped restore is exactly how a probe deletes its own
+evidence):
+  packages/cli/src/daemon/compose-gate-registry.test.ts
+  packages/cli/src/daemon/post-completion-pipeline.test.ts
+  packages/git-engine/src/candidate-commit.test.ts
+
+REBUILD QUESTION, SETTLED BY MEASUREMENT rather than ritual. The same deletion
+measured src-only and after `npm run build` gave the SAME blast radius:
+
+  | probe A stage             | result                              |
+  |---------------------------|-------------------------------------|
+  | src only                  | Test Files  4 failed | 630 passed  |
+  | after `npm run build`     | Test Files  4 failed | 630 passed  |
+
+(Those two runs did not hit the idle-budget flake, hence 4 rather than 5 files.)
+That is expected here: `compose-gate-registry.ts` has no consumer outside
+`packages/cli`, and every consuming suite imports it by relative path from
+`src/`, so no cross-package `dist` hop is involved. Both numbers are recorded.
+
+================================================================================
+PROBE B — delete the pipeline invocation in `beginDriving`'s settle chain
+(`packages/cli/src/daemon/run-dispatcher.ts`).
+================================================================================
+`git diff --stat` under the mutation:
+
+ packages/cli/src/daemon/run-dispatcher.ts | 3 ---
+ 1 file changed, 3 deletions(-)
+
+RESULT (after `npm run build`):
+
+      Tests  7 failed | 6318 passed (6325)
+ Test Files  3 failed | 631 passed (634)
+
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T1 — one unit: the run publishes, and the acceptance evidence binds the independently-resolved branch tip
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T3 — two units: the evidence objectId is the tip whose tree holds BOTH edits, never a per-unit candidate
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T4 — a REAL cross-unit conflict settles the run blocked, with the typed resolution units journaled
+ FAIL  |crabgic| src/daemon/run-dispatcher.test.ts > ... > accepts an all-succeeded run in `running` and settles it — the wedge is gone
+ FAIL  |crabgic| src/intake/closed-loop.e2e.test.ts > ... > takes an intake request all the way to a driven run with no human asked
+ FAIL  |crabgic| src/intake/closed-loop.e2e.test.ts > ... > drives an approved change set through to a journaled work-unit transition
+
+Note T4: it reddens under B and NOT under A, because a conflicting run settles
+`blocked` at `integrating` and never reaches `final_verifying` — so the gate
+registration is irrelevant to it while the pipeline invocation is not. The two
+probes' failure sets are the shape one should expect if each mutation removes a
+different capability, rather than one test simply being sensitive to everything.
+
+RESTORE: `git status --porcelain -- packages/cli/src/daemon/run-dispatcher.ts`
+EMPTY, and
+
+      Tests  6325 passed (6325)
+ Test Files  634 passed (634)
+
+src-only vs after-build for probe B: `Test Files  3 failed | 631 passed` in both.
+
+================================================================================
+PROBE C — THE COVERAGE-MIGRATION OVERLAP PROBE.
+Adding the whole-set criteria-seal gate at `final_verifying` OVERLAPS the
+per-unit executor seal check (`packages/scheduler/src/executor.ts`). If deleting
+the OLDER check now leaves everything green, coverage migrated between the two
+and a pin is dead — the exact shape found in PR #95.
+================================================================================
+TAKE 1 IS RECORDED AND DISCARDED. The first attempt excised a text span from
+`const sealFailures = …` up to the next `await recordAttempt(`, which left the
+file syntactically unbalanced. Its five reddened scheduler suites all failed at
+IMPORT, so they measured "this file no longer parses", not coverage:
+
+      Tests  6265 passed (6265)
+ Test Files  5 failed | 629 passed (634)
+ FAIL  |@crabgic/scheduler| src/executor.test.ts [ packages/scheduler/src/executor.test.ts ]
+ ...and four sibling scheduler suites, all suite-level (bracketed path) failures.
+
+Its after-build stage is also void: `npm run build` failed on the mutation, so
+the 25 reddened files in that stage measured a stale/absent `dist`, not the
+deletion. Both stages are reported here rather than being quietly replaced.
+
+TAKE 2 — the valid measurement. NEUTER the check instead of cutting it, so the
+file still parses and still typechecks:
+
+    -          .filter((checked) => !checked.result.ok);
+    +          .filter(() => false);
+
+ packages/scheduler/src/executor.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+    npm run typecheck   -> exit 0
+    npm run build       -> exit 0
+
+RESULT (after `npm run build`; this mutation DOES cross a package boundary,
+scheduler -> cli, so the rebuild is load-bearing here):
+
+      Tests  6 failed | 6319 passed (6325)
+ Test Files  4 failed | 630 passed (634)
+
+ FAIL  |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success whose criteria were rewritten after approval — recorded failed, never succeeded
+ FAIL  |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > REFUSES a success when the change set was never sealed — fail-closed, not fail-open
+ FAIL  |@crabgic/scheduler| src/executor.test.ts > dispatchAttempt — acceptance-criteria seal enforcement > scopes the journaled refusal to the run, so a runId-filtered replay can still find it
+ FAIL  |@crabgic/scheduler| src/criteria-seal-rollback.integration.test.ts > ... > refuses a success judged against the SUPERSEDED revision, resolving the seal through findLatestCriteriaSeal
+ FAIL  |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts > ... > A — refuses a post-approval criteria edit: the unit records failed, never succeeded, and the refusal names the requirement
+ FAIL  |crabgic| src/daemon/run-dispatcher.test.ts > ... > regression guard: a post-approval criteria edit is refused when a registry IS supplied
+
+CONCLUSION: coverage did NOT migrate. The older per-unit check is still pinned by
+6 tests across 4 files after the new whole-set gate landed beside it.
+
+And the two checks' pins are very nearly DISJOINT, which is the stronger form of
+this probe:
+
+  | mutation                             | reddens                              |
+  |--------------------------------------|--------------------------------------|
+  | A: gate registration deleted         | the composed-registry suite, T1/T2/T3, closed-loop x2, seal-enforcement case **C** |
+  | C2: per-unit seal check neutered     | the scheduler seal suites, seal-enforcement case **A**, the dispatcher acceptance-bar regression guard |
+
+T2 — a tamper landing AFTER every unit's own completion check already passed —
+reddens only under A. Case A of the seal-enforcement suite — a tamper present
+before the unit runs — reddens only under C2. Neither check absorbs the other's
+fixtures.
+
+RESTORE: `git status --porcelain -- packages/` EMPTY, and
+
+      Tests  6325 passed (6325)
+ Test Files  634 passed (634)
+
+================================================================================
+PROBE D — is the evidence `objectId` binding non-vacuous?
+Fire the gate against the FROZEN BASE instead of the resolved integration tip.
+A state-only assertion ("the run says published_local") would not notice this.
+================================================================================
+    -  const objectId = await deps.git.resolveIntegratedObjectId({ ref: begun.ref });
+    +  const objectId = input.baseObjectId;
+
+ packages/cli/src/daemon/post-completion-pipeline.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+RESULT (after `npm run build`):
+
+      Tests  3 failed | 6322 passed (6325)
+ Test Files  1 failed | 633 passed (634)
+
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T1 — one unit: the run publishes, and the acceptance evidence binds the independently-resolved branch tip
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement
+ FAIL  |crabgic| src/daemon/composed-post-completion.e2e.test.ts > ... > T3 — two units: the evidence objectId is the tip whose tree holds BOTH edits, never a per-unit candidate
+
+The run still walks to `published_local` under this mutation — only the
+independently-`rev-parse`d comparison catches it. That is what makes the
+objectId assertion a bearer rather than a restatement of the state assertion.
+
+RESTORE: `git status --porcelain -- packages/` EMPTY, and
+
+      Tests  6325 passed (6325)
+ Test Files  634 passed (634)
+
+================================================================================
+WHAT THESE PROBES DO NOT SHOW
+================================================================================
+- No `@live` test was run, `CRABGIC_LIVE` was never set, and `engine-live` was
+  never dispatched. Every engine in every run above is `FakeEngineAdapter`.
+- The suites here are the default `npm test` fan-out only. Nothing under
+  `e2e/matrix`, `e2e/attestation` or any tag-triggered workflow was executed, so
+  no claim is made about those lanes.
+- These measurements are local. Per-push execution in CI is a separate claim and
+  needs a job-log test-count delta, which this file does not contain.
