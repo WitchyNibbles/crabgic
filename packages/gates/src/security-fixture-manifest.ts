@@ -102,6 +102,41 @@ const GATEWAY_REDACTION_ID = "gateway-redaction";
  * together with real Jira-side enforcement — and the residual is pinned by
  * test T2 in `./security-fixture-manifest.test.ts`, so re-adding one is a
  * deliberate edit rather than a drift.
+ *
+ * ── CORRECTION 2026-08-05 (defect 21). The paragraph above is annotated,
+ * not rewritten, because the ruling it reaches is still correct and the
+ * measurement it rested on is now partly stale.
+ *
+ * NOW FALSE: "`ExternalConnection.tenantAllowlist` ... is declared but
+ * enforced by zero production code." It IS enforced, by
+ * `refuseOutOfAllowlistTenant` in
+ * `packages/gateway/src/mutation-pipeline/mutation-pipeline.ts` — a
+ * provider-agnostic admission check in `executeMutationPlan` comparing
+ * `RemoteMutationPlan.tenant` against the connection's `tenantAllowlist`
+ * and refusing a non-member with the canonical `policy_blocked` kind
+ * before any network I/O or journal write. The Jira Cloud and Data Center
+ * resource clients now derive `plan.tenant` from `tenantAllowlist` first.
+ *
+ * STILL TRUE, and why the RULING itself does not change:
+ *  - The enforcement is GATEWAY-owned and provider-agnostic. It is not
+ *    "Jira-side enforcement", so this manifest's condition for re-adding a
+ *    Jira tenant-boundary entry ("returns only together with real
+ *    Jira-side enforcement" — i.e. Jira FIXTURES) is unmet. No entry is
+ *    added here, and test T2 keeps pinning that.
+ *  - `plan.tenant` is still ALSO the per-tenant+resource write-mutex key.
+ *    Gaining an authorization role did not remove the concurrency role.
+ *  - The new check binds DECLARED plan attribution on the MUTATION path.
+ *    Reads are not tenant-checked and the remote's actual tenant identity
+ *    is still not verified — both are named residuals, so "a real tenant
+ *    boundary" in the full sense remains unbuilt.
+ *
+ * LINE NUMBERS in the paragraph above have shifted and are left as written
+ * (annotate, never rewrite). Current locations of the same three things:
+ * the Jira Cloud tenant derivation is `jira-resource-client.ts:87` (the
+ * Data Center twin is `datacenter/jira-datacenter-resource-client.ts:108`);
+ * the write-mutex key is still `gateway/src/transport/http-client.ts:139`,
+ * unmoved; and the contract field is now
+ * `packages/contracts/src/contracts/external-connection.ts:117`.
  */
 export const REQUIRED_SECURITY_FIXTURE_IDS = [
   JIRA_FORGED_ADMIN_DELETE_ID,

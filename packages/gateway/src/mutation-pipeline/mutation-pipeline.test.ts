@@ -61,9 +61,16 @@ function buildHandlers(
   };
 }
 
+/**
+ * `tenantAllowlist` defaults to `undefined` — a tenant-UNSCOPED connection,
+ * which is the pre-defect-21 behaviour and the right default for every case
+ * in this file whose subject is not tenancy. The tenancy cases pass it
+ * explicitly.
+ */
 function buildDeps(
   journal: JournalStore,
   sendRequest: typeof sendHttpRequest,
+  tenantAllowlist: readonly string[] | undefined = undefined,
 ): MutationPipelineDeps {
   const httpClient = new GatewayHttpClient({
     allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://fake-provider.invalid"] },
@@ -71,7 +78,7 @@ function buildDeps(
     sendRequest,
     sleep: async () => undefined,
   });
-  return { journal, httpClient, lock: new IdempotencyKeyLock() };
+  return { journal, httpClient, lock: new IdempotencyKeyLock(), tenantAllowlist };
 }
 
 let journalDir: string;
@@ -794,5 +801,148 @@ describe("executeMutationPlan — serializationTarget", () => {
     ]);
 
     expect(recorder.maxInFlight()).toBe(2);
+  });
+});
+
+/**
+ * DEFECT 21 — the tenant-allowlist admission check.
+ *
+ * SCOPE, restated here because a reader arriving at these tests must not
+ * over-read them: this binds the tenant a plan DECLARES, on the mutation
+ * path only. Reads are not tenant-checked and the remote's actual tenant
+ * identity is never verified. See `refuseOutOfAllowlistTenant` in
+ * `./mutation-pipeline.ts` and the field's doc comment in
+ * `@crabgic/contracts`.
+ *
+ * The production wiring — the tool handler reading the real
+ * `ExternalConnection` and handing this field over — is pinned separately in
+ * `../mcp/native-tools/mutation-apply-tool.test.ts`. These cases pin the
+ * pipeline's own semantics, which no tool-level test can reach.
+ */
+describe("executeMutationPlan — tenant-allowlist admission check (defect 21)", () => {
+  const okResponse = {
+    status: 200,
+    headers: {},
+    bodyText: '{"appliedRevision":"rev-1"}',
+  } satisfies HttpTransportResponse;
+
+  it("FAIL-CLOSED: an EMPTY allowlist refuses every mutation, with no network call", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, []),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  it("CONTROL: an ABSENT allowlist (undefined) is tenant-unscoped — the mutation proceeds", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, undefined),
+    );
+    expect(outcome).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("CONTROL: an IN-allowlist declared tenant proceeds — rules out a refuse-everything implementation", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan({ tenant: "tenant-a" }),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, ["tenant-a"]),
+    );
+    expect(outcome).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The subtle one. Asserting only the OUTCOME would let a
+   * persist-then-refuse implementation pass, and a persisted `failed` record
+   * is terminal in this pipeline — it would poison the idempotencyKey
+   * forever. Both halves are asserted: nothing was appended AT ALL, and no
+   * `remote_operation_record` exists for the key.
+   */
+  it("writes NOTHING to the journal for a refusal — zero appendEntry calls, zero records for the key", async () => {
+    const appendSpy = vi.spyOn(journal, "appendEntry");
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const plan = buildPlan({ tenant: "tenant-b" });
+
+    const outcome = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest, ["tenant-a"]),
+    );
+
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(appendSpy).toHaveBeenCalledTimes(0);
+
+    const records: string[] = [];
+    for await (const entry of journal.queryEntries({ type: "remote_operation_record" })) {
+      if (entry.type === "remote_operation_record") records.push(entry.payload.operationId);
+    }
+    expect(records.filter((id) => id === plan.idempotencyKey)).toEqual([]);
+  });
+
+  /**
+   * PINS THE NO-JOURNAL RULING as a decision rather than an accident. If the
+   * refusal were journalled as `failed`, `executeMutationPlanLocked` would
+   * answer every later attempt on this key with "previously recorded as
+   * failed, never re-run" — so an operator who FIXED the allowlist could
+   * never retry. This test is what a future reader tempted to "add the
+   * missing journal write" will break.
+   */
+  it("does not poison the idempotencyKey: the SAME key succeeds after the allowlist is corrected", async () => {
+    const plan = buildPlan({ tenant: "tenant-b", idempotencyKey: "op-tenant-retry" });
+
+    const refused = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, vi.fn().mockResolvedValue(okResponse), ["tenant-a"]),
+    );
+    expect(refused.status).toBe("failed");
+    expect(refused.errorKind).toBe("policy_blocked");
+
+    // Operator fixes the connection's allowlist; same plan, same key.
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const retried = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest, ["tenant-a", "tenant-b"]),
+    );
+    expect(retried).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+    expect(retried.detail).toBeUndefined(); // never "previously recorded as failed, never re-run"
+  });
+
+  /**
+   * FAIL-CLOSED AHEAD OF REPLAY. The check sits before the journal lookup, so
+   * tightening an allowlist also refuses a REPLAY of an already-recorded
+   * operation. Without this the guard would be bypassable by any caller who
+   * had once succeeded.
+   */
+  it("refuses even a replay of an already-recorded operation once the allowlist no longer admits its tenant", async () => {
+    const plan = buildPlan({ tenant: "tenant-b", idempotencyKey: "op-tenant-tighten" });
+    const first = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, vi.fn().mockResolvedValue(okResponse), ["tenant-b"]),
+    );
+    expect(first.status).toBe("recorded");
+
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const afterTightening = await executeMutationPlan(
+      plan,
+      buildHandlers(),
+      buildDeps(journal, sendRequest, ["tenant-a"]),
+    );
+    expect(afterTightening.status).toBe("failed");
+    expect(afterTightening.errorKind).toBe("policy_blocked");
+    expect(sendRequest).not.toHaveBeenCalled();
   });
 });

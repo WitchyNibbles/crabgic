@@ -81,8 +81,46 @@ export const ExternalConnectionSchema = z
     /** roadmap/16 §In scope: "allowed redirect origins" — the SSRF-guard allowlist a redirect target must match before credentials attach. */
     allowedRedirectOrigins: z.array(z.string().url()).readonly(),
 
-    /** roadmap/16 §In scope: "tenant/.../allowlists" (tenant scoping). */
-    tenantAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
+    /**
+     * roadmap/16 §In scope: "tenant/.../allowlists" (tenant scoping).
+     *
+     * ENFORCED since 2026-08-05 (defect 21 — this field was previously
+     * declared, published, and read by no code at all). The gateway's
+     * mutation pipeline (`packages/gateway/src/mutation-pipeline/
+     * mutation-pipeline.ts`, `executeMutationPlan` — the sole issuer of
+     * mutation network I/O) compares `RemoteMutationPlan.tenant` against
+     * this list and refuses a non-member with the canonical
+     * `policy_blocked` error kind, before any network I/O and before any
+     * `RemoteOperationRecord` is journalled.
+     *
+     * Three states, all deliberate:
+     *  - ABSENT — the connection is tenant-unscoped; no check runs.
+     *  - `[]`   — refuses EVERY mutation (fail-closed). Same reading the
+     *             Grafana connection doctor already gives an empty
+     *             `orgAllowlist` (`packages/connectors-grafana/src/auth/
+     *             connection-doctor.ts`): an empty allowlist is a
+     *             deliberate "nothing is permitted", never "no opinion".
+     *  - non-empty — only these tenants may be the declared target of a
+     *             mutation plan on this connection.
+     *
+     * SCOPE — read this before trusting the field. It binds the tenant a
+     * mutation plan DECLARES, on the mutation path only. It does NOT:
+     *  - check reads. Read requests carry pseudo-tenants (`"oauth"`,
+     *    `"doctor-probe"`, or the connection id) used purely as concurrency
+     *    keys, so a request-level read check is not coherent today.
+     *  - verify the remote's ACTUAL tenant identity. Nothing here proves the
+     *    resolved credential is bound to a listed tenant; that is
+     *    provider-specific connection-doctor work.
+     * So this field is not "cross-tenant access is refused". It is "an
+     * operator can bound which tenant a write may claim to target."
+     */
+    tenantAllowlist: z
+      .array(NonEmptyStringSchema)
+      .readonly()
+      .optional()
+      .describe(
+        "Tenant scoping (roadmap/16 §In scope). Enforced by the gateway mutation pipeline: a RemoteMutationPlan whose declared `tenant` is not a member is refused with the canonical `policy_blocked` error kind before any network I/O and before any RemoteOperationRecord is journalled. An empty array refuses every mutation (fail-closed); the field being absent means the connection is tenant-unscoped and no check runs. SCOPE: this binds the tenant a mutation plan DECLARES, on the mutation path only. Reads are not tenant-checked (read requests carry pseudo-tenants used only as concurrency keys), and the remote's actual tenant identity is not verified by this field. It is not a guarantee that cross-tenant access is refused.",
+      ),
     /** roadmap/16 §In scope: ".../org/.../allowlists" (Grafana org scoping). */
     orgAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
     /** roadmap/16 §In scope: ".../project/.../allowlists" (Jira project scoping). */

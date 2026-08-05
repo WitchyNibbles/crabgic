@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConnectorError } from "@crabgic/contracts";
+import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
 import { GatewayHttpClient, createFakeProviderTransport } from "@crabgic/gateway";
 import { toADF } from "@crabgic/renderer";
 import { buildExternalConnection } from "@crabgic/testkit";
@@ -11,7 +11,10 @@ import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.j
 const BASE_URL = "https://dc-resource-client-test.invalid";
 const ENVELOPE_ID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 
-function buildCtx(responses: Parameters<typeof createFakeProviderTransport>[0]["responses"]): {
+function buildCtx(
+  responses: Parameters<typeof createFakeProviderTransport>[0]["responses"],
+  connectionOverrides: Partial<ExternalConnection> = {},
+): {
   ctx: JiraDatacenterHttpContext;
   calls: ReturnType<typeof createFakeProviderTransport>["calls"];
 } {
@@ -19,6 +22,7 @@ function buildCtx(responses: Parameters<typeof createFakeProviderTransport>[0]["
     provider: "jira-datacenter",
     deploymentType: "datacenter",
     baseUrl: BASE_URL,
+    ...connectionOverrides,
   });
   const fake = createFakeProviderTransport({ responses });
   const httpClient = new GatewayHttpClient({
@@ -342,5 +346,43 @@ describe("createJiraDatacenterResourceClient — resource-by-resource conformanc
         expect((err as ConnectorError).provider).toBe("jira-datacenter");
       }
     });
+  });
+});
+
+/**
+ * DEFECT 21 — the Data Center resource client carries its OWN copy of the
+ * tenant-derivation line (`jira-datacenter-resource-client.ts`), separate
+ * from the Cloud one. A fix applied to only one copy leaves the other
+ * producing plans that the gateway's tenant-allowlist admission check would
+ * refuse. This is the twin of the Cloud test in
+ * `../jira-resource-client.test.ts`.
+ *
+ * Trap named: a truthy assertion is vacuous here — the fallback chain always
+ * yields something. The exact string is the bearer.
+ */
+describe("createJiraDatacenterResourceClient — plan tenant derivation (defect 21)", () => {
+  function planFor(connectionOverrides: Partial<ExternalConnection>) {
+    const { ctx } = buildCtx([], connectionOverrides);
+    const client = createJiraDatacenterResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      dcFeatures: {
+        edition: "10.3",
+        availableActions: ["issue.update"],
+        availableFields: "discovered-only",
+      },
+    });
+    return client.issues.planUpdate("PROJ-1", "rev-1", { summary: "x" }, ENVELOPE_ID);
+  }
+
+  it("derives the plan tenant from tenantAllowlist[0], not projectAllowlist[0]", () => {
+    const plan = planFor({ tenantAllowlist: ["acme"], projectAllowlist: ["PROJ"] });
+    expect(plan.tenant).toBe("acme");
+  });
+
+  it("CONTROL: without tenantAllowlist the projectAllowlist fallback is unchanged", () => {
+    const plan = planFor({ projectAllowlist: ["PROJ"] });
+    expect(plan.tenant).toBe("PROJ");
   });
 });

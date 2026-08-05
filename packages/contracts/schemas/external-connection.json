@@ -32,6 +32,7 @@
       }
     },
     "tenantAllowlist": {
+      "description": "Tenant scoping (roadmap/16 §In scope). Enforced by the gateway mutation pipeline: a RemoteMutationPlan whose declared `tenant` is not a member is refused with the canonical `policy_blocked` error kind before any network I/O and before any RemoteOperationRecord is journalled. An empty array refuses every mutation (fail-closed); the field being absent means the connection is tenant-unscoped and no check runs. SCOPE: this binds the tenant a mutation plan DECLARES, on the mutation path only. Reads are not tenant-checked (read requests carry pseudo-tenants used only as concurrency keys), and the remote's actual tenant identity is not verified by this field. It is not a guarantee that cross-tenant access is refused.",
       "readOnly": true,
       "type": "array",
       "items": {

@@ -117,6 +117,17 @@ export function buildMutationApplyTool(
         journal: deps.journal,
         httpClient,
         lock: deps.lock,
+        // DEFECT 21 — the production wiring of the tenant-allowlist
+        // admission check: this handler is where the real
+        // `ExternalConnection` is in hand (fetched at the top of this
+        // function), so it is the only place that can hand the operator's
+        // own field to the pipeline. `undefined` here means the connection
+        // declared no `tenantAllowlist` (tenant-unscoped); it is NOT a
+        // default-open shortcut. See the field's doc comment in
+        // `@crabgic/contracts`' `external-connection.ts` for the scope of
+        // what the check binds — declared plan attribution on the mutation
+        // path, not remote tenant identity and not reads.
+        tenantAllowlist: connection.tenantAllowlist,
       });
       return outcomeToToolResult(outcome);
     },

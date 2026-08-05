@@ -86,7 +86,7 @@ function buildDeps(sendRequest: () => Promise<HttpTransportResponse>): MutationP
     sendRequest,
     sleep: async () => undefined,
   });
-  return { journal, httpClient, lock: new IdempotencyKeyLock() };
+  return { journal, httpClient, lock: new IdempotencyKeyLock(), tenantAllowlist: undefined };
 }
 
 describe("exactly-once — replay is byte-identical, no duplicate network call", () => {

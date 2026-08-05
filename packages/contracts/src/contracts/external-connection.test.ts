@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ExternalConnectionSchema, SecretReferenceSchema } from "./external-connection.js";
 
@@ -141,5 +142,53 @@ describe("ExternalConnectionSchema — round-trip", () => {
     const first = ExternalConnectionSchema.parse(validConnection);
     const roundTripped = ExternalConnectionSchema.parse(JSON.parse(JSON.stringify(first)));
     expect(roundTripped).toStrictEqual(first);
+  });
+});
+
+/**
+ * DEFECT 21 — the PUBLISHED description is the cure for the operator-facing
+ * half of this defect, so it is pinned rather than merely written.
+ *
+ * `packages/contracts/package.json` ships `schemas/` (`"files": [..., "schemas"]`,
+ * export `./schemas/*.json`), so `schemas/external-connection.json`'s
+ * `description` is what an operator or a schema-driven config tool actually
+ * reads. Without a test, the enforcement could be deleted and this text would
+ * keep promising it — the exact failure mode (a field that describes a control
+ * it does not have) that this whole change exists to remove.
+ *
+ * The SCOPE clauses are pinned as hard as the enforcement clause on purpose:
+ * an over-claimed control is worse than a documented narrow one, so "reads are
+ * not tenant-checked" and "actual tenant identity is not verified" must not
+ * quietly disappear from the published text either.
+ */
+describe("ExternalConnectionSchema — tenantAllowlist published description (defect 21)", () => {
+  const publishedSchema = JSON.parse(
+    readFileSync(new URL("../../schemas/external-connection.json", import.meta.url), "utf8"),
+  ) as { properties: Record<string, { description?: string }> };
+
+  const description = publishedSchema.properties.tenantAllowlist?.description ?? "";
+
+  it("states the enforcement: the typed error kind, and that it precedes I/O and journalling", () => {
+    expect(description).toContain("policy_blocked");
+    expect(description).toContain("before any network I/O");
+    expect(description).toContain("before any RemoteOperationRecord is journalled");
+  });
+
+  it("states the fail-closed empty-array reading and the unscoped absent reading", () => {
+    expect(description).toContain("An empty array refuses every mutation (fail-closed)");
+    expect(description).toContain("absent means the connection is tenant-unscoped");
+  });
+
+  it("states the SCOPE residuals, so the field cannot read as a broader guarantee than it is", () => {
+    expect(description).toContain("Reads are not tenant-checked");
+    expect(description).toContain("actual tenant identity is not verified");
+    expect(description).toContain("not a guarantee that cross-tenant access is refused");
+  });
+
+  it("the published artifact has not drifted from the zod source it is generated from", () => {
+    // `scripts/build-schemas.ts` emits `description` from `.describe()`. If
+    // someone edits the zod without re-running `npm run build:schemas`, or
+    // hand-edits the JSON, these two diverge and this fails.
+    expect(description).toBe(ExternalConnectionSchema.shape.tenantAllowlist.description);
   });
 });

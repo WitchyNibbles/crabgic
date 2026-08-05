@@ -263,7 +263,7 @@ function applyAll(
             ? { serializationTarget: (p: RemoteMutationPlan) => serializationTarget(p) }
             : {}),
         },
-        { journal, httpClient, lock },
+        { journal, httpClient, lock, tenantAllowlist: undefined },
       ),
     ),
   );

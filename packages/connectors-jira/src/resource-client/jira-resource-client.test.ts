@@ -4,7 +4,7 @@ import {
   createFakeProviderTransport,
   type FakeProviderScriptEntry,
 } from "@crabgic/gateway";
-import { ConnectorError } from "@crabgic/contracts";
+import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
 import { buildExternalConnection } from "@crabgic/testkit";
 import { JiraTokenManager } from "../auth/token-manager.js";
 import { buildFieldMetadataIndex } from "../capability/field-metadata.js";
@@ -19,11 +19,18 @@ function ok(body: unknown): FakeProviderScriptEntry {
   return { status: 200, bodyText: JSON.stringify(body) };
 }
 
-function buildCtx(responses: readonly FakeProviderScriptEntry[]): {
+function buildCtx(
+  responses: readonly FakeProviderScriptEntry[],
+  connectionOverrides: Partial<ExternalConnection> = {},
+): {
   ctx: JiraHttpContext;
   calls: readonly { readonly method: string; readonly url: string }[];
 } {
-  const connection = buildExternalConnection({ provider: "jira-cloud", baseUrl: BASE_URL });
+  const connection = buildExternalConnection({
+    provider: "jira-cloud",
+    baseUrl: BASE_URL,
+    ...connectionOverrides,
+  });
   const fake = createFakeProviderTransport({ responses });
   const httpClient = new GatewayHttpClient({
     allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(BASE_URL).origin] },
@@ -676,5 +683,53 @@ describe("JiraResourceClient — pagination and optional-field branch coverage",
 
     expect(result).not.toHaveProperty("nextPageToken");
     expect(calls[0]?.url).toContain("cursor-1");
+  });
+});
+
+/**
+ * DEFECT 21 — the tenant a built plan carries used to derive from
+ * `projectAllowlist`, so a connection that set `tenantAllowlist` produced
+ * plans that were OUT of its own allowlist and the gateway's admission
+ * check (`packages/gateway/src/mutation-pipeline/mutation-pipeline.ts`)
+ * would refuse every one of them. The derivation now consults
+ * `tenantAllowlist` first.
+ *
+ * Trap named: asserting the tenant is merely truthy/non-empty is vacuous —
+ * the fallback chain (`deps.tenant ?? tenantAllowlist[0] ??
+ * projectAllowlist[0] ?? connection.id`) always yields SOMETHING. The exact
+ * string is the bearer.
+ */
+describe("JiraResourceClient — plan tenant derivation (defect 21)", () => {
+  function planFor(connectionOverrides: Partial<ExternalConnection>) {
+    const { ctx } = buildCtx([], connectionOverrides);
+    const client = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+    });
+    return client.issues.planUpdate("PROJ-1", "rev-1", { summary: "x" }, ENVELOPE_ID);
+  }
+
+  it("derives the plan tenant from tenantAllowlist[0], not projectAllowlist[0]", () => {
+    const plan = planFor({ tenantAllowlist: ["acme"], projectAllowlist: ["PROJ"] });
+    expect(plan.tenant).toBe("acme");
+  });
+
+  it("CONTROL: without tenantAllowlist the projectAllowlist fallback is unchanged", () => {
+    const plan = planFor({ projectAllowlist: ["PROJ"] });
+    expect(plan.tenant).toBe("PROJ");
+  });
+
+  it("CONTROL: an explicit deps.tenant still wins over both allowlists", () => {
+    const { ctx } = buildCtx([], { tenantAllowlist: ["acme"], projectAllowlist: ["PROJ"] });
+    const client = createJiraResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      tenant: "explicit-tenant",
+    });
+    expect(client.issues.planUpdate("PROJ-1", "rev-1", { summary: "x" }, ENVELOPE_ID).tenant).toBe(
+      "explicit-tenant",
+    );
   });
 });

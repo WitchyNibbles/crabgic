@@ -240,6 +240,137 @@ describe("buildMutationApplyTool", () => {
     expect((requestSpy?.mock.calls[0]?.[0] as { resource: string }).resource).toBe("issue:EX-1");
   });
 
+  /**
+   * DEFECT 21 — `ExternalConnection.tenantAllowlist` was a published schema
+   * field that looked like a security control and enforced nothing.
+   *
+   * These two cases are deliberately at the TOOL level, not the pipeline
+   * level: this is the production wiring that has to hand the connection's
+   * own field to `executeMutationPlan`. A pipeline-only test would pass
+   * with the tool never reading the connection at all.
+   *
+   * SCOPE, stated here so a reader does not over-trust the assertion: this
+   * binds the tenant a plan DECLARES, on the mutation path. It is not
+   * "cross-tenant access is refused" — reads are not tenant-checked and the
+   * remote's actual tenant identity is never verified. See
+   * `packages/contracts/src/contracts/external-connection.ts`'s
+   * `tenantAllowlist` doc comment.
+   *
+   * The bearer is the TRIPLE assertion — outcome status, the exact typed
+   * `policy_blocked` kind, and ZERO transport calls. Asserting only on
+   * `detail` would pass in both worlds (a `failed` detail from another
+   * cause can contain the same words), and a bare "is an error" would pass
+   * for any of the ten canonical kinds.
+   */
+  it("refuses a plan whose declared tenant is outside the connection's tenantAllowlist — typed policy_blocked, zero network calls", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "tenant-scoped-provider",
+      baseUrl: "https://tenant-scoped-provider.invalid",
+      allowedRedirectOrigins: [],
+      tenantAllowlist: ["tenant-a"],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("tenant-scoped-provider", {
+      buildRequest: () => ({
+        url: new URL("https://tenant-scoped-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+    });
+
+    let transportCalls = 0;
+    const buildHttpClient = async (_c: ExternalConnection) =>
+      new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://tenant-scoped-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => {
+          transportCalls += 1;
+          return { status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' };
+        },
+      });
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { tenant: "tenant-b" }),
+    });
+
+    const outcome = JSON.parse(result.content[0]?.text ?? "{}") as {
+      status?: string;
+      errorKind?: string;
+    };
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(transportCalls).toBe(0);
+  });
+
+  /**
+   * CONTROL — green in BOTH worlds (before and after the fix). It rules out
+   * a refuse-everything implementation, which the refusal case above would
+   * accept on its own.
+   */
+  it("CONTROL: an in-allowlist declared tenant is still applied — recorded, exactly one network call", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "tenant-scoped-provider",
+      baseUrl: "https://tenant-scoped-provider.invalid",
+      allowedRedirectOrigins: [],
+      tenantAllowlist: ["tenant-a"],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("tenant-scoped-provider", {
+      buildRequest: () => ({
+        url: new URL("https://tenant-scoped-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+    });
+
+    let transportCalls = 0;
+    const buildHttpClient = async (_c: ExternalConnection) =>
+      new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://tenant-scoped-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => {
+          transportCalls += 1;
+          return { status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' };
+        },
+      });
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { tenant: "tenant-a" }),
+    });
+
+    const outcome = JSON.parse(result.content[0]?.text ?? "{}") as { status?: string };
+    expect(outcome.status).toBe("recorded");
+    expect(transportCalls).toBe(1);
+  });
+
   it("DEFAULT PATH: a provider client without serializationTarget still keys on canonicalTarget", async () => {
     const connections = new InMemoryExternalConnectionStore();
     const connection = await connections.create({

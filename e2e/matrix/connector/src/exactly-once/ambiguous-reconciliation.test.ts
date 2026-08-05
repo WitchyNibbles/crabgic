@@ -100,7 +100,12 @@ describe("ambiguous reconciliation — a mid-POST timeout that DID land is recon
       },
       sleep: async () => undefined,
     });
-    const deps: MutationPipelineDeps = { journal, httpClient, lock: new IdempotencyKeyLock() };
+    const deps: MutationPipelineDeps = {
+      journal,
+      httpClient,
+      lock: new IdempotencyKeyLock(),
+      tenantAllowlist: undefined,
+    };
 
     const handlers: MutationPipelineHandlers = {
       provider: "connector-matrix-fixture-provider",
@@ -154,7 +159,12 @@ describe("ambiguous reconciliation — a mid-POST timeout that DID land is recon
       },
       sleep: async () => undefined,
     });
-    const deps: MutationPipelineDeps = { journal, httpClient, lock: new IdempotencyKeyLock() };
+    const deps: MutationPipelineDeps = {
+      journal,
+      httpClient,
+      lock: new IdempotencyKeyLock(),
+      tenantAllowlist: undefined,
+    };
 
     const handlers: MutationPipelineHandlers = {
       provider: "connector-matrix-fixture-provider",

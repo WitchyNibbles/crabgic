@@ -97,7 +97,17 @@ export function createJiraDatacenterResourceClient(
   deps: CreateJiraDatacenterResourceClientDeps,
 ): JiraResourceClient {
   const { ctx, fieldMetadataIndex, payloadRegistry, dcFeatures } = deps;
-  const tenant = deps.tenant ?? ctx.connection.projectAllowlist?.[0] ?? ctx.connection.id;
+  // DEFECT 21 — `tenantAllowlist` leads, so a tenant-scoped connection
+  // produces in-allowlist plans by default and only an explicit override can
+  // be refused by the gateway's admission check. This is the Data Center
+  // copy of the derivation in `../jira-resource-client.ts`; both are pinned
+  // by their own tests, because fixing one and not the other leaves half the
+  // connector building plans its own connection would refuse.
+  const tenant =
+    deps.tenant ??
+    ctx.connection.tenantAllowlist?.[0] ??
+    ctx.connection.projectAllowlist?.[0] ??
+    ctx.connection.id;
   const externalConnectionId = ctx.connection.id;
   const planCtx: JiraPlanBuildContext = { tenant, externalConnectionId, payloadRegistry };
   const gate = (action: JiraAction): void => assertActionSupported(dcFeatures, action);

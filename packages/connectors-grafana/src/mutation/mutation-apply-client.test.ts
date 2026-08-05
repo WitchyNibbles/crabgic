@@ -66,7 +66,8 @@ function buildPipelineDeps(script: readonly FakeProviderScriptEntry[]): {
     return response;
   };
   return {
-    deps: { journal, httpClient, lock: new IdempotencyKeyLock() },
+    // Tenant-unscoped: this suite's subject is the Grafana apply client.
+    deps: { journal, httpClient, lock: new IdempotencyKeyLock(), tenantAllowlist: undefined },
     calls: fakeTransport.calls,
     get,
   };

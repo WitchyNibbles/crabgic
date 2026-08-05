@@ -128,6 +128,9 @@ async function replayFullResourceFlow(fixture: GrafanaBuildInfoFixture): Promise
     journal,
     httpClient,
     lock: new IdempotencyKeyLock(),
+    // Tenant-unscoped: this suite replays cassettes, it does not exercise
+    // the defect-21 tenant-allowlist admission check.
+    tenantAllowlist: undefined,
   };
 
   for (const kind of RESOURCE_FLOW_ORDER) {

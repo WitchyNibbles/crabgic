@@ -158,6 +158,21 @@ export interface MutationPipelineDeps {
   readonly httpClient: GatewayHttpClient;
   /** The per-idempotencyKey exclusive lock (MEDIUM #5) — share ONE instance across every `executeMutationPlan` call for a given gateway/connection so concurrent same-key calls are actually serialized against each other, not just within a single call. */
   readonly lock: IdempotencyKeyLock;
+  /**
+   * DEFECT 21 — `ExternalConnection.tenantAllowlist` for the connection this
+   * plan targets. See `refuseOutOfAllowlistTenant` below for the semantics
+   * and the scope of what this does and does not bind.
+   *
+   * REQUIRED-BUT-`| undefined`, not `?:`, and that is the point. This repo
+   * sets `exactOptionalPropertyTypes: true` (`tsconfig.base.json`), so a
+   * required `| undefined` member forces EVERY construction site to write
+   * its answer out. An optional member would let a new call site omit the
+   * allowlist silently and re-open exactly the hole this field was added to
+   * close. Types-only break for external `@crabgic/gateway` consumers; JS
+   * callers are runtime-compatible (an omitted key reads as `undefined`,
+   * i.e. unscoped, which is the pre-fix behaviour).
+   */
+  readonly tenantAllowlist: readonly string[] | undefined;
 }
 
 /**
@@ -400,6 +415,67 @@ async function executeMutationPlanLocked(
 }
 
 /**
+ * TENANT-ALLOWLIST ADMISSION CHECK — defect 21.
+ *
+ * `ExternalConnection.tenantAllowlist` was declared in the published
+ * contract, emitted into the published JSON Schema, and read by no code
+ * anywhere. An operator who set it would reasonably believe cross-tenant
+ * writes were refused; nothing refused them. This function is the
+ * enforcement.
+ *
+ * WHY IT LIVES IN THIS MODULE and not in the MCP tool layer: HIGH #2 (see
+ * this file's header) makes `executeMutationPlan` the sole issuer of
+ * mutation network I/O — "No caller can construct a mutating MCP tool that
+ * skips this." A check at the tool layer would also miss the second
+ * production caller, `@crabgic/connectors-grafana`'s
+ * `applyGrafanaMutationWithRebase`, which re-enters this pipeline with a
+ * rebased plan. One check here covers both, and there is deliberately no
+ * second overlapping check elsewhere — overlapping checks silently absorb
+ * each other's test coverage, so the older one stops being pinned.
+ *
+ * WHY IT IS NOT IN `GatewayHttpClient.request()`, the seam that would cover
+ * reads too: read requests carry PSEUDO-tenants, not tenant identities —
+ * `"oauth"`, `"doctor-probe"`, or the connection id — used purely as
+ * `WriteSerializer` concurrency keys. A request-level check would refuse
+ * every read on a tenant-scoped connection unless operators listed those
+ * magic strings. Reads are a named residual, not an oversight.
+ *
+ * SEMANTICS. `undefined` (field absent) = tenant-unscoped, no check. `[]` =
+ * refuse EVERY mutation: an empty allowlist is a deliberate "nothing is
+ * permitted", the same reading `checkGrafanaConnectionDoctor` already gives
+ * an empty `orgAllowlist`. The opposite case, named so the distinction is
+ * legible: "no opinion" is expressed by OMITTING the field, never by an
+ * empty array.
+ *
+ * SCOPE — do not over-trust this. It binds the tenant a plan DECLARES. It
+ * does not verify the remote's actual tenant identity (provider-specific
+ * doctor work) and does not cover reads. What it adds beyond making the
+ * contract honest is real but narrow: `plan.tenant` arrives from the
+ * semi-trusted worker side and keys both the per-tenant+resource write
+ * serializer and journal attribution, so before this check a forged tenant
+ * string passed entirely unexamined.
+ */
+function refuseOutOfAllowlistTenant(
+  plan: RemoteMutationPlan,
+  tenantAllowlist: readonly string[] | undefined,
+): MutationPipelineOutcome | undefined {
+  if (tenantAllowlist === undefined) return undefined;
+  if (tenantAllowlist.includes(plan.tenant)) return undefined;
+  return {
+    status: "failed",
+    errorKind: "policy_blocked",
+    // The refused tenant value is deliberately NOT echoed back: it is a
+    // worker-declared, unvalidated string, and the caller already knows what
+    // it sent. Nothing is lost, and no untrusted text enters an outcome that
+    // crosses a process boundary as an MCP tool result.
+    detail:
+      tenantAllowlist.length === 0
+        ? "this connection's tenantAllowlist is empty, so every mutation is refused (fail-closed); refused before any network I/O and without journalling a RemoteOperationRecord"
+        : "the plan's declared tenant is outside this connection's tenantAllowlist; refused before any network I/O and without journalling a RemoteOperationRecord",
+  };
+}
+
+/**
  * Executes one `RemoteMutationPlan` through the full pipeline. Never
  * throws for an expected outcome (conflict/blocked/failed are all
  * returned, not thrown) — only an unexpected programming error propagates.
@@ -411,6 +487,30 @@ export async function executeMutationPlan(
   handlers: MutationPipelineHandlers,
   deps: MutationPipelineDeps,
 ): Promise<MutationPipelineOutcome> {
+  // DEFECT 21 — first statement, ahead of everything: ahead of the
+  // idempotency-key mutex, ahead of the journal query, ahead of
+  // `persistRecord(pending)`, ahead of any network I/O.
+  //
+  // RULING — the refusal is deliberately NOT JOURNALLED, and this is a
+  // decision, not an omission. A persisted `failed` record is authoritative
+  // and terminal in this pipeline (`executeMutationPlanLocked` returns
+  // "previously recorded as <status>, never re-run" for one), so recording
+  // this refusal would poison the plan's `idempotencyKey` forever: an
+  // operator who then FIXED the allowlist could never retry the same key.
+  // The opposite case, for contrast: a `failed` record from
+  // `applyVerifyRecord` IS written, because there a network attempt actually
+  // happened and exactly-once bookkeeping has something to remember. Here
+  // nothing was attempted, so there is nothing to record — the refusal still
+  // reaches the caller as a typed outcome. Pinned by the retry-after-config-
+  // fix test in `./mutation-pipeline.test.ts`; if you are here to "fix" the
+  // missing journal write, that test is the reason not to.
+  //
+  // Being ahead of the replay/conflict lookups is also deliberate: after an
+  // allowlist is tightened, even a replay of an already-recorded operation
+  // for an out-of-allowlist tenant is refused. Fail-closed.
+  const refusal = refuseOutOfAllowlistTenant(plan, deps.tenantAllowlist);
+  if (refusal !== undefined) return refusal;
+
   return deps.lock.runExclusive(plan.idempotencyKey, () =>
     executeMutationPlanLocked(plan, handlers, deps),
   );

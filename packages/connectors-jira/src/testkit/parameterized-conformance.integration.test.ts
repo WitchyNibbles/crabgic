@@ -77,7 +77,12 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
             parseResponse: (p, r) => harness.applyClient.parseResponse(p, r),
             verify: (p, a) => harness.applyClient.verify?.(p, a) ?? Promise.resolve(true),
           },
-          { journal, httpClient: harness.httpClient, lock: new IdempotencyKeyLock() },
+          {
+            journal,
+            httpClient: harness.httpClient,
+            lock: new IdempotencyKeyLock(),
+            tenantAllowlist: undefined,
+          },
         );
 
       const boardPlan = harness.resourceClient.boards.planCreate(
@@ -185,7 +190,12 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
           parseResponse: (p, r) => harness.applyClient.parseResponse(p, r),
           verify: (p, a) => harness.applyClient.verify?.(p, a) ?? Promise.resolve(true),
         },
-        { journal, httpClient: harness.httpClient, lock: new IdempotencyKeyLock() },
+        {
+          journal,
+          httpClient: harness.httpClient,
+          lock: new IdempotencyKeyLock(),
+          tenantAllowlist: undefined,
+        },
       );
       expect(outcome.status).toBe("recorded");
     });
@@ -211,7 +221,12 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
           parseResponse: (p, r) => harness.applyClient.parseResponse(p, r),
           verify: (p, a) => harness.applyClient.verify?.(p, a) ?? Promise.resolve(true),
         },
-        { journal, httpClient: harness.httpClient, lock: new IdempotencyKeyLock() },
+        {
+          journal,
+          httpClient: harness.httpClient,
+          lock: new IdempotencyKeyLock(),
+          tenantAllowlist: undefined,
+        },
       );
       expect(outcome.status).toBe("failed");
       expect(outcome.errorKind).toBe("conflict");
