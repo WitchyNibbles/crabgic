@@ -236,3 +236,32 @@ WHAT THESE PROBES DO NOT SHOW
   no claim is made about those lanes.
 - These measurements are local. Per-push execution in CI is a separate claim and
   needs a job-log test-count delta, which this file does not contain.
+
+================================================================================
+ADDED 2026-08-05 — PER-PUSH EXECUTION IN CI, by job-log test count
+================================================================================
+A green workflow proves the WORKFLOW passed, not that these assertions ran. The
+counts below are from the job log itself, so each new suite is shown executing in
+CI with exactly the count measured locally.
+
+Run 31027752298, job 92380441543 (`unit-test+coverage (ubuntu-latest)`) at branch
+tip 4468a3b — PR #104. Lines are quoted under the ONE-SPACE rule (GitHub's raw
+line is `<timestamp>` + one space + content, and vitest's own content starts with
+one space before the check mark), with ANSI colour codes removed:
+
+  job-log line  673: ` ✓  @crabgic/git-engine  src/candidate-commit.test.ts (7 tests) 649ms`
+  job-log line  946: ` ✓  crabgic  src/daemon/composed-post-completion.e2e.test.ts (4 tests) 1930ms`
+  job-log line  951: ` ✓  crabgic  src/daemon/post-completion-pipeline.test.ts (21 tests) 886ms`
+  job-log line  969: ` ✓  crabgic  src/daemon/post-completion-git-effects.test.ts (10 tests) 934ms`
+  job-log line  987: ` ✓  crabgic  src/daemon/compose-gate-registry.test.ts (7 tests) 103ms`
+  job-log line 1071: ` Test Files  634 passed (634)`
+  job-log line 1072: `      Tests  6341 passed | 1 skipped (6342)`
+
+7 / 4 / 21 / 10 / 7 — the same per-suite counts as the local runs above.
+
+⚠️ THE CI AND LOCAL TOTALS DIFFER, and the difference is stated rather than
+smoothed over: CI reports `6341 passed | 1 skipped (6342)` where the local runs
+above report `6325 passed (6325)`. The FILE count agrees (634 both places). The
+16-test delta and the one skip are environment-dependent (platform-gated cases),
+not a discrepancy in this change — but no claim in this file should be read as
+asserting the local total holds in CI, or vice versa.
