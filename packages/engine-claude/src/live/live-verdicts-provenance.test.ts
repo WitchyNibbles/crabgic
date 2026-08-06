@@ -16,6 +16,17 @@
  * provenance are accepted, every malformed witness is refused with its own
  * distinctive message, and a refused write leaves the committed bytes
  * byte-identical.
+ *
+ * RESIDUAL, stated so it is not read wider than it is. This gate binds the
+ * WRITER, not the committed artifact. Nothing here (and nothing anywhere) reads
+ * `live-verdicts.json`'s own `source` field, so a hand-edit of that string in
+ * the JSON is still undetectable — which is exactly what `29b3c46` did. What
+ * changed is that no CODE PATH can mint the label any more: the only writer
+ * demands a witness only a real canary produces. The criterion's provenance
+ * remains what the record says it is — the green run, the moved mtime and the
+ * clean `git diff` — never the string. Deriving provenance from the artifact
+ * itself would need the file to carry something a fake cannot reproduce, which
+ * is a larger design change than this record proposes.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";

@@ -1,0 +1,205 @@
+===============================================================================
+Batch L — the two dated corrections defect record
+`17-merged-citations-stale-after-later-prs.md` authorizes in the MERGED
+`docs/evidence/criteria-closeout/phase-17.json`, plus the resolver run that
+made them and the THREE further findings of the same two classes it turned up.
+===============================================================================
+
+# RULING-3 header
+# UTC: 2026-08-06, resolver + mutation-test runs between 13:47Z and 13:55Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d51
+#   ("Batch E: bind the enforced budget to the approved envelope … (#116)")
+# branch: closeout/batch-l
+# Toolchain: node v24.18.0
+# Command: node <scratch>/resolve-p17-batchL.mjs <repo root>
+#   A four-rule resolver (content / line-anchor + span containment / group
+#   consecutiveness / repeat-text), mutation-tested three ways below.
+#   It is a scratch instrument, not committed code — the record's own remedy
+#   proposes a CI-resident version and this file is not that.
+
+-------------------------------------------------------------------------------
+1. WHAT WAS CHANGED, AND UNDER WHAT AUTHORITY
+-------------------------------------------------------------------------------
+`phase-17.json` is a MERGED closeout record. The playbook's rule is that a merged
+record whose defect you did not cause is reported, never silently rewritten — and
+the defect record that reported these two is explicit that its own remedy is to
+apply them "as dated corrections beside the existing text, per the
+annotate-never-rewrite convention". That is what was done: no existing sentence
+was deleted; each `quotedAssertion` gained a parenthetical dated correction, in
+the same shape the file already carries for the `url-policy.test.ts` :55 -> :82
+correction of 2026-08-06.
+
+  Finding 1 (criterion 4, ticked):
+    ref  packages/connectors-jira/src/resource-client/adf-guard.ts:80  ->  :137
+    and the same `:80` inside the quotedAssertion's own lead.
+
+    Verified at this tree:
+      $ grep -n 'const findings = validateAdfSafeSubset(candidate);' \
+          packages/connectors-jira/src/resource-client/adf-guard.ts
+      137:  const findings = validateAdfSafeSubset(candidate);
+      $ sed -n '80p' packages/connectors-jira/src/resource-client/adf-guard.ts
+       * unchanged; only a caller that explicitly passes a different provider
+
+    Cause reproduced (the record's own measurement, re-run):
+      $ git show 3e74cc7:packages/connectors-jira/src/resource-client/adf-guard.ts | sed -n '80p'
+        const findings = validateAdfSafeSubset(candidate);
+      PR #95 (`e02956f`) inserted ahead of it and did not revisit this record.
+
+    The `:2` import and the `:28-30` doc-comment references in the same
+    quotedAssertion were re-checked and both still resolve; they are untouched.
+
+  Finding 2 (criterion 1, ticked):
+    ref  packages/renderer/src/attribution-neutral.test.ts:11-21  ->  :11-70
+
+    The quotedAssertion quotes fragments at :19-20, :37, :53 and :62-70. Only the
+    first pair was inside the declared span. :70 is the last quoted line; the
+    file has 71. Nothing was misattributed and no line number was wrong — the ref
+    understated its own reach, so a reader who opened :11-21 saw a third of what
+    was claimed.
+
+-------------------------------------------------------------------------------
+2. THE VALIDATOR, BEFORE AND AFTER — Hard Rule 5's tripwire did not fire
+-------------------------------------------------------------------------------
+The work order says: if `check:criteria-closeout` fails on this edit, STOP and
+report rather than working around the checker. It did not fail.
+
+  BEFORE the edit:
+    $ npm run check:criteria-closeout
+    check-criteria-closeout: PASS — 25 closeout record(s) valid and consistent with their roadmap files.
+
+  AFTER the edit:
+    $ npm run check:criteria-closeout
+    check-criteria-closeout: PASS — 25 closeout record(s) valid and consistent with their roadmap files.
+    $ npm run check:criteria-baseline
+    generate-criteria-baseline: PASS — every committed baseline hash re-derives from its pinned revision (25 phases).
+
+Neither validator is what caught these, and neither could have: `:11-70` and
+`:11-21` are both spans that exist in a 71-line file, and `adf-guard.ts` has 175
+lines so `:80` resolved. The closeout validator checks that a cited span's END is
+not past EOF (`check-criteria-closeout.mjs`, the round-4 line-half finding) and
+nothing about quoted CONTENT. That blind spot is the record's whole point.
+
+-------------------------------------------------------------------------------
+3. THE RESOLVER, AND ITS MUTATION TEST
+-------------------------------------------------------------------------------
+Run over the whole of `phase-17.json` after the two corrections:
+
+  $ node resolve-p17-batchL.mjs .
+  resolve-p17-batchL: 67 fragment(s) checked across phase-17.json
+    repeat-text fragments (position-verified, not merely content-verified): 66
+    PROBLEMS: 8
+
+  ZERO of those 8 are on the two citations this batch corrected. They break down
+  exactly as §4 below: 3 from 4a (one stale `adf.test.ts` citation, three
+  fragments), 4 from 4b (three citations with out-of-span fragments), 1 from 4c
+  (the record's own documented "Not a finding"). The corrected `adf-guard.ts:137`
+  and `attribution-neutral.test.ts:11-70` citations resolve clean on all four
+  rules.
+
+Mutation-tested three ways on a copy of the tree, each mutation applied alone and
+reverted from the committed file afterwards. Baseline is 8 problems; every
+mutation moved it to 9 and named its own subject:
+
+  M1  falsify a quote's TEXT
+      (`validateAdfSafeSubset` -> `validateAdfNeverSubset` in c4's quotedAssertion)
+      -> PROBLEMS: 9
+         c4 test …/adf-guard.ts:137: fragment :137 'const findings = validateAdfNeverSubset(candidate);' NOT FOUND
+      CAUGHT.
+
+  M2  move a MARKER by one line (c1's "Engine-name leak at :37" -> ":38")
+      -> PROBLEMS: 9
+         c1 test …/attribution-neutral.test.ts:11-70: fragment marker :38 does not hold
+         'expect(findings.some((f) => f.message.match(/engin' (found at 34,35,36,37,45,46,47,48)
+      CAUGHT.
+
+  M3  marker past EOF (c1's span widened to :11-9999)
+      -> PROBLEMS: 9
+         c1 test …/attribution-neutral.test.ts:11-9999: span end :9999 past EOF (72 lines)
+      CAUGHT.
+
+  restored -> PROBLEMS: 8
+
+KNOWN LIMITATIONS OF THIS INSTRUMENT, stated so its silence is not over-read:
+  - Its repeat-text counter is unreliable and is NOT a measurement. It matches
+    over sliding 1..4-line windows, so one logical match reports up to four
+    distinct start lines; 66 of 67 is an artifact of that, not a finding.
+  - Its EOF count is `split("\n").length`, which counts the trailing empty line
+    (72 for a 71-line file). Conservative in the safe direction for span checks.
+  - It resolves the record JSON only. Nothing here reads the roadmap prose, and
+    the record's own remedy is right that the durable fix is a CI-resident
+    resolver, not a scratch one run once.
+
+-------------------------------------------------------------------------------
+4. ⚠️ THREE FURTHER FINDINGS — REPORTED, NOT FIXED
+-------------------------------------------------------------------------------
+A closeout pass files defects; it does not fix them, and this batch's authority
+over `phase-17.json` is exactly the two corrections its record names. The
+following are the same two classes, in the same merged record, and were NOT
+touched. They are recorded here so the next pass inherits them measured.
+
+4a. A SECOND stale-location citation, same class as finding 1 — and this one was
+    introduced by PR #108, the very PR whose pass FILED the record.
+
+    c4 cites `packages/renderer/src/adf.test.ts:251-267`, quoting
+    ':253 expect(ADF_ALLOWED_NODE_TYPES).toEqual([', ':254-263' the ten node
+    names, ':264 ]);' and ':265 expect(ADF_ALLOWED_MARK_TYPES).toEqual([...]);'.
+
+    Correct when written, verified:
+      $ git show eabb65a:packages/renderer/src/adf.test.ts | sed -n '251,267p'
+      describe("ADF_ALLOWED_NODE_TYPES / ADF_ALLOWED_MARK_TYPES", () => {
+        it("matches roadmap/17's exact whitelist", () => {
+          expect(ADF_ALLOWED_NODE_TYPES).toEqual([
+      … through …
+          expect(ADF_ALLOWED_MARK_TYPES).toEqual(["link", "strong", "em", "code"]);
+        });
+      });
+
+    Still correct immediately before #108:
+      $ git show 9216438^:packages/renderer/src/adf.test.ts | sed -n '253p;265p'
+          expect(ADF_ALLOWED_NODE_TYPES).toEqual([
+          expect(ADF_ALLOWED_MARK_TYPES).toEqual(["link", "strong", "em", "code"]);
+
+    At HEAD the block is at :279-295 — `expect(ADF_ALLOWED_NODE_TYPES)` at :281,
+    the ten names at :282-291, `]);` at :292, `expect(ADF_ALLOWED_MARK_TYPES)` at
+    :293. Shift +28, caused by `9216438` ("fix(renderer): lint converter output
+    against 17's corpus — closes 17 c5, 19 c4", #108) inserting a `hardBreak`
+    test ahead of it. At :253 a reader now lands on a comment line.
+
+    Substance untouched, exactly as with finding 1: the whitelist assertion still
+    exists and still pins roadmap/17's exact list. Only the pointer is wrong.
+
+4b. THREE more citations whose fragments fall outside their own declared span —
+    the same class as finding 2, which the record filed for one citation only.
+    Census, run after the corrections above:
+
+      c6  packages/renderer/src/length-limits.test.ts:12-25      outside: :50
+      c6  packages/renderer/src/schema-validation.test.ts:24-33  outside: :14, :19
+      c7  packages/renderer/src/manifest.test.ts:16              outside: :36
+
+    Severity very low, identical to finding 2's: nothing misattributed, no line
+    number wrong, the ref understates its own reach.
+
+4c. The record's own "Not a finding" entry is slightly understated, and the
+    distinction matters for whoever builds the CI resolver.
+
+    The record says c1's `:53` negative control resolves once a resolver joins
+    wrapped lines, and calls the flag a limitation of the instrument. This
+    resolver DOES join up to four wrapped lines and still cannot match it,
+    because the quote is a NORMALIZATION rather than verbatim bytes: the source
+    reads `…loop.")),` / `).toEqual([]);` across :52-54, and the record renders it
+    as `…loop.")))` `.toEqual([])` — the comma-and-newline become a third paren.
+    Nothing is false and the assertion is real and where it says. But a
+    byte-exact CI resolver will report it forever, so the future rule needs to be
+    stated: either quote verbatim bytes or declare the quote as spliced, the way
+    two other citations in this same record already do ("three source lines
+    quoted verbatim and spliced").
+
+-------------------------------------------------------------------------------
+5. SCOPE — what this file does NOT do
+-------------------------------------------------------------------------------
+- No box was flipped and no roadmap file was touched.
+- `docs/evidence/criteria-closeout/defects/INDEX.md` was not touched, and neither
+  was the defect record itself: §4's findings need a record of their own, which is
+  the reconciliation batch's call, not this one's.
+- Nothing here is evidence for any criterion. It is a repair of where two merged
+  citations POINT, plus a measured hand-off of three more.
