@@ -400,3 +400,142 @@ restore (202 total throughout — no assertion silently vanished).
    rather than made here.
 
 ================================================================================
+
+--------------------------------------------------------------------------------
+7. REVIEW RESPONSE (added 2026-08-06, after adversarial review returned CHANGES
+   REQUIRED). Six findings. Nothing above is rewritten; corrections are dated
+   and stated here beside what they correct.
+--------------------------------------------------------------------------------
+
+7.1 [HIGH] The engine-baseline carry-forward now lands in this PR, not "handed off"
+
+  §6's "OWED" item is DISCHARGED as of this commit. `docs/engine-baseline.md`
+  §21 records the four facts from §2.4 in the house style of §16/§17, labelled
+  BINARY-SOURCED and not probe-verified, and §10 gains an invalidation trigger
+  for the key, its schema, the 200 default, the drop-on-invalid behaviour and
+  `max_turns_reached`. `packages/plugin/agents/eo-explore.md` now cites §21
+  first and this transcript second.
+
+  The reviewer's ruling on WHY is worth keeping: the §12 `enabledPlugins`
+  precedent does not transfer, because there a later pass owned the
+  carry-forward, whereas `docs/engine-baseline.md` is named by NO batch in this
+  wave's collision matrix — so "handed off" meant "floating", while a
+  production behaviour change (`maxTurns: 30`) shipped with no invalidation
+  trigger anywhere in §10. That is precisely the drift blindness
+  `roadmap/README.md:11` exists to prevent.
+
+  Collision re-verified before editing, not assumed: `git diff --name-only
+  origin/main...<branch> -- docs/engine-baseline.md` over every remote branch
+  returned no branch touching the file.
+
+7.2 [MEDIUM, the functionally worst] The manifest rule accepted `maxTurns: "30"`
+
+  CONFIRMED against my own branch, RED FIRST. The rule read the PARSED
+  attribute, and `parseScalar` strips one layer of DOUBLE quotes, so a
+  double-quoted value arrived as a bare integer and passed — while a
+  SINGLE-quoted `'30'` was rejected, because those quotes survive that
+  stripper. One value, two spellings, two verdicts, decided by this
+  repository's own parser rather than by the engine.
+
+  RED (assertion written before the fix):
+       Tests  1 failed | 202 passed (203)
+    AssertionError: expected true to be false
+    (the double-quoted arm's finding was `ok: true`)
+
+  FIX: `parseFrontmatter` now also returns `raw` — each key's verbatim,
+  trimmed, un-stripped literal — and the rule reads `raw.maxTurns`. Both quote
+  styles are now refused and only the bare integer literal is accepted.
+
+  GREEN: Tests 205 passed (205)   (203 -> 205 across the whole review round:
+  +1 quoted-maxTurns case, +1 `raw` case in frontmatter.test.ts, +1 from
+  splitting the range assertion into a labelled control plus a real one.)
+
+  REVERSE PROBE I: revert the rule to read `attributes` instead of `raw` ->
+  1 failed / 203 passed, the new case only. Restored; count back to 205.
+
+  ⚠ CORRECTION TO THE REVIEWER'S STATED MECHANISM, and it changes the rule's
+  justification without changing the rule. The review said the engine "drops"
+  a quoted value because `b.number()` rejects a string. That is NOT
+  established. The plugin loader's own accepting function is
+
+    function $to(e){if(e===void 0||e===null)return;let t=typeof e==="number"?e:Md(String(e));if(Number.isInteger(t)&&t>0)return t;return}
+
+  — it converts with `String(e)` before the integer test, which points the
+  other way. It cannot be settled from the bytes because the bundle holds TWO
+  functions named `Md`: a numeric parser at offset 245423091 (under which
+  `"30"` coerces to 30 and INSTALLS) and a highlight.js language definition at
+  offset 268544071 (under which every non-number is dropped). `$to` sits at
+  248915890.
+
+  Attempt to settle it empirically, recorded because it FAILED: a scratch
+  plugin directory was loaded through the pinned 2.1.218 binary with
+  `claude --plugin-dir <dir> plugin details crabgic` at `maxTurns` values 30,
+  "30", '30', 0, 3.5 and banana, with and without `-d`. No warning surfaced for
+  ANY of them, including `banana` as the positive control, so that command does
+  not reach this loader's warn-level channel and the run discriminates nothing.
+
+  ⇒ The rule stands as the reviewer asked (bare literal only), but its recorded
+  REASON is "the bare literal is the only form whose installation is settled",
+  never "the engine drops quoted values". Shipping the latter as a code comment
+  would have planted an unverified engine fact in the repository. Both the code
+  comment and §21 carry the UNDETERMINED framing.
+
+7.3 [LOW] Controls are now labelled in the source, not only here
+
+  `CONTROL:` prefixes added, matching this repository's existing convention in
+  `plugin-manifest.test.ts`. Also acted on the reviewer's sharper point: the
+  assertion sitting under a describe about the workflow never read the
+  workflow. It is now two assertions — a labelled CONTROL over the two
+  constants, and a real one that reads the workflow's own pinned literal.
+
+  REVERSE PROBE K: move the workflow pin to the out-of-range 2.1.223 ->
+  2 failed / 203 passed ("pins that install to TESTED_ENGINE_VERSION" AND
+  "keeps the WORKFLOW'S OWN pinned literal inside the accepted engine version
+  range"). The new assertion fires on its own terms, so it is not a restatement
+  of its neighbour. Restored; 205 passed.
+
+7.4 [LOW] A false comment, corrected
+
+  "Every single-value flag here uses the `=` form" was contradicted by its own
+  argv four lines below (`--plugin-dir` and `--output-format` use the space
+  form). The comment now says what is actually true and why it is safe: only
+  the VARIADIC flag needs the `=` form, and only `--allowedTools` is variadic.
+
+7.5 [LOW] `--max-turns`: "absent" was an overstatement — corrected here
+
+  §2.3 above says "`--max-turns` is ABSENT" and "not an option here". Read that
+  as absent FROM `claude --help`, which is all `docs/engine-baseline.md` §10
+  claims and all this transcript measured. `docs/verification-playbook.md`
+  §BOUNDING A SUBAGENT-SPAWNING TEST carries the stronger measurement: the flag
+  is undocumented but still PARSES, enforcing against the same top-level loop
+  counter `num_turns` reports. The conclusion is unchanged and in fact
+  stronger — it is the wrong instrument rather than a missing one, because a
+  `Task` spawn's nested turns never reach that counter. `claude-cli.ts` and the
+  spawn case's comment now say it that way.
+
+7.6 [LOW, hardening] The dist-tag guard had a bypass; closed
+
+  Appending a second `npm install -g @anthropic-ai/claude-code` with NO
+  `@version` (npm resolves that to `latest`) inside the same step matched
+  neither the old `<name>@<spec>` specifier scan nor the one-step count, so
+  `latest` could overwrite the pin with every assertion green. The scan now
+  checks EVERY mention of the package name and requires each to be followed by
+  an exact `@MAJOR.MINOR.PATCH`.
+
+  REVERSE PROBE J: append exactly that implicit-latest line -> 1 failed / 204
+  passed ("never resolves the CLI through a dist-tag or a range specifier").
+  Before this change the same mutation left all assertions green. Restored;
+  205 passed.
+
+7.7 What the review did NOT change
+
+  Still UNVERIFIED against a live engine; verification channel = owner
+  dispatch. No box is ticked. Nothing in §0-§6 above is retracted; §2.3's
+  wording is corrected by 7.5 and §6's OWED baseline item is discharged by 7.1.
+  The marketplace digest moved again with `agents/eo-explore.md`
+  (fe9ae3a5…9e23 -> fa13c22c…259f); the §5 note about
+  `closeout-c6b-marketplace-pin-resolves.txt` quoting an older digest applies
+  to this hop too, for the same reason, and that transcript is still not
+  rewritten.
+
+================================================================================
