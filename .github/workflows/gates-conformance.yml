@@ -44,3 +44,47 @@ jobs:
         run: npx vitest run packages/gates/src/gates-conformance.test.ts --coverage.enabled=false
       - name: engine-conformance-binding.test — fails closed / runId round-trip
         run: npx vitest run packages/gates/src/engine-conformance-binding.test.ts --coverage.enabled=false
+
+      # roadmap/14 exit criterion 2: "Coverage ratchet floor is monotonic
+      # non-decreasing across a simulated multi-`ChangeSet` history
+      # (fast-check property report, CI-archived)."
+      #
+      # The property itself has always run — it is inside the default
+      # `npm test` fan-out — so the claim was evidenced. What did not exist
+      # was the ARCHIVED REPORT the criterion names as its channel: no
+      # workflow uploaded one, so "CI-archived" was simply untrue.
+      #
+      # What the artifact actually contains, stated plainly rather than
+      # oversold: a per-property pass line with its duration under
+      # `--reporter=verbose`, the header below pinning run/commit/runner,
+      # and — on failure — fast-check's own counterexample and seed, which
+      # is what makes a failed run reproducible. It does NOT record
+      # per-case counts on success; fast-check does not print those, and
+      # claiming otherwise in a comment would be the kind of unverified
+      # assertion this repository keeps finding.
+      - name: coverage-ratchet monotonicity property report
+        run: |
+          set -o pipefail
+          {
+            echo "# coverage-ratchet monotonicity property — roadmap/14 exit criterion 2"
+            echo "# run:      ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "# commit:   ${GITHUB_SHA}"
+            echo "# runner:   ${{ matrix.os }} ($(uname -srm))"
+            echo "# captured: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "# command:  npx vitest run packages/gates/src/coverage/ratchet.property.test.ts --coverage.enabled=false --reporter=verbose"
+            echo "# ---- verbatim output below ----"
+          } | tee ratchet-property-report.txt
+          npx vitest run packages/gates/src/coverage/ratchet.property.test.ts \
+            --coverage.enabled=false --reporter=verbose \
+            2>&1 | tee -a ratchet-property-report.txt
+
+      - name: upload the ratchet property report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # Per-arch name: two matrix legs would otherwise collide on one
+          # artifact name and the second upload would fail the job.
+          name: ratchet-property-report-${{ matrix.os }}
+          path: ratchet-property-report.txt
+          if-no-files-found: error
+          retention-days: 90

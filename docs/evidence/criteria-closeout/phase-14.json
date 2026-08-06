@@ -74,11 +74,30 @@
       "index": 2,
       "text": "Coverage ratchet floor is monotonic non-decreasing across a simulated multi-`ChangeSet` history (fast-check property report, CI-archived).",
       "textSha256": "dd6ff33029f4ac35b0a38b4375e8c7a66f8d57ae659f2c219f0c596b014db1a8",
-      "classification": "UNMET",
-      "ticked": false,
-      "citations": [],
-      "notes": "Left unticked on the CHANNEL, not the claim. The monotonicity property itself is proven non-vacuously and executed on every push — `packages/gates/src/coverage/ratchet.property.test.ts:61-85` asserts `floorAfter >= priorFloor` on both axes after every single observation over 30 randomized histories, with the order-independence property at :20-53 as its anti-vacuity control, and `CI` run 30741826008's job-log line 565 shows the suite really ran. But the criterion names 'fast-check property report, CI-archived' as its channel, and no workflow archives any report from this suite: `gates-conformance.yml` uploads nothing and does not run the property suite at all, and the five `actions/upload-artifact` steps in the repository belong to phases 21, 23 and 06. Per the pass rule against reinterpreting a named channel, and following the merged precedent of `defects/04-journal-crash-suite-ci-job-absent.md`, the box stays unticked. Full search trail, the remedy (S), and one related observation — `recordCoverageObservation` carries no `changeSetId`, so the 'multi-ChangeSet history' is simulated by a sequence of coverage observations — are in the defect record.",
-      "defectRef": "docs/evidence/criteria-closeout/defects/14-ratchet-property-report-not-ci-archived.md"
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "test",
+          "ref": "packages/gates/src/coverage/ratchet.property.test.ts:62-82",
+          "quotedAssertion": "packages/gates/src/coverage/ratchet.property.test.ts:82 — '      { numRuns: 30 },' closes the fast-check assertion whose body asserts the floor never decreases across a monotonically-applied random sequence, checked incrementally after every observation on a real on-disk journal. The order-independence property above it is its anti-vacuity partner: a floor implementation that ignored history entirely would satisfy monotonicity and fail order-independence."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance (ubuntu-latest), step \"coverage-ratchet monotonicity property report\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31087616366",
+          "commit": "fbe83c4",
+          "quotedAssertion": "job log line 266 — ' ✓  @crabgic/gates  src/coverage/ratchet.property.test.ts > coverage ratchet — property: final floor is order-independent (componentwise max of the whole history) > the floor never decreases across a monotonically-applied random sequence (also checked incrementally) 352ms' (one-space rule). The multi-ChangeSet history the criterion names is the randomized observation sequence each fast-check run builds."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "gates-conformance / gates-conformance, artifacts \"ratchet-property-report-ubuntu-latest\" and \"ratchet-property-report-ubuntu-24.04-arm\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31087616366",
+          "commit": "fbe83c4",
+          "quotedAssertion": "The 'CI-archived' conjunct, which had no bearer at all before this change: `gh api repos/WitchyNibbles/crabgic/actions/runs/31087616366/artifacts` reports 'ratchet-property-report-ubuntu-latest  964 bytes' and 'ratchet-property-report-ubuntu-24.04-arm  966 bytes'. Per-arch names because two matrix legs sharing one artifact name would fail the second upload; `if-no-files-found: error` so an empty upload cannot satisfy it."
+        }
+      ],
+      "notes": "Split criterion, and only the second half was ever in doubt. The property itself was already evidenced and non-vacuous, running inside the default npm test fan-out on every push. 'CI-archived' was simply untrue: no workflow uploaded a report. gates-conformance.yml now produces and uploads one per matrix leg. What the artifact contains is stated in the workflow rather than oversold — a per-property pass line with duration, a header pinning run/commit/runner, and on failure fast-check's counterexample and seed. An earlier draft set a CRABGIC_FASTCHECK_VERBOSE env var and claimed the report would record per-case counts; nothing reads that variable and fast-check does not print those on success, so it was removed rather than left as an inert control with a comment vouching for it."
     },
     {
       "index": 3,

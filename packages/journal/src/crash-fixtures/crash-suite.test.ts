@@ -14,12 +14,24 @@ import { verifyAppendRecovery, verifySnapshotRecovery } from "./verify-recovery.
  * path): zero undetected corruption; recovery always converges to the last
  * valid chained entry — evidence: `journal-crash-suite` CI job artifact."
  *
- * The default `numIterations` (25) keeps the normal `vitest run` fast; the
- * documented, committed 1k-scale (or largest-that-fits) evidence capture is
- * a ONE-TIME run with `CRABGIC_CRASH_SUITE_ITERATIONS` set, output redirected to
- * docs/evidence/phase-04/exit-criteria-crash-suite.txt — see this
- * package's phase-04 evidence README for the exact command and honest
- * iteration count actually achieved. VALIDATION ROUND (2026-07-18) fix,
+ * The default `numIterations` (25) keeps the normal `vitest run` fast. The
+ * 1k-scale run the criterion names is no longer a one-time manual capture:
+ * `.github/workflows/journal-crash-suite.yml` is the `journal-crash-suite`
+ * CI job, and it runs this file with `CRABGIC_CRASH_SUITE_ITERATIONS=1000`
+ * and uploads the output as the artifact the criterion names as its
+ * evidence. It triggers on changes under `packages/journal/**`, nightly,
+ * and on manual dispatch — deliberately off the every-push path, since a
+ * 1000-iteration run spawns and kills a real child process per iteration
+ * (258s at the `docs/evidence/phase-04/closeout-c1-crash-suite-1k.txt`
+ * capture).
+ *
+ * Before 2026-08-06 that job did not exist —
+ * `git log --all -S"journal-crash-suite" -- .github/` was empty while this
+ * comment and the roadmap box had both named it since the repository's
+ * first commit. The substance was always proven here; the named channel
+ * was not. Do not re-word the quoted criterion above without changing the
+ * roadmap: this is a second, unversioned copy of that text and the two are
+ * meant to agree. VALIDATION ROUND (2026-07-18) fix,
  * MAJOR 1: this variant NEVER rotates segments (see
  * `crash-suite-rotation.test.ts` for the dedicated rotation variant added
  * to close that coverage gap) — `verifyAppendRecovery`/
