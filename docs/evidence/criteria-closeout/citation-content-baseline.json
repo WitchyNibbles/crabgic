@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-06",
-  "generatedAtSha": "ca3a1f5dde675bd8b437e4fcbcef88f7054cf359",
+  "generatedAtSha": "4773aac40a772fd0a2d59e8033515aa87f0aa9db",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1292,
@@ -696,7 +696,7 @@
       ]
     },
     "phase-02.json#c11#docs/threat-model.md#2": {
-      "qa": "e2a09ea387a8",
+      "qa": "f2294510153f",
       "ref": "OK",
       "pins": [
         "MOVED/collapsed@290",

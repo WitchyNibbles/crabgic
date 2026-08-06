@@ -1,6 +1,6 @@
 RULING-3 transcript
-UTC:        2026-08-06T17:24:00Z
-HEAD:       ca3a1f5dde675bd8b437e4fcbcef88f7054cf359  (fix(meta): distinguish a job that never reached the suite from a wrong log quote)
+UTC:        2026-08-06T17:28:18Z
+HEAD:       a2fcc4a09a72cc06306b4d5af2cf004d30a126b0  (fix(meta): hash the right citation when a criterion cites one ref twice)
 UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
 Purpose:    show the resolver catching the REAL historical citation drifts,
             pinned at the shas that caused them, so this proof cannot rot when
