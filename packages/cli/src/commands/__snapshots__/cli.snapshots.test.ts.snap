@@ -470,7 +470,7 @@ exports[`--json output schema snapshots — run (three of the five decided-outco
         "id": "<uuid>",
         "changeSetId": "<uuid>",
         "createdAt": "<timestamp>",
-        "canonicalHash": "sha256:1c40b330c6c0838b673b8e2bfbe6081be4c342edbe22138e99518245dfbc8611",
+        "canonicalHash": "sha256:cd4717eb5d41bb81ab4b1f2ac732cb6af283861deaf72f9b1bf9accefeffc803",
         "ownedPaths": [],
         "commands": [],
         "networkDestinations": [],
@@ -479,7 +479,8 @@ exports[`--json output schema snapshots — run (three of the five decided-outco
         "remoteResourceAuthorizations": [],
         "temporaryServices": [],
         "prohibitedActions": [],
-        "maxTurnsPerAttempt": 40
+        "maxTurnsPerAttempt": 40,
+        "provisionalBudgetHash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
       },
       "capabilityManifest": {
         "schemaVersion": 1,
@@ -576,7 +577,7 @@ exports[`--json output schema snapshots — run (three of the five decided-outco
         "id": "<uuid>",
         "changeSetId": "<uuid>",
         "createdAt": "<timestamp>",
-        "canonicalHash": "sha256:5e59f1e49f8f98292d2c558413e031f1e824d48c81ab918a94cd2a21791e7b44",
+        "canonicalHash": "sha256:81c1b864f19ade6c6120d11a2eba63c92855a0cf6213328e6399749d8e4e7faa",
         "ownedPaths": [
           "infra/secrets"
         ],
@@ -587,7 +588,8 @@ exports[`--json output schema snapshots — run (three of the five decided-outco
         "remoteResourceAuthorizations": [],
         "temporaryServices": [],
         "prohibitedActions": [],
-        "maxTurnsPerAttempt": 40
+        "maxTurnsPerAttempt": 40,
+        "provisionalBudgetHash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
       },
       "capabilityManifest": {
         "schemaVersion": 1,
