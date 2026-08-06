@@ -5,7 +5,14 @@ name: engine-live
 # *.live.test.ts` via `vitest.live.config.ts` — against the real, pinned
 # Claude Code engine bundled by the exact-pinned
 # `@anthropic-ai/claude-agent-sdk` dependency (engine facts:
-# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.210).
+# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.220).
+#
+# CLI: roadmap/10's plugin lane shares this job and resolves a BARE `claude`
+# from `PATH` (`packages/plugin/src/live/claude-cli.ts`). The SDK packages
+# export no `bin`, so `npm ci` links no shim and a stock runner has none —
+# hence the explicit, exactly-pinned global install below. Pin and step
+# ordering are asserted per push by
+# `packages/plugin/src/engine-live-workflow.test.ts`.
 #
 # Auth: the job needs a `CLAUDE_CODE_OAUTH_TOKEN` repository secret (owner-
 # provisioned via `claude setup-token`; adaptation §5.7). The suite's own
@@ -45,6 +52,27 @@ jobs:
           fi
       - run: npm ci
       - run: npx tsc -b
+      # `packages/plugin/src/live/*` execFile a bare `claude` resolved from
+      # PATH; without this step every plugin case ENOENTs — AFTER the
+      # engine-claude files sharing this job have already been paid for.
+      #
+      # EXACTLY PINNED, NEVER `@latest`. The registry is past the accepted
+      # range (2.1.223 observed 2026-08-06), and an out-of-range CLI would put
+      # this lane on an engine the phase-00 spike suite never validated, in
+      # violation of the engine-fact-drift ground rule. The pin is
+      # `TESTED_ENGINE_VERSION` rather than merely something in range, so the
+      # CLI transport here runs the SAME engine the SDK transport bundles
+      # (2.1.218) instead of reintroducing the version split
+      # `docs/engine-baseline.md`'s 2026-07-25 narrow re-baseline records.
+      #
+      # `command -v` is the ENOENT check itself: it fails the job in seconds,
+      # before any engine turn is paid for, if the package ever stops linking
+      # that name.
+      - name: Provision the pinned Claude Code CLI the plugin lane resolves from PATH
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.218
+          command -v claude
+          claude --version
       - name: Run @live conformance suite
         env:
           CRABGIC_LIVE: "1"
