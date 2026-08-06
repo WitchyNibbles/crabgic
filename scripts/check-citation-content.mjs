@@ -570,6 +570,22 @@ function changedRecords(repoRoot) {
 }
 
 /**
+ * Applies marker rewrites to one `quotedAssertion`, right to left so earlier
+ * edits cannot shift later positions. Pure, so it can be tested without letting
+ * a unit test anywhere near a real repository.
+ */
+export function applyMarkerRewrites(assertion, edits) {
+  let result = assertion;
+  for (const edit of [...edits].sort((a, b) => b.position - a.position)) {
+    result =
+      result.slice(0, edit.position) +
+      edit.replacement +
+      result.slice(edit.position + edit.text.length);
+  }
+  return result;
+}
+
+/**
  * Rewrites drifted `:NN` markers — ONLY in records this branch modified, and
  * only where the quoted text occurs exactly once in the file, so the new line is
  * a measurement rather than a guess.
@@ -607,14 +623,7 @@ function runFix(repoRoot) {
         });
       }
       if (edits.length === 0) continue;
-      let assertion = citation.quotedAssertion;
-      for (const edit of edits.sort((a, b) => b.position - a.position)) {
-        assertion =
-          assertion.slice(0, edit.position) +
-          edit.replacement +
-          assertion.slice(edit.position + edit.text.length);
-      }
-      citation.quotedAssertion = assertion;
+      citation.quotedAssertion = applyMarkerRewrites(citation.quotedAssertion, edits);
       rewritten += edits.length;
     }
     writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, "utf8");

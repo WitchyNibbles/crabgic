@@ -24,7 +24,6 @@
  * where it cannot rot — executed against worktrees at the exact merge shas, in
  * `docs/evidence/citation-resolver/red-corpus-batchN.txt`.
  */
-import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -46,7 +45,7 @@ import {
   parseDeclarations,
   parseQuotedAssertion,
 } from "./citation-content/quoted-assertion.mjs";
-import { main, resolveCorpus, sweepProse } from "./check-citation-content.mjs";
+import { applyMarkerRewrites, main, resolveCorpus, sweepProse } from "./check-citation-content.mjs";
 
 const REPO_ROOT = path.dirname(import.meta.dirname);
 const temporaries = [];
@@ -556,51 +555,21 @@ describe("job-log normalization", () => {
 });
 
 describe("--fix", () => {
-  /** A fixture repo that is a git repo, with an `origin/main` to diff against. */
-  function makeGitFixture(files, { commitRecord }) {
-    const { root, write } = makeFixtureRepo(files);
-    const git = (...args) =>
-      execFileSync("git", args, {
-        cwd: root,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      });
-    git("init", "-q", "-b", "main");
-    git("config", "user.email", "fixture@example.invalid");
-    git("config", "user.name", "fixture");
-    git("add", "-A");
-    git("commit", "-q", "-m", "base");
-    git("update-ref", "refs/remotes/origin/main", git("rev-parse", "HEAD").trim());
-    write("docs/evidence/criteria-closeout/phase-99.json", commitRecord);
-    git("add", "-A");
-    git("commit", "-q", "-m", "this branch's own draft");
-    return root;
-  }
-
-  it("rewrites a drifted marker in a record this branch DID modify", () => {
-    const recordPath = "docs/evidence/criteria-closeout/phase-99.json";
-    const root = makeGitFixture(
-      {
-        "src/guard.ts": GUARD_SOURCE,
-        [recordPath]: record([
-          { kind: "test", ref: "src/guard.ts:4", quotedAssertion: "unrelated" },
-        ]),
-      },
-      {
-        commitRecord: record([
-          {
-            kind: "test",
-            ref: "src/guard.ts:4",
-            quotedAssertion: ":1 'const findings = validateAdfSafeSubset(candidate);'",
-          },
-        ]),
-      },
+  it("re-anchors exactly the marker's digits and nothing else around them", () => {
+    // The rewrite is a pure string edit, tested as one. It is deliberately NOT
+    // tested by driving `git` over a fixture repository: an earlier version of
+    // this suite did exactly that, and under a fully parallel `npm test` its
+    // `git init` / `git commit` / `git update-ref` landed in the REAL worktree —
+    // two commits on the branch and a clobbered `refs/remotes/origin/main`. A
+    // unit test must not be able to mutate the repository it is testing, whatever
+    // the root cause of the escape was, so the git-driving half is gone and
+    // `--fix`'s guard is covered by the read-only case below.
+    const assertion =
+      "the guard delegates: :1 'const findings = validateAdfSafeSubset(candidate);' — note :1 again";
+    const edits = [{ position: 21, text: ":1", replacement: ":4" }];
+    expect(applyMarkerRewrites(assertion, edits)).toBe(
+      "the guard delegates: :4 'const findings = validateAdfSafeSubset(candidate);' — note :1 again",
     );
-    expect(main(["--fix", "--repo", root])).toBe(0);
-    const after = readFileSync(path.join(root, recordPath), "utf8");
-    // The marker's digits, and only those, are re-anchored on the measured line.
-    expect(after).toContain(":4 'const findings = validateAdfSafeSubset(candidate);'");
-    expect(after).not.toContain(":1 'const findings");
   });
 
   it("refuses to touch records this branch has not modified", () => {
