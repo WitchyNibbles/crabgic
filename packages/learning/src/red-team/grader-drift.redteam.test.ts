@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { GraderDriftError } from "../errors.js";
-import { EvalCaseSchema, type EvalCase } from "../eval/case-schema.js";
+import { computeCaseHash, EvalCaseSchema, type EvalCase } from "../eval/case-schema.js";
 import { caseSetDigest, runEvalPair, type EvalCaseSource } from "../eval/eval-pair.js";
 import { CaseFixtureStore } from "../store/case-fixture-store.js";
 
@@ -203,5 +203,32 @@ describe("@learning-redteam grader drift — a held-out set mutated between dev 
     // Order is not content: the same SET in a different order is the same set.
     const other = caseOf("b", "p-b");
     expect(caseSetDigest([base, other])).toBe(caseSetDigest([other, base]));
+  });
+
+  it("the per-case field separator is unambiguous — moving a field boundary changes the digest", () => {
+    // Added 2026-08-06, after `caseSetDigest`'s separator was found written as
+    // a RAW 0x00 byte instead of the escape `\0`. Correcting that byte was
+    // value-preserving, but the check for it was: measured at that commit,
+    // rewriting the separator to `"|"` left all 74 files / 785 tests of
+    // gateway+learning+renderer GREEN. Nothing pinned it at all.
+    //
+    // What the separator has to buy is this: a digest is a claim about a SET,
+    // so two DIFFERENT sets must not serialize to the same bytes. Any
+    // separator an `id` or a `provenanceId` could itself contain lets a field
+    // boundary slide — below, `id="x" provenanceId="y|z"` and `id="x|y"
+    // provenanceId="z"` — and a grader swap hides inside the collision. A
+    // control character does not occur in these ids, which is the whole reason
+    // it is the separator.
+    // `input` is pinned identical on both sides ON PURPOSE. `caseOf` normally
+    // derives `input.scenario` from the id, which would make `computeCaseHash`
+    // differ too and the assertion would pass under ANY separator — the test
+    // would measure nothing. Holding `input` and `expectedJudgment` fixed
+    // leaves the id/provenanceId split as the only difference, which is
+    // precisely what the separator has to keep distinguishable.
+    const sharedInput = { actualJudgment: true, scenario: "shared" };
+    const left = caseOf("x", "y|z", { input: sharedInput });
+    const right = caseOf("x|y", "z", { input: sharedInput });
+    expect(computeCaseHash(left)).toBe(computeCaseHash(right));
+    expect(caseSetDigest([left])).not.toBe(caseSetDigest([right]));
   });
 });
