@@ -48,6 +48,28 @@ export function normalizeJobLogLine(rawLine) {
 }
 
 /**
+ * Did this job's log ever reach the suite?
+ *
+ * A job that dies during `Set up job` — "Failed to resolve action download info",
+ * a runner outage, an npm registry blip — produces a log with **no per-file test
+ * lines at all**. Byte-comparing a record's quoted lines against that log reports
+ * every single one as missing, which reads as "this record's citations are
+ * fabricated" when the truth is "the suite never ran". Measured live: the
+ * `ubuntu-24.04-arm` leg failed repo-wide this way while every `ubuntu-latest`
+ * counterpart passed.
+ *
+ * So the two cases are separated before any quote is compared. "The suite ran
+ * and your line is absent" is a defect in the record; "the job never got to the
+ * suite" is a fact about infrastructure and is not the record's problem.
+ */
+export function logReachedTheSuite(lines) {
+  return lines.some((line) => {
+    const normalized = normalizeJobLogLine(line);
+    return /[✓×]/u.test(normalized) || /^\s*(?:Test Files|Tests)\s+\d/.test(normalized);
+  });
+}
+
+/**
  * Does a record's quoted line match this raw log line?
  *
  * Returns the form that matched — `"one-space"` (correct),

@@ -34,7 +34,12 @@ import {
   isOutOfSpanPin,
   isStalePin,
 } from "./citation-content/baseline.mjs";
-import { matchJobLogLine, normalizeJobLogLine, stripAnsi } from "./citation-content/job-log.mjs";
+import {
+  logReachedTheSuite,
+  matchJobLogLine,
+  normalizeJobLogLine,
+  stripAnsi,
+} from "./citation-content/job-log.mjs";
 import {
   extractFragments,
   parseDeclarations,
@@ -530,6 +535,22 @@ describe("job-log normalization", () => {
 
   it("a wrong quote still fails", () => {
     expect(matchJobLogLine(raw, "✓  src/corpus.test.ts (35 tests) 24ms")).toBe(null);
+  });
+
+  it("distinguishes a job that never reached the suite from a wrong quote", () => {
+    // Measured live: the ubuntu-24.04-arm leg failed repo-wide during `Set up
+    // job`, so its log has no per-file test line at all. Comparing quotes
+    // against it would report every citation in the corpus as fabricated.
+    const setupFailure = [
+      "2026-08-06T10:00:00.0000000Z ##[group]Run actions/checkout@v4",
+      `2026-08-06T10:00:01.0000000Z ${ESC}[31mFailed to resolve action download info. Error: Service Unavailable${ESC}[39m`,
+    ];
+    expect(logReachedTheSuite(setupFailure)).toBe(false);
+    expect(logReachedTheSuite([...setupFailure, raw])).toBe(true);
+    // A green run that simply does not contain the quoted line still reads as
+    // "reached the suite", so a genuinely wrong quote is still a defect.
+    expect(logReachedTheSuite([raw])).toBe(true);
+    expect(matchJobLogLine(raw, "✓  src/nowhere.test.ts")).toBe(null);
   });
 });
 

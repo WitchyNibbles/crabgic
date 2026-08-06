@@ -60,7 +60,7 @@ import {
   shortHash,
 } from "./citation-content/baseline.mjs";
 import { createFileLoader } from "./citation-content/file-index.mjs";
-import { matchJobLogLine } from "./citation-content/job-log.mjs";
+import { logReachedTheSuite, matchJobLogLine } from "./citation-content/job-log.mjs";
 import { checkProseFile } from "./citation-content/prose-refs.mjs";
 import { extractFragments } from "./citation-content/quoted-assertion.mjs";
 import {
@@ -212,6 +212,14 @@ export function sweepJobLogs(repoRoot, directory) {
         } catch {
           output.push(
             `${name} c${String(criterion.index)}: job ${jobId} — log not downloaded, skipped`,
+          );
+          continue;
+        }
+        if (!logReachedTheSuite(logLines)) {
+          output.push(
+            `${name} c${String(criterion.index)}: job ${jobId} — the job never reached the suite ` +
+              "(setup/infra failure); its quoted lines are NOT checkable against this log, and their " +
+              "absence says nothing about the record",
           );
           continue;
         }
