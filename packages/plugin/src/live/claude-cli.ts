@@ -46,10 +46,20 @@ export const SPAWN_PROBE_MODEL = "haiku";
  *
  * `--max-budget-usd <amount>` is present in `claude --help` at the pinned
  * 2.1.218 (measured, same transcript) and is the CLI's own documented cost
- * bound — `--max-turns` is NOT: `docs/engine-baseline.md` §10 records it
- * absent from the CLI surface since 2.1.210, and it would not have helped
- * anyway, because a `Task` spawn's turns live in a nested subagent loop
- * that never reaches the top-level counter.
+ * bound.
+ *
+ * `--max-turns` is deliberately NOT used, and the precise reason matters
+ * because an earlier draft of this comment overstated it. The flag is
+ * **undocumented, not absent**: `docs/engine-baseline.md` §10 records it
+ * missing from `claude --help` since 2.1.210, and
+ * `docs/verification-playbook.md` §BOUNDING A SUBAGENT-SPAWNING TEST records
+ * the correction that it nonetheless still PARSES — while enforcing against
+ * the same top-level loop counter `num_turns` reports. A `Task` spawn's turns
+ * live in a nested subagent loop that never reaches that counter, so the flag
+ * would very likely not have stopped the measured runaway. It is the wrong
+ * instrument, which is a stronger and more accurate claim than "it does not
+ * exist". The instrument that does bound the nested loop is the subagent's own
+ * `maxTurns` frontmatter (`docs/engine-baseline.md` §21).
  *
  * 0.50 is chosen to bite a runaway and not a healthy run. A bounded run of
  * this probe is a parent turn plus a subagent listing two files — cents.

@@ -82,8 +82,13 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
       // trailing prompt is absorbed as a second *tool name*, leaving the run
       // with no prompt at all ("Input must be provided either through stdin or
       // as a prompt argument when using --print"). The `=` form binds exactly
-      // one value, which is what keeps the prompt below a prompt. Every
-      // single-value flag here uses the `=` form for the same reason.
+      // one value, which is what keeps the prompt below a prompt.
+      //
+      // Only the VARIADIC flag needs that treatment, and only `--allowedTools`
+      // is variadic here; `--model` and `--max-budget-usd` use the `=` form
+      // for visual consistency with it, while `--plugin-dir` and
+      // `--output-format` use the space form and are equally safe — they are
+      // declared single-arity, so they cannot swallow the trailing prompt.
       // Harness-only concern — nothing about the plugin under test changes.
       const invocation = execFileAsync(
         CLAUDE_CLI_BIN,
@@ -100,11 +105,15 @@ describe("@live plugin.live-smoke — positive (plugin loaded via --plugin-dir)"
           // unreproducible. The SUBAGENT's model is pinned separately, in
           // `agents/eo-explore.md`'s own frontmatter.
           `--model=${SPAWN_PROBE_MODEL}`,
-          // The CLI's own documented cost bound. `--max-turns` is NOT
-          // available here (`docs/engine-baseline.md` §10: absent from the
-          // CLI surface since 2.1.210) and would not bound this anyway — a
-          // `Task` spawn's turns live in a nested subagent loop that never
-          // reaches the top-level counter.
+          // The CLI's own documented cost bound, and the right tool for this
+          // job. `--max-turns` is not the alternative it looks like: it is
+          // undocumented here (`docs/engine-baseline.md` §10 records it absent
+          // from `claude --help` since 2.1.210) and, per the measurement at
+          // `docs/verification-playbook.md` §BOUNDING A SUBAGENT-SPAWNING
+          // TEST, it does still PARSE while reading the top-level loop counter
+          // — which a `Task` spawn's nested turns never reach. So it would
+          // very likely not have stopped the runaway this case is bounded
+          // against, whether or not it is advertised.
           `--max-budget-usd=${SPAWN_PROBE_MAX_BUDGET_USD}`,
           "Use the Task tool to launch the eo-explore subagent exactly once. Ask it to list the file names directly inside the current working directory — a scratch directory holding two small files and nothing else; it must not read or search any other path. In your answer, state which subagent you used by name, then its finding.",
         ],

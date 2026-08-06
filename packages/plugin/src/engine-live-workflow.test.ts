@@ -66,6 +66,17 @@ function indexOfStepContaining(needle: string): number {
   return stepBlocks(workflow).findIndex((block) => block.includes(needle));
 }
 
+/** Compares two `MAJOR.MINOR.PATCH` strings; negative/zero/positive like any comparator. */
+function cmp(a: string, b: string): number {
+  const triple = (v: string): readonly number[] => v.split(".").map(Number);
+  const [x, y] = [triple(a), triple(b)];
+  for (let i = 0; i < 3; i += 1) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
 describe("engine-live.yml provisions the CLI its plugin lane resolves from PATH", () => {
   it(`installs ${CLI_PACKAGE} in exactly one step`, () => {
     const install = stepBlocks(workflow).filter((block) => block.includes(`${CLI_PACKAGE}@`));
@@ -91,27 +102,38 @@ describe("engine-live.yml provisions the CLI its plugin lane resolves from PATH"
     // 2026-08-06), so `@latest` here would silently put the lane on an
     // unvalidated engine — the exact failure the engine-fact-drift ground
     // rule exists to prevent.
-    const specifiers = [...workflow.matchAll(/@anthropic-ai\/claude-code@(\S+)/g)].map(
-      (m) => m[1]!,
-    );
-    expect(specifiers.length).toBeGreaterThan(0);
-    for (const specifier of specifiers) {
-      expect(specifier).toMatch(/^\d+\.\d+\.\d+$/);
+    //
+    // EVERY MENTION OF THE PACKAGE IS CHECKED, not every `<name>@<spec>`
+    // match — a review probe (2026-08-06) showed the narrower form has a
+    // bypass: appending `npm install -g @anthropic-ai/claude-code` with NO
+    // `@version` (npm resolves that to `latest`) inside the same step matches
+    // neither a `<name>@` specifier scan nor the one-step count, so `latest`
+    // could overwrite the pin with all nine assertions green.
+    const mentions = [...workflow.matchAll(/@anthropic-ai\/claude-code(\S*)/g)].map((m) => m[1]!);
+    expect(mentions.length).toBeGreaterThan(0);
+    for (const suffix of mentions) {
+      expect(suffix).toMatch(/^@\d+\.\d+\.\d+$/);
     }
   });
 
-  it("keeps the pin inside the accepted engine version range", () => {
-    const triple = (v: string): readonly number[] => v.split(".").map(Number);
-    const cmp = (a: string, b: string): number => {
-      const [x, y] = [triple(a), triple(b)];
-      for (let i = 0; i < 3; i += 1) {
-        const d = (x[i] ?? 0) - (y[i] ?? 0);
-        if (d !== 0) return d;
-      }
-      return 0;
-    };
+  it("CONTROL: TESTED_ENGINE_VERSION is itself inside the accepted range", () => {
+    // Green from the start and reads no workflow at all — a relation between
+    // two constants, kept because every assertion above that trusts
+    // TESTED_ENGINE_VERSION as a proxy for "in range" depends on it. Labelled
+    // so nobody counts it as evidence that this batch changed anything.
     expect(cmp(TESTED_ENGINE_VERSION, ACCEPTED_ENGINE_VERSION_RANGE.min)).toBeGreaterThanOrEqual(0);
     expect(cmp(TESTED_ENGINE_VERSION, ACCEPTED_ENGINE_VERSION_RANGE.max)).toBeLessThanOrEqual(0);
+  });
+
+  it("keeps the WORKFLOW'S OWN pinned literal inside the accepted engine version range", () => {
+    // The control above proves a fact about the constants; this one reads the
+    // file. They are different claims, and only this one goes red if the
+    // workflow is edited to some out-of-range version.
+    const [install] = stepBlocks(workflow).filter((block) => block.includes(`${CLI_PACKAGE}@`));
+    const pinned = /@anthropic-ai\/claude-code@(\d+\.\d+\.\d+)/.exec(install ?? "")?.[1];
+    expect(pinned).toBeDefined();
+    expect(cmp(pinned!, ACCEPTED_ENGINE_VERSION_RANGE.min)).toBeGreaterThanOrEqual(0);
+    expect(cmp(pinned!, ACCEPTED_ENGINE_VERSION_RANGE.max)).toBeLessThanOrEqual(0);
   });
 
   it(`proves the exact binary name the live probes resolve ("${CLAUDE_CLI_BIN}") is on PATH`, () => {
@@ -175,7 +197,10 @@ describe("the live lane stops spending on the first failure", () => {
     expect(rootManifest.scripts["test:live"]).toMatch(/--bail[= ]1\b/);
   });
 
-  it("still runs the live suite through its own config", () => {
+  it("CONTROL: still runs the live suite through its own config", () => {
+    // Green before this batch and after it. Its job is to catch a `--bail`
+    // edit that also broke the script — not to evidence anything this batch
+    // changed.
     expect(rootManifest.scripts["test:live"]).toContain("vitest.live.config.ts");
   });
 });
