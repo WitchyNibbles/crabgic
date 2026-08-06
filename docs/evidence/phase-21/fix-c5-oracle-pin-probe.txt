@@ -305,3 +305,62 @@ so even a ruling nobody found could not be contradicted by this change.
      job log showing `src/fixtures/fault-injection.test.ts (11 tests)` against main's `(5 tests)`,
      with `src/security-fixture-manifest.test.ts (21 tests)` unmoved as the control row — to be
      byte-compared under the one-space rule by whoever cites this in a record.
+
+
+================================================================================================
+ADDENDUM (2026-08-06, added after the branch's first CI run) — THE PER-PUSH JOB-LOG PROOF
+================================================================================================
+Everything above §8 is a LOCAL measurement. This addendum is the evidence that the six new
+assertions actually EXECUTE in a real push run — the only thing a green workflow does not prove.
+
+Same workflow (`CI`), same job name (`unit-test+coverage (ubuntu-latest)`), same runner label.
+Quoted under the ONE-SPACE rule: GitHub's raw line is `<timestamp>` + one space + content, and
+vitest's own content then starts with one space before `✓`. ANSI colour codes stripped for
+legibility; the byte-comparison below was done against the raw downloaded logs.
+
+  BEFORE — main @ c0b3873 (the UPSTREAM BASE in this file's header)
+    run 31089667556, job 92577396650, log line 360:
+      | ✓  @crabgic/connectors-grafana  src/fixtures/fault-injection.test.ts (5 tests) 12ms|
+    same job, log line 559:
+      | ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (21 tests) 22ms|
+
+  AFTER — this branch @ ede805a (PR #112)
+    run 31095821558, job 92597472472, log line 353:
+      | ✓  @crabgic/connectors-grafana  src/fixtures/fault-injection.test.ts (11 tests) 14ms|
+    same job, log line 572:
+      | ✓  @crabgic/gates  src/security-fixture-manifest.test.ts (21 tests) 17ms|
+
+  DELTA:  fault-injection.test.ts   5 -> 11   = exactly the six reverse probes.
+  CONTROL: security-fixture-manifest.test.ts  21 -> 21 — a count that must NOT move, and does not.
+           packages/gates is edited zero times by this branch, so the control row is what rules out
+           the +6 having come from a gates-side change. A count that should not move is evidence too.
+
+  All four CI workflows on ede805a are green: CI 31095821558, gates-conformance 31095821741,
+  perf-conformance 31095823373, learning-redteam 31095821551.
+  (Note for whoever cites the BEFORE run: run 31089667556 as a whole concluded `failure`, on its
+  `commitlint` job only — a pre-existing main-branch subject, nothing to do with this work. The
+  `unit-test+coverage (ubuntu-latest)` job 92577396650 inside it concluded `success`, and a job is
+  what is being cited here, never a run conclusion.)
+
+MUTATION-TESTING THE COMPARER — three ways, all three CAUGHT
+------------------------------------------------------------
+A comparer whose silence you have not tested tells you nothing. The resolver used above applies
+four rules (content / exact-line anchoring / file identity / repeat-text detection) and was
+falsified three ways:
+
+  M-a  falsified count — claim `(12 tests)` at PR log line 353   -> CAUGHT ("line 353 does not
+       contain the quote")
+  M-b  moved line — claim the real fixtures quote at line 354    -> CAUGHT (same)
+  M-c  RIGHT COUNT, WRONG FILE — the one nobody thinks of. `(21 tests)` occurs at **six** distinct
+       lines in the PR job log:
+         :436  @crabgic/contracts      src/contracts/external-connection.test.ts (21 tests)
+         :528  @crabgic/engine-claude  src/tool-adjudication-hook.test.ts        (21 tests)
+         :572  @crabgic/gates          src/security-fixture-manifest.test.ts     (21 tests)  <- ours
+         :642  @crabgic/gateway        src/transport/retry-ladder.test.ts        (21 tests)
+         :706  @crabgic/journal        src/layout/owned-open.test.ts             (21 tests)
+         :962  crabgic                 src/review/gate-criteria.test.ts          (21 tests)
+       A comparer keyed only on the count would have matched one of the other five and reported
+       success. Keyed on file+count, the claim resolves uniquely at :572 (1 occurrence).
+
+  Each of the four quoted fragments above was additionally checked for repeats: each occurs
+  EXACTLY ONCE in its own log, so all four are position-verified, not merely content-verified.
