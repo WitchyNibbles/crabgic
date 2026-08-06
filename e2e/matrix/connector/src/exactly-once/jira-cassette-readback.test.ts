@@ -2,8 +2,18 @@
  * roadmap/23-release-hardening.md work item 6: "reuse ... 18[/19]'s ...
  * resource clients + their cassettes." Jira Cloud + Data Center read-back
  * evidence, driven through the REAL `JiraResourceClient` (both deployment
- * types) against the REAL, already-recorded cassette fixtures — never
- * hand-rolled JSON, never a reimplementation of the read path.
+ * types) against the committed cassette fixtures — never a
+ * reimplementation of the read path.
+ *
+ * ⚠️ DATED CORRECTION (2026-08-06). This header used to say the fixtures
+ * are "the REAL, already-recorded cassette fixtures — never hand-rolled
+ * JSON". They are hand-authored, not recorded: the Cloud fixture is a
+ * `JSON.stringify` of the inline fake script, and the two DC fixtures are
+ * modeled from documented REST shapes (already disclosed at
+ * `packages/connectors-jira/src/testkit/fake-cassette-parity-dc.test.ts:16-22`)
+ * and are byte-identical to each other. What this suite genuinely
+ * evidences is that the real read path parses those fixture bytes into
+ * fully-typed results; it evidences nothing about real provider traffic.
  *
  * NOTE per the owner's explicit phase-23 decision: Jira Data Center (19)
  * live-container conformance is CASSETTE-ONLY for this pass — 19's own DC
@@ -76,8 +86,8 @@ afterEach(async () => {
   await tj.cleanup();
 });
 
-describe("Jira Cloud — real JiraResourceClient read-back against the real recorded cassette", () => {
-  it("the byte-recorded cassette drives the real 7-call read scenario to fully-typed results", async () => {
+describe("Jira Cloud — real JiraResourceClient read-back against the committed cassette fixture", () => {
+  it("the committed cassette fixture drives the real 7-call read scenario to fully-typed results", async () => {
     const cassette = loadCloudCassetteFromSource();
     const results = await runScriptedReadScenario(cassette);
 
@@ -88,16 +98,41 @@ describe("Jira Cloud — real JiraResourceClient read-back against the real reco
     expect(results.comments).toBeTruthy();
     expect(results.worklogs).toBeTruthy();
 
+    // ⚠️ This `command` string is JOURNALED into release-e2e attestation
+    // evidence, so it is a provenance claim in a downstream artifact, not just
+    // a label. It used to say "over the recorded cassette" — false, and
+    // corrected 2026-08-06 along with this file's header and titles. The
+    // fixture is hand-authored; the artifact now says so rather than
+    // inheriting the overstatement.
     await emitScenarioEvidence({
       journal: tj.store,
       command:
-        "connector-matrix: Jira Cloud cassette read-back — real JiraResourceClient over the recorded cassette",
+        "connector-matrix: Jira Cloud cassette read-back — real JiraResourceClient over the committed cassette fixture (hand-authored, not a live capture)",
       exitStatus: 0,
       outcomeContent: JSON.stringify(results),
     });
   });
 
-  it("cassette/fake parity — the independently-maintained hand-authored script drives byte-identical results to the recorded cassette", async () => {
+  /**
+   * ⚠️ DATED CORRECTION (2026-08-06). This case was titled "cassette/fake
+   * parity — the INDEPENDENTLY-MAINTAINED hand-authored script drives
+   * byte-identical results to the recorded cassette". That wording was
+   * false and is withdrawn: the Cloud cassette is not a recording and is
+   * not independently maintained — each of its seven `bodyText` values is
+   * byte-identical to `JSON.stringify` of the corresponding object literal
+   * in `HAND_AUTHORED_READ_SCENARIO`, and it carries no capture metadata.
+   * The same correction is applied at the source, in
+   * `packages/connectors-jira/src/testkit/scripted-read-scenario.ts` and
+   * `.../fake-cassette-parity.test.ts`, together with the removal of the
+   * at-rest byte-equality pin that made the comparison unfalsifiable.
+   * Filed as `docs/evidence/criteria-closeout/defects/18-cassette-parity-is-a-tautology.md`.
+   *
+   * The case is kept, with honest wording: it is a fixture-loadability and
+   * determinism check over the release-e2e matrix's own copy of the
+   * fixture bytes. It is NOT evidence for roadmap/18's fake/cassette
+   * parity criterion, which needs a recording independent of the fake.
+   */
+  it("both hand-authored Cloud fixtures (inline script and JSON file) drive the real read path to identical typed results", async () => {
     const fromCassette = await runScriptedReadScenario(loadCloudCassetteFromSource());
     const fromFake = await runScriptedReadScenario(HAND_AUTHORED_READ_SCENARIO);
     expect(fromCassette).toEqual(fromFake);
@@ -128,12 +163,21 @@ describe("Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC liv
       loadDatacenterCassetteFromSource("11.3"),
     );
 
+    // Same journaled-provenance care as the Cloud case above: "cassette-only"
+    // on its own reads as "recorded", and the DC cassettes are hand-authored
+    // too — disclosed at `packages/connectors-jira/src/testkit/
+    // fake-cassette-parity-dc.test.ts:16-22`, and byte-identical to each other.
+    // The artifact now states both facts rather than only the first.
     const record = await emitScenarioEvidence({
       journal: tj.store,
       command:
-        "connector-matrix: Jira DC 10.3/11.3 — cassette-only evidence (owner decision: no live DC container this pass)",
+        "connector-matrix: Jira DC 10.3/11.3 — cassette-only evidence from hand-authored fixtures, not live captures (owner decision: no live DC container this pass)",
       exitStatus: 0,
-      outcomeContent: JSON.stringify({ results10_3, results11_3, evidenceSource: "cassette-only" }),
+      outcomeContent: JSON.stringify({
+        results10_3,
+        results11_3,
+        evidenceSource: "cassette-only (hand-authored fixtures, not live captures)",
+      }),
     });
     expect(record.gateTag).toBe(CONNECTOR_MATRIX_GATE_TAG);
   });

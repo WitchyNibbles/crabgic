@@ -428,6 +428,7 @@ Re-run the full probe suite (`spikes/README.md` procedure) and update this docum
 - **(added 2026-07-27)** The status-line payload contract (§17.1 — member names, the nullability of `context_window.used_percentage`, the absence of `effort` on non-effort models, `rate_limits`' subscription/first-response preconditions, epoch-seconds `resets_at`), the plugin manifest's lack of a `statusLine` key (§17.2), or the availability of `${CLAUDE_PLUGIN_ROOT}`/`$CLAUDE_PROJECT_DIR` in a `settings.json` command (§17.3). Phase 10's installer writes a `statusLine` entry that depends on all three. **This item is binary-sourced and documentation-corroborated, not probe-verified** (§17).
 - **(added 2026-07-27)** The plugin version-resolution order (§16) — if `plugin.json` stops silently outranking the marketplace entry's `version`, or the precedence chain gains/loses a level, then phase 10's manifest may declare a version again and `packages/plugin/src/plugin-manifest-version.test.ts` must be re-derived. **This item is documentation-sourced, not probe-verified** (§16); it is the weakest-evidence entry on this list.
 - **(added 2026-07-27)** The `Stop` hook control contract (§19) — `decision:"block"` ceasing to prevent a turn ending, `reason` ceasing to reach the model, the `Stop` payload losing `cwd`, or (**release-blocking**) `stop_hook_active` ceasing to be set on re-entry, which is the manager autonomy gate's loop guard.
+- **(added 2026-08-06)** The subagent turn-bound contract (§21) — the agent-frontmatter `maxTurns` key name or its positive-integer schema, the **200-turn built-in default** an agent inherits by declaring none, the drop-on-invalid behaviour (a version that refuses the agent outright instead of dropping the key is a materially different failure mode), or `max_turns_reached` as the loop's terminator. `packages/plugin/agents/eo-explore.md` is bounded by this key and nothing else: a `Task` spawn's turns never reach the parent's `num_turns`, and `--max-turns` is absent from the CLI surface (bullet above), so if this contract moves, that subagent silently returns to an unbounded loop. **This item is binary-sourced, not probe-verified** (§21), and §21's quoted-value question is UNDETERMINED rather than settled.
 - **(added 2026-07-27)** `AskUserQuestion` appearing in the **headless** tool catalog on either transport (§18.1) — "a worker can never block a run waiting on a human" stops being true by construction and becomes dependent on the worker profile's allow-list alone; phase 06's profile must be re-checked. Also: the tool's input-schema shape changing (§18.2 — `questions[]`, `question`/`header`/`options[]`/`multiSelect`, option `label`/`description`/`preview`, or the `annotations` notes map), which is what the manager operating protocol's wording describes. **The absence half is probe-verified; the interactive-presence half is an in-session observation only** (§18.2).
 
 ---
@@ -807,3 +808,56 @@ is null, and the `Bash cat` arm was stopped by the permission layer before bwrap
 sandbox half of ABSENT rests on one negative. Allow-matching proved sufficient for `Read` but **not**
 for `Bash`. **Not measured:** whether the tilde deny still binds once `Read` is allowed (dropped for
 budget). Evidence: `docs/evidence/phase-00/r7-p1-read-exposure-transcript.md`.
+
+---
+
+## 21. Subagent turn bounds: `maxTurns` in agent frontmatter, its 200-turn default, and the drop-on-invalid behaviour (2026-08-06)
+
+**Added 2026-08-06. BINARY-SOURCED, not probe-verified** — read the evidence caveat below before relying on this the way §1–§9's live verdicts can be relied on. Same evidentiary class as §16 (documentation-sourced) and §17 (a static read of the binary corroborated by the vendor reference), and weaker than §15, whose fact came off a real `--help` invocation.
+
+**Why this section exists at all:** a subagent spawned through the `Task` tool runs its own conversation loop, and **that loop's turns never reach the parent's `num_turns`.** Measured on 2026-08-05 (`docs/verification-playbook.md` §BOUNDING A SUBAGENT-SPAWNING TEST): a single exploration request served ~51 distinct nested round trips behind ~2 parent turns while the parent's own ledger reported ~8. No caller-side cap bounds that, and §10's CLI-flag-surface bullet already records `--max-turns` as absent from `claude --help`. The frontmatter key below is the mechanism that does bound it, so anything in this repository that relies on a subagent being bounded relies on §21.
+
+**Facts, read out of the engine binary bundled with `@anthropic-ai/claude-agent-sdk` 0.3.218 (`claude --version` → `2.1.218 (Claude Code)`), in decreasing order of load-bearing-ness:**
+
+1. **`maxTurns` is a recognized agent-frontmatter key**, listed beside the keys this repository already writes:
+
+```text
+"keywords","compatibility","tools","disallowedTools","color","permissionMode","maxTurns","initialPrompt","memory","background","isolation","observer",…
+```
+
+2. **Its declared shape is a positive integer**, and the constraint is the schema's, not this repository's:
+
+```text
+maxTurns:b.number().int().positive().optional()
+```
+
+3. **Plugin agent files are validated for it specifically, and an unreadable value is warned about and then DROPPED** — the assembled agent simply omits the key, which silently restores the default in fact 4. A bound that looks installed and is not:
+
+```text
+Plugin agent file ${e} has invalid maxTurns '${$}'. Must be a positive integer.
+```
+
+4. **The built-in default is 200 turns** for an agent whose frontmatter is silent, and the loop's terminator is a `max_turns_reached` event carrying the bound and the count reached:
+
+```text
+tools:["*"],maxTurns:200,model:"inherit"
+yield Ka({type:"max_turns_reached",maxTurns:c,turnCount:Ln},f)
+```
+
+**UNDETERMINED, and it is the question a reader is most likely to have: whether a QUOTED value (`maxTurns: "30"`) is coerced or dropped.** The loader's own accepting function reads:
+
+```text
+function $to(e){if(e===void 0||e===null)return;let t=typeof e==="number"?e:Md(String(e));if(Number.isInteger(t)&&t>0)return t;return}
+```
+
+That `String(e)` before the integer test **points toward** a quoted value being coerced and installed. It is not proof, because the bundle contains **two** functions named `Md`: a numeric parser at byte offset 245423091 (`function Md(e){let t=String(e).trim();return BMm(t)??parseInt(t,10)}`), under which a quoted `"30"` coerces to `30` and installs, and an unrelated highlight.js language definition at byte offset 268544071 (`function Md(e){let t={className:"string",…`), under which `$to` would return `undefined` for **every** non-number and quoted values would always be dropped. `$to` itself sits at byte offset 248915890 — nearer the first, which is suggestive and not dispositive in a bundle whose module scopes are not visible from the bytes.
+
+An attempt to settle it empirically **failed and is recorded rather than hidden**: a scratch plugin directory was loaded through the pinned binary with `claude --plugin-dir <dir> plugin details <name>`, at `maxTurns` values `30`, `"30"`, `'30'`, `0`, `3.5` and `banana`, with and without `-d`. **No warning surfaced for any of them — including `banana`, the positive control** — so that command does not expose this loader's warn-level channel and the run discriminates nothing. Settling it needs a probe that reaches the channel (a real session load, or the debug-file output).
+
+⇒ **Only the bare integer literal is established.** Do not write a quoted `maxTurns` anywhere in this repository on the strength of this section, and do not read the `$to` snippet as permission to.
+
+**Consumer:** `packages/plugin/agents/eo-explore.md` declares `maxTurns: 30` and cites this section. `packages/plugin/src/plugin-manifest.ts`'s subagent validator refuses any declared `maxTurns` that is not a bare positive-integer literal — reading the verbatim frontmatter text rather than the parsed attribute, because this package's own `parseScalar` strips double quotes and would otherwise make `"30"` and `30` indistinguishable. The other four manager subagents deliberately declare none and run at fact 4's 200; that residual is pinned by an assertion in `packages/plugin/src/plugin-manifest.test.ts`.
+
+**Evidence caveat (load-bearing):** every fact above is a byte read of an installed binary. No spike probes it, no live session was driven, and no `@live` test was run — the batch that landed this section had a standing prohibition on paid engine turns. The `--help`-sourced half of the neighbouring facts (`--max-budget-usd` present, `--model` single-arity, `--max-turns` absent) came from a free local `claude --help` on the same binary, which is §15's evidentiary class rather than this one's. A live verification — load a plugin whose agent declares a bound, drive a subagent past it, and observe `max_turns_reached` — is **OWED** and belongs on §11's list, together with the quoted-value question above. Transcript: `docs/evidence/phase-10/live-lane-preconditions-batchK.txt`.
+
+**Invalidation trigger (also listed in §10):** any change to the agent-frontmatter `maxTurns` key name or schema, to the 200-turn built-in default, to the drop-on-invalid behaviour (a version that _rejects the agent_ rather than dropping the key would be a materially different failure mode), or to `max_turns_reached` as the loop's terminating signal.

@@ -1196,6 +1196,33 @@ describe("executeMutationPlan — folder-allowlist admission check (defect 16)",
     expect(sendRequest).not.toHaveBeenCalled();
   });
 
+  /**
+   * The unattributable refusal is the one an operator is likeliest to meet by
+   * misconfiguration rather than by policy, and there is NO config-time signal
+   * — nothing validates `folderAllowlist` against the provider when a
+   * connection is created, so first mutation is where they find out. The
+   * detail therefore has to name both causes and the remedy. Pinned so it
+   * cannot be shortened back to a bare "cannot be admitted".
+   *
+   * The `not.toContain` here is not padding: it re-proves the cross-detail
+   * disjointness after the wording grew. The remedy clause mentions
+   * `folderAllowlist`, so the risk it introduces is colliding with the
+   * OUT-OF-ALLOWLIST detail's own phrase.
+   */
+  it("tells the operator how to fix the commonest cause — no folder concept on this provider", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("the Jira adapters do not");
+    expect(outcome.detail).toContain("remove folderAllowlist from this connection");
+    expect(outcome.detail).toContain("not derivable from the plan");
+    expect(outcome.detail).not.toContain("outside this connection's folderAllowlist");
+  });
+
   it("refuses an 'outside-folders' attribution, and says so distinctly from the unattributable case", async () => {
     const sendRequest = vi.fn().mockResolvedValue(okResponse);
     const outcome = await executeMutationPlan(

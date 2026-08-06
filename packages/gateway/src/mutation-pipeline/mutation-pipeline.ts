@@ -637,8 +637,16 @@ function refuseOutOfAllowlistFolder(
   // member" vacuously — the empty-quantifier hole — so it is folded into the
   // unattributable case rather than admitted.
   if (attribution.scope === "unknown" || attribution.folders.length === 0) {
+    // The remedy clause is part of the contract, not decoration: this refusal
+    // is the one an operator is most likely to meet by MISCONFIGURATION rather
+    // than by policy, and there is NO config-time signal — nothing validates
+    // `folderAllowlist` against the provider when a connection is created, so
+    // first mutation is where they find out. Naming both causes and the fix
+    // makes it self-serve. Pinned by its own case in
+    // `./mutation-pipeline.test.ts`; do not shorten it back to a bare
+    // "cannot be admitted".
     return refused(
-      "this connection declares a folderAllowlist but its provider cannot attribute this mutation to a folder, so it cannot be admitted",
+      "this connection declares a folderAllowlist but its provider cannot attribute this mutation to a folder, so it cannot be admitted; either the provider has no folder concept at all (the Jira adapters do not — remove folderAllowlist from this connection), or this particular resource's folder is not derivable from the plan",
     );
   }
   if (attribution.folders.every((folder) => folderAllowlist.includes(folder))) return undefined;
