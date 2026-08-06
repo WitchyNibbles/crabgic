@@ -113,10 +113,11 @@ EXIT 1
 
 Fixture written containing the repository's ONLY pre-existing Cloud cassette —
 the seven entries of src/testkit/fixtures/read-scenario.cassette.json, byte for
-byte, reshaped into the write-cassette envelope with their real recorded GET
-request lines (dumped from a real run of `runScriptedReadScenario`), as the
-`chain` section; `transition` and `conflict` empty, because the read cassette
-contains nothing for them.
+byte, reshaped into the write-cassette envelope with the GET request lines the
+connector actually issues (dumped from a real run of `runScriptedReadScenario`
+against the fake — not from any live instance), as the `chain` section;
+`transition` and `conflict` empty, because the read cassette contains nothing
+for them.
 
 Generator (scratch, deliberately never committed):
   gen-red3-fixture-batchj.mjs — "wrote RED-3 fixture with 7 chain entries"
@@ -587,3 +588,75 @@ WHAT BATCH G SHOULD TAKE FROM THIS PASS
     captured and byte-compared in §R7b — cite it directly; it does not need to
     be re-derived. Note it is taken from PR #119's own pre-merge run
     (31106194280) at 541739f, which is the run whose green this PR claims.
+
+
+================================================================================
+§R10  DATED ADDENDUM (2026-08-06, post-review) — two surviving "recorded"
+       provenance claims in the file this pass corrects, one of them JOURNALED
+================================================================================
+
+Found by adversarial review of PR #119, not by this pass. Annotating rather
+than rewriting the sections above: §R8 item 4 and the PR's own claim that the
+provenance corrections were complete were WRONG in scope. Two strings in
+e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts survived
+the first pass, eight lines below corrections that had already been made:
+
+  :89  describe title — "against the real RECORDED cassette"
+       Cosmetic, but it is the suite's own name in every job log.
+
+  :104 the `command` string handed to `emitScenarioEvidence(...)` —
+       "real JiraResourceClient over the RECORDED cassette"
+       ⚠️ This one is not cosmetic. That string is JOURNALED into release-e2e
+       attestation evidence, so a downstream artifact was carrying a false
+       provenance claim for a hand-authored fixture. It is the exact
+       overstatement class this PR exists to remove, written into the one place
+       that outlives the test run.
+
+Fixed to match the corrections already made in the same file:
+  :89  -> "against the committed cassette fixture"
+  :110 -> "over the committed cassette fixture (hand-authored, not a live capture)"
+
+The artifact now STATES the provenance rather than merely dropping the false
+word — a reader of the attestation evidence learns the fixture is hand-authored
+instead of learning nothing.
+
+Extended by the same reasoning, one describe block down (not flagged by review;
+identical hazard, same file, same journaled channel):
+  the DC case's `command` and its `outcomeContent.evidenceSource: "cassette-only"`
+  now read "...from hand-authored fixtures, not live captures". "cassette-only"
+  alone reads as "recorded" to anyone who has not opened
+  packages/connectors-jira/src/testkit/fake-cassette-parity-dc.test.ts:16-22.
+  Nothing in the repository consumes `evidenceSource` (`git grep evidenceSource
+  -- e2e packages scripts` -> that one write site and nothing else), so this is
+  a string-content change only; the case's own assertion is on `record.gateTag`.
+
+Re-swept the whole diff afterwards. Every remaining occurrence of
+"recorded"/"recording"/"captured" on an added line is one of four benign kinds,
+enumerated so the next reader does not have to re-triage them:
+  1. the `RemoteOperationRecord` status literal `"recorded"` (a contracts term
+     for a completed mutation, nothing to do with provenance);
+  2. a quotation of the false wording being withdrawn, inside its own dated
+     correction;
+  3. intra-fixture vocabulary — "recorded request line", "recorded digest",
+     "recorded call(s)", `WriteScenarioRecordedRequest` — meaning "written down
+     in the cassette", in files whose headline disclosure says in capitals that
+     nothing was captured;
+  4. a verbatim quotation of roadmap/18 §Interfaces produced' deliverable
+     "Recorded Cloud v3/Agile cassettes", which remains UNSATISFIED and is
+     named as such.
+
+Verification after the fix:
+$ npx prettier --check <file>                            EXIT 0
+$ npm run lint                                           EXIT 0
+$ npm run check:e2e-types                                EXIT 0  ("PASS — 8 project(s) typechecked clean.")
+$ npx vitest run --config e2e/matrix/connector/vitest.config.ts
+ Test Files  15 passed (15)
+      Tests  95 passed (95)
+EXIT 0
+  (Still EVIDENCE-NEEDS-CI per §R6 — e2e/matrix is not in the per-push fan-out.)
+
+LESSON, recorded because it cost a review round. A doc-comment correction at the
+top of a file does not correct the STRINGS further down it, and a string that is
+written into an evidence artifact is a claim with a longer life than the test.
+When withdrawing a provenance claim, grep the whole file for the word — and
+check every value that leaves the process, not only the prose that stays in it.

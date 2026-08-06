@@ -86,7 +86,7 @@ afterEach(async () => {
   await tj.cleanup();
 });
 
-describe("Jira Cloud — real JiraResourceClient read-back against the real recorded cassette", () => {
+describe("Jira Cloud — real JiraResourceClient read-back against the committed cassette fixture", () => {
   it("the committed cassette fixture drives the real 7-call read scenario to fully-typed results", async () => {
     const cassette = loadCloudCassetteFromSource();
     const results = await runScriptedReadScenario(cassette);
@@ -98,10 +98,16 @@ describe("Jira Cloud — real JiraResourceClient read-back against the real reco
     expect(results.comments).toBeTruthy();
     expect(results.worklogs).toBeTruthy();
 
+    // ⚠️ This `command` string is JOURNALED into release-e2e attestation
+    // evidence, so it is a provenance claim in a downstream artifact, not just
+    // a label. It used to say "over the recorded cassette" — false, and
+    // corrected 2026-08-06 along with this file's header and titles. The
+    // fixture is hand-authored; the artifact now says so rather than
+    // inheriting the overstatement.
     await emitScenarioEvidence({
       journal: tj.store,
       command:
-        "connector-matrix: Jira Cloud cassette read-back — real JiraResourceClient over the recorded cassette",
+        "connector-matrix: Jira Cloud cassette read-back — real JiraResourceClient over the committed cassette fixture (hand-authored, not a live capture)",
       exitStatus: 0,
       outcomeContent: JSON.stringify(results),
     });
@@ -157,12 +163,21 @@ describe("Jira Data Center — CASSETTE-ONLY evidence (owner decision: no DC liv
       loadDatacenterCassetteFromSource("11.3"),
     );
 
+    // Same journaled-provenance care as the Cloud case above: "cassette-only"
+    // on its own reads as "recorded", and the DC cassettes are hand-authored
+    // too — disclosed at `packages/connectors-jira/src/testkit/
+    // fake-cassette-parity-dc.test.ts:16-22`, and byte-identical to each other.
+    // The artifact now states both facts rather than only the first.
     const record = await emitScenarioEvidence({
       journal: tj.store,
       command:
-        "connector-matrix: Jira DC 10.3/11.3 — cassette-only evidence (owner decision: no live DC container this pass)",
+        "connector-matrix: Jira DC 10.3/11.3 — cassette-only evidence from hand-authored fixtures, not live captures (owner decision: no live DC container this pass)",
       exitStatus: 0,
-      outcomeContent: JSON.stringify({ results10_3, results11_3, evidenceSource: "cassette-only" }),
+      outcomeContent: JSON.stringify({
+        results10_3,
+        results11_3,
+        evidenceSource: "cassette-only (hand-authored fixtures, not live captures)",
+      }),
     });
     expect(record.gateTag).toBe(CONNECTOR_MATRIX_GATE_TAG);
   });
