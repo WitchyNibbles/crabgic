@@ -132,14 +132,17 @@ export function diffAgainstBaseline(entries, baseline) {
       let divergenceClass = "changed";
       if (entry.frozen) divergenceClass = "frozen";
       else if (before.length === after.length) {
+        // Compared pin by pin, since a citation can regress in one fragment
+        // while another is corrected in the same PR. A regression anywhere wins:
+        // it is the loudest true statement about the change.
         const regressed = after.some(
           (pin, index) => isStalePin(pin) && !isStalePin(before[index] ?? ""),
         );
-        const improved = after.every(
-          (pin, index) => !isStalePin(pin) || !isStalePin(before[index] ?? ""),
+        const repaired = after.some(
+          (pin, index) => !isStalePin(pin) && isStalePin(before[index] ?? ""),
         );
         if (regressed) divergenceClass = "regressed";
-        else if (improved && before.some(isStalePin)) divergenceClass = "improved";
+        else if (repaired) divergenceClass = "improved";
         else divergenceClass = "drifted";
       }
       divergences.push({ class: divergenceClass, key: entry.key, entry, before, after });
