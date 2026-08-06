@@ -1,0 +1,5 @@
+Outcome: milestone shipped
+Evidence: https://ci.example.com/build/42
+Risk: none
+Next: monitor for a week
+Ref: PROJ-17
