@@ -317,4 +317,28 @@ describe("tenant-boundary gate — phase 18's Jira half is derived from a real J
     const verdict = await jiraTenantBoundaryVerify();
     expect(verdict.passed).toBe(true);
   });
+
+  it("T12: a factory that reports success even under an EMPTY tenantAllowlist FAILS the gate — the second control, added because probe B2 measured the first one missing this", async () => {
+    // Distinguished from T10 by which conjunct of the scenario it disables:
+    // T10's stub ignores the DECLARED tenant, T12's ignores the ALLOWLIST. The
+    // stub below is built so it passes T10's control (it reports no refusal
+    // when a tenant is declared) and would still have slipped past the gate
+    // before the fail-closed control existed.
+    const allowlistBlindScenario = (
+      overrides: {
+        readonly declaredTenant?: string;
+        readonly tenantAllowlist?: readonly string[];
+      } = {},
+    ) => ({
+      name: "stub blind to the allowlist",
+      category: "tenant-boundary" as const,
+      run: async () => ({
+        passed: overrides.declaredTenant === undefined,
+        detail: "stub ignores tenantAllowlist entirely",
+      }),
+    });
+    const verdict = await jiraTenantBoundaryVerify(undefined, allowlistBlindScenario);
+    expect(verdict.passed).toBe(false);
+    expect(verdict.detail).toContain("EMPTY tenantAllowlist");
+  });
 });

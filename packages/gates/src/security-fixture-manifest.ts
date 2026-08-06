@@ -344,6 +344,23 @@ export async function jiraTenantBoundaryVerify(
     );
   }
 
+  // SECOND control, and it exists because a measurement said it had to. Probe
+  // B2 in `docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt`
+  // disabled the scenario's OWN positive-control conjunct: the connector's unit
+  // suite reddened (3 tests) and this gate stayed green, because the control
+  // above only exercises the scenario's BREACH conjunct. An empty
+  // `tenantAllowlist` refuses every mutation (fail-closed), so the scenario's
+  // in-allowlist arm cannot be admitted and it MUST report `passed: false` —
+  // a scenario that still reports success under `[]` is not reading its own
+  // control at all. With this here, B2 reddens the gate too.
+  const failClosedControl = await makeScenario({ tenantAllowlist: [] }).run();
+  if (failClosedControl.passed) {
+    return fail(
+      JIRA_TENANT_BOUNDARY_ID,
+      `positive control broken — the scenario still reports success against an EMPTY tenantAllowlist, under which its own in-allowlist arm cannot have been admitted: ${failClosedControl.detail}`,
+    );
+  }
+
   return pass(
     JIRA_TENANT_BOUNDARY_ID,
     `refused as expected: ${selected.map((scenario) => scenario.name).join("; ")}; positive control discriminates — the same scenario with an in-allowlist declared tenant reports no refusal`,
