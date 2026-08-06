@@ -1,0 +1,458 @@
+# UTC: 2026-08-06T10:55:51Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 6fb3d7604cf61f241d71f4772653ae10c0798fec
+#   (branch closeout/batch-b, commit 2 of 3. Everything below ran at this tree.
+#    An earlier capture at pre-reword sha bf6339b was DISCARDED and re-run in
+#    full at this sha rather than re-labelled: commit 1's subject was 103 chars
+#    and had to be reworded for commitlint's 100-char limit, which rewrote both
+#    shas. The trees are byte-identical (`git diff bf6339b 6fb3d76` empty), but
+#    re-labelling an old run is the RULING-3 provenance defect the playbook
+#    names, so the whole probe was re-measured.)
+# command: bash scratchpad/probe-batchB.sh   (driver reproduced verbatim below)
+# exit status: 0
+# Every leg ran `npm run build` FIRST and its exit code is recorded inline.
+
+PURPOSE — anti-vacuity probes for roadmap/21-connector-evidence-integration.md:153.
+Baseline -> mutation -> restore, all at ONE sha (6fb3d76), repo-wide totals for
+every leg. Probes M1/M2 (the 18:139 producer side) are in the companion artifact
+`docs/evidence/phase-18/milestone-poll-probe-batchB.txt`; the same run produced
+both, and both are reproduced in full here as well so each file stands alone.
+
+WHY EVERY LEG REBUILDS. `packages/cli` resolves `@crabgic/supervisor`,
+`@crabgic/gates` and `@crabgic/connectors-jira` through each package's
+`package.json` `"exports"` -> `./dist/index.js`. There is no src alias in
+`vitest.config.ts` and `node_modules/@crabgic/*` are symlinks to the package
+roots, so a src-only mutation is invisible to the cross-package legs until the
+workspace is rebuilt. All four mutations were pre-flighted for compilation
+(`npx tsc -b`, exit 0 each) before the probe ran, because a mutation that does
+not compile yields a measurement of the OLD code wearing the new code's label.
+
+SUMMARY TABLE (repo-wide `npm test`, i.e. `vitest run --coverage`)
+
+  leg        build exit   test files                    tests
+  --------   ----------   ---------------------------   ------------------------------
+  baseline   0            638 passed (638)              6491 passed (6491)
+  M1         0            2 failed | 636 passed (638)   4 failed | 6487 passed (6491)
+  M2         0            2 failed | 636 passed (638)   3 failed | 6488 passed (6491)
+  M3         0            2 failed | 636 passed (638)   3 failed | 6488 passed (6491)
+  M4         0            2 failed | 636 passed (638)   2 failed | 6489 passed (6491)
+  restore    0            638 passed (638)              6491 passed (6491)
+
+  Restore is compared to baseline by TEST COUNT, not by exit code: 6491 == 6491,
+  638 == 638. Plus `git status --porcelain` empty and a grep for each new test's
+  name (all three restore countermeasures, every leg — see the leg output below).
+
+WHAT EACH MUTATION MEANS
+
+  M3 — DELETE THE WIRING. `haltRunOnMaterialAmendment`'s body replaced by an
+  unconditional `return { halted: false };`. This is the probe that decides
+  whether the batch closed anything: if nothing reddened, the bearer would be
+  vacuous. THREE tests reddened —
+
+      × a material signal halts an in-flight run: run -> blocked, one
+        adjudication_decision naming material_amendment      [supervisor unit]
+      × an already-halted run cannot be halted again —
+        haltOnStopCondition's no-resurrect rule propagates    [supervisor unit]
+      × a seeded mid-run tracked-field edit, observed between two milestone
+        polls, halts the run via 11's material_amendment stop condition
+        before final_verifying                               [cli seam e2e]
+
+  and BOTH does-not-halt controls stayed GREEN, which is exactly what makes them
+  controls rather than restatements: an unconditional no-op is the world the
+  controls describe, so they must survive it.
+
+  M4 — CHANGE THE KIND. `kind: "material_amendment"` -> `kind: "expanded_authority"`.
+  The criterion names the kind, so a bearer that merely asserted "some decision
+  was journaled" would stay green here — the `toThrow(ConnectorError)` failure
+  shape. TWO tests reddened, and they are precisely the two that pin the
+  rationale string:
+
+      × a material signal halts an in-flight run: ...         [supervisor unit]
+      × a seeded mid-run tracked-field edit, ...              [cli seam e2e]
+
+  Note the M4 count (2) is strictly smaller than M3's (3): the no-resurrect test
+  asserts the transition and the decision COUNT but not the kind, so it survives
+  a kind swap. That difference is the measurement — the two probes are not
+  redundant.
+
+  M1/M2 double as the seam probes. Under M1 (the poll deleted) the cli e2e
+  reddens at `second.revisionPoll?.signal?.material`, which proves the e2e
+  actually consumes 18's producer rather than a hand-built stand-in inside the
+  test file.
+
+MATCHED-STRING HYGIENE, AUDITED AGAINST THE OPPOSITE OUTCOME
+
+  * `"blocked"` is asserted only as the exact value of `RunRecord.runState`, a
+    closed 11-member enum field — never as a substring search. The three other
+    "blocked" vocabularies this seam touches (17's
+    `MilestoneSyncOutcome.status: "blocked"`, `JiraWorkflowStage` "blocked", and
+    gate-verdict prose) therefore cannot satisfy it. Every milestone cycle in the
+    e2e additionally asserts `outcome.status === "planned"`, so the lint-blocked
+    arm cannot stand in unnoticed.
+  * `stop condition "material_amendment"` — the controls assert the decision list
+    for their runId has LENGTH 0, the strongest form of "does not contain it".
+    The non-halted outcome is `{halted:false}` with no `record` and no reason
+    string, asserted with an exact `toEqual`, so it is disjoint by SHAPE from the
+    halted outcome, not merely by string.
+
+----- probe driver, verbatim (scratch file, NOT committed to packages/) -----
+#!/usr/bin/env bash
+# Anti-vacuity probe driver — Batch B. baseline -> mutation -> restore, all at ONE sha.
+# Every leg: npm run build (exit code recorded) BEFORE the measurement, because
+# packages/cli resolves @crabgic/supervisor and @crabgic/connectors-jira through
+# dist/ (package.json "exports" -> ./dist/index.js; there is no vitest src alias),
+# so a src-only mutation would measure stale dist wearing the new code's label.
+set -u
+WT=/tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/wt-b
+OUT=/tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/tr-b
+cd "$WT" || exit 1
+
+MS=packages/connectors-jira/src/intake/milestone-sync.ts
+MAH=packages/supervisor/src/intake/material-amendment-halt.ts
+
+leg() { # $1 = leg name
+  local name="$1"
+  echo "----- LEG: $name -----"
+  echo "\$ npm run build"
+  npm run build >"$OUT/build-$name.log" 2>&1
+  local bexit=$?
+  echo "npm run build exit status: $bexit"
+  if [ $bexit -ne 0 ]; then
+    echo "!! BUILD FAILED — the suite below would run on STALE dist. Tail:"
+    tail -20 "$OUT/build-$name.log"
+  fi
+  echo "\$ npm test   (vitest run --coverage, repo-wide)"
+  npm test >"$OUT/test-$name.log" 2>&1
+  local texit=$?
+  echo "npm test exit status: $texit"
+  grep -E "^ Test Files|^      Tests " "$OUT/test-$name.log" | tail -2
+  echo "--- failing test files (repo-wide) ---"
+  grep -hoE "^ FAIL +\|[^|]+\| +[^ ]+\.test\.ts" "$OUT/test-$name.log" | sort -u
+  echo "--- scoped counts: the three suites this batch adds/touches ---"
+  grep -hE "milestone-sync\.test\.ts|material-amendment-halt\.test\.ts|material-amendment-halt\.e2e\.test\.ts" \
+    "$OUT/test-$name.log" | grep -E "✓|×|❯|FAIL" | sed 's/^[[:space:]]*//' | sort -u | head -20
+  echo
+}
+
+restore() { # $1 = path, $2 = leg name
+  echo "\$ git checkout HEAD -- $1"
+  git checkout HEAD -- "$1"
+  echo "git checkout exit status: $?"
+  echo "\$ git status --porcelain   (must be empty)"
+  git status --porcelain
+  echo "(end git status)"
+  echo "\$ git diff --stat HEAD -- $1   (must be empty)"
+  git diff --stat HEAD -- "$1"
+  echo "(end git diff)"
+}
+
+echo "############ RESTORE-VERIFY: the new tests are still present on disk ############"
+grep -c "it(" packages/connectors-jira/src/intake/milestone-sync.test.ts
+grep -n "detects a seeded material remote edit between two polls" packages/connectors-jira/src/intake/milestone-sync.test.ts
+grep -n "a material signal halts an in-flight run" packages/supervisor/src/intake/material-amendment-halt.test.ts
+grep -n "a seeded mid-run tracked-field edit, observed between two milestone polls" packages/cli/src/intake/material-amendment-halt.e2e.test.ts
+echo
+
+leg baseline
+
+# ---- M1: delete the poll (18:139 producer) ----
+python3 - "$MS" <<'PY'
+import re,sys
+p=sys.argv[1]; s=open(p).read()
+start=s.index("  let revisionPoll: MilestoneRevisionPollOutcome | undefined;")
+end=s.index("  const revisionPollOutcome =")
+s=s[:start]+"  const revisionPoll: MilestoneRevisionPollOutcome | undefined = undefined; // M1\n"+s[end:]
+s=s.replace('import {\n  compareRemoteResourceRevisions,\n  stampJiraRemoteResource,\n  type MaterialChangeSignal,\n} from "./revision-comparator.js";',
+            'import { type MaterialChangeSignal } from "./revision-comparator.js";')
+open(p,"w").write(s)
+PY
+echo "M1 patch applied; diff stat:"; git diff --stat -- "$MS"
+leg M1
+restore "$MS" M1
+
+# ---- M2: lobotomize the comparator call ----
+python3 - "$MS" <<'PY'
+import sys
+p=sys.argv[1]; s=open(p).read()
+old="""    const signal =
+      input.revisionPoll.previousStamp !== undefined
+        ? compareRemoteResourceRevisions(input.revisionPoll.previousStamp, currentStamp)
+        : undefined;"""
+new="""    const signal =
+      input.revisionPoll.previousStamp !== undefined
+        ? ({ material: false } as MaterialChangeSignal) // M2
+        : undefined;"""
+assert old in s
+s=s.replace(old,new)
+s=s.replace('import {\n  compareRemoteResourceRevisions,\n  stampJiraRemoteResource,\n  type MaterialChangeSignal,\n} from "./revision-comparator.js";',
+            'import { stampJiraRemoteResource, type MaterialChangeSignal } from "./revision-comparator.js";')
+open(p,"w").write(s)
+PY
+echo "M2 patch applied; diff stat:"; git diff --stat -- "$MS"
+leg M2
+restore "$MS" M2
+
+# ---- M3: delete the wiring (21:153 consumer) ----
+python3 - "$MAH" <<'PY'
+import sys
+p=sys.argv[1]; s=open(p).read()
+old="""): Promise<MaterialAmendmentHaltOutcome> {
+  if (!signal.material) {
+    return { halted: false };
+  }
+"""
+new="""): Promise<MaterialAmendmentHaltOutcome> {
+  return { halted: false }; // M3 — unconditional no-op
+"""
+assert old in s
+open(p,"w").write(s.replace(old,new))
+PY
+echo "M3 patch applied; diff stat:"; git diff --stat -- "$MAH"
+leg M3
+restore "$MAH" M3
+
+# ---- M4: change the stop-condition kind ----
+python3 - "$MAH" <<'PY'
+import sys
+p=sys.argv[1]; s=open(p).read()
+assert '    kind: "material_amendment",' in s
+open(p,"w").write(s.replace('    kind: "material_amendment",','    kind: "expanded_authority", // M4'))
+PY
+echo "M4 patch applied; diff stat:"; git diff --stat -- "$MAH"
+leg M4
+restore "$MAH" M4
+
+echo "############ FINAL RESTORE VERIFICATION ############"
+echo "\$ git status --porcelain"; git status --porcelain; echo "(end)"
+echo "\$ git rev-parse HEAD"; git rev-parse HEAD
+echo "test COUNT + name greps (three countermeasures, all three):"
+grep -c "  it(" packages/connectors-jira/src/intake/milestone-sync.test.ts
+grep -n "detects a seeded material remote edit between two polls" packages/connectors-jira/src/intake/milestone-sync.test.ts
+grep -n "control: an unchanged remote revision across two polls is non-material" packages/connectors-jira/src/intake/milestone-sync.test.ts
+grep -n "a material signal halts an in-flight run" packages/supervisor/src/intake/material-amendment-halt.test.ts
+grep -n "does-not-halt control" packages/supervisor/src/intake/material-amendment-halt.test.ts
+grep -n "a seeded mid-run tracked-field edit, observed between two milestone polls" packages/cli/src/intake/material-amendment-halt.e2e.test.ts
+grep -n "control: a revision bump touching only a NON-tracked field" packages/cli/src/intake/material-amendment-halt.e2e.test.ts
+leg restore-final
+----- end probe driver -----
+
+----- captured probe output, unedited -----
+############ RESTORE-VERIFY: the new tests are still present on disk ############
+6
+148:  it("detects a seeded material remote edit between two polls and returns the amendment-review signal", async () => {
+47:  it("a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment", async () => {
+164:  it("a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying", async () => {
+
+----- LEG: baseline -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 0
+ Test Files  638 passed (638)
+      Tests  6491 passed (6491)
+--- failing test files (repo-wide) ---
+--- scoped counts: the three suites this batch adds/touches ---
+
+M1 patch applied; diff stat:
+ .../connectors-jira/src/intake/milestone-sync.ts   | 36 ++--------------------
+ 1 file changed, 2 insertions(+), 34 deletions(-)
+----- LEG: M1 -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 1
+ Test Files  2 failed | 636 passed (638)
+      Tests  4 failed | 6487 passed (6491)
+--- failing test files (repo-wide) ---
+ FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts
+ FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts
+--- scoped counts: the three suites this batch adds/touches ---
+FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — revision polling across two milestone polls (18:139 integration fixture) > control: an unchanged remote revision across two polls is non-material
+FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — revision polling across two milestone polls (18:139 integration fixture) > detects a seeded material remote edit between two polls and returns the amendment-review signal
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > control: a revision bump touching only a NON-tracked field fires 18's coarse trigger, is refused by 21's classifier, and does NOT halt the run
+❯ src/intake/material-amendment-halt.e2e.test.ts:182:44
+❯ src/intake/material-amendment-halt.e2e.test.ts:248:44
+❯ src/intake/milestone-sync.test.ts:166:55
+❯ src/intake/milestone-sync.test.ts:209:44
+❯ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts (6 tests | 2 failed) 144ms
+❯ |crabgic| src/intake/material-amendment-halt.e2e.test.ts (2 tests | 2 failed) 224ms
+
+$ git checkout HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts
+git checkout exit status: 0
+$ git status --porcelain   (must be empty)
+ M docs/evidence/phase-21/README.md
+(end git status)
+$ git diff --stat HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts   (must be empty)
+(end git diff)
+M2 patch applied; diff stat:
+ packages/connectors-jira/src/intake/milestone-sync.ts | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+----- LEG: M2 -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 1
+ Test Files  2 failed | 636 passed (638)
+      Tests  3 failed | 6488 passed (6491)
+--- failing test files (repo-wide) ---
+ FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts
+ FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts
+--- scoped counts: the three suites this batch adds/touches ---
+FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — revision polling across two milestone polls (18:139 integration fixture) > detects a seeded material remote edit between two polls and returns the amendment-review signal
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > control: a revision bump touching only a NON-tracked field fires 18's coarse trigger, is refused by 21's classifier, and does NOT halt the run
+❯ src/intake/material-amendment-halt.e2e.test.ts:187:51
+❯ src/intake/material-amendment-halt.e2e.test.ts:254:51
+❯ src/intake/milestone-sync.test.ts:180:41
+❯ |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts (6 tests | 1 failed) 71ms
+❯ |crabgic| src/intake/material-amendment-halt.e2e.test.ts (2 tests | 2 failed) 472ms
+
+$ git checkout HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts
+git checkout exit status: 0
+$ git status --porcelain   (must be empty)
+ M docs/evidence/phase-21/README.md
+(end git status)
+$ git diff --stat HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts   (must be empty)
+(end git diff)
+M3 patch applied; diff stat:
+ packages/supervisor/src/intake/material-amendment-halt.ts | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+----- LEG: M3 -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 1
+ Test Files  2 failed | 636 passed (638)
+      Tests  3 failed | 6488 passed (6491)
+--- failing test files (repo-wide) ---
+ FAIL  |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts
+ FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts
+--- scoped counts: the three suites this batch adds/touches ---
+FAIL  |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts > haltRunOnMaterialAmendment — 21's signal wired to 11's stop condition > a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment
+FAIL  |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts > haltRunOnMaterialAmendment — 21's signal wired to 11's stop condition > an already-halted run cannot be halted again — haltOnStopCondition's no-resurrect rule propagates
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying
+❯ src/intake/material-amendment-halt.e2e.test.ts:204:28
+❯ src/intake/material-amendment-halt.test.ts:123:39
+❯ src/intake/material-amendment-halt.test.ts:56:28
+❯ |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts (3 tests | 2 failed) 353ms
+❯ |crabgic| src/intake/material-amendment-halt.e2e.test.ts (2 tests | 1 failed) 299ms
+
+$ git checkout HEAD -- packages/supervisor/src/intake/material-amendment-halt.ts
+git checkout exit status: 0
+$ git status --porcelain   (must be empty)
+ M docs/evidence/phase-21/README.md
+(end git status)
+$ git diff --stat HEAD -- packages/supervisor/src/intake/material-amendment-halt.ts   (must be empty)
+(end git diff)
+M4 patch applied; diff stat:
+ packages/supervisor/src/intake/material-amendment-halt.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+----- LEG: M4 -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 1
+ Test Files  2 failed | 636 passed (638)
+      Tests  2 failed | 6489 passed (6491)
+--- failing test files (repo-wide) ---
+ FAIL  |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts
+ FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts
+--- scoped counts: the three suites this batch adds/touches ---
+FAIL  |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts > haltRunOnMaterialAmendment — 21's signal wired to 11's stop condition > a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment
+FAIL  |crabgic| src/intake/material-amendment-halt.e2e.test.ts > material-amendment halt — 18's milestone poll chained to 21's classifier and 11's stop condition > a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying
+❯ src/intake/material-amendment-halt.e2e.test.ts:223:37
+❯ src/intake/material-amendment-halt.test.ts:71:37
+❯ |@crabgic/supervisor| src/intake/material-amendment-halt.test.ts (3 tests | 1 failed) 914ms
+❯ |crabgic| src/intake/material-amendment-halt.e2e.test.ts (2 tests | 1 failed) 412ms
+
+$ git checkout HEAD -- packages/supervisor/src/intake/material-amendment-halt.ts
+git checkout exit status: 0
+$ git status --porcelain   (must be empty)
+ M docs/evidence/phase-21/README.md
+(end git status)
+$ git diff --stat HEAD -- packages/supervisor/src/intake/material-amendment-halt.ts   (must be empty)
+(end git diff)
+############ FINAL RESTORE VERIFICATION ############
+$ git status --porcelain
+ M docs/evidence/phase-21/README.md
+(end)
+$ git rev-parse HEAD
+6fb3d7604cf61f241d71f4772653ae10c0798fec
+test COUNT + name greps (three countermeasures, all three):
+6
+148:  it("detects a seeded material remote edit between two polls and returns the amendment-review signal", async () => {
+193:  it("control: an unchanged remote revision across two polls is non-material", async () => {
+47:  it("a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment", async () => {
+76:  it("does-not-halt control: a non-material signal leaves the run running, journals nothing, and the run still reaches final_verifying", async () => {
+164:  it("a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying", async () => {
+226:  it("control: a revision bump touching only a NON-tracked field fires 18's coarse trigger, is refused by 21's classifier, and does NOT halt the run", async () => {
+----- LEG: restore-final -----
+$ npm run build
+npm run build exit status: 0
+$ npm test   (vitest run --coverage, repo-wide)
+npm test exit status: 0
+ Test Files  638 passed (638)
+      Tests  6491 passed (6491)
+--- failing test files (repo-wide) ---
+--- scoped counts: the three suites this batch adds/touches ---
+
+----- end captured probe output -----
+
+PER-LEG FAILING TEST NAMES (extracted from the same run's logs)
+  --- M1 ---
+    × a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying 153ms
+    × control: a revision bump touching only a NON-tracked field fires 18's coarse trigger, is refused by 21's classifier, and does NOT halt the run 69ms
+    × control: an unchanged remote revision across two polls is non-material 2ms
+    × detects a seeded material remote edit between two polls and returns the amendment-review signal 38ms
+  --- M2 ---
+    × a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying 269ms
+    × control: a revision bump touching only a NON-tracked field fires 18's coarse trigger, is refused by 21's classifier, and does NOT halt the run 198ms
+    × detects a seeded material remote edit between two polls and returns the amendment-review signal 23ms
+  --- M3 ---
+    × a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment 111ms
+    × a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying 105ms
+    × an already-halted run cannot be halted again — haltOnStopCondition's no-resurrect rule propagates 66ms
+  --- M4 ---
+    × a material signal halts an in-flight run: run -> blocked, one adjudication_decision naming material_amendment 271ms
+    × a seeded mid-run tracked-field edit, observed between two milestone polls, halts the run via 11's material_amendment stop condition before final_verifying 217ms
+
+SCOPED PER-SUITE COUNTS AT THE RESTORED TREE (with control rows)
+
+  These are the count-delta numbers to cite against a CI job log. Captured with
+  `npx vitest run --coverage.enabled=false --reporter=json` over five suites:
+  the three this batch adds or changes, plus two CONTROL suites whose counts must
+  NOT move.
+
+    6 tests   passed  packages/connectors-jira/src/intake/milestone-sync.test.ts     (was 4 on origin/main: +2)
+    3 tests   passed  packages/supervisor/src/intake/material-amendment-halt.test.ts (NEW file)
+    2 tests   passed  packages/cli/src/intake/material-amendment-halt.e2e.test.ts    (NEW file)
+    9 tests   passed  packages/supervisor/src/intake/stop-conditions.test.ts         (CONTROL — unchanged)
+    9 tests   passed  packages/cli/src/intake/intake.e2e.test.ts                     (CONTROL — unchanged)
+    total: 29 tests / 5 files; failed: 0
+
+  Repo-wide delta: 636 files / 6484 tests at the wave's dispatch baseline ->
+  638 files / 6491 tests here. +2 files and +7 tests, which is exactly
+  2 + 3 + 2 — no other suite's count moved.
+
+NOTE ON A PLAN INSTRUCTION THAT WAS NOT FOLLOWED, AND WHY
+
+  The plan for this batch directed a second paragraph into the phase-21 README
+  annotation, folding in a correction about §Deviations item 4's tenant-boundary
+  justification (that it overlooks phase 20's exported `tenantBoundaryBreachScenario`).
+  That correction ALREADY EXISTS in `docs/evidence/phase-21/README.md`, dated
+  2026-08-05, and it further records that the underlying defect was FIXED on the
+  same date, with its own baseline-through-restore measurement committed at
+  `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt`. Adding the plan's
+  paragraph would have duplicated a landed correction and described a fixed
+  defect as open. It was therefore deliberately omitted; the annotation this
+  batch adds is confined to the halted-run excerpt.
+
+  Separately, this batch's 38-line README annotation shifted two pre-existing
+  SELF-references inside that same file (`README.md:398-399` and `README.md:467`,
+  both quoted inside the 2026-08-05 annotation). A dated line-marker correction
+  was added beside them rather than editing the verbatim numbers. A notation-aware
+  census — explicit `phase-21/README.md:NN` and prose `line NN` near a
+  `phase-21/README` mention, repo-wide, dist excluded — found NO record, defect
+  file, roadmap box or transcript citing this README by line number, so nothing
+  outside the file needed changing.

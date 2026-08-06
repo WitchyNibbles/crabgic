@@ -1,0 +1,326 @@
+# UTC: 2026-08-06T10:55:02Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 6fb3d7604cf61f241d71f4772653ae10c0798fec
+#   (branch closeout/batch-b, commit 2 of 3. Everything below ran at this tree.
+#    An earlier capture at pre-reword sha bf6339b was DISCARDED and re-run in
+#    full at this sha rather than re-labelled: commit 1's subject was 103 chars
+#    and had to be reworded for commitlint's 100-char limit, which rewrote both
+#    shas. The trees are byte-identical (`git diff bf6339b 6fb3d76` empty), but
+#    re-labelling an old run is the RULING-3 provenance defect the playbook
+#    names, so the whole probe was re-measured.)
+# command: node --input-type=module -e "<driver source reproduced verbatim below>"
+#   (run with cwd = the repository root of this worktree, so the bare
+#    @crabgic/* specifiers resolve through each package's own
+#    package.json "exports" -> ./dist/index.js. There is NO vitest/tsconfig
+#    src alias in this repo: cross-package imports go through dist, which is
+#    why `npm run build` (exit 0) preceded this capture.)
+# npm run build before capture: exit status 0
+# exit status: 0
+
+PURPOSE — roadmap/21-connector-evidence-integration.md:153's SECOND named
+evidence channel: "Evidence: integration suite in `packages/gates` + the halted
+run's journal excerpt."
+
+  The first channel is unaffected by this capture and unmodified by the branch
+  that produced it: `packages/gates/src/remote-verification-e2e.test.ts` remains
+  the integration suite in `packages/gates`, and continues to bear the
+  criterion's first sentence ("a run completes only when every requirement's
+  `EvidenceRecord` carries a confirmed remote revision") plus the classification
+  half of the seeded tracked-field edit.
+
+  The second channel had NO bearer. Before this branch, `haltOnStopCondition`
+  (`packages/supervisor/src/intake/stop-conditions.ts`) had zero production
+  callers repo-wide, nothing connected `@crabgic/gates`' `MaterialAmendmentSignal`
+  to it, and the "halt" in the gates suite was that suite's own
+  `throwIfMaterialAmendment` throw — no run record ever transitioned, so there
+  was no halted run whose journal could be excerpted. A defect record was filed
+  for the gap (prose reference:
+  `21-material-amendment-halt-not-wired-to-phase-11`).
+
+  This artifact is that excerpt. It is produced by
+  `packages/supervisor/src/intake/material-amendment-halt.ts` driving 11's real
+  `haltOnStopCondition` over a real temp-dir `@crabgic/journal` `JournalStore`, a
+  real `RunsRegistry`, and 02's real run-lifecycle state machine. The signal is
+  built by 21's REAL `buildJiraFieldDiffs`/`buildMaterialAmendmentSignal` over
+  two field snapshots of exactly the shape 18's `planMilestoneSync` now returns
+  as `revisionPoll.fieldSnapshot`. Nothing below is a stub or a hand-built
+  literal signal.
+
+  WHY THE HALT PROOF IS NOT IN `packages/gates`. The halt mechanism is phase
+  11's, inside `@crabgic/supervisor`. A `gates -> supervisor` package edge would
+  invert the 21 -> 14 -> 13 -> 11 phase path. Name the instrument precisely:
+  `scripts/check-package-graph-acyclic.mjs` would in fact ACCEPT that edge today
+  (measured — nothing in gates' transitive closure depends on supervisor, so no
+  manifest cycle is completed); the binding constraint is the roadmap phase
+  graph, not manifest acyclicity. The wiring therefore lives in supervisor and
+  the cross-package seam is compiled and measured in the composition root
+  (`packages/cli/src/intake/material-amendment-halt.e2e.test.ts`), which is the
+  only package that already imports supervisor, gates and connectors-jira.
+
+  RESIDUAL, stated here so the tick is never read wider than it is. This excerpt
+  is produced by the wiring under test, NOT by a shipped daemon loop. The
+  composed daemon does not invoke `haltRunOnMaterialAmendment` today, and no
+  production milestone-polling loop exists — `planMilestoneSync` still has no
+  production caller either. 21:153's own words name test-channel evidence
+  ("E2E on fakes ... integration suite ... journal excerpt"), which is what this
+  is; wiring the daemon (13's dispatch loop, or the post-completion pipeline) is
+  future work and is named in the module's own doc comment.
+
+----- driver source, verbatim (scratch file, NOT committed to packages/) -----
+// Halted-run journal excerpt driver — roadmap/21-connector-evidence-integration.md:153's
+// second named evidence channel ("the halted run's journal excerpt").
+// Every module below resolves to the freshly built dist/ of this worktree; nothing
+// here is a stub. Two legs: a MATERIAL amendment that halts a run, and the
+// does-not-halt control on a second run.
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createJournalStore } from "@crabgic/journal";
+import { buildJiraFieldDiffs, buildMaterialAmendmentSignal } from "@crabgic/gates";
+import { createRunsRegistry, haltRunOnMaterialAmendment, transitionRun } from "@crabgic/supervisor";
+
+const CHANGE_SET_ID = "44444444-4444-4444-8444-444444444444";
+const REQUIREMENT_ID = "66666666-6666-4666-8666-666666666666";
+const HALTED_RUN = "77777777-0000-4000-8000-00000000000a";
+const CONTROL_RUN = "77777777-0000-4000-8000-00000000000b";
+
+const journalDir = await mkdtemp(join(tmpdir(), "eo-halt-excerpt-batchB-"));
+const store = createJournalStore({ journalDir });
+const runs = createRunsRegistry();
+
+async function driveToRunning(runId) {
+  for (const to of ["awaiting_approval", "ready", "running"]) {
+    await transitionRun({ journal: store, runs, runId, changeSetId: CHANGE_SET_ID, to });
+  }
+}
+async function entries(runId, type) {
+  const found = [];
+  for await (const e of store.queryEntries({ type, runId })) found.push(e);
+  return found;
+}
+const show = (label, value) => console.log(`\n--- ${label} ---\n${JSON.stringify(value, null, 2)}`);
+
+// ============ LEG 1: a material remote amendment halts an in-flight run ============
+await driveToRunning(HALTED_RUN);
+console.log(`run ${HALTED_RUN} before the amendment: ${runs.get(HALTED_RUN).runState}`);
+
+// Two consecutive milestone-poll field snapshots, exactly the shape 18's
+// planMilestoneSync now returns as `revisionPoll.fieldSnapshot`. `description`
+// is edited remotely between them; `summary` is not.
+const before = { summary: "Ship the login form", description: "v1" };
+const after = { summary: "Ship the login form", description: "v2 - edited remotely mid-run" };
+
+// The REAL gates builders — no hand-built signal.
+const diffs = buildJiraFieldDiffs(before, after, []);
+const signal = buildMaterialAmendmentSignal(REQUIREMENT_ID, diffs);
+show("21's MaterialAmendmentSignal (real classifier over the two snapshots)", signal);
+
+const outcome = await haltRunOnMaterialAmendment(signal, {
+  journal: store,
+  runs,
+  runId: HALTED_RUN,
+  changeSetId: CHANGE_SET_ID,
+});
+show("haltRunOnMaterialAmendment outcome", outcome);
+show("run record from the registry after the halt", runs.get(HALTED_RUN));
+
+// >>> THE HALTED RUN'S JOURNAL EXCERPT — the artifact 21:153 names <<<
+const transitions = await entries(HALTED_RUN, "run_transition");
+show(
+  "journal: every run_transition for the halted run (the -> blocked edge precedes the decision)",
+  transitions.map((e) => ({ seq: e.seq, type: e.type, runId: e.runId, payload: e.payload })),
+);
+const decisions = await entries(HALTED_RUN, "adjudication_decision");
+show(
+  "journal: adjudication_decision entries for the halted run",
+  decisions.map((e) => ({ seq: e.seq, type: e.type, runId: e.runId, payload: e.payload })),
+);
+
+// "before final_verifying", proven against the state machine, not a flag:
+let refused = null;
+try {
+  await transitionRun({
+    journal: store,
+    runs,
+    runId: HALTED_RUN,
+    changeSetId: CHANGE_SET_ID,
+    to: "verifying",
+  });
+} catch (err) {
+  refused = { name: err.constructor.name, message: err.message };
+}
+show("blocked is absorbing — resuming the halted run is refused", refused);
+console.log(`run ${HALTED_RUN} final state: ${runs.get(HALTED_RUN).runState}`);
+
+// ============ LEG 2: the does-not-halt control ============
+await driveToRunning(CONTROL_RUN);
+// Same two snapshots except NOTHING tracked changed: only a non-tracked custom
+// field moved, so 21's conservative allow-list refuses even though a real
+// milestone poll would have seen the remote revision move.
+const controlBefore = { summary: "Ship the login form", description: "v1", customfield_10200: "[alice]" };
+const controlAfter = {
+  summary: "Ship the login form",
+  description: "v1",
+  customfield_10200: "[alice,bob]",
+};
+const controlSignal = buildMaterialAmendmentSignal(
+  REQUIREMENT_ID,
+  buildJiraFieldDiffs(controlBefore, controlAfter, []),
+);
+show("CONTROL — 21's signal for a non-tracked-field-only edit", controlSignal);
+const controlOutcome = await haltRunOnMaterialAmendment(controlSignal, {
+  journal: store,
+  runs,
+  runId: CONTROL_RUN,
+  changeSetId: CHANGE_SET_ID,
+});
+show("CONTROL — haltRunOnMaterialAmendment outcome", controlOutcome);
+console.log(`CONTROL run state: ${runs.get(CONTROL_RUN).runState}`);
+console.log(
+  `CONTROL adjudication_decision count: ${(await entries(CONTROL_RUN, "adjudication_decision")).length}`,
+);
+for (const to of ["verifying", "integrating", "final_verifying"]) {
+  await transitionRun({ journal: store, runs, runId: CONTROL_RUN, changeSetId: CHANGE_SET_ID, to });
+}
+console.log(`CONTROL run walked on cleanly to: ${runs.get(CONTROL_RUN).runState}`);
+
+await rm(journalDir, { recursive: true, force: true });
+----- end driver source -----
+
+----- captured stdout, unedited -----
+run 77777777-0000-4000-8000-00000000000a before the amendment: running
+
+--- 21's MaterialAmendmentSignal (real classifier over the two snapshots) ---
+{
+  "requirementId": "66666666-6666-4666-8666-666666666666",
+  "material": true,
+  "materialFields": [
+    "description"
+  ]
+}
+
+--- haltRunOnMaterialAmendment outcome ---
+{
+  "halted": true,
+  "record": {
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "changeSetId": "44444444-4444-4444-8444-444444444444",
+    "runState": "blocked",
+    "updatedAt": "2026-08-06T10:54:08.154Z"
+  }
+}
+
+--- run record from the registry after the halt ---
+{
+  "runId": "77777777-0000-4000-8000-00000000000a",
+  "changeSetId": "44444444-4444-4444-8444-444444444444",
+  "runState": "blocked",
+  "updatedAt": "2026-08-06T10:54:08.154Z"
+}
+
+--- journal: every run_transition for the halted run (the -> blocked edge precedes the decision) ---
+[
+  {
+    "seq": 1,
+    "type": "run_transition",
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "payload": {
+      "from": "draft",
+      "to": "awaiting_approval"
+    }
+  },
+  {
+    "seq": 2,
+    "type": "run_transition",
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "payload": {
+      "from": "awaiting_approval",
+      "to": "ready"
+    }
+  },
+  {
+    "seq": 3,
+    "type": "run_transition",
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "payload": {
+      "from": "ready",
+      "to": "running"
+    }
+  },
+  {
+    "seq": 4,
+    "type": "run_transition",
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "payload": {
+      "from": "running",
+      "to": "blocked"
+    }
+  }
+]
+
+--- journal: adjudication_decision entries for the halted run ---
+[
+  {
+    "seq": 5,
+    "type": "adjudication_decision",
+    "runId": "77777777-0000-4000-8000-00000000000a",
+    "payload": {
+      "decision": "blocked",
+      "rationale": "stop condition \"material_amendment\": material remote amendment on requirement \"66666666-6666-4666-8666-666666666666\": tracked field(s) [description] changed since approval",
+      "subjectId": "77777777-0000-4000-8000-00000000000a"
+    }
+  }
+]
+
+--- blocked is absorbing — resuming the halted run is refused ---
+{
+  "name": "IllegalTransitionError",
+  "message": "RunLifecycle: illegal transition from \"blocked\" to \"verifying\""
+}
+run 77777777-0000-4000-8000-00000000000a final state: blocked
+
+--- CONTROL — 21's signal for a non-tracked-field-only edit ---
+{
+  "requirementId": "66666666-6666-4666-8666-666666666666",
+  "material": false,
+  "materialFields": []
+}
+
+--- CONTROL — haltRunOnMaterialAmendment outcome ---
+{
+  "halted": false
+}
+CONTROL run state: running
+CONTROL adjudication_decision count: 0
+CONTROL run walked on cleanly to: final_verifying
+----- end captured stdout -----
+
+READING THE EXCERPT
+
+  LEG 1 (the halted run, 77777777-...-00000000000a) is the artifact 21:153 names.
+  Note four things in it:
+
+    * seq 4 `run_transition {from: "running", to: "blocked"}` PRECEDES seq 5's
+      `adjudication_decision`. That ordering is `stop-conditions.ts`'s own LOW L7
+      repair — the decision record is written only once the halt has genuinely
+      taken effect — and it survives the new wrapper.
+    * the decision's `rationale` names the KIND verbatim:
+      `stop condition "material_amendment"`. The criterion names the kind, so the
+      rationale content is asserted rather than the mere existence of a decision;
+      probe M4 (see halt-wiring-probes-batchB.txt) measures that this is
+      load-bearing.
+    * "before `final_verifying`" is proven against the state machine, not a flag:
+      resuming the halted run to `verifying` is refused with
+      `IllegalTransitionError`, and `blocked` is absorbing, so the run provably
+      can never reach `final_verifying` afterwards.
+    * `materialFields: ["description"]` comes from 21's real allow-list, not from
+      the driver.
+
+  LEG 2 is the mandatory does-not-halt control, on a SECOND run
+  (77777777-...-00000000000b). Only a non-tracked custom field moved
+  (`customfield_10200`), so 21's conservative classifier returns
+  `{material: false, materialFields: []}`, the wiring returns `{halted: false}`,
+  the run stays `running`, ZERO `adjudication_decision` entries exist for it, and
+  it walks on cleanly to `final_verifying`. Without this leg, a wiring
+  implemented as an unconditional `haltOnStopCondition(...)` would satisfy leg 1
+  identically.
