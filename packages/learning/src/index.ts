@@ -108,3 +108,12 @@ export type { ExpirySweepResult } from "./expiry/expiry-sweeper.js";
 // ---- Promptfoo export (work item 6; package-internal, no new CLI verb) ----
 export { exportToPromptfooConfig } from "./promptfoo/export.js";
 export type { PromptfooAssertion, PromptfooConfig, PromptfooTestCase } from "./promptfoo/export.js";
+
+// ---- Sequencing-enforcing eval entry point + grader-drift refusal (work item 3) ----
+// APPENDED AT END OF FILE deliberately: `./index.ts:59` is cited by an open
+// defect record, and inserting these beside their thematic neighbours above
+// would shift it. Placement here is a citation-stability decision, not a
+// statement about grouping.
+export { caseSetDigest, runEvalPair } from "./eval/eval-pair.js";
+export type { EvalCaseSource, EvalPairResult } from "./eval/eval-pair.js";
+export { GraderDriftError } from "./errors.js";
