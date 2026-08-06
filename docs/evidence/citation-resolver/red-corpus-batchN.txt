@@ -1,0 +1,110 @@
+RULING-3 transcript
+UTC:        2026-08-06T17:08:08Z
+HEAD:       b3293a22c296287be580865b1aae3f6e662d7918  (docs(meta): correct the citation-drift counts to this tool's own measurement)
+UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
+Purpose:    show the resolver catching the REAL historical citation drifts,
+            pinned at the shas that caused them, so this proof cannot rot when
+            a sibling batch corrects the records.
+
+===============================================================================
+PART 1 — the git-anchored PR #95 proof: clean at the parent, red at the merge.
+===============================================================================
+
+phase-17.json criterion 4 (ticked) cites
+  ref   packages/connectors-jira/src/resource-client/adf-guard.ts:80
+  quote 'const findings = validateAdfSafeSubset(candidate);'
+The record was ALREADY MERGED at both shas below, so nothing is reconstructed:
+
+$ git cat-file -e a7988c1:docs/evidence/criteria-closeout/phase-17.json ; echo exit=$?
+exit=0
+$ git cat-file -e e02956f:docs/evidence/criteria-closeout/phase-17.json ; echo exit=$?
+exit=0
+
+a7988c1 = PR #95's parent   (docs(ledger): refresh 22 stale line anchors (pointer drift only) (#90))
+e02956f = PR #95's merge    (fix(connectors-jira): scan the whole ADF document serialization for secrets (#95))
+
+--- the line itself, at each sha ---
+$ git show a7988c1:packages/connectors-jira/src/resource-client/adf-guard.ts | sed -n '80p'
+  const findings = validateAdfSafeSubset(candidate);
+$ git show e02956f:packages/connectors-jira/src/resource-client/adf-guard.ts | sed -n '80p'
+ * unchanged; only a caller that explicitly passes a different provider
+
+--- today's resolver, run over a worktree at each sha ---
+
+$ node scripts/check-citation-content.mjs --report --repo <worktree at a7988c1> \
+    | grep adf-guard
+exit=0
+    1342:- phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:80: 1 fragment(s) outside packages/connectors-jira/src/resource-client/adf-guard.ts:80
+
+$ node scripts/check-citation-content.mjs --report --repo <worktree at e02956f> \
+    | grep adf-guard
+exit=0
+    487:- phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:80 (ticked=true)
+    1344:- phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:80: 2 fragment(s) outside packages/connectors-jira/src/resource-client/adf-guard.ts:80
+    2111:    phase-17.json c4: packages/connectors-jira/src/resource-client/adf-guard.ts:80 → :137 — corrected 2026-08-06; quote "const findings = validateAdfSafeSubset(candidate);"
+
+VERDICT: at a7988c1 the citation carries no Rule 1+2 finding at all; at e02956f
+         — the commit PR #95 merged — it reports MOVED :80 -> :137. This check,
+         had it existed, would have failed PR #95 on PR #95.
+
+===============================================================================
+PART 2 — the other two measured drifts, at origin/main (e5a65ba)
+===============================================================================
+
+$ node scripts/check-citation-content.mjs --report --repo <worktree at origin/main>
+exit=0
+
+--- drift 2: PR #108 (+28) — filed by the pass that WROTE the defect record ---
+    2734:    phase-17.json c4: packages/renderer/src/adf.test.ts:253 → :281 — corrected 2026-08-06; quote "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
+    2735:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :287 — corrected 2026-08-06; quote "\"orderedList\","
+    2736:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :290 — corrected 2026-08-06; quote "\"blockquote\","
+    2737:    phase-17.json c4: packages/renderer/src/adf.test.ts:265 → :293 — corrected 2026-08-06; quote "expect(ADF_ALLOWED_MARK_TYPES).toEqual([\"link\", \"strong\", \"e"
+
+--- drift 3: phase-18 c2 / c1 — jira-resource-client + jira-flow ---
+    2751:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:245 → :344 — corrected 2026-08-06; quote "expect(outcome.status).toBe(\"recorded\");"
+    2752:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :390 — corrected 2026-08-06; quote "expect(outcome.status).toBe(\"failed\");"
+    2753:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :391 — corrected 2026-08-06; quote "expect(outcome.errorKind).toBe(\"conflict\");"
+    2754:    phase-18.json c2: packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:53 → :60 — corrected 2026-08-06; quote "expect(list).toEqual([{ id: \"10000\", key: \"PROJ\", name: \"Pro"
+
+===============================================================================
+PART 3 — the four instances an independent audit found a sibling resolver MISS
+===============================================================================
+
+All four have the same shape: the quoted text is real and present, and sits
+OUTSIDE the span the citation declares. A resolver whose association grammar
+only pairs a quote with an ADJACENT marker never checks them at all.
+
+    1752:- phase-17.json#c1#packages/renderer/src/length-limits.test.ts:12-25: 1 fragment(s) outside packages/renderer/src/length-limits.test.ts:12-25
+    1753-    57-57 "expect(findings.some((f) => f.message.match(/6 chars exceeds"
+    1754-- phase-17.json#c4#packages/renderer/src/adf.test.ts:251-267: 10 fragment(s) outside packages/renderer/src/adf.test.ts:251-267
+    1755-    281-281 "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
+    --
+    1765:- phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:80: 2 fragment(s) outside packages/connectors-jira/src/resource-client/adf-guard.ts:80
+    1766-    137-137 "const findings = validateAdfSafeSubset(candidate);"
+    1767-    28-29 "`@crabgic/renderer`'s own `validateAdfSafeSubset` — never re"
+    1768-- phase-17.json#c6#packages/renderer/src/length-limits.test.ts:12-25: 1 fragment(s) outside packages/renderer/src/length-limits.test.ts:12-25
+    --
+    1773:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 2 fragment(s) outside packages/contracts/src/contracts/communication-policy.ts:102-112
+    1774-    82-82 "`prTitle` shares the `commitSubject` shape (`maxChars` + `fo"
+    1775-    19-19 "same convention as the commit subject"
+    1776:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 9 fragment(s) outside packages/renderer/src/manifest.test.ts:45-56
+    1777-    23-23 "node-fetch"
+    1778-    24-24 "undici"
+    1779-    26-26 "superagent"
+    --
+    2387:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 3 fragment(s) whose text occurs more than once in the cited file
+    2388-- phase-17.json#c6#packages/git-engine/src/commit-renderer.test.ts:31-68: 1 fragment(s) whose text occurs more than once in the cited file
+    2389:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 1 fragment(s) whose text occurs more than once in the cited file
+    2390-- phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:151-161: 1 fragment(s) whose text occurs more than once in the cited file
+    2391-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:138-146: 4 fragment(s) whose text occurs more than once in the cited file
+    2392-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:206-566: 1 fragment(s) whose text occurs more than once in the cited file
+
+===============================================================================
+PART 4 — what the ratchet does with all of this
+===============================================================================
+
+Nothing above fails CI on the day this lands: every finding is seeded into
+docs/evidence/criteria-closeout/citation-content-baseline.json as known, with
+its measured position. See seed-census-batchN.txt for the per-record burn-down.
+What DOES fail is the next PR that moves any of these lines again — see
+mutation-tests-batchN.txt, probe R1.
