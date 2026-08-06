@@ -96,6 +96,16 @@ Run over the whole of `phase-17.json` after the two corrections:
   and `attribution-neutral.test.ts:11-70` citations resolve clean on all four
   rules.
 
+  >> CORRECTION 2026-08-06, from PR #123's review. The last sentence above is
+  >> true of THIS INSTRUMENT and false of the class my own finding 2 defines.
+  >> The corrected `adf-guard.ts:137` citation quotes `:2` (the import) and
+  >> `:28-30` (the doc comment) — both verified to hold at their lines, and both
+  >> OUTSIDE the single-line span the ref now declares. That is exactly the
+  >> shape §4b already lists for `manifest.test.ts:16`. The resolver missed it
+  >> for a grammar reason, not a rule reason; see the dated append at the end of
+  >> §4b. The paragraph above is left verbatim rather than edited, per the
+  >> annotate-never-rewrite convention this file is itself about.
+
 Mutation-tested three ways on a copy of the tree, each mutation applied alone and
 reverted from the committed file afterwards. Baseline is 8 problems; every
 mutation moved it to 9 and named its own subject:
@@ -179,6 +189,78 @@ touched. They are recorded here so the next pass inherits them measured.
     Severity very low, identical to finding 2's: nothing misattributed, no line
     number wrong, the ref understates its own reach.
 
+    >> DATED APPEND 2026-08-06, from PR #123's review — THIS CENSUS IS A LOWER
+    >> BOUND, NOT A CENSUS. It was published above with a hard "PROBLEMS: 8" and
+    >> the word "Census", which overstates it. An independent span-check found
+    >> FOUR more citations of this same class. I read all four at 9252bb6 and
+    >> confirmed every one, then found THREE FURTHER citations of my own, plus
+    >> two extra markers (`:2` on adf-guard, `:42` on manifest.test) inside
+    >> citations already named. The list below is the union: 10 citation rows —
+    >> the 3 published above, 4 from the review, 3 found while checking them.
+    >>
+    >> ROOT CAUSE — a GRAMMAR gap, which is why three passing mutation tests did
+    >> not expose it. The instrument paired a marker with its quote using
+    >>     /:(\d+)(?:-(\d+))?\s*(?:—|-|)\s*'…'/
+    >> so the quote had to follow the marker IMMEDIATELY. Two consequences:
+    >>   (a) ASSOCIATION GAP. Any prose or punctuation between marker and quote
+    >>       defeats the pairing — ":28-30 says so ('…')", ":57 proves … — '…'",
+    >>       ":82 records the intent — '…'", "denylist at :21-33 ('axios', …)".
+    >>       It caught `manifest.test.ts:16`'s ":36 — '…'" only because that one
+    >>       happens to sit in the adjacent form.
+    >>   (b) BARE MARKERS were never span-checked at all. A citation that says
+    >>       "the boundary is at :29 and :35" carries no quote, so the extractor
+    >>       skipped it and containment was never attempted.
+    >> The KNOWN LIMITATIONS section above named neither. The lesson, stated
+    >> plainly because it cost a review cycle: AN INSTRUMENT THAT PASSES ITS OWN
+    >> MUTATION BATTERY CAN STILL BE SYSTEMATICALLY BLIND. All three mutations
+    >> happened to land on markers in the adjacent form, so the battery tested
+    >> the four RULES and never the GRAMMAR that feeds them. A battery has to
+    >> mutate the notation, not only the values.
+    >>
+    >> CORRECTED LIST — every entry below read by hand at 9252bb6, not taken
+    >> from any instrument's output. Same class throughout: a quoted or bare
+    >> marker that resolves correctly but sits outside its citation's declared
+    >> ref span. Nothing is misattributed and no line number is wrong.
+    >>
+    >>   c1  git-engine/src/renderer-corpus-shared.test.ts:66-68   :28-35
+    >>       (the CORPUS_DIR join the citation describes as "walks '..', '..'")
+    >>   c1  renderer/src/secret-scan.test.ts:11-40                :91-97  (bare)
+    >>       (the clean-text control the citation names)
+    >>   c1  renderer/src/length-limits.test.ts:12-25              :57, :29, :35
+    >>   c2  renderer/src/golden.test.ts:21-87                     :101-107 (bare)
+    >>       (the toADF / toWikiMarkup snapshot cases)
+    >>   c4  connectors-jira/…/adf-guard.ts:137                    :2, :28-30
+    >>       (this batch's OWN corrected citation — see the §3 correction)
+    >>   c6  renderer/src/length-limits.test.ts:12-25              :50   [in the list above]
+    >>   c6  renderer/src/schema-validation.test.ts:24-33          :14, :19 [above]
+    >>   c6  contracts/…/communication-policy.ts:102-112           :82
+    >>       (quoted with its trailing "—" dropped: a light normalization)
+    >>   c7  renderer/src/manifest.test.ts:16                      :36   [in the list above]
+    >>   c7  renderer/src/manifest.test.ts:45-56                   :21-33, :42 (bare)
+    >>       (the 13-line denylist array, re-rendered inline in the quote)
+    >>
+    >> STILL A LOWER BOUND, and here is why the number is not published. The
+    >> rebuilt instrument (notation-aware left-to-right scan, context-tracking,
+    >> bare markers included) raises the raw count but acquired two false-
+    >> positive classes of its own, both measured:
+    >>   - POSSESSIVE APOSTROPHES open phantom quotes — "roadmap/17's §Test plan"
+    >>     was read as an opening quote, producing NOT-FOUND reports for text
+    >>     that is prose. This is the exact defect the playbook already records
+    >>     ("naive '…' pairing broke on English possessives, 91 phantom
+    >>     problems"), re-earned.
+    >>   - GENERIC NEEDLES mis-anchor. It flagged golden.test.ts :44/:55/:65/:77
+    >>     as wrong-line by matching the repeated string "toMatchSnapshot()";
+    >>     those four markers are the `it(` lines, are INSIDE :21-87, and are
+    >>     correct. Hand-checked, not defects.
+    >>   - Its file-context tracking also mis-attributes a marker that follows a
+    >>     path named WITHOUT a line suffix ("`phase-02.json` … golden (`:143`)"),
+    >>     reporting phase-02.json's line against the cited test file.
+    >> Publishing its raw totals as "the census" would assert defects that do not
+    >> exist — a worse error than the understatement it replaces. So: the list
+    >> above is what has been READ; the true set may be larger; and the durable
+    >> answer is still the CI-resident resolver the defect record itself proposes,
+    >> built against the notations rather than one of them.
+
 4c. The record's own "Not a finding" entry is slightly understated, and the
     distinction matters for whoever builds the CI resolver.
 
@@ -200,6 +282,9 @@ touched. They are recorded here so the next pass inherits them measured.
 - No box was flipped and no roadmap file was touched.
 - `docs/evidence/criteria-closeout/defects/INDEX.md` was not touched, and neither
   was the defect record itself: §4's findings need a record of their own, which is
-  the reconciliation batch's call, not this one's.
+  the reconciliation batch's call, not this one's. When that record is written it
+  must carry §4b's LOWER BOUND framing and the association/bare-marker gaps —
+  enshrining "8, complete" would make the next pass trust a number that was never
+  a census.
 - Nothing here is evidence for any criterion. It is a repair of where two merged
   citations POINT, plus a measured hand-off of three more.
