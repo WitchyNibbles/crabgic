@@ -11,6 +11,14 @@ any work here:
 2. `roadmap/README.md` — ground rules and phase dependency graph.
 3. `roadmap/00-engine-spikes.md` and `roadmap/01-repo-bootstrap.md` — the two phases with
    no unresolved dependencies, and the current starting point for implementation.
+4. **`docs/verification-playbook.md` — read this before verifying or closing out anything.**
+   63 rulings, each earned from a real defect a green test suite did not catch: the vacuity
+   patterns, the four-rule citation resolver, transcript and probe discipline, and the cost
+   rules for live runs. Skipping it means re-earning them.
+5. `docs/deploy-posture.md` — the sole authority on whether crabgic is certifiably deployable.
+   Currently **conditional, not clear**.
+6. `docs/evidence/criteria-closeout/defects/INDEX.md` — 37 filed defects with sized remedies.
+   Bookkeeping inside the claim-space: **never cite it as evidence**, cite a record's own evidence.
 
 ## Non-negotiables
 
