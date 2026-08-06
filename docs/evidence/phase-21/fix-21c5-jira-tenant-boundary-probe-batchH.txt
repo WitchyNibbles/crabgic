@@ -1,0 +1,349 @@
+================================================================================
+PHASE 21, exit criterion 5 (roadmap/21-connector-evidence-integration.md:157)
+Jira tenant-boundary security fixture — deletion probe, reverse probes, and the
+"did the new check un-pin the old one" probe.
+
+RULING-3 HEADER
+  Captured (UTC):          2026-08-06T13:29Z .. 2026-08-06T13:55Z
+  UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+                           1bc0d51  ("Batch E: bind the enforced budget to the
+                                      approved envelope ... (#116)", origin/main)
+  branch tip at capture (PROVISIONAL — see note):
+                           6b387a5  ("test(gates): add a fail-closed control to
+                                      the Jira tenant-boundary gate",
+                                      branch closeout/batch-h)
+  Worktree:                /home/eimi/projects/wt-batchh
+  Node/vitest:             vitest 4.1.10 (repo-pinned)
+
+  The branch tip is PROVISIONAL by the playbook's amended RULING-3: it is a
+  pre-merge commit and any rebase orphans it. Everything below is re-runnable
+  from the UPSTREAM BASE plus this branch's diff; the mutations are stated
+  verbatim so the whole transcript can be reproduced without either sha.
+
+SUBJECT
+  `SECURITY_FIXTURE_MANIFEST` gained a seventh entry, `jira-tenant-boundary`
+  (`blocking: true`, `sourcePhase: "18"`), whose `verify` drives
+  `packages/connectors-jira/src/fixtures/tenant-boundary-scenario.ts` — a real
+  Jira `RemoteMutationPlan` applied through the real `executeMutationPlan`,
+  which consults `refuseOutOfAllowlistTenant`.
+
+  The question this transcript answers is the only one that matters for this
+  defect class: is the new gate ANOTHER tautology, or does it die when the
+  enforcement dies?
+
+================================================================================
+SECTION 0 — BASELINES (recorded beside every mutation run, deliberately)
+================================================================================
+
+0a. UNMUTATED, at the UPSTREAM BASE `1bc0d51` (i.e. BEFORE any Batch H change),
+    same worktree, after `npm run build`:
+
+    $ npm run build
+    exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/gateway
+     Test Files  128 passed (128)
+          Tests  1128 passed (1128)
+    exit 0
+
+0b. UNMUTATED, at the branch tip `6b387a5` (all Batch H code present):
+
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/gateway
+     Test Files  129 passed (129)
+          Tests  1147 passed (1147)
+    exit 0
+
+    Delta 0a -> 0b: +1 test FILE
+    (packages/connectors-jira/src/fixtures/tenant-boundary-scenario.test.ts),
+    +19 tests. Attribution of the +19:
+      +11  connectors-jira  tenant-boundary-scenario.test.ts (S1..S10, new file)
+      + 7  gates            security-fixture-manifest.test.ts (T2', T7..T12)
+      + 1  gates            the `it.each(SECURITY_FIXTURE_MANIFEST)` row count
+                            moved 6 -> 7 with the new entry
+    11 + 7 + 1 = 19.  ✔ consistent.
+
+0c. Narrower baseline used by probes B and C (gates + connectors-jira only), at
+    the same tip:
+
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira
+     Test Files  97 passed (97)
+          Tests  834 passed (834)
+    exit 0
+
+================================================================================
+SECTION 1 — RED-FIRST STAGES (what failed before the code existed)
+================================================================================
+
+RED STAGE A — the manifest-completeness expectation, written before the entry.
+  Edit: `security-fixture-manifest.test.ts` T2 superseded by T2', which asserts
+  TWO tenant-boundary entries and `REQUIRED_SECURITY_FIXTURE_IDS` containing
+  "jira-tenant-boundary".
+
+    $ npx vitest run --project @crabgic/gates src/security-fixture-manifest.test.ts
+     × T2': the tenant-boundary category is borne by TWO entries ... 7ms
+    AssertionError: expected [ 'grafana-tenant-boundary' ] to deeply equal
+      [ 'grafana-tenant-boundary', ...(1) ]
+      - Expected
+      + Received
+        [
+          "grafana-tenant-boundary",
+      -   "jira-tenant-boundary",
+        ]
+     Test Files  1 failed (1)
+          Tests  1 failed | 21 passed (22)
+    exit 1
+
+  This is the deliberate flip of the residual pin. The pin worked exactly as
+  designed: it made adding a Jira entry an explicit edit rather than a drift.
+
+RED STAGE B — the connector fixture's own suite, written before the module.
+
+    $ npx vitest run --project @crabgic/connectors-jira \
+        src/fixtures/tenant-boundary-scenario.test.ts
+     FAIL  src/fixtures/tenant-boundary-scenario.test.ts
+    Error: Cannot find module './tenant-boundary-scenario.js' imported from
+      .../packages/connectors-jira/src/fixtures/tenant-boundary-scenario.test.ts
+     Test Files  1 failed (1)
+          Tests  no tests
+    exit 1
+
+================================================================================
+SECTION 2 — PROBE A: DELETE THE REAL ENFORCEMENT
+================================================================================
+
+MUTATION (verbatim), in
+`packages/gateway/src/mutation-pipeline/mutation-pipeline.ts`, inside
+`executeMutationPlan`:
+
+  -  const refusal = refuseOutOfAllowlistTenant(plan, deps.tenantAllowlist);
+  -  if (refusal !== undefined) return refusal;
+  +  // PROBE A (temporary): the CONSULTATION is deleted; the call is kept so the
+  +  // mutation compiles (a non-compiling mutation would leave every connector leg
+  +  // measuring the previous dist/).
+  +  void refuseOutOfAllowlistTenant(plan, deps.tenantAllowlist);
+
+The call is retained deliberately. A mutation that does not compile makes
+`npm run build` exit non-zero, and every cross-package leg then runs on the
+PREVIOUS `dist/` — a measurement of the old code wearing the new code's label.
+Build exit is recorded at every stage below for exactly that reason.
+
+A1 — SRC-ONLY, no rebuild (recorded to show the under-report, not as the result):
+
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/gateway
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... FAIL-CLOSED: an EMPTY allowlist refuses every mutation, with no network call
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... writes NOTHING to the journal for a refusal — zero appendEntry calls, zero records for the key
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... does not poison the idempotencyKey: the SAME key succeeds after the allowlist is corrected
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... refuses even a replay of an already-recorded operation once the allowlist no longer admits its tenant
+     FAIL |@crabgic/gateway| mutation-apply-tool.test.ts > ... refuses a plan whose declared tenant is outside the connection's tenantAllowlist — typed policy_blocked, zero network calls
+     Test Files  2 failed | 127 passed (129)
+          Tests  5 failed | 1142 passed (1147)
+    exit 1
+
+    5 failures, ALL inside `@crabgic/gateway`. Neither gates nor connectors-jira
+    moved, because both import the gateway from `packages/gateway/dist/`.
+    Reading A1 alone would have concluded the new gate is NOT coupled.
+
+A2 — SAME MUTATION, after `npm run build`:
+
+    $ npm run build
+    exit 0            <- the mutation compiles; dist/ really is the mutated code
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/gateway
+     FAIL |@crabgic/gates| security-fixture-manifest.test.ts > ... > jira-tenant-boundary passes when invoked directly
+     FAIL |@crabgic/gates| security-fixture-manifest.test.ts > ... > T7: the jira-tenant-boundary entry's verdict names 18's real scenario and evidences the positive control
+     FAIL |@crabgic/gates| security-fixture-manifest.test.ts > ... > T10: a factory whose in-allowlist control STILL reports a refusal FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary
+     FAIL |@crabgic/gates| security-fixture-manifest.test.ts > ... > T11 (control, green before AND after): the default path passes against intact enforcement
+     FAIL |@crabgic/gates| security-fixture-manifest.test.ts > ... > T12: a factory that reports success even under an EMPTY tenantAllowlist FAILS the gate — the second control, added because probe B2 measured the first one missing this
+     FAIL |@crabgic/connectors-jira| tenant-boundary-scenario.test.ts > ... > S1 (control, green before AND after the fix): the DEFAULT scenario passes against the real, intact enforcement
+     FAIL |@crabgic/connectors-jira| tenant-boundary-scenario.test.ts > ... > S5b: a plan declaring a DIFFERENT out-of-allowlist tenant is refused too — the check is membership, not a single hardcoded string
+     FAIL |@crabgic/connectors-jira| tenant-boundary-scenario.test.ts > ... > S8: an EMPTY allowlist refuses the control plan too, through the REAL executor, so the scenario reports passed: false — fail-closed is not a passing tenant boundary
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... FAIL-CLOSED: an EMPTY allowlist refuses every mutation, with no network call
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... writes NOTHING to the journal for a refusal — zero appendEntry calls, zero records for the key
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... does not poison the idempotencyKey: the SAME key succeeds after the allowlist is corrected
+     FAIL |@crabgic/gateway| mutation-pipeline.test.ts > ... refuses even a replay of an already-recorded operation once the allowlist no longer admits its tenant
+     FAIL |@crabgic/gateway| mutation-apply-tool.test.ts > ... refuses a plan whose declared tenant is outside the connection's tenantAllowlist — typed policy_blocked, zero network calls
+     Test Files  4 failed | 125 passed (129)
+          Tests  13 failed | 1134 passed (1147)
+    exit 1
+
+    5 -> 13.  The src-only run understated the blast radius by 8 of 13.
+    The 8 newly-red rows are exactly the ones Batch H adds: 5 in gates
+    (4 named + the new `it.each` row) and 3 in connectors-jira.
+
+    THE HEADLINE: deleting `refuseOutOfAllowlistTenant`'s consultation
+    REDDENS the new `jira-tenant-boundary` gate. It is not a tautology.
+    (The two previous tenant entries survived deleting ALL enforcement.)
+
+A3 — RESTORE, with an explicit SOURCE and an explicit PATH:
+
+    $ git checkout HEAD -- packages/gateway/src/mutation-pipeline/mutation-pipeline.ts
+    $ grep -c "PROBE A" packages/gateway/src/mutation-pipeline/mutation-pipeline.ts
+    0   (grep exit 1 — no residue)
+    $ npm run build
+    exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/gateway
+     Test Files  129 passed (129)
+          Tests  1147 passed (1147)
+    exit 0
+    $ git status --short
+    (empty)
+
+    The COUNT, not just the exit code, is checked: 1147 both before and after,
+    so no uncommitted test was silently deleted by the restore.
+
+================================================================================
+SECTION 3 — PROBE B: PIN THE SCENARIO'S OWN ORACLE (attack G, pre-empted)
+================================================================================
+
+Why: defect `20-fault-injection-scenarios-have-unpinned-oracles` measured that
+mutating a scenario's own verdict (`passed: result.ok === false` -> `passed:
+true`) left 83 files / 660 tests green. A gate is only as honest as the scenario
+it runs. So the scenario's verdict is mutated in BOTH of its conjuncts.
+
+B1 — the BREACH conjunct disabled.
+  MUTATION in `packages/connectors-jira/src/fixtures/tenant-boundary-scenario.ts`:
+
+      const breachRefused =
+  +      true ||
+        breach.outcome.status === "failed" &&
+        ...
+
+    $ npm run build      -> exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira
+     FAIL |@crabgic/gates| ... > jira-tenant-boundary passes when invoked directly
+     FAIL |@crabgic/gates| ... > T7: ...
+     FAIL |@crabgic/gates| ... > T11 (control, green before AND after): ...
+     FAIL |@crabgic/connectors-jira| ... > S3 (reverse probe): an executor that ADMITS the forged-tenant plan makes the scenario report passed: false
+     FAIL |@crabgic/connectors-jira| ... > S5: the verdict is a function of the DECLARED tenant — declaring an IN-allowlist tenant on the breach arm makes the scenario report passed: false
+     Test Files  2 failed | 95 passed (97)
+          Tests  5 failed | 829 passed (834)
+    exit 1
+    restore: git checkout HEAD -- <that path>; npm run build (exit 0);
+             baseline re-measured 97 files / 834 tests, exit 0.
+
+  Note WHY the gate reddens here even though the scenario now "passes": the
+  gate's own control builds the SAME factory with an in-allowlist declared
+  tenant and requires it to report NO refusal. With the breach conjunct
+  hardwired true, that control reports a refusal, and the gate fails.
+
+B2 — the POSITIVE-CONTROL conjunct disabled.
+  MUTATION, same file:
+
+      const controlAdmitted =
+  +      true ||
+        control.outcome.errorKind !== "policy_blocked" &&
+        ...
+
+  B2 was run TWICE, and the first run changed the code. Both are recorded.
+
+  B2, FIRST RUN (before the gate had a fail-closed control):
+    $ npm run build      -> exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira
+     FAIL |@crabgic/connectors-jira| ... > S4 (reverse probe): an executor that refuses EVERYTHING ...
+     FAIL |@crabgic/connectors-jira| ... > S7: no FAIL detail contains the pass detail's anchor phrase ...
+     FAIL |@crabgic/connectors-jira| ... > S8: an EMPTY allowlist refuses the control plan too ...
+     Test Files  1 failed | 96 passed (97)
+          Tests  3 failed | 830 passed (833)
+    exit 1
+
+    FINDING: the connector's unit suite caught it; THE GATE DID NOT. The gate's
+    only control exercised the scenario's breach conjunct, so a scenario that
+    stopped reading its own positive control would have kept the standing gate
+    green. That is the same shape as the original defect, one layer down.
+
+  REMEDY (commit 6b387a5): a SECOND gate-level control — the scenario must NOT
+  report success when the connection's `tenantAllowlist` is `[]`, because under
+  fail-closed semantics its in-allowlist arm cannot have been admitted.
+
+  B2, SECOND RUN (with the remedy in place):
+    $ npm run build      -> exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira
+     FAIL |@crabgic/gates| ... > jira-tenant-boundary passes when invoked directly
+     FAIL |@crabgic/gates| ... > T7: ...
+     FAIL |@crabgic/gates| ... > T11 (control, green before AND after): ...
+     FAIL |@crabgic/connectors-jira| ... > S4 (reverse probe): ...
+     FAIL |@crabgic/connectors-jira| ... > S7: ...
+     FAIL |@crabgic/connectors-jira| ... > S8: ...
+     Test Files  2 failed | 95 passed (97)
+          Tests  6 failed | 828 passed (834)
+    exit 1
+    restore: git checkout HEAD -- <that path>; npm run build (exit 0);
+             git status --short -> empty.
+
+    3 -> 6.  The gate now dies in this direction too.
+
+================================================================================
+SECTION 4 — PROBE C: DID THE NEW CHECK UN-PIN THE ONE BESIDE IT?
+================================================================================
+
+The rule being honoured: adding a check that overlaps an existing one can
+absorb its fixtures and leave the old invariant enforced by comments alone.
+So the OLD check is deleted and something must still redden.
+
+MUTATION in `packages/connectors-grafana/src/auth/connection-doctor.ts` —
+delete the org-allowlist membership refusal:
+
+  -  const orgIdStr = String(tokenInfo.orgId);
+  -  if (!deps.orgAllowlist.includes(orgIdStr)) {
+  -    return {
+  -      ok: false,
+  -      reason: `token is bound to org ${orgIdStr}, which is outside this connection's org allowlist`,
+  -    };
+  -  }
+  +  void String(tokenInfo.orgId); // PROBE C (temporary): org-allowlist enforcement deleted
+
+    $ npm run build      -> exit 0
+    $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+        --project @crabgic/connectors-grafana
+     FAIL |@crabgic/gates| ... > grafana-tenant-boundary passes when invoked directly
+     FAIL |@crabgic/gates| ... > T1: the grafana-tenant-boundary entry's verdict names 20's real scenario, not a gates-local literal comparison
+     FAIL |@crabgic/gates| ... > T3 (control, green before AND after — rules out a fail-everything implementation): the default path passes against intact enforcement
+     FAIL |@crabgic/gates| ... > T6: an always-refuse doctor FAILS the gate — a refuse-everything enforcement is not a passing tenant boundary
+     FAIL |@crabgic/connectors-grafana| connection-doctor.test.ts > ... fails when the token's org is outside the allowlist
+     FAIL |@crabgic/connectors-grafana| fault-injection.test.ts > ... a token bound to an out-of-allowlist org is refused before any resource access
+     Test Files  3 failed | 131 passed (134)
+          Tests  6 failed | 1242 passed (1248)
+    exit 1
+    restore: git checkout HEAD -- <that path>; npm run build (exit 0);
+             git status --short -> empty.
+
+  RESULT: the Grafana entry is still load-bearing AFTER Batch H. Its four gates
+  rows redden exactly as they did before the Jira entry existed, and no Jira row
+  reddens (the two entries share a category, not a subject). Nothing was
+  absorbed; the Grafana entry was not weakened.
+
+================================================================================
+SECTION 5 — WHAT THIS TRANSCRIPT DOES *NOT* PROVE
+================================================================================
+
+1. It does not prove the enforcement is a tenant boundary in the full sense.
+   `refuseOutOfAllowlistTenant` binds the tenant a plan DECLARES, on the
+   mutation path. Reads are not tenant-checked and the remote's actual tenant
+   identity is not verified. The contract's own wording
+   (`packages/contracts/src/contracts/external-connection.ts:122`) says the
+   field "is not a guarantee that cross-tenant access is refused", and no
+   string emitted by the fixture or the gate says otherwise — asserted in both
+   the pass and the fail worlds by S6/S7 and T7.
+
+2. It does not make the enforcement Jira-side. The check is gateway-owned and
+   provider-agnostic. What phase 18 now owns is the FIXTURE.
+
+3. It does not prove the fixture's journal counter reflects the DISK. The
+   fixture uses an in-memory recording stand-in, so its `journalAppends === 0`
+   claim is "zero `appendEntry` calls", observed at the call boundary. The
+   on-disk half is pinned by `@crabgic/gateway`'s own
+   `mutation-pipeline.test.ts` ("writes NOTHING to the journal for a refusal —
+   zero appendEntry calls, zero records for the key"), which probe A2 shows is
+   also load-bearing.
+
+4. In-process tests cannot prove the DEFAULT arguments (the scenario's
+   `executor`, the gate's `scenarios`/`makeScenario`) stay wired to the real
+   dependencies. A rewire to a behaviourally faithful frozen copy survives every
+   test in both suites. PROBE A is the coupling proof for that residual, and it
+   is re-runnable at any tree from the mutation stated verbatim in section 2.
+
+5. Nothing here was run against a live or licensed system. No `@live` test was
+   run, `CRABGIC_LIVE` was never set, and no workflow was dispatched.
