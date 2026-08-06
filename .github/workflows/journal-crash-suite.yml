@@ -1,0 +1,94 @@
+name: journal-crash-suite
+
+# roadmap/04-journal-idempotency-leases.md exit criterion 1: "1k randomized
+# kill-iteration run (`runKillHarness` over the append/chain/snapshot path):
+# zero undetected corruption; recovery always converges to the last valid
+# chained entry — evidence: `journal-crash-suite` CI job artifact."
+#
+# This workflow IS that named channel. It did not exist before 2026-08-06:
+# `git log --all -S"journal-crash-suite" -- .github/` was empty, and the
+# string had been in the roadmap since the repository's first commit — an
+# original overclaim in the plan rather than drift. The SUBSTANCE was always
+# proven (`packages/journal/src/crash-fixtures/crash-suite.test.ts` runs the
+# real harness against real SIGKILLs); what was missing was the job and the
+# artifact the criterion names as its evidence.
+#
+# Deliberately OFF the every-push path. A 1000-iteration run spawns and kills
+# a real child process per iteration and took 258s locally at
+# `docs/evidence/phase-04/closeout-c1-crash-suite-1k.txt`'s capture, so it is
+# scoped to: journal changes (where a regression could originate), a nightly
+# schedule, and manual dispatch. The default `npm test` fan-out keeps running
+# the same suite at its 25-iteration default, so ordinary pushes still get a
+# fast signal from it.
+#
+# Single runner rather than the arch matrix the main CI job uses: the
+# criterion names one job and one artifact, and the property under test
+# (durability of the append/chain/snapshot path under kill) is not
+# architecture-specific. Say so here rather than let a reader assume the
+# matrix was dropped by accident.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Nightly, 03:17 UTC — an off-the-hour minute so it does not pile into
+    # GitHub's busiest scheduling slot.
+    - cron: "17 3 * * *"
+  pull_request:
+    paths:
+      - "packages/journal/**"
+      - ".github/workflows/journal-crash-suite.yml"
+
+concurrency:
+  group: journal-crash-suite-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  journal-crash-suite:
+    name: journal-crash-suite
+    runs-on: ubuntu-latest
+    # Generous relative to the 258s local capture: CI runners are slower and
+    # this suite's cost is dominated by real process spawn/kill latency.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: 1000 randomized real-SIGKILL iterations over the append/chain/snapshot path
+        env:
+          CRABGIC_CRASH_SUITE_ITERATIONS: "1000"
+        run: |
+          set -o pipefail
+          {
+            echo "# journal-crash-suite — roadmap/04 exit criterion 1"
+            echo "# run:        ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "# commit:     ${GITHUB_SHA}"
+            echo "# runner:     $(uname -srm)"
+            echo "# iterations: ${CRABGIC_CRASH_SUITE_ITERATIONS}"
+            echo "# captured:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "# command:    npx vitest run --coverage.enabled=false --reporter=verbose packages/journal/src/crash-fixtures/crash-suite.test.ts"
+            echo "# ---- verbatim output below ----"
+          } | tee journal-crash-suite-report.txt
+          npx vitest run --coverage.enabled=false --reporter=verbose \
+            packages/journal/src/crash-fixtures/crash-suite.test.ts \
+            2>&1 | tee -a journal-crash-suite-report.txt
+
+      - name: record the exit status in the artifact itself
+        if: always()
+        run: echo "# EXIT=${{ job.status }}" >> journal-crash-suite-report.txt
+
+      - name: upload the crash-suite report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journal-crash-suite-report
+          path: journal-crash-suite-report.txt
+          # Matches ci.yml's ARM64 record step: an artifact step that finds
+          # nothing must fail, otherwise "CI job artifact" can be satisfied
+          # by an empty upload.
+          if-no-files-found: error
+          retention-days: 90
