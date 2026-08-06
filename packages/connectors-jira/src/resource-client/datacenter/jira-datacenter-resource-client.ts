@@ -1,5 +1,9 @@
 import { ConnectorError } from "@crabgic/contracts";
-import type { FieldMetadataIndex } from "../../capability/field-metadata.js";
+import {
+  assertCustomFieldWritesAreDiscovered,
+  DATACENTER_CUSTOM_FIELD_REFUSAL,
+  type FieldMetadataIndex,
+} from "../../capability/field-metadata.js";
 import type { DcEditionEntry } from "../../capability/dc-edition-feature-matrix.js";
 import { JIRA_DATACENTER_PROVIDER_NAME } from "../../errors/jira-error-mapping.js";
 import { mapJiraStatusToWorkflowStage } from "../../workflow/workflow-stage.js";
@@ -111,6 +115,29 @@ export function createJiraDatacenterResourceClient(
   const externalConnectionId = ctx.connection.id;
   const planCtx: JiraPlanBuildContext = { tenant, externalConnectionId, payloadRegistry };
   const gate = (action: JiraAction): void => assertActionSupported(dcFeatures, action);
+  /**
+   * Custom-field pre-check at the Data Center plan-build boundary —
+   * IDENTICAL pattern, and identical reason, to the `assertSafeAdfDocument`
+   * pre-checks below (see `issues.planCreate`'s MINOR-1 comment). The shared
+   * 18-owned plan builders re-run this very check internally, but without an
+   * attribution argument they default to Cloud's — `validation` attributed
+   * to `jira-cloud`. Running it FIRST with
+   * `DATACENTER_CUSTOM_FIELD_REFUSAL` means the caller sees roadmap/19 §In
+   * scope's typed `unsupported`, attributed to `jira-datacenter`, and the
+   * builders' own (Cloud-attributed) copy is never reached on this path.
+   *
+   * The alternative — threading an attribution parameter through
+   * `planIssueCreate`/`planIssueUpdate`/`planIssueBulkUpdate` — was
+   * rejected: those builders are 18's, reused verbatim by this module by
+   * design (see this file's header), and the pre-check convention was
+   * already established here for exactly this class of mis-attribution.
+   */
+  const assertDatacenterCustomFieldWrites = (fields: Readonly<Record<string, unknown>>): void =>
+    assertCustomFieldWritesAreDiscovered(
+      fields,
+      fieldMetadataIndex,
+      DATACENTER_CUSTOM_FIELD_REFUSAL,
+    );
 
   return {
     projects: {
@@ -171,6 +198,7 @@ export function createJiraDatacenterResourceClient(
           "issue.create summaryAdf (DC plan-build boundary)",
           JIRA_DATACENTER_PROVIDER_NAME,
         );
+        assertDatacenterCustomFieldWrites(input.fields ?? {});
         return planIssueCreate(planCtx, input, fieldMetadataIndex, envelopeId);
       },
       planUpdate: (issueKey, expectedRevision, fields, envelopeId) => {
@@ -182,6 +210,7 @@ export function createJiraDatacenterResourceClient(
             JIRA_DATACENTER_PROVIDER_NAME,
           );
         }
+        assertDatacenterCustomFieldWrites(fields);
         return planIssueUpdate(
           planCtx,
           issueKey,
@@ -232,6 +261,7 @@ export function createJiraDatacenterResourceClient(
       },
       planBulkUpdate: (issueKeys, fields, envelopeId) => {
         gate("issue.bulkUpdate");
+        assertDatacenterCustomFieldWrites(fields);
         return planIssueBulkUpdate(planCtx, issueKeys, fields, fieldMetadataIndex, envelopeId);
       },
       planBulkTransition: (issueKeys, transitionId, envelopeId) => {
