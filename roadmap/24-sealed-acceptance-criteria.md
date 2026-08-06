@@ -20,7 +20,7 @@ consequence: `design-addresses-every-acceptance-criterion` "stays judged until a
 requirements source is wired in." `Requirement.id` does not cover criteria (its stable-id
 seed is `section` + `title`), the envelope hash covers authority fields only, and the
 approval token signs the envelope hash — so nothing anywhere binds "what was approved" to
-"what completion is judged against."
+"what completion is judged against." (Amended 2026-08-06, ledger Gap 22: the envelope hash now covers authority fields PLUS the derived provisional performance-budget hash. Still never criteria — the sentence above stays true of the gap this phase closes, and the budget binding is roadmap/15's.)
 
 After this phase, requirements are durable and resolvable by id; each carries a canonical
 hash of its criteria taken at build time; approval anchors the full criteria-hash set in
