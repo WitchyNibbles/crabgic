@@ -75,9 +75,22 @@ every count below. UPDATE, same day, measured after this branch's probes finishe
 has since advanced to `6f964d7` ("refresh the run --json envelope snapshots for Gap 22's
 `provisionalBudgetHash`"), which fixes exactly those two. This branch is based on
 `1bc0d51`, which predates that fix, so every repo-wide number in this file carries the two
-pre-existing failures; a CI run of this branch merged with current `main` should show
-none. The two are named individually in every leg below so the arithmetic is checkable
-either way. Delta from base 1bc0d51 to this branch: 6571 -> 6586 tests = **+15**,
+pre-existing failures. The two are named individually in every leg below so the arithmetic
+is checkable either way.
+
+SECOND UPDATE (2026-08-06, measured, not predicted). `origin/main` was MERGED into this
+branch — merged, deliberately not rebased, so `5fa5ca3` stays reachable and every sha in
+this file still resolves (`git merge-base --is-ancestor 5fa5ca3 HEAD` -> exit 0). At the
+merge commit:
+
+    $ npm run build     ; exit 0
+    $ npx vitest run    ; exit 0
+     Test Files  644 passed (644)
+          Tests  6586 passed (6586)
+
+Zero failures. The totals are unchanged from §1 (644 / 6586), which is the check that
+matters: `main`'s fix moved two tests from failing to passing and added none, so the
+delta arithmetic above is unaffected. Delta from base 1bc0d51 to this branch: 6571 -> 6586 tests = **+15**,
 644 -> 644 files (no new test FILE; all fifteen assertions land in three existing files).
 That +15 is the exact sum of this branch's new cases: 5 in `field-metadata.test.ts`,
 7 in `jira-datacenter-resource-client.test.ts`, 3 in
