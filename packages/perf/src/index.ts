@@ -15,6 +15,7 @@
 export {
   BudgetHashLinkMismatchError,
   BudgetJournalAnchorMissingError,
+  EnvelopeBudgetBindingMissingError,
   InsufficientSamplesError,
   MethodologyViolationError,
   MissingMeasurementError,
@@ -61,6 +62,7 @@ export type {
 } from "./contract/budget-sourcing.js";
 export { verifyProvisionalBudgetIntegrity } from "./contract/hash-link.js";
 export type {
+  ApprovedEnvelopeBudgetBinding,
   BudgetIntegrityCheckResult,
   BudgetIntegrityFailureReason,
 } from "./contract/hash-link.js";

@@ -161,6 +161,20 @@ export const EnforcedPerformanceContractSchema = z
     budgets: z.array(EnforcedPerformanceBudgetEntrySchema),
     budgetHash: NonEmptyStringSchema,
     provisionalBudgetHash: NonEmptyStringSchema,
+    /**
+     * The approved `AuthorizationEnvelope`'s `canonicalHash` — the exact
+     * digest the human's approval token signed — recorded at build time so
+     * the enforced record itself carries the whole chain the criterion names:
+     * `enforced.provisionalBudgetHash` → the provisional record's
+     * `budgetHash` → `envelope.provisionalBudgetHash`, all covered by THIS
+     * digest (interface-ledger Gap 22, 2026-08-06). Without it the link is
+     * verifiable only in flight, never inspectable on the artifact.
+     *
+     * Optional at the schema for the same evolution reason as the envelope
+     * member (`./authorization-envelope.ts`); 15's builder always populates
+     * it, because it cannot build at all without a bound envelope.
+     */
+    approvedEnvelopeHash: NonEmptyStringSchema.optional(),
     outcome: PerformanceOutcomeSchema,
   })
   .strict();

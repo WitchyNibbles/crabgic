@@ -45,6 +45,12 @@ export class MethodologyViolationError extends Error {
  * at all) and `journal_anchor_mismatch` (a deliberate post-approval
  * widening that ALSO recomputed its own `budgetHash` consistently no
  * longer matches what was chained into the journal at approval time).
+ *
+ * Widened 2026-08-06 (ledger Gap 22) with the two reasons that bind the
+ * enforced budget to what a HUMAN approved rather than to what intake
+ * committed: `no_envelope_budget_binding` (see
+ * `EnvelopeBudgetBindingMissingError` below) and `envelope_hash_mismatch`
+ * (the approved envelope's signed content covers a different budget set).
  */
 export class BudgetHashLinkMismatchError extends Error {
   constructor(
@@ -81,6 +87,36 @@ export class BudgetJournalAnchorMissingError extends BudgetHashLinkMismatchError
         `a fabricated, never-approved record.`,
     );
     this.name = "BudgetJournalAnchorMissingError";
+  }
+}
+
+/**
+ * Thrown when no APPROVED envelope binding is available for the budget about
+ * to be enforced — interface-ledger Gap 22 (2026-08-06). Either the caller
+ * could not resolve the ChangeSet's `AuthorizationEnvelope` at all, or the one
+ * it resolved carries no `provisionalBudgetHash` (an envelope persisted before
+ * the binding existed).
+ *
+ * Fail-closed, and deliberately a DISTINCT type from the mismatch case, exactly
+ * as `BudgetJournalAnchorMissingError` is distinct from its own mismatch: "no
+ * one ever signed a budget for this run" and "someone signed a DIFFERENT
+ * budget" are different findings, and a reader of the blocking verdict must be
+ * able to tell them apart without string-matching a reason.
+ *
+ * Legacy note (a disclosed residual, not a defect): a ChangeSet whose envelope
+ * predates this axis cannot pass enforcement. Drain in-flight runs before
+ * upgrading; a fresh `requestKey` re-intake mints a bound envelope.
+ */
+export class EnvelopeBudgetBindingMissingError extends BudgetHashLinkMismatchError {
+  constructor(readonly provisionalPerformanceContractId: string) {
+    super(
+      "no_envelope_budget_binding",
+      `No approved AuthorizationEnvelope binding was resolvable for provisional ` +
+        `PerformanceContract id "${provisionalPerformanceContractId}" — either no envelope was ` +
+        `resolved for this ChangeSet, or the resolved envelope carries no provisionalBudgetHash ` +
+        `(it predates the binding). Refusing to enforce a budget no approval token ever signed.`,
+    );
+    this.name = "EnvelopeBudgetBindingMissingError";
   }
 }
 

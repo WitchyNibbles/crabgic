@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  AuthorizationEnvelope,
   PerformanceMetric,
   PerformanceOutcome,
   ProvisionalPerformanceBudgetEntry,
@@ -33,6 +34,26 @@ export interface PerformanceGateMeasurements {
 
 export interface CreatePerformanceGateHandlerOptions {
   readonly getProvisionalContract: (changeSetId: string) => Promise<ProvisionalPerformanceContract>;
+  /**
+   * Resolves the APPROVED `AuthorizationEnvelope` for this ChangeSet — the
+   * record whose `canonicalHash` the human's approval token signed, and which
+   * (since interface-ledger Gap 22, 2026-08-06) covers the provisional budget
+   * hash. Exactly parallel to `getProvisionalContract`, and required for the
+   * same reason: a gate that cannot see what was approved cannot tell whether
+   * the budget it is about to enforce is that thing.
+   *
+   * SERVER-SIDE RESOLUTION ONLY. The composition root must look up
+   * `changeSets.get(changeSetId).authorizationEnvelopeId` in the envelope
+   * registry — the same posture `contract.approve` takes for the expected
+   * digest (CRITICAL C1). It must never accept an envelope value handed in
+   * beside the request, which would let the caller choose the standard it is
+   * judged against.
+   *
+   * Resolving to `undefined` is legitimate (unknown ChangeSet, or an envelope
+   * predating the binding) and fails CLOSED at `../contract/hash-link.ts`'s
+   * check 4 — never open.
+   */
+  readonly getApprovedEnvelope: (changeSetId: string) => Promise<AuthorizationEnvelope | undefined>;
   readonly getMeasurements: (
     context: GateContext,
     provisional: ProvisionalPerformanceContract,
@@ -114,6 +135,15 @@ function assertGateInputMeetsMethodologyFloor(entries: readonly PerformanceGateE
  * mode is about the measurement never having produced trustworthy samples
  * at all, not about a verdict that should still be recorded.
  *
+ * The same catch now also carries the two APPROVED-ENVELOPE reasons added by
+ * interface-ledger Gap 22 (2026-08-06) — `no_envelope_budget_binding` and
+ * `envelope_hash_mismatch` — into the identical recordable blocking verdict,
+ * deliberately and with no code change here: a budget that no approval token
+ * signed is exactly the kind of refusal the criterion wants JOURNALED, not one
+ * that vanishes with the firing. `EnvelopeBudgetBindingMissingError` is a
+ * `BudgetHashLinkMismatchError` subclass, so the existing `instanceof` catches
+ * it.
+ *
  * Passes `context.journal` through to `buildEnforcedPerformanceContract`
  * so its hash-link check can read back the tamper-evident, journal-
  * anchored approval-time budget commit (`../contract/hash-link.ts`'s own
@@ -124,6 +154,9 @@ export function createPerformanceGateHandler(
 ): GateHandler {
   return async (context: GateContext): Promise<GateVerdict> => {
     const provisional = await options.getProvisionalContract(context.changeSetId);
+    // Resolved ONCE, server-side, from the ChangeSet this firing names — never
+    // from anything the measurement side supplies (ledger Gap 22).
+    const approvedEnvelope = await options.getApprovedEnvelope(context.changeSetId);
     const measurements = await options.getMeasurements(context, provisional);
 
     assertGateInputMeetsMethodologyFloor(measurements.entries);
@@ -152,6 +185,7 @@ export function createPerformanceGateHandler(
         createdAt: (options.now?.() ?? new Date()).toISOString(),
         provisional,
         journal: context.journal,
+        approvedEnvelope,
         outcome: overallOutcome,
         measuredValues,
         ...(measurements.baseRevisionFallbackBudgets !== undefined

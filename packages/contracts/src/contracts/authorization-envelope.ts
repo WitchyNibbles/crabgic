@@ -100,6 +100,38 @@ export const AuthorizationEnvelopeSchema = z
      * requesting side absence narrows to the default.
      */
     maxTurnsPerAttempt: z.number().int().positive().default(DEFAULT_MAX_TURNS_PER_ATTEMPT),
+    /**
+     * Canonical hash of the provisional performance-budget set this envelope
+     * authorizes enforcement of (roadmap/15 §Exit criteria, "Enforced budgets
+     * are hash-linked to the approved envelope"; interface-ledger Gap 22,
+     * 2026-08-06). Covered by `canonicalHash`, so the approval token — which
+     * signs that digest, subject kind `"envelope_hash"` — signs this too.
+     *
+     * DERIVED by 11's intake from the provisional `PerformanceContract` it
+     * builds in the same assembly, never caller-declared: `IntakeRequest`'s
+     * envelope content cannot represent it (ledger Gap 21's posture, extended
+     * to the binding). One `hashProvisionalBudgets` call feeds both sides, so
+     * a consistent intake cannot produce a divergent pair.
+     *
+     * OPTIONAL at the schema for EVOLUTION ONLY — an envelope persisted before
+     * this axis existed still parses, the same reason `maxTurnsPerAttempt`
+     * defaults (`CURRENT_SCHEMA_VERSION` is one `z.literal(1)` shared by all
+     * 21 contracts, and file-backed registries parse persisted state with this
+     * schema, so a required member would brick existing state dirs at load —
+     * a crash, not a fail-closed refusal). It deliberately has NO default:
+     * there is no honest default for "which budget set the human signed", and
+     * `canonicalHash([])` would forge one. Absence is NOT fail-open — 15's
+     * enforcement refuses an unbound envelope before enforcing anything
+     * (`no_envelope_budget_binding`, `packages/perf/src/contract/hash-link.ts`).
+     *
+     * NOT an authority dimension, and deliberately invisible to EnvelopePolicy
+     * containment: `packages/engine-core/src/policy/is-contained.ts` iterates
+     * NAMED authority fields and never key-iterates the envelope, which is
+     * correct here — this is a binding REFERENCE to budgets that are derived,
+     * previewed at approval and gated by 15, not a capability a standing
+     * policy could widen or contain.
+     */
+    provisionalBudgetHash: NonEmptyStringSchema.optional(),
   })
   .strict();
 export type AuthorizationEnvelope = z.infer<typeof AuthorizationEnvelopeSchema>;

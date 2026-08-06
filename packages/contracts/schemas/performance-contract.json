@@ -218,6 +218,10 @@
           "type": "string",
           "minLength": 1
         },
+        "approvedEnvelopeHash": {
+          "type": "string",
+          "minLength": 1
+        },
         "outcome": {
           "type": "string",
           "enum": [

@@ -31,7 +31,7 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
 - **AuthorizationEnvelope:** commands, paths, network destinations, credential references, dependencies,
   remote resources (high-impact flags surfaced using 02's canonical labels, e.g. `closing transitions`,
   `bulk mutations` — never a connector-specific gloss), temporary services, prohibited actions; canonical
-  hash-stable form.
+  hash-stable form. Plus the derived `provisionalBudgetHash` (ledger Gap 22 — derived from the provisional `PerformanceContract` built in the same assembly, never caller-declared), so the approval token signs the budget set 15 may enforce.
 - **CapabilityManifest:** digest-pinned skills/plugins/hooks/MCP servers/external tools; folds in 12's
   quarantine entries and 10's own plugin manifest entry when present — same graceful-degradation posture as
   `project.inspect`.

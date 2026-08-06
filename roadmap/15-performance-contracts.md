@@ -20,7 +20,7 @@ Before this phase, `final_verifying` has no performance-regression gate and 11's
   1. The ChangeSet's IntentContract `performance` section / Requirement acceptance criteria (11, resolved via the requirement IDs a benchmark TaskPacket carries, 13).
   2. Else ecosystem research.
   3. Else the base-revision benchmark run sets the budget itself.
-  - The enforced figure must hash-match the provisional one 11's approval render already committed to (via ChangeSet, 02); a mismatch fails closed rather than silently re-sourcing.
+  - The enforced figure must hash-match the provisional one 11's approval render already committed to (via ChangeSet, 02); a mismatch fails closed rather than silently re-sourcing. Since 2026-08-06 (ledger Gap 22) the envelope's own signed content hash covers that derived provisional `budgetHash`, so the enforced figure must ALSO match the envelope-covered value — `envelope_hash_mismatch` fails closed, and an unresolvable or unbound envelope fails closed as `no_envelope_budget_binding`.
   - **Where the rule lives, and who runs it (ledger Gap 21, 2026-08-01):** the sourcing order is implemented in `@crabgic/contracts` (`budget-sourcing.ts`, `acceptance-criteria-parser.ts`, `ecosystem-research-table.ts`; `packages/perf` re-exports them verbatim) and is EXECUTED by 11's intake, which derives `(budgetSource, budgets)` from the performance-section requirements it has just built. `IntakeRequest` carries neither field, so provenance cannot be misdeclared. This phase consumes that result; it does not source it.
 - **Methodology:**
   - Framework-appropriate warmup; ≥10 interleaved repetitions (A/B alternating base/candidate, never concurrent).

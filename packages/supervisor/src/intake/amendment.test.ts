@@ -46,6 +46,10 @@ function content(
     remoteResourceAuthorizations: [],
     temporaryServices: [],
     prohibitedActions: [],
+    // Ledger Gap 22: amendment callers supply the binding explicitly (see
+    // `AmendEnvelopeOptions.content`) — intake is the only surface that
+    // DERIVES it.
+    provisionalBudgetHash: "sha256:amendment-fixture-provisional-budget-hash",
     ...overrides,
   };
 }

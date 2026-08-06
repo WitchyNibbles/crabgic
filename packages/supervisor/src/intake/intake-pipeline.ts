@@ -57,6 +57,21 @@ import { buildProvisionalPerformanceContract } from "./performance-contract-buil
 import { deriveStableId } from "./stable-id.js";
 import { transitionChangeSet } from "./change-set-transition.js";
 
+/**
+ * The envelope content an intake CALLER may state — everything
+ * `AuthorizationEnvelopeContent` carries except the derived
+ * `provisionalBudgetHash` (interface-ledger Gap 22, 2026-08-06).
+ *
+ * The omission is the guarantee: a caller cannot declare which budget set the
+ * approval it is requesting will be signed over, so a declaration that
+ * disagrees with the budgets intake actually derives is UNREPRESENTABLE rather
+ * than policed — the identical posture Gap 21 took for `performanceBudgetSource`
+ * / `performanceBudgets`, and `contract.approve` took for the expected digest
+ * (CRITICAL C1). `requestContentHash` is byte-unchanged for existing requests
+ * because it spreads exactly this shape, which still lacks the field.
+ */
+export type RequestedEnvelopeContent = Omit<AuthorizationEnvelopeContent, "provisionalBudgetHash">;
+
 export interface IntakeRequest {
   /** Stable identity for "this repo/intake session" — same key + unchanged content replays; same key + changed content conflicts (see file-level doc comment). */
   readonly requestKey: string;
@@ -66,7 +81,7 @@ export interface IntakeRequest {
   readonly sections: IntentContractSections;
   readonly requirements: readonly RequirementDraft[];
   readonly workUnits: readonly WorkUnitDraft[];
-  readonly envelopeContent: AuthorizationEnvelopeContent;
+  readonly envelopeContent: RequestedEnvelopeContent;
   readonly rollbackStrategy: string;
   /**
    * The project's ecosystem label, for the ecosystem-research fallback
@@ -237,25 +252,17 @@ export function buildIntakeArtifacts(request: IntakeRequest): IntakeArtifacts {
     workUnits: request.workUnits,
   });
 
-  const envelope = buildAuthorizationEnvelope({
-    id: envelopeId,
-    changeSetId: request.id,
-    createdAt: request.createdAt,
-    content: request.envelopeContent,
-  });
-
-  const capabilityManifest = buildCapabilityManifest({
-    id: manifestId,
-    changeSetId: request.id,
-    createdAt: request.createdAt,
-    ...(request.capabilityManifest ?? {}),
-  });
-
   // DERIVED, never declared (ledger Gap 21). roadmap/15's order, executed
   // against the requirements just built: performance-section criteria first,
   // then the declared ecosystem's pinned row, then an empty set tagged
   // `base_revision_measurement` for the gate-time builder to populate from the
   // measured base revision.
+  //
+  // ORDER IS LOAD-BEARING (ledger Gap 22, 2026-08-06): this block moved ABOVE
+  // the envelope build so the envelope can be built with the binding the
+  // approval token must sign. Nothing in it reads the envelope, and the
+  // `deriveStableId` calls above are order-independent, so the move is
+  // observationally inert apart from the binding it enables.
   const { source: budgetSource, budgets } = resolveBudgetSource({
     requirementAcceptanceCriteria: requirements
       .filter((requirement) => requirement.section === "performance")
@@ -269,6 +276,32 @@ export function buildIntakeArtifacts(request: IntakeRequest): IntakeArtifacts {
     createdAt: request.createdAt,
     budgetSource,
     budgets,
+  });
+
+  // THE DERIVATION SITE for the envelope's budget binding (ledger Gap 22).
+  // Both sides of the hash-link come from the SINGLE `hashProvisionalBudgets`
+  // call inside `buildProvisionalPerformanceContract` above, so "the budget the
+  // human approved" and "the budget intake committed" cannot diverge at build
+  // time — divergence is unrepresentable, not policed. The caller cannot state
+  // this value at all (`RequestedEnvelopeContent` omits it). What the compiler
+  // cannot cover — a record tampered between intake and approval, or an
+  // envelope resolved from somewhere else at gate time — fails closed at 15's
+  // hash-link check (`packages/perf/src/contract/hash-link.ts`, checks 4-5).
+  const envelope = buildAuthorizationEnvelope({
+    id: envelopeId,
+    changeSetId: request.id,
+    createdAt: request.createdAt,
+    content: {
+      ...request.envelopeContent,
+      provisionalBudgetHash: provisionalPerformanceContract.budgetHash,
+    },
+  });
+
+  const capabilityManifest = buildCapabilityManifest({
+    id: manifestId,
+    changeSetId: request.id,
+    createdAt: request.createdAt,
+    ...(request.capabilityManifest ?? {}),
   });
 
   const changeSet: ChangeSet = ChangeSetSchema.parse({

@@ -1597,3 +1597,98 @@ owner ratification**. Its "Verified in" anchors therefore cite the implementing 
 roadmap phase text; the coordinated one-line additions to 01, 15 and 23 that the ruling required have since
 been landed and are recorded in the entry's own "Coordinated phase-file edit" line. Later gaps found during
 implementation should follow the same shape rather than being retrofitted into the four-resolver narrative.
+
+---
+
+## Gap 22 — The approved envelope never covered the budget it authorized enforcement of
+
+**Origin:** raised 2026-08-06 while closing roadmap/15 exit criterion 3 (defect record
+`15-enforced-budget-not-bound-to-approved-envelope`, filed 2026-08-02). Never seen by the four original
+resolvers; follows Gap 16/20/21's own-provenance shape, per this file's Provenance note. **Awaiting owner
+ratification.** Deliberately appended after §Provenance rather than inserted: merged records cite this file by
+line number in two notations, and the protected set was re-verified 2026-08-06 by a notation-aware census
+(explicit `interface-ledger.md:NN` plus prose "line NN", over a joined document because prose wraps) — every
+inbound citation resolves at or below line 727, so an end-of-file append shifts nothing. For the same reason
+the intro sentence (`:6`), the origin table (`:9-15`) and the Index are **not** extended here: a table row is
+an inserted line, and an inserted line moves every protected anchor below it. That is a deliberate choice of
+line stability over self-consistency, and the precedent is already in this file — Gap 21 is likewise absent
+from the intro sentence and the origin table. This provenance paragraph is the authoritative record of the
+omission, so the ledger's own `:17-19` miscount complaint is answered rather than silently re-earned.
+
+**Gap statement:** the human approval token signs the `AuthorizationEnvelope` content hash, and that hash
+covered authority fields only; the provisional `PerformanceContract`'s `budgetHash` sat entirely outside it.
+15's hash-link check verified the enforced budget against 11's journal-anchored intake commit — which attests
+"what intake committed", never "what a human approved". So an approval envelope rendered over budget A, beside
+a provisional contract carrying budget B, **with no post-approval edit anywhere**, passed every check and was
+enforced. Nothing was tampered with; the wrong thing was committed before anyone signed, and no signature
+covered it. The three existing checks are structurally incapable of seeing that case.
+
+**Ruling:** `AuthorizationEnvelopeSchema` carries `provisionalBudgetHash` — the canonical hash of the
+provisional budget set — **derived** by 11's intake from the same `hashProvisionalBudgets` call that stamps the
+provisional contract, never caller-declared (`IntakeRequest.envelopeContent` is
+`Omit<AuthorizationEnvelopeContent, "provisionalBudgetHash">`, so misdeclaration is unrepresentable — Gap 21's
+posture, extended from provenance to the binding). `hashEnvelopeContent` covers it, so the approval token now
+signs it. 15's `verifyProvisionalBudgetIntegrity` takes the approved envelope's binding as a **required**
+third parameter and runs two further ordered checks after its existing three, first failure wins:
+`no_envelope_budget_binding` (unresolvable or unbound envelope — fail-closed, never "no binding means trust
+the record") then `envelope_hash_mismatch`. The enforced record carries `approvedEnvelopeHash`, the exact
+digest the token signed, so the whole chain is inspectable on the artifact.
+
+**Position after the journal checks is load-bearing, and was measured, not asserted.** A post-approval widening
+disagrees with the envelope too, so if the new checks ran first that fixture would newly report
+`envelope_hash_mismatch` and the merged phase-15 evidence citing `journal_anchor_mismatch` would go red;
+running them last also makes the new reason mean exactly "committed at intake, never edited since — and still
+not what the human signed". Measured in `docs/evidence/phase-15/envelope-binding-probe-batchE.txt`, probe P2(b).
+
+**Schema members are OPTIONAL, and that is a trade the owner should rule on.** `CURRENT_SCHEMA_VERSION` is one
+`z.literal(1)` shared by all 21 contracts, and file-backed registries parse persisted state with these schemas,
+so a required member would either force a global version bump plus migrations for one envelope field, or make
+existing state directories unreadable at load — a crash, not a fail-closed refusal. Neither member has a
+default: `canonicalHash([])` was explicitly rejected, because a default here forges what the human signed.
+Absence is therefore not fail-open — enforcement refuses an unbound envelope before enforcing anything — but
+the honest statement of the trade is that the guarantee is **unrepresentable at intake and unenforceable at the
+gate**, rather than unrepresentable everywhere.
+
+**Approval-time posture (a decision, not an omission).** `contract.approve` verifies the token against the
+envelope digest it derives server-side (CRITICAL C1), and that digest now covers the budget hash — so the
+binding is signature-checked at approval by construction. A literal provisional-contract lookup inside
+`runContractApprove` was considered and refused: no durable provisional-`PerformanceContract` registry exists
+(intake registers ChangeSet/envelope/intent-contract/requirements/work-units and nothing else), and reading
+15's journal anchor from 11's surface is the 11 → 15 edge this ledger already refuses as a phase-level cycle
+(Gap 21). The alternatives were a new file-backed registry threaded through `IntakeDeps`/`ContractApproveDeps`/
+`bootstrap.ts`, or that cycle. A record tampered between intake and approval is caught fail-closed at the gate
+by checks 1-5 before anything is enforced. Recorded at the decision point in
+`packages/perf/src/contract/hash-link.ts` as well as here.
+
+**No new package edge.** `packages/perf` receives the resolved envelope from its caller
+(`getApprovedEnvelope`, resolved server-side from the ChangeSet — the same posture as C1); the comparison is a
+string equality; both sides reach the shared shapes through `@crabgic/contracts`. 11 → 15 stays refused.
+
+**Phases affected:** 02 (`AuthorizationEnvelope` / `PerformanceContract` schema members), 11 (derivation, and
+the digest coverage that makes the token sign it), 15 (the two new ordered checks + the enforced-record
+member), 24 (`criteria-seal.ts`'s "authority fields only" framing is amended — the envelope content hash now
+covers authority fields plus the provisional budget hash, still never criteria).
+
+**Verified in:** `packages/contracts/src/contracts/authorization-envelope.ts` (`provisionalBudgetHash`);
+`packages/contracts/src/contracts/performance-contract.ts` (`approvedEnvelopeHash`);
+`packages/contracts/src/contracts/criteria-seal.ts` (amended header);
+`packages/supervisor/src/intake/envelope-builder.ts` + `intake-pipeline.ts` (`RequestedEnvelopeContent`, the
+derivation site); `packages/perf/src/contract/hash-link.ts` (checks 4-5) + `contract-builder.ts`;
+`packages/perf/src/gate/performance-gate.ts` (`getApprovedEnvelope`);
+`roadmap/{02,11,15,24}`'s coordinated in-place clauses (all four line-count-neutral, so every pre-existing
+line anchor into those files still resolves — swept in both notations).
+
+**Disclosed residuals — labelled, not claimed closed:**
+
+1. Enforcement still has no production caller (`createPerformanceGateHandler` — Gap 21's residual, unchanged).
+   The binding is evidenced through 14's real registry and 04's real journal in tests and the
+   `perf-conformance` job, not through a shipped run.
+2. Legacy envelopes persisted before this axis parse but cannot pass enforcement: a pre-upgrade intake
+   replayed post-upgrade returns the journaled unbound envelope and fails closed at the gate. Same ruling as
+   Gap 21 residual 4 — drain in-flight runs before upgrading; a fresh `requestKey` re-intake is the remedy.
+3. `amendEnvelope` takes the binding from its caller rather than deriving it, because the previous envelope can
+   be unresolvable and inventing a value there would be fail-open. A wrong value produces a new envelope hash
+   the human must re-approve and still fails closed at the gate, so it buys nothing — but it is a
+   caller-supplied field on a surface whose sibling is derived, and it is recorded rather than hidden.
+4. A renderer that lies about the budgets while every hash stays consistent is outside any hash scheme. The
+   guarantee is "enforcement is bound to the digest the token signed", not "the human understood the render".
