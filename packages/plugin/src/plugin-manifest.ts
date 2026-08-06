@@ -119,7 +119,7 @@ function validateSubagentFile(pluginRoot: string, name: string): ManifestFinding
   } catch {
     return { kind: "subagent", name, ok: false, problems: [`missing file: agents/${name}.md`] };
   }
-  const { attributes } = safeParseFrontmatter(content, problems);
+  const { attributes, raw } = safeParseFrontmatter(content, problems);
   if (attributes.name !== name) {
     problems.push(
       `frontmatter "name" (${JSON.stringify(attributes.name)}) does not match "${name}"`,
@@ -147,20 +147,35 @@ function validateSubagentFile(pluginRoot: string, name: string): ManifestFinding
   // `maxTurns` is OPTIONAL — omitting it is a (costly) default, not a
   // malformed manifest — but declaring it WRONGLY is worse than omitting it,
   // because it looks like a bound and is not one. Measured against the pinned
-  // 2.1.218 engine binary: an unparseable value is warned about
-  // ("Plugin agent file … has invalid maxTurns '…'. Must be a positive
-  // integer.") and then DROPPED, silently restoring the built-in 200-turn
-  // default. A subagent's turns never reach the parent's `num_turns`, so
-  // nothing downstream would notice.
+  // 2.1.218 engine binary (`docs/engine-baseline.md` §21): a value the loader
+  // cannot read is warned about ("Plugin agent file … has invalid maxTurns
+  // '…'. Must be a positive integer.") and then DROPPED, silently restoring
+  // the built-in 200-turn default. A subagent's turns never reach the parent's
+  // `num_turns`, so nothing downstream would notice.
   //
-  // Asserted on the raw literal rather than on a parsed number: this
-  // package's minimal frontmatter parser has no numeric scalar (it yields
-  // the string "30"), and the literal is what the engine's own YAML parser
-  // reads anyway.
-  const maxTurns = attributes.maxTurns;
-  if (maxTurns !== undefined && !/^[1-9][0-9]*$/.test(String(maxTurns))) {
+  // READ FROM `raw`, NOT FROM `attributes` — and that is the whole point of
+  // this rule's second revision (review finding, 2026-08-06). `parseScalar`
+  // strips one layer of DOUBLE quotes, so an `attributes`-based check saw
+  // `maxTurns: "30"` as a bare `30` and passed it, while `maxTurns: '30'` was
+  // rejected because single quotes survive that stripper. One value, two
+  // spellings, two verdicts, decided by our own parser rather than by the
+  // engine.
+  //
+  // ONLY THE BARE INTEGER LITERAL IS ACCEPTED, and the reason is a limit of
+  // the evidence rather than a claim about quotes. §21 records `$to()`
+  // coercing via `String(e)` before its integer test, which POINTS toward a
+  // quoted value being coerced and installed — but the coercion helper it
+  // calls shares a mangled name with a second, unrelated function in the same
+  // bundle, and the loader's warning could not be surfaced through any free
+  // local command to decide between them (`plugin details`, with and without
+  // `-d`, prints nothing even for a deliberately invalid value). So the bare
+  // literal is the one form whose installation is settled, and it is the one
+  // form this manifest allows. If a later probe settles the quoted case, this
+  // rule may be relaxed — not before.
+  const maxTurns = raw.maxTurns;
+  if (maxTurns !== undefined && !/^[1-9][0-9]*$/.test(maxTurns)) {
     problems.push(
-      `frontmatter "maxTurns" (${JSON.stringify(maxTurns)}) must be a positive integer — the engine warns and DROPS an invalid value, silently restoring its built-in 200-turn default`,
+      `frontmatter "maxTurns" (${JSON.stringify(maxTurns)}) must be a BARE positive integer literal, unquoted — a value the engine's loader cannot read is warned about and dropped, silently restoring its built-in 200-turn default, and quoted forms are undetermined at the pinned engine version (docs/engine-baseline.md §21)`,
     );
   }
   return { kind: "subagent", name, ok: problems.length === 0, problems };
@@ -169,12 +184,12 @@ function validateSubagentFile(pluginRoot: string, name: string): ManifestFinding
 function safeParseFrontmatter(
   content: string,
   problems: string[],
-): { attributes: Readonly<Record<string, unknown>> } {
+): { attributes: Readonly<Record<string, unknown>>; raw: Readonly<Record<string, string>> } {
   try {
     return parseFrontmatter(content);
   } catch (err) {
     problems.push(err instanceof Error ? err.message : String(err));
-    return { attributes: {} };
+    return { attributes: {}, raw: {} };
   }
 }
 

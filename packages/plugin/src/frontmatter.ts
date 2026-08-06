@@ -8,6 +8,18 @@
  */
 export interface ParsedFrontmatter {
   readonly attributes: Readonly<Record<string, string | boolean | readonly string[]>>;
+  /**
+   * Each key's VERBATIM value text, trimmed but otherwise untouched — quotes
+   * still on, no boolean/array interpretation.
+   *
+   * `attributes` is lossy on purpose (it hands callers usable values), and one
+   * of its losses is load-bearing: `parseScalar` strips a layer of double
+   * quotes, so `k: "30"` and `k: 30` become indistinguishable there while
+   * `k: '30'` does not. A caller that must judge the LITERAL a downstream YAML
+   * parser will see — as `validateSubagentFile` does for `maxTurns` — has to
+   * read it before that stripping, which is what this map is for.
+   */
+  readonly raw: Readonly<Record<string, string>>;
   readonly body: string;
 }
 
@@ -56,6 +68,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
     .replace(/^\n+/, "");
 
   const attributes: Record<string, string | boolean | readonly string[]> = {};
+  const raw: Record<string, string> = {};
   for (const line of frontmatterLines) {
     if (line.trim().length === 0) continue;
     const separatorIndex = line.indexOf(":");
@@ -67,7 +80,8 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
     const key = line.slice(0, separatorIndex).trim();
     const value = line.slice(separatorIndex + 1);
     attributes[key] = parseScalar(value);
+    raw[key] = value.trim();
   }
 
-  return { attributes, body };
+  return { attributes, raw, body };
 }

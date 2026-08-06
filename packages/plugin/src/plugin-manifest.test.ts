@@ -211,6 +211,36 @@ describe("validatePluginManifest — rejects an incomplete manifest (work item 1
     }
   });
 
+  it("rejects a QUOTED maxTurns in either quote style — only the bare integer literal is verified to install", () => {
+    // Review finding, 2026-08-06. The first version of this rule read the
+    // PARSED attribute, and `parseScalar` (`./frontmatter.ts`) strips one
+    // layer of DOUBLE quotes — so `maxTurns: "30"` arrived as a bare `30` and
+    // passed, while `maxTurns: '30'` (single quotes survive that stripper)
+    // was rejected. Two spellings of one value, two verdicts, for a reason
+    // that has nothing to do with the engine.
+    //
+    // What the engine does with a quoted value is UNDETERMINED at 2.1.218 —
+    // see the note at the rule itself. Only the bare integer literal is
+    // settled, so only the bare integer literal is accepted, and the two
+    // quote styles now agree.
+    const dir = makeTmpDir();
+    for (const name of REQUIRED_SKILL_NAMES) writeSkill(dir, name);
+    writeSubagent(dir, "eo-explore", '["Read"]', "haiku", 'maxTurns: "30"\n');
+    writeSubagent(dir, "eo-reviewer", '["Read"]', "haiku", "maxTurns: '30'\n");
+    for (const name of REQUIRED_SUBAGENT_NAMES.filter(
+      (n) => n !== "eo-explore" && n !== "eo-reviewer",
+    )) {
+      writeSubagent(dir, name);
+    }
+
+    const result = validatePluginManifest(dir);
+    for (const name of ["eo-explore", "eo-reviewer"]) {
+      const finding = result.findings.find((f) => f.kind === "subagent" && f.name === name);
+      expect(finding?.ok).toBe(false);
+      expect(finding?.problems.some((p) => p.includes('"maxTurns"'))).toBe(true);
+    }
+  });
+
   it("CONTROL: omitting maxTurns entirely is not a problem — the rule is optional-but-well-formed", () => {
     // Without this, "every subagent is rejected" would satisfy the two cases
     // above equally well. Omission is a (costly) default, not a malformed
