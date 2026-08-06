@@ -104,3 +104,90 @@ committed under `docs/evidence/phase-23/closeout/`. The work is reading four doc
 **Needs:** nothing live, no Docker, no credentials, no engine.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06 — steps 1-4 landed, the box stays UNTICKED
+
+Landed by the closeout wave's docs batch (branch `closeout/batch-f`). Everything above is left
+verbatim; this is the dated addendum. **The remedy is done and the criterion is still UNMET** —
+those are two different statements, and conflating them is what this addendum exists to prevent.
+
+### The remedy's five steps, as landed
+
+| Step | Asked for                                                                                              | Landed at                                                                                                                                                                                                                                                                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | refresh the snapshot section to the archived final reports and retire the "owed before v1.0.0" list    | `docs/compatibility-matrix.md:189` (§1, the snapshot superseded against both committed `final` reports — 15 PASS / 0 FAIL, **158** linked entries in the `2435cb9` report and **160** in the `6b9dd7b` one, never crossed) and `docs/compatibility-matrix.md:211` (§2, the owed list retired item by item) |
+| 2    | rewrite the ARM64 close-out to cite runs 30249293110 and 30581597639                                   | `docs/compatibility-matrix.md:123` — a dated block naming jobs 89923390404 and 91002998165, each quoting the **pair** `  "arch": "$(uname -m)",` / `  "arch": "aarch64",`                                                                                                                                  |
+| 3    | add run/record citations to each substantive claim                                                     | landed where an RC-scoped citation exists; **measured, and it does not reach every claim** — see the census below                                                                                                                                                                                          |
+| 4    | re-scope `docs/security-posture.md`, and tick `docs/release-notes-prep.md:54`                          | `docs/security-posture.md:319` (release-line re-scope + the manifest-count correction) and `docs/release-notes-prep.md:54`, ticked, with a dated registry-checked note beneath it                                                                                                                          |
+| 5    | _(optional)_ strengthen `e2e/attestation/src/releaseDocsCommitted.ts` to require a run-shaped citation | **DELIBERATELY NOT DONE** — see below                                                                                                                                                                                                                                                                      |
+
+**Step 5, not done, with the reason rather than silently.** `npm run check:e2e-types` is **red on
+`origin/main`** (25 pre-existing `DispatchAttemptOptions` errors in `e2e/matrix/orchestration`,
+and the script is `&&`-chained fourth so it short-circuits before most projects). The step is
+explicitly optional in the record above, and a docs-only batch does not buy an `e2e/` source edit
+plus an individual per-project typecheck for an optional hardening. It stays available.
+
+### Why the box is still unticked — the census, with numbers
+
+The criterion's second conjunct is a universal quantifier: _every_ claim cites a passing CI run or
+`EvidenceRecord` **from the release candidate**. A mechanical claim census (status-verb extraction
+over the four documents, every extracted item listed with its bucket in
+`docs/evidence/phase-23/closeout/c14-release-docs-citations.txt` — no hand-check bucket that
+nobody hand-checks):
+
+|                   | status-bearing lines | RC CI run | archived RC report | non-candidate artifact | disclosure |
+| ----------------- | -------------------- | --------- | ------------------ | ---------------------- | ---------- |
+| at `origin/main`  | **108**              | 0         | 0                  | 97                     | 11         |
+| after this remedy | **134**              | 3         | 5                  | **112**                | 14         |
+
+Eight of 134. The remaining 112 are not a bookkeeping gap that more citing would close:
+
+- the **Grafana OSS/Enterprise 12.4 and Enterprise 13.1 "live-smoke-tested, PASS" rows** and the
+  **Jira DC container-recipe rows** rest on _local docker transcripts dated 2026-07-24_, three days
+  before the v1.0.0 candidate. No CI run at either candidate ever executed them, and docker is
+  outside this wave's authorization;
+- the **Claude Code engine range** and the **30-of-32 sub-probe tally** rest on
+  `docs/engine-baseline.md` — live, owner-gated, pre-candidate;
+- the **x86-64 / WSL2 "Verified, hardware-tested" rows** are about the developer host, not about
+  any CI run at all;
+- `docs/security-posture.md`'s per-surface review is dated 2026-07-24 and scopes itself to the
+  1.3.0-era model, with its own 1.5.0 re-review recorded as **owed** in the document.
+
+Reclassifying those as "disclosures" would be a reading trick — they are present-tense
+verified-status claims, not gap statements. So the remedy lands, and the box does not move.
+
+### Two shifts this remedy causes, disclosed
+
+1. Inserting the ARM64 correction after `docs/compatibility-matrix.md:121` moves what this record
+   cites as `:125-131` and `:140-145`. Those spans are now `:159-165` and `:174-179`. **The line
+   numbers in the body above are left as written**: they are pinned to `3dec9bf`, this record says
+   so, and a merged record's own capture is not retro-edited. The only other inbound references
+   into that range were the phase-23 criterion-14 item and the `roadmap/23:175` annotation, both of
+   which this same change rewrites.
+2. `docs/release-notes-prep.md:54` changes, because ticking that box **is** step 4 of this remedy.
+
+Everything else was placed under a notation-aware inbound-citation census: the highest surviving
+merged citation into `docs/compatibility-matrix.md` is `:118` and into `docs/security-posture.md`
+is `:311`, so the two insertions go below both. Verified mechanically afterwards — of
+`docs/security-posture.md`'s 73 inbound-cited lines, 73 are byte-identical to `origin/main`.
+
+### One sha-scoped drift in the table above, noted rather than corrected
+
+The Gap table records `docs/security-posture.md` at **519** lines and two standalone
+`EVIDENCE-PENDING` markers in `docs/operator-guide.md`. At `c0b3873` that file was **525** lines,
+and the operator guide's two occurrences of the marker are vocabulary references inside prose
+rather than pending claims. Both are consequences of the sha this record pins, not errors in it.
+
+### Two findings this remedy turned up that were not in the record above
+
+- **`docs/upgrade-guide.md` pointed at a section that does not exist.** Its
+  "Marketplace / plugin trust" paragraph sent readers to "`docs/compatibility-matrix.md`'s
+  reproducible-build section". That document has nine headings and none of them is about
+  reproducible builds. Corrected, from below, in the upgrade guide's new anchor section; the
+  original sentence is left verbatim.
+- **`docs/security-posture.md` claims "7 blocking entries" twice** (`:178` and, before this
+  change, `:506`). The manifest has **six**: `packages/gates/src/security-fixture-manifest.ts`
+  declares entry ids at `:237`, `:249`, `:285`, `:292`, `:313` and `:327`. The two tautological
+  tenant entries were replaced by one real Grafana tenant-boundary entry in PRs #94/#100 — seven
+  minus two plus one. Both copies of the number were found before the correction was written, and
+  both are named in it.

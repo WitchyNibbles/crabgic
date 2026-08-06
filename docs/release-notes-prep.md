@@ -51,4 +51,25 @@ point — not resolved retroactively here.
 
 - [x] `crabgic` name-availability verdict recorded
       (work item 6, this document).
-- [ ] Real `v1.0.0` publish — owned by phase 23, not this phase.
+- [x] Real `v1.0.0` publish — owned by phase 23, not this phase.
+
+## Evidence (2026-08-06)
+
+The box above was ticked by the closeout pass that checked it, against the public registry
+rather than against a workflow's report of itself. Read-only throughout; nothing was published,
+tagged or dispatched.
+
+- `npm view crabgic versions` lists `1.0.0` through `1.5.0`; `npm view crabgic dist-tags`
+  returns `{ latest: '1.5.0' }`.
+- `npm view crabgic@1.0.0 dist.attestations` returns a `provenance` object whose
+  `predicateType` is `https://slsa.dev/provenance/v1`. That is the only provenance fact checked
+  here, and it is stated no more strongly than that.
+- The current line was published by the tag-gated `publish` run
+  [30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006) at `6b9dd7b`,
+  whose publish job 91005463475 logs `+ crabgic@1.5.0` after signing a provenance statement.
+- Disclosed, because it is easy to misread: the **v1.0.0** tag's own publish run 30249669814 is
+  **red**. What failed in it is the POST-publish re-check — the registry had not begun serving a
+  brand-new package name — not the publish, which succeeded with provenance. The first bullet
+  above is that re-check, passing today.
+
+Captured verbatim in `docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`.

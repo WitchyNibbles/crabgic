@@ -1,0 +1,568 @@
+# Phase 23 criterion 14 — the four release docs vs the release candidates (2026-08-06). VERDICT: conjunct A met, conjunct C met, conjunct B NOT closed — the box stays UNTICKED.
+#
+# RULING-3 header
+# captured (UTC):  2026-08-06T10:50:50Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see note): 609ea1c28119adc04a2b943292dc8e875c7c019d
+#
+# NOTE ON PROVENANCE, stated rather than implied: the commands below ran against the
+# WORKING TREE of branch closeout/batch-f at the moment of capture — i.e. the upstream
+# base above PLUS this batch's uncommitted edits, which are the edits committed in the
+# very commit that carries this file. A reader re-running them at the merge commit of
+# this branch sees the same output; a reader at the UPSTREAM BASE sees the pre-edit
+# state, which is exactly what the "before" halves below record.
+# Every command is echoed verbatim and followed by its own exit status. A RED grep is a
+# result, not a failure, and is labelled as such.
+
+# ============================================================================
+# PART 1 — CONJUNCT A, "are committed". Proven the playbook's way: `git log`
+# over the path (empty => never committed) plus `git cat-file -e`. `ls` proves
+# nothing, because a working tree cannot distinguish a gitignored build output
+# from a committed file.
+# ============================================================================
+
+$ git log --oneline --all -- docs/compatibility-matrix.md | tail -3
+d992b7f fix: resolve doc citations against the committed tree, not the working directory
+23e61e0 fix: close the sandbox Bash escape, and correct an over-broad claim
+3e5a00e docs: phase 23 security review + release compatibility/operator/upgrade docs
+# exit=0
+
+
+$ git log --oneline --all -- docs/operator-guide.md | tail -3
+3e74cc7 refactor: rename the project from engineering-orchestrator to crabgic
+d992b7f fix: resolve doc citations against the committed tree, not the working directory
+3e5a00e docs: phase 23 security review + release compatibility/operator/upgrade docs
+# exit=0
+
+
+$ git log --oneline --all -- docs/security-posture.md | tail -3
+bfad0cc docs: rule the conversation-first approval and roast-loop amendments
+c92ba44 docs: rule the conversation-first approval and roast-loop amendments
+3e5a00e docs: phase 23 security review + release compatibility/operator/upgrade docs
+# exit=0
+
+
+$ git log --oneline --all -- docs/upgrade-guide.md | tail -3
+3e74cc7 refactor: rename the project from engineering-orchestrator to crabgic
+23e61e0 fix: close the sandbox Bash escape, and correct an over-broad claim
+3e5a00e docs: phase 23 security review + release compatibility/operator/upgrade docs
+# exit=0
+
+
+$ for f in docs/compatibility-matrix.md docs/operator-guide.md docs/security-posture.md docs/upgrade-guide.md; do git cat-file -e "origin/main:$f" && echo "committed at origin/main: $f"; done
+committed at origin/main: docs/compatibility-matrix.md
+committed at origin/main: docs/operator-guide.md
+committed at origin/main: docs/security-posture.md
+committed at origin/main: docs/upgrade-guide.md
+# exit=0
+
+
+# ...and at the release candidate itself, not merely at HEAD.
+$ for f in docs/compatibility-matrix.md docs/operator-guide.md docs/security-posture.md docs/upgrade-guide.md; do git cat-file -e "6b9dd7bf6bd5c4c0873a6efa9ce4fd9360b321bb:$f" && echo "committed at the 6b9dd7b candidate: $f"; done
+committed at the 6b9dd7b candidate: docs/compatibility-matrix.md
+committed at the 6b9dd7b candidate: docs/operator-guide.md
+committed at the 6b9dd7b candidate: docs/security-posture.md
+committed at the 6b9dd7b candidate: docs/upgrade-guide.md
+# exit=0
+
+
+# The archived final reports this pass cites are committed too — same proof.
+$ git log --oneline --all -- docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json | tail -2
+7affad3 test(roadmap): close phase 23's exit criteria — 13 of 16 evidenced, 3 defects filed
+a3cef7c test(roadmap): close phase 23's exit criteria — 13 of 16 evidenced, 3 defects filed
+# exit=0
+
+
+$ git cat-file -e origin/main:docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json && echo committed-6b9dd7b-report
+committed-6b9dd7b-report
+# exit=0
+
+
+$ git cat-file -e origin/main:docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json && echo committed-2435cb9-report
+committed-2435cb9-report
+# exit=0
+
+
+# ============================================================================
+# PART 2 — THE JOB-LOG BYTE COMPARISON. Every job-log line quoted anywhere in
+# this batch, compared against a freshly downloaded log under the ONE-SPACE
+# rule: ANSI-strip, then strip the timestamp and its ONE separator space.
+# vitest's own content then leads with one space before the check mark. The
+# comparer keys on the FULL quoted line — never on a test count, which is not
+# unique. Its own mutation tests are at the end of the output.
+# ============================================================================
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/compare-batchF.mjs
+# 29 quoted job-log line(s), byte-compared under the one-space rule
+OK   job 92577396650:954  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/capability-tools-over-stdio.test.ts (3 tests) 59ms"
+       used by: 12 c5 AFTER — the bearer executing
+OK   job 92577396650:1053  unique exact match at the claimed line
+       quoted: " Test Files  636 passed (636)"
+       used by: 12 c5 AFTER — totals
+OK   job 92577396650:1054  unique exact match at the claimed line
+       quoted: "      Tests  6483 passed | 1 skipped (6484)"
+       used by: 12 c5 AFTER — totals
+OK   job 92571158157:1051  unique exact match at the claimed line
+       quoted: " Test Files  635 passed (635)"
+       used by: 12 c5 BEFORE — totals
+OK   job 92571158157:1052  unique exact match at the claimed line
+       quoted: "      Tests  6480 passed | 1 skipped (6481)"
+       used by: 12 c5 BEFORE — totals
+OK   job 92577396650:931  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 102ms"
+       used by: 12 c5 CONTROL — a count that should NOT move (after)
+OK   job 92571158157:930  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 107ms"
+       used by: 12 c5 CONTROL — a count that should NOT move (before)
+OK   job 92577396650:733  unique exact match at the claimed line
+       quoted: " ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8311ms"
+       used by: 12 c5 CONFOUND — PR #110's only test-file edit (after)
+OK   job 92571158157:733  unique exact match at the claimed line
+       quoted: " ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8531ms"
+       used by: 12 c5 CONFOUND — same file (before)
+OK   job 92577396639:286  unique exact match at the claimed line
+       quoted: "✖   header must not be longer than 100 characters, current length is 102 [header-max-length]"
+       used by: 12 c5 RED-RUN ATTRIBUTION — the sole failing job
+OK   job 89923390404:1640  unique exact match at the claimed line
+       quoted: "  \"arch\": \"$(uname -m)\","
+       used by: 23 c14 ARM64 @2435cb9 — the unexpanded heredoc
+OK   job 89923390404:1656  unique exact match at the claimed line
+       quoted: "  \"arch\": \"aarch64\","
+       used by: 23 c14 ARM64 @2435cb9 — what the machine reported
+OK   job 89923390404:822  unique exact match at the claimed line
+       quoted: " Test Files  557 passed (557)"
+       used by: 23 c14 ARM64 @2435cb9 — lane totals
+OK   job 89923390404:823  unique exact match at the claimed line
+       quoted: "      Tests  4672 passed (4672)"
+       used by: 23 c14 ARM64 @2435cb9 — lane totals
+OK   job 91002998165:1866  unique exact match at the claimed line
+       quoted: "  \"arch\": \"$(uname -m)\","
+       used by: 23 c14 ARM64 @6b9dd7b — the unexpanded heredoc
+OK   job 91002998165:1882  unique exact match at the claimed line
+       quoted: "  \"arch\": \"aarch64\","
+       used by: 23 c14 ARM64 @6b9dd7b — what the machine reported
+OK   job 91002998165:997  unique exact match at the claimed line
+       quoted: " Test Files  605 passed (605)"
+       used by: 23 c14 ARM64 @6b9dd7b — lane totals
+OK   job 91002998165:998  unique exact match at the claimed line
+       quoted: "      Tests  5802 passed | 1 skipped (5803)"
+       used by: 23 c14 ARM64 @6b9dd7b — lane totals
+OK   job 91002998119:903  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/bootstrap.test.ts (17 tests) 91ms"
+       used by: 23 c14 operator-guide anchor
+OK   job 91002998119:922  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/commands/connection-dispatch.test.ts (8 tests) 30ms"
+       used by: 23 c14 operator-guide anchor
+OK   job 91002998119:923  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/installer/merge.monotonic.property.test.ts (5 tests) 189ms"
+       used by: 23 c14 upgrade-guide anchor
+OK   job 91002998119:965  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/installer/drift.fixtures.test.ts (7 tests) 44ms"
+       used by: 23 c14 upgrade-guide anchor
+OK   job 91002998119:797  unique exact match at the claimed line
+       quoted: " ✓  @crabgic/scheduler  src/run-driver.test.ts (15 tests) 256ms"
+       used by: 23 c14 security-posture anchor
+OK   job 91002998119:1008  unique exact match at the claimed line
+       quoted: " Test Files  605 passed (605)"
+       used by: 23 c14 RC ubuntu-latest totals
+OK   job 91002998119:1009  unique exact match at the claimed line
+       quoted: "      Tests  5802 passed | 1 skipped (5803)"
+       used by: 23 c14 RC ubuntu-latest totals
+OK   job 91004033370:863  unique exact match at the claimed line
+       quoted: " ✓ src/reproducibleBuildCheck.test.ts (8 tests) 2035ms"
+       used by: 23 c14 upgrade-guide reproducible-build correction
+OK   job 91004033370:864  unique exact match at the claimed line
+       quoted: "     ✓ two independent clean checkouts of the exact same commit produce byte-identical tarballs  1017ms"
+       used by: 23 c14 — the byte-identical-tarball case
+OK   job 91004033370:865  unique exact match at the claimed line
+       quoted: "     ✓ FAIL-FIRST PROOF, real end to end: perturbing one checkout's copied dist by one byte after populateBuildOutput fails the real comparator  984ms"
+       used by: 23 c14 — its fail-first sibling
+OK   job 91004033370:929  unique exact match at the claimed line
+       quoted: " ✓ src/versionSupportWindows.test.ts (19 tests) 15ms"
+       used by: 23 c14 support-window bearer at the candidate
+
+# MUTATION TESTS OF THE COMPARER ITSELF (all four must be CAUGHT)
+CAUGHT  falsified count -> NOT FOUND (exact, one-space rule)
+CAUGHT  moved line (claim :955) -> claimed line 955 but the text is at 954
+CAUGHT  RIGHT-COUNT / WRONG-FILE: a real line, real count, claimed at another suite's line -> claimed line 954 but the text is at 931
+CAUGHT  two-space form (must NOT match under the one-space rule) -> NOT FOUND (exact, one-space rule)
+CONTROL OK  the unmutated quote -> unique exact match at the claimed line
+
+# how non-unique a bare count is, measured: "(3 tests)" occurs at 71 line(s) in this one log — which is why the comparer keys on the full line, path included.
+
+# result: 0 problem(s)
+# exit=0
+
+
+# ============================================================================
+# PART 3 — THE MECHANICAL CENSUS. Every backticked repository path in the four
+# documents, classified, and each test path keyed against the RELEASE
+# CANDIDATE's own job logs. A file absent from the candidate's log is a
+# finding on the post-RC disclosure list, not a stop-ship.
+# ============================================================================
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/doccensus-batchF.mjs --mutate
+(1) fabricated test path -> CAUGHT (absent)
+    control — a real RC-era suite -> found at 902
+(2) right-count/wrong-file (`(16 tests)` also at 372,402,423,546,555) -> CAUGHT: claimed line 372 but the text is at 902
+(3) section-name ref "reproducible-build section" in docs/compatibility-matrix.md -> CAUGHT: NO SUCH SECTION (headings: 14)
+# exit=0
+
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/doccensus-batchF.mjs 2>/dev/null | sed -n '1,2p;/POST-RC DISCLOSURE/,$p'
+# doccensus-batchF — 116 backticked repo path(s) across the four docs
+# by kind: {"non-test":99,"e2e-lane":9,"packages-test":8}
+# POST-RC DISCLOSURE LIST — 3 cited test file(s) did NOT run at the release candidate:
+  docs/security-posture.md -> packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts (existed at RC: true)
+  docs/security-posture.md -> packages/engine-claude/src/live/path-anchor-differential.live.test.ts (existed at RC: false)
+  docs/security-posture.md -> packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts (existed at RC: false)
+
+# CITED PATHS THAT DO NOT RESOLVE IN THE CURRENT TREE — 4:
+  docs/operator-guide.md -> .claude/settings.json
+  docs/operator-guide.md -> .claude/crabgic-statusline.mjs
+  docs/operator-guide.md -> hooks/hooks.json
+  docs/upgrade-guide.md -> .claude/settings.json
+# exit=0
+
+
+# ============================================================================
+# PART 4 — THE CLAIM CENSUS, which is what decides conjunct B.
+#
+# OPERATIONAL READING, stated so a reviewer can attack it. A SUBSTANTIVE CLAIM
+# is a table row or sentence asserting a PRESENT verified / tested / passing /
+# shipped status of the release or its artifacts — the population the compat
+# matrix's own preamble defines ("Every claim below cites its source ... no
+# aspirational text"). Four buckets: RC-RUN (cites a release-candidate CI run),
+# RC-REPORT (cites a committed archived FINAL release-gate report at 2435cb9 or
+# 6b9dd7b), NON-RC (cites a committed artifact that is not candidate-scoped),
+# DISCLOSURE (an EVIDENCE-PENDING / owed / honest-limit statement, which is not
+# a claim). Extraction is mechanical; EVERY extracted item is listed below with
+# its bucket, so there is no "hand-check" bucket nobody hand-checked.
+# ============================================================================
+
+# BEFORE — the four documents as they stand at origin/main. Read FROM GIT, not
+# via a stash: the playbook records three ways a restore silently destroys
+# uncommitted work, all with clean exit codes.
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/claimcensus-batchF.mjs --rev origin/main
+# claimcensus-batchF — status-bearing lines, by document and citation channel (at origin/main)
+# (extraction mechanical; every item is listed below with its bucket — no unchecked bucket)
+docs/compatibility-matrix.md     total  28 | RC-RUN   0 | RC-REPORT   0 | NON-RC  21 | DISCLOSURE   7
+docs/operator-guide.md           total  20 | RC-RUN   0 | RC-REPORT   0 | NON-RC  18 | DISCLOSURE   2
+docs/security-posture.md         total  49 | RC-RUN   0 | RC-REPORT   0 | NON-RC  48 | DISCLOSURE   1
+docs/upgrade-guide.md            total  11 | RC-RUN   0 | RC-REPORT   0 | NON-RC  10 | DISCLOSURE   1
+
+TOTAL 108: {"DISCLOSURE":11,"NON-RC":97}
+# exit=0
+
+
+# AFTER — the same census on the tree this branch lands as.
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/claimcensus-batchF.mjs
+# claimcensus-batchF — status-bearing lines, by document and citation channel (WORKING TREE)
+# (extraction mechanical; every item is listed below with its bucket — no unchecked bucket)
+docs/compatibility-matrix.md     total  41 | RC-RUN   1 | RC-REPORT   5 | NON-RC  26 | DISCLOSURE   9
+docs/operator-guide.md           total  25 | RC-RUN   1 | RC-REPORT   0 | NON-RC  22 | DISCLOSURE   2
+docs/security-posture.md         total  54 | RC-RUN   1 | RC-REPORT   0 | NON-RC  51 | DISCLOSURE   2
+docs/upgrade-guide.md            total  14 | RC-RUN   0 | RC-REPORT   0 | NON-RC  13 | DISCLOSURE   1
+
+TOTAL 134: {"DISCLOSURE":14,"NON-RC":112,"RC-RUN":3,"RC-REPORT":5}
+# exit=0
+
+
+# Every item, with its bucket. This is the promise the "hand-check" ruling asks for.
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/claimcensus-batchF.mjs --list
+# claimcensus-batchF — status-bearing lines, by document and citation channel (WORKING TREE)
+# (extraction mechanical; every item is listed below with its bucket — no unchecked bucket)
+docs/compatibility-matrix.md     total  41 | RC-RUN   1 | RC-REPORT   5 | NON-RC  26 | DISCLOSURE   9
+docs/operator-guide.md           total  25 | RC-RUN   1 | RC-REPORT   0 | NON-RC  22 | DISCLOSURE   2
+docs/security-posture.md         total  54 | RC-RUN   1 | RC-REPORT   0 | NON-RC  51 | DISCLOSURE   2
+docs/upgrade-guide.md            total  14 | RC-RUN   0 | RC-REPORT   0 | NON-RC  13 | DISCLOSURE   1
+
+TOTAL 134: {"DISCLOSURE":14,"NON-RC":112,"RC-RUN":3,"RC-REPORT":5}
+[DISCLOSURE] docs/compatibility-matrix.md:12 | `claude` CLI (Claude Code)                               | **2.1.207 – 2.1.220** (accepted range). The upper end covers the **CLI transport only** and rests on a narrower evidentiary base 
+[DISCLOSURE] docs/compatibility-matrix.md:14 | Pinned release version (exact, in the published package) | Recorded as **EVIDENCE-PENDING** in this pass — the exact pin is asserted by the `engine-pin-lint` CI check (`scripts/check-engin
+[NON-RC] docs/compatibility-matrix.md:15 | 30 of 32 recorded engine sub-probes                      | PASS, zero FAIL, at **both of the two versions the suite has actually been run at — 2.1.210 and 2.1.218** — with zero behavioral 
+[NON-RC] docs/compatibility-matrix.md:27 | Jira Data Center **10.3**             | Container recipe committed: `docker/jira-datacenter/10.3/docker-compose.yml`                                                                        
+[NON-RC] docs/compatibility-matrix.md:28 | Jira Data Center **11.3**             | Container recipe committed: `docker/jira-datacenter/11.3/docker-compose.yml`                                                                        
+[DISCLOSURE] docs/compatibility-matrix.md:29 | Live DC container conformance run     | **EVIDENCE-PENDING.** The provisioning harness (`e2e/provisioning/src/provisioning.ts`, health-probe/compose-runner) and its own unit suite are real
+[DISCLOSURE] docs/compatibility-matrix.md:30 | Vendor support-window re-confirmation | **EVIDENCE-PENDING** — owed at the actual release cut, per 19's own deferred note and this phase's own exit criterion ("Jira DC / Grafana version-su
+[NON-RC] docs/compatibility-matrix.md:37 | Grafana OSS **12.4**                  | Container recipe committed and **live-smoke-tested, PASS**                                                                                          
+[NON-RC] docs/compatibility-matrix.md:38 | Grafana Enterprise **12.4**           | Container recipe committed and **live-smoke-tested, PASS**                                                                                          
+[NON-RC] docs/compatibility-matrix.md:39 | Grafana Enterprise **13.1**           | Container recipe committed and **live-smoke-tested, PASS** (image `grafana/grafana-enterprise:13.1` exists on Docker Hub, confirmed `200` as of 2026
+[DISCLOSURE] docs/compatibility-matrix.md:40 | Grafana **OSS 13.1**                  | **NOT vendor-published as of this pass — a genuine, reproducible vendor-timing asymmetry, not a defect in this recipe.** Docker Hub returns `404` fo
+[NON-RC] docs/compatibility-matrix.md:45 Grafana OSS and Enterprise **11.6** were committed to by earlier revisions of this
+[NON-RC] docs/compatibility-matrix.md:58 instead would have manufactured a green gate over a true finding.
+[NON-RC] docs/compatibility-matrix.md:60 Two self-managed Grafana targets remain committed, both inside their windows: **12.4**
+[NON-RC] docs/compatibility-matrix.md:75 scripts. Own test suite: **PASS** (`docs/evidence/phase-23/provisioning/vitest-run.txt` —
+[NON-RC] docs/compatibility-matrix.md:78 - Forced-abort teardown verification: **PASS** — a forced-abort scenario leaves no
+[NON-RC] docs/compatibility-matrix.md:80 (`docs/evidence/phase-23/provisioning/forced-abort-passing.txt`, 1 test file / 1 test
+[NON-RC] docs/compatibility-matrix.md:89 | Linux **x86-64** | **Verified, hardware-tested.** This host: `6.6.87.2-microsoft-standard-WSL2`, Node v24.18.0. Every engine-baseline probe (30/32 PASS), every phase's own package-level `t
+[NON-RC] docs/compatibility-matrix.md:90 | **WSL2**         | **Verified, host-confirmed.** This entire repository's development and CI-equivalent gate history to date has run under WSL2 on this exact kernel — WSL2 is not a separat
+[DISCLOSURE] docs/compatibility-matrix.md:91 | **ARM64**        | **Not hardware-verified in this pass.** See "ARM64 close-out" below for the full, honest status.                                                                         
+[DISCLOSURE] docs/compatibility-matrix.md:95 **Honest status: ARM64 has not been hardware-verified.** This host is x86_64
+[NON-RC] docs/compatibility-matrix.md:98 mechanism rather than a false hardware-verified claim, per this phase's own explicit
+[NON-RC] docs/compatibility-matrix.md:109 - **What this pass did NOT do:** claim ARM64 was hardware-verified when it wasn't, or silently
+[NON-RC] docs/compatibility-matrix.md:115 release-candidate object ID, and archive the resulting green run's URL/run-id as the
+[NON-RC] docs/compatibility-matrix.md:117 run exists, ARM64 support is a documented, CI-gated intent, not a verified fact — do not
+[NON-RC] docs/compatibility-matrix.md:118 cite it as hardware-verified in any release announcement.
+[NON-RC] docs/compatibility-matrix.md:119 - **x86-64 stands as the fully hardware-verified substrate** for this release, per the row
+[NON-RC] docs/compatibility-matrix.md:123 > **Superseded 2026-08-06 — ARM64 HAS since been CI-verified on real `aarch64` hardware, at BOTH
+[DISCLOSURE] docs/compatibility-matrix.md:125 > out of date, and the instruction it ends with ("do not cite it as hardware-verified in any
+[RC-RUN] docs/compatibility-matrix.md:151 > `      "verdict": "PASS",`; the `2435cb9` report carries the same item at the same offsets.
+[NON-RC] docs/compatibility-matrix.md:171 - **Verified, hardware/live-tested in this pass:** Claude Code engine facts (30/32 probes);
+[NON-RC] docs/compatibility-matrix.md:194 before the v1.0.0 candidate — and **two `final` reports now contradict it**, both committed
+[RC-REPORT] docs/compatibility-matrix.md:199 | `docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json` | `2435cb9` (v1.0.0) | `final` | 15    | 15 PASS / 0 FAIL | **158**                 |
+[RC-REPORT] docs/compatibility-matrix.md:200 | `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json` | `6b9dd7b` (v1.5.0) | `final` | 15    | 15 PASS / 0 FAIL | **160**                 |
+[RC-REPORT] docs/compatibility-matrix.md:216 | the full Jira Cloud/DC + Grafana Cloud live-conformance matrix, release-candidate-scoped                          | **Scored PASS, but on cassette evidence — read this before quoting it.**
+[RC-REPORT] docs/compatibility-matrix.md:217 | Jira DC / Grafana vendor support-window re-confirmation                                                           | **Scored PASS.** `docs/evidence/phase-23/closeout/release-gate-report-fi
+[RC-REPORT] docs/compatibility-matrix.md:219 | the exact pinned engine/SDK version's citation into a live `engine-pin-lint` CI run for this exact release commit | **Closed.** `engine-pin-lint` is green at both candidates (jobs 91002998
+[DISCLOSURE] docs/compatibility-matrix.md:220 | every release-gate-report checklist item currently marked `EVIDENCE-PENDING`                                      | **Superseded** by the two `final` reports in §1: 15 PASS, 0 FAIL, at bot
+[NON-RC] docs/compatibility-matrix.md:224 The row headed "Pinned release version (exact, in the published package)" above records itself as
+[NON-RC] docs/compatibility-matrix.md:235 status-bearing claims are cited to committed artifacts that pre-date the release candidates
+[NON-RC] docs/compatibility-matrix.md:236 rather than to a candidate-scoped CI run — measured, with numbers, in
+[NON-RC] docs/operator-guide.md:4 real, shipped CLI surface (`packages/cli/src/commands/`, `packages/cli/src/argv/types.ts`) —
+[NON-RC] docs/operator-guide.md:24 (`docs/evidence/phase-10/README.md`, property-tested over a fuzzed fixture corpus). Run
+[NON-RC] docs/operator-guide.md:31 path, so a committed `.claude/settings.json` stays portable across machines. Two engine
+[NON-RC] docs/operator-guide.md:40 directory; the plugin bundle itself passes the capability-quarantine pipeline (12) before
+[NON-RC] docs/operator-guide.md:58 envelope is tested for containment in the `EnvelopePolicy` `crabgic install` wrote — the one
+[NON-RC] docs/operator-guide.md:98 The token is single-use, HMAC-signed, verified server-side against that `ChangeSet`'s own
+[NON-RC] docs/operator-guide.md:124 published `RunStatusResultSchema` — the raw UDS result, never re-shaped — and that schema is
+[NON-RC] docs/operator-guide.md:142 Cancels a run (or, once 13's task-level semantics are wired, a single task within it) via the
+[NON-RC] docs/operator-guide.md:201 **Wired and functional in the shipped binary.** All three verbs dispatch to 12's real
+[NON-RC] docs/operator-guide.md:230 `report.json` is rewritten in place and holds only the _newest_ decision, so the journal — not
+[NON-RC] docs/operator-guide.md:247 **Three of the four are wired and functional in the shipped binary; `connection capabilities`
+[NON-RC] docs/operator-guide.md:262 > next" case proves the shipped composition root supplies it.
+[NON-RC] docs/operator-guide.md:305 - `learn approve <id>`: records one verified approval per invocation, through the identical
+[NON-RC] docs/operator-guide.md:313 system, permanently enforced by a CI-run grep check.
+[NON-RC] docs/operator-guide.md:339 committed**, so download it from the `release-gate-report` artifact of a `release-e2e` run, defined
+[NON-RC] docs/operator-guide.md:341 23 itself produces. The item list it scores is committed, at `e2e/report/src/checklist.ts`. It is
+[DISCLOSURE] docs/operator-guide.md:345 `verdict` (`PASS` / `EVIDENCE-PENDING` / a failing verdict — **never PASS-by-default on
+[DISCLOSURE] docs/operator-guide.md:348 `docs/compatibility-matrix.md`'s "What is EVIDENCE-PENDING vs. verified" section for this
+[NON-RC] docs/operator-guide.md:424 recorded it passes and says so — there is simply nothing to compare against
+[NON-RC] docs/operator-guide.md:465 The protocol is prose, so the "don't stop mid-run" half is also enforced by a hook. On every
+[RC-RUN] docs/operator-guide.md:501 **The release candidate this guide describes** is `6b9dd7b` — published as `crabgic@1.5.0`, the
+[NON-RC] docs/operator-guide.md:511 names two, and **both** ran green at the candidate — job-log line 903
+[NON-RC] docs/operator-guide.md:521 functional" claims**, are the release-gate item `gateway-cli-surface-complete`:
+[NON-RC] docs/operator-guide.md:523 `      "id": "gateway-cli-surface-complete",` and `:482` is `      "verdict": "PASS",`, over
+[NON-RC] docs/operator-guide.md:526 description of the release-gate report is that same committed artifact.
+[NON-RC] docs/security-posture.md:13 re-run any test itself; it verifies that the cited mitigation exists in the shipped code and
+[NON-RC] docs/security-posture.md:15 re-verified, per the evidence trail already on record.
+[NON-RC] docs/security-posture.md:23 specification commitment... not a verified-in-running-code fact"). It explicitly designates
+[NON-RC] docs/security-posture.md:27 after its initial TDD build, and the fixes from those passes are the load-bearing evidence
+[NON-RC] docs/security-posture.md:38 re-verified) test pair, recorded in the cited evidence file, before that phase's own build
+[NON-RC] docs/security-posture.md:50 finding blocks; a fixed finding, re-verified, does not).
+[NON-RC] docs/security-posture.md:61 otherwise-green TDD build, fixed with a failing-test-first regression, and re-verified
+[NON-RC] docs/security-posture.md:67 | Envelope compiler (§3)                                                            | CRITICAL              | `compileEnvelope`'s `//`-anchor emission for `ownedPaths` had no validation and 
+[NON-RC] docs/security-posture.md:68 | Git control repo / worktrees (§ worker runtime, transitively)                     | CRITICAL              | Argument injection / option smuggling: `control-clone.ts`'s `fetchRefresh` and `
+[NON-RC] docs/security-posture.md:69 | Intake / IntentContract / approval envelope (§ envelope compiler, upstream of §3) | CRITICAL              | Confused deputy: `contract.approve`'s handler took `changeSetId`/`digest`/`token
+[DISCLOSURE] docs/security-posture.md:73 | Gateway (§5)                                                                      | MEDIUM/HIGH (#3)      | The exactly-once crash matrix was proven only against a self-idempotent PUT; the
+[NON-RC] docs/security-posture.md:75 | Stack detection / capability quarantine (§7)                                      | HIGH                  | `walkRepoTree`'s symlink handling had no visited-realpath tracking and a `maxEnt
+[NON-RC] docs/security-posture.md:87 per-worker log ring buffer with backpressure) were all built and unit/property-tested; two
+[NON-RC] docs/security-posture.md:88 independent adversarial passes returned **no CRITICAL/MAJOR finding** for this package
+[NON-RC] docs/security-posture.md:89 (`docs/evidence/phase-05/README.md`: "Two independent Opus validators PASSED this phase's
+[NON-RC] docs/security-posture.md:108 a crash-loop for the confirmed-PASS credential fallback). Fixed by making
+[NON-RC] docs/security-posture.md:132 the new confinement matcher is non-vacuous) and returned **PASS**, raising only three LOW
+[NON-RC] docs/security-posture.md:139 pass found one MEDIUM (confirmed monotonicity violation: `mergeSettingsJson`/`mergeMcpJson`
+[NON-RC] docs/security-posture.md:148 format (`<plugin-name>@<marketplace-name>`, not the bare name) was verified live against the
+[NON-RC] docs/security-posture.md:158 re-verified against the full 278-test suite (`docs/evidence/phase-16/README.md`). The one
+[NON-RC] docs/security-posture.md:177 `remote_verification` gate binding every requirement's `EvidenceRecord` to a confirmed remote
+[NON-RC] docs/security-posture.md:184 Implementation: `packages/detect` (12). The confirmed-DoS HIGH finding (table above) was the
+[NON-RC] docs/security-posture.md:186 its model-self-approval-fails-closed test were confirmed sound. Two items the threat model
+[NON-RC] docs/security-posture.md:209 **vacuously tested** and the actual promotion guard checked only `tokenId` string
+[NON-RC] docs/security-posture.md:221 document now states the actually-enforced, actually-meetable invariant precisely: **no
+[NON-RC] docs/security-posture.md:228 Everything below this heading reviews the security posture **as shipped in `crabgic@1.3.0`**, in which
+[NON-RC] docs/security-posture.md:229 approval is a per-ChangeSet terminal prompt and §3's "the prompt is the only mint path" holds exactly as
+[NON-RC] docs/security-posture.md:241 detected a confinement escape by construction (§3 below). A subset check tested against envelopes it
+[NON-RC] docs/security-posture.md:261 survive precisely the pty wrapper that defeats an `isTTY` check, because `spawn` passes the parent
+[NON-RC] docs/security-posture.md:294 - **Against workers: enforced.** A worker is sandboxed with the state root outside its writable
+[NON-RC] docs/security-posture.md:295 set, so it cannot reach the policy. This is the boundary the policy exists to be, and it holds.
+[NON-RC] docs/security-posture.md:304 root-owned path, an OS keychain, or a signed artifact verified out-of-band), which is a product
+[DISCLOSURE] docs/security-posture.md:325 2026-07-24 and, by its own "Pending re-review" heading below, reviews the posture **as shipped in
+[NON-RC] docs/security-posture.md:326 `crabgic@1.3.0`**. The shipped line is **1.5.0** (`npm view crabgic dist-tags` -> `{ latest:
+[RC-RUN] docs/security-posture.md:330 whose blocking `release gate` job 91004033370 scored the whole checklist `final`, 15 PASS / 0
+[NON-RC] docs/security-posture.md:349 reddens the gate, where 247 tests previously stayed green.
+[NON-RC] docs/security-posture.md:361 | `packages/scheduler/src/run-driver.test.ts`                                 | **ran green at the candidate** — job-log line 797, ` ✓  @crabgic/scheduler  src/run-driver.test.ts (15 tests) 
+[NON-RC] docs/security-posture.md:391 engine 2.1.218, `docs/engine-baseline.md` §4.7) measured that a matched RULE-SHAPED entry
+[NON-RC] docs/security-posture.md:405 the allow path returns no opinion. Independently verified against the shipped CLI binary:
+[NON-RC] docs/security-posture.md:415 so its deny is enforced (fail-closed on bus failure too). For `Bash`/`Edit`/`Write` the
+[NON-RC] docs/security-posture.md:422 merge. Two exceptions are enforced even for built-ins: adjudication UNAVAILABLE denies
+[NON-RC] docs/security-posture.md:425 executed) is the alarm an auditor reads; the enforced boundary remains the engine's own
+[NON-RC] docs/security-posture.md:432 a backstop for grant shapes not yet measured; no document here claims it adjudicates the
+[NON-RC] docs/security-posture.md:433 compiled profile's own grants. Known measured/unmeasured divergences between the policy
+[NON-RC] docs/security-posture.md:434 and the engine, kept enumerable: unproven-metacharacter fail-closed (measured stricter,
+[NON-RC] docs/security-posture.md:435 §4.8), quote-unaware compound splitting (measured stricter, §4.8), `//`-anchored
+[NON-RC] docs/security-posture.md:437 Pre→Post `tool_input` stability is measured for `Bash` and `Write` by
+[NON-RC] docs/security-posture.md:447 therefore works — allow-scoping plus `dontAsk` auto-deny, both measured — while the
+[NON-RC] docs/security-posture.md:455 measurement was taken at the tested engine version; strictly, that was _asserted rather
+[NON-RC] docs/security-posture.md:464 not restated as verified-at-version by this change — re-running them under the canary is
+[NON-RC] docs/security-posture.md:521 MCP client anywhere in shipped source** — the gateway imports the SDK's server surface
+[NON-RC] docs/security-posture.md:538 budget. The journal anchor proves "this is what got committed at intake time," not "this is
+[NON-RC] docs/security-posture.md:553 on `unsupported`/`ambiguous_write` outcomes or a missing confirmed remote revision — never a
+[NON-RC] docs/security-posture.md:566 once phase 23's disposable environments are wired into it (see
+[NON-RC] docs/upgrade-guide.md:4 cited from the shipped installer implementation (`packages/cli/src/installer/`,
+[NON-RC] docs/upgrade-guide.md:82 stricter-than-default value is never loosened. This is proven by a fast-check property test
+[NON-RC] docs/upgrade-guide.md:115 `recoverInterruptedUpgrade`, restoring the pre-upgrade backup. This path is proven against a
+[NON-RC] docs/upgrade-guide.md:166 **accepted range and the tested version are different things** — `TESTED_ENGINE_VERSION`
+[NON-RC] docs/upgrade-guide.md:182 3. Compare every sub-probe's verdict against the prior baseline. If **every** PASS verdict
+[DISCLOSURE] docs/upgrade-guide.md:195 UNRESOLVED to PASS once the owner populated the token file out-of-band — an environmental
+[NON-RC] docs/upgrade-guide.md:198 narrower incidental re-capture, since the underlying facts were confirmed unchanged either
+[NON-RC] docs/upgrade-guide.md:218 **`<plugin-name>@<marketplace-name>`**, not the bare plugin name — verified live against
+[NON-RC] docs/upgrade-guide.md:225 The installer composes this key from the committed `marketplace.json`'s own `name` field via
+[NON-RC] docs/upgrade-guide.md:228 (`docs/evidence/phase-10/README.md`, "Engine-fact verified live"). If a future engine version
+[NON-RC] docs/upgrade-guide.md:241 (`docs/evidence/phase-10/README.md`, exit criterion 5). The plugin bundle itself passes
+[NON-RC] docs/upgrade-guide.md:257 the checklist `final`, 15 PASS / 0 FAIL. The same anchor rule as the operator guide applies to
+[NON-RC] docs/upgrade-guide.md:259 names two, and **both** ran green at the candidate in `CI / unit-test+coverage (ubuntu-latest)`
+[NON-RC] docs/upgrade-guide.md:276 `      "id": "reproducible-build",` and `:1556` is `      "verdict": "PASS",`, over three
+# exit=0
+
+
+# ============================================================================
+# PART 5 — npm registry state, read-only. Nothing published, tagged or
+# dispatched. This is what backs ticking docs/release-notes-prep.md's box.
+# ============================================================================
+
+$ npm view crabgic versions --json
+[
+  "1.0.0",
+  "1.0.1",
+  "1.0.2",
+  "1.1.0",
+  "1.1.1",
+  "1.1.2",
+  "1.2.0",
+  "1.3.0",
+  "1.4.0",
+  "1.5.0"
+]
+# exit=0
+
+
+$ npm view crabgic dist-tags --json
+{
+  "latest": "1.5.0"
+}
+# exit=0
+
+
+$ npm view crabgic@1.0.0 dist.attestations --json
+{
+  "url": "https://registry.npmjs.org/-/npm/v1/attestations/crabgic@1.0.0",
+  "provenance": {
+    "predicateType": "https://slsa.dev/provenance/v1"
+  }
+}
+# exit=0
+
+
+# ============================================================================
+# PART 6 — the NO-SHIFT constraint, and the surviving protected inbound
+# references, re-resolved at the final tree.
+# ============================================================================
+
+$ for n in 13 14 63 68 95 117 118; do printf 'docs/compatibility-matrix.md:%s: %s\n' "$n" "$(sed -n "${n}p" docs/compatibility-matrix.md | cut -c1-70)"; done
+docs/compatibility-matrix.md:13: | `@anthropic-ai/claude-agent-sdk`                         | **0.3.207
+docs/compatibility-matrix.md:14: | Pinned release version (exact, in the published package) | Recorded 
+docs/compatibility-matrix.md:63: What this does **not** change: `packages/connectors-grafana` keeps its
+docs/compatibility-matrix.md:68: withdrawn here. The `docker/grafana/11.6/` recipes are likewise retain
+docs/compatibility-matrix.md:95: **Honest status: ARM64 has not been hardware-verified.** This host is 
+docs/compatibility-matrix.md:117:   run exists, ARM64 support is a documented, CI-gated intent, not a ve
+docs/compatibility-matrix.md:118:   cite it as hardware-verified in any release announcement.
+# exit=0
+
+
+$ for n in 33 35 151 264 267 297 311; do printf 'docs/security-posture.md:%s: %s\n' "$n" "$(sed -n "${n}p" docs/security-posture.md | cut -c1-70)"; done
+docs/security-posture.md:33: ## Sign-off
+docs/security-posture.md:35: **No unresolved CRITICAL or HIGH security finding blocks this release.
+docs/security-posture.md:151: ### 5. Gateway
+docs/security-posture.md:264: consents to is the grant rather than a hex string a model handed them.
+docs/security-posture.md:267: the realistic case. It does **not** stop a deliberately evasive caller
+docs/security-posture.md:297:   owner's own authority and can edit the file, the source, or anything
+docs/security-posture.md:311:   capability-quarantine surface. Not currently exploitable — `capabi
+# exit=0
+
+
+# The one deliberate, disclosed shift: inserting the ARM64 correction after
+# docs/compatibility-matrix.md:121 moves the old :122-145. The ONLY inbound
+# references into that range are the phase-23 criterion-14 item this pass
+# rewrites, the roadmap 23:175 annotation it rewrites, and sha-pinned defect
+# prose (verified at 3dec9bf, never against the working tree).
+$ git diff -U0 -- docs/compatibility-matrix.md | grep -E '^@@'
+@@ -122,0 +123,34 @@ instruction:
+@@ -145,0 +180,59 @@ item — this document does not claim otherwise.
+# exit=0
+
+
+# And the second: ticking docs/release-notes-prep.md's box IS the remedy the
+# defect record asks for, so its cited line changing is the point.
+$ git diff -- docs/release-notes-prep.md | grep -E '^[-+]- \['
+-- [ ] Real `v1.0.0` publish — owned by phase 23, not this phase.
++- [x] Real `v1.0.0` publish — owned by phase 23, not this phase.
+# exit=0
+
+
+# ============================================================================
+# PART 7 — THE VERDICT ON CONJUNCT B, and why the box stays UNTICKED.
+#
+# 108 status-bearing lines at origin/main: 0 RC-RUN, 0 RC-REPORT, 97 NON-RC,
+# 11 DISCLOSURE. 134 after this pass: 3 RC-RUN, 5 RC-REPORT, 112 NON-RC,
+# 14 DISCLOSURE. So 8 of 134 carry a release-candidate citation and 112 do not,
+# and the criterion says EVERY claim.
+#
+# The residual is not a bookkeeping gap that more citing would close. These
+# families have no candidate-scoped run to be re-anchored to:
+#
+#   * the Grafana OSS/Enterprise 12.4 and Enterprise 13.1 "live-smoke-tested,
+#     PASS" rows and the Jira DC recipe rows rest on LOCAL docker transcripts
+#     dated 2026-07-24, three days before the v1.0.0 candidate. No CI run at
+#     either candidate ever executed them, and docker is outside this wave's
+#     authorization;
+#   * the Claude Code engine range and the 30-of-32 sub-probe tally rest on
+#     docs/engine-baseline.md — live, owner-gated, and pre-candidate;
+#   * the x86-64 / WSL2 "Verified, hardware-tested" rows are about the
+#     developer host, not about any CI run at all;
+#   * docs/security-posture.md's per-surface review is dated 2026-07-24 and
+#     scopes itself to the 1.3.0-era model; the document itself records the
+#     1.5.0 re-review as OWED, and it has not happened.
+#
+# Calling those "disclosures" would be a reading trick: they are present-tense
+# verified-status claims, not gap statements. So conjunct B is NOT met, the
+# honest-partial exit is taken, and roadmap/23's box stays UNTICKED with these
+# numbers recorded. An honest partial beats a ticked overclaim.
+#
+# Conjunct A is met (Part 1). Conjunct C is met on the reading the merged
+# record itself established and which this pass argues independently: an
+# explicit EVIDENCE-PENDING marker is a disclosure, not an aspirational claim
+# — and the ONE section that was a live contradiction rather than a disclosure
+# (the "at a glance" snapshot pinned to an interim report with all 15 items
+# pending) is corrected by this pass.
+# ============================================================================
+
+$ grep -c 'EVIDENCE-PENDING' docs/compatibility-matrix.md
+13
+# exit=0
+
+
+$ sed -n '95p' docs/compatibility-matrix.md
+**Honest status: ARM64 has not been hardware-verified.** This host is x86_64
+# exit=0
+
+
+$ sed -n '123p' docs/compatibility-matrix.md
+> **Superseded 2026-08-06 — ARM64 HAS since been CI-verified on real `aarch64` hardware, at BOTH
+# exit=0
+
+
+$ grep -n '^## Corrections (2026-08-06)' docs/compatibility-matrix.md
+183:## Corrections (2026-08-06) — release-candidate citations
+# exit=0
+
+
+$ wc -l docs/compatibility-matrix.md docs/operator-guide.md docs/security-posture.md docs/upgrade-guide.md docs/release-notes-prep.md
+   238 docs/compatibility-matrix.md
+   531 docs/operator-guide.md
+   575 docs/security-posture.md
+   287 docs/upgrade-guide.md
+    75 docs/release-notes-prep.md
+  1706 total
+# exit=0
+

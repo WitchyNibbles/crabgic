@@ -242,3 +242,46 @@ unpinned source or a stale digest with a non-destructive repair plan
 12's capability-quarantine pipeline before release publication — see
 `docs/security-posture.md` and `docs/compatibility-matrix.md`'s reproducible-build section for
 the release-cut specifics.
+
+---
+
+## Release-candidate evidence anchor (2026-08-06)
+
+Appended by the closeout pass for roadmap/23's release-docs criterion. Everything above is left
+byte-identical.
+
+**The release candidate** is `6b9dd7b` (`crabgic@1.5.0`, current `latest`). Its CI is run
+[30581597639](https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639); its blocking
+gate is job 91004033370 of the `publish` run
+[30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006), which scored
+the checklist `final`, 15 PASS / 0 FAIL. The same anchor rule as the operator guide applies to
+the `packages/**` test files cited above, checked file by file rather than in bulk: this guide
+names two, and **both** ran green at the candidate in `CI / unit-test+coverage (ubuntu-latest)`
+job **91002998119** — job-log line 923
+` ✓  crabgic  src/installer/merge.monotonic.property.test.ts (5 tests) 189ms` and line 965
+` ✓  crabgic  src/installer/drift.fixtures.test.ts (7 tests) 44ms`. Byte-compared under the
+one-space rule in `docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`.
+
+### Correction — a dangling cross-reference in "Marketplace / plugin trust"
+
+That section points a reader at "`docs/compatibility-matrix.md`'s reproducible-build section".
+**There is no such section.** `docs/compatibility-matrix.md` has nine headings and none of them
+is about reproducible builds; its only two occurrences of "reproducible" are unrelated. The
+sentence is left verbatim; this is where it is corrected.
+
+The release-cut reproducible-build record is, instead:
+
+- the archived final report's own item —
+  `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1553` is
+  `      "id": "reproducible-build",` and `:1556` is `      "verdict": "PASS",`, over three
+  linked records tagged `release-gate:reproducible-build`;
+- the checklist that defines the item, `e2e/report/src/checklist.ts`;
+- and, at the candidate itself, job-log lines 863-865 of job 91004033370 —
+  ` ✓ src/reproducibleBuildCheck.test.ts (8 tests) 2035ms`, with its two named cases: the
+  byte-identical-tarball case and its fail-first proof that perturbing one checkout by a single
+  byte fails the real comparator.
+
+**One disclosure a reader should carry away with it.** The SHA-pinned marketplace clause passed at
+the `2435cb9` candidate only because that run's checkout was two commits ahead of the commit it
+attested; at `6b9dd7b` checkout and candidate are the same commit, which is why the `6b9dd7b`
+report is the one to cite.
