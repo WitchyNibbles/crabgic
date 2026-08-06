@@ -535,3 +535,83 @@ CI CONCLUSION FOR PR #121: 15 of 15 checks pass, on BOTH runner arches —
 lint, typecheck, unit-test+coverage, gates-conformance, perf-conformance,
 learning-redteam (each x2), plus commitlint, engine-pin-lint, meta-checks.
 ================================================================================
+
+================================================================================
+CORRECTION 2026-08-06 (from PR #121's adversarial review) — §12.
+§2's third control-row bullet is WRONG, and it is wrong on exactly the
+distinction this whole batch exists to close.
+================================================================================
+
+ANNOTATE, NEVER REWRITE: §2 above is left verbatim. This is what measuring it
+found.
+
+WHAT §2 SAYS (line 137-140 of this file, third control bullet):
+  "post-completion-pipeline.test.ts (32/32) — it calls the REAL
+   `composeGateRegistry` at :202, so the six security gates now fire in that
+   suite too."
+
+NOW FALSE, in its second clause. The gates are **REGISTERED** in that suite and
+they fire **ZERO** times. "Registered but never fired" is precisely the
+trusted-and-inert distinction this batch was written to close, so asserting the
+wrong side of it in the batch's own evidence is not a wording slip.
+
+THE STRUCTURE. `packages/cli/src/daemon/post-completion-pipeline.test.ts:202` is
+the file's ONLY `composeGateRegistry` call site (the other hit, `:36`, is the
+import). It sits inside the case "settles the run failed when a declared
+requirement id resolves to no record", whose requirements registry is
+deliberately empty. `runPostCompletionPipeline` therefore reaches
+`resolveRequirementsStrict` at post-completion-pipeline.ts:232 — during
+`verifying` — and throws, settling `failed`. It never reaches the
+`final_verifying` transition at :364, and so never reaches
+`fireFinalCandidateVerification` at :376. That is the only place any gate fires.
+
+THE MEASUREMENT, because an uninstrumented zero is not evidence (playbook
+§"guard instrumentation": count how often the branch actually fires, and name
+the counts). A `console.error("PROBE-FIRE:jira-forged-admin-delete")` was
+temporarily added to the first manifest entry's `verify` handler in
+packages/gates/src/security-fixture-manifest.ts.
+
+$ npm run build                       BUILD EXIT STATUS: 0
+  (mandatory — packages/cli consumes @crabgic/gates through dist/)
+
+  SUBJECT
+    src/daemon/post-completion-pipeline.test.ts     32 passed   FIRINGS: 0
+  INSTRUMENT CONTROLS — a zero from a broken instrument looks identical to a
+  zero from code that never runs, so both are reported:
+    src/daemon/compose-gate-registry.test.ts        10 passed   FIRINGS: 1
+    src/daemon/composed-post-completion.e2e.test.ts  4 passed   FIRINGS: 3
+
+  The instrument works. The subject's zero is real, across all 32 tests.
+
+The control counts are worth keeping for their own sake:
+  · compose-gate-registry.test.ts fires exactly ONCE — the single new case that
+    calls `fireByTag("security", …)`. The other two new cases assert
+    registration only, which is what they claim to assert.
+  · composed-post-completion.e2e.test.ts fires exactly THREE times — T1, T3 and
+    T2, the three cases that reach `final_verifying`. T4 does not, because a
+    real cross-unit conflict settles `blocked` at `integrating`. That is an
+    INDEPENDENT confirmation of T4's control-row status in §2 and §6: its
+    `securityEvidence()` emptiness is not an artifact of the assertion, the
+    gates genuinely never run in it.
+
+WHAT §2's BULLET SHOULD HAVE SAID, and what is true:
+  post-completion-pipeline.test.ts (32/32) — it calls the REAL
+  `composeGateRegistry` at :202, so the six security gates are REGISTERED in
+  that suite. They FIRE ZERO TIMES in it: that one case fails at requirements
+  resolution during `verifying`, before `final_verifying` and before any
+  firing. Unchanged and green, which is the correct and complete claim — adding
+  six registrations perturbs nothing on the pre-`final_verifying` failure path.
+
+CONSEQUENCE FOR THE OMITTED-CALL-SITE QUESTION raised in this batch's report
+("post-completion-pipeline.test.ts:202 was not in the work order's file list —
+consequences nobody analysed?"): there are none, and now for a measured reason
+rather than an assumed one. In that suite the gates never execute at all, so
+they can neither mask nor manufacture the inputs-incoherent refusal the case is
+about.
+
+NOTHING ELSE IN THIS TRANSCRIPT DEPENDS ON THE CORRECTED CLAUSE. It appeared
+once, in a control-row bullet. The criterion-bearing measurements (§2's RED
+counts, §3, §4, §6's reverse probe, §7's guard mutation, §11's job-log deltas)
+are all unaffected, and the 32/32 count that bullet reports is itself unchanged
+and correct.
+================================================================================
