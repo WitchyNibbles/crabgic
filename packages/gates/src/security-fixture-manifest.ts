@@ -1,5 +1,12 @@
 import { ConnectorError } from "@crabgic/contracts";
-import { assertAllowedJiraOperation, containsSecretShapedContent } from "@crabgic/connectors-jira";
+import {
+  assertAllowedJiraOperation,
+  containsSecretShapedContent,
+  JIRA_SECURITY_FIXTURE_MATRIX,
+  JIRA_TENANT_BOUNDARY_IN_ALLOWLIST_TENANT,
+  makeJiraTenantBoundaryBreachScenario,
+} from "@crabgic/connectors-jira";
+import type { JiraSecurityScenario } from "@crabgic/connectors-jira";
 import {
   checkGrafanaConnectionDoctor,
   createGrafanaProviderAdapter,
@@ -30,6 +37,15 @@ import type { GateRegistry } from "./registry.js";
  * Six entries. The tenant-boundary category is borne by ONE entry, phase
  * 20's — see `grafanaTenantBoundaryVerify` and the ruling comment above the
  * `grafana-tenant-boundary` entry for why there is no Jira twin.
+ *
+ * ── CORRECTION 2026-08-06 (Batch H). The paragraph above is left verbatim
+ * and corrected here, not rewritten. There are now **SEVEN** entries, and the
+ * tenant-boundary category is borne by **TWO**: phase 20's Grafana one and
+ * phase 18's new Jira one (`jiraTenantBoundaryVerify`). The condition the
+ * ruling below set for a Jira twin — that one "returns only together with
+ * real Jira-side enforcement", i.e. a real Jira FIXTURE — is now met by
+ * `packages/connectors-jira/src/fixtures/tenant-boundary-scenario.ts`. The
+ * dated addendum on that ruling states exactly what did and did not change.
  */
 
 /** Exported for direct unit testing (`./security-fixture-manifest.test.ts`) of both the pass/fail shapes — not otherwise part of the phase's public consumption surface. */
@@ -75,6 +91,7 @@ export function verdictFromAssertion(
 const JIRA_FORGED_ADMIN_DELETE_ID = "jira-forged-admin-delete";
 const GRAFANA_FORGED_ADMIN_DELETE_ID = "grafana-forged-admin-delete";
 const GRAFANA_TENANT_BOUNDARY_ID = "grafana-tenant-boundary";
+const JIRA_TENANT_BOUNDARY_ID = "jira-tenant-boundary";
 const JIRA_REDACTION_ID = "jira-redaction";
 const GRAFANA_REDACTION_ID = "grafana-redaction";
 const GATEWAY_REDACTION_ID = "gateway-redaction";
@@ -137,10 +154,44 @@ const GATEWAY_REDACTION_ID = "gateway-redaction";
  * the write-mutex key is still `gateway/src/transport/http-client.ts:139`,
  * unmoved; and the contract field is now
  * `packages/contracts/src/contracts/external-connection.ts:117`.
+ *
+ * ── ADDENDUM 2026-08-06 (Batch H). THE RULING IS DISCHARGED, on its own
+ * terms, and a Jira tenant-boundary entry is added. Everything above stays
+ * as written.
+ *
+ * The 2026-08-05 correction left exactly one thing outstanding: it read the
+ * ruling's condition as "Jira FIXTURES" and recorded that none existed. One
+ * does now — `packages/connectors-jira/src/fixtures/tenant-boundary-scenario.ts`,
+ * shipped from `@crabgic/connectors-jira`'s barrel. It is a Jira fixture in
+ * the sense the ruling meant: it builds a `RemoteMutationPlan` with the REAL
+ * Jira plan builders (`createJiraResourceClient`), assembles handlers from
+ * the REAL Jira `MutationApplyClient`, and applies it through the REAL
+ * `executeMutationPlan` — so the entry is not a gates-owned guard with no
+ * production call path, which is the specific vacuity the ruling forbade.
+ *
+ * STILL TRUE, so nobody over-reads the addition:
+ *  - The ENFORCEMENT remains gateway-owned and provider-agnostic. Phase 18
+ *    owns the fixture, not the check. Adding this entry does not make the
+ *    tenant boundary "Jira-side"; it makes the Jira side EXERCISED.
+ *  - `plan.tenant` is still also the per-tenant+resource write-mutex key.
+ *  - The check still binds DECLARED plan attribution on the MUTATION path.
+ *    Reads are not tenant-checked and the remote's actual tenant identity is
+ *    still unverified. No detail string in this file may say that
+ *    cross-tenant access is refused — the contract's own wording
+ *    (`packages/contracts/src/contracts/external-connection.ts:122`) says it
+ *    is not a guarantee of that, and the fixture's own tests assert the
+ *    absence of that phrase in both the pass and the fail worlds.
+ *  - The Grafana entry is untouched: same id, same `sourcePhase: "20"`, same
+ *    handler, same `blocking: true`.
+ *
+ * Test T2 (which pinned the ABSENCE of a Jira entry) is superseded by T2' in
+ * `./security-fixture-manifest.test.ts`, deliberately and with its original
+ * text preserved — which is what the pin was for.
  */
 export const REQUIRED_SECURITY_FIXTURE_IDS = [
   JIRA_FORGED_ADMIN_DELETE_ID,
   GRAFANA_FORGED_ADMIN_DELETE_ID,
+  JIRA_TENANT_BOUNDARY_ID,
   GRAFANA_TENANT_BOUNDARY_ID,
   JIRA_REDACTION_ID,
   GRAFANA_REDACTION_ID,
@@ -232,6 +283,73 @@ export async function grafanaTenantBoundaryVerify(
   );
 }
 
+/**
+ * The Jira half of the tenant-boundary category (phase 18's fixture, added
+ * 2026-08-06 — see the ADDENDUM above `REQUIRED_SECURITY_FIXTURE_IDS`).
+ *
+ * Structurally the twin of `grafanaTenantBoundaryVerify`, and deliberately so:
+ * select the tenant-boundary scenarios out of the connector's own exported
+ * matrix, refuse an EMPTY selection rather than passing vacuously over zero
+ * scenarios, run each, and then run a POSITIVE CONTROL that the refusals
+ * cannot be explained by a refuse-everything implementation.
+ *
+ * The control differs in shape from Grafana's, because the thing being
+ * controlled differs. Grafana's control calls the real doctor directly with an
+ * in-allowlist identity. Jira's tenant check lives one layer up (in
+ * `executeMutationPlan`), so the control is built from the SAME real factory
+ * with the breach arm's declared tenant swapped to an IN-allowlist one: that
+ * scenario must then report `passed: false`. In other words the gate passes
+ * only if the same machinery yields DIFFERENT verdicts for an out-of-allowlist
+ * and an in-allowlist declared tenant — which is exactly what a constant
+ * verdict (the original defect) cannot do.
+ *
+ * Both parameters default to the real matrix and the real factory; they are
+ * injectable for the direct unit tests, same convention as
+ * `grafanaTenantBoundaryVerify`.
+ * ⚠️ Injected-path tests cannot prove the DEFAULT path stays coupled to
+ * `packages/connectors-jira` or, through it, to the gateway's real
+ * `refuseOutOfAllowlistTenant` — the deletion probe
+ * `docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt`
+ * is that proof.
+ */
+export async function jiraTenantBoundaryVerify(
+  scenarios: readonly JiraSecurityScenario[] = JIRA_SECURITY_FIXTURE_MATRIX,
+  makeScenario: typeof makeJiraTenantBoundaryBreachScenario = makeJiraTenantBoundaryBreachScenario,
+): Promise<GateVerdict> {
+  const selected = scenarios.filter((scenario) => scenario.category === "tenant-boundary");
+  if (selected.length === 0) {
+    return fail(
+      JIRA_TENANT_BOUNDARY_ID,
+      "no tenant-boundary scenario was selected from the Jira security-fixture matrix — an empty selection would pass vacuously, so this gate refuses instead",
+    );
+  }
+
+  for (const scenario of selected) {
+    const result = await scenario.run();
+    if (!result.passed) {
+      return fail(
+        JIRA_TENANT_BOUNDARY_ID,
+        `tenant-boundary scenario "${scenario.name}" FAILED: ${result.detail}`,
+      );
+    }
+  }
+
+  const control = await makeScenario({
+    declaredTenant: JIRA_TENANT_BOUNDARY_IN_ALLOWLIST_TENANT,
+  }).run();
+  if (control.passed) {
+    return fail(
+      JIRA_TENANT_BOUNDARY_ID,
+      `positive control broken — the same machinery still reports a refusal when the plan declares an IN-allowlist tenant, so the refusals above prove nothing: ${control.detail}`,
+    );
+  }
+
+  return pass(
+    JIRA_TENANT_BOUNDARY_ID,
+    `refused as expected: ${selected.map((scenario) => scenario.name).join("; ")}; positive control discriminates — the same scenario with an in-allowlist declared tenant reports no refusal`,
+  );
+}
+
 export const SECURITY_FIXTURE_MANIFEST: readonly SecurityFixtureEntry[] = [
   {
     id: JIRA_FORGED_ADMIN_DELETE_ID,
@@ -276,6 +394,20 @@ export const SECURITY_FIXTURE_MANIFEST: readonly SecurityFixtureEntry[] = [
             "no forged admin/delete operation is callable on the adapter",
           );
     },
+  },
+  {
+    // Drives 18's `JIRA_SECURITY_FIXTURE_MATRIX` breach scenario: a real
+    // Jira-built `RemoteMutationPlan` declaring an out-of-allowlist tenant,
+    // refused by the real `executeMutationPlan` before any network I/O or
+    // journal write, plus a positive control that an in-allowlist declared
+    // tenant is NOT refused. See `jiraTenantBoundaryVerify` above and the
+    // 2026-08-06 ADDENDUM on the ruling for why this entry exists now and
+    // what it does not claim.
+    id: JIRA_TENANT_BOUNDARY_ID,
+    category: "tenant-boundary",
+    sourcePhase: "18",
+    blocking: true,
+    verify: async () => jiraTenantBoundaryVerify(),
   },
   {
     // Re-exercises 20's `tenantBoundaryBreachScenario` (out-of-allowlist org
