@@ -82,12 +82,27 @@ const CUSTOM_FIELD_ID_PREFIX = "customfield_";
  * rejections by pre-checking with the DC provider name at its plan-build
  * boundary; the custom-field path now gets the identical treatment.
  *
- * ⚠️ Both members are part of the ruling. Changing either one silently
- * changes what a caller sees: 21's `remote_verification` gate treats
- * `unsupported` as run-blocking, and 16's capability-snapshot cache
- * invalidates a connection on `unsupported`. Both settings are pinned by
- * `./field-metadata.test.ts` and, end to end through the real clients, by
+ * ⚠️ Both members are part of the ruling, and both are pinned — at the unit
+ * level by `./field-metadata.test.ts`, and end to end through the real
+ * clients by
  * `../resource-client/datacenter/jira-datacenter-resource-client.test.ts`.
+ *
+ * ⚠️ WHAT THE KIND BUYS, stated so it is not over-read (this fix restores
+ * the INTENDED taxonomy, it does not switch on a new enforcement). Two
+ * places in this repository branch on `unsupported`: `@crabgic/gateway`'s
+ * `isInvalidatingError` (capability-snapshot invalidation) and 21's
+ * `createRemoteVerificationGate` (`unsupported` is a blocking outcome).
+ * Neither is reached by this refusal. It is thrown SYNCHRONOUSLY at
+ * plan-build time, before `executeMutationPlan` exists to record a
+ * `RemoteOperationRecord.errorKind`; and as of 2026-08-06 both
+ * `invalidateOnError` and `createRemoteVerificationGate` have zero
+ * production call sites repo-wide (their only non-test references are
+ * their own declaration and the package barrel). What this change does
+ * make correct is the value a CALLER observes: the `tracker.*` native
+ * tools serialize `err.toData()` verbatim
+ * (`@crabgic/gateway`'s `mcp/native-tools/provider-dispatch-tool.ts`), so
+ * before this fix a Data Center caller was told `validation` /
+ * `jira-cloud` about a Data Center capability gap.
  */
 export interface CustomFieldRefusalAttribution {
   readonly kind: "validation" | "unsupported";
