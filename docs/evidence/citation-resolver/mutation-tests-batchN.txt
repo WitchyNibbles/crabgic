@@ -1,6 +1,6 @@
 RULING-3 transcript
-UTC:        2026-08-06T18:19:48Z
-HEAD:       1a0c1218c7e13bf4cf2baa52b087dd7741851381  (fix(meta): close six review findings in the citation-content check)
+UTC:        2026-08-06T18:26:09Z
+HEAD:       2cadecde461ac6e51b6495daec905f6e33428d29  (fix(meta): name the git location-var scrub as the repo-wide guard requires)
 UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
 Purpose:    a resolver that cannot be shown to FAIL proves nothing when it is
             silent. Two batteries: the unit suite's mutations of the rules AND
@@ -98,9 +98,11 @@ stdout | check-citation-content.test.mjs > trust controls — these are what kee
 stderr | check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > byte-drift in a committed docs/evidence artifact is its own hard class (reverse probe)
 stdout | check-citation-content.test.mjs > the ratchet > goes red on the PR that moves lines under a merged citation, and green again once the baseline records it
 stderr | check-citation-content.test.mjs > the ratchet > goes red on the PR that moves lines under a merged citation, and green again once the baseline records it
- ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > associates a quote with the marker immediately before it 10ms
- ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > associates a quote with its marker ACROSS intervening prose — the gap a sibling resolver had 5ms
- ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > checks a MARKERLESS quote against the citation's declared span rather than skipping it 8ms
+stdout | check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line
+stderr | check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line
+ ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > associates a quote with the marker immediately before it 8ms
+ ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > associates a quote with its marker ACROSS intervening prose — the gap a sibling resolver had 4ms
+ ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > checks a MARKERLESS quote against the citation's declared span rather than skipping it 7ms
  ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > uses a `:NN` written INSIDE the quoted span as that span's marker, and notes it 0ms
  ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > never lets a `:NN` inside a quote become the marker for the NEXT quote 0ms
  ✓ |scripts| check-citation-content.test.mjs > association grammar — which quote belongs to which marker > switches file on a path-qualified marker, and only when it carries a line number 0ms
@@ -109,15 +111,14 @@ stderr | check-citation-content.test.mjs > the ratchet > goes red on the PR that
  ✓ |scripts| check-citation-content.test.mjs > resolver mutations — each must be caught > M3 marker past EOF → PAST-EOF 4ms
  ✓ |scripts| check-citation-content.test.mjs > resolver mutations — each must be caught > M4 possessive apostrophes between quotes produce no phantom fragments (the 91-phantom regression) 1ms
  ✓ |scripts| check-citation-content.test.mjs > resolver mutations — each must be caught > M5 right text, wrong file → the quote does not resolve against the file it was moved to 4ms
- ✓ |scripts| check-citation-content.test.mjs > resolver mutations — each must be caught > M6 a baseline tampered to claim OK for a moved citation does not buy silence — --check recomputes 17ms
+ ✓ |scripts| check-citation-content.test.mjs > resolver mutations — each must be caught > M6 a baseline tampered to claim OK for a moved citation does not buy silence — --check recomputes 15ms
  ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > a wrapped assertion joined onto one line matches at level 1 (the `:53` negative control) 4ms
- ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > a prettier trailing comma before `)` matches at level 3, not as a defect 4ms
- ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > markdown emphasis in a `.md` target matches at level 4, not as a defect 7ms
+ ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > a prettier trailing comma before `)` matches at level 3, not as a defect 3ms
+ ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > markdown emphasis in a `.md` target matches at level 4, not as a defect 3ms
  ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > repeat text in a frozen report is position-unverified, NOT moved — and the occurrence scan is uncapped 5ms
  ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > a fragment outside its citation's declared span is a flag on the pin, not a stale status 4ms
- ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > byte-drift in a committed docs/evidence artifact is its own hard class (reverse probe) 10ms
-stdout | check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line
-stderr | check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line
+ ✓ |scripts| check-citation-content.test.mjs > trust controls — these are what keep the check from crying wolf > byte-drift in a committed docs/evidence artifact is its own hard class (reverse probe) 11ms
+ ✓ |scripts| check-citation-content.test.mjs > the ratchet > goes red on the PR that moves lines under a merged citation, and green again once the baseline records it 14ms
 stdout | check-citation-content.test.mjs > the ratchet > cannot be bypassed by deleting the baseline — first-seeding needs --seed
 stderr | check-citation-content.test.mjs > the ratchet > cannot be bypassed by deleting the baseline — first-seeding needs --seed
 stdout | check-citation-content.test.mjs > the ratchet > records --allow-unanchored in the baseline itself, so the diff confesses
@@ -125,33 +126,32 @@ stdout | check-citation-content.test.mjs > the ratchet > seeds known-stale legac
 stdout | check-citation-content.test.mjs > the declaration vocabulary > records the declaration in the baseline, and never waives anchoring
 stdout | check-citation-content.test.mjs > the prose lane > FAILS on a deleted repo-rooted path — the case the lane exists for
 stderr | check-citation-content.test.mjs > the prose lane > FAILS on a deleted repo-rooted path — the case the lane exists for
- ✓ |scripts| check-citation-content.test.mjs > the ratchet > goes red on the PR that moves lines under a merged citation, and green again once the baseline records it 16ms
- ✓ |scripts| check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line 14ms
- ✓ |scripts| check-citation-content.test.mjs > the ratchet > cannot be bypassed by deleting the baseline — first-seeding needs --seed 12ms
- ✓ |scripts| check-citation-content.test.mjs > the ratchet > records --allow-unanchored in the baseline itself, so the diff confesses 23ms
- ✓ |scripts| check-citation-content.test.mjs > the ratchet > seeds known-stale legacy drift instead of failing on it — zero day-one noise 13ms
+ ✓ |scripts| check-citation-content.test.mjs > the ratchet > refuses to regenerate a baseline that would bless a new citation pointing at the wrong line 12ms
+ ✓ |scripts| check-citation-content.test.mjs > the ratchet > cannot be bypassed by deleting the baseline — first-seeding needs --seed 9ms
+ ✓ |scripts| check-citation-content.test.mjs > the ratchet > records --allow-unanchored in the baseline itself, so the diff confesses 12ms
+ ✓ |scripts| check-citation-content.test.mjs > the ratchet > seeds known-stale legacy drift instead of failing on it — zero day-one noise 8ms
  ✓ |scripts| check-citation-content.test.mjs > same-ref citations in one criterion > selects the right citation past an interleaved ci-run, by ordinal not by ref 4ms
  ✓ |scripts| check-citation-content.test.mjs > same-ref citations in one criterion > builds each citation's edits against its OWN string 4ms
- ✓ |scripts| check-citation-content.test.mjs > the declaration vocabulary > reads a declaration head and ignores prose that merely contains the words 1ms
- ✓ |scripts| check-citation-content.test.mjs > the declaration vocabulary > records the declaration in the baseline, and never waives anchoring 9ms
+ ✓ |scripts| check-citation-content.test.mjs > the declaration vocabulary > reads a declaration head and ignores prose that merely contains the words 0ms
+ ✓ |scripts| check-citation-content.test.mjs > the declaration vocabulary > records the declaration in the baseline, and never waives anchoring 7ms
  ✓ |scripts| check-citation-content.test.mjs > the prose lane > fails a reference past a file's end 4ms
- ✓ |scripts| check-citation-content.test.mjs > the prose lane > reports, never fails, a reference that names no single file 5ms
- ✓ |scripts| check-citation-content.test.mjs > the prose lane > FAILS on a deleted repo-rooted path — the case the lane exists for 11ms
- ✓ |scripts| check-citation-content.test.mjs > the prose lane > keeps a package-relative fragment reported, not failed — it names no root 5ms
+ ✓ |scripts| check-citation-content.test.mjs > the prose lane > reports, never fails, a reference that names no single file 4ms
+ ✓ |scripts| check-citation-content.test.mjs > the prose lane > FAILS on a deleted repo-rooted path — the case the lane exists for 9ms
+ ✓ |scripts| check-citation-content.test.mjs > the prose lane > keeps a package-relative fragment reported, not failed — it names no root 4ms
  ✓ |scripts| check-citation-content.test.mjs > the prose lane > ignores references inside fenced blocks — those are examples, not claims 3ms
 stderr | check-citation-content.test.mjs > --fix > refuses to touch records this branch has not modified
 check-citation-content: --fix found no closeout record modified by this branch (`git diff origin/main...HEAD`). It never edits a merged record: annotate-never-rewrite is the discipline, and a bot re-anchoring merged citations is that violation at scale.
- ✓ |scripts| check-citation-content.test.mjs > the prose lane > the live corpus has no unresolvable or past-EOF prose reference 769ms
- ✓ |scripts| check-citation-content.test.mjs > job-log normalization > strips ANSI — a raw byte-compare fails on every colored vitest line 1ms
+ ✓ |scripts| check-citation-content.test.mjs > the prose lane > the live corpus has no unresolvable or past-EOF prose reference 647ms
+ ✓ |scripts| check-citation-content.test.mjs > job-log normalization > strips ANSI — a raw byte-compare fails on every colored vitest line 0ms
  ✓ |scripts| check-citation-content.test.mjs > job-log normalization > the one-space form is the correct normalization 0ms
  ✓ |scripts| check-citation-content.test.mjs > job-log normalization > the two-space form twelve merged records use is grandfathered, not failed 0ms
  ✓ |scripts| check-citation-content.test.mjs > job-log normalization > a wrong quote still fails 0ms
  ✓ |scripts| check-citation-content.test.mjs > job-log normalization > distinguishes a job that never reached the suite from a wrong quote 0ms
  ✓ |scripts| check-citation-content.test.mjs > the test process's git environment > carries no GIT_* variable — the scrub that prevents this suite's own incident 0ms
- ✓ |scripts| check-citation-content.test.mjs > --fix > carries markerPosition/markerText through the REAL parse and resolve into the edits 5ms
- ✓ |scripts| check-citation-content.test.mjs > --fix > declines to guess: a fragment whose text repeats gets no edit 4ms
+ ✓ |scripts| check-citation-content.test.mjs > --fix > carries markerPosition/markerText through the REAL parse and resolve into the edits 4ms
+ ✓ |scripts| check-citation-content.test.mjs > --fix > declines to guess: a fragment whose text repeats gets no edit 3ms
  ✓ |scripts| check-citation-content.test.mjs > --fix > re-anchors exactly the marker's digits and nothing else around them 0ms
- ✓ |scripts| check-citation-content.test.mjs > --fix > refuses to touch records this branch has not modified 10ms
+ ✓ |scripts| check-citation-content.test.mjs > --fix > refuses to touch records this branch has not modified 8ms
  Test Files  1 passed (1)
       Tests  43 passed (43)
 exit=0

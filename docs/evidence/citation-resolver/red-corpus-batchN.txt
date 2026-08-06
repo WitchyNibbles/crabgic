@@ -1,6 +1,6 @@
 RULING-3 transcript
-UTC:        2026-08-06T18:19:43Z
-HEAD:       1a0c1218c7e13bf4cf2baa52b087dd7741851381  (fix(meta): close six review findings in the citation-content check)
+UTC:        2026-08-06T18:26:05Z
+HEAD:       2cadecde461ac6e51b6495daec905f6e33428d29  (fix(meta): name the git location-var scrub as the repo-wide guard requires)
 UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
 Purpose:    show the resolver catching the REAL historical citation drifts,
             pinned at the shas that caused them, so this proof cannot rot when
