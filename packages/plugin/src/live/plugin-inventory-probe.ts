@@ -22,6 +22,7 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { CLAUDE_CLI_BIN } from "./claude-cli.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -60,7 +61,7 @@ export const probePluginInventory: PluginInventoryProbe = async (options) => {
   ];
   let stdout: string;
   try {
-    const result = await execFileAsync("claude", args, { timeout: 30_000 });
+    const result = await execFileAsync(CLAUDE_CLI_BIN, args, { timeout: 30_000 });
     stdout = result.stdout;
   } catch (err) {
     const maybeStdout = (err as { stdout?: string }).stdout;

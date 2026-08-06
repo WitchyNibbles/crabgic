@@ -30,6 +30,29 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(content).attributes.model).toBe("sonnet");
   });
 
+  it("keeps every value's VERBATIM literal in `raw`, quotes and all", () => {
+    // `attributes` is lossy where it matters: it cannot tell `"30"` from `30`,
+    // because `parseScalar` strips one layer of double quotes — and it CAN
+    // tell `'30'` apart, because single quotes survive. A caller judging the
+    // literal a downstream YAML parser will see needs it before that
+    // stripping. `plugin-manifest.ts`'s `maxTurns` rule is that caller.
+    const content = [
+      "---",
+      "bare: 30",
+      'double: "30"',
+      "single: '30'",
+      "spaced:   30  ",
+      "---",
+      "",
+    ].join("\n");
+
+    const { attributes, raw } = parseFrontmatter(content);
+    expect(raw).toEqual({ bare: "30", double: '"30"', single: "'30'", spaced: "30" });
+    // The asymmetry that motivates `raw`, pinned so it cannot drift silently.
+    expect(attributes.bare).toBe(attributes.double);
+    expect(attributes.single).not.toBe(attributes.bare);
+  });
+
   it("throws FrontmatterParseError when content does not start with a delimiter", () => {
     expect(() => parseFrontmatter("no frontmatter here")).toThrow(FrontmatterParseError);
   });
