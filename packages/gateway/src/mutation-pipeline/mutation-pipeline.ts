@@ -122,11 +122,20 @@ export interface MutationPipelineHandlers {
    * take one mutex for roadmap/18 exit criterion 10's "per-issue write
    * order preserved" to hold. This hook is the seam between the two.
    *
+   * PLURAL FORM. Returning an ARRAY means "this write must serialize
+   * against every one of these keys at once" — the shape 18/19's
+   * `bulk:<keys>` targets need, where one plan acts on several named
+   * issues and must take each member issue's mutex (roadmap/18 §Exit
+   * criteria 10). A single string, or a one-element array, is the
+   * original behavior byte-for-byte: `resource` carries the key and no
+   * `serializationResources` is sent. An empty array falls back to
+   * `plan.canonicalTarget` — a write is never left unkeyed.
+   *
    * Must be a pure function of the plan — it is consulted once per
-   * network attempt and must return the same key every time, or writes
-   * that should serialize will not.
+   * network attempt and must return the same key set every time, or
+   * writes that should serialize will not.
    */
-  serializationTarget?(plan: RemoteMutationPlan): string;
+  serializationTarget?(plan: RemoteMutationPlan): string | readonly string[];
   /**
    * Optional marker-reconciliation hook (`./reconciliation.js`), consulted
    * whenever this mutation's outcome is ambiguous: either the network
@@ -245,13 +254,24 @@ async function performApplyOnce(
 ): Promise<MutationApplyResult> {
   const spec = handlers.buildRequest(plan);
 
+  // `serializationTarget` may answer with one key or a SET of keys (see
+  // its doc comment). The single-key path below is byte-for-byte the
+  // behavior every provider had before the plural form existed; the
+  // multi-key path additionally sends `serializationResources` and keeps
+  // `canonicalTarget` in `resource` as the audit/attribution value.
+  const rawTargets = handlers.serializationTarget?.(plan) ?? plan.canonicalTarget;
+  const targets = typeof rawTargets === "string" ? [rawTargets] : [...rawTargets];
+  // An empty array would leave the write unkeyed — fall back to identity.
+  const primaryTarget = targets[0] ?? plan.canonicalTarget;
+
   let response: HttpTransportResponse;
   try {
     response = await deps.httpClient.request({
       connectionId: plan.externalConnectionId,
       tenant: plan.tenant,
-      resource: handlers.serializationTarget?.(plan) ?? plan.canonicalTarget,
+      resource: targets.length > 1 ? plan.canonicalTarget : primaryTarget,
       isWrite: true,
+      ...(targets.length > 1 ? { serializationResources: targets } : {}),
       url: spec.url,
       method: spec.method,
       ...(spec.headers !== undefined ? { headers: spec.headers } : {}),

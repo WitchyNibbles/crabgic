@@ -802,6 +802,105 @@ describe("executeMutationPlan — serializationTarget", () => {
 
     expect(recorder.maxInFlight()).toBe(2);
   });
+
+  /**
+   * PLURAL form — `serializationTarget` returning an ARRAY, the shape
+   * 18/19's `bulk:<keys>` writes need (roadmap/18 §Exit criteria 10).
+   * Same barrier discipline as the cases above: no duration is asserted,
+   * and every `=== 1` claim is paired with a disjoint-set `=== 2` control.
+   */
+  it("PLURAL: two plans whose serializationTarget ARRAYS share ONE member key are serialized", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers({
+      serializationTarget: (p) =>
+        p.canonicalTarget === "bulk:A,B" ? ["issue:A", "issue:B"] : ["issue:B", "issue:C"],
+    });
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("e", "bulk:A,B"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("f", "bulk:B,C"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("PLURAL CONTROL: two plans whose serializationTarget arrays are DISJOINT overlap", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers({
+      serializationTarget: (p) =>
+        p.canonicalTarget === "bulk:A,B" ? ["issue:A", "issue:B"] : ["issue:C", "issue:D"],
+    });
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("g", "bulk:A,B"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("h", "bulk:C,D"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+
+  it("PLURAL: an array target sends serializationResources and keeps canonicalTarget as `resource`", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "bulk:A,B" });
+
+    await executeMutationPlan(
+      plan,
+      buildHandlers({ serializationTarget: () => ["issue:A", "issue:B"] }),
+      deps,
+    );
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.serializationResources).toEqual(["issue:A", "issue:B"]);
+    // `resource` stays the plan's identity — audit/attribution only when
+    // the mutex is taken over the plural set.
+    expect(req?.resource).toBe("bulk:A,B");
+  });
+
+  it("SINGLE-ELEMENT ARRAY is byte-identical to the string form: `resource` set, no serializationResources", async () => {
+    // This is the assertion that keeps the pre-existing contract from
+    // silently changing shape now that the hook is plural-capable. Every
+    // single-issue Jira write takes this path.
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "issue:A:comment" });
+
+    await executeMutationPlan(
+      plan,
+      buildHandlers({ serializationTarget: () => ["issue:A"] }),
+      deps,
+    );
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.resource).toBe("issue:A");
+    expect(req?.serializationResources).toBeUndefined();
+  });
+
+  it("an EMPTY array target falls back to canonicalTarget — a write is never left unkeyed", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "issue:EX-9" });
+
+    await executeMutationPlan(plan, buildHandlers({ serializationTarget: () => [] }), deps);
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.resource).toBe("issue:EX-9");
+    expect(req?.serializationResources).toBeUndefined();
+  });
 });
 
 /**

@@ -241,6 +241,69 @@ describe("buildMutationApplyTool", () => {
   });
 
   /**
+   * The PLURAL half of the same bridge (18/19's `bulk:<keys>` writes,
+   * roadmap/18 §Exit criteria 10). Without this case the array branch of
+   * the forwarding closure could be narrowed back to a string — or the
+   * whole forwarding line deleted — with every `connectors-jira` suite
+   * still green, because that package's write-order integration test
+   * calls `executeMutationPlan` directly and never crosses this bridge.
+   */
+  it("forwards an ARRAY-returning serializationTarget as the transport's serializationResources", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "bulk-serializing-provider",
+      baseUrl: "https://serializing-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("bulk-serializing-provider", {
+      buildRequest: () => ({
+        url: new URL("https://serializing-provider.invalid/apply"),
+        method: "POST",
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+      serializationTarget: () => ["issue:EX-1", "issue:EX-2"],
+    });
+
+    let requestSpy: ReturnType<typeof vi.spyOn> | undefined;
+    const buildHttpClient = async (_c: ExternalConnection) => {
+      const client = new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://serializing-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
+      });
+      requestSpy = vi.spyOn(client, "request");
+      return client;
+    };
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { canonicalTarget: "bulk:EX-1,EX-2" }),
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(requestSpy).toHaveBeenCalledTimes(1);
+    const arg = requestSpy?.mock.calls[0]?.[0] as {
+      resource: string;
+      serializationResources?: readonly string[];
+    };
+    expect(arg.serializationResources).toEqual(["issue:EX-1", "issue:EX-2"]);
+    // canonicalTarget is retained as the audit/attribution key.
+    expect(arg.resource).toBe("bulk:EX-1,EX-2");
+  });
+
+  /**
    * DEFECT 21 — `ExternalConnection.tenantAllowlist` was a published schema
    * field that looked like a security control and enforced nothing.
    *

@@ -364,3 +364,131 @@ describe("GatewayHttpClient — concurrency + write serialization", () => {
     expect(maxActive).toBeLessThanOrEqual(2);
   });
 });
+
+/**
+ * `serializationResources` — the PLURAL write-mutex key set (18/19's
+ * `bulk:<keys>` writes). Overlap is observed with a deferred-promise
+ * barrier released by the observed concurrency itself; nothing here
+ * asserts a duration, and each "serialized" claim is paired with a
+ * non-member CONTROL that overlaps.
+ */
+function createOverlapRecorder(): {
+  maxInFlight: () => number;
+  sendRequest: () => Promise<HttpTransportResponse>;
+} {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let completed = 0;
+  let releaseBarrier: () => void = () => undefined;
+  const barrier = new Promise<void>((resolve) => {
+    releaseBarrier = resolve;
+  });
+  return {
+    maxInFlight: () => maxInFlight,
+    sendRequest: async (): Promise<HttpTransportResponse> => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      if (inFlight >= 2) releaseBarrier();
+      if (completed === 0) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          barrier,
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, 300);
+          }),
+        ]);
+        if (timer !== undefined) clearTimeout(timer);
+      }
+      inFlight -= 1;
+      completed += 1;
+      return { status: 200, headers: {}, bodyText: "{}" };
+    },
+  };
+}
+
+describe("GatewayHttpClient — plural serializationResources", () => {
+  it("a write over [issue:A, issue:B] never overlaps a write keyed on member issue:B", async () => {
+    const recorder = createOverlapRecorder();
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest: recorder.sendRequest,
+      resolveHostAddresses: async () => ["203.0.113.7"],
+    });
+
+    await Promise.all([
+      client.request(
+        baseReq({
+          method: "POST",
+          isWrite: true,
+          resource: "bulk:A,B",
+          serializationResources: ["issue:A", "issue:B"],
+        }),
+      ),
+      // issue:B is the LAST member in sorted order — a "lock only the
+      // first key" implementation must fail here.
+      client.request(baseReq({ method: "PUT", isWrite: true, resource: "issue:B" })),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("CONTROL: the same bulk write and a NON-member write (issue:C) overlap", async () => {
+    const recorder = createOverlapRecorder();
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest: recorder.sendRequest,
+      resolveHostAddresses: async () => ["203.0.113.7"],
+    });
+
+    await Promise.all([
+      client.request(
+        baseReq({
+          method: "POST",
+          isWrite: true,
+          resource: "bulk:A,B",
+          serializationResources: ["issue:A", "issue:B"],
+        }),
+      ),
+      client.request(baseReq({ method: "PUT", isWrite: true, resource: "issue:C" })),
+    ]);
+
+    // Forbids a global write mutex AND proves the instrumentation can see
+    // overlap at all — without it the assertion above would pass for free.
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+
+  it("an EMPTY serializationResources array falls back to `resource` as the single key", async () => {
+    const recorder = createOverlapRecorder();
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest: recorder.sendRequest,
+      resolveHostAddresses: async () => ["203.0.113.7"],
+    });
+
+    await Promise.all([
+      client.request(
+        baseReq({ method: "PUT", isWrite: true, resource: "issue:A", serializationResources: [] }),
+      ),
+      client.request(baseReq({ method: "PUT", isWrite: true, resource: "issue:A" })),
+    ]);
+
+    // Never unkeyed: an empty set must not turn a write into a free-for-all.
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("serializationResources is ignored for reads (isWrite absent)", async () => {
+    const recorder = createOverlapRecorder();
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest: recorder.sendRequest,
+      resolveHostAddresses: async () => ["203.0.113.7"],
+    });
+
+    await Promise.all([
+      client.request(baseReq({ serializationResources: ["issue:A", "issue:B"] })),
+      client.request(baseReq({ resource: "issue:B" })),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+});

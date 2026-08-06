@@ -56,6 +56,20 @@ export interface GatewayHttpRequest {
   readonly hasPrecondition?: boolean;
   /** Whether this call requires prior write serialization for its (tenant, resource) key — false for pure reads. */
   readonly isWrite?: boolean;
+  /**
+   * Optional PLURAL serialization keys for a write. When present and
+   * non-empty the write mutex is taken over EVERY `(tenant, r)` pair at
+   * once (`WriteSerializer.runExclusiveMulti`), and `resource` is then
+   * audit/attribution only. Absent (or empty), `resource` is the single
+   * mutex key exactly as before — that path is byte-for-byte the
+   * pre-existing behavior. Ignored entirely for reads.
+   *
+   * It exists for 18/19's `bulk:<keys>` writes, which act on several
+   * named issues at once and must serialize against a single-issue write
+   * to any member (roadmap/18 §Exit criteria 10, "per-issue write order
+   * preserved").
+   */
+  readonly serializationResources?: readonly string[];
 }
 
 export interface GatewayHttpClientOptions {
@@ -136,8 +150,18 @@ export class GatewayHttpClient {
   async request(req: GatewayHttpRequest): Promise<HttpTransportResponse> {
     const runOnce = () => this.#requestWithRetries(req);
     if (req.isWrite === true) {
-      const key: WriteSerializerKey = { tenant: req.tenant, resource: req.resource };
-      return this.#gate.run(() => this.#writeSerializer.runExclusive(key, runOnce));
+      const resources =
+        req.serializationResources !== undefined && req.serializationResources.length > 0
+          ? req.serializationResources
+          : [req.resource];
+      const keys: readonly WriteSerializerKey[] = resources.map((resource) => ({
+        tenant: req.tenant,
+        resource,
+      }));
+      // The gate is acquired BEFORE the serializer registers its keys —
+      // see `WriteSerializer.runExclusiveMulti`'s doc comment for why the
+      // order is load-bearing for progress. Do not swap them.
+      return this.#gate.run(() => this.#writeSerializer.runExclusiveMulti(keys, runOnce));
     }
     return this.#gate.run(runOnce);
   }
