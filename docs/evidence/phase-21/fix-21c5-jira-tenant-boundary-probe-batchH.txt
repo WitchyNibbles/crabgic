@@ -408,3 +408,27 @@ citation cannot be misread as pointing at the chain alone.
 (The DC twin's identical derivation IS at `:106-110`, with `:108` as the
 `tenantAllowlist?.[0]` clause. If the review's `:86-90` came from reading that
 file, the off-by-twenty is the likely cause.)
+
+--------------------------------------------------------------------------------
+NOTE for whoever next greps for T2's old title (added with the addendum above)
+--------------------------------------------------------------------------------
+`git grep "exactly ONE tenant-boundary entry exists"` at this branch returns six
+hits. They are NOT all the same kind of thing, and one kind must not be "fixed":
+
+  * FOUR are inside the MERGED transcript
+    `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt` (:235, :324, :398,
+    :442) - captured vitest output from PR #94's own probe runs. Those lines are
+    CORRECT: they record what that suite printed at THAT tree, and a transcript
+    is pinned to the sha in its header. Do not edit them, and do not cite them
+    as evidence of the CURRENT invariant. (:235 is a deliberate RED row; the
+    other three are green.)
+  * ONE is this branch's verbatim quotation of the original title, inside the
+    annotation at `packages/gates/src/security-fixture-manifest.test.ts` - the
+    "annotate, never rewrite" copy.
+  * ONE is the explanation of why the live title changed, in
+    `packages/gates/src/security-fixture-manifest.ts`.
+
+What no longer exists anywhere is a LIVE, currently-passing CI row printing that
+sentence - which was the hazard the retitle removed. Any future job log quoting
+that sentence as a green row is therefore evidence about a pre-2026-08-06 tree,
+never about this one.
