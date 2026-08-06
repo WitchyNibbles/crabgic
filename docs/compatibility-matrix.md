@@ -123,8 +123,8 @@ instruction:
 > **Superseded 2026-08-06 — ARM64 HAS since been CI-verified on real `aarch64` hardware, at BOTH
 > release candidates.** The section above is left verbatim; it was honest when written and is now
 > out of date, and the instruction it ends with ("do not cite it as hardware-verified in any
-> release announcement", four lines above this block) is **retired by this note rather than
-> deleted**.
+> release announcement", `docs/compatibility-matrix.md:117-118`) is **retired by this note
+> rather than deleted**.
 >
 > Two hosted `ubuntu-24.04-arm` CI jobs ran lint, typecheck and the full coverage-gated suite:
 >
