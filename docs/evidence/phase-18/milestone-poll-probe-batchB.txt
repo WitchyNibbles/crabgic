@@ -1,0 +1,238 @@
+# UTC: 2026-08-06T10:56:32Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 6fb3d7604cf61f241d71f4772653ae10c0798fec
+#   (branch closeout/batch-b, commit 2 of 3. SCOPE OF THIS BLANKET, corrected
+#    2026-08-06 in review of PR #113: every BASELINE, MUTATION and RESTORE leg
+#    below ran at this tree. It does NOT cover the embedded RED-first sections,
+#    which by construction ran BEFORE the implementation existed — at upstream
+#    base c0b3873 with the new tests uncommitted in the worktree. Those sections
+#    carry their own UTC and UPSTREAM BASE lines; read those, not this one, for
+#    their provenance.
+#    An earlier capture at pre-reword sha bf6339b was DISCARDED and re-run in
+#    full at this sha rather than re-labelled: commit 1's subject was 103 chars
+#    and had to be reworded for commitlint's 100-char limit, which rewrote both
+#    shas. The trees are byte-identical (`git diff bf6339b 6fb3d76` empty), but
+#    re-labelling an old run is the RULING-3 provenance defect the playbook
+#    names, so the whole probe was re-measured.)
+# command: bash scratchpad/probe-batchB.sh   (same run as
+#   docs/evidence/phase-21/halt-wiring-probes-batchB.txt, which reproduces the
+#   driver verbatim; this file carries the 18:139 legs and the RED-first
+#   transcript that preceded the implementation)
+# exit status: 0
+# Every leg ran `npm run build` FIRST and its exit code is recorded inline.
+
+PURPOSE — roadmap/18-jira-cloud-adapter.md:139:
+
+  "Revision comparator detects a seeded material remote edit between two
+   milestone polls and produces the amendment-review signal (evidence: property
+   + integration fixture)."
+
+  Two of the four clauses had no bearer before this branch. The comparator was
+  sound in isolation (`packages/connectors-jira/src/intake/revision-comparator.test.ts`
+  carries the fast-check property the criterion names, plus its non-vacuity
+  partner) but NO MILESTONE POLL EXISTED: `planMilestoneSync` neither read a
+  remote revision nor stamped a `RemoteResource`, and
+  `compareRemoteResourceRevisions` had zero production callers repo-wide —
+  it appeared only in its own module, the package barrel and its own unit test.
+  Every stamp in every test was hand-built. A defect record was filed for the gap
+  (prose reference: `18-revision-comparator-no-integration-fixture`).
+
+  This branch makes `planMilestoneSync` the poll. The clauses now map:
+
+    C1 (detects a seeded material remote edit) — the seeded rev-1 -> rev-2 edit
+       arrives through the SECOND scripted `issues.get` and is detected by the
+       comparator called from the milestone path.
+    C2 (between two milestone polls)           — each `planMilestoneSync` call
+       carrying `revisionPoll` stamps a `RemoteResource` exactly as roadmap/18
+       §Interfaces produced words it; the fixture runs two.
+    C3 (produces the amendment-review signal)  — the returned
+       `MaterialChangeSignal`, now produced by a caller rather than latent in a
+       dead export.
+    C4a (property evidence)  — the pre-existing property pair, UNTOUCHED by this
+       branch.
+    C4b (integration fixture) — the new two-cycle fixture, which runs over a REAL
+       `createJiraResourceClient` on a real `GatewayHttpClient` over
+       `@crabgic/gateway`'s own `createFakeProviderTransport`. That is what makes
+       it an integration fixture rather than a second unit test.
+
+===================== RED-FIRST TRANSCRIPT (the tests, before the code) =====================
+
+The assertions were written and watched fail before `milestone-sync.ts` changed.
+Both failure modes were captured, because the criterion's bearer has a runtime
+half and a type half:
+
+----- RED 1/2: runtime -----
+# UTC: 2026-08-06T10:15:18Z
+# UPSTREAM BASE: c0b38731b383ff024033738b3a56d0c8aa9d831d
+# command: npx vitest run packages/connectors-jira/src/intake/milestone-sync.test.ts
++ Received:
+undefined
+
+ ❯ src/intake/milestone-sync.test.ts:166:55
+    164|     // First poll: no previous stamp, so no signal can be produced.
+    165|     expect(first.revisionPoll?.signal).toBeUndefined();
+    166|     expect(first.revisionPoll?.currentStamp.revision).toBe("rev-1");
+       |                                                       ^
+    167|     expect(first.revisionPoll?.fieldSnapshot["description"]).toBe("v1"…
+    168|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@crabgic/connectors-jira| src/intake/milestone-sync.test.ts > planMilestoneSync — revision polling across two milestone polls (18:139 integration fixture) > control: an unchanged remote revision across two polls is non-material
+AssertionError: expected undefined to deeply equal { material: false }
+
+- Expected:
+{
+  "material": false,
+}
+
++ Received:
+undefined
+
+ ❯ src/intake/milestone-sync.test.ts:222:41
+    220|     expect(second.status).toBe("planned");
+    221|     if (second.status !== "planned") return;
+    222|     expect(second.revisionPoll?.signal).toEqual({ material: false });
+       |                                         ^
+    223|   });
+    224| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  12:15:19
+   Duration  17.85s (transform 1.82s, setup 0ms, import 2.50s, tests 38ms, environment 0ms)
+
+# exit status: 1
+----- RED 2/2: typecheck (the field does not exist on either the input or the outcome) -----
+# UTC: 2026-08-06T10:15:44Z
+# UPSTREAM BASE: c0b38731b383ff024033738b3a56d0c8aa9d831d
+# command: npx tsc -b packages/connectors-jira --force
+packages/connectors-jira/src/intake/milestone-sync.test.ts(159,19): error TS2353: Object literal may only specify known properties, and 'revisionPoll' does not exist in type 'Partial<MilestoneSyncInput>'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(165,18): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(166,18): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(167,18): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(172,9): error TS2353: Object literal may only specify known properties, and 'revisionPoll' does not exist in type 'Partial<MilestoneSyncInput>'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(174,32): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(181,19): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(187,19): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(188,19): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(191,19): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(204,19): error TS2353: Object literal may only specify known properties, and 'revisionPoll' does not exist in type 'Partial<MilestoneSyncInput>'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(213,9): error TS2353: Object literal may only specify known properties, and 'revisionPoll' does not exist in type 'Partial<MilestoneSyncInput>'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(215,32): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+packages/connectors-jira/src/intake/milestone-sync.test.ts(222,19): error TS2339: Property 'revisionPoll' does not exist on type '{ readonly status: "planned"; readonly commentAction: "create" | "update"; readonly plan: { schemaVersion: 1; id: string; externalConnectionId: string; tenant: string; canonicalTarget: string; action: string; ... 7 more ...; expectedRemoteRevision?: string | undefined; }; readonly marker: string; readonly journalEnt...'.
+# exit status: 2
+
+----- GREEN, after implementing the poll -----
+# UTC: 2026-08-06T10:18:31Z
+# command: npx tsc -b packages/connectors-jira --force
+# tsc exit status: 0
+# command: npx vitest run --coverage.enabled=false packages/connectors-jira/src/intake/milestone-sync.test.ts
+
+ RUN  v4.1.10 /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/wt-b
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  12:18:58
+   Duration  1.62s (transform 986ms, setup 0ms, import 1.44s, tests 24ms, environment 0ms)
+
+# vitest exit status: 0
+
+===================== ANTI-VACUITY PROBES (baseline -> mutation -> restore) =====================
+
+All at one sha (6fb3d76), repo-wide `npm test` totals, `npm run build` before
+every leg with its exit code recorded.
+
+  leg        build exit   test files                    tests
+  --------   ----------   ---------------------------   ------------------------------
+  baseline   0            638 passed (638)              6491 passed (6491)
+  M1         0            2 failed | 636 passed (638)   4 failed | 6487 passed (6491)
+  M2         0            2 failed | 636 passed (638)   3 failed | 6488 passed (6491)
+  restore    0            638 passed (638)              6491 passed (6491)
+
+  (M3/M4 in the same run probe the 21:153 consumer side and are recorded in
+   `docs/evidence/phase-21/halt-wiring-probes-batchB.txt`.)
+
+M1 — DELETE THE POLL. The whole `if (input.revisionPoll !== undefined)` block is
+removed; the field stays on the type so the tree still compiles (build exit 0,
+pre-flighted with `npx tsc -b` exit 0). FOUR tests reddened, in TWO packages:
+
+    × detects a seeded material remote edit between two polls and returns the
+      amendment-review signal                         [connectors-jira]
+    × control: an unchanged remote revision across two polls is non-material
+                                                      [connectors-jira]
+    × a seeded mid-run tracked-field edit, observed between two milestone polls,
+      halts the run via 11's material_amendment stop condition before
+      final_verifying                                 [cli seam e2e]
+    × control: a revision bump touching only a NON-tracked field fires 18's
+      coarse trigger, is refused by 21's classifier, and does NOT halt the run
+                                                      [cli seam e2e]
+
+  The two cli legs reddening is the load-bearing part: it proves the seam e2e
+  consumes 18's real producer through `dist/`, not a hand-built stand-in. This is
+  exactly the measurement that a src-only probe would have missed — the rebuild
+  is not ritual here, it is what makes the cross-package half visible.
+
+M2 — LOBOTOMIZE THE COMPARATOR CALL. `compareRemoteResourceRevisions(...)` is
+replaced by the literal `{ material: false } as MaterialChangeSignal`. THREE
+tests reddened:
+
+    × detects a seeded material remote edit between two polls and returns the
+      amendment-review signal                         [connectors-jira]
+    × a seeded mid-run tracked-field edit, ...        [cli seam e2e]
+    × control: a revision bump touching only a NON-tracked field ...
+                                                      [cli seam e2e]
+
+  and the unchanged-revision control STAYED GREEN. That is the point of M2: the
+  control asserts `{material:false}`, which is precisely what the lobotomized
+  code returns, so its survival proves it is a genuine control rather than a
+  restatement of the positive case. M1 (4 red) vs M2 (3 red) is the difference,
+  and the difference IS the control.
+
+ASSERTION-STRING HYGIENE
+
+  `MaterialChangeSignal` is a discriminated union: the material arm is
+  `{material:true, previousRevision, currentRevision}` and the non-material arm
+  is `{material:false}` with no revision members at all. Both are asserted with a
+  full-object `toEqual`, so no matched string of the positive case can appear in
+  the negative one. Every cycle also asserts `outcome.status === "planned"`, which
+  stops the module's OTHER "blocked" vocabulary (`MilestoneSyncOutcome`'s
+  `policy_blocked` arm) from silently standing in for a result.
+
+RESTORE VERIFICATION (three countermeasures, every leg)
+
+  Restored with an explicit source AND an explicit single file path
+  (`git checkout HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts`)
+  — never a directory, which is how an uncommitted test gets silently deleted
+  with a clean exit code. Then: test COUNT compared to baseline (6491 == 6491,
+  638 == 638), `git status --porcelain` empty, and a grep for each new test's
+  name. Full per-leg output is in the companion phase-21 probe artifact.
+
+  [Correction, 2026-08-06, raised in review of PR #113 — left verbatim above.
+   "`git status --porcelain` empty" overstates what the capture shows: at every
+   restore it also lists ` M docs/evidence/phase-21/README.md`, the in-progress
+   commit-3 annotation, which was uncommitted while the probe ran. Read it as
+   "clean except the in-progress README annotation". The probe TARGET being
+   fully restored is pinned instead by the per-path
+   `git diff --stat HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts`
+   the driver runs after every restore — empty in every leg.]
+
+RESIDUAL, so this tick is not read wider than it is
+
+  `planMilestoneSync` still has NO production caller. The poll is exercised by
+  the integration fixture and by the cli seam e2e, not by any shipped loop.
+  18:139's own words name that channel ("evidence: property + integration
+  fixture"), so the criterion is satisfiable this way — but no production
+  milestone-polling loop exists, and nothing in the composed daemon polls a
+  revision today.
+
+  Second residual, encoded in the module's doc comment at the call site: when
+  Jira omits `fields.updated`, `toJiraIssue` stamps the literal `"unknown"`, so
+  two consecutive polls compare equal and the revision signal reports
+  non-material even if fields did change. The `fieldSnapshot` channel is what
+  still surfaces such an edit to 21's classifier — which is the halt decision —
+  so the guarantee survives, but the coarse signal alone does not carry it.

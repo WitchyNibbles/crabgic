@@ -126,6 +126,101 @@ describe("planMilestoneSync — distinct milestone kinds never share a marker", 
   });
 });
 
+describe("planMilestoneSync — revision polling across two milestone polls (18:139 integration fixture)", () => {
+  const CONNECTION_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+  function issueBody(updated: string, description: string): unknown {
+    return {
+      id: "10001",
+      key: "PROJ-1",
+      fields: {
+        summary: "Do the thing",
+        issuetype: { name: "Task" },
+        status: { name: "In Progress" },
+        updated,
+        description,
+      },
+    };
+  }
+
+  const noComment = { findByMarker: async () => undefined };
+
+  it("detects a seeded material remote edit between two polls and returns the amendment-review signal", async () => {
+    // The integration channel roadmap/18:139 names: two REAL `issues.get`
+    // reads through `createJiraResourceClient` over `createFakeProviderTransport`
+    // (buildDeps above), diffed by the REAL `compareRemoteResourceRevisions`
+    // from the milestone path — not two hand-built `buildRemoteResource` stamps.
+    const { resourceClient } = buildDeps([
+      ok(issueBody("rev-1", "v1")),
+      ok(issueBody("rev-2", "v2 - edited remotely")),
+    ]);
+
+    const first = await planMilestoneSync(
+      baseInput({ revisionPoll: { externalConnectionId: CONNECTION_ID } }),
+      { resourceClient, commentMarkerReconciler: noComment },
+    );
+    expect(first.status).toBe("planned");
+    if (first.status !== "planned") return;
+    // First poll: no previous stamp, so no signal can be produced.
+    expect(first.revisionPoll?.signal).toBeUndefined();
+    expect(first.revisionPoll?.currentStamp.revision).toBe("rev-1");
+    expect(first.revisionPoll?.fieldSnapshot["description"]).toBe("v1");
+    const previousStamp = first.revisionPoll?.currentStamp;
+    if (previousStamp === undefined) throw new Error("first poll produced no stamp");
+
+    const second = await planMilestoneSync(
+      baseInput({
+        kind: "material_blocker",
+        revisionPoll: { externalConnectionId: CONNECTION_ID, previousStamp },
+      }),
+      { resourceClient, commentMarkerReconciler: noComment },
+    );
+    expect(second.status).toBe("planned");
+    if (second.status !== "planned") return;
+    expect(second.revisionPoll?.signal).toEqual({
+      material: true,
+      previousRevision: "rev-1",
+      currentRevision: "rev-2",
+    });
+    // The before/after projection 21's `buildJiraFieldDiffs` consumes.
+    expect(second.revisionPoll?.fieldSnapshot["description"]).toBe("v2 - edited remotely");
+    expect(second.revisionPoll?.fieldSnapshot["summary"]).toBe("Do the thing");
+    // The revision timestamp is destructured out of `JiraIssue.fields`
+    // upstream, so it can never masquerade as a tracked-field edit.
+    expect(second.revisionPoll?.fieldSnapshot["updated"]).toBeUndefined();
+  });
+
+  it("control: an unchanged remote revision across two polls is non-material", async () => {
+    // Distinct SHAPE, not a negated string: `MaterialChangeSignal` is a
+    // discriminated union, so `{material:false}` carries no revision members
+    // at all and cannot be satisfied by any part of the positive case.
+    const { resourceClient } = buildDeps([
+      ok(issueBody("rev-1", "v1")),
+      ok(issueBody("rev-1", "v1")),
+    ]);
+
+    const first = await planMilestoneSync(
+      baseInput({ revisionPoll: { externalConnectionId: CONNECTION_ID } }),
+      { resourceClient, commentMarkerReconciler: noComment },
+    );
+    expect(first.status).toBe("planned");
+    if (first.status !== "planned") return;
+    const previousStamp = first.revisionPoll?.currentStamp;
+    if (previousStamp === undefined) throw new Error("first poll produced no stamp");
+
+    const second = await planMilestoneSync(
+      baseInput({
+        kind: "material_blocker",
+        revisionPoll: { externalConnectionId: CONNECTION_ID, previousStamp },
+      }),
+      { resourceClient, commentMarkerReconciler: noComment },
+    );
+    expect(second.status).toBe("planned");
+    if (second.status !== "planned") return;
+    expect(second.revisionPoll?.signal).toEqual({ material: false });
+  });
+});
+
 describe("planMilestoneSync — policy enforcement", () => {
   it("blocks (never creates a plan) when the rendered comment cannot pass lint even after one regeneration", async () => {
     const { resourceClient } = buildDeps([]);

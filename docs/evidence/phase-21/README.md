@@ -236,6 +236,44 @@ confirmed failing against the pre-fix code FIRST, then fixed to GREEN).
 
 ### Journal excerpt (MAJOR-1's named evidence artifact)
 
+> **Annotated 2026-08-06 (batch B) — this is not the HALTED run's excerpt; that
+> one now exists elsewhere. The section below stays verbatim, per this file's own
+> convention.**
+>
+> `roadmap/21-connector-evidence-integration.md:153` names two evidence channels:
+> "integration suite in `packages/gates` + the halted run's journal excerpt". The
+> entries quoted below are the COMPLETING run's `evidence_pointer` entries (req2
+> blocked-then-bound) — the right artifact for that criterion's FIRST sentence,
+> but not a halted run's. When this section was written there was no halted run to
+> excerpt: the "halt" in `packages/gates/src/remote-verification-e2e.test.ts` was
+> that suite's own `throwIfMaterialAmendment` throw, `haltOnStopCondition`
+> (`packages/supervisor/src/intake/stop-conditions.ts`) had no production caller,
+> and no run record ever transitioned. A defect record was filed for the gap
+> (prose reference: `21-material-amendment-halt-not-wired-to-phase-11`).
+>
+> The halted run's journal excerpt now exists at
+> `docs/evidence/phase-21/halt-wiring-journal-excerpt-batchB.txt`, produced through
+> `packages/supervisor/src/intake/material-amendment-halt.ts` (landed 2026-08-06)
+> over a real `JournalStore`, a real `RunsRegistry` and 02's real run-lifecycle
+> state machine, with a does-not-halt control on a second run. Anti-vacuity probes
+> for both directions are in
+> `docs/evidence/phase-21/halt-wiring-probes-batchB.txt`.
+>
+> Read it with the residual it carries in its own header and in the module's doc
+> comment: the excerpt is produced by the wiring under test, not by a shipped
+> daemon loop. No production milestone-polling loop exists yet — `planMilestoneSync`
+> still has no production caller — so nothing in the composed daemon fires this halt
+> today. That is future work, not something this artifact evidences.
+>
+> The halt evidence deliberately does NOT live in `packages/gates`: the halt
+> mechanism is phase 11's, inside `@crabgic/supervisor`, and a `gates -> supervisor`
+> package edge would invert the 21 -> 14 -> 13 -> 11 phase path. (Note the
+> instrument precisely: `scripts/check-package-graph-acyclic.mjs` would ACCEPT that
+> edge today, since nothing in gates' transitive closure depends on supervisor — the
+> binding constraint is the roadmap phase graph, not manifest acyclicity.) The
+> criterion's named gates suite continues to exist unmodified and continues to bear
+> what it bears.
+
 Captured by constructing the exact `remote-verification-e2e.test.ts` scenario
 against the real compiled modules (`packages/gates/dist`), fixed clock,
 deterministic ids — reproduced verbatim by the test suite itself (the
@@ -612,6 +650,50 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    > bullet at `README.md:398-399` and the file inventory at `README.md:467`);
    > those lines record what was true when this file was captured and are left
    > verbatim.
+   >
+   > > **Line-marker correction, 2026-08-06 (batch B).** The two markers in the
+   > > paragraph directly above are left verbatim and are now stale by exactly
+   > > +38 lines: batch B inserted a 38-line annotation under
+   > > `### Journal excerpt (MAJOR-1's named evidence artifact)`, which was above
+   > > both of them. The bullet quoted as `README.md:398-399` is now at
+   > > `README.md:436-437`, and the file inventory quoted as `README.md:467` is
+   > > now at `README.md:505`; the content each names is unchanged. Recorded as a
+   > > correction rather than an edit because this file's own convention keeps
+   > > captured text verbatim — and recorded at all because a shifted marker that
+   > > still resolves points at the wrong place forever. No record, defect file or
+   > > roadmap box cites this README by line number (censused 2026-08-06 in both
+   > > notations: explicit `phase-21/README.md:NN` and prose `line NN` near a
+   > > `phase-21/README` mention), so nothing outside this file needed changing.
+   > >
+   > > **Correction to the sentence directly above, same day (2026-08-06, batch B),
+   > > raised in review of PR #113. The last sentence is FALSE and is left verbatim
+   > > per this file's convention.**
+   > >
+   > > There IS an external referrer:
+   > > `roadmap/21-connector-evidence-integration.md:126` reads
+   > > `…"Journal excerpt (MAJOR-1's named evidence artifact)" heading is still at
+   > > line 237…` — a prose-notation citation of THIS file's line 237.
+   > >
+   > > It still resolves, and nothing is stranded: batch B's 38-line annotation was
+   > > inserted BELOW that heading, so `grep -n "### Journal excerpt"` on this file
+   > > still returns 237. **The roadmap reference is correct and must not be
+   > > edited.** What was wrong is the measurement, not the tree.
+   > >
+   > > Why the census missed it: the instrument matched per SOURCE LINE and used a
+   > > narrow proximity window, while this reference wraps across 2 newlines and
+   > > sits 218 characters from the nearest `phase-21/README` mention. A line-based
+   > > or narrow-window sweep returns a smaller answer with no error — the same
+   > > notation-blind failure the verification playbook records having been
+   > > corrected over twice. The instrument was rebuilt to scan JOINED text in a
+   > > ±600-character window and mutation-tested in four directions (wrapping-and-far,
+   > > explicit notation, adjacent prose, and a negative control); re-run repo-wide
+   > > it finds exactly this one true external referrer.
+   > >
+   > > **Consequence for the next editor, which is why this is recorded at all:**
+   > > an insertion ABOVE line 237 in this file WILL strand
+   > > `roadmap/21-connector-evidence-integration.md:126`. Re-run the census before
+   > > inserting above that heading, and update the roadmap reference in the same
+   > > change if you do.
 
 5. **`GRAFANA_FORGED_OPERATION_NAMES` in `security-fixture-manifest.ts`
    duplicates a subset of the list already inline in `connectors-grafana/src/
