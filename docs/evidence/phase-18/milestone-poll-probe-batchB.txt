@@ -1,7 +1,13 @@
 # UTC: 2026-08-06T10:56:32Z
 # UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
 # branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 6fb3d7604cf61f241d71f4772653ae10c0798fec
-#   (branch closeout/batch-b, commit 2 of 3. Everything below ran at this tree.
+#   (branch closeout/batch-b, commit 2 of 3. SCOPE OF THIS BLANKET, corrected
+#    2026-08-06 in review of PR #113: every BASELINE, MUTATION and RESTORE leg
+#    below ran at this tree. It does NOT cover the embedded RED-first sections,
+#    which by construction ran BEFORE the implementation existed — at upstream
+#    base c0b3873 with the new tests uncommitted in the worktree. Those sections
+#    carry their own UTC and UPSTREAM BASE lines; read those, not this one, for
+#    their provenance.
 #    An earlier capture at pre-reword sha bf6339b was DISCARDED and re-run in
 #    full at this sha rather than re-labelled: commit 1's subject was 103 chars
 #    and had to be reworded for commitlint's 100-char limit, which rewrote both
@@ -205,6 +211,15 @@ RESTORE VERIFICATION (three countermeasures, every leg)
   with a clean exit code. Then: test COUNT compared to baseline (6491 == 6491,
   638 == 638), `git status --porcelain` empty, and a grep for each new test's
   name. Full per-leg output is in the companion phase-21 probe artifact.
+
+  [Correction, 2026-08-06, raised in review of PR #113 — left verbatim above.
+   "`git status --porcelain` empty" overstates what the capture shows: at every
+   restore it also lists ` M docs/evidence/phase-21/README.md`, the in-progress
+   commit-3 annotation, which was uncommitted while the probe ran. Read it as
+   "clean except the in-progress README annotation". The probe TARGET being
+   fully restored is pinned instead by the per-path
+   `git diff --stat HEAD -- packages/connectors-jira/src/intake/milestone-sync.ts`
+   the driver runs after every restore — empty in every leg.]
 
 RESIDUAL, so this tick is not read wider than it is
 

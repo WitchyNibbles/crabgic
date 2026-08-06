@@ -43,8 +43,25 @@ run's journal excerpt."
   real `RunsRegistry`, and 02's real run-lifecycle state machine. The signal is
   built by 21's REAL `buildJiraFieldDiffs`/`buildMaterialAmendmentSignal` over
   two field snapshots of exactly the shape 18's `planMilestoneSync` now returns
-  as `revisionPoll.fieldSnapshot`. Nothing below is a stub or a hand-built
-  literal signal.
+  as `revisionPoll.fieldSnapshot`. No stub, fake or hand-written stand-in stands
+  in for the halt path, the journal, the registry, the state machine or the
+  CLASSIFIER.
+
+  SCOPE OF THAT SENTENCE, stated precisely (tightened 2026-08-06 in review of
+  PR #113, where the original wording — "nothing below is a stub or a hand-built
+  literal signal" — was found to read wider than it is true): the two field
+  SNAPSHOTS this driver feeds to `buildJiraFieldDiffs` ARE literals written in
+  the driver (see `before`/`after` in the source below). What is not hand-built
+  is the SIGNAL — it is computed from those snapshots by 21's real classifier,
+  never asserted into existence. The remaining link, that a real
+  `planMilestoneSync` poll actually PRODUCES snapshots of this shape, is not
+  evidenced by this file; it is evidenced by
+  `packages/cli/src/intake/material-amendment-halt.e2e.test.ts`, where both
+  snapshots come out of two real polls over a real `JiraResourceClient`, and by
+  probe M1, under which that e2e reddens when the poll is deleted. Nothing is
+  lost by the driver using literals here — this artifact's job is the journal
+  excerpt, not the poll — but the claim is scoped rather than left to be read
+  as covering the whole chain.
 
   WHY THE HALT PROOF IS NOT IN `packages/gates`. The halt mechanism is phase
   11's, inside `@crabgic/supervisor`. A `gates -> supervisor` package edge would

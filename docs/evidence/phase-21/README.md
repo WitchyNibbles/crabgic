@@ -664,6 +664,36 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    > > roadmap box cites this README by line number (censused 2026-08-06 in both
    > > notations: explicit `phase-21/README.md:NN` and prose `line NN` near a
    > > `phase-21/README` mention), so nothing outside this file needed changing.
+   > >
+   > > **Correction to the sentence directly above, same day (2026-08-06, batch B),
+   > > raised in review of PR #113. The last sentence is FALSE and is left verbatim
+   > > per this file's convention.**
+   > >
+   > > There IS an external referrer:
+   > > `roadmap/21-connector-evidence-integration.md:126` reads
+   > > `…"Journal excerpt (MAJOR-1's named evidence artifact)" heading is still at
+   > > line 237…` — a prose-notation citation of THIS file's line 237.
+   > >
+   > > It still resolves, and nothing is stranded: batch B's 38-line annotation was
+   > > inserted BELOW that heading, so `grep -n "### Journal excerpt"` on this file
+   > > still returns 237. **The roadmap reference is correct and must not be
+   > > edited.** What was wrong is the measurement, not the tree.
+   > >
+   > > Why the census missed it: the instrument matched per SOURCE LINE and used a
+   > > narrow proximity window, while this reference wraps across 2 newlines and
+   > > sits 218 characters from the nearest `phase-21/README` mention. A line-based
+   > > or narrow-window sweep returns a smaller answer with no error — the same
+   > > notation-blind failure the verification playbook records having been
+   > > corrected over twice. The instrument was rebuilt to scan JOINED text in a
+   > > ±600-character window and mutation-tested in four directions (wrapping-and-far,
+   > > explicit notation, adjacent prose, and a negative control); re-run repo-wide
+   > > it finds exactly this one true external referrer.
+   > >
+   > > **Consequence for the next editor, which is why this is recorded at all:**
+   > > an insertion ABOVE line 237 in this file WILL strand
+   > > `roadmap/21-connector-evidence-integration.md:126`. Re-run the census before
+   > > inserting above that heading, and update the roadmap reference in the same
+   > > change if you do.
 
 5. **`GRAFANA_FORGED_OPERATION_NAMES` in `security-fixture-manifest.ts`
    duplicates a subset of the list already inline in `connectors-grafana/src/

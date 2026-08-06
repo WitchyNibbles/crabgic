@@ -1,7 +1,13 @@
 # UTC: 2026-08-06T10:55:51Z
 # UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
 # branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 6fb3d7604cf61f241d71f4772653ae10c0798fec
-#   (branch closeout/batch-b, commit 2 of 3. Everything below ran at this tree.
+#   (branch closeout/batch-b, commit 2 of 3. SCOPE OF THIS BLANKET, corrected
+#    2026-08-06 in review of PR #113: every BASELINE, MUTATION and RESTORE leg
+#    below ran at this tree. It does NOT cover the embedded RED-first sections,
+#    which by construction ran BEFORE the implementation existed — at upstream
+#    base c0b3873 with the new tests uncommitted in the worktree. Those sections
+#    carry their own UTC and UPSTREAM BASE lines; read those, not this one, for
+#    their provenance.
 #    An earlier capture at pre-reword sha bf6339b was DISCARDED and re-run in
 #    full at this sha rather than re-labelled: commit 1's subject was 103 chars
 #    and had to be reworded for commitlint's 100-char limit, which rewrote both
@@ -41,6 +47,18 @@ SUMMARY TABLE (repo-wide `npm test`, i.e. `vitest run --coverage`)
   Restore is compared to baseline by TEST COUNT, not by exit code: 6491 == 6491,
   638 == 638. Plus `git status --porcelain` empty and a grep for each new test's
   name (all three restore countermeasures, every leg — see the leg output below).
+
+  [Correction, 2026-08-06, raised in review of PR #113 — left verbatim above.
+   "`git status --porcelain` empty" is refuted by this file's OWN captured
+   output further down, which shows ` M docs/evidence/phase-21/README.md` at
+   every restore. That entry is the in-progress commit-3 README annotation,
+   which was uncommitted while the probe ran; it is not a probe artifact and
+   not an unrestored mutation. Read the claim as "clean except the in-progress
+   README annotation". What actually pins each probe TARGET clean is the
+   per-path `git diff --stat HEAD -- <the one mutated file>` the driver runs
+   after every restore, which is empty in every leg — see the capture. A
+   committed summary contradicted by its own capture is a defect even when the
+   numbers stand, hence this note rather than a silent edit.]
 
 WHAT EACH MUTATION MEANS
 
@@ -456,3 +474,244 @@ NOTE ON A PLAN INSTRUCTION THAT WAS NOT FOLLOWED, AND WHY
   `phase-21/README` mention, repo-wide, dist excluded — found NO record, defect
   file, roadmap box or transcript citing this README by line number, so nothing
   outside the file needed changing.
+
+  ############################################################################
+  CORRECTION, 2026-08-06 (same day), raised in adversarial review of PR #113.
+  THE LAST SENTENCE OF THE PARAGRAPH ABOVE IS FALSE. It is left verbatim, per
+  this repository's annotate-never-rewrite rule.
+  ############################################################################
+
+  There IS an external referrer. `roadmap/21-connector-evidence-integration.md:126`
+  reads:
+
+      ..."Journal excerpt (MAJOR-1's named evidence artifact)" heading is still
+      at line 237, and its §Deviations item 4 still...
+
+  — a prose-notation citation of `docs/evidence/phase-21/README.md`'s line 237.
+
+  NOTHING IS STRANDED, AND THE ROADMAP REFERENCE IS CORRECT. Batch B's 38-line
+  annotation was inserted BELOW that heading, so
+  `grep -n "### Journal excerpt" docs/evidence/phase-21/README.md` still returns
+  237 at this branch's tip. The roadmap reference MUST NOT be edited. What was
+  wrong here is the measurement, not the tree — which is exactly why this is a
+  correction and not a code change.
+
+  WHY THE INSTRUMENT MISSED IT, AND WHAT WAS DONE ABOUT IT. The census matched
+  per SOURCE LINE and used a narrow proximity window. This reference wraps
+  across 2 newlines and sits 218 characters from the nearest `phase-21/README`
+  mention, so neither the line-based match nor the window could see it. A
+  line-based or narrow-window sweep returns a SMALLER ANSWER WITH NO ERROR —
+  the same notation-blind failure shape `docs/verification-playbook.md` records
+  having been corrected over twice ("a wrong answer usually means a wrong
+  instrument; fix the instrument, then re-derive"). Publishing "cited nowhere"
+  from such a tool is the defect, independently of whether the answer happened
+  to be benign.
+
+  The instrument was REBUILT rather than the claim merely patched: it now JOINS
+  the document before matching and scans a +/-600-character window around every
+  `phase-21/README` mention, for both notations. It was mutation-tested in four
+  directions before being trusted:
+
+      OK   prose-wrapping-far (the real missed shape) : caught  -> 'line 237'
+      OK   explicit notation                          : caught  -> 'phase-21/README.md:503'
+      OK   prose adjacent                             : caught  -> 'line 42'
+      OK   NEGATIVE control (mention, no line number)  : not caught, as required
+
+  Re-run repo-wide over the 11 files mentioning `phase-21/README` (dist
+  excluded), it reports TWO hits, of which exactly one is a true referrer:
+
+      roadmap/21-connector-evidence-integration.md:126  [prose] 'line 237'
+          -> TRUE referrer. The one the old instrument missed.
+      docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt:508  [prose] 'line 570'
+          -> FALSE POSITIVE, and deliberately so. That "log line 570" is a CI
+             job-log line number, not a citation of this README. The tool is
+             built OVER-INCLUSIVE on purpose: if an over-inclusive set misses
+             your edit range, the true set certainly does. Hand-classified.
+
+  KNOWN REMAINING LIMIT OF THE INSTRUMENT, stated rather than left implicit: it
+  anchors on `phase-21/README` mentions, so it cannot see a BARE self-reference
+  of the `README.md:NN` form written inside the file itself with no nearby
+  path-qualified mention. The two such markers in this repo (`README.md:398-399`
+  and `README.md:467`) were found and corrected by hand, not by this tool.
+
+  CONSEQUENCE FOR THE NEXT EDITOR — the reason this is recorded at all. An
+  insertion ABOVE line 237 of `docs/evidence/phase-21/README.md` WILL strand
+  `roadmap/21-connector-evidence-integration.md:126`. Re-run the census before
+  inserting above that heading, and update the roadmap reference in the same
+  change if you do.
+
+----- rebuilt census instrument, verbatim (scratch file, NOT committed to packages/) -----
+#!/usr/bin/env python3
+"""Notation-aware inbound-citation census for docs/evidence/phase-21/README.md.
+
+REPLACES the narrow instrument used on 2026-08-06, which published "cited
+nowhere" as a measurement and was WRONG. Two defects in the old tool, both of
+which return a SMALLER answer with no error:
+
+  1. it matched per LINE, so a reference whose filename and line number sit on
+     different source lines could never match (prose wraps; the regex did not);
+  2. its proximity window was narrow, so a prose "line NN" more than a few
+     dozen characters from the nearest filename mention fell outside it.
+
+The real reference it missed — roadmap/21-connector-evidence-integration.md:126,
+"...heading is still at line 237..." — is 218 chars from the nearest
+`phase-21/README` mention with 2 newlines in between. Hence: JOIN the document
+first, then scan a +/-600-char window around every mention, for BOTH notations.
+Deliberately over-inclusive: if an over-inclusive set misses your edit range, the
+true set certainly does.
+"""
+
+import re
+import subprocess
+import sys
+
+TARGET_HINTS = ["phase-21/README", "phase-21/README.md"]
+WINDOW = 600
+
+# Files EXCLUDED from the referrer set, with the reason stated in the output so
+# the exclusion is visible rather than hidden. These are this census's own
+# capture: they quote line numbers while REPORTING on citations, so a match
+# inside them is the tool reading its own output, not a reference that could be
+# stranded by an edit to the README. Everything else in the repo stays in scope.
+SELF_CAPTURE = {
+    "docs/evidence/phase-21/halt-wiring-probes-batchB.txt",
+    "docs/evidence/phase-18/milestone-poll-probe-batchB.txt",
+}
+
+EXPLICIT = re.compile(r"phase-21/README\.md:(\d+)(?:-(\d+))?")
+# prose notations: "at line 237", "line 237", "lines 398-399", "(line 113)"
+PROSE = re.compile(r"\blines?\s+(\d+)(?:\s*-\s*(\d+))?\b", re.I)
+
+
+def repo_files():
+    out = subprocess.run(
+        ["git", "grep", "-l", "phase-21/README", "--", "."],
+        capture_output=True, text=True, check=False,
+    ).stdout.split("\n")
+    return [f for f in out if f and "/dist/" not in f]
+
+
+def census(files, self_path):
+    hits = []
+    for f in files:
+        try:
+            raw = open(f, encoding="utf-8").read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        # line map for reporting, then JOINED text for matching
+        lines = raw.split("\n")
+        starts, pos = [], 0
+        for ln in lines:
+            starts.append(pos)
+            pos += len(ln) + 1
+        joined = raw.replace("\n", " ")
+
+        def lineno(off):
+            lo, hi = 0, len(starts) - 1
+            while lo < hi:
+                mid = (lo + hi + 1) // 2
+                if starts[mid] <= off:
+                    lo = mid
+                else:
+                    hi = mid - 1
+            return lo + 1
+
+        for m in re.finditer(r"phase-21/README(?:\.md)?", joined):
+            lo = max(0, m.start() - WINDOW)
+            hi = min(len(joined), m.end() + WINDOW)
+            window = joined[lo:hi]
+            for em in EXPLICIT.finditer(window):
+                hits.append((f, lineno(lo + em.start()), "explicit", em.group(0)))
+            for pm in PROSE.finditer(window):
+                hits.append((f, lineno(lo + pm.start()), "prose", pm.group(0)))
+    # dedupe
+    seen, out = set(), []
+    for h in hits:
+        if h in seen:
+            continue
+        seen.add(h)
+        out.append(h)
+    return sorted(out)
+
+
+def main():
+    all_files = repo_files()
+    files = [f for f in all_files if f not in SELF_CAPTURE]
+    skipped = [f for f in all_files if f in SELF_CAPTURE]
+    self_path = "docs/evidence/phase-21/README.md"
+    hits = census(files, self_path)
+    print(f"census: scanned {len(files)} file(s) mentioning phase-21/README, window +/-{WINDOW} chars, JOINED text")
+    if skipped:
+        print("  EXCLUDED as this census's own capture (they quote line numbers while")
+        print("  REPORTING on citations; a match inside them is the tool reading its own")
+        print("  output, not a reference an edit to the README could strand):")
+        for f in skipped:
+            print(f"    - {f}")
+    external = [h for h in hits if h[0] != self_path]
+    internal = [h for h in hits if h[0] == self_path]
+    print(f"\nEXTERNAL referrers carrying a line number ({len(external)}):")
+    for f, ln, kind, txt in external:
+        print(f"  {f}:{ln}  [{kind}]  {txt!r}")
+    print(f"\nINTERNAL (self-references inside {self_path}) ({len(internal)}):")
+    for f, ln, kind, txt in internal:
+        print(f"  {f}:{ln}  [{kind}]  {txt!r}")
+    return external, internal
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--mutation-test":
+        # Both notations must be caught, and the wrapping/window case must be
+        # caught — the exact blind spot the old instrument had.
+        import os, tempfile
+        cases = {
+            "prose-wrapping-far (the real B-1 shape)":
+                "see `docs/evidence/phase-21/README.md`. That file is referenced in prose\n"
+                + ("filler word " * 14) + "\nand its heading is still at line 237, and so on",
+            "explicit-notation": "as recorded at `phase-21/README.md:503` in the inventory",
+            "prose-adjacent": "phase-21/README.md at line 42",
+            "NEGATIVE-control (no line number)": "phase-21/README.md is the evidence index for this phase",
+        }
+        d = tempfile.mkdtemp()
+        for name, body in cases.items():
+            p = os.path.join(d, "case.md")
+            open(p, "w").write(body)
+            hits = census([p], "nonesuch")
+            caught = len(hits) > 0
+            expect = not name.startswith("NEGATIVE")
+            ok = caught == expect
+            print(f"{'OK  ' if ok else '*** FAIL ***'} {name}: {'caught' if caught else 'not caught'} (expected {'catch' if expect else 'no catch'})")
+            for h in hits:
+                print(f"      -> [{h[2]}] {h[3]!r}")
+        sys.exit(0)
+    main()
+----- end census instrument -----
+
+----- its mutation test and repo-wide re-run, captured -----
+# UTC: 2026-08-06T11:40:12Z
+# UPSTREAM BASE (stable): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# command: python3 scratchpad/census-batchB.py --mutation-test
+OK   prose-wrapping-far (the real B-1 shape): caught (expected catch)
+      -> [prose] 'line 237'
+OK   explicit-notation: caught (expected catch)
+      -> [explicit] 'phase-21/README.md:503'
+OK   prose-adjacent: caught (expected catch)
+      -> [prose] 'line 42'
+OK   NEGATIVE-control (no line number): not caught (expected no catch)
+# exit status: 0
+
+# command: python3 scratchpad/census-batchB.py
+census: scanned 10 file(s) mentioning phase-21/README, window +/-600 chars, JOINED text
+  EXCLUDED as this census's own capture (they quote line numbers while
+  REPORTING on citations; a match inside them is the tool reading its own
+  output, not a reference an edit to the README could strand):
+    - docs/evidence/phase-18/milestone-poll-probe-batchB.txt
+    - docs/evidence/phase-21/halt-wiring-probes-batchB.txt
+
+EXTERNAL referrers carrying a line number (2):
+  docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt:508  [prose]  'line 570'
+  roadmap/21-connector-evidence-integration.md:126  [prose]  'line 237'
+
+INTERNAL (self-references inside docs/evidence/phase-21/README.md) (1):
+  docs/evidence/phase-21/README.md:675  [prose]  'line 237'
+# exit status: 0
+----- end capture -----
