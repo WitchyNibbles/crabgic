@@ -347,3 +347,64 @@ SECTION 5 — WHAT THIS TRANSCRIPT DOES *NOT* PROVE
 
 5. Nothing here was run against a live or licensed system. No `@live` test was
    run, `CRABGIC_LIVE` was never set, and no workflow was dispatched.
+
+================================================================================
+ADDENDUM 2026-08-06T16:38Z — re-verification after review commit d847e93
+================================================================================
+Nothing above is rewritten. This records a follow-up commit and a re-run.
+
+Review of PR #122 found that test T2's RETAINED TITLE ("exactly ONE
+tenant-boundary entry exists...") asserted the negation of the current
+invariant while passing, so every CI job log printed a green row beside a
+sentence supporting the wrong claim — a citation hazard in a repository whose
+proofs are quoted job-log lines. Commit d847e93 retitles it (the original title
+is now quoted verbatim inside the annotation, beside the original comment) and
+states precisely what "annotate, never rewrite" covers here: the RULING comment
+and T2's original comment/title are verbatim; T2's ASSERTIONS and TITLE
+necessarily changed, because the old ones assert the negation of the current
+invariant and cannot be kept green.
+
+d847e93 changes comments and one `it()` title only — no assertion, no
+production behaviour. Measured rather than asserted:
+
+  branch tip at re-capture (PROVISIONAL): d847e93
+  $ npm run lint / typecheck / build                -> 0 / 0 / 0
+  $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-jira \
+      --project @crabgic/gateway
+   Test Files  129 passed (129)
+        Tests  1147 passed (1147)          <- identical to section 0b
+
+  PROBE A re-run at d847e93, same mutation as section 2, verbatim:
+    src-only, no rebuild:   5 failed | 1142 passed (1147)   <- identical to A1
+    after npm run build (exit 0):
+                           13 failed | 1134 passed (1147)   <- identical to A2
+    restore (git checkout HEAD -- <path>, rebuild):
+                          129 files | 1147 passed, git status --short empty
+
+Every number in sections 0-4 therefore still holds at d847e93.
+
+ONE FINDING REPORTED BACK RATHER THAN APPLIED. The review also asked for the
+fixture's tenant-derivation anchor to move from `jira-resource-client.ts:85-89`
+to `:86-90`, on the grounds that `:85` is a comment line. Measured at
+origin/main (`git show origin/main:<path> | grep -n ""`), and this PR does not
+touch that file:
+
+   84:  // this derivation) - both are pinned by their own tests.
+   85:  const tenant =
+   86:    deps.tenant ??
+   87:    ctx.connection.tenantAllowlist?.[0] ??
+   88:    ctx.connection.projectAllowlist?.[0] ??
+   89:    ctx.connection.id;
+   90:  const externalConnectionId = ctx.connection.id;
+
+`:85` is `const tenant =`, not a comment; the comment block ends at `:84`. The
+statement spans `:85-89`, so `:86-90` would begin mid-expression and absorb the
+unrelated `externalConnectionId` line. The anchor is left at `:85-89` and the
+doc comment now also names the distinctive `:87` clause
+(`ctx.connection.tenantAllowlist?.[0] ??`) - the same line
+`packages/gates/src/security-fixture-manifest.ts` already anchors on - so the
+citation cannot be misread as pointing at the chain alone.
+
+(The DC twin's identical derivation IS at `:106-110`, with `:108` as the
+`tenantAllowlist?.[0]` clause. If the review's `:86-90` came from reading that
+file, the off-by-twenty is the likely cause.)
