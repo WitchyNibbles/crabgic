@@ -35,8 +35,17 @@ export interface EvalPairResult {
  * Here the opposite is needed — swapping which cases make up the held-out
  * set, with every case's content untouched, is still a changed grader. So
  * every member of the `.strict()` `EvalCaseSchema` is folded in explicitly,
- * and `../red-team/grader-drift.redteam.test.ts`'s last case pins that this
- * enumeration stays exhaustive as the schema evolves.
+ * and `../red-team/grader-drift.redteam.test.ts`'s case "the digest input
+ * covers every member of EvalCaseSchema" pins that this enumeration stays
+ * exhaustive as the schema evolves. Two sibling cases there pin the
+ * SERIALIZATION rather than the field list: "the per-case field separator is
+ * unambiguous" sweeps a candidate set of printable separators, and
+ * "caseSetDigest is byte-pinned to its exact serialization" recomputes the
+ * expected digest from a literal statement of the format.
+ *
+ * Named, not numbered: an earlier version of this comment pointed at "the
+ * last case in that file", which stopped being true the moment a case was
+ * appended.
  */
 export function caseSetDigest(cases: readonly EvalCase[]): string {
   const perCase = cases
