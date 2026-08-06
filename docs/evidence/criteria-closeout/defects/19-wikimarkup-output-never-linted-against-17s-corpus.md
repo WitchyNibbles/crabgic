@@ -114,3 +114,39 @@ fixture-count floor all already exist and are already composed pairwise.
 **Needs:** nothing — no live instance, no container, no engine, no secret.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06
+
+Both substantive conjuncts now have bearers, in
+`packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts`:
+the output-side lint loop over 17's own `fixtures/corpus/` (`:94-95`), and the golden-file diff
+against a committed `.wiki` per fixture under `packages/connectors-jira/fixtures/wiki-golden/`
+(`:188-190`), with `:183` pinning the golden set equal to the corpus set so neither an orphan
+golden nor an unfixtured golden can pass. The suite this record names as the near miss is left in
+place but renamed, so it no longer reads as the criterion's bearer.
+
+**The remedy found a real defect, which is why this was not a bookkeeping fix.** `toADF` never
+emitted `hardBreak`; it joined consecutive paragraph lines with a space. `hardBreak` has been on
+`ADF_ALLOWED_NODE_TYPES` since that module was written, and this phase's serializer has always had
+a branch rendering it as `"\n"` — the two halves were built to fit and were never connected. The
+effect: every templated multi-line artifact collapsed to a single line, which the
+schema-validation stage then rejected because it splits on newlines to find each `Label: value`
+section. `valid-pr-body`, `valid-jira-milestone-comment` and `valid-review-comment` each linted
+**BLOCK(schema-validation)** after the round trip. Three artifacts that pass the lint as authored
+would have gone on the Data Center wire malformed.
+
+Nothing pinned this before: changing the join and rebuilding the workspace left all 67 renderer +
+connectors-jira files and 681 tests green. Two `adf.test.ts` cases now pin paragraph assembly.
+
+Mutation evidence, rebuilt before each arm (baseline 68 files / 793 tests): reverting the
+`hardBreak` join gives 28 failed / 765 passed; rendering `hardBreak` as a space in the serializer
+gives 27 failed / 766 passed.
+
+**Residual, asserted rather than described.** `attack-remote-image` is the one blocked fixture
+whose blocked status this path does not preserve, and that is by design: the ADF safe subset has
+no image node, so the construct is destroyed rather than laundered. `:122-123` asserts the output
+contains no image in **either** notation, so the conclusion does not rest on the clean lint alone,
+and a future change that carries images through ADF reddens here.
+
+**Scope.** This closes criterion 4 only. Criteria 1, 2 and 3's cassette conjuncts are untouched
+and still need a licensed Data Center instance.

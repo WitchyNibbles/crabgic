@@ -1,0 +1,96 @@
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# branch tip at capture (PROVISIONAL — see note): 5c0a8f86d556ebf6ebed7f3e59d5420cf0917c59
+# Captured (UTC): 2026-08-06T08:10:18Z
+# cwd: repository root
+# subject: roadmap/17 c5 + roadmap/19 c4 — converter OUTPUT vs 17's lint corpus
+# NOTE: every mutation arm below is preceded by 'npm run build'. connectors-jira imports
+#       @crabgic/renderer from packages/renderer/dist, so a renderer src-only edit is
+#       invisible to the connector legs until the workspace is rebuilt.
+# ---- verbatim output below ----
+# UPSTREAM BASE (stable): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# captured: 2026-08-06T07:28:07Z  (working tree: new tests only, no production change)
+# cmd: npx vitest run packages/renderer/src/wiki-markup.test.ts --coverage.enabled=false
+
+
+ RUN  v4.1.10 /home/eimi/projects/crabgic
+
+ ❯ |@crabgic/renderer| src/wiki-markup.test.ts (43 tests | 2 failed) 24ms
+     × converts a markdown image to wiki image syntax, not to a link 6ms
+     × does not launder a blocked artifact: attack-remote-image 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |@crabgic/renderer| src/wiki-markup.test.ts > toWikiMarkup > converts a markdown image to wiki image syntax, not to a link
+AssertionError: expected '![screenshot|https://example.com/x.pn…' to be '!https://example.com/x.png!' // Object.is equality
+
+Expected: "!https://example.com/x.png!"
+Received: "![screenshot|https://example.com/x.png]"
+
+ ❯ src/wiki-markup.test.ts:51:70
+     49|     // silently downgrade a blocked artifact to a clean one — see the …
+     50|     // suite below, which is what pins this end to end.
+     51|     expect(toWikiMarkup("![screenshot](https://example.com/x.png)")).t…
+       |                                                                      ^
+     52|       "!https://example.com/x.png!",
+     53|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |@crabgic/renderer| src/wiki-markup.test.ts > toWikiMarkup output against the phase-17 lint corpus > does not launder a blocked artifact: attack-remote-image
+
+==============================================================
+# UPSTREAM BASE (stable): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# captured: 2026-08-06T07:32:08Z
+# scope: npx vitest run packages/renderer packages/connectors-jira --coverage.enabled=false
+# NOTE: every arm below is preceded by 'npm run build' — connectors-jira imports
+#       @crabgic/renderer from packages/renderer/dist, so a src-only edit is invisible.
+
+## ARM 0 — BASELINE (all fixes applied, unmutated)
+build exit=0
+ Test Files  68 passed (68)       Tests  793 passed (793) 
+
+## ARM 1 — MUTATION: revert toADF's hardBreak join back to paragraphLines.join(" ")
+build exit=0
+⎯⎯⎯⎯⎯⎯ Failed Tests 28 ⎯⎯⎯⎯⎯⎯⎯  Test Files  2 failed | 66 passed (68)       Tests  28 failed | 765 passed (793) 
+
+## ARM 2 — MUTATION: drop WIKI_IMAGE_PATTERN's findings loop from url-policy
+build exit=2
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯  Test Files  2 failed | 66 passed (68)       Tests  5 failed | 788 passed (793) 
+
+## ARM 3 — MUTATION: toWikiMarkup emits a link for a markdown image again (![alt|url])
+build exit=2
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯  Test Files  1 failed | 67 passed (68)       Tests  2 failed | 791 passed (793) 
+
+## ARM 4 — MUTATION: serializer renders hardBreak as a space instead of a newline
+build exit=0
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯  Test Files  1 failed | 67 passed (68)       Tests  27 failed | 766 passed (793) 
+
+## ARM 5 — RESTORE: all fixes back in place
+build exit=0
+ Test Files  68 passed (68)       Tests  793 passed (793) 
+
+## ARM 2 and ARM 3 REDONE — the originals did not compile (tsc exit=2, unused-local),
+## so their connector legs measured the PREVIOUS dist. Both numbers are reported.
+
+## ARM 2b — COMPILING MUTATION: WIKI_IMAGE_PATTERN kept, made unmatchable (/(?!)/g)
+build exit=0
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯  Test Files  2 failed | 66 passed (68)       Tests  5 failed | 788 passed (793) 
+
+## ARM 3b — COMPILING MUTATION: image pass becomes identity (pattern still referenced)
+build exit=0
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯  Test Files  1 failed | 67 passed (68)       Tests  2 failed | 791 passed (793) 
+
+## ARM 6 — RESTORE + verify test COUNT is back at baseline (not just exit code)
+build exit=0
+ Test Files  68 passed (68)       Tests  793 passed (793) 
+
+## contamination check (three-dot, merge-base form):
+## working-tree changes:
+ M packages/renderer/src/adf.test.ts
+ M packages/renderer/src/adf.ts
+ M packages/renderer/src/url-policy.test.ts
+ M packages/renderer/src/url-policy.ts
+ M packages/renderer/src/wiki-markup.test.ts
+ M packages/renderer/src/wiki-markup.ts
+?? packages/connectors-jira/fixtures/wiki-golden/
+?? packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts
