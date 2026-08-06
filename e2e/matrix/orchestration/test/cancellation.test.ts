@@ -13,6 +13,7 @@ import { createRunsRegistry, transitionRun } from "@crabgic/supervisor";
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * Scenario 3/8 — roadmap/23-release-hardening.md work item 4: "cancellation."
@@ -42,6 +43,7 @@ describe("Orchestration matrix: cancellation", () => {
   it("a worker-reported 'cancelled' outcome drives dispatchAttempt to a cancelled WorkUnitAttemptStatus", async () => {
     const workUnitId = randomUUID();
     const outcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId: randomUUID(),

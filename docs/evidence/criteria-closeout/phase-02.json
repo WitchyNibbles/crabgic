@@ -293,32 +293,38 @@
       "index": 8,
       "text": "`GATEWAY_MCP_SERVER_NAME` is the sole definition site of the literal `\"crabgic_gateway\"` — a repo-wide grep/golden-value CI check fails if the literal appears a second time under `packages/*`.",
       "textSha256": "9811f179e4599bfc08f1810442a7d1dce180457d800e4326d86e5378acdf690a",
-      "classification": "UNMET",
-      "ticked": false,
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
       "citations": [
         {
           "kind": "test",
-          "ref": "packages/contracts/src/gateway/server-name.test.ts:76",
-          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:76 — 'expect(GATEWAY_MCP_SERVER_NAME).toBe(\"crabgic_gateway\");'. The golden-value half is fully met and matches interface-ledger Gap 11's pinned value."
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:167-190",
+          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:168 — 'expect(scanned.length).toBeGreaterThan(500);' … :184 — 'expect(violations).toEqual([]);' — the scan now walks every TRACKED file under packages/ rather than .ts under packages/*/src, which is the scope this criterion names. trackedFilesUnderPackages() at :146-156 uses `git ls-files -z -- packages`, so build output and untracked scratch are excluded without a skip list. The :169 floor and the :189 'expect(allowlistedHits).toBeGreaterThanOrEqual(ALLOWLIST.size);' are the two anti-vacuity directions: a walk that scanned nothing, and a walk that read no file CONTENT, both fail."
         },
         {
           "kind": "test",
-          "ref": "packages/contracts/src/gateway/server-name.test.ts:95",
-          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:95 — 'expect(violations).toEqual([]);' after a recursive read-only walk of every `.ts` file under each `packages/<pkg>/src`, allowlisting only server-name.ts and this test (:29-32). PARTIAL: this closes the criterion for TypeScript sources under `src/` only, which is narrower than the `packages/*` the criterion names."
-        },
-        {
-          "kind": "artifact",
-          "ref": "docs/evidence/phase-02/closeout-c8-gateway-literal-scan.txt",
-          "quotedAssertion": "Part 2 is the negative control — a second occurrence appended to `packages/journal/src/index.ts` makes the scan fail ('AssertionError: expected [ { …(2) } ] to deeply equal []', vitest exit 1), so the check genuinely discriminates within its scope. Part 3 is the gap: 'git grep -c -F crabgic_gateway -- packages/' returns 14 files, of which `packages/plugin/.mcp.json` is a hand-typed, committed, shipped occurrence bound to the constant by no offline test, and `packages/engine-claude/src/live/fixtures/stub-mcp-server.mjs` is a second (in a comment, and .mjs so outside the extension filter). The engine-core goldens are shown to be derived by regenerating them through `write-goldens.ts` for an empty diff; the engine-claude goldens are byte-asserted against freshly generated output by `options-assembler.test.ts`."
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:192-206",
+          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:199 — 'expect(scanned.has(join(\"packages\", \"plugin\", \".mcp.json\"))).toBe(true);' — the regression pin for the scope defect itself. The shipped plugin manifest is a hand-typed .mcp.json outside every src/ and is not .ts, so the previous walk could not see it; if any of the three named shapes stops being scanned, the widening has been undone."
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:21",
-          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:24-29 — the INSTALLER's generated `.mcp.json` entry is correctly derived: '{ mcpServers: { [GATEWAY_MCP_SERVER_NAME]: { command: \"crabgic\", args: [\"gateway\", \"mcp\"] } } }', with the file's own header noting it never hand-types the literal precisely because of this scanner. Cited to make the gap precise: the installer path is bound; the plugin package's static manifest is a different artifact and is not."
+          "ref": "packages/contracts/src/gateway/server-name.test.ts:208-221",
+          "quotedAssertion": "packages/contracts/src/gateway/server-name.test.ts:215 — 'existsSync(join(REPO_ROOT, entry.derivedBy)),' with :220 — 'expect(checkedDerivations).toBeGreaterThanOrEqual(10);' — every non-definition allowlist entry names the test proving that occurrence is DERIVED from the constant, and those files must exist. This is what keeps the allowlist from becoming the new vacuity: deleting a derivation test breaks the scan rather than leaving an unjustified exemption behind."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/installer/mcp-entry.golden.test.ts:115-133",
+          "quotedAssertion": "packages/cli/src/installer/mcp-entry.golden.test.ts:122 — 'expect(Object.keys(manifest.mcpServers)).toEqual([GATEWAY_MCP_SERVER_NAME]);' and :131 — 'expect(readShippedManifest()).toEqual(mergeMcpJson({}).mcpJson);' — the binding that converts packages/plugin/.mcp.json from \"not a second hand-typed literal\" into \"provably derived\". server-name.test.ts's allowlist names this file as that manifest's derivedBy."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 92557176556, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31083396959",
+          "commit": "983b99e",
+          "quotedAssertion": "job log line 436 — ' ✓  @crabgic/contracts  src/gateway/server-name.test.ts (4 tests) 85ms' (one-space rule). CONTROL, same job name and same runner label at main 8c9cc56 (run 31045306052, job 92439247352), line 441 — ' ✓  @crabgic/contracts  src/gateway/server-name.test.ts (2 tests) 62ms'. 2 -> 4. Sibling: src/installer/mcp-entry.golden.test.ts 7 -> 10 (line 1003 -> 1007)."
         }
       ],
-      "defectRef": "docs/evidence/criteria-closeout/defects/02-gateway-literal-scan-scope.md",
-      "notes": "Recorded UNMET, not WORDING-MISMATCH. The criterion states a behaviour — 'a … CI check fails if the literal appears a second time under `packages/*`' — that does not hold at HEAD: the literal appears hand-typed a second time under `packages/*` and the check is green. Narrowing the claim to the scan's real scope (`packages/*/src/**/*.ts`) would drop a guarantee that roadmap/02 §In scope states in its own words ('no phase hand-types the literal a second time') and that `packages/plugin/.mcp.json` is currently violating, so per the wording protocol it is not a wording fix. Not fixed in this pass — verifying one's own same-pass fix is self-review."
+      "notes": "Closed by remediation. The golden-value half was always met; the scan half was met only within a scope narrower than the criterion's own wording. Measured: the old walk covered 1055 tracked files, the widened one covers 1505. Negative control, which is what shows the widening is load-bearing rather than cosmetic: appending the literal to packages/plugin/.claude-plugin/plugin.json — a non-.ts file outside every src/ — fails the widened scan naming that path, and `git ls-files -- 'packages/*/src/**/*.ts' | grep -c plugin.json` returns 0, so the old scope could not have caught it. Twelve files under packages/ contain the literal besides the two definition sites; nine are generated goldens regenerated by packages/engine-core/src/goldens/generate-golden-artifacts.test.ts, one is the plugin manifest now pinned against the constant, and two are prose (a README and a doc comment recording a live observation). Each is allowlisted with a stated reason rather than silently skipped. The cited CI run executed 983b99e, this branch's code commit; any later commit is docs-only."
     },
     {
       "index": 9,

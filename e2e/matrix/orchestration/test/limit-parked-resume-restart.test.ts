@@ -19,6 +19,7 @@ import {
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * ⭐ MARQUEE VECTOR ⭐ — roadmap/23-release-hardening.md work item 4's exit
@@ -86,6 +87,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
     const adapter = new FakeEngineAdapter(parkScript);
 
     const parkOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -144,6 +146,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
       configDir: "/fake/project/.claude-config",
     };
     const resumeOutcome = await resumeAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: restartedStore,
       sessionRef,
@@ -186,6 +189,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
     const sessionId = randomUUID();
 
     await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId,
@@ -214,6 +218,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
     // crash-recovery correctness fix.
     await expect(
       dispatchAttempt({
+        criteriaSeal: UNSEALED_CRITERIA_SEAL,
         adapter: new FakeEngineAdapter(
           buildFakeEngineScript({
             structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
@@ -230,6 +235,7 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
 
     // Past the reset, the SAME other work unit dispatches normally.
     const laterOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           structuredOutput: buildWorkerResult({ outcome: "succeeded" }),

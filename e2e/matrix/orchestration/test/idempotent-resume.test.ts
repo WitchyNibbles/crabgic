@@ -13,6 +13,7 @@ import { countPriorDispatches, dispatchAttempt, resumeAttempt } from "@crabgic/s
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * Scenario 7/8 — roadmap/23-release-hardening.md work item 4: "idempotent
@@ -59,6 +60,7 @@ describe("Orchestration matrix: idempotent resume", () => {
     const adapter = new FakeEngineAdapter(crashScript);
 
     const crashOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -80,6 +82,7 @@ describe("Orchestration matrix: idempotent resume", () => {
       configDir: "/fake/project/.claude-config",
     };
     const repairOutcome = await resumeAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: store,
       sessionRef,
@@ -129,6 +132,7 @@ describe("Orchestration matrix: idempotent resume", () => {
     const adapter = new FakeEngineAdapter(crashScript);
 
     await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -144,6 +148,7 @@ describe("Orchestration matrix: idempotent resume", () => {
       configDir: "/fake/project/.claude-config",
     };
     const first = await resumeAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter,
       journal: store,
       sessionRef,
@@ -158,6 +163,7 @@ describe("Orchestration matrix: idempotent resume", () => {
     // the concluded session), never silently re-running the worker.
     await expect(
       resumeAttempt({
+        criteriaSeal: UNSEALED_CRITERIA_SEAL,
         adapter,
         journal: store,
         sessionRef,

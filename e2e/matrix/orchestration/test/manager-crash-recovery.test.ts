@@ -17,6 +17,7 @@ import {
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, reopenJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * Scenario 6/8 — roadmap/23-release-hardening.md work item 4: "manager
@@ -197,6 +198,7 @@ describe("Orchestration matrix: manager (supervisor) crash -> recover(runId)", (
       await transitionRun({ journal: store, runs, runId, changeSetId, to: "running" });
 
       const outcome = await dispatchAttempt({
+        criteriaSeal: UNSEALED_CRITERIA_SEAL,
         adapter: new FakeEngineAdapter(
           buildFakeEngineScript({
             sessionId,

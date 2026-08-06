@@ -1,0 +1,55 @@
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# branch tip at capture (PROVISIONAL): 983b99ec2aec96ca9d664434dd874badcdc7159f
+# Captured (UTC): 2026-08-06T08:15:48Z
+# cwd: repository root
+# subject: roadmap/02 c8 — does the WIDENED literal scan bite where the old scope was blind?
+# ---- verbatim output below ----
+# UPSTREAM BASE (stable): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# captured: 2026-08-06T07:53:48Z
+# subject: roadmap/02 c8 — does the WIDENED scan bite where the old one was blind?
+
+## ARM 0 — BASELINE (widened scan, unmutated)
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+
+## ARM 1 — NEGATIVE CONTROL: add the literal to a non-.ts file OUTSIDE any src/
+##          (packages/plugin/.claude-plugin/plugin.json) — the exact shape the
+##          previous packages/*/src/**/*.ts walk could not see.
+     × is the sole definition site of the literal under packages/ (exit criterion) 62ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
++     "file": "packages/plugin/.claude-plugin/plugin.json",
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+
+## ARM 2 — RESTORE
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+
+## ARM 3 — CONTROL: the OLD scope would NOT have caught ARM 1.
+##          The old walk was packages/<pkg>/src/**/*.ts; the mutated file is
+##          packages/plugin/.claude-plugin/plugin.json — outside every src/ and not .ts.
+##          Shown structurally rather than by re-running the deleted walker:
+old-scope file count: 1055
+new-scope file count: 1505
+plugin.json in old scope: 0
+
+==============================================================
+== 21-drift-ci blank dispatch input — red-then-green ==
+# UPSTREAM BASE (stable): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# captured: 2026-08-06T07:55:35Z
+# subject: 21-drift-ci blank dispatch input — red-then-green
+
+## ARM 0 — the fix in place
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+## ARM 1 — MUTATION: revert observedVersionOverride to the bare !== undefined check
+     × treats a empty string observed-version override as ABSENT, not as an observed version of that value 9ms
+     × treats a whitespace only observed-version override as ABSENT, not as an observed version of that value 4ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 passed (10)
+
+## ARM 2 — RESTORE (count must return to baseline, not just exit 0)
+ Test Files  1 passed (1)
+      Tests  10 passed (10)

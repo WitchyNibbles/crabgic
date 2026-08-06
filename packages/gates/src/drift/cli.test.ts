@@ -39,6 +39,52 @@ describe("runDriftCiCli — real fs I/O, scoped to its own state/output paths on
     expect(proposals).toEqual([]);
   });
 
+  // The state CI is ALWAYS in, and which no test covered: GitHub Actions
+  // binds an omitted `workflow_dispatch` input — and every input under the
+  // `schedule` trigger — to `""`, not to unset. Before `observedVersionOverride`
+  // treated blank as absent, these two runs produced two spurious
+  // `DriftProposal`s recommending an update to an empty version string, and
+  // did so deterministically, so the debounce threshold could not suppress
+  // them. Two consecutive runs are what the real scheduled job does, so this
+  // asserts the steady state rather than a single sample.
+  it.each([
+    ["empty string", ""],
+    ["whitespace only", "   "],
+  ])(
+    "treats a %s observed-version override as ABSENT, not as an observed version of that value",
+    async (_name, blank) => {
+      const debounceStatePath = join(dir, `debounce-state-blank-${_name}.json`);
+      const proposalsOutputPath = join(dir, `drift-proposals-blank-${_name}.json`);
+      const previousJira = process.env["JIRA_OBSERVED_VERSION"];
+      const previousGrafana = process.env["GRAFANA_OBSERVED_VERSION"];
+      process.env["JIRA_OBSERVED_VERSION"] = blank;
+      process.env["GRAFANA_OBSERVED_VERSION"] = blank;
+      try {
+        const first = await runDriftCiCli({
+          debounceStatePath,
+          proposalsOutputPath,
+          debounceThreshold: 2,
+        });
+        expect(first.redCheck).toBe(false);
+
+        const second = await runDriftCiCli({
+          debounceStatePath,
+          proposalsOutputPath,
+          debounceThreshold: 2,
+        });
+        expect(second.redCheck).toBe(false);
+
+        const proposals = JSON.parse(await readFile(proposalsOutputPath, "utf-8")) as unknown[];
+        expect(proposals).toEqual([]);
+      } finally {
+        if (previousJira === undefined) delete process.env["JIRA_OBSERVED_VERSION"];
+        else process.env["JIRA_OBSERVED_VERSION"] = previousJira;
+        if (previousGrafana === undefined) delete process.env["GRAFANA_OBSERVED_VERSION"];
+        else process.env["GRAFANA_OBSERVED_VERSION"] = previousGrafana;
+      }
+    },
+  );
+
   it("an observed jira version override drifts, debounced across two runs against the SAME persisted state file", async () => {
     const debounceStatePath = join(dir, "debounce-state.json");
     const proposalsOutputPath = join(dir, "drift-proposals.json");
