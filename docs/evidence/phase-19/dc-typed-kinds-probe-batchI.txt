@@ -62,13 +62,15 @@ and are not this branch's:
      FAIL  |crabgic| src/commands/cli.snapshots.test.ts > --json output schema snapshots — run (three of the five decided-outcome arms) > run --json — approved under the standing policy, and dispatched
      FAIL  |crabgic| src/commands/cli.snapshots.test.ts > --json output schema snapshots — run (three of the five decided-outcome arms) > run --json — escalate (the envelope claims authority the policy does not grant)
 
-Confirmed at upstream base 1bc0d51 with an EMPTY worktree diff, before a line of this
-branch was written:
+Confirmed at upstream base 1bc0d51 in the freshly-created worktree (`git worktree add … -b
+closeout/batch-i origin/main`, so `git status --short` was empty), before a line of this
+branch was written. The commands actually run, verbatim:
 
-    $ git checkout origin/main && npx vitest run     ; exit 1
+    $ npm run build     ; exit 0
+    $ npx vitest run    ; exit 1
      Test Files  1 failed | 643 passed (644)
           Tests  2 failed | 6569 passed (6571)
-       (same two `cli.snapshots.test.ts` names)
+       (the same two `cli.snapshots.test.ts` names)
 
 They are a known cross-PR digest conflict owned by another agent and are excluded from
 every count below. UPDATE, same day, measured after this branch's probes finished: `main`
