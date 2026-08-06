@@ -243,6 +243,7 @@ export async function runContainerizedGrafanaBinding(
     // explicitly rather than left to default — an omitted key would read as
     // `undefined` anyway, but silence is what let this hole exist.
     tenantAllowlist: undefined,
+    folderAllowlist: undefined,
   });
 
   // One binding per requirement, sequential by design: each call journals

@@ -184,6 +184,7 @@ describe("leak hunt — mutation pipeline never journals a raw provider body", (
       lock: new IdempotencyKeyLock(),
       // Tenant-unscoped: this suite's subject is leak-hunting, not tenancy.
       tenantAllowlist: undefined,
+      folderAllowlist: undefined,
     });
     assertNoLeak("mutation pipeline outcome", outcome);
 

@@ -57,6 +57,7 @@
       }
     },
     "folderAllowlist": {
+      "description": "Folder scoping (roadmap/16 §In scope). Enforced by the gateway mutation pipeline: a RemoteMutationPlan the provider places outside this list is refused with the canonical `policy_blocked` error kind before any network I/O and before any RemoteOperationRecord is journalled. An empty array refuses every mutation (fail-closed); the field being absent means the connection is folder-unscoped and no check runs. A folder is not a RemoteMutationPlan field, so the pipeline asks the provider where the mutation lands; a provider that answers 'not inside any folder' or 'cannot tell' — including one with no folder concept at all, such as the Jira adapters — is REFUSED under a declared allowlist, never admitted. SCOPE: this binds the folder a provider derives from the plan, on the mutation path only. Reads are not folder-checked, and where the resource actually lives on the remote is not verified. It is not a guarantee that writes outside these folders are impossible.",
       "readOnly": true,
       "type": "array",
       "items": {

@@ -363,7 +363,11 @@ export function createJiraMutationApplyClient(deps: JiraMutationApplyDeps): Muta
     parseResponse: (plan, response) => parseResponseForAction(plan, response),
     // roadmap/18 exit criterion 10, second clause: every issue-scoped
     // write to ONE issue takes ONE write mutex, while `canonicalTarget`
-    // (parsed for `commentId` at `:199` below) stays distinct.
+    // (parsed for `commentId` at `:199` below) stays distinct. A
+    // `bulk:<keys>` plan answers with the SET of its member issues' keys
+    // — see `./canonical-target.ts`'s own doc comment; the pipeline
+    // takes every one of them at once via
+    // `WriteSerializer.runExclusiveMulti`.
     serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget),
     verify: (plan) => verifyForAction(deps.ctx, plan),
     reconcileAmbiguous: async (plan) => {

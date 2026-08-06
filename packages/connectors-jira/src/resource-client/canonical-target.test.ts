@@ -72,33 +72,79 @@ describe("writeSerializationTarget — every other target passes through unchang
     expect(writeSerializationTarget(canonicalTarget)).toBe(canonicalTarget);
   });
 
-  /**
-   * `bulk:` is the one passthrough that is NOT "not an issue write" — it
-   * is a write to several existing, named issues (`./issue-plans.ts:189`,
-   * `:210`), and the keys are in the target string. It passes through
-   * because a mutex key is a single string and no single key can mean
-   * "PROJ-1 and PROJ-2 at once"; folding it onto either one would be
-   * wrong. The residual this leaves is deliberate, and asserted rather
-   * than merely described so it cannot quietly change.
-   */
-  it("KNOWN RESIDUAL: a bulk target is left unserialized against its own member issues", () => {
-    const bulk = "bulk:PROJ-1,PROJ-2";
-    expect(writeSerializationTarget(bulk)).toBe(bulk);
-    // The residual, stated as the assertion it is: a bulk write touching
-    // PROJ-1 does NOT take PROJ-1's mutex, so it can race a single-issue
-    // write to PROJ-1.
-    expect(writeSerializationTarget(bulk)).not.toBe(
-      writeSerializationTarget(issueTarget("PROJ-1")),
-    );
-    // And two bulk plans over the same issues in a different order mint
-    // different keys, so they do not serialize against each other either.
-    expect(writeSerializationTarget("bulk:PROJ-2,PROJ-1")).not.toBe(writeSerializationTarget(bulk));
-  });
-
   it("returns an unrecognized shape unchanged rather than guessing", () => {
     expect(writeSerializationTarget("something-else")).toBe("something-else");
     expect(writeSerializationTarget("")).toBe("");
     // "issue" with no key is not an issue target — do not invent one.
     expect(writeSerializationTarget("issue")).toBe("issue");
+  });
+});
+
+/**
+ * `bulk:<key>,<key>,…` (`./issue-plans.ts:189`, `:210` —
+ * `issue.bulkUpdate`/`issue.bulkTransition`) is a write to several
+ * EXISTING, NAMED issues, and the keys are right there in the target.
+ * Until 16's `WriteSerializer` grew multi-key acquisition
+ * (`packages/gateway/src/transport/write-serializer.ts`'s
+ * `runExclusiveMulti`) there was no key that could mean "PROJ-1 and
+ * PROJ-2 at once", so this target passed through unchanged and the
+ * residual was pinned here as an assertion. That residual is now
+ * CLOSED — these cases replace it, and the two assertions below marked
+ * "was the residual" are the exact inversions of what this file
+ * previously asserted.
+ *
+ * Sorting is not cosmetic: `issue.bulkUpdate(["PROJ-2","PROJ-1"])` and
+ * `issue.bulkUpdate(["PROJ-1","PROJ-2"])` mint DIFFERENT canonical
+ * targets, so without a canonical key ORDER two bulk plans over the same
+ * issues would still fail to serialize against each other.
+ */
+describe("writeSerializationTarget — a bulk target maps to its member issues' keys", () => {
+  it("maps bulk:PROJ-1,PROJ-2 onto both member issue keys", () => {
+    expect(writeSerializationTarget("bulk:PROJ-1,PROJ-2")).toEqual([
+      "issue:PROJ-1",
+      "issue:PROJ-2",
+    ]);
+  });
+
+  it("was the residual: a bulk write now takes the mutex of each member issue", () => {
+    const keys = writeSerializationTarget("bulk:PROJ-1,PROJ-2");
+    // Previously `expect(...).not.toBe(writeSerializationTarget(issueTarget("PROJ-1")))` —
+    // a bulk write could race a single-issue write to PROJ-1.
+    expect(keys).toContain(writeSerializationTarget(issueTarget("PROJ-1")));
+    expect(keys).toContain(writeSerializationTarget(issueTarget("PROJ-2")));
+    // Cross-issue parallelism is still preserved — PROJ-3 is untouched.
+    expect(keys).not.toContain(writeSerializationTarget(issueTarget("PROJ-3")));
+  });
+
+  it("was the residual: order-permuted member lists mint the SAME key set", () => {
+    // Previously `expect(writeSerializationTarget("bulk:PROJ-2,PROJ-1")).not.toBe(...)`.
+    expect(writeSerializationTarget("bulk:PROJ-2,PROJ-1")).toEqual(
+      writeSerializationTarget("bulk:PROJ-1,PROJ-2"),
+    );
+  });
+
+  it("dedupes a repeated member key", () => {
+    expect(writeSerializationTarget("bulk:PROJ-1,PROJ-1,PROJ-2")).toEqual([
+      "issue:PROJ-1",
+      "issue:PROJ-2",
+    ]);
+  });
+
+  it("a single-member bulk target is the SAME shape as the single-issue write it races", () => {
+    // One member ⇒ one key. The gateway's single-key path is then
+    // byte-for-byte the pre-existing behaviour
+    // (`mutation-pipeline.ts`: `targets.length > 1` is what switches on
+    // `serializationResources`), so this collapses onto `issue:PROJ-1`
+    // with no plural machinery involved at all.
+    expect(writeSerializationTarget("bulk:PROJ-1")).toEqual(["issue:PROJ-1"]);
+  });
+
+  it("a bulk target naming no issue is returned unchanged rather than left unkeyed", () => {
+    // A write is never left without a serialization key. Returning the
+    // canonical target itself (rather than an empty array, which would
+    // lean on the pipeline's own fallback) keeps the answer decidable
+    // here, in the one module that owns this parse.
+    expect(writeSerializationTarget("bulk:")).toBe("bulk:");
+    expect(writeSerializationTarget("bulk:,,")).toBe("bulk:,,");
   });
 });

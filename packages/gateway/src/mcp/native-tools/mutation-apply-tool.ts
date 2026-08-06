@@ -100,6 +100,7 @@ export function buildMutationApplyTool(
       const verify = applyClient.verify;
       const reconcileAmbiguous = applyClient.reconcileAmbiguous;
       const serializationTarget = applyClient.serializationTarget;
+      const folderAttribution = applyClient.folderAttribution;
       const handlers: MutationPipelineHandlers = {
         provider: connection.provider,
         buildRequest: (p) => applyClient.buildRequest(p),
@@ -107,6 +108,13 @@ export function buildMutationApplyTool(
         verify: verify !== undefined ? (p, a) => verify(p, a) : async () => true,
         ...(serializationTarget !== undefined
           ? { serializationTarget: (p: typeof plan) => serializationTarget(p) }
+          : {}),
+        // DEFECT 16 — forwarded, never defaulted. Leaving it absent is a
+        // meaningful answer ("this provider has no folder concept"), and the
+        // pipeline refuses rather than admits on it whenever the connection
+        // declares a `folderAllowlist`.
+        ...(folderAttribution !== undefined
+          ? { folderAttribution: (p: typeof plan) => folderAttribution(p) }
           : {}),
         ...(reconcileAmbiguous !== undefined
           ? { reconcileAmbiguous: (p: typeof plan, cause: unknown) => reconcileAmbiguous(p, cause) }
@@ -128,6 +136,12 @@ export function buildMutationApplyTool(
         // what the check binds — declared plan attribution on the mutation
         // path, not remote tenant identity and not reads.
         tenantAllowlist: connection.tenantAllowlist,
+        // DEFECT 16 — the production wiring of the folder-allowlist check,
+        // for the same reason as the line above: this handler is the only
+        // place the real `ExternalConnection` is in hand. `undefined` means
+        // the connection declared no `folderAllowlist` (folder-unscoped), not
+        // a default-open shortcut.
+        folderAllowlist: connection.folderAllowlist,
       });
       return outcomeToToolResult(outcome);
     },

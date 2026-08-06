@@ -36,6 +36,7 @@ export function attachmentTarget(issueKey: string): string {
 }
 
 const ISSUE_TARGET_PREFIX = "issue:";
+const BULK_TARGET_PREFIX = "bulk:";
 
 /**
  * Derives the WRITE-SERIALIZATION key for a plan's canonical target —
@@ -59,29 +60,55 @@ const ISSUE_TARGET_PREFIX = "issue:";
  * the serialization key only, surfaced to the pipeline through
  * `MutationApplyClient.serializationTarget`.
  *
- * Every other shape is returned UNCHANGED, for two different reasons:
+ * `bulk:<key>,<key>,…` (`./issue-plans.ts:189`, `:210` —
+ * `issue.bulkUpdate`/`issue.bulkTransition`) IS a write to existing,
+ * named issues, and the keys are right there in the target, so it maps
+ * onto the SET of its member issues' keys — `["issue:PROJ-1",
+ * "issue:PROJ-2"]`. That set is what 16's
+ * `WriteSerializer.runExclusiveMulti` acquires at once
+ * (`packages/gateway/src/transport/write-serializer.ts`), so a bulk
+ * write serializes against a single-issue write to ANY member. Until
+ * that primitive existed a mutex key was necessarily a single string —
+ * no key could mean "all of PROJ-1 and PROJ-2 at once" and folding a
+ * bulk plan onto any ONE of its issues would have been wrong — so this
+ * target passed through unchanged and the gap was pinned as a residual
+ * in `./canonical-target.test.ts`. It no longer is.
  *
- *   - Board/sprint targets (`board:<id>`, `sprint:<id>`) and the
- *     create-shaped targets that name no existing issue
- *     (`project:<key>:new-issue`, `project:<key>:new-board`,
- *     `board:<id>:new-sprint`) are simply not issue-scoped writes.
- *   - `bulk:<key>,<key>,…` (`./issue-plans.ts:189`, `:210` —
- *     `issue.bulkUpdate`/`issue.bulkTransition`) IS a write to existing,
- *     named issues, and the keys are right there in the target. It
- *     passes through anyway because a mutex key is a single string:
- *     there is no key that means "all of PROJ-1 and PROJ-2 at once," and
- *     folding a bulk plan onto any ONE of its issues would be wrong.
- *     Expressing it needs multi-key lock acquisition in 16's
- *     `WriteSerializer`, which this change does not attempt.
+ * THE SET IS SORTED AND DEDUPED, and that is not cosmetic:
+ * `issue.bulkUpdate(["PROJ-2","PROJ-1"])` mints a DIFFERENT
+ * `canonicalTarget` from `["PROJ-1","PROJ-2"]`, so without a canonical
+ * key ORDER two bulk plans over the same issues would still fail to
+ * serialize against each other. (16's `runExclusiveMulti` canonicalizes
+ * again on its own side; the duplication is deliberate — this module's
+ * contract is testable here, in the package that owns the parse, rather
+ * than only through the gateway.)
  *
- * KNOWN RESIDUAL, therefore — per-issue write order is preserved for
- * SINGLE-issue writes only. A `bulk:` write touching PROJ-1 still races
- * a single-issue write to PROJ-1, and two `bulk:` plans whose key lists
- * overlap (or list the same keys in a different order, which mints a
- * different target string) still race each other. Cross-issue
- * parallelism between single-issue writes is untouched, as intended.
+ * A `bulk:` target naming no issue at all (`bulk:`, `bulk:,,`) is
+ * returned UNCHANGED rather than as an empty set: a write is never left
+ * without a serialization key, and answering here keeps the decision in
+ * this module instead of leaning on the pipeline's own fallback.
+ *
+ * Every other shape is returned UNCHANGED because it is not an
+ * issue-scoped write: board/sprint targets (`board:<id>`,
+ * `sprint:<id>`) and the create-shaped targets that name no existing
+ * issue (`project:<key>:new-issue`, `project:<key>:new-board`,
+ * `board:<id>:new-sprint`).
+ *
+ * RESIDUAL, narrowed but not gone — cross-issue parallelism between
+ * single-issue writes is untouched, as intended, and a bulk plan and a
+ * single write to a NON-member issue still run concurrently (pinned as
+ * the `=== 2` controls in `../testkit/write-order.integration.test.ts`).
  */
-export function writeSerializationTarget(canonicalTarget: string): string {
+export function writeSerializationTarget(canonicalTarget: string): string | readonly string[] {
+  if (canonicalTarget.startsWith(BULK_TARGET_PREFIX)) {
+    const memberKeys = canonicalTarget.slice(BULK_TARGET_PREFIX.length).split(",");
+    const distinct = [
+      ...new Set(memberKeys.filter((key) => key.length > 0).map((key) => issueTarget(key))),
+    ].sort();
+    // Names no issue ⇒ nothing to derive; keep the write keyed on its
+    // own identity rather than returning an empty set.
+    return distinct.length > 0 ? distinct : canonicalTarget;
+  }
   if (!canonicalTarget.startsWith(ISSUE_TARGET_PREFIX)) return canonicalTarget;
   const parts = canonicalTarget.split(":");
   const issueKey = parts[1];

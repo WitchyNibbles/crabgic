@@ -96,6 +96,32 @@ export interface MutationHttpRequestSpec {
   readonly hasPrecondition?: boolean;
 }
 
+/**
+ * Where a mutation lands, in folder terms — the answer
+ * `MutationPipelineHandlers.folderAttribution` gives so
+ * `ExternalConnection.folderAllowlist` can be checked (DEFECT 16).
+ *
+ * THREE answers, not two, and the third is the point. Tenancy has two
+ * because `plan.tenant` is a required field on every plan. A folder is
+ * not on the plan at all, so a provider can be in one of three genuinely
+ * different states, and collapsing them loses the distinction between
+ * "this resource legitimately lives outside every folder" and "I do not
+ * know where this lives" — which are the same refusal but very different
+ * operator advice.
+ *
+ * Only `"folders"` can ever be ADMITTED against an allowlist. The other
+ * two are refused whenever a `folderAllowlist` is declared, because an
+ * allowlist of folders says "writes on this connection happen inside
+ * these folders" and neither of them does.
+ */
+export type MutationFolderAttribution =
+  /** The mutation lands inside these folders (provider-native folder ids). Every one of them must be an allowlist member. An EMPTY list is treated as `"unknown"`, never as vacuously admissible. */
+  | { readonly scope: "folders"; readonly folders: readonly string[] }
+  /** The mutation legitimately targets no folder — an org-level resource (20's contact points, mute timings, notification templates) or a root-level one. */
+  | { readonly scope: "outside-folders" }
+  /** The provider cannot place this mutation from the plan alone (e.g. 20's `annotation`, whose folder is transitive through its dashboard and needs a remote read). */
+  | { readonly scope: "unknown" };
+
 export interface MutationPipelineHandlers {
   /** The provider name — used only for canonical-error attribution (`../mutation-pipeline/error-mapping.js`), never logged/leaked beyond that. */
   readonly provider: string;
@@ -136,6 +162,28 @@ export interface MutationPipelineHandlers {
    * writes that should serialize will not.
    */
   serializationTarget?(plan: RemoteMutationPlan): string | readonly string[];
+  /**
+   * DEFECT 16 — where this mutation LANDS, in folder terms, for
+   * `ExternalConnection.folderAllowlist` to be checked against. See
+   * `refuseOutOfAllowlistFolder` below for the admission semantics and
+   * `MutationFolderAttribution` for why there are three answers rather
+   * than two.
+   *
+   * WHY A PROVIDER HOOK AND NOT A PLAN FIELD: `RemoteMutationPlanSchema`
+   * is `.strict()` and names no folder (`@crabgic/contracts`'
+   * `remote-mutation-plan.ts`) — a folder is a provider-shaped concept
+   * that only 20's Grafana has at all, so the pipeline has to ask. The
+   * seam mirrors `serializationTarget` above deliberately: same optional
+   * shape, same purity requirement, same forwarding path through
+   * `../mcp/native-tools/mutation-apply-tool.js`.
+   *
+   * ABSENT means "this provider has no folder concept" (18/19's Jira
+   * clients), which is NOT the same as "admit everything": on a
+   * connection that declares a `folderAllowlist`, an unattributable
+   * mutation is refused. Must be a pure function of the plan — it is
+   * consulted before any I/O and must not itself perform any.
+   */
+  folderAttribution?(plan: RemoteMutationPlan): MutationFolderAttribution;
   /**
    * Optional marker-reconciliation hook (`./reconciliation.js`), consulted
    * whenever this mutation's outcome is ambiguous: either the network
@@ -182,6 +230,20 @@ export interface MutationPipelineDeps {
    * i.e. unscoped, which is the pre-fix behaviour).
    */
   readonly tenantAllowlist: readonly string[] | undefined;
+  /**
+   * DEFECT 16 — `ExternalConnection.folderAllowlist` for the connection this
+   * plan targets, the third declared-and-inert sibling of `tenantAllowlist`.
+   * See `refuseOutOfAllowlistFolder` below for the semantics and scope.
+   *
+   * REQUIRED-BUT-`| undefined` for exactly the reason the field above is
+   * (`exactOptionalPropertyTypes: true` forces every construction site to
+   * write its answer out); an optional member would let a new call site omit
+   * the allowlist silently and re-open the hole. Types-only break for
+   * external `@crabgic/gateway` consumers; JS callers are runtime-compatible
+   * (an omitted key reads as `undefined`, i.e. unscoped — the pre-fix
+   * behaviour).
+   */
+  readonly folderAllowlist: readonly string[] | undefined;
 }
 
 /**
@@ -496,6 +558,96 @@ function refuseOutOfAllowlistTenant(
 }
 
 /**
+ * FOLDER-ALLOWLIST ADMISSION CHECK — defect 16.
+ *
+ * `ExternalConnection.folderAllowlist` was the third declared-and-inert
+ * sibling of `tenantAllowlist`: emitted into the published JSON Schema,
+ * settable by an operator, read by no code anywhere. This function is the
+ * enforcement, and it lives beside `refuseOutOfAllowlistTenant` for the same
+ * reason that one does — `executeMutationPlan` is the sole issuer of
+ * mutation network I/O (HIGH #2), so one check here covers the MCP apply
+ * tool AND `@crabgic/connectors-grafana`'s re-entrant
+ * `applyGrafanaMutationWithRebase`, and there is deliberately no second
+ * overlapping check elsewhere.
+ *
+ * WHAT IT DOES *NOT* SHARE with the tenant check, stated because the two
+ * look like siblings and are not: a plan's tenant is a required plan field,
+ * so tenancy is decidable here. A folder is NOT on the plan
+ * (`RemoteMutationPlanSchema` is `.strict()` and names none), so this check
+ * asks the provider via `MutationPipelineHandlers.folderAttribution` and its
+ * strength is bounded by that answer's honesty.
+ *
+ * SEMANTICS — the first two mirror the tenant check exactly:
+ *  - `undefined` (field absent) = folder-unscoped, no check runs at all.
+ *    Nothing about a connection that sets no `folderAllowlist` changes.
+ *  - `[]` = refuse EVERY mutation (fail-closed). An empty allowlist is a
+ *    deliberate "nothing is permitted", never "no opinion" — which is
+ *    expressed by omitting the field.
+ *  - non-empty = admit ONLY a mutation the provider places inside a listed
+ *    folder. `"outside-folders"` and `"unknown"` are both refused, with
+ *    distinct details.
+ *
+ * THE UNATTRIBUTABLE RULING, filling a silence rather than papering one
+ * over. The spec says nothing about a provider with no folder concept. Two
+ * readings were available: admit (the field then binds only providers that
+ * opted in, with nothing telling an operator which — a control that is
+ * trusted and inert for everyone else, i.e. the exact defect shape this
+ * closes), or refuse. It refuses. The visible consequence, so nobody
+ * rediscovers it as a bug: setting `folderAllowlist` on a Jira connection
+ * refuses every Jira mutation on it, loudly and with a typed reason,
+ * because 18/19 register no `folderAttribution` — Jira has no folder in its
+ * model.
+ *
+ * SCOPE — do not over-trust this. It binds the folder a provider derives
+ * FROM THE PLAN, on the mutation path. It does not verify where the
+ * resource actually lives on the remote (a dashboard moved server-side
+ * still reports its plan's folder), and it does not cover reads — for the
+ * same reason the tenant check does not: read requests carry pseudo-tenants
+ * used purely as concurrency keys.
+ */
+function refuseOutOfAllowlistFolder(
+  plan: RemoteMutationPlan,
+  folderAllowlist: readonly string[] | undefined,
+  handlers: MutationPipelineHandlers,
+): MutationPipelineOutcome | undefined {
+  if (folderAllowlist === undefined) return undefined;
+  const refused = (detail: string): MutationPipelineOutcome => ({
+    status: "failed",
+    errorKind: "policy_blocked",
+    // No provider-supplied folder id is echoed back, matching the tenant
+    // check: the value is worker-reachable, unvalidated text and the caller
+    // already knows what it sent.
+    detail: `${detail}; refused before any network I/O and without journalling a RemoteOperationRecord`,
+  });
+  if (folderAllowlist.length === 0) {
+    return refused(
+      "this connection's folderAllowlist is empty, so every mutation is refused (fail-closed)",
+    );
+  }
+
+  const attribution: MutationFolderAttribution = handlers.folderAttribution?.(plan) ?? {
+    scope: "unknown",
+  };
+  if (attribution.scope === "outside-folders") {
+    return refused(
+      "this mutation does not target a folder (an org-level or root-level resource), and this connection's folderAllowlist admits only writes inside the listed folders",
+    );
+  }
+  // An EMPTY `folders` list would satisfy "every attributed folder is a
+  // member" vacuously — the empty-quantifier hole — so it is folded into the
+  // unattributable case rather than admitted.
+  if (attribution.scope === "unknown" || attribution.folders.length === 0) {
+    return refused(
+      "this connection declares a folderAllowlist but its provider cannot attribute this mutation to a folder, so it cannot be admitted",
+    );
+  }
+  if (attribution.folders.every((folder) => folderAllowlist.includes(folder))) return undefined;
+  return refused(
+    "this mutation targets a folder outside this connection's folderAllowlist (every attributed folder must be a member)",
+  );
+}
+
+/**
  * Executes one `RemoteMutationPlan` through the full pipeline. Never
  * throws for an expected outcome (conflict/blocked/failed are all
  * returned, not thrown) — only an unexpected programming error propagates.
@@ -530,6 +682,19 @@ export async function executeMutationPlan(
   // for an out-of-allowlist tenant is refused. Fail-closed.
   const refusal = refuseOutOfAllowlistTenant(plan, deps.tenantAllowlist);
   if (refusal !== undefined) return refusal;
+
+  // DEFECT 16 — the folder-allowlist check sits immediately after the tenant
+  // one and shares every property of its placement (ahead of the lock, the
+  // journal query, `persistRecord(pending)` and all network I/O; ahead of
+  // the replay/conflict lookups, so tightening an allowlist also refuses a
+  // replay). ORDER IS DELIBERATE, not incidental: a plan outside BOTH
+  // allowlists is reported as a tenant refusal, because tenancy is the
+  // coarser scope and the likelier misconfiguration. Pinned by the
+  // "reports the TENANT refusal when a plan is outside both allowlists"
+  // case in `./mutation-pipeline.test.ts` — which also proves neither check
+  // absorbed the other's coverage.
+  const folderRefusal = refuseOutOfAllowlistFolder(plan, deps.folderAllowlist, handlers);
+  if (folderRefusal !== undefined) return folderRefusal;
 
   return deps.lock.runExclusive(plan.idempotencyKey, () =>
     executeMutationPlanLocked(plan, handlers, deps),

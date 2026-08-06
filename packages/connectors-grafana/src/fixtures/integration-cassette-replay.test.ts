@@ -131,6 +131,7 @@ async function replayFullResourceFlow(fixture: GrafanaBuildInfoFixture): Promise
     // Tenant-unscoped: this suite replays cassettes, it does not exercise
     // the defect-21 tenant-allowlist admission check.
     tenantAllowlist: undefined,
+    folderAllowlist: undefined,
   };
 
   for (const kind of RESOURCE_FLOW_ORDER) {

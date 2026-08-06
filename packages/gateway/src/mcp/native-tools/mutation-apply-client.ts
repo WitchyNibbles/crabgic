@@ -15,6 +15,7 @@
 import type { RemoteMutationPlan } from "@crabgic/contracts";
 import type {
   MutationApplyResult,
+  MutationFolderAttribution,
   MutationHttpRequestSpec,
 } from "../../mutation-pipeline/mutation-pipeline.js";
 import type { HttpTransportResponse } from "../../transport/http-transport.js";
@@ -28,6 +29,8 @@ export interface MutationApplyClient {
   verify?(plan: RemoteMutationPlan, applied: MutationApplyResult): Promise<boolean>;
   /** Serialization-ONLY key (or, for a write over several named resources such as 18/19's `bulk:<keys>`, key SET) for 16's per-tenant+resource write mutex — see `MutationPipelineHandlers.serializationTarget`'s own doc comment for the exact contract. Forwarded to the pipeline by `./mutation-apply-tool.ts`. */
   serializationTarget?(plan: RemoteMutationPlan): string | readonly string[];
+  /** Where this mutation lands in folder terms, for `ExternalConnection.folderAllowlist` (DEFECT 16) — see `MutationPipelineHandlers.folderAttribution`'s own doc comment for the exact contract, including why ABSENT is not "admit everything". Forwarded to the pipeline by `./mutation-apply-tool.ts`. */
+  folderAttribution?(plan: RemoteMutationPlan): MutationFolderAttribution;
   /** Marker-reconciliation (see `../../mutation-pipeline/reconciliation.js`) — see `MutationPipelineHandlers.reconcileAmbiguous`'s own doc comment for the exact contract. */
   reconcileAmbiguous?(
     plan: RemoteMutationPlan,

@@ -349,7 +349,10 @@ export function createJiraDatacenterMutationApplyClient(
     // Identical to Cloud's — DC reuses 18's plan builders and the same
     // `../canonical-target.ts`, so it inherits the same per-issue
     // write-order requirement (roadmap/19 §In scope: "the gateway's
-    // cross-worker throttling … still serializes writes").
+    // cross-worker throttling … still serializes writes"), INCLUDING the
+    // `bulk:<keys>` → member-key-set mapping: DC's own
+    // `issue.bulkUpdate`/`issue.bulkTransition` (`:168`, `:175`) mint the
+    // same target shape, so it must serialize the same way.
     serializationTarget: (plan) => writeSerializationTarget(plan.canonicalTarget),
     verify: (plan) => verifyForAction(deps.ctx, plan),
     reconcileAmbiguous: async (plan) => {

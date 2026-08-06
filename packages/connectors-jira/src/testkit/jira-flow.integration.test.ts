@@ -101,7 +101,13 @@ describe("board → sprint → epic → issue → link → comment(ADF) → work
           parseResponse: (p, r) => applyClient.parseResponse(p, r),
           verify: (p, a) => applyClient.verify?.(p, a) ?? Promise.resolve(true),
         },
-        { journal, httpClient: ctx.httpClient, lock, tenantAllowlist: undefined },
+        {
+          journal,
+          httpClient: ctx.httpClient,
+          lock,
+          tenantAllowlist: undefined,
+          folderAllowlist: undefined,
+        },
       );
 
     // 1. board
@@ -244,6 +250,7 @@ describe("transitions", () => {
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
 
@@ -288,6 +295,7 @@ describe("concurrent-edit conflicts", () => {
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
 

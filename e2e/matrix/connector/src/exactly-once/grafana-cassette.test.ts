@@ -114,6 +114,7 @@ async function buildAnnotationHarness(idempotencyKey: string) {
     httpClient,
     lock: new IdempotencyKeyLock(),
     tenantAllowlist: undefined,
+    folderAllowlist: undefined,
   };
   return { payloadStore, handlers, deps, fakeTransport };
 }
