@@ -55,14 +55,47 @@ const fakeJournal = {
 };
 
 describe("doctor fault-fixture matrix", () => {
+  /**
+   * The repair step is asserted as ONE COMPLETE STRING, not `toBeDefined()`.
+   * Measured before the change: rewording `engine-version.ts`'s repair step
+   * (`:86`/`:95`) left the whole `packages/cli` suite green — 100 files /
+   * 1175 tests — so criterion 3's "with a correct repair plan" half rested
+   * on the check's own source and nothing else for this fixture.
+   *
+   * `acceptedRange` is INJECTED rather than imported from
+   * `ENGINE_BASELINE_ACCEPTED_RANGE`, deliberately: the expected string then
+   * has no production constant in it, so a legitimate engine re-baseline
+   * cannot silently rewrite the thing this test is pinning. (The separator
+   * between min and max is an en dash, U+2013, exactly as the source renders
+   * it.)
+   *
+   * Both failing branches render the identical step and both are pinned
+   * here: an out-of-range but parseable version (`engine-version.ts:95`) and
+   * a version string no semver triple can be parsed out of (`:86`).
+   */
+  const FIXTURE_RANGE = { min: "9.9.1", max: "9.9.2" } as const;
+  const EXPECTED_ENGINE_REPAIR_STEP =
+    "install a Claude Code version within 9.9.1–9.9.2 (docs/engine-baseline.md)";
+
   it("wrong engine-version string: fails with a repair step naming the accepted range", async () => {
     const check = createEngineVersionCheck({
       probe: async () => probeResult({ stdout: "1.0.0 (Claude Code)\n" }),
+      acceptedRange: FIXTURE_RANGE,
     });
     const finding = await check.run();
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("1.0.0");
-    expect(finding.repairStep).toBeDefined();
+    expect(finding.repairStep).toBe(EXPECTED_ENGINE_REPAIR_STEP);
+
+    // The unparseable-version branch is a different code path with the same
+    // remedy; pinned so the two cannot drift apart.
+    const unparseable = createEngineVersionCheck({
+      probe: async () => probeResult({ stdout: "not a version at all\n" }),
+      acceptedRange: FIXTURE_RANGE,
+    });
+    const unparseableFinding = await unparseable.run();
+    expect(unparseableFinding.passed).toBe(false);
+    expect(unparseableFinding.repairStep).toBe(EXPECTED_ENGINE_REPAIR_STEP);
   });
 
   it("missing bwrap: fails with a repair step to install it", async () => {
@@ -88,6 +121,14 @@ describe("doctor fault-fixture matrix", () => {
     const finding = await check.run();
     expect(finding.passed).toBe(false);
     expect(finding.evidence).toContain("influenced the run");
+    // Same measurement as the engine-version case above: rewording
+    // `hermeticity-selftest.ts:124-125`'s repair step left all 100 files /
+    // 1175 tests green, so this fixture's remedy was stated only in the
+    // check's own source. Asserted as ONE complete string — the production
+    // literal is wrapped across two source lines; this is its joined value.
+    expect(finding.repairStep).toBe(
+      "investigate why filesystem settings sources are being loaded despite settingSources: []",
+    );
   });
 
   describe("bad UDS socket permissions", () => {
