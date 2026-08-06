@@ -443,9 +443,41 @@ EXIT 0
     src/testkit/jira-flow.integration.test.ts        3 tests -> 8 tests  (+5)
     src/testkit/fake-cassette-parity.test.ts         2 tests -> 3 tests  (+1)
     package total                                  561 tests -> 567 tests (+6)
-  A per-push CI job-log count comparison for those two files (playbook §PROVE A
-  NEW ASSERTION RUNS PER-PUSH BY THE JOB LOG'S TEST COUNT) is handed to Batch G
-  in this PR's bearer map — it needs the merged PR's own job log.
+  The per-push CI job-log count comparison for those two files (playbook §PROVE
+  A NEW ASSERTION RUNS PER-PUSH BY THE JOB LOG'S TEST COUNT) is §R7b below —
+  captured after CI ran, so Batch G does not have to derive it.
+
+
+================================================================================
+§R7b PER-PUSH PROOF — the job-log test counts moved by exactly this delta
+================================================================================
+
+Same workflow (`ci.yml`), same job name, same runner label (`ubuntu-latest`).
+Quoted under the ONE-SPACE rule: the raw GitHub line is
+`<timestamp>` + one separator space + content, and vitest's own content begins
+with one space before `✓`; both are stripped except vitest's, and the ANSI SGR
+sequences are removed. Byte-compared against the downloaded logs, not retyped.
+
+  main @ 6f964d7, run 31104703738, job 92626742663, log line 372:
+ ✓  @crabgic/connectors-jira  src/testkit/jira-flow.integration.test.ts (3 tests) 75ms
+
+  PR #119 @ 541739f, run 31106194280, job 92631885308, log line 381:
+ ✓  @crabgic/connectors-jira  src/testkit/jira-flow.integration.test.ts (8 tests) 149ms
+
+  main @ 6f964d7, run 31104703738, job 92626742663, log line 413:
+ ✓  @crabgic/connectors-jira  src/testkit/fake-cassette-parity.test.ts (2 tests) 16ms
+
+  PR #119 @ 541739f, run 31106194280, job 92631885308, log line 408:
+ ✓  @crabgic/connectors-jira  src/testkit/fake-cassette-parity.test.ts (3 tests) 17ms
+
+3 -> 8 and 2 -> 3: exactly the +5 and +1 this pass adds. A green workflow proves
+nothing about a particular test; these four lines are what prove the cassette
+arm and the replacement byte pin actually EXECUTE in the per-push gate.
+
+CI status of PR #119 at 541739f: 15 of 15 checks PASS — commitlint,
+engine-pin-lint, meta-checks, and lint / typecheck / unit-test+coverage /
+gates-conformance / perf-conformance / learning-redteam on BOTH
+`ubuntu-latest` and `ubuntu-24.04-arm`.
 
 
 ================================================================================
@@ -551,5 +583,7 @@ WHAT BATCH G SHOULD TAKE FROM THIS PASS
     by this PR via its own option 1, with the option's caveat ("this is honest
     only if the cassette is not simply a copy of the inline array") addressed
     in §GREEN, not waved away.
-  * A per-push job-log test-count delta is still owed for the two suites
-    (3->8 and 2->3). It needs the merged PR's own CI job log.
+  * The per-push job-log test-count delta for the two suites (3->8 and 2->3) is
+    captured and byte-compared in §R7b — cite it directly; it does not need to
+    be re-derived. Note it is taken from PR #119's own pre-merge run
+    (31106194280) at 541739f, which is the run whose green this PR claims.
