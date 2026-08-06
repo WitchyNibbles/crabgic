@@ -29,16 +29,22 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runFixtureGit } from "@crabgic/testkit";
 import {
   checkNoBinaryTextSources,
   gitBinaryTrackedPaths,
+  gitTrackedPaths,
   isTextSourcePath,
+  KNOWN_BINARY_EXTENSIONS,
+  nulBearingTextSources,
   runHygieneChecks,
+  uncoveredExtensions,
 } from "./check-repo-hygiene.mjs";
 
 const NUL = String.fromCharCode(0);
+const REPO_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 const scratch = [];
 
@@ -77,15 +83,63 @@ describe("isTextSourcePath", () => {
     }
   });
 
+  it("covers the four classes the first version missed", () => {
+    // Added after adversarial review measured 43 tracked text files outside
+    // the original allowlist. `.wiki` is the one that mattered most: 33 files
+    // under `packages/connectors-jira/fixtures/wiki-golden/`, the phase-17
+    // lint-corpus goldens merged PR #108 cites as its oracle. `.jsonl` is the
+    // learning system's own declared eval-case format.
+    for (const rel of [
+      "packages/connectors-jira/fixtures/wiki-golden/attack-adf-link-javascript-href.wiki",
+      "spikes/fixtures/02-hermeticity.transcript.sanitized.jsonl",
+      "assets/brand/source/mascot.py",
+      "assets/brand/vector/crabgic-icon.svg",
+    ]) {
+      expect(isTextSourcePath(rel), rel).toBe(true);
+    }
+  });
+
+  it("treats an EXTENSIONLESS tracked file as text", () => {
+    // The sharpest of the misses: before this, a NUL in LICENSE passed the
+    // very same script whose other leg asserts LICENSE exists and is
+    // non-empty. `path.extname(".gitignore")` is "" by Node's rule, so
+    // leading-dot dotfiles land here too — which is what we want.
+    for (const rel of ["LICENSE", "NOTICE", ".gitignore", ".npmrc", ".prettierignore"]) {
+      expect(isTextSourcePath(rel), rel).toBe(true);
+    }
+  });
+
   it("leaves genuinely-binary tracked assets out of scope", () => {
     for (const rel of [
       "assets/brand/crabgic-logo.png",
       "assets/brand/source/__pycache__/png.cpython-312.pyc",
-      "some/archive.tar.gz",
-      "no-extension",
     ]) {
       expect(isTextSourcePath(rel), rel).toBe(false);
     }
+  });
+});
+
+describe("uncoveredExtensions (the allowlist is checked against the real tree)", () => {
+  it("leaves exactly the two genuinely-binary classes unpoliced", () => {
+    // THE STRUCTURAL HALF OF THE FIX. The allowlist is still hand-kept, but it
+    // is no longer unchecked: this resolves it against every tracked path in
+    // THIS repository. `.wiki`, `.jsonl`, `.py` and `.svg` sat outside the
+    // first version with nothing to say so — a hand-kept list that nothing
+    // compares to the tree is a promise, not a check.
+    //
+    // When this reddens, the correct response is to classify the new file
+    // class deliberately: add it to TEXT_SOURCE_EXTENSIONS, or to
+    // KNOWN_BINARY_EXTENSIONS with a reason. Do NOT widen the expectation to
+    // whatever the tree happens to contain — that restores the promise.
+    expect(uncoveredExtensions(REPO_ROOT)).toEqual([...KNOWN_BINARY_EXTENSIONS]);
+  });
+
+  it("sees a real, non-trivial tracked corpus (rules out an empty-list pass)", () => {
+    // Without this control the assertion above is satisfied by a broken
+    // `gitTrackedPaths` returning nothing at all.
+    const tracked = gitTrackedPaths(REPO_ROOT);
+    expect(tracked.length).toBeGreaterThan(1000);
+    expect(tracked.filter((p) => p.endsWith(".wiki")).length).toBeGreaterThan(30);
   });
 });
 
@@ -135,6 +189,42 @@ describe("checkNoBinaryTextSources", () => {
     expect(checkNoBinaryTextSources(dir).sort()).toEqual(["a.ts", "b.ts"]);
   });
 
+  it("reports a planted NUL in every newly-covered class, and still not in a .png", () => {
+    // One fixture per class the first version missed, in a single repo so the
+    // .png control is measured in the SAME run rather than a separate one.
+    // Each path mirrors a real tracked file: see the phase-01 transcript's
+    // section 10, where the same five classes were planted in the real tree
+    // and the pre-fix guard reported none of them.
+    const dir = makeRepo({
+      "fixtures/wiki-golden/attack.wiki": `h1. x${NUL}\n`,
+      "fixtures/cases.jsonl": `{"id":"a${NUL}"}\n`,
+      "assets/source/mascot.py": `x = "${NUL}"\n`,
+      "assets/vector/icon.svg": `<svg><title>${NUL}</title></svg>\n`,
+      LICENSE: `MIT${NUL}\n`,
+      ".gitignore": `node_modules${NUL}\n`,
+      "assets/logo.png": `\x89PNG\r\n\x1a\n${NUL}${NUL}\r`,
+    });
+    // git calls all seven binary...
+    expect(gitBinaryTrackedPaths(dir).sort()).toEqual([
+      ".gitignore",
+      "LICENSE",
+      "assets/logo.png",
+      "assets/source/mascot.py",
+      "assets/vector/icon.svg",
+      "fixtures/cases.jsonl",
+      "fixtures/wiki-golden/attack.wiki",
+    ]);
+    // ...and the guard reports all of them EXCEPT the .png.
+    expect(checkNoBinaryTextSources(dir).sort()).toEqual([
+      ".gitignore",
+      "LICENSE",
+      "assets/source/mascot.py",
+      "assets/vector/icon.svg",
+      "fixtures/cases.jsonl",
+      "fixtures/wiki-golden/attack.wiki",
+    ]);
+  });
+
   it("names the offender's line and byte offset so the message is actionable", () => {
     const dir = makeRepo({ "src/x.ts": `line one\nline two\nconst s = "${NUL}";\n` });
     const errors = [];
@@ -158,16 +248,50 @@ describe("checkNoBinaryTextSources", () => {
     expect(gitBinaryTrackedPaths(subject)).toEqual(["src/subject.ts"]);
   });
 
-  it("PINNED RESIDUAL: a NUL beyond git's 8000-byte sniff window is not detected", () => {
-    // Asserted rather than merely described, so it cannot change silently.
-    // The guard deliberately matches git's classifier exactly, because the harm
-    // it exists to prevent IS git's classification: past the sniff window git
-    // still diffs and greps the file as text, so the instruments keep working
-    // and there is nothing to report. If git ever widens the window this
-    // reddens, which is the correct notification.
+  it("detects a NUL BEYOND git's 8000-byte sniff window, which git itself calls text", () => {
+    // RESIDUAL REVERSED 2026-08-06, and this test is the reversal.
+    //
+    // The first version of this guard matched git's classifier exactly and
+    // pinned the opposite assertion — "a NUL past the sniff window is not
+    // detected" — reasoning that past the window the instruments still work,
+    // so there is nothing to report.
+    //
+    // That reasoning was measured wrong within the hour. Writing this PR's own
+    // digest assertion, the editor put a raw 0x00 into
+    // grader-drift.redteam.test.ts at byte 12575 and `npm run check:hygiene`
+    // passed EXIT=0, because 12575 > 8000. The file reads as text only until
+    // something above the NUL shrinks by 4576 bytes, at which point it becomes
+    // binary with no edit to the NUL at all. That is a time bomb, not a
+    // non-issue.
+    //
+    // Note the two expectations disagree ON PURPOSE: git says text, the guard
+    // says report it. That divergence is the whole point of the change, so it
+    // is asserted rather than left implicit.
     const dir = makeRepo({ "src/late.ts": `${"// pad\n".repeat(2000)}const s = "${NUL}";\n` });
     expect(gitBinaryTrackedPaths(dir)).toEqual([]);
-    expect(checkNoBinaryTextSources(dir)).toEqual([]);
+    expect(checkNoBinaryTextSources(dir)).toEqual(["src/late.ts"]);
+    expect(nulBearingTextSources(dir)).toEqual([
+      { path: "src/late.ts", offset: 14011, line: 2001, gitBinary: false },
+    ]);
+  });
+
+  it("distinguishes an ALREADY-broken file from a LATENT one in its message", () => {
+    // The severity split is load-bearing: "your diffs are broken now" and
+    // "your diffs break on the next edit above this line" call for different
+    // urgency, and a single message for both would lose that.
+    const dir = makeRepo({
+      "src/now.ts": `const s = "${NUL}";\n`,
+      "src/later.ts": `${"// pad\n".repeat(2000)}const s = "${NUL}";\n`,
+    });
+    const errors = [];
+    vi.spyOn(console, "error").mockImplementation((m) => errors.push(String(m)));
+    checkNoBinaryTextSources(dir);
+    const joined = errors.join("\n");
+    expect(joined).toContain("BINARY TEXT SOURCE — src/now.ts");
+    expect(joined).toContain("LATENT BINARY TEXT SOURCE");
+    expect(joined).toContain("src/later.ts");
+    // The already-broken line must NOT be labelled latent.
+    expect(errors.find((e) => e.includes("src/now.ts"))).not.toContain("LATENT");
   });
 });
 
