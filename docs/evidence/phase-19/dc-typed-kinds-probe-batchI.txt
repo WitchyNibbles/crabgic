@@ -11,8 +11,12 @@
 #    re-measured, not assumed. See §6.
 #    NOT REBASED ONTO A NEWER `main` ON PURPOSE: a rebase would orphan the 5fa5ca3
 #    every leg in §3 is pinned to, for a cosmetic gain. See §1's dated UPDATE.)
-# command: python3 scratchpad/probe-i.py  and  python3 scratchpad/probe-i2.py  (both reproduced in §7)
-# exit status: 0 (both drivers)
+# command: python3 scratchpad/probe-i.py ; python3 scratchpad/probe-i2.py ; python3 scratchpad/probe-i3.py
+# exit status: 0 (all three drivers; described in §7)
+#   ⚠️ probe-i3.py (leg P2c) was added after PR #124's review and ran at branch tip
+#     aa6d50a, NOT at the 5fa5ca3 this header's blanket covers. Its own provenance,
+#     its own baseline, and the two-way proof that its mutation target is byte-identical
+#     between the two trees are stated inline at P2c in §3. Read those, not this line.
 # Every leg ran `npm run build` FIRST and its exit code is recorded inline.
 # Worktree: /home/eimi/projects/crabgic-wt-batch-i, node_modules hardlinked (cp -al);
 #   `readlink -f node_modules/@crabgic/connectors-jira` ->
@@ -129,11 +133,40 @@ That is the measured pre-fix product behaviour, reproducing the 2026-08-04 findi
 Center connection refusing an undiscovered custom field returned canonical kind
 `validation`, attributed to provider `jira-cloud`, on all three write entry points.
 
-⚠️ HONEST NOTE ON THE OTHER EIGHT NEW ASSERTIONS. The three registry cases and the two
-`dcFeatures === undefined` kind cases PASSED the moment they were written — they pin
+⚠️ HONEST NOTE ON THE OTHER EIGHT NEW ASSERTIONS. Seven of the fifteen were RED above (the
+seven `×` lines). The other EIGHT passed the moment they were written — they pin
 already-correct behaviour rather than fix it, so a green first run tells you nothing about
-them. Their whole value is measured by mutation, in §3 (P2a, P2b, P3b). Stated here rather
-than left for a reader to notice.
+them. Their whole value is measured by mutation, in §3. All eight are enumerated with the
+leg that reddens each, because "measured by mutation" is a claim about specific legs, and a
+vague version of it is exactly how an unprobed assertion hides:
+
+    | green-first assertion                                     | reddened by      |
+    | --------------------------------------------------------- | ---------------- |
+    | field-metadata.test.ts:69   Cloud default, undiscovered   | P1d              |
+    | field-metadata.test.ts:79   Cloud default, unknown type   | P1d              |
+    | …resource-client.test.ts:223  undefined-branch typed kind | P2a, P2b         |
+    | …resource-client.test.ts:252  recognized-edition CONTROL  | **P2c**          |
+    | …resource-client.test.ts:366  discovered field still plans| P1e              |
+    | …connection-registry.test.ts:111  10.3 reaches the client | P3b              |
+    | …connection-registry.test.ts:121  8.20.1 falls back       | P2a, P2b         |
+    | …connection-registry.test.ts:139  failed discovery, closed| P2a, P2b         |
+
+    Eight rows, eight assertions, every one with at least one leg. (The count checks:
+    15 new tests − 7 RED-first = 8. `field-metadata.test.ts:117` is NOT in this table
+    because it was RED-first, not green-first.)
+
+    ⚠️ CORRECTION (2026-08-06, from PR #124's review — recorded rather than smoothed over).
+    An earlier draft of this paragraph read "their whole value is measured by mutation, in
+    §3 (P2a, P2b, P3b)". That enumeration named 5 of the 8, and it left
+    `…resource-client.test.ts:252` — the recognized-edition CONTROL — reddened by NO leg at
+    all. P2b collapses the two branch messages toward the RECOGNIZED wording only, which is
+    the direction that control already tolerates; the OPPOSITE collapse was never probed.
+    Leg **P2c** was added to close it (§3), so the sentence is now true as written. No
+    claim-carrying assertion was ever unprobed — every typed-kind, provider and join claim
+    had a leg — but a control that nothing can redden is a control in name only, which is
+    the exact shape this file exists to catch. A second, smaller slip is recorded with it:
+    my first attempt at this correction wrote "ELEVEN new assertions" and had to be
+    re-counted against the RED log. The reviewer's "8" was right both times.
 
 
 ================================================================================
@@ -142,8 +175,14 @@ than left for a reader to notice.
 
 Restore discipline for every leg: `git checkout HEAD -- <explicit path>` — EXPLICIT SOURCE
 and EXPLICIT PATH — followed by a sha256 comparison of the file against its pre-mutation
-hash. All eleven legs restored byte-identically; the hashes are in §7's machine output.
+hash. All FOURTEEN legs restored byte-identically; the hashes are in §7's table.
 Test COUNTS (not exit codes) are what is compared, per the playbook.
+
+  ⚠️ CORRECTION (2026-08-06). This line read "All eleven legs" — an undercount that
+  contradicted §7's own table on the same day it was written (that table listed thirteen:
+  P1a, P1a2, P1a3, P1a4, P1b, P1c, P1c2, P1d, P1e, P2a, P2b, P3, P3b). "Eleven" was the leg
+  count of the FIRST driver only. P2c makes fourteen. Two files I wrote disagreeing is the
+  free defect detector the playbook names; recorded, not silently fixed.
 
 Repo-wide reference: **644 files / 6586 tests, of which 1 file / 2 tests fail on `main`.**
 Package reference `[pkg]`: **50 files / 576 tests, 0 failing.**
@@ -238,6 +277,10 @@ P1e [pkg] — MUTATE THE TEST, NOT THE CODE: prove the suite's own vacuity guard
      exists to close: without it, these four tests would pass with the field gate never
      reached at all.
 
+     The fifth failure — the "still builds a plan" control — is what pins P1e as a
+     TEST-side mutation rather than a code-side one: with no action permitted, the positive
+     case cannot build a plan either.
+
 --------------------------------------------------------------------------------
 GROUP P2 — criterion 3, gap (i): the unrecognized-edition fallback KIND
 --------------------------------------------------------------------------------
@@ -273,9 +316,36 @@ P2b [pkg] — collapse the two branches' MESSAGES into one (both emit the recogn
      -> the same three assertions redden.
      This pins that the fallback branch is identified by its OWN distinctive text, not by a
      generic "unsupported" that the sibling branch also satisfies (playbook §"ASSERT THE
-     RULE'S DISTINCTIVE MESSAGE"). The paired CONTROL — a recognized edition with an empty
-     action list, asserting the fallback wording is ABSENT — is what makes the pair
-     non-vacuous in both directions.
+     RULE'S DISTINCTIVE MESSAGE").
+     ⚠️ P2b collapses the messages in ONE direction only — toward the recognized-edition
+     wording. It therefore does NOT exercise the recognized-edition CONTROL at
+     `…resource-client.test.ts:252`, which tolerates that direction by construction. See
+     P2c, added for exactly that reason.
+
+P2c — THE OPPOSITE COLLAPSE, and the leg that makes the CONTROL a control.
+     Collapse both branches' messages toward the FALLBACK wording (both emit "…has not been
+     positively confirmed by discovery…"), leaving both kinds `unsupported`. This is the
+     direction `…resource-client.test.ts:252` exists to catch, and the direction no earlier
+     leg probed.
+     # provenance for THIS LEG ONLY: ran at branch tip aa6d50a, not 5fa5ca3, because the
+     # review that asked for it arrived after `main` had been merged in. That is why its
+     # baseline shows 0 failures where §1's shows 2 — `main`'s snapshot fix is present.
+     # The MUTATION TARGET is byte-identical between the two trees, asserted two ways:
+     #   `git diff --stat 5fa5ca3 aa6d50a -- <the .ts and the .test.ts>` is EMPTY, and this
+     #   leg's own `sha_before` (60bc8279a89c) equals the `sha_before` that P1a/P2a/P2b/P3
+     #   recorded for the same file at 5fa5ca3 (see §7). Re-run in the merged tree rather
+     #   than re-labelled — playbook §"A TRANSCRIPT'S NUMBERS MUST BE CONSISTENT".
+     baseline at aa6d50a: build exit 0; `npx vitest run` exit 0
+       Test Files  644 passed (644)
+            Tests  6586 passed (6586)
+     mutation: build exit 0
+       Test Files  1 failed | 643 passed (644)
+            Tests  1 failed | 6585 passed (6586)
+     -> EXACTLY ONE failure, and it is the control:
+        `CONTROL: a recognized edition's missing action is unsupported too, but on the other
+         branch's message`
+     Nothing else in the repository moves. Together, P2b and P2c pin the message pair in
+     BOTH directions: neither branch's wording can absorb the other's.
 
 --------------------------------------------------------------------------------
 GROUP P3 — criterion 3, gap (ii): the production discovery -> matrix -> client JOIN
@@ -394,12 +464,16 @@ docs/interface-ledger.md` -> exit 1, zero hits. No coordinated ledger edit is ow
   · Test totals vs. the tree the header claims: 6586 at 5fa5ca3 against 6571 at 1bc0d51,
     delta +15, which equals this branch's added case count (5 + 7 + 3). No new test file,
     so `Test Files` stays 644 in both — consistent.
-  · Restores: 11 legs, 11 sha256 matches against the pre-mutation hash, explicit source and
-    explicit path every time. No probe target shared a directory-level restore with an
-    uncommitted file: the branch was COMMITTED (5fa5ca3) before the first mutation, so
-    `git checkout HEAD -- <path>` restores the tested code and not an empty file.
-  · Commit 2 of 2 touches only the `CustomFieldRefusalAttribution` doc comment in
-    `field-metadata.ts` (a JSDoc block; no executable line). Verified by re-running the
+  · Restores: 14 legs, 14 sha256 matches against the pre-mutation hash, explicit source and
+    explicit path every time (this line also read "11" and is corrected with the one at
+    §3's head — same undercount, same cause). No probe target shared a directory-level
+    restore with an uncommitted file: the branch was COMMITTED (5fa5ca3) before the first
+    mutation, so `git checkout HEAD -- <path>` restores the tested code, not an empty file.
+  · Leg-count reconciliation, so the three statements of it cannot drift again:
+    §3 narrates 14 legs, §7's table lists 14 hash triples, and the drivers hold 11 + 2 + 1.
+    All three agree.
+  · The doc-comment commit touches only the `CustomFieldRefusalAttribution` block in
+    `field-metadata.ts` (JSDoc; no executable line). Verified by re-running the
     package suite after it: 50 files / 576 tests, 0 failed — identical to §1's `[pkg]`
     baseline.
 
@@ -408,8 +482,9 @@ docs/interface-ledger.md` -> exit 1, zero hits. No coordinated ledger edit is ow
 §7. RAW DRIVER OUTPUT
 ================================================================================
 
-Drivers: `scratchpad/probe-i.py` (P1a, P1a2, P1a3, P1a4, P1b, P1c, P1d, P1e, P2a, P2b, P3)
-and `scratchpad/probe-i2.py` (P1c2, P3b). Both apply one mutation at a time, assert the
+Drivers: `scratchpad/probe-i.py` (P1a, P1a2, P1a3, P1a4, P1b, P1c, P1d, P1e, P2a, P2b, P3),
+`scratchpad/probe-i2.py` (P1c2, P3b) and `scratchpad/probe-i3.py` (P2c) — 11 + 2 + 1 = 14.
+All apply one mutation at a time, assert the
 anchor occurs EXACTLY ONCE before replacing it (a silent multi-match would make the
 mutation ambiguous), run `npm run build` and record its exit code, run the suite, then
 restore with `git checkout HEAD -- <explicit path>` and assert the file's sha256 returned
@@ -430,8 +505,12 @@ are reproduced verbatim in §3 above. Every `sha_restored` equals its `sha_befor
     P1e   10b2645ece59 -> c6dae5fab5b7 -> 10b2645ece59
     P2a   60bc8279a89c -> 7d5d54141955 -> 60bc8279a89c
     P2b   60bc8279a89c -> 40afbae33f44 -> 60bc8279a89c
+    P2c   60bc8279a89c -> 394ac311c5f1 -> 60bc8279a89c   (driver `scratchpad/probe-i3.py`)
     P3    0e64b17fa91c -> 600c6b5efb1f -> 0e64b17fa91c
     P3b   0e64b17fa91c -> efda806f3496 -> 0e64b17fa91c
+
+P2c's `sha_before` matching P1a/P2a/P2b/P3's exactly is the cross-check that its later
+capture sha does not make it a measurement of a different file.
 
 (These are sha256 prefixes of the FILE CONTENT, not git object ids — said in-file so a
 future auditor does not try to `git cat-file` them.)
