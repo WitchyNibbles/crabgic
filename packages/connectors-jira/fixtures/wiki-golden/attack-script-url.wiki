@@ -1,0 +1,3 @@
+Finding: xss
+Evidence: [click|javascript:alert(1])
+Action: sanitize

@@ -119,3 +119,41 @@ this remedy closes 17's box only.
 needed, no live engine, no owner input. Runs inside the default `npm test` fan-out.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06 — and the remedy found two production defects
+
+Proposed remedy steps 1-4 are done, in `packages/renderer/src/wiki-markup.test.ts`. The corpus is
+loaded the way `corpus.test.ts` loads it; every `expect: "ok"` fixture is asserted to lint clean
+after conversion (`:102-103`); the anti-vacuity floor is at `:92-96`; and the vacuous bearer this
+record names — the `it()` whose name matched the criterion while asserting six `toContain` calls
+over a hand-written string — is replaced rather than reinterpreted.
+
+One thing this record got wrong, and it matters. It recorded that an ad-hoc probe had found all
+eight `valid-*` fixtures already passing, and concluded that "the property is true today and only
+the regression guard is missing, which is why the defect is sized S and rated
+evidence-channel-only rather than blocking-guarantee."
+
+**The property was not true today.** That probe only ran the `valid-*` half. Running the corpus's
+`blocked` half — which the criterion's own wording covers, since it says the output passes the
+corpus, not half of it — went RED immediately, on `attack-remote-image`, and the cause was two
+real production defects:
+
+1. **`url-policy` was blind to Jira wiki-markup image notation.** It matched only markdown
+   `![alt](url)`. A candidate containing `!https://evil.example/x.png!` — an embedded remote image
+   written in the wire format phase 19 actually emits for Data Center — linted **PASS**. Four
+   shapes were measured clean before the fix: a bare wiki image URL, a wiki image filename, one
+   with a `|thumbnail` tail, and an `http:`-scheme one.
+2. **`toWikiMarkup` rewrote `![alt](url)` into `![alt|url]`** — a stray `!` glued to a link, which
+   is neither valid wiki markup nor a faithful conversion. It handed `url-policy` a construct that
+   stage permits, so converting a **blocked** artifact produced a **clean** one.
+
+Both are fixed here: the converter emits Jira image syntax `!url!`, and the stage recognizes both
+notations, with four prose-exclamation negative controls so the widened pattern cannot fire on
+ordinary text. Mutation evidence, rebuilt before each arm (baseline 68 files / 793 tests): making
+`WIKI_IMAGE_PATTERN` unmatchable gives 5 failed / 788 passed; making the image pass an identity
+gives 2 failed / 791 passed.
+
+So the sizing in this record was right (**S**) and the _rating_ was wrong: this was a
+blocking-guarantee gap, not an evidence-channel one. The reason is worth keeping, because it
+generalizes — **a probe that samples only the passing half of a corpus will report that a property
+holds.** The criterion said "passes the corpus"; the probe ran the fixtures expected to pass.

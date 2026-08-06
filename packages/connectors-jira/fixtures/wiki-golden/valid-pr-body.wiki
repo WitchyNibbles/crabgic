@@ -1,0 +1,4 @@
+Outcome: shipped the renderer's blocking lint pipeline
+Validation: unit + property + golden suites green
+Risk: low, no external callers yet
+Tracking: PROJ-17

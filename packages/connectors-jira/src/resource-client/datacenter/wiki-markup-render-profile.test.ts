@@ -92,7 +92,17 @@ describe("adfDocumentToWikiMarkup — golden corpus parity with @crabgic/rendere
   });
 });
 
-describe("wiki-markup rendering passes 17's blocking-artifact-lint unchanged", () => {
+/**
+ * NOT the bearer of roadmap/19 exit criterion 4. This suite lints the INPUT
+ * candidate and then converts; the criterion is about the OUTPUT. Renamed
+ * from "wiki-markup rendering passes 17's blocking-artifact-lint unchanged",
+ * which read as though it carried the criterion and did not.
+ *
+ * The criterion's bearer is `./wiki-markup-corpus.test.ts`, which runs 17's
+ * own `fixtures/corpus/` through the serializer and lints what comes out,
+ * plus a committed golden-file diff per fixture.
+ */
+describe("a lint-clean candidate survives conversion (input-side smoke, see wiki-markup-corpus.test.ts for the criterion)", () => {
   it("a jira_milestone_comment candidate that passes lint() converts to wiki markup with no structural violation reintroduced", () => {
     const candidate = [
       "Outcome: shipped the milestone.",

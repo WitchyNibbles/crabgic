@@ -246,6 +246,34 @@ describe("toADF", () => {
     expect(validateAdfSafeSubset(doc)).toEqual([]);
     expect(doc.content.every((node) => !node.type.startsWith("table"))).toBe(true);
   });
+
+  // Nothing pinned this before: changing the paragraph join from `" "` to
+  // `hardBreak` nodes and rebuilding the workspace left all 67 renderer +
+  // connectors-jira files and 681 tests green. The line structure of a
+  // templated artifact is load-bearing downstream (schema-validation splits
+  // on "\n"; phase 19's DC serializer renders `hardBreak` as "\n"), so it
+  // gets an assertion rather than a comment.
+  it("joins consecutive paragraph lines with hardBreak nodes, never by collapsing to a space", () => {
+    const doc = toADF("Outcome: shipped\nValidation: none");
+    expect(doc.content).toHaveLength(1);
+    const paragraph = doc.content[0]!;
+    expect(paragraph.type).toBe("paragraph");
+    expect((paragraph.content ?? []).map((node) => node.type)).toEqual([
+      "text",
+      "hardBreak",
+      "text",
+    ]);
+    expect((paragraph.content ?? [])[0]!.text).toBe("Outcome: shipped");
+    expect((paragraph.content ?? [])[2]!.text).toBe("Validation: none");
+  });
+
+  it("still starts a new paragraph node at a blank line", () => {
+    const doc = toADF("first para\n\nsecond para");
+    expect(doc.content.map((node) => node.type)).toEqual(["paragraph", "paragraph"]);
+    expect(
+      doc.content.every((node) => (node.content ?? []).every((c) => c.type !== "hardBreak")),
+    ).toBe(true);
+  });
 });
 
 describe("ADF_ALLOWED_NODE_TYPES / ADF_ALLOWED_MARK_TYPES", () => {

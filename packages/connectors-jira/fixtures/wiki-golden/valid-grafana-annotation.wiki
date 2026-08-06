@@ -1,0 +1,1 @@
+resolved \| renderer-service \| deployed v1.2.0 \| evidence=https://ci.example.com/build/42

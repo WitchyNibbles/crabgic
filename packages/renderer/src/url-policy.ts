@@ -2,8 +2,9 @@ import type { LintFinding, LintStageInput } from "./lint-types.js";
 
 /**
  * URL-policy stage — roadmap/17 work item 3. Rejects raw HTML tags,
- * `javascript:`/`data:` URLs, and embedded remote images (markdown image
- * syntax pointing at any URL). Everything else — bare `https://` links,
+ * `javascript:`/`data:` URLs, and embedded remote images in BOTH notations
+ * this repository emits — markdown `![alt](url)` and Jira wiki markup
+ * `!url!` — pointing at any URL. Everything else — bare `https://` links,
  * markdown `[text](https://...)` links — is allowed; the scheme allowlist is
  * exactly `https:` (see `isAllowedLinkScheme`).
  */
@@ -34,6 +35,24 @@ const DANGEROUS_SCHEMELESS_PATTERN = /\b(javascript|data|vbscript|file):[^\s)\]"
 // Markdown image syntax: ![alt](url) — flagged unconditionally (roadmap/17:
 // "no embedded remote images"), regardless of scheme.
 const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*]\(([^)]+)\)/g;
+
+// Jira WIKI-MARKUP image syntax: `!url!`, `!file.png!`, `!url|thumbnail!`.
+//
+// The same prohibition, in the second notation this repository actually
+// emits. Phase 19 sends Data Center wiki markup on the wire, not markdown
+// (`jira-mutation-apply-client-dc.ts` converts every ADF-bearing field via
+// `adfDocumentToWikiMarkup` at the apply boundary), so a stage that knows
+// only the markdown notation cannot see an embedded remote image in the
+// format DC consumes. Measured before this pattern existed:
+// `!https://evil.example/x.png!` linted PASS as a `pr_body` candidate.
+//
+// Deliberately narrow, so ordinary prose exclamations ("Done!", "Wow! Yes!")
+// cannot match: the delimited span must be either a scheme://authority URL
+// or a filename carrying a known image extension, and may carry Jira's
+// `|params` tail. Whitespace inside the span is not permitted, which is what
+// keeps a sentence spanning two exclamation marks from matching.
+const WIKI_IMAGE_PATTERN =
+  /!(?:[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s!|]+|[^\s!|/\\]+\.(?:png|jpe?g|gif|svg|webp|bmp|ico|tiff?))(?:\|[^\s!]*)?!/gi;
 
 const ALLOWED_LINK_SCHEMES = new Set(["https"]);
 
@@ -67,6 +86,15 @@ export function urlPolicyStage(input: LintStageInput): readonly LintFinding[] {
   }
 
   for (const match of findAllMatches(text, MARKDOWN_IMAGE_PATTERN)) {
+    findings.push({
+      stage: STAGE_NAME_URL_POLICY,
+      severity: "block",
+      message: `embedded remote image "${match[0]}" is not permitted in rendered communication text`,
+      span: { start: match.index, end: match.index + match[0].length },
+    });
+  }
+
+  for (const match of findAllMatches(text, WIKI_IMAGE_PATTERN)) {
     findings.push({
       stage: STAGE_NAME_URL_POLICY,
       severity: "block",

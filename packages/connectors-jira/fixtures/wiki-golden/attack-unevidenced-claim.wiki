@@ -1,0 +1,3 @@
+Finding: null deref
+Evidence: none provided
+Action: fixed the null check

@@ -1,0 +1,3 @@
+Finding: missing null check on parsed input
+Evidence: src/parser.ts:42
+Action: add a guard clause before dereferencing

@@ -184,11 +184,32 @@ export function toADF(markdown: string): AdfDocument {
   const content: AdfNode[] = [];
   let i = 0;
 
+  /**
+   * Consecutive non-blank lines become ONE paragraph joined by `hardBreak`
+   * nodes — not by spaces.
+   *
+   * `hardBreak` has been on `ADF_ALLOWED_NODE_TYPES` since this module was
+   * written, and phase 19's wiki serializer has always had a branch that
+   * renders it as `"\n"`, but nothing ever emitted one: the two halves were
+   * built to fit and never connected. Joining with `" "` instead collapsed
+   * every templated multi-line artifact into a single line, which the
+   * schema-validation stage then rejected because it splits on `"\n"` to
+   * find each `Label: value` section. Measured on the phase-17 corpus
+   * before this change: `valid-pr-body`, `valid-jira-milestone-comment` and
+   * `valid-review-comment` all linted BLOCK(schema-validation) after the
+   * markdown -> ADF -> wiki-markup round trip, i.e. three artifacts that
+   * pass the lint as authored would have gone on the wire malformed.
+   */
   function flushParagraph(paragraphLines: string[]): void {
     if (paragraphLines.length === 0) return;
-    const text = paragraphLines.join(" ").trim();
-    if (text.length === 0) return;
-    content.push({ type: "paragraph", content: parseInline(text).nodes });
+    const kept = paragraphLines.map((line) => line.trim()).filter((line) => line.length > 0);
+    if (kept.length === 0) return;
+    const nodes: AdfNode[] = [];
+    kept.forEach((line, index) => {
+      if (index > 0) nodes.push({ type: "hardBreak" });
+      nodes.push(...parseInline(line).nodes);
+    });
+    content.push({ type: "paragraph", content: nodes });
   }
 
   let paragraphBuffer: string[] = [];

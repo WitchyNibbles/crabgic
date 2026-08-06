@@ -1,0 +1,3 @@
+Finding: phishing link
+Evidence: see [link|https://pαypal.com/reset]
+Action: block domain

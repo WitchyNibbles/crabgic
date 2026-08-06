@@ -1,0 +1,32 @@
+# UPSTREAM BASE (stable): 8c9cc56400f40a4b60dedd284c8ccd760125b5fb
+# Captured (UTC): 2026-08-06T08:10:18Z
+# subject: four-rule citation resolver over phase-17.json / phase-19.json, plus its own mutation test
+# ---- verbatim output below ----
+NOTE repeat-text (2x) packages/renderer/src/unicode-defense.test.ts:93 — position-verified, not content-verified
+NOTE repeat-text (3x) packages/renderer/src/unicode-defense.test.ts:117 — position-verified, not content-verified
+NOTE repeat-text (2x) packages/renderer/src/url-policy.test.ts:36 — position-verified, not content-verified
+OUT-OF-SPAN packages/renderer/src/attribution-neutral.test.ts:37 outside 11-21
+ANCHOR packages/renderer/src/attribution-neutral.test.ts:53 does not contain "attributionNeutralStage(stageInput(\"Corrects the off-by-one " (NOT IN FILE — fabricated?)
+NOTE repeat-text (5x) packages/renderer/src/adf.test.ts:241 — position-verified, not content-verified
+NOTE repeat-text (5x) packages/renderer/src/adf.test.ts:134 — position-verified, not content-verified
+ANCHOR packages/connectors-jira/src/resource-client/adf-guard.ts:80 does not contain "const findings = validateAdfSafeSubset(candidate);" (it is on :137)
+NOTE repeat-text (2x) packages/renderer/src/wiki-markup.test.ts:102 — position-verified, not content-verified
+NOTE repeat-text (2x) packages/renderer/src/wiki-markup.test.ts:111 — position-verified, not content-verified
+NOTE repeat-text (3x) packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:94 — position-verified, not content-verified
+NOTE repeat-text (2x) packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:95 — position-verified, not content-verified
+resolver: 37 fragment(s) checked, 3 problem(s)
+
+== resolver mutation test ==
+# resolver mutation test — three ways, all must be CAUGHT
+-- mutation: falsify-text
+ANCHOR packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:94 does not contain "const converted = neverWrittenAnywhere(fixture.candidate);" (NOT IN FILE — fabricated?)
+resolver: 6 fragment(s) checked, 1 problem(s)
+-- mutation: move-marker
+ANCHOR packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:93 does not contain "const converted = adfDocumentToWikiMarkup(toADF(fixture.cand" (it is on :94)
+resolver: 6 fragment(s) checked, 1 problem(s)
+-- mutation: past-eof
+SPAN-PAST-EOF packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:90-9600 (file has 210)
+LINE-MISSING packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:9500
+resolver: 6 fragment(s) checked, 2 problem(s)
+-- restored baseline:
+resolver: 6 fragment(s) checked, 0 problem(s)

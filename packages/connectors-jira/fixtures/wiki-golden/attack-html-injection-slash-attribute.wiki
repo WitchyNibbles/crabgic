@@ -1,0 +1,4 @@
+Outcome: done <svg/onload=alert(1)>
+Validation: none
+Risk: none
+Tracking: none

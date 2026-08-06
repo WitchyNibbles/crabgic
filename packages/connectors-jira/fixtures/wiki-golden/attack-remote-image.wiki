@@ -1,0 +1,4 @@
+Outcome: see \![screenshot|https://evil.example/x.png]
+Validation: none
+Risk: none
+Tracking: none
