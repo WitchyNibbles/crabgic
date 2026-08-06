@@ -464,3 +464,74 @@ docs/deploy-posture.md, docs/interface-ledger.md or
 docs/evidence/criteria-closeout/ is touched. The two probe mutations above were
 made and restored inside this transcript's own runs and appear in neither diff.
 ================================================================================
+
+================================================================================
+ADDENDUM, 2026-08-06 13:55Z — §11. THE PER-PUSH PROOF FROM THE REAL CI JOB LOGS
+(appended after PR #121 went green; §8's local counts are now backed by the
+job logs Batch G needs, byte-compared under the one-space rule)
+================================================================================
+
+A green workflow proves nothing about YOUR test. What follows is the same file,
+the same job NAME, the same runner label, on both sides.
+
+BEFORE — main @ 6f964d76758158159c1d3dc01a0e3a8629f67f79
+  run 31104703738, job 92626742663 "unit-test+coverage (ubuntu-latest)"
+AFTER  — PR #121 merge ref
+  run 31107175206, job 92635250908 "unit-test+coverage (ubuntu-latest)"
+
+Quoted under the ONE-SPACE rule (timestamp AND the single separator space
+stripped; vitest's own content then begins with one space before the check
+mark), verbatim from the downloaded logs:
+
+  before, log line 976:
+   ✓  crabgic  src/daemon/compose-gate-registry.test.ts (7 tests) 53ms
+  after,  log line 973:
+   ✓  crabgic  src/daemon/compose-gate-registry.test.ts (10 tests) 71ms
+
+  => +3, exactly the three new cases. The assertion RUNS PER PUSH.
+
+CONTROL ROWS — counts that should NOT move, and did not:
+
+  before 938 / after 955:
+   ✓  crabgic  src/daemon/post-completion-pipeline.test.ts (32 tests) 339ms
+   ✓  crabgic  src/daemon/post-completion-pipeline.test.ts (32 tests) 323ms
+  before 941 / after 958:
+   ✓  crabgic  src/daemon/composed-post-completion.e2e.test.ts (4 tests) 1187ms
+   ✓  crabgic  src/daemon/composed-post-completion.e2e.test.ts (4 tests) 1323ms
+  before 951 / after 969:
+   ✓  crabgic  src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 158ms
+   ✓  crabgic  src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 210ms
+
+  The e2e row at 4 -> 4 is the load-bearing control: its criterion-bearing
+  security assertions were added INSIDE the four existing cases, so the count is
+  supposed to stand still. Its green state on the AFTER side is what says those
+  assertions ran.
+
+RIGHT-COUNT / WRONG-FILE HAZARD, checked rather than assumed: `(4 tests)` occurs
+at TWO different lines in each log (the composed e2e and the seal-enforcement
+suite). A comparer keyed on the count alone would have matched the wrong suite
+and reported success. Every row above is anchored on the FILENAME, and the line
+numbers are stated per side because they differ (976 vs 973 etc. — the suites
+report in completion order, which is load-dependent).
+
+REPO-WIDE TOTALS, as the independent cross-check that no other count moved:
+
+  before, log lines 1059-1060:
+   Test Files  644 passed (644)
+        Tests  6570 passed | 1 skipped (6571)
+  after,  log lines 1077-1078:
+   Test Files  644 passed (644)
+        Tests  6573 passed | 1 skipped (6574)
+
+  6571 -> 6574 is +3, and +3 is this batch's entire delta. No file count moved
+  (644 -> 644): the three new cases landed in an existing file, and the new
+  evidence transcript is not a test file.
+
+  (The one skipped test is pre-existing on both sides. Locally the same suite
+  reports 6574 passed because the skip is CI-environment-conditional; the
+  totals agree either way.)
+
+CI CONCLUSION FOR PR #121: 15 of 15 checks pass, on BOTH runner arches —
+lint, typecheck, unit-test+coverage, gates-conformance, perf-conformance,
+learning-redteam (each x2), plus commitlint, engine-pin-lint, meta-checks.
+================================================================================
