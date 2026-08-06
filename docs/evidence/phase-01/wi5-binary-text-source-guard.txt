@@ -279,3 +279,165 @@ $ npm test
   is a claim that has to be checkable: `git diff --name-only
   origin/main...HEAD` (three-dot, since main had moved) names no packages/cli
   path, and 6f964d7 changes exactly one file — that .snap.
+
+################################################################################
+# ROUND 2 — sections 10-13, added 2026-08-06 after adversarial review returned
+# PR #120 as CHANGES REQUIRED. Sections 0-9 above stand as written; nothing in
+# them is retracted. What follows is what they MISSED.
+#   commit 5  a27a174  fix(hygiene): widen the guard past four missed classes and git's window
+#   commit 6  5cde92d  test(gateway,renderer): pin the two prose-only residuals
+#   commit 7  47d0395  test(learning): byte-pin caseSetDigest, name the case not its position
+################################################################################
+
+== 10. F1 — THE GUARD MISSED 43 TRACKED TEXT FILES ==
+
+  Section 3 above claimed the extension allowlist "needs no growable
+  exception list, because the repo's real binary assets carry none of those
+  extensions". True, and beside the point: the question is not what the
+  BINARY files carry, it is what the TEXT files carry. Nobody counted.
+
+$ git ls-files | <group by extension, minus the allowlist>
+    .wiki    33     packages/connectors-jira/fixtures/wiki-golden/
+    .py       2
+    .svg      2
+    .jsonl    1     the learning system's own declared eval-case format
+    (none)    5     LICENSE  NOTICE  .gitignore  .npmrc  .prettierignore
+    ---------------
+    43 tracked text files outside the guard.
+    (.png 21 and .pyc 1 are also outside it, and correctly so.)
+
+  The `.wiki` corpus is the sharp end: those goldens are what merged PR #108
+  cites as its lint oracle, so they are among the most citation-sensitive
+  fixtures in the repository — precisely where a silent `git grep -I` drop
+  does the most damage.
+
+  RED FIRST, and this time in the REAL tree rather than a fixture. One raw
+  0x00 planted at byte 1 of one real file per class:
+
+$ npm run check:hygiene          # guard exactly as committed at 48b4a1a
+  check-repo-hygiene: PASS — all required top-level files exist and are non-empty.
+  check-repo-hygiene: PASS — no tracked text source is classified binary by git.
+  EXIT=0
+     ^ SILENT on all five, while `git diff --numstat` listed all five as
+       binary in the same run. Note the second line is the guard certifying
+       a tree in which LICENSE had just gone binary — and the `OK — LICENSE`
+       line from this script's OTHER leg printed in the same run.
+
+$ npm run check:hygiene          # after widening, same five plants
+  check-repo-hygiene: BINARY TEXT SOURCE — LICENSE — first NUL (0x00) at line 1, byte offset 1
+  check-repo-hygiene: BINARY TEXT SOURCE — assets/brand/source/mascot.py — first NUL (0x00) at line 1, byte offset 1
+  check-repo-hygiene: BINARY TEXT SOURCE — assets/brand/vector/crabgic-icon-small.svg — first NUL (0x00) at line 1, byte offset 1
+  check-repo-hygiene: BINARY TEXT SOURCE — packages/connectors-jira/fixtures/wiki-golden/attack-adf-link-javascript-href.wiki — first NUL (0x00) at line 1, byte offset 1
+  check-repo-hygiene: BINARY TEXT SOURCE — spikes/fixtures/02-hermeticity.transcript.sanitized.jsonl — first NUL (0x00) at line 1, byte offset 1
+  check-repo-hygiene: FAIL — 5 tracked text source(s) are binary to git.
+  EXIT=1
+
+  Restored with `git checkout HEAD -- <five explicit paths>`; `git status
+  --short` on those paths empty afterwards; guard back to EXIT=0.
+
+  THE STRUCTURAL HALF, which matters more than the four names added to a
+  list. `uncoveredExtensions()` resolves the allowlist against every tracked
+  path in the repo, and the suite asserts the unpoliced set is exactly
+  [".png", ".pyc"]. A hand-kept list that nothing compares to the tree is a
+  promise; this makes the next new file class announce itself. Extensionless
+  now defaults to TEXT rather than allowlisting five basenames, so a future
+  extensionless binary reddens loudly instead of silently joining the
+  unpoliced set.
+
+  Mutations, test count constant at 18 across all of them:
+    drop ".wiki" from the allowlist        3 failed | 14 passed
+    drop the extensionless arm             3 failed | 14 passed
+    tracked corpus forced empty            2 failed | 15 passed  (the
+      containment assertion AND its own >1000-file control)
+    restored                               18 passed
+
+  One mutation attempt did not apply (an escaping error in the substitution)
+  and its `assert count > 0` refused to run — recorded because the whole
+  reason that assert is there is section 6's first attempt, which reported
+  three green runs of unmutated code.
+
+== 11. THE RESIDUAL I PINNED IN SECTION 4 WAS WRONG, AND IT BIT ME IN AN HOUR ==
+
+  Section 4 recorded, as a deliberate accepted residual: "a NUL beyond git's
+  8000-byte sniff window is NOT detected ... past the window git still diffs
+  and greps the file as text, so the instruments keep working and there is
+  nothing to report."
+
+  Two hours later, while writing the F3 assertion below, my editor wrote a
+  RAW 0x00 into packages/learning/src/red-team/grader-drift.redteam.test.ts
+  — the identical typo this entire PR exists to fix, inside the test that
+  pins it — and:
+
+$ npm run check:hygiene
+  check-repo-hygiene: PASS — no tracked text source is classified binary by git.
+  EXIT=0
+$ python3 -c "...index(0)"      ->  NUL at byte offset 12575  (window is 8000)
+$ git diff --numstat -- .../grader-drift.redteam.test.ts
+  62      4       packages/learning/src/red-team/grader-drift.redteam.test.ts
+     ^ not "-  -": git agreed it was text, exactly as section 4 predicted.
+
+  The prediction was right and the CONCLUSION drawn from it was wrong. The
+  file reads as text only until something above the NUL shrinks by 4576
+  bytes, at which point it becomes binary with no edit to the NUL itself.
+  That is a time bomb whose trigger is an unrelated future edit — worse than
+  a failure that shows up immediately, not better.
+
+  So the scan is now the whole file. git's classifier no longer decides WHAT
+  is reported, only how severe it is:
+
+    BINARY TEXT SOURCE ...............  instruments are broken now
+    LATENT BINARY TEXT SOURCE ........  instruments break on the next edit above it
+
+  `.gitattributes` `diff` is still the escape hatch, now applied explicitly
+  via `git check-attr` since the scan no longer routes through git.
+
+  Self-test — the same NUL replanted at the same place, new guard:
+
+$ npm run check:hygiene
+  check-repo-hygiene: LATENT BINARY TEXT SOURCE (outside git's 8000-byte sniff window — binary the moment the bytes above it shrink) — packages/learning/src/red-team/grader-drift.redteam.test.ts — first NUL (0x00) at line 268, byte offset 12761
+  EXIT=1
+
+  The section-4 assertion is REVERSED in the suite, not deleted, and the test
+  now asserts that git says text while the guard says report it — the
+  divergence is the point, so it is pinned rather than left implicit.
+
+== 12. F2 — THE TWO SEPARATORS I LEFT AS PROSE ==
+
+  Section 6 found that none of the three separators was pinned, pinned one,
+  and wrote the other two up as "left unpinned, stated rather than quietly
+  skipped". The playbook is explicit that this is not enough ("ASSERT A
+  RESIDUAL, DON'T JUST DESCRIBE IT — a residual named only in prose drifts"),
+  and both are production-reachable. Assertions, not a defect record:
+
+  gateway — ("a","b:c") and ("a:b","c") collapse to one FIFO queue under a
+  printable separator. Not write-order loss; cross-tenant latency coupling.
+  Asserted maxInFlight 2 / activeKeyCount 2, with an identical-key control
+  asserting 1 so the instrumentation cannot report 2 for free. Deferred
+  barrier, no wall clock, no asserted duration.
+
+  renderer — the bold placeholders are unforgeable ONLY because
+  unicode-defense.ts refuses U+0000 one stage earlier. The guarantee lives in
+  another module and nothing asserted the dependency; a printable sentinel is
+  a silent injection surface. Now driven through `unicodeDefenseStage`, with
+  a control proving the "@@" form is ACCEPTED — which is exactly why such a
+  rewrite would be silent.
+
+== 13. THE FULL REVERSE-PROBE MATRIX AFTER F2 AND F3 ==
+
+  Baseline gateway+learning+renderer: 74 files / 792 tests. Every mutation
+  verified applied (substitution count asserted) and every run rebuilt first;
+  `npm run build` exit 0 throughout.
+
+    probe                                          before F2/F3   after
+    ---------------------------------------------  ------------   -----------------
+    R1  eval-pair sep \0 -> ":"  (REVIEWER'S CASE)  GREEN          2 failed
+    R2  eval-pair sep \0 -> "|"                     1 failed       2 failed
+    R3  eval-pair CASE joiner "\n" -> "|"           GREEN          1 failed
+    R4  gateway key sep \0 -> ":"                   GREEN          1 failed
+    R5  renderer placeholders \0 -> "@@"            GREEN          2 failed
+    restored                                        792 passed     792 passed
+
+  R3 is coverage the review did not ask for: the swept candidate set cannot
+  see a CASE-joiner change, and the byte-pin can. Test count constant at 792
+  across every row; md5 of all three mutated files back to baseline at the
+  end.

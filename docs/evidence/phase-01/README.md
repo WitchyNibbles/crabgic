@@ -135,6 +135,17 @@ offenders before the fix, its own suite's three mutations, the digest-invariance
 measurement, and the reverse probes). Suite:
 `scripts/check-repo-hygiene.test.mjs`.
 
+**Amended the same day, after adversarial review** (transcript §§10-13). The
+first version of the guard missed **43 tracked text files** — `.wiki` (33, the
+phase-17 lint-corpus goldens), `.jsonl`, `.py`, `.svg`, and five extensionless
+files including `LICENSE` itself. It also matched git's 8000-byte sniff window
+exactly and pinned "a NUL past it is not detected" as an accepted residual; that
+ruling was measured wrong within the hour, when a raw `0x00` landed at byte
+12575 of a file in this very PR and the guard passed. The scan is now whole-file
+with git's classifier grading severity, and `uncoveredExtensions()` resolves the
+allowlist against the real tree so the next unclassified file type reddens
+instead of defaulting to unpoliced.
+
 ## Toolchain versions pinned (exact, no `^`/`~`) for this phase
 
 `typescript@6.0.3` (pinned below the `7.x` line specifically because
