@@ -190,3 +190,145 @@ Narrowed, not eliminated, and asserted as `=== 2` controls rather than described
 Not claimed by this transcript: nothing here evidences behaviour against a real
 Jira. Every leg is a fake transport. roadmap/18's cassette/live conjuncts remain
 owner-gated and are untouched by this batch.
+
+================================================================================
+APPENDED 2026-08-06 — PER-PUSH PROOF FROM THE CI JOB LOGS
+(and a correction to a claim this batch published in its PR body)
+================================================================================
+
+# Jobs cited (same workflow, same job NAME, same runner LABEL):
+#   main @ 6f964d7  unit-test+coverage (ubuntu-latest)  job 92626742663
+#   PR #125         unit-test+coverage (ubuntu-latest)  job 92641855998
+# Fetched with: gh api repos/WitchyNibbles/crabgic/actions/jobs/<id>/logs
+
+--------------------------------------------------------------------------------
+A. THE CORRECTION — AND THE INSTRUMENT THAT CAUSED IT
+--------------------------------------------------------------------------------
+
+PR #125's body originally carried a paragraph headed "Honest limit on this
+proof", asserting that this repo's CI runs vitest with the default reporter and
+that the job log therefore prints ONLY the repo-wide summary, with no per-file
+`✓ … (N tests)` lines to byte-compare.
+
+THAT CLAIM IS FALSE, and it was published as a measurement.
+
+The per-file lines are present in both logs. They are ANSI-colour-coded, so:
+
+  $ grep -c "write-order.integration.test.ts (" joblog-pr125.txt
+  0
+
+returns zero — a SMALLER ANSWER WITH NO ERROR, the exact instrument-failure
+shape the verification playbook names for mis-scoped pathspecs and
+notation-blind greps. Strip the escapes first and the lines are all there:
+
+  $ sed -E 's/\x1b\[[0-9;]*m//g' joblog-pr125.txt | grep '…test.ts ([0-9]* tests)'
+
+The false claim reached the PR body only. No committed file carried it
+(`git grep -niE "per-file|one-space rule|default reporter|byte-compare" --
+docs/evidence/phase-16 docs/evidence/phase-18` → exit 1, no matches), and the
+body was corrected. This section exists so the finding lives in the repo rather
+than in a review thread: the correct method wave-wide is "strip ANSI escapes,
+THEN grep", and a per-push proof must not be downgraded on the strength of a
+grep that returned nothing.
+
+--------------------------------------------------------------------------------
+B. THE AGGREGATE
+--------------------------------------------------------------------------------
+
+main @ 6f964d7, job 92626742663, log lines 1059-1060:
+ Test Files  644 passed (644)
+      Tests  6570 passed | 1 skipped (6571)
+
+PR #125, job 92641855998, log lines 1086-1087:
+ Test Files  645 passed (645)
+      Tests  6634 passed | 1 skipped (6635)
+
++1 test file, +64 tests.
+
+--------------------------------------------------------------------------------
+C. THE PER-FILE ROWS, QUOTED FROM THE LOGS THEMSELVES
+--------------------------------------------------------------------------------
+
+Escapes stripped and the leading GitHub timestamp removed; what remains is
+vitest's own line, which itself begins with one space before the check mark.
+Durations are elided as `…ms` because they are not reproducible; every other
+byte is verbatim.
+
+main @ 6f964d7, job 92626742663:
+ ✓  @crabgic/connectors-jira  src/resource-client/canonical-target.test.ts (14 tests) …ms
+ ✓  @crabgic/connectors-jira  src/testkit/write-order.integration.test.ts (5 tests) …ms
+ ✓  @crabgic/gateway  src/mutation-pipeline/mutation-pipeline.test.ts (36 tests) …ms
+ ✓  @crabgic/gateway  src/mcp/native-tools/mutation-apply-tool.test.ts (8 tests) …ms
+ ✓  @crabgic/gateway  src/transport/write-serializer.test.ts (5 tests) …ms
+ ✓  @crabgic/gateway  src/transport/http-client.test.ts (16 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/mutation-apply-client.test.ts (8 tests) …ms
+   (no src/mutation/folder-attribution.test.ts line — the file does not exist yet)
+
+PR #125, job 92641855998:
+ ✓  @crabgic/connectors-jira  src/resource-client/canonical-target.test.ts (19 tests) …ms
+ ✓  @crabgic/connectors-jira  src/testkit/write-order.integration.test.ts (12 tests) …ms
+ ✓  @crabgic/gateway  src/mutation-pipeline/mutation-pipeline.test.ts (53 tests) …ms
+ ✓  @crabgic/gateway  src/mcp/native-tools/mutation-apply-tool.test.ts (13 tests) …ms
+ ✓  @crabgic/gateway  src/transport/write-serializer.test.ts (14 tests) …ms
+ ✓  @crabgic/gateway  src/transport/http-client.test.ts (20 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/folder-attribution.test.ts (14 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/mutation-apply-client.test.ts (11 tests) …ms
+
+  file                                                              base  PR   Δ
+  ----------------------------------------------------------------  ----  ---  ---
+  connectors-jira  src/resource-client/canonical-target.test.ts        14   19   +5
+  connectors-jira  src/testkit/write-order.integration.test.ts          5   12   +7
+  gateway          src/mutation-pipeline/mutation-pipeline.test.ts     36   53  +17
+  gateway          src/mcp/native-tools/mutation-apply-tool.test.ts     8   13   +5
+  gateway          src/transport/write-serializer.test.ts               5   14   +9
+  gateway          src/transport/http-client.test.ts                   16   20   +4
+  connectors-grafana src/mutation/folder-attribution.test.ts        (new)   14  +14
+  connectors-grafana src/mutation/mutation-apply-client.test.ts         8   11   +3
+                                                                              ----
+                                                                              +64
+
+The eight deltas sum to the aggregate with NO REMAINDER, which is what rules out
+a right-count/wrong-file match: an accidental pairing would leave the sum short
+or long. The last four rows are the folder-allowlist work; the first four are
+the bulk work plus this branch's first commit's transport tests.
+
+A CONTROL ROW, because a count that should NOT move is evidence too:
+ main: ✓  @crabgic/connectors-grafana  src/mutation/canonical-target.test.ts (5 tests)
+ PR:   ✓  @crabgic/connectors-grafana  src/mutation/canonical-target.test.ts (5 tests)
+Grafana's own same-named `canonical-target.test.ts` is untouched at 5 → 5. It
+shares a BASENAME with the Jira file that moved 14 → 19, so a comparer keyed on
+the basename alone would have matched the wrong suite.
+
+--------------------------------------------------------------------------------
+D. WHAT THIS DOES AND DOES NOT SHOW
+--------------------------------------------------------------------------------
+
+It shows the new assertions EXECUTED in CI on ubuntu-latest, per push, in the
+job whose green this PR reports. It does not show anything about the arm64 job
+(green, not quoted here) and it is not evidence about behaviour against a real
+Jira or Grafana — every leg remains a fake transport.
+
+--------------------------------------------------------------------------------
+E. THE QUOTES WERE BYTE-COMPARED, AND THE COMPARER WAS MUTATION-TESTED
+--------------------------------------------------------------------------------
+
+Neither repo validator checks quoted job-log content at all, so every ` ✓ … (N
+tests)` line in §C was machine-compared against the downloaded logs: escapes
+stripped, GitHub timestamp removed, each quote required to be a prefix of
+EXACTLY ONE line in the log it is attributed to.
+
+  17 quoted line(s), 0 mismatch(es)
+
+The comparer's silence was not trusted until it had been mutation-tested three
+ways, including the one nobody thinks of:
+
+  falsify a count (19 → 20)                             → caught
+  right count, WRONG JOB (main's 14 quoted under the PR) → caught
+  right count, WRONG FILE (connectors-grafana's
+    same-basename canonical-target.test.ts re-attributed
+    to connectors-jira)                                  → caught
+
+The third is not hypothetical here: two DIFFERENT `canonical-target.test.ts`
+files appear in these logs, one in connectors-jira and one in
+connectors-grafana. A comparer keyed on basename + count would have matched the
+wrong suite and reported success.
