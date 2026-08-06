@@ -1,0 +1,617 @@
+================================================================================
+BATCH M — registering phase 21's security-fixture manifest in the daemon's
+composed gate registry: RED-first staging, reverse probe, guard mutation.
+================================================================================
+
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d5159b17715790c74b47f5a0007bd939a802
+#   ("Batch E: bind the enforced budget to the approved envelope … (#116)", origin/main at capture)
+# branch tip at capture (PROVISIONAL — a pre-merge branch commit; see the
+#   playbook's RULING-3 amendment): 6fbc393f9a3c36b8a188a80e28cc745858cb133a
+# captured: 2026-08-06, 13:07Z – 13:26Z
+# worktree: /home/eimi/projects/wt-batchm (hardlinked node_modules, `cp -al`)
+# authorization: free local + GitHub CI only. Nothing here runs @live, docker,
+#   or any paid/licensed system.
+
+WHAT THIS BATCH CHANGED, IN ONE SENTENCE
+  `registerSecurityFixtureManifest` (packages/gates/src/security-fixture-manifest.ts:352)
+  had exactly ONE caller in the entire repository — its own unit test at
+  packages/gates/src/security-fixture-manifest.test.ts:60 — so roadmap/21's
+  "standing, blocking entries" (roadmap/21-connector-evidence-integration.md:21)
+  were standing inside a test harness and nowhere else. The daemon's composition
+  root packages/cli/src/daemon/compose-gate-registry.ts now registers them.
+
+--------------------------------------------------------------------------------
+0. THE PRE-CHANGE CENSUS THAT MOTIVATES IT
+--------------------------------------------------------------------------------
+
+$ git grep -n 'registerSecurityFixtureManifest' -- packages e2e scripts
+  (at 1bc0d51; docs/ hits omitted — they are prior transcripts, not call sites)
+packages/gates/src/index.ts:195:  registerSecurityFixtureManifest,            <- barrel re-export
+packages/gates/src/security-fixture-manifest.test.ts:8:  registerSecurityFixtureManifest,
+packages/gates/src/security-fixture-manifest.test.ts:58:  it("registerSecurityFixtureManifest registers every entry into the registry's shared `security` tag", () => {
+packages/gates/src/security-fixture-manifest.test.ts:60:    registerSecurityFixtureManifest(registry);   <- THE ONLY CALL SITE
+packages/gates/src/security-fixture-manifest.ts:352:export function registerSecurityFixtureManifest(registry: GateRegistry): void {
+exit status: 0
+
+$ git grep -n 'composeGateRegistry' -- packages e2e scripts | grep -v '\.test\.ts'
+  (also at 1bc0d51 — every line number in this block is the PRE-change tree's;
+   this batch's own edit moves the definition further down its file)
+packages/cli/src/daemon/compose-gate-registry.ts:112 (definition)
+packages/cli/src/daemon/post-completion-git-effects.ts:7 (doc comment)
+packages/cli/src/daemon/run-dispatcher.ts:102 (import)
+packages/cli/src/daemon/run-dispatcher.ts:220 (doc comment)
+packages/cli/src/daemon/run-dispatcher.ts:392:  const gateRegistry = composeGateRegistry(deps);   <- THE production root
+exit status: 0
+  => `composeGateRegistry` has NO consumer outside packages/cli. That discharges
+     the rebuild question for probe A positively (playbook §"settle the rebuild
+     question by measurement, not ritual"); probe B crosses two package
+     boundaries and is rebuilt, twice, with both numbers reported.
+
+$ grep -n 'COMPOSED_GATE_NAMES\|registerSecurityFixtureManifest\|composeGateRegistry\|SECURITY_FIXTURE_MANIFEST' docs/interface-ledger.md
+  (no output)
+exit status: 1  (= zero hits; no coordinated ledger edit is required by this batch)
+  docs/interface-ledger.md:1574 and :1683 record that
+  `createPerformanceGateHandler` has no production caller. This batch does NOT
+  register the perf gate, so both lines stay TRUE. See §6.
+
+--------------------------------------------------------------------------------
+1. BASELINE — the four affected suites at 1bc0d51, before any edit
+--------------------------------------------------------------------------------
+
+$ npm run build
+BUILD EXIT STATUS: 0
+
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    src/daemon/compose-gate-registry.test.ts \
+    src/daemon/composed-post-completion.e2e.test.ts \
+    src/daemon/composed-daemon-seal-enforcement.test.ts \
+    src/daemon/post-completion-pipeline.test.ts
+
+ ✓ |crabgic| src/daemon/compose-gate-registry.test.ts (7 tests) 356ms
+ ✓ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 1762ms
+ ✓ |crabgic| src/daemon/post-completion-pipeline.test.ts (32 tests) 5022ms
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 6516ms
+ Test Files  4 passed (4)
+      Tests  47 passed (47)
+exit status: 0
+
+NOTE — a correction to the work order that produced this batch. Its §5 asked for
+the `compose-gate-registry.test.ts` count delta as "18 -> 18+N". The measured
+pre-change count is 7, not 18. The delta reported in §7 below uses the measured
+value.
+
+`--coverage.enabled=false` is used throughout: the repo-wide 80% coverage gate is
+global, so a four-file scoped run trips it on files those four do not exercise
+(68.44% lines over packages/cli alone). The full `npm test` run in §7 carries the
+coverage gate.
+
+--------------------------------------------------------------------------------
+2. RED — the new assertions, written BEFORE the production edit
+--------------------------------------------------------------------------------
+
+Working tree: the three test-side changes only. packages/cli/src/daemon/
+compose-gate-registry.ts is UNMODIFIED at this point (still registering only the
+criteria-seal gate).
+
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    src/daemon/compose-gate-registry.test.ts \
+    src/daemon/composed-post-completion.e2e.test.ts \
+    src/daemon/composed-daemon-seal-enforcement.test.ts \
+    src/daemon/post-completion-pipeline.test.ts
+
+ ❯ |crabgic| src/daemon/compose-gate-registry.test.ts (10 tests | 3 failed) 389ms
+ ✓ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 2046ms
+ ✓ |crabgic| src/daemon/post-completion-pipeline.test.ts (32 tests) 7699ms
+ ❯ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests | 3 failed) 8788ms
+ Test Files  2 failed | 2 passed (4)
+      Tests  6 failed | 44 passed (50)
+exit status: 1
+
+All six failures carry the same shape, which is the point — the composed
+registry's `security` tag is empty:
+
+AssertionError: expected [] to strictly equal [ 'jira-forged-admin-delete', …(5) ]
+
+REDDENED, and why each is the criterion-bearing assertion:
+  compose-gate-registry.test.ts
+    · "registers EVERY manifest entry under the shared `security` tag, named by
+       fixture id"                          — registry.list("security") was []
+    · "lists in GATE_RISK_TAGS order, not registration order"
+    · "FIRES every one of them through the composed registry, each emitting its
+       own EvidenceRecord bound to the candidate"
+  composed-post-completion.e2e.test.ts (real git, shipped daemon composition)
+    · T1 — one unit                          — zero security evidence_pointers
+    · T3 — two units
+    · T2 — post-approval tamper
+
+STAYED GREEN, deliberately — these are the CONTROL rows:
+  · T4 (real cross-unit conflict) — the walk never reaches `final_verifying`, so
+    `securityEvidence()` is [] both before AND after this batch. That is what
+    distinguishes "the gates fire at final_verifying" from "the gates fire
+    somewhere in the pipeline".
+  · composed-daemon-seal-enforcement.test.ts (4/4) — checked for count-sensitive
+    assertions over evidence entries and found to have none (it asserts over
+    `adjudication_decision` rationales and work-unit transitions). It is
+    UNMODIFIED by this batch and stays green, which is itself evidence that the
+    six new firings do not perturb the acceptance funnel.
+  · post-completion-pipeline.test.ts (32/32) — it calls the REAL
+    `composeGateRegistry` at :202, so the six security gates now fire in that
+    suite too. Unchanged and green: they neither mask nor manufacture the
+    inputs-incoherent refusal that case is about.
+
+--------------------------------------------------------------------------------
+3. MID — production edit applied, old-world pins NOT yet flipped
+--------------------------------------------------------------------------------
+
+This stage exists to show that the pre-existing pins were asserting the OLD
+residual, so that flipping them is a disclosed change and not a quiet relaxation
+(playbook: "when an existing test reddens, ask first whether it was asserting the
+bug").
+
+ ❯ |crabgic| src/daemon/compose-gate-registry.test.ts (10 tests | 1 failed) 616ms
+     × registers EXACTLY the criteria-seal gate, under the existing `acceptance` tag
+ ✓ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 1598ms
+ ✓ |crabgic| src/daemon/post-completion-pipeline.test.ts (32 tests) 5562ms
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 6165ms
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 49 passed (50)
+exit status: 1
+
+AssertionError: expected [ 'jira-forged-admin-delete', …(6) ] to strictly equal [ 'criteria-seal' ]
+
+EXACTLY ONE test failed, and it is the one whose four assertions named the old
+world. Every new assertion — unit and composed-path e2e — went green on the
+production edit alone. Note which assertion in that case did NOT redden: the
+`list()` deep-equality against `COMPOSED_GATE_NAMES` passed, because the constant
+is now derived and moved with the registry. That is the intended
+order-independence with Batch H (which adds a seventh manifest entry); the
+announcement property for a new gate FAMILY is unaffected, because a new family
+grows `list()` without growing the derived constant.
+
+--------------------------------------------------------------------------------
+4. GREEN — old-world pins flipped, with disclosure at the code
+--------------------------------------------------------------------------------
+
+ ✓ |crabgic| src/daemon/compose-gate-registry.test.ts (10 tests) 324ms
+ ✓ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 1094ms
+ ✓ |crabgic| src/daemon/post-completion-pipeline.test.ts (32 tests) 2317ms
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 3794ms
+ Test Files  4 passed (4)
+      Tests  50 passed (50)
+exit status: 0
+
+Flipped (each with a disclosing block comment in the file):
+  - expect(COMPOSED_GATE_NAMES).toStrictEqual(["criteria-seal"])
+  - expect(registry.list().map(g => g.tag)).toStrictEqual(["acceptance"])
+  - expect(registry.list("security")).toEqual([])
+The literal-constant assertion was NOT replaced by a restatement of the derived
+constant's own definition — that would be a tautology over a literal. It was
+replaced by per-TAG claims about the REGISTRY, which the constant cannot make.
+
+UNCHANGED and still passing — they pin the residual §6 describes:
+  expect(registry.list("performance")).toEqual([])
+  expect(registry.list("tdd")).toEqual([])
+  expect(registry.list("coverage")).toEqual([])
+  expect(registry.list("engine-conformance")).toEqual([])
+  (+ `flake`, added in the same case for completeness of the residual set)
+
+--------------------------------------------------------------------------------
+5. THE JOURNAL, FROM ONE REAL COMPOSED RUN
+--------------------------------------------------------------------------------
+
+Captured by a TEMPORARY dump inserted into T1 of
+packages/cli/src/daemon/composed-post-completion.e2e.test.ts, run once, then
+restored with `git checkout HEAD -- <path>` (explicit source AND explicit path)
+and re-verified: the dump is absent from the committed file and the five
+`securityEvidence()` call sites are intact.
+
+Every `evidence_pointer` this run journaled, in APPEND order. The security
+tranche precedes the acceptance record because `fireAll` walks the tag map in
+`GATE_RISK_TAGS` order (packages/gates/src/risk-tags.ts:28), and that vocabulary
+opens by spreading `INTENT_CONTRACT_SECTION_KEYS`
+(packages/contracts/src/contracts/intent-contract.ts:16), which lists `security`
+fifth and `acceptance` ninth. It is NOT registration order:
+`composeGateRegistry` registers the seal gate first.
+
+`EvidenceRecord` (02's schema) has no gate-name member, so the fixture id
+reaches the journal as `command` — `pass()`/`fail()` in
+packages/gates/src/security-fixture-manifest.ts set it to the id. That is the
+field both the unit assertions and the e2e filter on.
+
+  [
+    { "gateTag": "security",   "command": "jira-forged-admin-delete",    "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "security",   "command": "grafana-forged-admin-delete", "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "security",   "command": "grafana-tenant-boundary",     "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "security",   "command": "jira-redaction",             "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "security",   "command": "grafana-redaction",          "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "security",   "command": "gateway-redaction",          "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" },
+    { "gateTag": "acceptance", "command": "eo-gates: acceptance-criteria seal verification", "gateVerdict": "passed", "exitStatus": 0, "objectId": "ec3e07a825ee8b1f18cf6317d34e98e75940e335" }
+  ]
+
+All seven carry `changeSetId` 55555555-5555-4555-8555-555555555555 (elided above
+for width) and the SAME `objectId` — one `GateContext` per firing. The e2e
+asserts that id against `git rev-parse` of the published branch in the fixture
+user repo, resolved independently of anything the pipeline returned.
+
+The `objectId` here is per-run (a fresh temp git repository each time) and is NOT
+a stable citation target; the stable claim is the shape, and the assertions in
+the committed suite are what re-check it per push.
+
+HONEST SCOPE, restated because it is easy to over-read this excerpt: these six
+verdicts do not depend on the candidate's diff. They are install-integrity
+self-checks of the shipped build's own security primitives, so each record
+attests "at the moment candidate X was verified for publication, the platform's
+own security fixtures held" — a weaker claim than the acceptance record's. That
+is what roadmap/21 work item 6 designed.
+
+--------------------------------------------------------------------------------
+6. PROBE A — REVERSE PROBE: delete the registration, watch the new tests redden
+--------------------------------------------------------------------------------
+
+Purpose: prove the new assertions measure the REGISTRATION in the composition
+root, not the manifest (which already existed and was already tested inside
+packages/gates).
+
+Rebuild: discharged positively rather than performed — `composeGateRegistry` has
+no consumer outside packages/cli (§0), and vitest reads packages/cli from src.
+`npm run build` was nevertheless run immediately before the probe: EXIT 0.
+
+MUTATION: remove the single line
+  `  registerSecurityFixtureManifest(registry);`
+from packages/cli/src/daemon/compose-gate-registry.ts (verified: 0 occurrences
+remaining).
+
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    <the same four files>
+
+ ❯ |crabgic| src/daemon/compose-gate-registry.test.ts (10 tests | 4 failed) 341ms
+     × registers EXACTLY the security-fixture manifest plus the criteria-seal gate — nothing else
+     × registers EVERY manifest entry under the shared `security` tag, named by fixture id
+     × lists in GATE_RISK_TAGS order, not registration order — the seal gate registers FIRST and lists LAST
+     × FIRES every one of them through the composed registry, each emitting its own EvidenceRecord bound to the candidate
+ ✓ |crabgic| src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 1171ms
+ ✓ |crabgic| src/daemon/post-completion-pipeline.test.ts (32 tests) 4646ms
+ ❯ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests | 3 failed) 6254ms
+     × T1 — one unit …
+     × T3 — two units …
+     × T2 — a tamper landing AFTER every unit passed …
+ Test Files  2 failed | 2 passed (4)
+      Tests  7 failed | 43 passed (50)
+exit status: 1
+
+TEST COUNT: 50 before, 50 during, 50 after — checked, not inferred from the exit
+code (playbook §"restoring after a probe"). T4's control row stayed green.
+
+RESTORE: `git checkout HEAD -- packages/cli/src/daemon/compose-gate-registry.ts`
+  (explicit source AND explicit path). Verified afterwards:
+  `git status --short` → empty
+  registration line present: 1 occurrence
+  the new test "FIRES every one of them" still present: 1 occurrence
+
+--------------------------------------------------------------------------------
+7. PROBE B — ONE-LAYER-DOWN GUARD MUTATION, and the rebuild that makes it real
+--------------------------------------------------------------------------------
+
+Purpose: prove a real security regression, two package boundaries away
+(cli -> gates -> connectors-jira), now FAILS A RUN in the shipped daemon rather
+than only reddening a unit test in packages/gates.
+
+MUTATION (chosen to compile cleanly — a mutation that does not compile measures
+the old code wearing the new code's label):
+  packages/connectors-jira/src/security/preflight-capability-guard.ts:22
+    -  if (!isJiraAction(action)) {
+    +  if (!isJiraAction(action) && action !== "issue.delete") {
+  i.e. a targeted hole in the closed-allowlist pre-flight capability guard,
+  exactly the forgery the `jira-forged-admin-delete` fixture exists to catch.
+
+B0 — UNMUTATED BASELINE, at the same HEAD, same command:
+$ npm run build                       BUILD EXIT STATUS: 0
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    src/daemon/composed-post-completion.e2e.test.ts
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 8138ms
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+exit status: 0
+
+B1a — MUTATED, run WITHOUT rebuilding (deliberately, to measure the trap):
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 5869ms
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+exit status: 0
+
+  *** FALSE GREEN, REPRODUCED. *** A security guard was holed and the composed
+  e2e reported 4/4 passed, because packages/cli resolves @crabgic/gates and its
+  connector imports through packages/*/dist, not src. Reported here rather than
+  discarded: this is the exact under-report the playbook's rebuild ruling
+  documents, and an agent that stopped at B1a would have concluded the security
+  gates were vacuous.
+
+B1b — SAME MUTATION, AFTER `npm run build`:
+$ npm run build                       BUILD EXIT STATUS: 0   <- the mutation compiles
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    src/daemon/composed-post-completion.e2e.test.ts
+ ❯ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests | 3 failed) 4290ms
+     × T1 — one unit: the run publishes, and the acceptance evidence binds the independently-resolved branch tip
+     × T3 — two units: the evidence objectId is the tip whose tree holds BOTH edits, never a per-unit candidate
+     × T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+exit status: 1
+
+THE OPERATOR-VISIBLE FAILURE — quoted verbatim from T1's `driveErrors` capture,
+which is the daemon's own `onDriveError` channel:
+
+  run "7083a7ce-01b3-42fa-9f87-40053cec0780" did not publish (failed): final-candidate verification refused c2eaf83e410d78b8ad4e29f8628b7a8a425fb1ea: jira-forged-admin-delete (security) exit 1: expected a refusal (forged/out-of-scope Jira action refused pre-flight) but none was thrown
+
+  Shape, from packages/cli/src/daemon/post-completion-pipeline.ts:404 +
+  `describeGateFailures` at :172-180:
+    final-candidate verification refused <integrated objectId>: <gate name> (<risk tag>) exit <status>: <handler detail>
+  The run settles `failed` on the `final_verifying → failed` edge, NOTHING is
+  published, and the failure NAMES the fixture id. It is not an anonymous
+  "gates failed".
+
+T2's failure under the mutation is worth quoting separately, because it is the
+"green for the stated reason" control doing its job:
+
+  AssertionError: expected [ 'failed', 'passed', 'passed', …(3) ] to strictly equal [ 'passed', 'passed', 'passed', …(3) ]
+
+  T2's run is SUPPOSED to fail (it seeds a post-approval criteria tamper). Its
+  run state and its acceptance assertions were therefore unchanged by the
+  mutation — without the new control asserting that every SECURITY gate passed
+  in the same firing, T2 would have stayed green while a security guard was
+  holed, and the run would have been failing for two reasons while the test
+  claimed one.
+
+B2 — RESTORE, at the same HEAD:
+$ git checkout HEAD -- packages/connectors-jira/src/security/preflight-capability-guard.ts
+  (explicit source AND explicit path)
+  verified: line 22 reads `  if (!isJiraAction(action)) {`
+            `git status --short` → empty
+$ npm run build                       BUILD EXIT STATUS: 0
+$ npx vitest run --coverage.enabled=false --project crabgic --reporter=default \
+    src/daemon/composed-post-completion.e2e.test.ts src/daemon/compose-gate-registry.test.ts
+ ✓ |crabgic| src/daemon/compose-gate-registry.test.ts (10 tests) 297ms
+ ✓ |crabgic| src/daemon/composed-post-completion.e2e.test.ts (4 tests) 4079ms
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+exit status: 0
+  TEST COUNTS restored to 10 and 4 — checked, not inferred.
+
+--------------------------------------------------------------------------------
+8. PER-PUSH TEST-COUNT DELTAS (for Batch G's one-space job-log comparison)
+--------------------------------------------------------------------------------
+
+Byte-compare these against the CI job log under the one-space rule (strip the
+GitHub timestamp AND the single separator space; vitest's own content then
+begins with one space before the check mark).
+
+  packages/cli/src/daemon/compose-gate-registry.test.ts        7 -> 10   (+3)
+  packages/cli/src/daemon/composed-post-completion.e2e.test.ts 4 ->  4   (CONTROL)
+  packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts 4 -> 4 (CONTROL, file untouched)
+  packages/cli/src/daemon/post-completion-pipeline.test.ts    32 -> 32   (CONTROL, file untouched)
+
+The e2e row is a CONTROL, not an omission: the criterion-bearing assertions were
+added INSIDE the four existing cases rather than as a fifth case, because each
+case boots a real daemon over a real git repository and a fifth would have cost
+another such run for no additional subject. A count that should NOT move is
+evidence too. The suite's `-t` filter names are unchanged, so a right-count /
+wrong-file comparer cannot silently match the wrong suite here.
+
+--------------------------------------------------------------------------------
+9. WHAT THIS BATCH DELIBERATELY DID **NOT** REGISTER, AND THE MEASURED REASON
+--------------------------------------------------------------------------------
+
+Stated so nobody reads this as "the gate registry is now complete". It is not.
+`registry.list("performance")`, `list("tdd")`, `list("coverage")`,
+`list("flake")` and `list("engine-conformance")` are all still `[]`, and the
+suite asserts it.
+
+15's PERFORMANCE GATE — not registered. `fireAll` fires every registered gate for
+every run (packages/gates/src/registry.ts:84-95), so a perf handler without a
+real measurement backend either throws (the daemon can never publish, in any
+deployment) or fabricates measurements (forbidden). The backend is missing in
+four independent places:
+  1. `GateContext` (packages/gates/src/types.ts) carries no `baseObjectId`, so
+     the A side of the A/B benchmark is not reachable from the firing context —
+     a gates-owned contract change.
+  2. The twin-worktree runner must be built on the scheduler's `dispatchAttempt`,
+     whose outcome does not expose `worktreePath` — the documented CARRY-FORWARD
+     at packages/perf/src/runner/twin-worktree-runner.ts:56-65.
+  3. `benchmarkCommand` comes from `ProjectProfile.ecosystems[].benchmarkCommand`
+     and no production code composes a `ProjectProfile` anywhere.
+  4. The methodology floor demands >=10 measured plus warmup reps per side, i.e.
+     22+ sequential stack commands per run — and stack commands are exactly what
+     roadmap/14 WI6's `TaskPacket`/worker-sandbox dispatch is a precondition for
+     (packages/cli/src/daemon/post-completion-pipeline.ts:49-60). That is sandbox
+     posture, not preference.
+Also: docs/interface-ledger.md:1574 and :1683 record that
+`createPerformanceGateHandler` has no production caller, so registering it is a
+coordinated ledger amendment, not a one-line change. This batch keeps both lines
+true.
+
+14's OWN TRANCHE — not registered, same shape. The coverage gates need report
+files nothing composes; the scanner gates need digest-pinned binaries from 12's
+capability store, which the daemon does not compose; and
+`createEngineConformanceGate` needs a journaled green `engine-live` record while
+`engine-live.yml` has never run at all — registering it today would fail every
+run for want of evidence that is itself owner-gated.
+
+The six security fixtures are the SAFE subset precisely because none of them
+executes a stack command: pure in-memory checks of the installed build's own
+primitives (a refused `issue.delete`; the absence of forged operations on the
+Grafana adapter surface; a tenant-boundary scenario over an in-memory fake
+transport whose `send` returns a canned 200; three redaction round-trips). No
+subprocess, no network, no filesystem, no engine — millisecond-scale and
+environment-independent, the same defensibility class as the seal gate.
+
+--------------------------------------------------------------------------------
+10. CONTAMINATION CHECK (three-dot, per the playbook, since main has moved)
+--------------------------------------------------------------------------------
+
+$ git diff --name-only origin/main...HEAD -- packages/ e2e/ scripts/
+packages/cli/src/daemon/compose-gate-registry.test.ts
+packages/cli/src/daemon/compose-gate-registry.ts
+packages/cli/src/daemon/composed-post-completion.e2e.test.ts
+exit status: 0
+
+$ git diff --numstat origin/main...HEAD
+119     6       packages/cli/src/daemon/compose-gate-registry.test.ts
+98      20      packages/cli/src/daemon/compose-gate-registry.ts
+70      1       packages/cli/src/daemon/composed-post-completion.e2e.test.ts
+
+Nothing under packages/gates/ (Batch H's territory), packages/perf/, roadmap/,
+docs/deploy-posture.md, docs/interface-ledger.md or
+docs/evidence/criteria-closeout/ is touched. The two probe mutations above were
+made and restored inside this transcript's own runs and appear in neither diff.
+================================================================================
+
+================================================================================
+ADDENDUM, 2026-08-06 13:55Z — §11. THE PER-PUSH PROOF FROM THE REAL CI JOB LOGS
+(appended after PR #121 went green; §8's local counts are now backed by the
+job logs Batch G needs, byte-compared under the one-space rule)
+================================================================================
+
+A green workflow proves nothing about YOUR test. What follows is the same file,
+the same job NAME, the same runner label, on both sides.
+
+BEFORE — main @ 6f964d76758158159c1d3dc01a0e3a8629f67f79
+  run 31104703738, job 92626742663 "unit-test+coverage (ubuntu-latest)"
+AFTER  — PR #121 merge ref
+  run 31107175206, job 92635250908 "unit-test+coverage (ubuntu-latest)"
+
+Quoted under the ONE-SPACE rule (timestamp AND the single separator space
+stripped; vitest's own content then begins with one space before the check
+mark), verbatim from the downloaded logs:
+
+  before, log line 976:
+   ✓  crabgic  src/daemon/compose-gate-registry.test.ts (7 tests) 53ms
+  after,  log line 973:
+   ✓  crabgic  src/daemon/compose-gate-registry.test.ts (10 tests) 71ms
+
+  => +3, exactly the three new cases. The assertion RUNS PER PUSH.
+
+CONTROL ROWS — counts that should NOT move, and did not:
+
+  before 938 / after 955:
+   ✓  crabgic  src/daemon/post-completion-pipeline.test.ts (32 tests) 339ms
+   ✓  crabgic  src/daemon/post-completion-pipeline.test.ts (32 tests) 323ms
+  before 941 / after 958:
+   ✓  crabgic  src/daemon/composed-post-completion.e2e.test.ts (4 tests) 1187ms
+   ✓  crabgic  src/daemon/composed-post-completion.e2e.test.ts (4 tests) 1323ms
+  before 951 / after 969:
+   ✓  crabgic  src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 158ms
+   ✓  crabgic  src/daemon/composed-daemon-seal-enforcement.test.ts (4 tests) 210ms
+
+  The e2e row at 4 -> 4 is the load-bearing control: its criterion-bearing
+  security assertions were added INSIDE the four existing cases, so the count is
+  supposed to stand still. Its green state on the AFTER side is what says those
+  assertions ran.
+
+RIGHT-COUNT / WRONG-FILE HAZARD, checked rather than assumed: `(4 tests)` occurs
+at TWO different lines in each log (the composed e2e and the seal-enforcement
+suite). A comparer keyed on the count alone would have matched the wrong suite
+and reported success. Every row above is anchored on the FILENAME, and the line
+numbers are stated per side because they differ (976 vs 973 etc. — the suites
+report in completion order, which is load-dependent).
+
+REPO-WIDE TOTALS, as the independent cross-check that no other count moved:
+
+  before, log lines 1059-1060:
+   Test Files  644 passed (644)
+        Tests  6570 passed | 1 skipped (6571)
+  after,  log lines 1077-1078:
+   Test Files  644 passed (644)
+        Tests  6573 passed | 1 skipped (6574)
+
+  6571 -> 6574 is +3, and +3 is this batch's entire delta. No file count moved
+  (644 -> 644): the three new cases landed in an existing file, and the new
+  evidence transcript is not a test file.
+
+  (The one skipped test is pre-existing on both sides. Locally the same suite
+  reports 6574 passed because the skip is CI-environment-conditional; the
+  totals agree either way.)
+
+CI CONCLUSION FOR PR #121: 15 of 15 checks pass, on BOTH runner arches —
+lint, typecheck, unit-test+coverage, gates-conformance, perf-conformance,
+learning-redteam (each x2), plus commitlint, engine-pin-lint, meta-checks.
+================================================================================
+
+================================================================================
+CORRECTION 2026-08-06 (from PR #121's adversarial review) — §12.
+§2's third control-row bullet is WRONG, and it is wrong on exactly the
+distinction this whole batch exists to close.
+================================================================================
+
+ANNOTATE, NEVER REWRITE: §2 above is left verbatim. This is what measuring it
+found.
+
+WHAT §2 SAYS (line 137-140 of this file, third control bullet):
+  "post-completion-pipeline.test.ts (32/32) — it calls the REAL
+   `composeGateRegistry` at :202, so the six security gates now fire in that
+   suite too."
+
+NOW FALSE, in its second clause. The gates are **REGISTERED** in that suite and
+they fire **ZERO** times. "Registered but never fired" is precisely the
+trusted-and-inert distinction this batch was written to close, so asserting the
+wrong side of it in the batch's own evidence is not a wording slip.
+
+THE STRUCTURE. `packages/cli/src/daemon/post-completion-pipeline.test.ts:202` is
+the file's ONLY `composeGateRegistry` call site (the other hit, `:36`, is the
+import). It sits inside the case "settles the run failed when a declared
+requirement id resolves to no record", whose requirements registry is
+deliberately empty. `runPostCompletionPipeline` therefore reaches
+`resolveRequirementsStrict` at post-completion-pipeline.ts:232 — during
+`verifying` — and throws, settling `failed`. It never reaches the
+`final_verifying` transition at :364, and so never reaches
+`fireFinalCandidateVerification` at :376. That is the only place any gate fires.
+
+THE MEASUREMENT, because an uninstrumented zero is not evidence (playbook
+§"guard instrumentation": count how often the branch actually fires, and name
+the counts). A `console.error("PROBE-FIRE:jira-forged-admin-delete")` was
+temporarily added to the first manifest entry's `verify` handler in
+packages/gates/src/security-fixture-manifest.ts.
+
+$ npm run build                       BUILD EXIT STATUS: 0
+  (mandatory — packages/cli consumes @crabgic/gates through dist/)
+
+  SUBJECT
+    src/daemon/post-completion-pipeline.test.ts     32 passed   FIRINGS: 0
+  INSTRUMENT CONTROLS — a zero from a broken instrument looks identical to a
+  zero from code that never runs, so both are reported:
+    src/daemon/compose-gate-registry.test.ts        10 passed   FIRINGS: 1
+    src/daemon/composed-post-completion.e2e.test.ts  4 passed   FIRINGS: 3
+
+  The instrument works. The subject's zero is real, across all 32 tests.
+
+The control counts are worth keeping for their own sake:
+  · compose-gate-registry.test.ts fires exactly ONCE — the single new case that
+    calls `fireByTag("security", …)`. The other two new cases assert
+    registration only, which is what they claim to assert.
+  · composed-post-completion.e2e.test.ts fires exactly THREE times — T1, T3 and
+    T2, the three cases that reach `final_verifying`. T4 does not, because a
+    real cross-unit conflict settles `blocked` at `integrating`. That is an
+    INDEPENDENT confirmation of T4's control-row status in §2 and §6: its
+    `securityEvidence()` emptiness is not an artifact of the assertion, the
+    gates genuinely never run in it.
+
+WHAT §2's BULLET SHOULD HAVE SAID, and what is true:
+  post-completion-pipeline.test.ts (32/32) — it calls the REAL
+  `composeGateRegistry` at :202, so the six security gates are REGISTERED in
+  that suite. They FIRE ZERO TIMES in it: that one case fails at requirements
+  resolution during `verifying`, before `final_verifying` and before any
+  firing. Unchanged and green, which is the correct and complete claim — adding
+  six registrations perturbs nothing on the pre-`final_verifying` failure path.
+
+CONSEQUENCE FOR THE OMITTED-CALL-SITE QUESTION raised in this batch's report
+("post-completion-pipeline.test.ts:202 was not in the work order's file list —
+consequences nobody analysed?"): there are none, and now for a measured reason
+rather than an assumed one. In that suite the gates never execute at all, so
+they can neither mask nor manufacture the inputs-incoherent refusal the case is
+about.
+
+NOTHING ELSE IN THIS TRANSCRIPT DEPENDS ON THE CORRECTED CLAUSE. It appeared
+once, in a control-row bullet. The criterion-bearing measurements (§2's RED
+counts, §3, §4, §6's reverse probe, §7's guard mutation, §11's job-log deltas)
+are all unaffected, and the 32/32 count that bullet reports is itself unchanged
+and correct.
+================================================================================
