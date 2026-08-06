@@ -1,6 +1,6 @@
 RULING-3 transcript
-UTC:        2026-08-06T17:08:33Z
-HEAD:       b3293a22c296287be580865b1aae3f6e662d7918  (docs(meta): correct the citation-drift counts to this tool's own measurement)
+UTC:        2026-08-06T17:23:48Z
+HEAD:       ca3a1f5dde675bd8b437e4fcbcef88f7054cf359  (fix(meta): distinguish a job that never reached the suite from a wrong log quote)
 UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
 Purpose:    the pinned starting line of the burn-down. Every number below is
             re-derived by the PRODUCTION tool at the sha in this header, so a
