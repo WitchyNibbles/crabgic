@@ -1,7 +1,8 @@
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { parseFrontmatter } from "./frontmatter.js";
 import { resolvePluginRoot } from "./plugin-root.js";
 import {
   validatePluginManifest,
@@ -28,11 +29,17 @@ function writeSkill(dir: string, name: string, frontmatterExtra = ""): void {
   );
 }
 
-function writeSubagent(dir: string, name: string, toolsJson = '["Read"]', model = "haiku"): void {
+function writeSubagent(
+  dir: string,
+  name: string,
+  toolsJson = '["Read"]',
+  model = "haiku",
+  frontmatterExtra = "",
+): void {
   mkdirSync(join(dir, "agents"), { recursive: true });
   writeFileSync(
     join(dir, "agents", `${name}.md`),
-    `---\nname: ${name}\ndescription: d\ntools: ${toolsJson}\nmodel: ${model}\n---\nbody\n`,
+    `---\nname: ${name}\ndescription: d\ntools: ${toolsJson}\nmodel: ${model}\n${frontmatterExtra}---\nbody\n`,
   );
 }
 
@@ -171,6 +178,59 @@ describe("validatePluginManifest — rejects an incomplete manifest (work item 1
     expect(explore?.problems.some((p) => p.includes('"model"'))).toBe(true);
   });
 
+  it("rejects a subagent whose maxTurns is not a positive integer", () => {
+    const dir = makeTmpDir();
+    for (const name of REQUIRED_SKILL_NAMES) writeSkill(dir, name);
+    writeSubagent(dir, "eo-explore", '["Read"]', "haiku", "maxTurns: banana\n");
+    for (const name of REQUIRED_SUBAGENT_NAMES.filter((n) => n !== "eo-explore")) {
+      writeSubagent(dir, name);
+    }
+
+    const result = validatePluginManifest(dir);
+    const explore = result.findings.find((f) => f.kind === "subagent" && f.name === "eo-explore");
+    expect(explore?.ok).toBe(false);
+    expect(explore?.problems.some((p) => p.includes('"maxTurns"'))).toBe(true);
+  });
+
+  it("rejects maxTurns: 0 and a negative maxTurns (the engine requires POSITIVE)", () => {
+    const dir = makeTmpDir();
+    for (const name of REQUIRED_SKILL_NAMES) writeSkill(dir, name);
+    writeSubagent(dir, "eo-explore", '["Read"]', "haiku", "maxTurns: 0\n");
+    writeSubagent(dir, "eo-reviewer", '["Read"]', "haiku", "maxTurns: -5\n");
+    for (const name of REQUIRED_SUBAGENT_NAMES.filter(
+      (n) => n !== "eo-explore" && n !== "eo-reviewer",
+    )) {
+      writeSubagent(dir, name);
+    }
+
+    const result = validatePluginManifest(dir);
+    for (const name of ["eo-explore", "eo-reviewer"]) {
+      const finding = result.findings.find((f) => f.kind === "subagent" && f.name === name);
+      expect(finding?.ok).toBe(false);
+      expect(finding?.problems.some((p) => p.includes('"maxTurns"'))).toBe(true);
+    }
+  });
+
+  it("CONTROL: omitting maxTurns entirely is not a problem — the rule is optional-but-well-formed", () => {
+    // Without this, "every subagent is rejected" would satisfy the two cases
+    // above equally well. Omission is a (costly) default, not a malformed
+    // manifest; only a declared-but-unparseable value is.
+    const dir = makeTmpDir();
+    for (const name of REQUIRED_SKILL_NAMES) writeSkill(dir, name);
+    for (const name of REQUIRED_SUBAGENT_NAMES) writeSubagent(dir, name);
+
+    const result = validatePluginManifest(dir);
+    // Scoped to the subagent findings: the fixture's `approve` skill
+    // deliberately omits `disable-model-invocation`, which is a separate
+    // (already-pinned) problem and not this rule's business.
+    const subagents = result.findings.filter((f) => f.kind === "subagent");
+    expect(subagents).toHaveLength(REQUIRED_SUBAGENT_NAMES.length);
+    expect(subagents.every((f) => f.ok)).toBe(true);
+    expect(
+      result.findings.flatMap((f) => f.problems).filter((p) => p.includes("maxTurns")),
+    ).toHaveLength(0);
+  });
+
   it("reports a frontmatter parse failure as a problem, not a thrown exception", () => {
     const dir = makeTmpDir();
     for (const name of REQUIRED_SKILL_NAMES.filter((n) => n !== "run")) writeSkill(dir, name);
@@ -210,5 +270,48 @@ describe("REQUIRED_SUBAGENT_NAMES matches what is actually on disk", () => {
       .map((name) => name.replace(/\.md$/, ""))
       .sort();
     expect([...REQUIRED_SUBAGENT_NAMES].sort()).toEqual(onDisk);
+  });
+});
+
+/**
+ * NOTHING ELSE BOUNDS A SUBAGENT'S LOOP.
+ *
+ * A `Task` spawn's turns live in a nested loop that carries its OWN budget and
+ * never reaches the parent's `num_turns`; the engine's built-in default for an
+ * agent that declares none is 200. Measured 2026-08-05: one exploration
+ * request served ~51 distinct nested round trips behind ~2 parent turns, with
+ * the parent's ledger reporting ~8 (`docs/verification-playbook.md` §BOUNDING A
+ * SUBAGENT-SPAWNING TEST). A process-level `--max-turns` would not have stopped
+ * it — and is absent from the CLI surface anyway (`docs/engine-baseline.md`
+ * §10). The frontmatter key is the bound.
+ */
+function realSubagentFrontmatter(name: string): Readonly<Record<string, unknown>> {
+  const path = join(resolvePluginRoot(), "agents", `${name}.md`);
+  return parseFrontmatter(readFileSync(path, "utf8")).attributes;
+}
+
+describe("manager subagents carry an explicit turn bound where one has been measured", () => {
+  it("eo-explore declares a positive-integer maxTurns below the engine's 200-turn default", () => {
+    const maxTurns = realSubagentFrontmatter("eo-explore").maxTurns;
+    // The literal, not a parsed number: this package's frontmatter parser has
+    // no numeric scalar, and the literal is what the engine's YAML parser
+    // reads. An unparseable value is warned about and DROPPED, which restores
+    // the 200 default while looking like a bound.
+    expect(String(maxTurns)).toMatch(/^[1-9][0-9]*$/);
+    expect(Number(maxTurns)).toBeLessThan(200);
+  });
+
+  it("RESIDUAL PIN: the other four subagents are still unbounded (built-in 200)", () => {
+    // Deliberate and disclosed, not an oversight. The overspend was measured
+    // for eo-explore only; picking a bound for the other four without a
+    // measurement would be guessing, and a bound that bites mid-review is a
+    // silent truncation of a reviewer's findings. Pinned as an assertion so
+    // the state announces itself the moment someone changes it — if you are
+    // reading this because the test went red after ADDING a bound, that is the
+    // intended trigger: update this list and say so.
+    const bounded = REQUIRED_SUBAGENT_NAMES.filter(
+      (name) => realSubagentFrontmatter(name).maxTurns !== undefined,
+    );
+    expect([...bounded]).toEqual(["eo-explore"]);
   });
 });

@@ -144,6 +144,25 @@ function validateSubagentFile(pluginRoot: string, name: string): ManifestFinding
   if (typeof attributes.model !== "string" || attributes.model.length === 0) {
     problems.push('missing frontmatter "model" (subagents must route to an explicit model)');
   }
+  // `maxTurns` is OPTIONAL — omitting it is a (costly) default, not a
+  // malformed manifest — but declaring it WRONGLY is worse than omitting it,
+  // because it looks like a bound and is not one. Measured against the pinned
+  // 2.1.218 engine binary: an unparseable value is warned about
+  // ("Plugin agent file … has invalid maxTurns '…'. Must be a positive
+  // integer.") and then DROPPED, silently restoring the built-in 200-turn
+  // default. A subagent's turns never reach the parent's `num_turns`, so
+  // nothing downstream would notice.
+  //
+  // Asserted on the raw literal rather than on a parsed number: this
+  // package's minimal frontmatter parser has no numeric scalar (it yields
+  // the string "30"), and the literal is what the engine's own YAML parser
+  // reads anyway.
+  const maxTurns = attributes.maxTurns;
+  if (maxTurns !== undefined && !/^[1-9][0-9]*$/.test(String(maxTurns))) {
+    problems.push(
+      `frontmatter "maxTurns" (${JSON.stringify(maxTurns)}) must be a positive integer — the engine warns and DROPS an invalid value, silently restoring its built-in 200-turn default`,
+    );
+  }
   return { kind: "subagent", name, ok: problems.length === 0, problems };
 }
 
