@@ -257,7 +257,8 @@ $ grep -c '^exports\[' …/cli.snapshots.test.ts.snap   ->  51   (19 + 32)
    as an occurrence count.
 
    Measured at 2c0562d (the squash that landed this work) and re-checked at
-   1bc0d51; identical at both:
+   1bc0d51 and 6f964d7; identical at all three (6f964d7 rewrote four lines of
+   this .snap for Gap 22's provisionalBudgetHash without touching a <uuid>):
 
      $ SNAP=packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap
      $ git grep -c '<uuid>' 2c0562d -- $SNAP

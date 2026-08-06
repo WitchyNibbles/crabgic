@@ -17,12 +17,20 @@
  * belief about it. `gitBinaryTrackedPaths` diffs the empty tree against the
  * WORKING tree, so `git add` is enough and no commit (and therefore no identity
  * configuration) is ever needed.
+ *
+ * Fixture git goes through `runFixtureGit` (`@crabgic/testkit`), which drops
+ * every inherited `GIT_*` variable. `@crabgic/testkit`'s own
+ * `git-spawn-hygiene.test.ts` caught the first draft of this file calling
+ * `execFileSync("git", ["init"], { cwd })` directly — which, under the pre-push
+ * hook that runs this suite with `GIT_DIR` aimed at the real repository, would
+ * have re-initialized it rather than the temp dir. Recorded here because the
+ * guard biting on the way in is exactly why it exists.
  */
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { runFixtureGit } from "@crabgic/testkit";
 import {
   checkNoBinaryTextSources,
   gitBinaryTrackedPaths,
@@ -37,18 +45,19 @@ const scratch = [];
 function makeRepo(files) {
   const dir = mkdtempSync(path.join(tmpdir(), "hygiene-nul-"));
   scratch.push(dir);
-  execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+  runFixtureGit(dir, ["init", "-q", "-b", "main"]);
   for (const [rel, content] of Object.entries(files)) {
     const abs = path.join(dir, rel);
     mkdirSync(path.dirname(abs), { recursive: true });
     writeFileSync(abs, content);
   }
-  execFileSync("git", ["add", "-A"], { cwd: dir });
+  runFixtureGit(dir, ["add", "-A"]);
   return dir;
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   while (scratch.length > 0) rmSync(scratch.pop(), { recursive: true, force: true });
 });
 
@@ -134,6 +143,19 @@ describe("checkNoBinaryTextSources", () => {
     expect(errors.join("\n")).toContain("BINARY TEXT SOURCE — src/x.ts");
     // 9 ("line one\n") + 9 ("line two\n") + 11 (`const s = "`) = 29.
     expect(errors.join("\n")).toContain("first NUL (0x00) at line 3, byte offset 29");
+  });
+
+  it("reads the repository at `cwd`, not the one an ambient GIT_DIR points at", () => {
+    // The reverse probe for this module's own env scrub. `cwd` does not decide
+    // which repository git operates on — GIT_DIR wins, and git exports it into
+    // every hook it runs, including a pre-push hook that would invoke this
+    // check. Without the scrub in `gitBinaryTrackedPaths`, the expectation
+    // below returns `decoy`'s offender (or nothing) instead of `subject`'s.
+    const subject = makeRepo({ "src/subject.ts": `"${NUL}"\n` });
+    const decoy = makeRepo({ "src/decoy.ts": '"clean"\n' });
+    vi.stubEnv("GIT_DIR", path.join(decoy, ".git"));
+    vi.stubEnv("GIT_WORK_TREE", decoy);
+    expect(gitBinaryTrackedPaths(subject)).toEqual(["src/subject.ts"]);
   });
 
   it("PINNED RESIDUAL: a NUL beyond git's 8000-byte sniff window is not detected", () => {

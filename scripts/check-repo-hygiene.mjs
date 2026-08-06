@@ -73,12 +73,30 @@ export function isTextSourcePath(rel) {
  * allowlist in here.
  */
 export function gitBinaryTrackedPaths(cwd) {
+  // `cwd` alone does NOT decide which repository git operates on: GIT_DIR,
+  // GIT_WORK_TREE, GIT_INDEX_FILE and friends are consulted first, and git
+  // exports them into every hook it runs — including a pre-push hook that
+  // invokes this check. Without the scrub below, a `cwd` argument is
+  // decoration and this function silently classifies the AMBIENT repository.
+  // Dropping every `GIT_*` name is a strict superset of git's own
+  // `--local-env-vars` list and stays correct when a future release invents
+  // another; `packages/testkit/src/git-env.ts` carries the full rationale and
+  // the three real corruptions that earned it. Reimplemented here rather than
+  // imported because this script must run on `npm ci` alone, with nothing
+  // built — see the `meta-checks` job in `.github/workflows/ci.yml`.
+  const env = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value === undefined || name.startsWith("GIT_")) continue;
+    env[name] = value;
+  }
   const emptyTree = execFileSync("git", ["hash-object", "-t", "tree", "/dev/null"], {
     cwd,
+    env,
     encoding: "utf8",
   }).trim();
   const numstat = execFileSync("git", ["diff", "--numstat", "-z", emptyTree], {
     cwd,
+    env,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
