@@ -16,6 +16,7 @@ import {
 import { runTwinWorktreeBenchmark } from "../runner/twin-worktree-runner.js";
 import { journalApprovedProvisionalContract } from "../test-support/journal-anchor-fixture.js";
 import { createTestJournal, type TestJournal } from "../test-support/test-journal.js";
+import { approvedEnvelopeFor } from "../test-support/approved-envelope-fixture.js";
 import { createPerformanceGateHandler } from "../gate/performance-gate.js";
 
 /**
@@ -76,6 +77,11 @@ async function fireOnce(
     "eo-perf-twin-worktree-benchmark",
     createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      // Ledger Gap 22: every fixture fires with a correctly-bound approved
+      // envelope, so the matrix keeps measuring the DECISION ENGINE — a
+      // conformance fixture that blocked on an unbound envelope would be
+      // green for the wrong reason.
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {

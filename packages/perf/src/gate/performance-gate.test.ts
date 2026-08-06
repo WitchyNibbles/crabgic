@@ -5,6 +5,7 @@ import type { GateContext } from "@crabgic/gates";
 import { canonicalHash } from "../contract/canonical-hash.js";
 import { journalApprovedProvisionalContract } from "../test-support/journal-anchor-fixture.js";
 import { createTestJournal, type TestJournal } from "../test-support/test-journal.js";
+import { approvedEnvelopeFor } from "../test-support/approved-envelope-fixture.js";
 import { createPerformanceGateHandler } from "./performance-gate.js";
 
 const CHANGE_SET_ID = randomUUID();
@@ -50,6 +51,7 @@ describe("createPerformanceGateHandler", () => {
     await journalApprovedProvisionalContract(tj.store, provisional);
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
@@ -75,6 +77,7 @@ describe("createPerformanceGateHandler", () => {
     await journalApprovedProvisionalContract(tj.store, provisional);
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
@@ -100,6 +103,7 @@ describe("createPerformanceGateHandler", () => {
     await journalApprovedProvisionalContract(tj.store, provisional);
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
@@ -128,6 +132,9 @@ describe("createPerformanceGateHandler", () => {
     };
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => tampered,
+      // Bound to the record's own (stale) hash so checks 4-5 would pass — the
+      // reported reason can only come from check 1.
+      getApprovedEnvelope: async () => approvedEnvelopeFor(tampered),
       getMeasurements: async () => ({
         entries: [
           {
@@ -163,6 +170,9 @@ describe("createPerformanceGateHandler", () => {
 
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => deliberatelyTampered,
+      // Bound to the ORIGINAL approved budget hash, so check 5 would also fire
+      // — that the reason stays `journal_anchor_mismatch` is the order proof.
+      getApprovedEnvelope: async () => approvedEnvelopeFor(original),
       getMeasurements: async () => ({
         entries: [
           {
@@ -188,6 +198,7 @@ describe("createPerformanceGateHandler", () => {
     // Deliberately never journaled.
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
@@ -214,6 +225,7 @@ describe("createPerformanceGateHandler", () => {
     const highVarianceBase = [1, 200, 5, 180, 10, 150, 20, 140, 30, 130, 40, 120];
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
@@ -240,6 +252,7 @@ describe("createPerformanceGateHandler", () => {
     await journalApprovedProvisionalContract(tj.store, provisional);
     const handler = createPerformanceGateHandler({
       getProvisionalContract: async () => provisional,
+      getApprovedEnvelope: async () => approvedEnvelopeFor(provisional),
       getMeasurements: async () => ({
         entries: [
           {
