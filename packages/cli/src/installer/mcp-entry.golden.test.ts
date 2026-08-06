@@ -9,12 +9,16 @@
  *
  * This file never hand-types the `"GATEWAY_MCP_SERVER_NAME"` literal (this repo's
  * sole-definition-site scanner, `@crabgic/contracts`'s `server-name.test.ts`,
- * forbids it anywhere under `packages/*\/src`) — the golden shape below is
+ * forbids it in any tracked file under `packages/` outside its justified
+ * allowlist) — the golden shape below is
  * built with `GATEWAY_MCP_SERVER_NAME` as a computed property key, which is
  * byte-identical JSON to the hand-typed ledger literal once serialized.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
+import { resolvePluginRoot } from "@crabgic/plugin";
 import { buildGatewayMcpServerEntry, mergeMcpJson } from "./mcp-json-merge.js";
 
 describe("mcp-entry.golden.test", () => {
@@ -88,5 +92,42 @@ describe("mcp-entry.golden.test", () => {
     const existing = { mcpServers: null };
     const result = mergeMcpJson(existing);
     expect(result.mcpJson.mcpServers).toBeNull();
+  });
+});
+
+/**
+ * Binds the SHIPPED plugin manifest to the constant.
+ *
+ * `packages/plugin/.mcp.json` is hand-written JSON, so it cannot import
+ * `GATEWAY_MCP_SERVER_NAME` — it is the one place in the repository where
+ * the literal is typed out and cannot be derived at authoring time. Before
+ * this suite existed, `@crabgic/contracts`' sole-definition-site scan
+ * walked only `packages/<pkg>/src/**\/*.ts`, so that file was outside its
+ * scope entirely and the criterion's `packages/*` wording was not met.
+ *
+ * With the scan widened, the manifest is allowlisted — and an allowlist
+ * entry is only honest if something proves the occurrence is derived
+ * rather than merely tolerated. That proof is here: the manifest must
+ * equal, byte for byte, what `mergeMcpJson({})` builds from the constant.
+ * `server-name.test.ts`'s allowlist names this file as the manifest's
+ * `derivedBy`, and asserts it exists.
+ */
+describe("the shipped plugin .mcp.json is derived from GATEWAY_MCP_SERVER_NAME, not hand-maintained", () => {
+  function readShippedManifest(): unknown {
+    return JSON.parse(readFileSync(join(resolvePluginRoot(), ".mcp.json"), "utf8"));
+  }
+
+  it("its only mcpServers key is GATEWAY_MCP_SERVER_NAME", () => {
+    const manifest = readShippedManifest() as { mcpServers: Record<string, unknown> };
+    expect(Object.keys(manifest.mcpServers)).toEqual([GATEWAY_MCP_SERVER_NAME]);
+  });
+
+  it("its entry equals buildGatewayMcpServerEntry()", () => {
+    const manifest = readShippedManifest() as { mcpServers: Record<string, unknown> };
+    expect(manifest.mcpServers[GATEWAY_MCP_SERVER_NAME]).toEqual(buildGatewayMcpServerEntry());
+  });
+
+  it("the whole document equals what mergeMcpJson({}) produces", () => {
+    expect(readShippedManifest()).toEqual(mergeMcpJson({}).mcpJson);
   });
 });

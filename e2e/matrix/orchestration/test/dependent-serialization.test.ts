@@ -19,6 +19,7 @@ import {
 import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiledProfile.js";
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * Scenario 2/8 — roadmap/23-release-hardening.md work item 4: "dependent
@@ -69,6 +70,7 @@ describe("Orchestration matrix: dependent serialization (overlap + dependsOn bot
     const loserId = winnerId === unitA.id ? unitB.id : unitA.id;
 
     const winnerOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId: randomUUID(),
@@ -99,6 +101,7 @@ describe("Orchestration matrix: dependent serialization (overlap + dependsOn bot
     expect(round2Ready).toEqual([loserId]);
 
     const loserOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId: randomUUID(),

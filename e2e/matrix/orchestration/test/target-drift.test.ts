@@ -12,6 +12,7 @@ import { allowAllAdjudicate, buildMinimalCompiledProfile } from "../src/compiled
 import { emitScenarioEvidence } from "../src/evidence.js";
 import { assertNoTargetDrift, TargetDriftError } from "../src/targetDrift.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 const FROZEN_BASE_OBJECT_ID = "1111111111111111111111111111111111111a";
 const DRIFTED_BASE_OBJECT_ID = "2222222222222222222222222222222222222b";
@@ -42,6 +43,7 @@ describe("Orchestration matrix: target drift", () => {
     const originalPacket = buildTaskPacket({ workUnitId, baseObjectId: FROZEN_BASE_OBJECT_ID });
 
     const crashOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(buildFakeEngineScript({ failure: { kind: "crash" } })),
       journal: store,
       packet: originalPacket,
@@ -57,6 +59,7 @@ describe("Orchestration matrix: target drift", () => {
     expect(() => assertNoTargetDrift(originalPacket, repairPacket)).not.toThrow();
 
     const repairOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
       ),
@@ -83,6 +86,7 @@ describe("Orchestration matrix: target drift", () => {
     const originalPacket = buildTaskPacket({ workUnitId, baseObjectId: FROZEN_BASE_OBJECT_ID });
 
     const crashOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(buildFakeEngineScript({ failure: { kind: "crash" } })),
       journal: store,
       packet: originalPacket,
@@ -116,6 +120,7 @@ describe("Orchestration matrix: target drift", () => {
     const correctedPacket = buildTaskPacket({ workUnitId, baseObjectId: FROZEN_BASE_OBJECT_ID });
     expect(() => assertNoTargetDrift(originalPacket, correctedPacket)).not.toThrow();
     const repairOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: driftedAdapter,
       journal: store,
       packet: correctedPacket,

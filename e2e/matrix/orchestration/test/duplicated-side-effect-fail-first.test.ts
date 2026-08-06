@@ -20,6 +20,7 @@ import {
   type SideEffectSink,
 } from "../src/sideEffectSink.js";
 import { createTestJournal, type TestJournal } from "../src/testJournal.js";
+import { UNSEALED_CRITERIA_SEAL } from "../src/criteriaSeal.js";
 
 /**
  * FAIL-FIRST VECTOR — roadmap/23-release-hardening.md work item 4's own
@@ -73,6 +74,7 @@ describe("Orchestration matrix: duplicated side effect from a forced worker cras
       failure: { kind: "crash", atStepIndex: 1 },
     });
     const crashOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(crashScript),
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -91,6 +93,7 @@ describe("Orchestration matrix: duplicated side effect from a forced worker cras
       structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
     });
     const repairOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(repairScript),
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -127,6 +130,7 @@ describe("Orchestration matrix: duplicated side effect from a forced worker cras
       failure: { kind: "crash", atStepIndex: 1 },
     });
     const crashOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(crashScript),
       journal: store,
       packet: buildTaskPacket({ workUnitId }),
@@ -144,6 +148,7 @@ describe("Orchestration matrix: duplicated side effect from a forced worker cras
       structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
     });
     const repairOutcome = await dispatchAttempt({
+      criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(repairScript),
       journal: store,
       packet: buildTaskPacket({ workUnitId }),

@@ -124,6 +124,30 @@ export interface DriftCiCliOptions {
   readonly debounceThreshold?: number;
 }
 
+/**
+ * Reads an observed-version override, treating BLANK as ABSENT.
+ *
+ * GitHub Actions sets an `env:` entry bound to an omitted `workflow_dispatch`
+ * input — and every input on the `schedule` trigger, where the `inputs`
+ * context is empty — to `""` rather than leaving it unset. A bare
+ * `!== undefined` check therefore takes the override and pins the observed
+ * version to the empty string, after which `compareDriftFixture` sees
+ * `"1000.0.0" !== ""` and reports the connector as drifted. That is a
+ * deterministic false positive, not a flake, so the debounce threshold does
+ * not suppress it: the weekly scheduled job's steady state is two spurious
+ * `DriftProposal`s forever, each recommending an update to an empty version.
+ *
+ * `unset or blank falls back` is the convention `docs/interface-ledger.md`
+ * Gap 16 already pins for `CRABGIC_*` record overrides, so this follows the
+ * repo's settled rule rather than inventing one.
+ */
+function observedVersionOverride(variable: string): string | undefined {
+  const raw = process.env[variable];
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
 export async function runDriftCiCli(
   options: DriftCiCliOptions = {},
 ): Promise<{ redCheck: boolean }> {
@@ -136,13 +160,12 @@ export async function runDriftCiCli(
     writeProposals: (proposals) => writeJsonFile(proposalsOutputPath, proposals),
   };
 
+  const jiraObserved = observedVersionOverride("JIRA_OBSERVED_VERSION");
+  const grafanaObserved = observedVersionOverride("GRAFANA_OBSERVED_VERSION");
+
   const snapshots = buildPinnedFixtureSnapshots({
-    ...(process.env["JIRA_OBSERVED_VERSION"] !== undefined
-      ? { jira: { version: process.env["JIRA_OBSERVED_VERSION"] } }
-      : {}),
-    ...(process.env["GRAFANA_OBSERVED_VERSION"] !== undefined
-      ? { grafana: { version: process.env["GRAFANA_OBSERVED_VERSION"] } }
-      : {}),
+    ...(jiraObserved !== undefined ? { jira: { version: jiraObserved } } : {}),
+    ...(grafanaObserved !== undefined ? { grafana: { version: grafanaObserved } } : {}),
   });
 
   const result = await runDriftCi(
