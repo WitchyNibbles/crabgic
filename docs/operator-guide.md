@@ -490,3 +490,42 @@ CRABGIC_NO_SPAWN=1 crabgic status --json
 
 `CRABGIC_NO_SPAWN=1` makes any CLI command connect to an already-running supervisor and fail
 fast if there is none, rather than starting one on demand.
+
+---
+
+## Release-candidate evidence anchor (2026-08-06)
+
+Appended by the closeout pass for roadmap/23's release-docs criterion. Everything above is left
+byte-identical.
+
+**The release candidate this guide describes** is `6b9dd7b` — published as `crabgic@1.5.0`, the
+current `latest` on the public registry. Its CI is run
+[30581597639](https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639); its blocking
+release gate is job 91004033370 of the tag-gated `publish` run
+[30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006).
+
+**The anchor rule for the test files this guide cites.** Rather than repeating a run URL beside
+every mechanism claim, one statement covers them: each `packages/**` test file named in this
+document was checked, file by file, against the release candidate's own
+`CI / unit-test+coverage (ubuntu-latest)` job **91002998119** of run 30581597639. This guide
+names two, and **both** ran green at the candidate — job-log line 903
+` ✓  crabgic  src/bootstrap.test.ts (17 tests) 91ms` and line 922
+` ✓  crabgic  src/commands/connection-dispatch.test.ts (8 tests) 30ms`. That job's own totals
+are at lines 1008-1009: ` Test Files  605 passed (605)` and
+`      Tests  5802 passed | 1 skipped (5803)`. Every quoted line here was re-downloaded and
+byte-compared under the one-space rule (ANSI-strip, then strip the timestamp and its ONE
+separator space); the comparison is in
+`docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`.
+
+**The header's "exactly one command returns `NOT_IMPLEMENTED`" claim, and §5/§6's "wired and
+functional" claims**, are the release-gate item `gateway-cli-surface-complete`:
+`docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:479` is
+`      "id": "gateway-cli-surface-complete",` and `:482` is `      "verdict": "PASS",`, over
+five linked records carrying `release-gate:not-implemented-sweep`,
+`release-gate:gateway-cli-surface-complete` and `release-gate:live-conformance`. §10's
+description of the release-gate report is that same committed artifact.
+
+**And what this anchor does not do.** It does not make every claim in this guide
+release-candidate-cited. It cannot: the counts are in
+`docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`, and they are why roadmap/23's
+release-docs box is still unticked.

@@ -1,0 +1,190 @@
+# Phase 16 criterion 12 — the security-review sign-off, landed in docs/threat-model.md (2026-08-06)
+#
+# RULING-3 header
+# captured (UTC):  2026-08-06T10:30:10Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see note): c0b38731b383ff024033738b3a56d0c8aa9d831d
+#
+# NOTE ON PROVENANCE, stated rather than implied: the commands below ran against the
+# WORKING TREE of branch closeout/batch-f at the moment of capture — i.e. the upstream
+# base above PLUS this batch's uncommitted edits, which are the edits committed in the
+# very commit that carries this file. A reader re-running them at the merge commit of
+# this branch sees the same output; a reader at the UPSTREAM BASE sees the pre-edit
+# state, which is exactly what the "before" halves below record.
+# Every command is echoed verbatim and followed by its own exit status. A RED grep is a
+# result, not a failure, and is labelled as such.
+
+# ============================================================================
+# PART 1 — the defect's own searches, re-run. All three were RED at 30f931e
+# (docs/evidence/phase-16/closeout-c12-threat-model-signoff-search.txt) and at
+# the UPSTREAM BASE. They are GREEN here, which is the whole of the remedy.
+# ============================================================================
+
+# 1a. BEFORE — at the upstream base, the document contains no sign-off at all.
+$ git grep -n -i -F -e "sign-off" -e "signoff" origin/main -- docs/threat-model.md
+# exit=1
+
+
+# 1b. AFTER — the working tree. This is the criterion's own sentence, satisfied.
+$ git grep -n -i -F -e "sign-off" -e "signoff" -- docs/threat-model.md
+docs/threat-model.md:361:it up. What follows records where the sign-offs already live, what has changed in §5 since, and the date —
+docs/threat-model.md:365:**Sign-off status for §5 (Gateway): reviewed, twice, and recorded — the records were simply not in this
+docs/threat-model.md:368:1. **`docs/security-posture.md`, dated 2026-07-24** — phase 23 work item 8's artifact. Its `## Sign-off`
+docs/threat-model.md:379:   carries it, ending in the explicit `**Sign-off:**` paragraph at
+docs/threat-model.md:392:**Scope of this entry, stated so it is not over-read.** It records a sign-off that already existed and
+# exit=0
+
+
+# 2a. BEFORE — "unenableable" reached every document except the threat model.
+$ git grep -c -F -e "unenableable" origin/main -- docs/threat-model.md docs/security-posture.md roadmap/16-gateway-core.md
+origin/main:docs/security-posture.md:2
+origin/main:roadmap/16-gateway-core.md:2
+# exit=0
+
+
+# 2b. AFTER.
+$ git grep -c -F -e "unenableable" -- docs/threat-model.md docs/security-posture.md roadmap/16-gateway-core.md
+docs/security-posture.md:2
+docs/threat-model.md:5
+roadmap/16-gateway-core.md:2
+# exit=0
+
+
+# 3a. BEFORE — the defect's row "§5 Gateway citing any implementation": no match.
+#     RED (grep -c exits 1 on zero matches) and that RED is the finding.
+$ git show origin/main:docs/threat-model.md | sed -n '153,169p' | grep -c -F -e 'packages/gateway' -e 'security-posture' -e 'phase-16'
+0
+# exit=1
+
+
+# 3b. AFTER — §5 now cites the shipped implementation. Same line range, same grep.
+$ sed -n '153,169p' docs/threat-model.md | grep -c -F -e 'packages/gateway' -e 'security-posture' -e 'phase-16'
+2
+# exit=0
+
+
+# ============================================================================
+# PART 2 — THE NO-SHIFT PROOF. Merged docs/evidence/criteria-closeout/phase-02.json
+# criterion 11 and roadmap/02-contracts-and-schemas.md:182 pin this document's nine
+# section headings BY LINE NUMBER. Every edit in this pass is line-count-neutral or
+# an EOF append, so all nine still resolve. This is measured, not asserted.
+# ============================================================================
+
+$ for n in 70 91 113 133 153 172 191 211 230; do printf '%4d: %s\n' "$n" "$(sed -n "${n}p" docs/threat-model.md)"; done
+  70: ## 1. UDS (Unix domain socket control plane)
+  91: ## 2. Worker runtime
+ 113: ## 3. Envelope compiler
+ 133: ## 4. Installer
+ 153: ## 5. Gateway
+ 172: ## 6. Connectors
+ 191: ## 7. Capability quarantine
+ 211: ## 8. Renderer
+ 230: ## 9. Learning store
+# exit=0
+
+
+# The same nine at the UPSTREAM BASE, for comparison — identical.
+$ git show origin/main:docs/threat-model.md | awk 'NR==70||NR==91||NR==113||NR==133||NR==153||NR==172||NR==191||NR==211||NR==230 {printf "%4d: %s\n", NR, $0}'
+  70: ## 1. UDS (Unix domain socket control plane)
+  91: ## 2. Worker runtime
+ 113: ## 3. Envelope compiler
+ 133: ## 4. Installer
+ 153: ## 5. Gateway
+ 172: ## 6. Connectors
+ 191: ## 7. Capability quarantine
+ 211: ## 8. Renderer
+ 230: ## 9. Learning store
+# exit=0
+
+
+# Line-count delta, above EOF: the diff's own hunk headers. 34->34 (1:1), 161-168->161-168
+# (8:8), 338->338 (1:1) are line-count-neutral; 352 is the EOF append. Expanded rather
+# than counted, per the playbook's -U0 coalescing ruling.
+$ git diff -U0 -- docs/threat-model.md | grep -E '^@@'
+@@ -34 +34 @@ re-derive engine facts independently; every engine-behavior claim traces to a sp
+@@ -161,8 +161,8 @@ the envelope compiler, as one of the design's two explicit security keystones (1
+@@ -338 +338 @@ than only as scattered table cells:
+@@ -352 +352,44 @@ than only as scattered table cells:
+# exit=0
+
+
+# ============================================================================
+# PART 3 — the four ORIGINAL sentences this pass annotates are byte-identical.
+# "Annotate, never rewrite": each count below must be exactly 1.
+# ============================================================================
+
+$ grep -c -F -- 'This is a **design-level** threat model. Phases 03, 05, 06, 10, 12, 16, 17, and 22 are unimplemented as of' docs/threat-model.md
+1
+# exit=0
+
+
+$ grep -c -F -- "is flag-gated and, per 16's own text, it remains an open question" docs/threat-model.md
+1
+# exit=0
+
+
+$ grep -c -F -- "widens the gateway's own trust surface to an upstream server's behavior in a way the corpus does not yet resolve." docs/threat-model.md
+1
+# exit=0
+
+
+$ grep -c -F -- 'and 12, and this review did not find a resolution elsewhere in the corpus.' docs/threat-model.md
+1
+# exit=0
+
+
+# ============================================================================
+# PART 4 — the anchors the new section cites, resolved at the final tree.
+# ============================================================================
+
+$ sed -n '33p;35p;151p' docs/security-posture.md
+## Sign-off
+**No unresolved CRITICAL or HIGH security finding blocks this release.** Every CRITICAL and
+### 5. Gateway
+# exit=0
+
+
+$ sed -n '87p;134p;136p' docs/evidence/phase-16/README.md
+## Security review (against `docs/threat-model.md` §5 "Gateway")
+**Sign-off:** the implementation in `packages/gateway` is reviewed against `docs/threat-model.md`
+that document already names. **Not done in this session:** editing `docs/threat-model.md` itself
+# exit=0
+
+
+$ grep -n 'expect(scanProductionSources(ENABLEMENT_PATTERN)).toEqual(\[\]);' packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts
+115:    expect(scanProductionSources(ENABLEMENT_PATTERN)).toEqual([]);
+# exit=0
+
+
+$ grep -n 'expect(buildSimulatedWorkerMcpServers.length).toBe(0);' packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts
+154:    expect(buildSimulatedWorkerMcpServers.length).toBe(0);
+# exit=0
+
+
+# COMMITTED-NESS, proven the playbook's way (`ls` proves nothing).
+$ git log --oneline --all -- packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts | head -3
+bddac4c fix(intake): two unvalidated-input defects, and four disclosures that were not true (#47)
+ae36ded docs(security): correct three disclosures that were false, soft, or unverified
+# exit=0
+
+
+$ git cat-file -e origin/main:packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts && echo "present at origin/main"
+present at origin/main
+# exit=0
+
+
+$ git cat-file -e origin/main:docs/evidence/phase-16/README.md && echo "present at origin/main"
+present at origin/main
+# exit=0
+
+
+# The new section's own heading and its span at the final tree.
+$ grep -n '^### Implementation re-review — gateway' docs/threat-model.md
+356:### Implementation re-review — gateway (§5), recorded 2026-08-06
+# exit=0
+
+
+$ wc -l docs/threat-model.md
+395 docs/threat-model.md
+# exit=0
+

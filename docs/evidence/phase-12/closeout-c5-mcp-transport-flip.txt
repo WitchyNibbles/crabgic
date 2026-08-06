@@ -1,0 +1,234 @@
+# Phase 12 criterion 5 — the capability tools resolved over a REAL MCP transport (2026-08-06)
+#
+# RULING-3 header
+# captured (UTC):  2026-08-06T10:59:35Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — see note): 83f7387c11e9e9ee3799b9616d10b8115897f29f
+#
+# NOTE ON PROVENANCE, stated rather than implied: the commands below ran against the
+# WORKING TREE of branch closeout/batch-f at the moment of capture — i.e. the upstream
+# base above PLUS this batch's uncommitted edits, which are the edits committed in the
+# very commit that carries this file. A reader re-running them at the merge commit of
+# this branch sees the same output; a reader at the UPSTREAM BASE sees the pre-edit
+# state, which is exactly what the "before" halves below record.
+# Every command is echoed verbatim and followed by its own exit status. A RED grep is a
+# result, not a failure, and is labelled as such.
+
+# ============================================================================
+# PART 1 — THE BEARER IS COMMITTED. `ls` proves nothing: a working tree cannot
+# distinguish a gitignored build output from a committed file.
+# ============================================================================
+
+$ git log --oneline --all -- packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts
+c0b3873 test(cli): resolve the capability tools over the real gateway registry and a real MCP transport (#111)
+566e7ba test(cli): resolve the capability tools over the real gateway registry and a real MCP transport
+# exit=0
+
+
+$ git cat-file -e c0b38731b383ff024033738b3a56d0c8aa9d831d:packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts && echo "present at c0b3873 (= origin/main at capture)"
+present at c0b3873 (= origin/main at capture)
+# exit=0
+
+
+$ git cat-file -e origin/main:packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts && echo "present at origin/main"
+present at origin/main
+# exit=0
+
+
+# The three cited spans, resolved at the final tree.
+$ sed -n '151,152p' packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts
+      expect(tool, `${name} is not served by the real registry`).toBeDefined();
+      expect(tool?.description ?? "").not.toBe("");
+# exit=0
+
+
+$ sed -n '214p;217p;221p' packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts
+    expect(refused, `expected a refusal, got: ${JSON.stringify(response)}`).toBe(true);
+    expect(text).not.toMatch(/\bapproved\b/i);
+    expect(text).toMatch(/no audited capability is stored under digest/i);
+# exit=0
+
+
+$ sed -n '240p' packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts
+    expect(response?.["error"] !== undefined || result?.isError === true).toBe(true);
+# exit=0
+
+
+# The suite's OWN statement of which clause it bears — quoted here because the
+# triage description of this criterion was imprecise about it, and the file is
+# the authority on itself.
+$ sed -n '160,172p' packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts
+   * The refusal observed here is produced by the DIGEST guard — no audited
+   * capability is stored under the digest — and not by the token check.
+   * Mutating only the token-verification seam leaves this green, because the
+   * digest guard returns first. Only removing BOTH guards, so the tool
+   * genuinely approves, reddens it (measured: 1 failed / 18 passed).
+   *
+   * So this suite bears the criterion's FIRST clause — `capability.approve`
+   * resolves over the shared <GATEWAY_MCP_SERVER_NAME> registry and fails closed when
+   * reached through a real MCP client — and it does NOT bear the second
+   * clause about a missing pre-minted `trust approve` token. That clause is
+   * borne at the plain-function level by
+   * `packages/detect/src/mcp/capability-approve-handler.test.ts`, which seeds
+   * a real audited capability and drives the token path proper.
+# exit=0
+
+
+# The SECOND clause's bearer, unchanged and still where the merged record says.
+$ sed -n '93,95p' packages/detect/src/mcp/capability-approve-handler.test.ts
+    expect(result.approved).toBe(false);
+    expect(store.load(saved.key)?.report.decision).toBe("pending");
+    // No verify, no transition — a refused approval journals nothing.
+# exit=0
+
+
+# ============================================================================
+# PART 2 — LOCAL RE-RUN. This is what makes the classification
+# EVIDENCE-REPRODUCED rather than EVIDENCE-EXISTS. Coverage is disabled because
+# the repo-wide 80% gate cannot be met by one file; what is asserted here is
+# the test COUNT, not the exit code.
+# ============================================================================
+
+$ npx vitest run --project crabgic --coverage.enabled=false packages/cli/src/gateway-mcp/capability-tools-over-stdio.test.ts 2>&1 | tail -6
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  12:59:37
+   Duration  7.03s (transform 5.34s, setup 0ms, import 6.71s, tests 86ms, environment 0ms)
+
+# exit=0
+
+
+# ============================================================================
+# PART 3 — THE PER-PUSH PROOF, by job-log test count. A green workflow proves
+# the WORKFLOW passed, never that this test executed in it.
+#
+#   BEFORE  main @ 8af8706, run 31087750630, job 92571158157
+#   AFTER   main @ c0b3873, run 31089667556, job 92577396650
+#
+# Both logs re-downloaded and byte-compared under the ONE-SPACE rule
+# (ANSI-strip; strip the timestamp and its ONE separator space). The comparer
+# keys on the FULL line — path included — never on a test count: "(3 tests)"
+# alone occurs at 71 different lines in the AFTER log.
+#
+# RED-RUN ATTRIBUTION, stated up front rather than buried. Run 31089667556 has
+# conclusion 'failure'. Of its NINE jobs, exactly ONE is red: 'commitlint'
+# (job 92577396639), whose log line 286 is a commit-SUBJECT-LENGTH complaint,
+# causally unrelated to test execution. BOTH unit-test+coverage jobs are green.
+# scripts/check-citation-runs.mjs deliberately does not check run conclusion,
+# and merged phase-01 citations set the precedent of quoting green jobs of a
+# deliberately red run with the failure attributed. No green main CI run
+# containing the bearer existed at capture time (the run at c0b3873 is the
+# newest main CI run there is).
+# ============================================================================
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/compare-batchF.mjs 2>&1 | sed -n '1,32p'
+# 29 quoted job-log line(s), byte-compared under the one-space rule
+OK   job 92577396650:954  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/capability-tools-over-stdio.test.ts (3 tests) 59ms"
+       used by: 12 c5 AFTER — the bearer executing
+OK   job 92577396650:1053  unique exact match at the claimed line
+       quoted: " Test Files  636 passed (636)"
+       used by: 12 c5 AFTER — totals
+OK   job 92577396650:1054  unique exact match at the claimed line
+       quoted: "      Tests  6483 passed | 1 skipped (6484)"
+       used by: 12 c5 AFTER — totals
+OK   job 92571158157:1051  unique exact match at the claimed line
+       quoted: " Test Files  635 passed (635)"
+       used by: 12 c5 BEFORE — totals
+OK   job 92571158157:1052  unique exact match at the claimed line
+       quoted: "      Tests  6480 passed | 1 skipped (6481)"
+       used by: 12 c5 BEFORE — totals
+OK   job 92577396650:931  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 102ms"
+       used by: 12 c5 CONTROL — a count that should NOT move (after)
+OK   job 92571158157:930  unique exact match at the claimed line
+       quoted: " ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 107ms"
+       used by: 12 c5 CONTROL — a count that should NOT move (before)
+OK   job 92577396650:733  unique exact match at the claimed line
+       quoted: " ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8311ms"
+       used by: 12 c5 CONFOUND — PR #110's only test-file edit (after)
+OK   job 92571158157:733  unique exact match at the claimed line
+       quoted: " ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8531ms"
+       used by: 12 c5 CONFOUND — same file (before)
+OK   job 92577396639:286  unique exact match at the claimed line
+       quoted: "✖   header must not be longer than 100 characters, current length is 102 [header-max-length]"
+       used by: 12 c5 RED-RUN ATTRIBUTION — the sole failing job
+OK   job 89923390404:1640  unique exact match at the claimed line
+# exit=0
+
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/compare-batchF.mjs 2>&1 | sed -n '/MUTATION TESTS/,$p'
+# MUTATION TESTS OF THE COMPARER ITSELF (all four must be CAUGHT)
+CAUGHT  falsified count -> NOT FOUND (exact, one-space rule)
+CAUGHT  moved line (claim :955) -> claimed line 955 but the text is at 954
+CAUGHT  RIGHT-COUNT / WRONG-FILE: a real line, real count, claimed at another suite's line -> claimed line 954 but the text is at 931
+CAUGHT  two-space form (must NOT match under the one-space rule) -> NOT FOUND (exact, one-space rule)
+CONTROL OK  the unmutated quote -> unique exact match at the claimed line
+
+# how non-unique a bare count is, measured: "(3 tests)" occurs at 71 line(s) in this one log — which is why the comparer keys on the full line, path included.
+
+# result: 0 problem(s)
+# exit=0
+
+
+# ============================================================================
+# PART 4 — THE ONE CONFOUND, disclosed rather than hidden, plus the control and
+# the delta. TWO PRs separate the two runs (#110 then #111). #110's only
+# test-file edit is packages/journal/src/crash-fixtures/crash-suite.test.ts; if
+# ITS count had moved, the +3 totals delta could not be attributed to the
+# bearer alone. ANSI-stripped, because a raw grep cannot see these lines at all
+# (the first draft of this transcript ran one and got exit=1 for that reason).
+# ============================================================================
+
+$ node /tmp/claude-1000/-home-eimi-projects-crabgic/757fd266-3eb0-41b5-a5d9-7246f21ee930/scratchpad/confound-batchF.mjs
+# THE CONFOUND — PR #110's only test-file edit, in both logs:
+BEFORE  8af8706 job 92571158157    crash-suite.test.ts                -> :733 ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8531ms
+AFTER   c0b3873 job 92577396650    crash-suite.test.ts                -> :733 ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts (2 tests) 8311ms
+
+# THE CONTROL — a count that should NOT move, and did not:
+BEFORE  8af8706 job 92571158157    build-tool-registry.test.ts        -> :930 ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 107ms
+AFTER   c0b3873 job 92577396650    build-tool-registry.test.ts        -> :931 ✓  crabgic  src/gateway-mcp/build-tool-registry.test.ts (16 tests) 102ms
+
+# THE BEARER — absent before, present after. The absence is the point.
+BEFORE  8af8706 job 92571158157    capability-tools-over-stdio        -> ABSENT (0 occurrences)
+AFTER   c0b3873 job 92577396650    capability-tools-over-stdio        -> :954 ✓  crabgic  src/gateway-mcp/capability-tools-over-stdio.test.ts (3 tests) 59ms
+
+# THE TOTALS:
+BEFORE  8af8706 job 92571158157     Test Files                        -> :1051 Test Files  635 passed (635)
+BEFORE  8af8706 job 92571158157          Tests                        -> :1052 Tests  6480 passed | 1 skipped (6481)
+AFTER   c0b3873 job 92577396650     Test Files                        -> :1053 Test Files  636 passed (636)
+AFTER   c0b3873 job 92577396650          Tests                        -> :1054 Tests  6483 passed | 1 skipped (6484)
+
+# delta: files 636-635 = 1; tests 6483-6480 = 3; this suite has 3 it() cases.
+# exit=0
+
+
+# ============================================================================
+# PART 5 — the phase-12 README rows this flip discharges, both annotated
+# IN-LINE so the file's line count does not move. Nothing cites that file by
+# line number today — checked — but the convention is cheap and it is an
+# evidence record.
+# ============================================================================
+
+$ git diff -U0 -- docs/evidence/phase-12/README.md | grep -E '^@@'
+@@ -29 +29 @@ Raw gate output (`tsc -b`, `vitest run`, scoped coverage) captured verbatim in
+@@ -214 +214 @@ to implement `tools/call` dispatch, then a small wiring commit here (or in `pack
+# exit=0
+
+
+$ grep -c 'Correction (2026-08-06)' docs/evidence/phase-12/README.md
+1
+# exit=0
+
+
+$ grep -c 'Discharged 2026-08-06' docs/evidence/phase-12/README.md
+1
+# exit=0
+
+
+# No inbound line-number citation into that README exists anywhere at
+# origin/main — every reference to it is by section name or as a bare path.
+$ git grep -n -E 'phase-12/README\.md:[0-9]+' origin/main --
+# exit=1
+

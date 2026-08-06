@@ -316,6 +316,56 @@ trust-approve.ts`), so §3's "the terminal prompt is the only mint path" is fals
   after the checks pass) and its tail is stripped of terminal control sequences before it reaches an error
   message, but nothing bounds or redacts what the daemon itself writes there over its lifetime.
 
+### Release-line scope and two corrections (2026-08-06)
+
+Appended by the closeout pass that walked this document against the release candidates. Nothing
+above is edited; the 2026-07-24 sign-off and every finding under it are left byte-identical.
+
+**(a) Which release line this document's sign-off covers.** The sign-off above is dated
+2026-07-24 and, by its own "Pending re-review" heading below, reviews the posture **as shipped in
+`crabgic@1.3.0`**. The shipped line is **1.5.0** (`npm view crabgic dist-tags` -> `{ latest:
+'1.5.0' }`; `npm view crabgic versions` lists 1.0.0 through 1.5.0). What covers 1.5.0 as a
+**release gate** is the tag-gated `publish` run
+[30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006) at `6b9dd7b`,
+whose blocking `release gate` job 91004033370 scored the whole checklist `final`, 15 PASS / 0
+FAIL — archived verbatim at
+`docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json`. What covers the
+standing-policy model is the two dated 2026-07-29 and 2026-07-30 subsections immediately above.
+
+This is **not** a claim that the pending re-review is complete. It is not. The items recorded as
+**owed** above — the policy needing to live somewhere a session cannot reach, and the two smaller
+findings — all still stand, unchanged.
+
+**(b) The security-fixture manifest names SIX blocking entries, not seven.** Two sentences in this
+document say "7 blocking entries" (one in the phase-21 cross-cutting section, one in the
+"What this review does not claim" section). Both are left verbatim; both are **wrong as of
+2026-08-06**, and this is the correction for both. Measured, not recalled:
+`packages/gates/src/security-fixture-manifest.ts` declares its entry ids at `:237`, `:249`,
+`:285`, `:292`, `:313` and `:327` — **six**. The count moved because the two tautological
+tenant-boundary entries (byte-identical `() => assertTenantBoundary("tenant-a", "tenant-b")`,
+two string literals, so the verdict was a compile-time constant) were **replaced** by one entry
+driving phase 20's real `tenantBoundaryBreachScenario`, in PRs #94 and #100. Seven minus two plus
+one is six. The change is a strengthening, not a removal: deleting the org-allowlist check now
+reddens the gate, where 247 tests previously stayed green.
+
+Every copy of the number was grepped before this correction was written, per the rule that
+correcting a figure means finding all of it: there are exactly two, and both are named here.
+
+**(c) Three test files this document cites did NOT run at the release candidate.** Named rather
+than absorbed into a blanket anchor, because that is exactly what a reader would check. The
+census keyed every `packages/**` test file cited here against the candidate's own
+`CI / unit-test+coverage (ubuntu-latest)` job **91002998119** of run 30581597639:
+
+| cited suite                                                                 | state at `6b9dd7b`                                                                                                                                                |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/scheduler/src/run-driver.test.ts`                                 | **ran green at the candidate** — job-log line 797, ` ✓  @crabgic/scheduler  src/run-driver.test.ts (15 tests) 256ms`                                              |
+| `packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts` | existed at the candidate, but is an `@live` suite — it runs in no per-push lane, then or since                                                                    |
+| `packages/engine-claude/src/live/path-anchor-differential.live.test.ts`     | did **not** exist at the candidate; post-candidate, and `@live`                                                                                                   |
+| `packages/gateway/src/mcp/upstream-mcp-client-unenableable.test.ts`         | did **not** exist at the candidate; it landed in `bddac4c` afterwards and runs per push **today** — current-tree verification, not release-candidate verification |
+
+Where one of the last three backs a sentence above, that sentence is a **post-candidate
+maintenance correction**, not a release claim, and should be read as one.
+
 ## Residual risk — disclosed, non-blocking
 
 Every item below is a known, intentional design limitation already named in the owning

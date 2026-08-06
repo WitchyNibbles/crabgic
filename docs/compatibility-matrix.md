@@ -120,6 +120,40 @@ instruction:
   above — this is the one platform every gate, probe, and test in this repository's evidence
   trail has actually executed on.
 
+> **Superseded 2026-08-06 — ARM64 HAS since been CI-verified on real `aarch64` hardware, at BOTH
+> release candidates.** The section above is left verbatim; it was honest when written and is now
+> out of date, and the instruction it ends with ("do not cite it as hardware-verified in any
+> release announcement", `docs/compatibility-matrix.md:117-118`) is **retired by this note
+> rather than deleted**.
+>
+> Two hosted `ubuntu-24.04-arm` CI jobs ran lint, typecheck and the full coverage-gated suite:
+>
+> - **`2435cb9` (v1.0.0 candidate)** — `CI / unit-test+coverage (ubuntu-24.04-arm)`, job
+>   **89923390404** of run
+>   [30249293110](https://github.com/WitchyNibbles/crabgic/actions/runs/30249293110). Job-log
+>   line 1640 echoes the record the step is about to write, unexpanded —
+>   `  "arch": "$(uname -m)",` — and line 1656 is what the machine actually reported:
+>   `  "arch": "aarch64",`. Lane totals at lines 822-823: ` Test Files  557 passed (557)` /
+>   `      Tests  4672 passed (4672)`.
+> - **`6b9dd7b` (v1.5.0 candidate, checkout == candidate)** — same job name, job
+>   **91002998165** of run
+>   [30581597639](https://github.com/WitchyNibbles/crabgic/actions/runs/30581597639). Same pair at
+>   lines 1866 and 1882. Lane totals at lines 997-998: ` Test Files  605 passed (605)` /
+>   `      Tests  5802 passed | 1 skipped (5803)`.
+>
+> **Why the pair and not just the second line.** The first line is the heredoc the workflow is
+> about to expand; the second is its output. Quoting both is what proves the architecture was
+> **observed on the runner**, not merely requested in a job label — a label can be wrong, a
+> `uname -m` echoed back from the machine cannot.
+>
+> The archived final release-gate reports agree: `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496`
+> is `      "id": "arm64-verification",` and its verdict three lines later at `:1499` is
+> `      "verdict": "PASS",`; the `2435cb9` report carries the same item at the same offsets.
+>
+> Both job logs were re-downloaded and byte-compared for this note under the one-space rule
+> (ANSI-strip, then strip the timestamp and its ONE separator space) — see
+> `docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`.
+
 ## What is EVIDENCE-PENDING vs. verified, at a glance
 
 Cross-referenced against the current release-gate-report snapshot
@@ -143,3 +177,66 @@ item — this document does not claim otherwise.
   re-confirmation; ARM64 hardware verification; the exact pinned engine/SDK version's
   citation into a live `engine-pin-lint` CI run for this exact release commit; every
   release-gate-report checklist item currently marked `EVIDENCE-PENDING`.
+
+---
+
+## Corrections (2026-08-06) — release-candidate citations
+
+Everything above this heading is left byte-identical. This section is a dated correction block,
+added by the closeout pass that walked this document against the two release candidates. It
+corrects three things and deliberately upgrades **nothing**.
+
+### 1. The "at a glance" snapshot is superseded
+
+The section above pins its authority to a release-gate report at
+`releaseCandidateObjectId: 008ae4b2848d3d3c84a5b2d19100f12e073235e3` in `scoringMode: "interim"`
+with all 15 checklist items `EVIDENCE-PENDING`. That snapshot is from 2026-07-24 — three days
+before the v1.0.0 candidate — and **two `final` reports now contradict it**, both committed
+verbatim in this repository:
+
+| report                                                                   | candidate          | mode    | items | verdicts         | linked evidence entries |
+| ------------------------------------------------------------------------ | ------------------ | ------- | ----- | ---------------- | ----------------------- |
+| `docs/evidence/phase-23/closeout/release-gate-report-final-2435cb9.json` | `2435cb9` (v1.0.0) | `final` | 15    | 15 PASS / 0 FAIL | **158**                 |
+| `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json` | `6b9dd7b` (v1.5.0) | `final` | 15    | 15 PASS / 0 FAIL | **160**                 |
+
+The two counts are **not** interchangeable: 158 belongs to the `2435cb9` report and 160 to the
+`6b9dd7b` one. The runs that produced them are
+[30250453824](https://github.com/WitchyNibbles/crabgic/actions/runs/30250453824) (`release-e2e`
+at `2435cb9`) and
+[30581930006](https://github.com/WitchyNibbles/crabgic/actions/runs/30581930006) (the tag-gated
+`publish` run at `6b9dd7b`, whose `release gate` job **91004033370** is the blocking gate).
+Prefer the `6b9dd7b` report: the `2435cb9` run's checkout was two commits ahead of the candidate
+it stamped, and the `6b9dd7b` run's checkout and candidate are the same commit.
+
+### 2. The "owed before `v1.0.0` tag" list, retired item by item — without upgrading anything
+
+That list is at `docs/compatibility-matrix.md:174-179` in this tree. (Records written before
+2026-08-06 cite it as `:140-145`; the ARM64 correction block above added 34 lines beneath it, so
+an older citation is off by that much and is not wrong about its subject.)
+
+| owed item, as written above                                                                                       | state at the candidates                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Grafana OSS 13.1                                                                                                  | **Still owed, still vendor-side.** Nothing in this repository can close it; the recipe resolves the moment Grafana Labs publishes the tag.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| the full Jira Cloud/DC + Grafana Cloud live-conformance matrix, release-candidate-scoped                          | **Scored PASS, but on cassette evidence — read this before quoting it.** `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:218` is `      "id": "jira-grafana-exactly-once",` and `:221` is `      "verdict": "PASS",`, over **28** linked records — and all 28 carry the gate tag `release-gate:connector-matrix`, **none** a live tag. The live exactly-once run has never happened. It is filed as the defect record named `23-jira-live-exactly-once-never-run`, and roadmap/23's two "pass live" boxes stay unticked. |
+| Jira DC / Grafana vendor support-window re-confirmation                                                           | **Scored PASS.** `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1515` is `      "id": "jira-grafana-version-support-windows",` with `:1518` `      "verdict": "PASS",`. Its bearer ran at the candidate: `src/versionSupportWindows.test.ts (19 tests)` at line 929 of job 91004033370.                                                                                                                                                                                                                                 |
+| ARM64 hardware verification                                                                                       | **Closed** — see the superseded block in the ARM64 close-out above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| the exact pinned engine/SDK version's citation into a live `engine-pin-lint` CI run for this exact release commit | **Closed.** `engine-pin-lint` is green at both candidates (jobs 91002998151 at `6b9dd7b`, 89923390171 at `2435cb9`), and `docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1586` is `      "id": "engine-pin-recorded",` with `:1589` `      "verdict": "PASS",`.                                                                                                                                                                                                                                                          |
+| every release-gate-report checklist item currently marked `EVIDENCE-PENDING`                                      | **Superseded** by the two `final` reports in §1: 15 PASS, 0 FAIL, at both candidates.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+### 3. The pinned-release-version row
+
+The row headed "Pinned release version (exact, in the published package)" above records itself as
+`EVIDENCE-PENDING` and declines to restate a literal. That disclosure stands as a description of
+this document, and the row itself is left verbatim — but the release-gate item it defers to has
+since scored: see the `engine-pin-recorded` line in the table in §2. The pin is the exact string
+`0.3.218`.
+
+### What this section does NOT claim
+
+It does not claim live Jira, Jira Data Center or Grafana Cloud conformance; it does not move
+roadmap/23's two "pass live" boxes; and it does not speak to deployment, which lives solely in
+`docs/deploy-posture.md` and is **conditional, not clear**. The four documents' remaining
+status-bearing claims are cited to committed artifacts that pre-date the release candidates
+rather than to a candidate-scoped CI run — measured, with numbers, in
+`docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`, which is why roadmap/23's
+release-docs box stays **unticked**.
