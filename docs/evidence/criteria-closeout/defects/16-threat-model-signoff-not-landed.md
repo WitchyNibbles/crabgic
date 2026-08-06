@@ -173,3 +173,55 @@ coordinated edit across an 02-owned document, so it needs the orchestrator to ro
 phase agent to take it unilaterally.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06
+
+Landed by the closeout wave's docs batch (branch `closeout/batch-f`). The record above is left
+verbatim; this is the dated addendum, per the convention.
+
+**The remedy's four steps, as landed** — line numbers at the tree this branch merges as:
+
+| Step | Asked for                                                                                       | Landed at                                                                                                                                                                                                                     |
+| ---- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | a dated implementation-review entry beside the `## Review note`                                 | `docs/threat-model.md:356` — `### Implementation re-review — gateway (§5), recorded 2026-08-06`, spanning `:356-395`, cross-referencing `docs/security-posture.md:33`/`:151` and `docs/evidence/phase-16/README.md:87`/`:134` |
+| 2    | refresh `:27`'s "unimplemented as of this writing" list, minimum honest fix 16                  | `docs/threat-model.md:34` — a dated correction appended to the end of the same paragraph. It stamps **only 16**, and says so: "Only 16 is stamped here, because only 16 was counted for this correction"                      |
+| 3    | correct §5's Spoofing and Information-disclosure residual cells; restate Open item 3 as managed | `docs/threat-model.md:163` and `:166` (in-cell, original sentences byte-identical); Open item 3 at `:338`                                                                                                                     |
+| 4    | re-run the closeout for criterion 12 and cite the edited document                               | `docs/evidence/criteria-closeout/phase-16.json` criterion 12, now `EVIDENCE-EXISTS` / ticked, `defectRef` removed; `roadmap/16-gateway-core.md:133` ticked with an `Evidence (2026-08-06)` annotation                         |
+
+**One deviation, disclosed rather than smuggled.** Open item 7 — "No re-verification has occurred
+against running code for any surface besides phase 02's own contracts" — was **not** in the four
+steps. It gained a dated partial-discharge note at `docs/threat-model.md:352` anyway: it was already
+stale against §2's 2026-08-01 refresh, and step 1 made it stale a second time. Correcting three
+neighbouring staleness claims and leaving a fourth standing beside them would have been the worse
+choice. The note discharges it _partially_ and says so — §2 and §5 only; every other surface in that
+list remains design-level, exactly as the item states.
+
+**The no-shift constraint, and why every edit above is in-line.** Merged
+`docs/evidence/criteria-closeout/phase-02.json` criterion 11 — and the same numbers in
+`roadmap/02-contracts-and-schemas.md:182`'s annotation — pin this document's nine section headings
+**by line number** (written in full rather than as bare markers, so a sweep can see them):
+`docs/threat-model.md:70`, `docs/threat-model.md:91`, `docs/threat-model.md:113`,
+`docs/threat-model.md:133`, `docs/threat-model.md:153`, `docs/threat-model.md:172`,
+`docs/threat-model.md:191`, `docs/threat-model.md:211` and `docs/threat-model.md:230`. All nine
+still resolved exactly at `c0b3873`. An insertion anywhere above `docs/threat-model.md:230` would
+have moved every one of them. So steps 2, 3 and 4 are **line-count-neutral in-line appends** rather than new paragraphs,
+and step 1 is an EOF append: the diff's expanded hunks are `34→34`, `161-168→161-168`, `338→338`
+and the `352` EOF append — **zero net lines above EOF**. The transcript
+`docs/evidence/phase-16/closeout-c12-signoff-landed.txt` prints all nine headings at the final tree
+and at `origin/main` side by side, and both lists are identical.
+
+**Two line numbers in the record above are stale at `c0b3873`, through no fault of this remedy, and
+are deliberately left as written** (annotate, never rewrite — and never retro-edit a merged record's
+own capture):
+
+- the Gap table's `docs/security-posture.md` `:145 ### 5. Gateway` is now `:151`;
+- §"What exists" item 1's `:122` for the "Not done in this session" sentence in
+  `docs/evidence/phase-16/README.md` is now `:136`.
+
+Both were captured at `30f931e`, which the record states, and both were re-resolved for this remedy
+rather than trusted.
+
+**What is now recorded, stated so it is not over-read.** The threat model carries a pointer to two
+sign-offs that already existed, plus two dated corrections that post-date them. It is **not** a fresh
+security review, and it says so in its own scope paragraph. Deploy certification is untouched and
+lives solely in `docs/deploy-posture.md`, where it is conditional rather than clear.
