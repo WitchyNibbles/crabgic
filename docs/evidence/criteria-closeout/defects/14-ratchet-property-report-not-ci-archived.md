@@ -141,3 +141,31 @@ Cost is one green run of an already-existing 7-second suite; the job it joins cu
 **Needs live engine:** no. **Needs owner input:** no.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06
+
+Steps 1, 2 and 4 are done. `gates-conformance.yml` gained a
+`coverage-ratchet monotonicity property report` step and an `actions/upload-artifact@v4` with
+`if-no-files-found: error`, so "CI-archived" is now literally true. Artifacts from run
+[31087616366](https://github.com/WitchyNibbles/crabgic/actions/runs/31087616366):
+`ratchet-property-report-ubuntu-latest` (964 bytes) and
+`ratchet-property-report-ubuntu-24.04-arm` (966 bytes).
+
+**One deviation from the remedy, forced by the matrix:** the artifact name is per-arch. This job runs
+`[ubuntu-latest, ubuntu-24.04-arm]`, and two legs uploading to one artifact name would fail the
+second upload — the remedy's single `ratchet-property-report` name would have made the job red.
+
+**Step 3 was attempted and deliberately abandoned, which is the part worth recording.** The remedy
+suggested `fc.configureGlobal({ verbose: 1 })` "so the archived report records case counts and seeds
+rather than only a pass line; that is what makes the artifact worth more than the log." A first draft
+set a `CRABGIC_FASTCHECK_VERBOSE` env var in the workflow and carried a comment saying exactly that.
+
+Two things were wrong with it. **Nothing reads that variable** — it was an inert control with a
+comment vouching for it, the precise shape this repository keeps finding. And fast-check's verbose
+mode does not print per-case counts on **success**; it enriches the counterexample on **failure**.
+So the claim would have been false even had the variable been wired.
+
+The variable was removed and the workflow now states plainly what the artifact does contain: a
+per-property pass line with duration, a header pinning run/commit/runner, and — on failure —
+fast-check's counterexample and seed. Anyone who wants case counts in the archive has to change the
+test file, and should record that they measured what fast-check actually emits before claiming it.

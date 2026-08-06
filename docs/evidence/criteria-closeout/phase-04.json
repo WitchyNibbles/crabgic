@@ -12,32 +12,30 @@
       "index": 1,
       "text": "1k randomized kill-iteration run (`runKillHarness` over the append/chain/snapshot path): zero undetected corruption; recovery always converges to the last valid chained entry — evidence: `journal-crash-suite` CI job artifact.",
       "textSha256": "d142fd31772ab7ba045fab5d8fa4916558c57fc13d117e2886d32d9f104ebb22",
-      "classification": "UNMET",
-      "ticked": false,
+      "classification": "EVIDENCE-REPRODUCED",
+      "ticked": true,
       "citations": [
         {
-          "kind": "test",
-          "ref": "packages/journal/src/crash-fixtures/crash-suite.test.ts:112",
-          "quotedAssertion": "packages/journal/src/crash-fixtures/crash-suite.test.ts:108-113 — 'expect(failed, `crash-suite failures: …`).toHaveLength(0); expect(report.allConverged).toBe(true); expect(report.results).toHaveLength(ITERATION_COUNT);'. PARTIAL: the substance is proven, the named channel is not. `:29` reads `CRABGIC_CRASH_SUITE_ITERATIONS` and DEFAULTS TO 25 — nothing in `ci.yml` sets it, so every CI execution runs 25 iterations, 2.5% of the criterion's named scale."
+          "kind": "ci-run",
+          "ref": "journal-crash-suite / journal-crash-suite, job 92570706911, step \"1000 randomized real-SIGKILL iterations over the append/chain/snapshot path\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31087614384",
+          "commit": "fbe83c4",
+          "quotedAssertion": "job log line 235 — '# iterations: 1000', so the 1k scale the criterion names is the scale that ran, not a default. Line 242 — ' ✓  @crabgic/journal  src/crash-fixtures/crash-suite.test.ts > crash suite — randomized real safe-path kill iterations (roadmap/04 exit criterion 1) > recovery always converges with zero undetected corruption across randomized real kill iterations over the append/snapshot path 189976ms' (one-space rule: timestamp and one separator space stripped). Lines 245-246 — ' Test Files  1 passed (1)' / '      Tests  2 passed (2)'. The second test in that file is the harness self-check, which deliberately asserts the scaffolding DETECTS a seeded corruption class — the anti-vacuity control that stops 'zero undetected corruption' being satisfiable by a harness that detects nothing."
+        },
+        {
+          "kind": "ci-run",
+          "ref": "journal-crash-suite / journal-crash-suite, job 92570706911, artifact \"journal-crash-suite-report\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/31087614384",
+          "commit": "fbe83c4",
+          "quotedAssertion": "The artifact the criterion names as its evidence — 'evidence: `journal-crash-suite` CI job artifact' — exists and is non-empty: `gh api repos/WitchyNibbles/crabgic/actions/runs/31087614384/artifacts` reports 'journal-crash-suite-report  1038 bytes  expired=false'. Uploaded with `if-no-files-found: error`, so an empty upload fails the job rather than satisfying the criterion."
         },
         {
           "kind": "test",
-          "ref": "packages/journal/src/crash-fixtures/crash-suite.test.ts:135",
-          "quotedAssertion": "packages/journal/src/crash-fixtures/crash-suite.test.ts:135-136 — 'expect(report.allConverged).toBe(false); expect(report.results.some((r) => r.verdict === \"fail\")).toBe(true);' against a seeded truncate+rewrite append variant (`CRABGIC_CRASH_FIXTURE_BROKEN=1`, :128). The anti-vacuity control: without it, a harness that converged on everything would satisfy the positive case."
-        },
-        {
-          "kind": "artifact",
-          "ref": "docs/evidence/phase-04/closeout-c1-crash-suite-1k.txt",
-          "quotedAssertion": "'✓ … recovery always converges with zero undetected corruption across randomized real kill iterations over the append/snapshot path 256305ms' / 'Tests 2 passed (2)' — this pass's own 1000-iteration re-run at af46e00 with CRABGIC_CRASH_SUITE_ITERATIONS=1000, exit status 0, 258.35s. LOCAL, not the CI artifact the criterion names."
-        },
-        {
-          "kind": "artifact",
-          "ref": "docs/evidence/phase-04/exit-criteria-crash-suite.txt",
-          "quotedAssertion": "the 2026-07-18 build-time capture, 1000/1000 iterations. Also local."
+          "ref": ".github/workflows/journal-crash-suite.yml:46-48",
+          "quotedAssertion": ".github/workflows/journal-crash-suite.yml:47 — '    name: journal-crash-suite' — the job carries the exact name the criterion names. Before this change no such job existed: `git log --all -S\"journal-crash-suite\" -- .github/` was empty, while the string had been in the roadmap since the repository's first commit."
         }
       ],
-      "defectRef": "docs/evidence/criteria-closeout/defects/04-journal-crash-suite-ci-job-absent.md",
-      "notes": "The named channel — a `journal-crash-suite` CI job artifact — has never existed. `git log --all -S\"journal-crash-suite\" -- .github/` is empty; the string appears in exactly two commits, `7bb4065` (the repository's FIRST commit, which introduced the roadmap file, at a point where `git ls-tree -r 7bb4065 --name-only | grep '^\\.github'` returns nothing) and `3602ae6` (which copied the criterion verbatim into the test's doc comment). `git log -L84,84:roadmap/04-journal-idempotency-leases.md` shows one commit: the wording has never been edited. So this is an ORIGINAL OVERCLAIM in the plan, not drift — there is no earlier state in which the criterion was satisfiable. A nonexistent job name is not a synonym for the `test` job that runs the same suite at 25 iterations, so the box stays unticked. Full search trail and the smallest honest remedy (one new workflow + one dispatch, effort S) are in the defect record."
+      "notes": "Closed by building the channel, not by re-reading the tests. The SUBSTANCE was always proven — packages/journal/src/crash-fixtures/crash-suite.test.ts drives the real kill harness against real SIGKILLs. What did not exist was the named CI job and its artifact, which the criterion states as its evidence. That was an original overclaim in the plan rather than drift: the job name entered this roadmap file at the repository's FIRST commit, before .github/ existed at all. The workflow is deliberately off the every-push path — 1000 iterations spawn and kill a real child process each, and took 190s on the cited runner — so it triggers on changes under packages/journal/**, nightly, and on dispatch, while the default npm test fan-out keeps running the same suite at its 25-iteration default. Single runner rather than the arch matrix, stated in the workflow itself: the durability property under test is not architecture-specific."
     },
     {
       "index": 2,

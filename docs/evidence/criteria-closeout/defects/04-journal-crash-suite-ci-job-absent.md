@@ -123,3 +123,40 @@ at `af46e00`. A nightly/dispatch trigger keeps it off the every-push path either
   "recovery always converges" where the roadmap says "recovery always converges to the last valid
   chained entry". That README is a historical build record and was deliberately left unedited by
   this pass.
+
+## Remedied 2026-08-06
+
+All four proposed remedy steps are done. `.github/workflows/journal-crash-suite.yml` is the job the
+criterion names, with `if-no-files-found: error` on the upload so "CI job artifact" cannot be
+satisfied by an empty one.
+
+First green run: [31087614384](https://github.com/WitchyNibbles/crabgic/actions/runs/31087614384),
+job 92570706911. Its log line 235 reads `# iterations: 1000` — the 1k scale is what ran, not a
+default — and line 242 shows the suite passing in `189976ms`. The artifact
+`journal-crash-suite-report` is present at 1038 bytes.
+
+The runtime this record asked to be treated as the gating consideration is now measured **on the
+runner** rather than locally: **190s**, against the 258s local capture. Comfortably inside the
+45-minute timeout, and the nightly/dispatch/journal-paths trigger keeps it off the every-push path
+either way.
+
+Two deviations from the remedy as written, both deliberate and both stated in the workflow itself
+rather than left to look like oversights:
+
+1. **Trigger set.** The remedy proposed `workflow_dispatch` + `schedule` + `push` on
+   `packages/journal/**`. It is `pull_request` on those paths rather than `push`, because a
+   `push`-on-branches trigger would not have produced a run on the PR that introduced the workflow —
+   there would have been no green run to cite until after merge, which is the wrong order for an
+   evidence-based close.
+2. **Single runner**, not the arch matrix the main CI job uses. The criterion names one job and one
+   artifact, and durability of the append/chain/snapshot path under kill is not
+   architecture-specific.
+
+The related item this record flagged is also done: `crash-suite.test.ts`'s doc comment carried a
+second unversioned copy of the criterion plus a now-false instruction to capture the 1k run by hand
+into a file under `docs/evidence/`. It now points at the workflow, and says explicitly that the
+quoted criterion is a second copy meant to agree with the roadmap.
+
+Not done: the record's other related item — `docs/evidence/phase-04/README.md`'s exit-criteria row 1
+quoting the criterion with a truncated tail. That file is a historical build record and is left
+unedited, as this record itself noted.
