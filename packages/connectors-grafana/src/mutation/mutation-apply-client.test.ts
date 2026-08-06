@@ -452,3 +452,129 @@ describe("reconciliation — exit criterion: ambiguous-POST-timeout resolves via
     expect(calls.filter((c) => c.method === "POST")).toHaveLength(1);
   });
 });
+
+/**
+ * DEFECT 16 — the CONNECTOR-SIDE REGISTRATION of the folder-attribution
+ * hook, driven end to end through the real `executeMutationPlan`.
+ *
+ * This block exists because of a measured gap in this batch's own first
+ * draft: deleting `folderAttribution:` from
+ * `createGrafanaMutationApplyClient` left every suite in this package AND
+ * in `@crabgic/gateway` green (probe J, 776/776). The mapping in
+ * `./folder-attribution.ts` was unit-tested and the pipeline's admission
+ * rule was tested, and nothing at all pinned that this connector INSTALLS
+ * the one into the other.
+ *
+ * `buildHandlers` above deliberately does NOT forward the hook — its
+ * subject is the apply path — so these cases build their own handler set
+ * the way production's bridge does
+ * (`packages/gateway/src/mcp/native-tools/mutation-apply-tool.ts`), and
+ * assert both directions: refused out of the allowlist, applied inside it.
+ */
+describe("createGrafanaMutationApplyClient — folderAllowlist attribution is registered (defect 16)", () => {
+  function buildFolderAwareHandlers(
+    applyClient: ReturnType<typeof createGrafanaMutationApplyClient>,
+  ): MutationPipelineHandlers {
+    const folderAttribution = applyClient.folderAttribution;
+    // If the connector stops registering the hook this is `undefined`, the
+    // pipeline sees an unattributable plan, and the "applied" case below
+    // flips to a refusal — which is the direction that catches a silent
+    // removal.
+    return {
+      ...buildHandlers(applyClient),
+      ...(folderAttribution !== undefined
+        ? { folderAttribution: (plan) => folderAttribution(plan) }
+        : {}),
+    };
+  }
+
+  function buildDashboardUpdatePlan(payloadStore: GrafanaPlanPayloadStore, folderUid: string) {
+    const planId = "00000000-0000-4000-8000-0000000000f1";
+    const input = { title: "Ops", tags: [], folderUid };
+    payloadStore.set(planId, { kind: "dashboard", action: "update", input });
+    return buildGrafanaMutationPlan({
+      id: planId,
+      externalConnectionId: "11111111-1111-4111-8111-111111111111",
+      tenant: "tenant-1",
+      kind: "dashboard",
+      action: "update",
+      canonicalId: "dash-folder-1",
+      input,
+      idempotencyKey: `op-dashboard-folder-${folderUid}`,
+      expectedRemoteRevision: "3",
+      envelopeId: "22222222-2222-4222-8222-222222222222",
+      redactedDiff: "dashboard: title -> Ops",
+    });
+  }
+
+  it("exposes folderAttribution, and it answers with the plan payload's folderUid", () => {
+    const payloadStore = new GrafanaPlanPayloadStore();
+    const applyClient = createGrafanaMutationApplyClient({
+      baseUrl: FAKE_BASE_URL,
+      routeTable: FULL_ROUTE_TABLE,
+      payloadStore,
+      snapshotStore: new GrafanaRollbackSnapshotStore(),
+      get: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
+    });
+    const plan = buildDashboardUpdatePlan(payloadStore, "team-a");
+    expect(applyClient.folderAttribution).toBeDefined();
+    expect(applyClient.folderAttribution?.(plan)).toEqual({
+      scope: "folders",
+      folders: ["team-a"],
+    });
+  });
+
+  it("refuses a dashboard update whose folder is outside the connection's folderAllowlist — zero network calls", async () => {
+    const payloadStore = new GrafanaPlanPayloadStore();
+    const { deps, calls, get } = buildPipelineDeps([]);
+    const applyClient = createGrafanaMutationApplyClient({
+      baseUrl: FAKE_BASE_URL,
+      routeTable: FULL_ROUTE_TABLE,
+      payloadStore,
+      snapshotStore: new GrafanaRollbackSnapshotStore(),
+      get,
+    });
+    const plan = buildDashboardUpdatePlan(payloadStore, "team-z");
+
+    const outcome = await executeMutationPlan(plan, buildFolderAwareHandlers(applyClient), {
+      ...deps,
+      folderAllowlist: ["team-a"],
+    });
+
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("CONTROL: the same update inside an allowlisted folder is applied — this is what a silent hook removal breaks", async () => {
+    const payloadStore = new GrafanaPlanPayloadStore();
+    const { deps, calls, get } = buildPipelineDeps([
+      { status: 200, bodyText: JSON.stringify({ version: 4 }) }, // POST (classic dashboard update)
+      {
+        status: 200,
+        bodyText: JSON.stringify({
+          dashboard: { title: "Ops", tags: [], folderUid: "team-a" },
+          meta: { folderUid: "team-a", version: 4 },
+        }),
+        headers: { etag: '"4"' },
+      }, // verify GET
+    ]);
+    const applyClient = createGrafanaMutationApplyClient({
+      baseUrl: FAKE_BASE_URL,
+      routeTable: FULL_ROUTE_TABLE,
+      payloadStore,
+      snapshotStore: new GrafanaRollbackSnapshotStore(),
+      get,
+    });
+    const plan = buildDashboardUpdatePlan(payloadStore, "team-a");
+
+    const outcome = await executeMutationPlan(plan, buildFolderAwareHandlers(applyClient), {
+      ...deps,
+      folderAllowlist: ["team-a"],
+    });
+
+    expect(outcome.status).toBe("recorded");
+    // Grafana's classic dashboard update is a POST to /api/dashboards/db.
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(1);
+  });
+});

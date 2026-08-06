@@ -74,14 +74,18 @@ const BULK_TARGET_PREFIX = "bulk:";
  * target passed through unchanged and the gap was pinned as a residual
  * in `./canonical-target.test.ts`. It no longer is.
  *
- * THE SET IS SORTED AND DEDUPED, and that is not cosmetic:
- * `issue.bulkUpdate(["PROJ-2","PROJ-1"])` mints a DIFFERENT
- * `canonicalTarget` from `["PROJ-1","PROJ-2"]`, so without a canonical
- * key ORDER two bulk plans over the same issues would still fail to
- * serialize against each other. (16's `runExclusiveMulti` canonicalizes
- * again on its own side; the duplication is deliberate — this module's
- * contract is testable here, in the package that owns the parse, rather
- * than only through the gateway.)
+ * THE SET IS SORTED AND DEDUPED — and the honest statement of why is
+ * narrower than it first looks, so it is written out rather than
+ * asserted. `issue.bulkUpdate(["PROJ-2","PROJ-1"])` mints a DIFFERENT
+ * `canonicalTarget` from `["PROJ-1","PROJ-2"]`, so a canonical key order
+ * is what makes the two answers equal. But 16's `runExclusiveMulti`
+ * canonicalizes (dedupes + sorts) the key set AGAIN on its own side, so
+ * removing the `.sort()` here does NOT break serialization end to end:
+ * measured, it reddens this module's own unit cases and leaves every
+ * connector integration case green. This canonicalization is therefore
+ * DEFENCE IN DEPTH and a testable local contract, not the load-bearing
+ * mechanism — do not cite it as the thing that closes the
+ * order-permutation race. The gateway's canonicalization is.
  *
  * A `bulk:` target naming no issue at all (`bulk:`, `bulk:,,`) is
  * returned UNCHANGED rather than as an empty set: a write is never left

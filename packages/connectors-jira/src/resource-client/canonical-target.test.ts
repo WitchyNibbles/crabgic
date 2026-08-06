@@ -93,10 +93,14 @@ describe("writeSerializationTarget — every other target passes through unchang
  * "was the residual" are the exact inversions of what this file
  * previously asserted.
  *
- * Sorting is not cosmetic: `issue.bulkUpdate(["PROJ-2","PROJ-1"])` and
- * `issue.bulkUpdate(["PROJ-1","PROJ-2"])` mint DIFFERENT canonical
- * targets, so without a canonical key ORDER two bulk plans over the same
- * issues would still fail to serialize against each other.
+ * ⚠️ The sorting/dedup cases below pin a LOCAL contract, not the
+ * end-to-end guarantee, and the difference was measured rather than
+ * assumed: deleting `.sort()` from the production mapping reddens the
+ * order-permutation case HERE and leaves every connector integration case
+ * in `../testkit/write-order.integration.test.ts` green, because 16's
+ * `WriteSerializer.runExclusiveMulti` canonicalizes the key set again on
+ * its own side. These are defence-in-depth pins. The integration cases
+ * are the bearer for the criterion.
  */
 describe("writeSerializationTarget — a bulk target maps to its member issues' keys", () => {
   it("maps bulk:PROJ-1,PROJ-2 onto both member issue keys", () => {
