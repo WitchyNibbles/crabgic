@@ -162,17 +162,50 @@ export function sweepProse(repoRoot) {
 }
 
 /**
- * `git` resolves `GIT_DIR`/`GIT_WORK_TREE` and friends BEFORE it consults `cwd`,
- * so a `GIT_DIR` inherited from a hook (this repository's `pre-push` exports one)
- * re-aims these commands at a different repository and `cwd` becomes decoration.
- * This is not cosmetic here: `changedRecords` is what decides which records
+ * Ambient git variables that decide WHICH repository git operates on. Git
+ * consults them BEFORE `cwd`, so with any inherited, `{ cwd: repoRoot }` becomes
+ * decoration and these commands answer about a different repository.
+ *
+ * That is not cosmetic here: `changedRecords` is what decides which records
  * `--fix` is ALLOWED TO WRITE, so a mis-aimed `git diff` is a write-authority
- * bug. Dropping every `GIT_*` name is a strict superset of the fifteen
- * `git rev-parse --local-env-vars` reports and stays correct if git adds more.
+ * bug, not a reporting one. And the inheritance is guaranteed rather than
+ * hypothetical — `git` exports `GIT_DIR` into every hook it runs, and this
+ * repository's `pre-push` hook runs the suite.
+ *
+ * Kept as a literal list, mirroring `@crabgic/git-engine`'s
+ * `GIT_LOCATION_ENV_VARS` and `packages/plugin/statusline/crabgic-statusline.mjs`
+ * for the same reason both do: this file must stay dependency-free, because
+ * `meta-checks` runs `npm ci` with no build and cannot import a TypeScript
+ * package. The `GIT_*` prefix sweep below is a strict superset of it and stays
+ * correct when a future git release invents another name.
  */
+const GIT_LOCATION_ENV_VARS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CONFIG",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_COUNT",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_GRAFT_FILE",
+  "GIT_INDEX_FILE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_PREFIX",
+  "GIT_SHALLOW_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_NAMESPACE",
+  "GIT_QUARANTINE_PATH",
+  "GIT_CEILING_DIRECTORIES",
+  "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+  "GIT_TEMPLATE_DIR",
+];
+
 function gitEnv() {
+  const named = new Set(GIT_LOCATION_ENV_VARS);
   return Object.fromEntries(
-    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
+    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_") && !named.has(name)),
   );
 }
 
