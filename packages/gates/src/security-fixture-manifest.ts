@@ -185,8 +185,17 @@ const GATEWAY_REDACTION_ID = "gateway-redaction";
  *    handler, same `blocking: true`.
  *
  * Test T2 (which pinned the ABSENCE of a Jira entry) is superseded by T2' in
- * `./security-fixture-manifest.test.ts`, deliberately and with its original
- * text preserved — which is what the pin was for.
+ * `./security-fixture-manifest.test.ts`. Stated precisely, because
+ * "annotate, never rewrite" is a claim about PROSE and conflating it with
+ * code would be an overclaim: T2's original comment AND its original title
+ * are quoted verbatim in that file, and the ruling above is annotated rather
+ * than edited — but T2's ASSERTIONS and its TITLE necessarily changed, since
+ * the old ones assert the negation of the current invariant and cannot be
+ * kept green. (The title was replaced for a second reason: a ✓ printed beside
+ * "exactly ONE tenant-boundary entry exists" in every CI job log is a
+ * citation hazard in a repository that proves claims by quoting job-log
+ * lines.) The pin still did its job — re-adding a Jira entry was impossible
+ * without a deliberate edit here and there.
  */
 export const REQUIRED_SECURITY_FIXTURE_IDS = [
   JIRA_FORGED_ADMIN_DELETE_ID,

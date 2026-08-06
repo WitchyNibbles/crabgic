@@ -319,9 +319,14 @@ async function runArm(
     fieldMetadataIndex: buildFieldMetadataIndex([]),
     payloadRegistry,
     // Omitted entirely on the control arm, so the tenant is DERIVED exactly as
-    // production derives it (`jira-resource-client.ts:85-89`: `tenantAllowlist`
-    // first). Supplied on the breach arm, which is the documented shape of a
-    // worker-declared, unvalidated tenant string.
+    // production derives it: the whole `const tenant = …;` statement is
+    // `../resource-client/jira-resource-client.ts:85-89`, and the clause that
+    // makes the control arm in-allowlist is the distinctive
+    // `ctx.connection.tenantAllowlist?.[0] ??` at that file's `:87` — the same
+    // line `packages/gates/src/security-fixture-manifest.ts` anchors on. (The
+    // span starts at `:85`, which is `const tenant =`; the comment block above
+    // the statement ends at `:84`.) Supplied on the breach arm, which is the
+    // documented shape of a worker-declared, unvalidated tenant string.
     ...(declaredTenant !== undefined ? { tenant: declaredTenant } : {}),
   });
   const applyClient: MutationApplyClient = createJiraMutationApplyClient({

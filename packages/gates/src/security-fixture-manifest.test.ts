@@ -158,12 +158,33 @@ describe("tenant-boundary gate is derived from phase 20's real breach scenario",
     expect(verdict.detail).toMatch(/out-of-allowlist org/);
   });
 
-  it("T2: exactly ONE tenant-boundary entry exists, and it is phase 20's Grafana one (deliberate residual)", () => {
-    // ── SUPERSEDED 2026-08-06 (Batch H). The assertions below are left in
-    // place as the historical record of what this test pinned; the live
-    // assertions are in T2' immediately after. Read both: the ORIGINAL text
-    // (never rewritten) is the reason the flip is a deliberate edit rather
-    // than a drift, which is exactly what it was written to force.
+  it("T2 (superseded 2026-08-06 — see T2′): the original Grafana pin is still present", () => {
+    // ── SUPERSEDED 2026-08-06 (Batch H).
+    //
+    // ⚠️ PRECISION, because "annotate, never rewrite" is a claim about the
+    // PROSE and not about the code, and conflating the two would itself be an
+    // overclaim. Exactly what was and was not preserved:
+    //
+    //  - PRESERVED VERBATIM: this test's original comment (quoted below,
+    //    byte-for-byte) and the ruling comment in
+    //    `./security-fixture-manifest.ts`, which is annotated with dated
+    //    addenda and never edited.
+    //  - CHANGED, necessarily: this test's ASSERTIONS and its TITLE. The old
+    //    assertions (`toHaveLength(1)`, `REQUIRED_SECURITY_FIXTURE_IDS` NOT
+    //    containing "jira-tenant-boundary") assert the negation of the current
+    //    invariant, so they cannot be kept green; the old title stated that
+    //    negation in a sentence, and a ✓ printed beside it in every CI job log
+    //    would be a citation hazard in a repository that proves claims by
+    //    quoting job-log lines. Both were replaced.
+    //
+    // What survives here is the WEAKER, still-true half of the original pin —
+    // the Grafana entry is present, from phase 20 — so this row keeps naming
+    // the residual's Grafana side. The live tenant-boundary invariant is T2′
+    // immediately after; read both.
+    //
+    // ORIGINAL TITLE, verbatim:
+    //   "T2: exactly ONE tenant-boundary entry exists, and it is phase 20's
+    //    Grafana one (deliberate residual)"
     //
     // ORIGINAL COMMENT, verbatim:
     //   Residual pin, not an accident: phase 18 shipped no tenant-boundary fixture
@@ -186,6 +207,9 @@ describe("tenant-boundary gate is derived from phase 20's real breach scenario",
     //    `docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt`
     //    reddens this file and the connector's own suite when the
     //    `:511` consultation is deleted and the workspace rebuilt.
+    //
+    // The pin did its job: it made re-adding a Jira entry impossible without
+    // this block, which is precisely "a deliberate edit rather than a drift".
     //
     // What did NOT change, so nobody over-reads the flip: the enforcement is
     // still GATEWAY-owned and provider-agnostic. What phase 18 now owns is the
