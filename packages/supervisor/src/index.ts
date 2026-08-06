@@ -98,6 +98,7 @@ export * from "./intake/performance-contract-builder.js";
 export * from "./intake/change-set-transition.js";
 export * from "./intake/readiness-gate.js";
 export * from "./intake/stop-conditions.js";
+export * from "./intake/material-amendment-halt.js";
 export * from "./intake/project-inspect.js";
 export * from "./intake/amendment.js";
 export * from "./intake/intake-pipeline.js";
