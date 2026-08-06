@@ -316,6 +316,11 @@ export function resolveRecord(recordName, record, load, resolvePath) {
       const referenceDirectory = path.posix.dirname(span.relativePath);
       const entry = {
         key: citationKey(recordName, criterion.index, citation.ref, ordinal),
+        // Which of this criterion's same-`ref` citations this is. Two citations
+        // may legitimately share a ref with different quoted assertions, and
+        // matching them back by ref alone would give both the same edit hash —
+        // so an edit to the second would look like no edit at all.
+        ordinal,
         record: recordName,
         criterion: criterion.index,
         ticked: criterion.ticked,

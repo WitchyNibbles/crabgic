@@ -96,8 +96,9 @@ export function resolveCorpus(repoRoot) {
     for (const entry of resolveRecord(name, record, load, resolvePath)) {
       const citation = record.criteria
         .find((criterion) => criterion.index === entry.criterion)
-        .citations.filter((each) => RESOLVABLE_KINDS.has(each.kind))
-        .find((each) => each.ref === entry.ref);
+        .citations.filter((each) => RESOLVABLE_KINDS.has(each.kind) && each.ref === entry.ref)[
+        entry.ordinal
+      ];
       entry.quotedAssertionHash = shortHash(citation?.quotedAssertion ?? "");
       entries.push(entry);
     }
@@ -320,6 +321,13 @@ function runCheck(repoRoot) {
     );
     return 1;
   }
+  const census = censusOf(entries);
+  const proseRows = sweepProse(repoRoot);
+  console.log(
+    `check-citation-content: ${String(census.citations)} citation(s), ${String(census.fragments)} quoted fragment(s) ` +
+      `(${String(census.anchored)} anchored, ${String(census.seededStale)} known-stale, ${String(census.skipped)} not file quotes); ` +
+      `${String(proseRows.length)} prose reference(s), ${String(proseRows.filter((row) => row.tier === "unresolved").length)} bare-basename (unchecked).`,
+  );
   const divergences = diffAgainstBaseline(entries, baseline);
   const byClass = new Map();
   for (const divergence of divergences) {
@@ -336,7 +344,6 @@ function runCheck(repoRoot) {
     problems.push(...bucket);
   }
 
-  const proseRows = sweepProse(repoRoot);
   const proseFailures = proseRows.filter((row) => row.tier === "past-eof");
   if (proseFailures.length > 0) {
     console.error(`\nPROSE REFERENCES THAT DO NOT RESOLVE — ${String(proseFailures.length)}`);
@@ -349,13 +356,6 @@ function runCheck(repoRoot) {
     }
   }
 
-  const census = censusOf(entries);
-  const unresolved = proseRows.filter((row) => row.tier === "unresolved").length;
-  console.log(
-    `check-citation-content: ${String(census.citations)} citation(s), ${String(census.fragments)} quoted fragment(s) ` +
-      `(${String(census.anchored)} anchored, ${String(census.seededStale)} known-stale, ${String(census.skipped)} not file quotes); ` +
-      `${String(proseRows.length)} prose reference(s), ${String(unresolved)} bare-basename (unchecked).`,
-  );
   if (problems.length + proseFailures.length === 0) {
     console.log(
       "check-citation-content: PASS — every citation resolves exactly as the baseline pins it.",
