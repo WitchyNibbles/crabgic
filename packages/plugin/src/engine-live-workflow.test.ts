@@ -144,7 +144,15 @@ describe("engine-live.yml provisions the CLI its plugin lane resolves from PATH"
     // after the range moved — and it is the first thing whoever implements
     // the pin reads, so a stale upper bound is a live hazard rather than a
     // cosmetic one. Bound to the constant so it cannot go stale again.
-    const ranges = [...workflow.matchAll(/(\d+\.\d+\.\d+)\s*[–-]\s*(\d+\.\d+\.\d+)/g)];
+    //
+    // Scoped to version pairs sharing the ENGINE range's own `<major>.<minor>`
+    // series, so that mentioning a different range in this header — the SDK's
+    // `0.3.207`–`0.3.218`, say, which is deliberately NOT symmetric with the
+    // CLI's — is not turned into a red by a guard about a different fact.
+    const series = ACCEPTED_ENGINE_VERSION_RANGE.min.split(".").slice(0, 2).join("\\.");
+    const ranges = [
+      ...workflow.matchAll(new RegExp(`(${series}\\.\\d+)\\s*[–-]\\s*(${series}\\.\\d+)`, "g")),
+    ];
     expect(ranges.length).toBeGreaterThan(0);
     for (const [, min, max] of ranges) {
       expect(min).toBe(ACCEPTED_ENGINE_VERSION_RANGE.min);
