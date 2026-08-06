@@ -1,0 +1,346 @@
+================================================================================
+LIVE-LANE PRECONDITIONS — engine-live CLI provisioning + the spawn case's bounds
+Batch K, closeout wave 2026-08-06
+================================================================================
+
+# CAPTURED (UTC): 2026-08-06T13:06:45Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#   1bc0d5159b17715790c74b47f5a0007bd939a802   ("Batch E … (#116)", origin/main)
+# branch: closeout/batch-k, cut from that commit; every command below ran in a
+#   worktree at that base with only this batch's own edits applied.
+# Host: WSL2 Linux 6.6.87.2-microsoft-standard-WSL2, Node v24, npm registry
+#   reachable.
+
+--------------------------------------------------------------------------------
+0. WHAT THIS TRANSCRIPT DOES NOT PROVE — read this first
+--------------------------------------------------------------------------------
+
+UNVERIFIED against a live engine; verification channel = owner dispatch.
+
+NOTHING in this batch was executed against a paying engine. No `@live` test ran,
+`CRABGIC_LIVE` was never set, `engine-live` was never dispatched, and no model
+turn was served. Every measurement below is either a free local invocation (a
+`--help`, a `--version`, a byte scan of an installed binary), a registry
+metadata read, or an offline test run.
+
+Consequently:
+
+  * roadmap/06-claude-engine-adapter.md:198 (clause 2), :207, and
+    roadmap/10-plugin-and-installer.md:222 STAY UNTICKED. Each names a green
+    live run of a suite. This batch removes a reason they would have gone red;
+    it cannot make them green.
+  * The only thing that discharges them is an owner-authorised
+    `workflow_dispatch` of `engine-live` (requiring the `CLAUDE_CODE_OAUTH_TOKEN`
+    repository secret, which this batch did not confirm exists), in a
+    low-utilization window, with the resulting run id cited.
+
+--------------------------------------------------------------------------------
+1. THE DEFECT, RE-MEASURED AT THIS BASE (not inherited from the record)
+--------------------------------------------------------------------------------
+
+$ git show 1bc0d51:.github/workflows/engine-live.yml | grep -c 'claude-code'
+0                                                      (grep exit status 1)
+  -> the workflow installed no Claude Code CLI at all.
+
+$ git show 1bc0d51:packages/plugin/src/live/plugin-load.live.test.ts \
+    | grep -n 'execFileAsync("claude"'
+32:    const { stdout } = await execFileAsync("claude", ["plugin", "validate", resolvePluginRoot()], {
+$ git show 1bc0d51:packages/plugin/src/live/plugin-load.live.test.ts | sed -n '64,66p'
+    const invocation = execFileAsync(
+      "claude",
+      [
+$ git show 1bc0d51:packages/plugin/src/live/plugin-inventory-probe.ts \
+    | grep -n 'execFileAsync("claude"'
+63:    const result = await execFileAsync("claude", args, { timeout: 30_000 });
+  -> three bare `claude` resolutions from PATH. (The second one is split across
+     lines 64-65, which is why the grep above finds it in only one of the two
+     files and the `sed` is shown beside it — a `grep 'execFileAsync("claude"'`
+     alone would have under-counted.)
+
+$ npm view @anthropic-ai/claude-agent-sdk@0.3.218 bin
+                                       (empty output — no `bin` field)
+$ npm view @anthropic-ai/claude-agent-sdk-linux-x64@0.3.218 bin
+                                       (empty output — no `bin` field)
+$ ls node_modules/.bin | grep -ix claude ; echo "exit=$?"
+exit=1
+  -> `npm ci` links no `claude` shim, because neither SDK package declares one.
+
+A stock `ubuntu-latest` runner has no `claude` on PATH either, so every case in
+`packages/plugin/src/live/*` would have ENOENTed — after the engine-claude files
+sharing the job had already authenticated and spent. That is the whole defect
+(`docs/evidence/criteria-closeout/defects/06-engine-live-plugin-cli-unresolvable-on-ci.md`,
+five links; re-measured here rather than quoted).
+
+--------------------------------------------------------------------------------
+2. ENGINE FACTS USED BY THIS BATCH — all free, none served a model turn
+--------------------------------------------------------------------------------
+
+2.1 Which engine each transport resolves, today
+
+$ claude --version                       # host binary on PATH
+2.1.223 (Claude Code)
+$ node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --version
+2.1.218 (Claude Code)
+
+  The accepted range in `docs/engine-baseline.md` (header, and §10's last
+  version bullet) is 2.1.207–2.1.220, mirrored by
+  `packages/engine-claude/src/version-gate.ts`:36 and
+  `TESTED_ENGINE_VERSION = "2.1.218"` at :60. The HOST binary is therefore
+  OUT of range — a drift of three patch versions past the range's upper end
+  since the playbook last recorded it at 2.1.221.
+
+2.2 Why the pin is 2.1.218 and not a dist-tag
+
+$ npm view @anthropic-ai/claude-code dist-tags
+{ stable: '2.1.220', latest: '2.1.223', next: '2.1.223' }
+
+  `@latest` is OUT of the accepted range. `@stable` is inside it today but is a
+  MOVING tag and is not the version the spike suite validated. Pinning
+  `TESTED_ENGINE_VERSION` also collapses the PATH-vs-SDK transport split the
+  defect record expected this fix to introduce: both transports in this job now
+  run 2.1.218.
+
+$ npm view @anthropic-ai/claude-code@2.1.218 version dist.shasum bin
+version = '2.1.218'
+dist.shasum = '018479d04265ca1b03b87060ca459d14419fac1f'
+bin = { claude: 'bin/claude.exe' }
+
+  Two things measured here, both load-bearing:
+    (a) the pinned version still EXISTS in the registry, so the new step can
+        resolve it;
+    (b) its `bin` map is keyed `claude` — exactly the name the three live call
+        sites resolve. `npm install -g` therefore links that name, and the
+        ENOENT is removed. This is the strongest offline evidence available for
+        the fix; it is not a substitute for the dispatch.
+  (`dist.shasum` above is npm's own tarball checksum — a 40-hex string that is
+   NOT a git object. Recorded per the playbook's warning so no later auditor
+   "fixes" it.)
+
+2.3 CLI flag surface at the pinned 2.1.218 (read from the SDK-bundled binary,
+    `--help` only — a free local invocation, same evidence class as
+    `docs/engine-baseline.md` §15)
+
+  --max-budget-usd <amount>   Maximum dollar amount to spend on API
+                              calls (only works with --print)
+  --model <model>             Model for the current session. Provide
+                              an alias for the latest model (e.g.
+                              'fable', 'opus', or 'sonnet') or a
+                              model's full name (e.g. 'claude-fable-5').
+  --allowedTools, --allowed-tools <tools...>
+
+  * `--max-budget-usd` is present and single-arity  -> usable as the spawn
+    case's cost bound.
+  * `--model` is single-arity -> not exposed to §15's variadic hazard; the `=`
+    form is used anyway, for consistency with `--allowedTools=`.
+  * `--max-turns` is ABSENT, exactly as `docs/engine-baseline.md` §10 records
+    for 2.1.210 and 2.1.218. It is not an option here, and would not have
+    bounded the nested subagent loop even if it were.
+
+$ grep -a -o '\["sonnet","opus","haiku","fable","best"[^]]*\]' <bundled 2.1.218 binary>
+["sonnet","opus","haiku","fable","best","sonnet[1m]","opus[1m]","fable[1m]","opusplan"]
+  -> `haiku` is a valid `--model` alias at the pinned version.
+
+2.4 NEW ENGINE FACT — `maxTurns` in an agent's frontmatter (byte-sourced from
+    the pinned 2.1.218 binary; NOT probe-verified, and NOT yet in
+    `docs/engine-baseline.md` — see §6, "Owed")
+
+  Known frontmatter key, listed beside the keys this repo already writes:
+    "keywords","compatibility","tools","disallowedTools","color",
+    "permissionMode","maxTurns","initialPrompt","memory","background",
+    "isolation","observer",…
+
+  Schema, and it is exactly the constraint the new manifest rule enforces:
+    maxTurns:b.number().int().positive().optional()
+
+  Validated for PLUGIN agent files specifically, and dropped when invalid:
+    Plugin agent file ${e} has invalid maxTurns '${$}'. Must be a positive integer.
+  (the warning is followed by the value being omitted from the assembled agent,
+   which silently restores the default below — an invalid bound looks installed
+   and is not.)
+
+  Built-in default for an agent that declares none:
+    tools:["*"],maxTurns:200,model:"inherit"
+
+  And the loop's own terminator, which is what a declared bound buys:
+    yield Ka({type:"max_turns_reached",maxTurns:c,turnCount:Ln},f)
+
+  Together these corroborate `docs/verification-playbook.md` §BOUNDING A
+  SUBAGENT-SPAWNING TEST from the engine side: the subagent loop carries its own
+  budget, defaulting to 200, and no parent-side flag reaches it.
+
+--------------------------------------------------------------------------------
+3. RED -> GREEN (offline; `npx vitest run --project @crabgic/plugin
+                 --coverage.enabled=false`)
+--------------------------------------------------------------------------------
+
+BASELINE at 1bc0d51, from main's own CI job log rather than a local run
+(run 31101429320, job "unit-test+coverage (ubuntu-latest)"; that run's overall
+conclusion is `failure` on two CLI snapshot tests owned by another agent, which
+does not touch these lines):
+
+ ✓  @crabgic/plugin  src/plugin-manifest.test.ts (13 tests) 24ms
+ (quoted under the one-space rule — timestamp and its single separator space
+  stripped, ANSI removed; no `src/engine-live-workflow.test.ts` line exists,
+  the file did not.)
+ 13 plugin test files; the plugin lines' test counts sum to 188.
+
+RED — new assertions written first, production/workflow/manifest edits not yet
+applied:
+
+ Test Files  1 failed | 13 passed (14)
+      Tests  7 failed | 190 passed (197)
+
+ the 7 reds: install-step-exists, pin=TESTED_ENGINE_VERSION, no-dist-tag,
+ command -v <bin>, install-before-test:live, stale-accepted-range-comment,
+ test:live-bails.
+ 2 of the 9 new workflow assertions were GREEN from the start and are labelled
+ controls, not evidence: "keeps the pin inside the accepted range" (a
+ constants-only relation) and "still runs the live suite through its own
+ config".
+
+GREEN — after the workflow step, the `--bail=1`, the `maxTurns` frontmatter,
+the manifest rule and the digest refresh:
+
+ Test Files  14 passed (14)
+      Tests  202 passed (202)
+
+ ✓ |@crabgic/plugin| src/plugin-manifest.test.ts (18 tests) 162ms
+ ✓ |@crabgic/plugin| src/engine-live-workflow.test.ts (9 tests) 27ms
+ (local runs label the project `|name|`; CI's colored form renders as
+  ` @crabgic/plugin ` — the same field, two renderings, not a discrepancy.)
+
+ Per-push delta to confirm against this PR's own CI job log:
+   plugin-manifest.test.ts   13 -> 18 tests
+   engine-live-workflow.test.ts   (new) 9 tests
+   plugin project total      188 -> 202 tests, 13 -> 14 files
+
+Gate: `npm run lint` exit 0; `npx tsc -b` exit 0; `npx prettier --check .` exit 0
+("All matched files use Prettier code style!"); `npm test` (full, with the 80%
+coverage gate) exit 0.
+
+`packages/plugin/src/live/plugin-load.live.test.ts` is inside the package's
+`tsc -b` project (`packages/plugin/dist/live/plugin-load.live.test.js` is
+emitted), so TYPECHECK is a real verification channel for the rewritten spawn
+case even though no runner will execute it without an owner dispatch. It is the
+only one.
+
+--------------------------------------------------------------------------------
+4. REVERSE PROBES — every new assertion watched failing
+--------------------------------------------------------------------------------
+
+Each mutation applied to a file restored afterwards from an explicit backup by
+explicit path (`cp <backup> <path>`), with the test COUNT checked after every
+restore (202 total throughout — no assertion silently vanished).
+
+ A  pin -> `@anthropic-ai/claude-code@latest`
+    2 failed / 200 passed: "pins that install to TESTED_ENGINE_VERSION",
+    "never resolves the CLI through a dist-tag or a range specifier".
+
+ B  delete the whole provisioning step
+    5 failed / 197 passed: the two above plus "installs … in exactly one step",
+    "proves the exact binary name … is on PATH", "installs the CLI BEFORE the
+    step that runs the live suite".
+
+ C  `command -v claude` -> `command -v claude-code`
+    FIRST RUN: 202 PASSED — the assertion did not bite.
+    Cause: it was written `expect(install).toContain("command -v claude")`, and
+    the mutated line CONTAINS that string as a prefix. Same shape as the
+    playbook's "a REFUSED assertion can match both the fix and the bug".
+    Fixed to a whole-line anchored regex; re-run of the identical mutation:
+    1 failed / 201 passed. Recorded rather than quietly corrected, because the
+    green run is the finding.
+
+ D  the REAL `agents/eo-explore.md`: `maxTurns: 30` -> `maxTurns: banana`
+    3 failed / 199 passed: the new frontmatter assertion, the manifest
+    validator's own real-artifact case, and the marketplace digest-freshness
+    case. Confirms the new rule bites on the shipped artifact, not only on a
+    fixture.
+
+ E  drop `--bail=1` from `test:live`
+    covered by the RED baseline above, where that assertion was one of the 7.
+
+ F  add `maxTurns: 40` to `agents/eo-reviewer.md`
+    2 failed / 200 passed: the RESIDUAL PIN ("the other four subagents are
+    still unbounded") plus digest freshness. The residual is an assertion, not
+    a sentence — it announces itself the moment someone changes it.
+
+--------------------------------------------------------------------------------
+5. WHAT CHANGED, AND WHY EACH CHANGE IS THE ONE THE MEASUREMENT ASKED FOR
+--------------------------------------------------------------------------------
+
+ .github/workflows/engine-live.yml
+   * stale header comment "accepted range 2.1.207–2.1.210" -> 2.1.207–2.1.220
+     (it was stale by two re-baselines, and is the first thing whoever pins the
+     CLI reads);
+   * new step, before the live run: `npm install -g
+     @anthropic-ai/claude-code@2.1.218`, then `command -v claude`, then
+     `claude --version`. The `command -v` is the ENOENT check itself and costs
+     seconds, before any engine turn is paid for.
+
+ package.json  `test:live` gains `--bail=1`
+   Measured in the defect record: the plugin file ran FIRST of the 17 and all
+   17 still ran ("Test Files 17 failed (17)") — vitest does not order files by
+   which `include` pattern matched them, so without `--bail` a first-file
+   failure still buys the whole suite's spend.
+
+ packages/plugin/src/live/claude-cli.ts (new)
+   One place naming the binary and the spawn case's three bounds, so the
+   workflow step and the probes cannot drift apart again silently.
+
+ packages/plugin/src/live/plugin-load.live.test.ts — the three filed defects
+   * 120_000 -> 240_000 ms. The case went RED on its own 120064ms timeout in a
+     run that needed ~185s while the SUBJECT HELD. 240s clears the measured
+     need and stays under `vitest.live.config.ts`'s 300_000 testTimeout, which
+     is the property that matters: execFile's timeout kills the child, vitest's
+     abandons the promise and leaves the engine spending.
+   * unbounded prompt -> a two-file scratch `cwd` + "must not read or search
+     any other path". The old prompt asked for a file count in THIS MONOREPO,
+     which is how one request became ~51 nested round trips into node_modules.
+   * unpinned model -> `--model=haiku` for the PARENT (the subagent's model was
+     already pinned in its own frontmatter), plus `--max-budget-usd=0.50` as a
+     hard ceiling that bites a runaway and not a healthy run.
+   The result's `num_turns` is deliberately NOT asserted, with the reason at the
+   call site: it counts the top-level loop only.
+
+ packages/plugin/agents/eo-explore.md  `maxTurns: 30`
+   The only bound that reaches a nested subagent loop (§2.4).
+
+ packages/plugin/src/plugin-manifest.ts
+   A declared-but-unparseable `maxTurns` is now a manifest problem. Omission is
+   not — that is a costly default, not a malformed manifest, and a CONTROL case
+   pins the distinction so "reject everything" cannot satisfy the new rule.
+
+ packages/plugin/.claude-plugin/marketplace.json
+   digest 983414f0…3010 -> fe9ae3a5…9e23, recomputed by
+   `computeContentDigest(packages/plugin)` because `agents/eo-explore.md` is a
+   packaged file. `docs/evidence/phase-10/closeout-c6b-marketplace-pin-resolves.txt`
+   quotes the OLD digest; that transcript is pinned to its own HEAD and remains
+   true there — it is not corrected here.
+
+--------------------------------------------------------------------------------
+6. RESIDUALS AND OWED WORK — stated, not softened
+--------------------------------------------------------------------------------
+
+ * UNVERIFIED against a live engine. Everything in §5 is a precondition. The
+   owner action that verifies it: dispatch `engine-live` once, in a
+   low-utilization window, after confirming the `CLAUDE_CODE_OAUTH_TOKEN`
+   repository secret exists. A hot-window dispatch is a cheap red (the canary
+   aborts at utilization >= 0.85); the expensive red was the late-file ENOENT,
+   which this batch removes.
+ * Four of the five manager subagents (eo-reviewer, eo-roaster, eo-architect,
+   eo-planner) still run at the built-in 200-turn default. Deliberate: the
+   overspend was measured for eo-explore only, and a bound that bites mid-review
+   truncates a reviewer's findings. Pinned by an assertion (probe F).
+ * OWED — `docs/engine-baseline.md` carries no section for §2.4's agent
+   frontmatter facts, so `agents/eo-explore.md`'s new `maxTurns` cites this
+   transcript rather than the baseline the ground rule names. This batch's file
+   scope excludes that document; the fact needs landing there as a carry-forward,
+   the way §12's `enabledPlugins` fact was. Until then, treat §2.4 as
+   binary-sourced and not probe-verified — the same evidentiary class the
+   baseline's own §16/§17 declare for themselves.
+ * The `engine-live` job still runs both lanes together, so a plugin-lane
+   failure still costs whatever the engine-claude lane spent before it. `--bail`
+   bounds that; splitting the plugin lane into its own job would remove it, and
+   is not attempted here.
+
+================================================================================
