@@ -9,8 +9,12 @@ import type { Requirement } from "./requirement.js";
  * The problem this closes: an implementer that can edit the criteria it is
  * judged against makes "done" meaningless. Before this, `Requirement` records
  * were not persisted at all, the `AuthorizationEnvelope` content hash covers
- * authority fields only (never criteria), the approval token signs that
- * envelope hash, and `Requirement.id` is derived from `section` + `title` —
+ * authority fields only (never criteria) — amended 2026-08-06, interface-ledger
+ * Gap 22: that hash now also covers the derived provisional performance-budget
+ * hash (`./authorization-envelope.ts`'s `provisionalBudgetHash`), so the token
+ * signs authority fields PLUS that budget binding; still never criteria, which
+ * is what this seal exists for — the approval token signs that envelope hash,
+ * and `Requirement.id` is derived from `section` + `title` —
  * so editing criteria changed no id, no hash, and no signature anywhere.
  *
  * The shape is deliberately the same one roadmap/15 already arrived at for

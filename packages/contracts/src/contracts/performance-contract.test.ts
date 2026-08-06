@@ -43,6 +43,45 @@ describe("PerformanceContractSchema — valid fixtures", () => {
   });
 });
 
+/**
+ * `approvedEnvelopeHash` — interface-ledger Gap 22 (2026-08-06): the digest the
+ * human's approval token signed, recorded on the enforced record so the
+ * hash-link chain is inspectable on the artifact rather than only in flight.
+ */
+describe("EnforcedPerformanceContractSchema — approvedEnvelopeHash (ledger Gap 22)", () => {
+  it("accepts and carries the approved envelope's canonical hash", () => {
+    const parsed = PerformanceContractSchema.parse({
+      ...enforcedContract,
+      approvedEnvelopeHash: "sha256:approved-envelope-aaa",
+    });
+    expect(parsed).toMatchObject({ approvedEnvelopeHash: "sha256:approved-envelope-aaa" });
+  });
+
+  it("rejects an empty-string approvedEnvelopeHash", () => {
+    expect(
+      PerformanceContractSchema.safeParse({ ...enforcedContract, approvedEnvelopeHash: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("DELIBERATE LEGACY PIN: an enforced record WITHOUT the member still parses, and it does NOT default", () => {
+    // Same evolution posture as the envelope member it points at; 15's builder
+    // always populates it, because it refuses to build without a bound
+    // envelope in the first place.
+    const parsed = PerformanceContractSchema.parse(enforcedContract);
+    expect(Object.hasOwn(parsed, "approvedEnvelopeHash")).toBe(false);
+  });
+
+  it("rejects approvedEnvelopeHash on the PROVISIONAL variant (.strict() — only 15's enforced record carries it)", () => {
+    expect(
+      PerformanceContractSchema.safeParse({
+        ...provisionalContract,
+        approvedEnvelopeHash: "sha256:approved-envelope-aaa",
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("PerformanceContractSchema — discriminated-union branch coverage", () => {
   it.each([
     ["provisional", provisionalContract],

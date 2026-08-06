@@ -108,6 +108,53 @@ describe("AuthorizationEnvelopeSchema — maxTurnsPerAttempt (the worker turn bu
   });
 });
 
+/**
+ * `provisionalBudgetHash` — interface-ledger Gap 22 (2026-08-06). The member
+ * that makes the approval token's signature cover the budget set 15 later
+ * enforces. Its OPTIONALITY is a documented decision, not an oversight, so it
+ * is pinned by an assertion here rather than described in prose only.
+ */
+describe("AuthorizationEnvelopeSchema — provisionalBudgetHash (ledger Gap 22)", () => {
+  it("accepts and carries the derived provisional budget hash", () => {
+    const parsed = AuthorizationEnvelopeSchema.parse({
+      ...validEnvelope,
+      provisionalBudgetHash: "sha256:derived-provisional-budget-hash",
+    });
+    expect(parsed.provisionalBudgetHash).toBe("sha256:derived-provisional-budget-hash");
+  });
+
+  it("rejects an empty-string binding — a present-but-blank hash must never read as a binding", () => {
+    expect(
+      AuthorizationEnvelopeSchema.safeParse({ ...validEnvelope, provisionalBudgetHash: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a non-string binding", () => {
+    for (const invalid of [0, null, {}, []]) {
+      expect(
+        AuthorizationEnvelopeSchema.safeParse({ ...validEnvelope, provisionalBudgetHash: invalid })
+          .success,
+        `provisionalBudgetHash ${JSON.stringify(invalid)} must be rejected`,
+      ).toBe(false);
+    }
+  });
+
+  it("DELIBERATE LEGACY PIN: an envelope WITHOUT the member still parses, and the member does NOT default", () => {
+    // Optional for schema evolution only — `CURRENT_SCHEMA_VERSION` is one
+    // shared literal and file-backed registries parse persisted state with
+    // this schema, so a required member would make existing state dirs
+    // unreadable at load (a crash, not a fail-closed refusal). There is
+    // deliberately NO default: `canonicalHash([])` would assert the human
+    // approved an empty budget set they never saw. Absence is not fail-open —
+    // `packages/perf/src/contract/hash-link.ts` refuses an unbound envelope
+    // with `no_envelope_budget_binding` before anything is enforced.
+    const parsed = AuthorizationEnvelopeSchema.parse(validEnvelope);
+    expect(parsed.provisionalBudgetHash).toBeUndefined();
+    expect(Object.hasOwn(parsed, "provisionalBudgetHash")).toBe(false);
+  });
+});
+
 describe("AuthorizationEnvelopeSchema — round-trip", () => {
   it("parse -> JSON.stringify -> JSON.parse -> parse yields a deep-equal output", () => {
     const first = AuthorizationEnvelopeSchema.parse(validEnvelope);
