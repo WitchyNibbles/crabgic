@@ -24,6 +24,7 @@
  * where it cannot rot — executed against worktrees at the exact merge shas, in
  * `docs/evidence/citation-resolver/red-corpus-batchN.txt`.
  */
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -555,6 +556,53 @@ describe("job-log normalization", () => {
 });
 
 describe("--fix", () => {
+  /** A fixture repo that is a git repo, with an `origin/main` to diff against. */
+  function makeGitFixture(files, { commitRecord }) {
+    const { root, write } = makeFixtureRepo(files);
+    const git = (...args) =>
+      execFileSync("git", args, {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+    git("init", "-q", "-b", "main");
+    git("config", "user.email", "fixture@example.invalid");
+    git("config", "user.name", "fixture");
+    git("add", "-A");
+    git("commit", "-q", "-m", "base");
+    git("update-ref", "refs/remotes/origin/main", git("rev-parse", "HEAD").trim());
+    write("docs/evidence/criteria-closeout/phase-99.json", commitRecord);
+    git("add", "-A");
+    git("commit", "-q", "-m", "this branch's own draft");
+    return root;
+  }
+
+  it("rewrites a drifted marker in a record this branch DID modify", () => {
+    const recordPath = "docs/evidence/criteria-closeout/phase-99.json";
+    const root = makeGitFixture(
+      {
+        "src/guard.ts": GUARD_SOURCE,
+        [recordPath]: record([
+          { kind: "test", ref: "src/guard.ts:4", quotedAssertion: "unrelated" },
+        ]),
+      },
+      {
+        commitRecord: record([
+          {
+            kind: "test",
+            ref: "src/guard.ts:4",
+            quotedAssertion: ":1 'const findings = validateAdfSafeSubset(candidate);'",
+          },
+        ]),
+      },
+    );
+    expect(main(["--fix", "--repo", root])).toBe(0);
+    const after = readFileSync(path.join(root, recordPath), "utf8");
+    // The marker's digits, and only those, are re-anchored on the measured line.
+    expect(after).toContain(":4 'const findings = validateAdfSafeSubset(candidate);'");
+    expect(after).not.toContain(":1 'const findings");
+  });
+
   it("refuses to touch records this branch has not modified", () => {
     const { root } = makeFixtureRepo({
       "src/guard.ts": GUARD_SOURCE,

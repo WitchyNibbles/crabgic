@@ -357,6 +357,11 @@ export function resolveRecord(recordName, record, load, resolvePath) {
           }
           entry.fragments.push({
             text: fragment.text,
+            // Carried through so `--fix` can rewrite exactly this marker's
+            // digits and nothing else. Dropping them here made that mode a
+            // no-op that reported success.
+            markerPosition: fragment.markerPosition,
+            markerText: fragment.markerText,
             marker:
               fragment.low === null
                 ? span.low === null
