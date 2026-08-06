@@ -65,3 +65,34 @@ Optionally also give `buildPinnedFixtureSnapshots` a rejection for an empty `ver
 **Effort sizing: S.** One conditional, one unit test, no contract change, no live system. Verification is a single `workflow_dispatch` with no inputs, which must come back green.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-06
+
+`packages/gates/src/drift/cli.ts` now reads both overrides through
+`observedVersionOverride(variable)`, which trims and treats blank as absent — the
+`unset or blank falls back` shape `docs/interface-ledger.md` Gap 16 already pins for `CRABGIC_*`
+record overrides, so this follows the repo's settled convention rather than inventing one.
+
+The failing-first test this record identified as missing is in `packages/gates/src/drift/cli.test.ts`,
+as an `it.each` over `["empty string", ""]` and `["whitespace only", "   "]`. It drives **two**
+consecutive `runDriftCiCli` runs against the same persisted debounce state with
+`debounceThreshold: 2`, because one sample could not have distinguished this defect from the
+debounce merely not having tripped yet — the steady state is what was broken, and the steady state
+is what is now asserted: `redCheck === false` on both runs and an empty proposals file.
+
+Red-then-green, measured: reverting the helper to the bare `process.env[variable]` read fails both
+new cases, 8 pass. Restored, 10 pass. CI run
+[31083396959](https://github.com/WitchyNibbles/crabgic/actions/runs/31083396959) job 92557176556
+line 574 shows `src/drift/cli.test.ts (10 tests)`, against 8 for the same file in the same job at
+`main` `8c9cc56`.
+
+**Not done, and deliberately so:** the optional second half — rejecting an empty `version` in
+`buildPinnedFixtureSnapshots` — is not implemented. The fix is placed at the single point that
+reads the environment, which is where the bad value enters. A rejection one layer down would be
+defence in depth, not a second fix, and it is left as such.
+
+**Verification the workflow itself is not re-run here.** This record proposed "a single
+`workflow_dispatch` with no inputs, which must come back green" as the verification. That dispatch
+is not part of this change: the unit cases reproduce the exact environment shape
+(`JIRA_OBSERVED_VERSION=""`) deterministically, and a dispatch would confirm the same thing more
+slowly. Whoever wants the belt-and-braces confirmation can dispatch `drift-ci` with no inputs.

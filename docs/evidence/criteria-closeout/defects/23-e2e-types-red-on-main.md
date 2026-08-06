@@ -36,3 +36,32 @@ short-circuiting — `&&` between eight independent typecheck projects means the
 other five. A `for` loop collecting failures would report the real state.
 
 Needs no live engine, no Docker and no owner subscription.
+
+## Remedied 2026-08-06
+
+Both halves of the remedy are done, and the second turned out to matter more than the first.
+
+**The 25 errors.** `criteriaSeal` is threaded through every affected call site in
+`e2e/matrix/orchestration` — 25 sites across 9 files, `dispatchAttempt` and `resumeAttempt` alike.
+They take one shared `UNSEALED_CRITERIA_SEAL` constant (`e2e/matrix/orchestration/src/criteriaSeal.ts`)
+rather than 25 copies of a literal, so the reasoning lives in one place: these scenarios build a
+`TaskPacket` directly and never run intake, so there are no persisted `Requirement` records for a
+seal to cover, and `approvalSeal` stays `undefined` because they exercise dispatch, crash recovery
+and resume — never acceptance.
+
+Per the playbook's own ruling that `as never` / `as any` casts are exactly where a requiredness fix
+survives, `grep -rn 'as never\|as any\|as unknown as'` was run over the affected sites: none found,
+and none introduced.
+
+**The short-circuit, which was the bigger finding.** `check:e2e-types` was eight `&&`-chained `tsc`
+invocations, and `e2e/matrix/orchestration` is the fourth. So the four projects **after** it —
+`e2e/matrix/connector`, `e2e/live`, `e2e/release`, `e2e/attestation` — had never been typechecked
+at all for as long as this was red. Nobody knew whether they were clean; they are.
+`scripts/check-e2e-types.mjs` now runs each project independently and reports every failure, with
+the same non-zero exit if any fails. All eight PASS.
+
+That is the part this record's remedy listed as "then consider whether", and it is what turns a
+one-off fix into something that cannot recur silently: with the chain, one red project conceals the
+rest, including in `release-e2e.yml`.
+
+Suite still green after the change: `e2e/matrix/orchestration`, 14 files / 41 tests.
