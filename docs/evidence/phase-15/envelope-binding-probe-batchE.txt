@@ -1,0 +1,768 @@
+================================================================================
+ENVELOPE-BINDING PROBE — roadmap/15 exit criterion 3, conjunct 1
+"Enforced budgets are hash-linked to the approved envelope"
+interface-ledger Gap 22 (awaiting owner ratification)
+================================================================================
+
+# RULING-3 HEADER
+# captured (UTC):                                   2026-08-06T10:56:12Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b3873
+#     c0b3873 = origin/main at the time this branch was cut
+# branch tip at capture (PROVISIONAL — see note):   12eba7b
+#     12eba7b = "docs(ledger): Gap 22 …", the 4th of this batch's commits.
+#     Every command below ran at that exact TREE with `git status --porcelain`
+#     EMPTY, except where a section says otherwise (P4's reverse probe, which
+#     names its own deviation explicitly).
+#
+#     DATED CORRECTION (2026-08-06, same session, annotate-never-rewrite): the
+#     probes were captured against commit 11908d4, which no longer exists.
+#     Three commit SUBJECTS in this batch violated commitlint (two over the
+#     100-char limit, one sentence-case) and were rewritten before push, which
+#     re-parented everything after them. 11908d4 is therefore unreachable and
+#     would resolve for nobody in a fresh clone — exactly the failure mode
+#     RULING-3's upstream-base rule exists to prevent, hit here for a message
+#     rewrite rather than a rebase. (The local pre-push hook does not check
+#     header length or case; `npx commitlint` does, which is why it is run by
+#     hand before pushing.)
+#     The replacement is not a re-label of an old run: the TREE is provably
+#     identical, `git rev-parse <sha>^{tree}` = 0a2ce32 for both, so every
+#     command below ran against byte-for-byte the tree 12eba7b names. Only the
+#     commit object changed. And the anchor that actually matters — UPSTREAM
+#     BASE c0b3873 — was untouched by the rewrite and still resolves.
+# platform: Linux 6.6.87.2-microsoft-standard-WSL2, node 24, vitest 4.1.10
+#
+# WHY THE UPSTREAM BASE IS THE ANCHOR: a branch tip dies on every rebase. The
+# claims below are re-provable from c0b3873 plus this batch's diff; the tip is
+# recorded for provenance only.
+#
+# NOTHING here ran @live, set CRABGIC_LIVE, dispatched engine-live, or used
+# docker. Owner authorization for this wave is free CI only.
+
+--------------------------------------------------------------------------------
+0. WHAT IS BEING PROBED, AND WHY THIS SHAPE
+--------------------------------------------------------------------------------
+
+The criterion is conjunctive. Conjunct 2 ("a tampered post-approval edit fails
+closed") was already borne by checks 1-3 of hash-link.ts and is cited by the
+MERGED phase-15 record. Conjunct 1 was NOT: the journal anchor attests what
+INTAKE COMMITTED, never what a HUMAN APPROVED.
+
+So the probes have to answer two different questions:
+
+  (a) is the NEW bearer load-bearing?          -> P1, P2(a), P3, P4
+  (b) is the OLD bearer still intact, with its
+      reasons unchanged?                       -> P2(b), and the restore runs
+
+(b) matters as much as (a). A "fix" that re-labelled the existing merged
+evidence would silently invalidate citations in a merged record. P2(b) is the
+measurement that settles it, and it is the reason checks 4-5 are ordered last.
+
+--------------------------------------------------------------------------------
+1. REBUILD DISCHARGE — done BOTH ways, because it is cheap
+--------------------------------------------------------------------------------
+
+$ npm run build
+BUILD_EXIT=0
+
+(The playbook's rule: a src-only edit that crosses a package boundary is
+invisible until dist is rebuilt, and under-reports blast radius. A stale-dist
+run measures the old code wearing the new code's label.)
+
+POSITIVE CONSUMER CENSUS of every symbol the probes mutate — the direct
+discharge, which is evidence rather than a precaution:
+
+$ git grep -n "verifyProvisionalBudgetIntegrity\|ApprovedEnvelopeBudgetBinding\|no_envelope_budget_binding\|envelope_hash_mismatch" -- packages e2e scripts | grep -v "/dist/" | cut -d: -f1 | sort | uniq -c
+      1 packages/contracts/src/contracts/authorization-envelope.test.ts
+      1 packages/contracts/src/contracts/authorization-envelope.ts
+     14 packages/perf/src/contract/contract-builder.test.ts
+      8 packages/perf/src/contract/contract-builder.ts
+     12 packages/perf/src/contract/hash-link.ts
+      3 packages/perf/src/errors.ts
+      6 packages/perf/src/gate/performance-gate.e2e.test.ts
+      2 packages/perf/src/gate/performance-gate.ts
+      2 packages/perf/src/index.ts
+      1 packages/supervisor/src/intake/amendment.ts
+
+Every EXECUTING consumer is inside packages/perf; the contracts/supervisor hits
+are doc-comment prose naming the reason, not call sites. So P1 and P2 are
+within-package and cannot be under-reported by a stale dist. P3 crosses a
+package boundary and IS rebuilt, with both numbers recorded.
+
+$ git grep -l "@crabgic/perf" -- packages e2e scripts | grep -v '^packages/perf'
+e2e/attestation/src/performanceContracts.test.ts
+e2e/attestation/src/performanceContracts.ts
+
+Both mention @crabgic/perf only in PROSE — checked, not assumed:
+  performanceContracts.test.ts:199   "// No dependency edge in either module syntax. Prose ABOUT `@crabgic/perf` is"
+  performanceContracts.ts:229        " * A LOCAL sampler rather than `@crabgic/perf`'s `trySampleProcess`: roadmap/15:32"
+Neither imports a perf symbol. (Those files also sit under e2e/, outside the
+default `npm test` fan-out; nothing in this batch touches e2e/.)
+
+Pathspec note: `-- packages` and filter, never `-- 'packages/*/src'`. The latter
+is a wildmatch that does not cross `/` and silently skips nested paths, which
+returns a smaller answer with no error.
+
+--------------------------------------------------------------------------------
+2. BASELINE (unmutated, same sha) — this is what makes the rest legible
+--------------------------------------------------------------------------------
+
+$ npx vitest run packages/perf packages/supervisor packages/contracts --coverage.enabled=false
+ Test Files  128 passed (128)
+      Tests  1166 passed (1166)
+
+Repo-wide, for the record (both at the same tree state as their label says):
+  at UPSTREAM BASE c0b3873, before any of this batch:   636 files / 6484 tests
+  after all four implementation commits:                636 files / 6503 tests
+  delta +19 tests, +0 test files (the one new file,
+  packages/perf/src/test-support/approved-envelope-fixture.ts, is a helper and
+  declares no tests). Breakdown: contracts +8, supervisor +5, perf +6.
+  No packages/cli test moved in either direction — see §8.
+
+THE TWO DOES-NOT-FAIL CONTROLS, named here so a reviewer can see them green
+BEFORE and AFTER every mutation below:
+
+  C1  contract-builder.test.ts
+      "builds a schema-valid enforced contract, carrying measuredValue +
+       hash-linking to a journal-anchored provisional"
+      — asserts the build SUCCEEDS with a correctly-bound envelope, and that
+        enforced.approvedEnvelopeHash === the approved envelope's canonicalHash.
+
+  C2  performance-gate.e2e.test.ts
+      "fires through the registry's fireByTag('performance', ...) and emits a
+       schema-valid EvidenceRecord"
+      — asserts verdict.passed === true through 14's REAL registry and 04's
+        REAL journal.
+
+Without these, "this composition fails every run" would satisfy the fail-closed
+tests just as well. Both are green in the baseline above and in every restore
+run below.
+
+--------------------------------------------------------------------------------
+3. STRING-COLLISION CHECK — the failure assertion cannot match a PASS
+--------------------------------------------------------------------------------
+
+The new failure assertions match /hash-link check failed \(envelope_hash_mismatch\)/
+and /hash-link check failed \(no_envelope_budget_binding\)/. The passing verdict's
+`detail` is JSON.stringify({ outcome, enforcedContractId, decisions }).
+
+Captured VERBATIM from the passing control, via a throwaway probe file
+(packages/perf/src/gate/collision-probe-batchE.test.ts, deleted immediately
+after; it appears in no commit):
+
+PASSING_DETAIL_VERBATIM>>>{"outcome":"pass","enforcedContractId":"daf51fb9-efc6-4e46-bce8-3a13a7964fc1","decisions":["regression 0.49999999999998934% within max(noise 0%, 10%) = 10%"]}<<<
+grep envelope_hash_mismatch count = 0
+grep hash-link check failed count = 0
+
+Zero occurrences of either literal. This is now PINNED rather than measured
+once: performance-gate.e2e.test.ts's passing control asserts
+  .not.toContain("hash-link check failed")
+  .not.toContain("envelope_hash_mismatch")
+  .not.toContain("no_envelope_budget_binding")
+so the day a passing detail starts carrying a reason literal, the control
+reddens instead of the failure regexes quietly becoming satisfiable by a pass.
+
+P2(a) below is the independent confirmation from the other direction: with
+check 5's reason literal changed, the failure assertions redden — so they are
+matching the reason, not merely the word "failed".
+
+--------------------------------------------------------------------------------
+4. RED-FIRST — the defect fixture, written before any production change
+--------------------------------------------------------------------------------
+
+The fixture was written FIRST, at c0b3873 with no source edit, and watched go
+red in BOTH stages the plan predicted.
+
+STAGE 1 — COMPILE-RED (the third argument and the option do not exist):
+
+$ npx tsc -b packages/perf --force
+packages/perf/src/contract/contract-builder.test.ts(15,8): error TS2305: Module '"./hash-link.js"' has no exported member 'ApprovedEnvelopeBudgetBinding'.
+packages/perf/src/contract/contract-builder.test.ts(215,9): error TS2353: Object literal may only specify known properties, and 'approvedEnvelope' does not exist in type 'BuildEnforcedPerformanceContractOptions'.
+packages/perf/src/contract/contract-builder.test.ts(242,7): error TS2554: Expected 2 arguments, but got 3.
+packages/perf/src/contract/contract-builder.test.ts(256,9): error TS2353: Object literal may only specify known properties, and 'approvedEnvelope' does not exist in type 'BuildEnforcedPerformanceContractOptions'.
+TSC_EXIT=2
+
+STAGE 2 — ASSERTION-RED (vitest strips types, so the extra option is ignored at
+runtime and the build SUCCEEDS where it should have refused):
+
+$ npx vitest run packages/perf/src/contract/contract-builder.test.ts --coverage.enabled=false
+ ❯ src/contract/contract-builder.test.ts (8 tests | 1 failed)
+   × DEFECT FIXTURE — an approval envelope signed over budget A + a provisional contract
+     carrying budget B + NO post-approval edit fails closed (reason envelope_hash_mismatch)
+AssertionError: expected undefined to be an instance of BudgetHashLinkMismatchError
+ ❯ src/contract/contract-builder.test.ts:263:20
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+VITEST_EXIT=1
+
+THE IMPORTANT DETAIL, and the reason this fixture is not a strawman: the
+fixture's own anti-strawman assertion PASSED in that red run —
+
+    const boundToItself = await verifyProvisionalBudgetIntegrity(
+      tj.store, provisional, envelopeBinding(provisional.budgetHash));
+    expect(boundToItself.ok).toBe(true);
+
+i.e. the three PRE-EXISTING checks accept this exact contract. Nothing is
+tampered: it is self-consistent, genuinely journal-anchored, and never edited.
+The only thing wrong with it is that no human ever signed that budget set. That
+is the defect, measured rather than described.
+
+--------------------------------------------------------------------------------
+5. P1 — DELETE THE ENFORCEMENT
+--------------------------------------------------------------------------------
+
+MUTATION: checks 4+5 removed from hash-link.ts. A COMPILING deletion (the
+function still returns the ok shape) — a non-compiling mutation would leave the
+suites running on stale dist and measure the old code.
+
+$ npx tsc -b packages/perf
+TSC_EXIT=0                      <- the run is NOT on stale labels
+
+$ npx vitest run packages/perf packages/supervisor packages/contracts --coverage.enabled=false
+ Test Files  2 failed | 126 passed (128)
+      Tests  6 failed | 1160 passed (1166)
+
+THE SIX RED, BY NAME (all six are the new binding tests; zero pre-existing
+tests moved):
+  × DEFECT FIXTURE — an approval envelope signed over budget A + a provisional
+    contract carrying budget B + NO post-approval edit fails closed (reason
+    envelope_hash_mismatch)
+  × FAIL-CLOSED: no approved envelope could be resolved at all throws
+    EnvelopeBudgetBindingMissingError
+  × FAIL-CLOSED: an envelope that RESOLVES but carries no binding (the legacy
+    shape) is refused, never trusted
+  × CONJUNCT-2 STRENGTHENING: tampering the STORED ENVELOPE's binding after
+    approval fails closed (envelope_hash_mismatch)
+  × NEW BINDING (ledger Gap 22) — an envelope signed over budget A beside an
+    intake-committed contract carrying budget B blocks through the registry
+    with reason envelope_hash_mismatch, journaled as evidence
+  × FAIL-CLOSED through the registry: an unresolvable approved envelope blocks
+    with reason no_envelope_budget_binding
+
+Total test count IDENTICAL to baseline (1166), so nothing vanished. Both
+does-not-fail controls (C1, C2) stayed GREEN under the deletion — correct, since
+deleting the new checks cannot break a case that was already passing.
+
+RESTORE:
+$ git checkout HEAD -- packages/perf/src/contract/hash-link.ts
+$ npx tsc -b packages/perf   -> exit 0
+$ npx vitest run packages/perf packages/supervisor packages/contracts --coverage.enabled=false
+ Test Files  128 passed (128)
+      Tests  1166 passed (1166)          <- COUNT compared to baseline, not exit code
+$ git status --porcelain                 -> EMPTY
+$ grep -c envelope_hash_mismatch packages/perf/src/contract/contract-builder.test.ts
+5                                        <- the new test's own text still present
+$ grep -c "DEFECT FIXTURE" packages/perf/src/contract/contract-builder.test.ts
+1
+
+All three restore-hazard countermeasures applied: explicit SOURCE and explicit
+PATH on the checkout, test COUNT rather than exit code, and git status + a grep
+for the new tests' own names.
+
+--------------------------------------------------------------------------------
+6. P2(a) — CHANGE THE TYPED KIND
+--------------------------------------------------------------------------------
+
+`expect(...).toThrow(SomeError)` passes for every kind. The criterion names a
+kind, so the probe is to change the kind.
+
+MUTATION: check 5's reason literal "envelope_hash_mismatch" -> "journal_anchor_mismatch".
+(Deliberately collided with an EXISTING member of the union, which is the
+hostile case: a plain "did it throw" assertion would not notice.)
+
+$ npx vitest run packages/perf packages/supervisor packages/contracts --coverage.enabled=false
+ Test Files  2 failed | 126 passed (128)
+      Tests  3 failed | 1163 passed (1166)
+  × DEFECT FIXTURE — … (reason envelope_hash_mismatch)
+  × CONJUNCT-2 STRENGTHENING: tampering the STORED ENVELOPE's binding after approval fails closed (envelope_hash_mismatch)
+  × NEW BINDING (ledger Gap 22) — … blocks through the registry with reason envelope_hash_mismatch …
+
+Three of the six reddened — exactly the three whose subject IS that reason. The
+other three assert `no_envelope_budget_binding` (check 4, unmutated) and
+correctly stayed green. The assertions are matching the KIND, not the throw.
+
+RESTORE: git checkout HEAD -- packages/perf/src/contract/hash-link.ts
+         -> 128 files / 1166 tests, git status empty.
+
+--------------------------------------------------------------------------------
+7. P2(b) — POSITION IS SEMANTICS  ** the measurement that justifies the order **
+--------------------------------------------------------------------------------
+
+CLAIM UNDER TEST: placing checks 4+5 AFTER the three journal checks is what
+keeps conjunct 2's already-merged evidence meaning what it said. First failure
+wins, so order is not cosmetic.
+
+MUTATION: checks 4+5 moved ABOVE check 1. Nothing else changed — same code,
+same reasons, same tests.
+
+$ npx tsc -b packages/perf   -> exit 0
+$ npx vitest run packages/perf packages/supervisor packages/contracts --coverage.enabled=false
+ Test Files  3 failed | 125 passed (128)
+      Tests  3 failed | 1163 passed (1166)
+
+THE THREE RED ARE ALL PRE-EXISTING TESTS — the ones the MERGED phase-15 record
+cites for conjunct 2:
+  × MAJOR FIX — FAIL-CLOSED (deliberate widening vector): a post-approval budget
+    widening that ALSO recomputes its own budgetHash consistently is now caught
+    via the journal anchor (reason journal_anchor_mismatch)
+        [contract-builder.test.ts]
+  × MAJOR FIX — FAIL-CLOSED (deliberate widening vector): a widened budget with
+    a consistently-recomputed hash still blocks via the journal anchor
+        [performance-gate.test.ts]
+  × MAJOR FIX — a deliberate post-approval budget widening that ALSO recomputes
+    its own budgetHash consistently still fails the journal-anchored hash-link
+    check and BLOCKS, with the block itself journaled as evidence
+        [performance-gate.e2e.test.ts — the file the merged record cites at
+         :105-157 for /hash-link check failed \(journal_anchor_mismatch\)/]
+
+And the failure is precisely the re-labelling:
+
+$ npx vitest run packages/perf/src/contract/contract-builder.test.ts --coverage.enabled=false
+AssertionError: expected 'envelope_hash_mismatch' to be 'journal_anchor_mismatch'
+      Tests  1 failed | 10 passed (11)
+
+ALL SIX NEW BINDING TESTS STAYED GREEN under this mutation. So the two orders
+are NOT interchangeable: the last-position order is the only one that both
+catches the new vector AND leaves the existing merged evidence reporting the
+reason it was merged reporting. A reviewer asking "why not put the cheap string
+compares first?" has this as the answer, measured.
+
+Why those fixtures move: a post-approval widening also disagrees with the
+approved envelope (the envelope was signed over the ORIGINAL budget hash), so
+both check 3 and check 5 fire on them and only the ordering decides which reason
+is reported. That is why the corresponding tests deliberately bind their
+envelope to the ORIGINAL hash — stated in a comment at each of those three call
+sites, so the next reader does not "simplify" it away.
+
+RESTORE: git checkout HEAD -- packages/perf/src/contract/hash-link.ts
+         -> 128 files / 1166 tests, git status empty,
+            grep envelope_hash_mismatch contract-builder.test.ts = 5,
+            grep "Gap 22" hash-link.ts = 3.
+
+--------------------------------------------------------------------------------
+8. P3 — DELETE THE DERIVATION (cross-package: BOTH numbers recorded)
+--------------------------------------------------------------------------------
+
+MUTATION, in packages/supervisor/src/intake/intake-pipeline.ts:
+    provisionalBudgetHash: provisionalPerformanceContract.budgetHash,
+ -> provisionalBudgetHash: canonicalHash([]),
+The property is REPLACED, not deleted: deleting it is a type error, and a
+non-compiling mutation measures the old code.
+
+PRE-BUILD (stale dist — recorded because the rule says record both, not to be
+quietly discarded):
+$ npx vitest run packages/supervisor packages/cli packages/perf --coverage.enabled=false
+ Test Files  3 failed | 175 passed (178)
+      Tests  5 failed | 1679 passed (1684)
+
+$ npm run build
+BUILD_EXIT=0
+
+POST-BUILD:
+$ npx vitest run packages/supervisor packages/cli packages/perf --coverage.enabled=false
+ Test Files  3 failed | 175 passed (178)
+      Tests  5 failed | 1679 passed (1684)
+  × RSS and CPU both stay within budget over a sustained idle window, using the REAL 5s-paced scheduler
+  × GAP 22 — the built envelope's provisionalBudgetHash IS the provisional contract's budgetHash (source #1)
+  × GAP 22 — the binding holds for the ecosystem-research source too (source #2)
+  × GAP 22 — two assemblies whose ONLY difference is the derived budget land on different envelope hashes
+  × authorization-envelope.json is byte-identical to the committed golden
+
+THE NUMBERS COINCIDED, and the reason is worth stating rather than leaving as a
+coincidence: packages/cli builds intake REQUESTS but asserts nothing about the
+derived binding, so there is no cross-package assertion for a stale dist to
+hide. The rebuild was still run and its exit code recorded — the discharge is
+the measurement, not the assumption.
+
+FOUR of the five reds are genuine (three derivation assertions plus the golden
+byte-diff). THE FIFTH IS A LOAD FLAKE, disclosed rather than absorbed: "RSS and
+CPU both stay within budget over a sustained idle window" is a cli daemon
+resource-budget test in the same family as the documented
+packages/perf/src/measurement/command-runner.test.ts flake (0 CPU under
+contention). It was GREEN on the restore run at the same sha, below. It was
+retried, never bypassed, and it is unrelated to this batch's diff.
+
+AN HONEST NEGATIVE RESULT: the source-#3 test
+  "GAP 22 — an empty base-revision-measurement budget set is still BOUND …"
+did NOT redden. That is correct and not a gap in the test: canonicalHash([]) IS
+the true binding for an empty budget set, so for source #3 the mutation is a
+no-op. The mutation's real meaning is "pretend every intake has an empty budget
+set", and the three tests that reddened are exactly the ones with a non-empty
+one. Recorded because a reader counting reds would otherwise wonder.
+
+RESTORE:
+$ git checkout HEAD -- packages/supervisor/src/intake/intake-pipeline.ts
+$ npm run build                        -> BUILD_EXIT=0
+$ npx vitest run packages/supervisor packages/cli packages/perf --coverage.enabled=false
+ Test Files  178 passed (178)
+      Tests  1684 passed (1684)        <- COUNT back to baseline; flake green again
+$ git status --porcelain               -> EMPTY
+$ grep -c "GAP 22" packages/supervisor/src/intake/intake-pipeline.test.ts
+4
+
+--------------------------------------------------------------------------------
+9. P4 — FALSIFY THE COMPILE-TIME CLAIM (it holds in one direction only)
+--------------------------------------------------------------------------------
+
+CLAIM: "a caller cannot declare the binding — misdeclaration is unrepresentable."
+A test claiming a compile-time guarantee must be falsified, not asserted.
+
+HALF ONE — the claim HOLDS for an object literal. A scratch file declaring
+provisionalBudgetHash inside an IntakeRequest literal:
+
+$ npx tsc -b packages/supervisor --force
+packages/supervisor/src/intake/p4-forge-probe-batchE.ts(13,5): error TS2353: Object literal may only specify known properties, and 'provisionalBudgetHash' does not exist in type 'RequestedEnvelopeContent'.
+TSC_EXIT=2
+
+HALF TWO — THE CAVEAT, AND IT IS A REAL ONE. TypeScript's excess-property check
+binds object LITERALS only. A widened intermediate object, assigned through the
+same field type:
+
+    const widened: AuthorizationEnvelopeContent = { …, provisionalBudgetHash: "sha256:forged" };
+    export const SMUGGLED: IntakeRequest["envelopeContent"] = widened;
+
+$ npx tsc -b packages/supervisor --force
+TSC_EXIT=0                              <- the compiler does NOT catch it
+
+So "unrepresentable" is true of the SHAPE A CALLER WRITES, not of every value
+that can reach the field. Stating only half one would have been an unverified
+claim wearing a measurement's clothes. This is exactly why the runtime
+enforcement P1 probes has to exist, and why the ledger entry says the guarantee
+is "unrepresentable at intake and unenforceable at the gate" rather than
+"unrepresentable everywhere".
+
+Scratch file deleted; `npx tsc -b packages/supervisor --force` -> exit 0,
+`git status --porcelain` -> empty.
+
+WHAT THE MEASUREMENT PRODUCED — a pinned residual rather than a prose note
+(playbook: assert a residual, don't just describe it). intake-pipeline.test.ts
+gains "GAP 22 — a SMUGGLED binding on the request is overridden by the
+derivation, never honoured", which pins the runtime half that closes half two:
+the derived key is spread LAST in buildIntakeArtifacts, so a smuggled value is
+overwritten rather than honoured.
+
+REVERSE PROBE on that new test — an assertion nobody has seen fail is not yet
+known to be non-vacuous. Move the derived key ABOVE the spread:
+
+$ npx vitest run packages/supervisor/src/intake/intake-pipeline.test.ts --coverage.enabled=false
+  × GAP 22 — a SMUGGLED binding on the request is overridden by the derivation, never honoured
+      Tests  1 failed | 30 passed (31)
+$ git checkout HEAD -- packages/supervisor/src/intake/intake-pipeline.ts
+      Tests  31 passed (31)
+
+Exactly that one test moved, in the direction that matters.
+
+PROVENANCE DEVIATION, disclosed: this sub-section alone did NOT run at a clean
+tree — it ran at the 12eba7b tree PLUS the uncommitted intake-pipeline.test.ts
+addition that the commit carrying THIS transcript lands. Every other section ran
+at a clean 12eba7b tree (see the dated correction in the header for why the sha
+moved and why the tree did not). Said here rather than left for a reader to
+discover from a count that does not reconcile.
+
+--------------------------------------------------------------------------------
+10. FIXTURE CENSUS — by CONSUMER, not by type name
+--------------------------------------------------------------------------------
+
+TWO different functions are named buildAuthorizationEnvelope. A type-name grep
+would have censused them as one and produced the wrong blast radius. Each hit's
+IMPORT LINE was resolved:
+
+  supervisor's (options: { content: AuthorizationEnvelopeContent }) — content
+  type gained a REQUIRED member, so these move:
+    packages/supervisor/src/intake/envelope-builder.ts   (definition)
+    packages/supervisor/src/intake/envelope-builder.test.ts   -> "./envelope-builder.js"
+    packages/supervisor/src/intake/amendment.ts          (definition consumer)
+    packages/supervisor/src/intake/amendment.test.ts          -> "./envelope-builder.js"
+    packages/supervisor/src/intake/intake-pipeline.ts    (the derivation site)
+
+  testkit's (overrides: Partial<AuthorizationEnvelope>) — untouched under an
+  OPTIONAL schema member. All 12 remaining files import THIS one:
+    packages/cli/src/commands/approve.test.ts                 -> "@crabgic/testkit"
+    packages/cli/src/daemon/composed-daemon-seal-enforcement.test.ts -> "@crabgic/testkit"
+    packages/cli/src/daemon/composed-post-completion.e2e.test.ts     -> "@crabgic/testkit"
+    packages/cli/src/daemon/run-dispatcher.test.ts                   -> "@crabgic/testkit"
+    packages/cli/src/intake/complete-envelope-approval.test.ts       -> "@crabgic/testkit"
+    packages/cli/src/intake/contract-approve-handler.test.ts         -> "@crabgic/testkit"
+    packages/cli/src/intake/standing-approval.test.ts                -> "@crabgic/testkit"
+    packages/cli/src/intake/unused-authority.test.ts                 -> "@crabgic/testkit"
+    packages/scheduler/src/executor.e2e.test.ts                      -> "@crabgic/testkit"
+    packages/scheduler/src/goldens/generate-golden-packets.ts        -> "@crabgic/testkit"
+    packages/scheduler/src/task-packet-builder.property.test.ts      -> "@crabgic/testkit"
+    packages/scheduler/src/task-packet-builder.test.ts               -> "@crabgic/testkit"
+  (packages/engine-core/src/policy/is-contained.test.ts mentions the name in a
+   comment only — no import.)
+
+GOLDEN RESULT — the churn claim, measured:
+  packages/supervisor/goldens/ regenerated in full (6 files).
+  MOVED:            authorization-envelope.json  (1 file)
+                      canonicalHash sha256:3602f8d1… -> sha256:237011c4…
+                      + "provisionalBudgetHash": "sha256:0301821d…"
+  BYTE-IDENTICAL:   intent-contract.json, requirements.json, work-unit-graph.json,
+                    capability-manifest.json, provisional-performance-contract.json
+                    (5 files — their per-file byte-diff tests are the controls)
+
+  The pre-regeneration run is the fixture-moved proof:
+  $ npx vitest run packages/supervisor/src/intake/goldens --coverage.enabled=false
+    × authorization-envelope.json is byte-identical to the committed golden
+     Test Files  1 failed (1)
+          Tests  1 failed | 8 passed (9)
+  Exactly one of the six reddened.
+
+  $ git grep -n "3602f8d1a7dca69a74ab9e91adcf5d288a620b371608f12fcfd9c3784fbad57b" -- .
+  (exit 1 — zero remaining copies of the superseded hash anywhere in the repo)
+
+  Downstream golden CONTROLS, all asserted byte-identical by their own existing
+  tests, none of which moved: packages/engine-core/goldens/*,
+  packages/engine-claude/goldens/*.sdk-call.json,
+  packages/scheduler/goldens/task-packet-*.json.
+
+  JSON Schemas: exactly 2 of the 21 emitted files moved —
+  schemas/authorization-envelope.json and schemas/performance-contract.json.
+
+CORRECTION TO THE BATCH BRIEF, measured: "every envelope-hash fixture repo-wide
+will move" is FALSE under the optional-member design. One committed fixture
+moved, plus two regenerated JSON Schemas. It would be true only under a REQUIRED
+member, which would force a shared CURRENT_SCHEMA_VERSION bump or break
+persisted state — that is the real cost of the alternative.
+
+--------------------------------------------------------------------------------
+11. `as never` / `as any` RE-HUNT, AFTER the requiredness landed
+--------------------------------------------------------------------------------
+
+A cast is exactly where a requiredness hole survives, so the hunt is re-run
+after the fix, not before, and diffed against the pre-implementation list.
+
+$ grep -rnE '\bas (never|any|unknown as)\b' packages/perf/src
+(exit 1 — NO hits at all in packages/perf)
+
+  Note: an unanchored `grep 'as never'` returns 2 hits in packages/perf, both
+  PROSE — "…contract id was never durably committed…". Word-boundary anchoring
+  is what distinguishes them from real casts. Recorded because the unanchored
+  form would have looked like two survivors.
+
+$ grep -rnE '\bas (never|any|unknown as)\b' packages/supervisor/src packages/contracts/src packages/testkit/src/fixtures
+      2 packages/contracts/src/approval/token.test.ts: as never
+      1 packages/contracts/src/state-machines/run-lifecycle.test.ts: as never
+      1 packages/contracts/src/state-machines/work-unit-attempt-status.test.ts: as never
+      1 packages/supervisor/src/peer-auth/peer-auth-middleware.property.test.ts: as unknown as
+      1 packages/supervisor/src/peer-auth/peer-auth-middleware.test.ts: as unknown as
+      1 packages/supervisor/src/peer-auth/peer-credentials.test.ts: as unknown as
+      1 packages/supervisor/src/peer-auth/peer-credentials.ts: as unknown as
+      1 packages/supervisor/src/router/router.test.ts: as unknown as
+      1 packages/supervisor/src/socket/kill-restart-recovery.test.ts: as unknown as
+
+DIFF AGAINST THE PRE-IMPLEMENTATION BASELINE: EMPTY. Same files, same counts —
+journal-sink fakes, exhaustive enum walkers, and socket fakes. None crosses the
+envelope/budget boundary, and no NEW cast was introduced to satisfy either new
+required input. Every one of the four call sites the compiler flagged was
+satisfied with a TYPED value.
+
+  The one deliberate `as` in this batch's own new code is in the P4 residual
+  test — `as IntakeRequest["envelopeContent"]` — and it is the SUBJECT of that
+  test, not a way around the type: it exists to construct the smuggling attack
+  the test then proves is defeated at runtime.
+
+ASSERTED RESIDUALS (deliberate gaps encoded as tests so they cannot drift):
+  - "DELIBERATE LEGACY PIN: an envelope WITHOUT the member still parses, and the
+     member does NOT default"                      [authorization-envelope.test.ts]
+  - "DELIBERATE LEGACY PIN: an enforced record WITHOUT the member still parses,
+     and it does NOT default"                      [performance-contract.test.ts]
+  - "GAP 22 — a SMUGGLED binding on the request is overridden by the derivation,
+     never honoured"                               [intake-pipeline.test.ts]
+
+WERE THE BROKEN TESTS ASSERTING THE BUG? No. The four files the requiredness
+broke assert checks 1-3 and the happy path. The binding was UN-MODELABLE, not
+asserted-absent — there was no third argument to pass. The signature break is
+stated in commit 3's message with this reasoning.
+
+--------------------------------------------------------------------------------
+12. LEDGER PROTECTED-LINE CENSUS — notation-aware, re-run at merge time
+--------------------------------------------------------------------------------
+
+A grep that knows only `interface-ledger.md:NN` is NOTATION-BLIND: records also
+cite the ledger as prose ("at line 712"), which carries no filename on the same
+match, and prose WRAPS, so a per-line regex cannot see a ref split across two
+lines. Both hazards are handled by joining the document before scanning.
+
+NOTATION A — explicit:
+$ git grep -hoE "interface-ledger\.md:[0-9]+(-[0-9]+)?" -- . | sort -u
+interface-ledger.md:111
+interface-ledger.md:400-402
+interface-ledger.md:714-717
+  (from phase-05.json:378, phase-17.json:372 + roadmap/17:101,
+        phase-07.json:408 + roadmap/07:113)
+
+NOTATION B — the full census (210 files mentioning the ledger; each mention's
+±240-char window scanned on a WHITESPACE-JOINED copy for BOTH notations;
+deliberately over-inclusive, which is the safe direction):
+
+  line   17  <- phase-07.json  [prose]      adjudicated: roadmap/07's own line, quoted inside a ledger quote
+  line   19  <- phase-20.json  [prose]      adjudicated: roadmap/20's own line
+  line   22  <- phase-04.json  [prose]      adjudicated: roadmap/04's own line
+  line   33  <- phase-03.json  [prose]      adjudicated: roadmap/03's own line
+  line   80  <- phase-07.json  [prose]      adjudicated: roadmap/07's own line
+  line  111  <- phase-05.json  [explicit]   ** LEDGER **
+  line  113  <- phase-22.json  [prose]      ** LEDGER **
+  line  145  <- phase-22.json  [prose]      ** LEDGER **
+  line  379  <- phase-08.json  [prose]      ** LEDGER **
+  line  400  <- phase-17.json + roadmap/17  ** LEDGER **
+  line  402  <- phase-17.json + roadmap/17  ** LEDGER **
+  line  413  <- roadmap/02     [prose]      adjudicated: CI JOB-LOG line ("job log line 413, 23 tests")
+  line  430  <- roadmap/02     [prose]      adjudicated: CI JOB-LOG line
+  line  459  <- roadmap/02     [prose]      adjudicated: CI JOB-LOG line
+  line  524  <- roadmap/06     [prose]      adjudicated: CI JOB-LOG line
+  line  689  <- roadmap/04     [prose]      adjudicated: CI JOB-LOG line
+  line  709  <- roadmap/04     [prose]      adjudicated: CI JOB-LOG line
+  line  712  <- phase-04.json + verification-playbook  ** LEDGER **
+  line  714  <- phase-07.json + roadmap/07  ** LEDGER **
+  line  717  <- phase-07.json + roadmap/07  ** LEDGER **
+  line  803  <- roadmap/17     [prose]      adjudicated: CI JOB-LOG line
+
+  PLUS one the FILENAME-ANCHORED regex above cannot see at all —
+  phase-07.json carries a BARE marker inside a quote:
+    "… §Exit criteria, line 80 — the same path repeated as a path-convention
+     test"; :726-727 records that the shipped order is `<project-hash>/git-c…"
+
+PROTECTED SET CONFIRMED: {111, 113, 145, 379, 400-402, 712, 714-717, 726-727}.
+MAXIMUM = 727.  File length before this batch = 1599 lines.
+
+STRUCTURAL CONCLUSION, which does not depend on any adjudication above being
+right: every candidate line the over-inclusive census produced is <= 803, and
+the append starts at 1600. If the over-inclusive set is safe, the true set is
+certainly safe.
+
+MECHANICAL VERIFICATION of the append:
+$ git diff -U0 docs/interface-ledger.md | grep -E "^@@"
+@@ -1599,0 +1600,95 @@
+  — one hunk, pure insertion at EOF, zero context lines removed.
+$ git show HEAD:docs/interface-ledger.md > /tmp/…/ledger-head.md
+$ head -n 1599 docs/interface-ledger.md > /tmp/…/ledger-new-1599.md
+$ diff -q …  -> IDENTICAL
+The first 1599 lines are byte-for-byte what they were. THE LEDGER IS NEVER
+REFLOWED, and it was not.
+
+DELIBERATE OMISSION, recorded so it is not read as an oversight: Gap 22 is NOT
+added to the intro sentence (:6), the origin table (:9-15) or the Index (:59-83).
+Each of those is an INSERTED line, and an inserted line moves every protected
+anchor below it. The precedent already exists in the file — Gap 21 is likewise
+absent from the intro sentence and the origin table. The Gap 22 entry carries a
+dated note stating this, so the ledger's own ":17-19 miscount" complaint is
+answered on the record.
+
+--------------------------------------------------------------------------------
+13. ROADMAP ANCHOR SWEEP — in BOTH notations, before and after
+--------------------------------------------------------------------------------
+
+The plan's sweep used the explicit form only. Re-run notation-aware, it found
+prose refs the explicit form CANNOT see, and they changed where the edits could
+safely go — recorded because the narrower instrument would have read as clean.
+
+EXPLICIT FORM:
+$ git grep -rhoE "(02-contracts-and-schemas|11-intake-contract-approval|15-performance-contracts|24-sealed-acceptance-criteria)\.md:[0-9]+(-[0-9]+)?" -- . | sort | uniq -c
+      3 15-performance-contracts.md:57
+      1 15-performance-contracts.md:112
+      1 11-intake-contract-approval.md:75-77
+      1 11-intake-contract-approval.md:69
+      1 11-intake-contract-approval.md:27-28
+  (sources: packages/contracts/src/contracts/change-set.ts, work-unit.ts,
+   e2e/attestation/src/perfContractRerun.ts)
+
+PROSE FORM, missed entirely by the above:
+  docs/interface-ledger.md -> "11-intake-contract-approval.md §Out of scope, line 85"
+  docs/interface-ledger.md -> "11-intake-contract-approval.md §Interfaces consumed, line 122"
+  docs/interface-ledger.md -> "11-intake-contract-approval.md §Interfaces consumed, line 155"
+  docs/interface-ledger.md -> "02-contracts-and-schemas.md §Out of scope, line 45"
+  docs/interface-ledger.md -> "02-contracts-and-schemas.md §Exit criteria, line 96"
+  roadmap/24 -> ZERO inbound line citations in either notation.
+
+CONSEQUENCE, and a defect avoided: the plan's fallback of "append a dated
+paragraph at the end of the phase file" would have been safe for 24 but is a
+LINE INSERTION for 02 — and inserting near the table would have moved
+roadmap/02's protected prose anchor at line 96. All four edits were therefore
+made as IN-PLACE EXTENSIONS of existing lines instead.
+
+PRE-EDIT / POST-EDIT LINE COUNTS:
+  roadmap/02-contracts-and-schemas.md      192 -> 192
+  roadmap/11-intake-contract-approval.md   316 -> 316
+  roadmap/15-performance-contracts.md      172 -> 172
+  roadmap/24-sealed-acceptance-criteria.md 307 -> 307
+$ git diff --numstat roadmap/
+1	1	roadmap/02-contracts-and-schemas.md
+1	1	roadmap/11-intake-contract-approval.md
+1	1	roadmap/15-performance-contracts.md
+1	1	roadmap/24-sealed-acceptance-criteria.md
+  1-for-1 on every file: four modified lines, zero inserted, zero deleted.
+
+EVERY PRE-EXISTING ANCHOR RE-RESOLVED, content unchanged:
+  15:57   "- Outcome is one of `pass` / `block` / `inconclusive-blocking`."
+  15:112  (blank line — unchanged)
+  11:27-28 "- **`ChangeSet` lifecycle:** exactly one `ChangeSet` created per intake request; …"
+  11:69   "findings has reached a judgement no amount of further reading decides. …"
+  11:75-77 "- `tracker.*`/`observability.*` gateway tool implementations …"
+  02:45   "- MCP tool implementations (`tracker.*`, `capability.*`, …)"
+  02:96   "| `CommunicationPolicy` | 08, 17, 18, 19, 20 |"
+  11:85 / 11:122 / 11:155  — untouched (all edits were on 11:34)
+NO line shifted, so no stale copy of any line number exists to hunt for.
+
+WHERE THE FOUR EDITS LANDED (visible prose, not hidden comments — a reader must
+be able to SEE the amendment):
+  roadmap/15:23  budget-sourcing bullet + the envelope-covered clause and both new reasons
+  roadmap/11:34  AuthorizationEnvelope bullet + the derived member
+  roadmap/02:25  EnvelopePolicy containment bullet + why the member is a binding
+                 REFERENCE and therefore deliberately invisible to the containment
+                 predicate stated one clause earlier
+  roadmap/24:23  the "envelope hash covers authority fields only" paragraph +
+                 a dated amendment BESIDE the claim
+$ npx prettier --check .   -> "All matched files use Prettier code style!"
+(prettier's markdown proseWrap defaults to "preserve" in this repo — no
+.prettierrc override — so a lengthened line is not rewrapped. Verified, not
+assumed; the fallback form was not needed.)
+
+--------------------------------------------------------------------------------
+14. THE FULL GATE, AND WHAT WAS NOT TOUCHED
+--------------------------------------------------------------------------------
+
+$ npm run lint                    -> exit 0
+$ npm run typecheck               -> exit 0
+$ npm test                        -> 636 files / 6503 tests passed, exit 0
+$ npm run build                   -> exit 0
+$ npx prettier --check .          -> exit 0
+$ npm run check:criteria-closeout -> PASS — 25 closeout record(s) valid and consistent with their roadmap files.
+$ npm run check:criteria-baseline -> PASS — every committed baseline hash re-derives from its pinned revision (25 phases).
+$ npm run check:citation-runs     -> PASS — 227/227 ci-run citation(s) resolve to real runs, 227/227 at the commit they cite.
+$ npm run check:package-graph     -> PASS — 18 workspace packages, dependency graph is a DAG.
+$ npm run check:workspace-count   -> PASS — exactly 18 workspaces declared.
+
+NO MERGED RECORD FAILED ANY VALIDATOR. Nothing was loosened, and no merged
+record was edited. (The roadmap edits only lengthen existing lines, so every
+span a merged record cites stays in range.)
+
+DELIBERATELY NOT TOUCHED, and this is a scope statement, not an omission:
+  roadmap/15:161's box                          — still UNTICKED, unedited
+  docs/evidence/criteria-closeout/**            — no record, no defect, no INDEX
+  criteria-baseline.json                        — untouched
+  e2e/**                                        — untouched
+  packages/cli/**                               — ZERO source edits, and no cli
+                                                  test moved (measured at §2)
+`npm run check:e2e-types` is RED on origin/main (25 pre-existing
+DispatchAttemptOptions errors in e2e/matrix/orchestration). Not this batch's,
+and nothing here touches e2e/.
+
+--------------------------------------------------------------------------------
+15. WHAT THIS TRANSCRIPT DOES *NOT* CLAIM
+--------------------------------------------------------------------------------
+
+1. Not that the gate runs in production. `createPerformanceGateHandler` still
+   has no production caller (ledger Gap 21's residual, unchanged). Everything
+   above is measured through 14's REAL registry and 04's REAL journal in tests
+   and in the `perf-conformance` job — not through a shipped run.
+2. Not that the binding is unforgeable everywhere. §9 half two measures the
+   exact limit of the compile-time claim.
+3. Not that legacy envelopes keep working. They parse and CANNOT pass
+   enforcement, by design; drain in-flight runs before upgrading.
+4. Not that the exit criterion is closed. This transcript is evidence for a
+   flip; the flip and its record belong to the batch that owns
+   docs/evidence/criteria-closeout/**.
+5. Nothing in the claim-space is cited above. Defect records are named in prose
+   only; every citation here points at source, goldens, or a command's own
+   output.
+================================================================================

@@ -385,6 +385,33 @@ describe("runIntake — derived budget provenance", () => {
     );
   });
 
+  it("GAP 22 — a SMUGGLED binding on the request is overridden by the derivation, never honoured", () => {
+    // Measured residual, not a hypothetical (probe P4,
+    // docs/evidence/phase-15/envelope-binding-probe-batchE.txt). Declaring
+    // `provisionalBudgetHash` on an `IntakeRequest` object LITERAL is a TS2353
+    // compile error — but TypeScript's excess-property check binds literals
+    // only, so a widened intermediate object assigned through the same field
+    // type compiles with exit 0. "Unrepresentable" is therefore true of the
+    // shape a caller writes, not of every value that can reach the field.
+    //
+    // This pins the runtime half that closes it: the derivation is spread LAST
+    // in `buildIntakeArtifacts`, so a smuggled value is overwritten rather than
+    // honoured. Move that key above the spread and this test reddens.
+    const smuggled = {
+      ...baseRequest().envelopeContent,
+      provisionalBudgetHash: "sha256:forged-by-the-caller",
+    } as IntakeRequest["envelopeContent"];
+
+    const artifacts = buildIntakeArtifacts(
+      withRequirements([perfRequirement], { envelopeContent: smuggled }),
+    );
+
+    expect(artifacts.envelope.provisionalBudgetHash).not.toBe("sha256:forged-by-the-caller");
+    expect(artifacts.envelope.provisionalBudgetHash).toBe(
+      artifacts.provisionalPerformanceContract.budgetHash,
+    );
+  });
+
   it("treats the ecosystem as request content — a different one is a conflict, never a silent second ChangeSet", async () => {
     const deps = freshDeps();
     const request = withRequirements([perfRequirement], { ecosystem: "node" });
