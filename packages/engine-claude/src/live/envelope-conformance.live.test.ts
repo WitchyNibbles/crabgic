@@ -57,6 +57,7 @@ import {
   guardEngineEventsRateLimit,
   isLiveEnabled,
   writeLiveVerdicts,
+  type CanaryResult,
   type RecordedFixtureVerdict,
 } from "./live-harness.js";
 
@@ -127,11 +128,19 @@ function initEvent(
   );
 }
 
+/**
+ * The canary this run actually observed, kept so `afterAll` can present it as
+ * the `writeLiveVerdicts` provenance witness. Nothing else reads it; capturing
+ * it here changes no ordering and spends nothing extra — `ensureCanary()` was
+ * already the first live call of the file.
+ */
+let canaryWitness: CanaryResult | undefined;
+
 beforeAll(async () => {
   assertLiveEnabled();
   // CANARY FIRST: establishes auth, the rate-limit guard, and version drift
   // before any conformance spawn. Aborts the whole file on a hot window.
-  await ensureCanary();
+  canaryWitness = await ensureCanary();
 });
 
 afterAll(async () => {
@@ -141,10 +150,21 @@ afterAll(async () => {
   // committed fixture. Only persist when live was actually enabled AND every
   // expected verdict was recorded (a genuinely green run); otherwise this is
   // a no-op and the committed file is left untouched.
-  if (!isLiveEnabled() || verdicts.size !== CONFORMANCE_FIXTURES.length) {
+  //
+  // `canaryWitness === undefined` cannot happen alongside a full `verdicts` map
+  // — no conformance case runs unless `beforeAll` resolved — so this conjunct
+  // adds no new no-op path in practice; it is the fail-safe that makes the
+  // provenance argument below total. Same three-way guard, same write, same
+  // bytes: only the provenance ARGUMENT changed (defect record
+  // `06-live-verdicts-source-label-not-provenance.md`, remedy item 1).
+  if (
+    !isLiveEnabled() ||
+    verdicts.size !== CONFORMANCE_FIXTURES.length ||
+    canaryWitness === undefined
+  ) {
     return;
   }
-  await writeLiveVerdicts(verdicts, "live");
+  await writeLiveVerdicts(verdicts, { source: "live", witness: canaryWitness });
 });
 
 describe("envelope-conformance: 7 fixtures replayed through the REAL adapter", () => {

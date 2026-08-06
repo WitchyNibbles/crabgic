@@ -947,6 +947,17 @@ function fixtureIsOverallDeny(fixture: ConformanceFixture): boolean {
  * `live-verdicts.json` byte-reproducibly offline whenever it is
  * missing/corrupted (e.g. a guarded-against `afterAll` no-op run), and by
  * `fake-live-parity.test`'s committed-mechanism corruption/regression guard.
+ *
+ * (Corrected 2026-08-06.) That second clause was aspirational when written:
+ * this function had ZERO call sites repo-wide — `fake-live-parity.test` called
+ * `classifyFixtureDenyMechanism` directly and never this — while
+ * `writeLiveVerdicts` below named it as the source of an `"offline-baseline"`
+ * payload. Defect record `06-live-verdicts-source-label-not-provenance.md`
+ * measured that (`git grep -n 'deriveOfflineBaselineVerdicts(' -- packages e2e
+ * scripts` returned only the definition line). It is now true: the parity
+ * test's "committed fixture equals `deriveOfflineBaselineVerdicts()`" case is
+ * this function's real, per-push call site, and deleting it reddens the
+ * DEFAULT gate rather than only the live one.
  */
 export function deriveOfflineBaselineVerdicts(): Map<string, RecordedFixtureVerdict> {
   const verdicts = new Map<string, RecordedFixtureVerdict>();
@@ -969,17 +980,103 @@ export function deriveOfflineBaselineVerdicts(): Map<string, RecordedFixtureVerd
 export type LiveVerdictsSource = "live" | "offline-baseline";
 
 /**
+ * Refused provenance: a caller asked to stamp `source: "live"` without a
+ * witness that a real engine was actually observed.
+ */
+export class LiveVerdictsProvenanceError extends Error {
+  override readonly name = "LiveVerdictsProvenanceError";
+}
+
+/**
+ * What a caller must present to write `source: "live"`.
+ *
+ * DECISION, and the silence it fills (defect record
+ * `06-live-verdicts-source-label-not-provenance.md`). The parameter used to be
+ * a bare `LiveVerdictsSource` string, so `"live"` was a claim any caller could
+ * type — and one did: an unrelated commit (`29b3c46`, wiring `learn-*`
+ * promotion) flipped the committed file's label from `"offline-baseline"` to
+ * `"live"` months before any green `@live` run existed, and nothing anywhere
+ * read the field. The doc comment called the label "machine-checkable"; it was
+ * decoration.
+ *
+ * The witness is the canary's own `CanaryResult` — the value `runCanary()`
+ * returns after one real engine invocation whose `system/init` version it
+ * checked. Requiring it means the TYPE SYSTEM refuses an offline caller, and
+ * `assertLiveVerdictsProvenance` refuses a hand-built object that lies about
+ * its shape (a cast defeats the compiler, so the runtime check is not
+ * redundant — see the playbook's `as never` ruling).
+ *
+ * This is provenance a caller cannot mint. It is NOT proof that the verdicts
+ * in the same call came from that engine — only the live suite's own
+ * green-run guard establishes that, and the criterion's real evidence is the
+ * clean-diff regeneration, not this string. The label is now merely honest
+ * rather than load-bearing, which is the correct weight for it.
+ */
+export type LiveVerdictsProvenance =
+  | { readonly source: "live"; readonly witness: CanaryResult }
+  | { readonly source: "offline-baseline" };
+
+/**
+ * Fails closed unless a `"live"` provenance carries a real `CanaryResult`.
+ *
+ * Checked fields are exactly the ones a live invocation is what produces:
+ * `invocations` (the canary always consumes exactly one), the observed
+ * `engineVersion` — which `runCanary` has already asserted equals
+ * `TESTED_ENGINE_VERSION`, the same value this module writes into the payload —
+ * `capabilitiesEngineVersion`, and the parsed `rateLimit` snapshot.
+ */
+export function assertLiveVerdictsProvenance(provenance: LiveVerdictsProvenance): void {
+  if (provenance.source !== "live") {
+    return;
+  }
+  const witness: unknown = provenance.witness;
+  if (typeof witness !== "object" || witness === null) {
+    throw new LiveVerdictsProvenanceError(
+      'source "live" requires a CanaryResult witness; got a non-object',
+    );
+  }
+  const candidate = witness as Partial<CanaryResult>;
+  if (typeof candidate.invocations !== "number" || candidate.invocations < 1) {
+    throw new LiveVerdictsProvenanceError(
+      'source "live" requires a CanaryResult witness whose `invocations` is at least 1 — a witness that consumed no live invocation observed no engine',
+    );
+  }
+  if (candidate.engineVersion !== TESTED_ENGINE_VERSION) {
+    throw new LiveVerdictsProvenanceError(
+      `source "live" requires a CanaryResult witness observing the tested engine ${TESTED_ENGINE_VERSION}; got ${String(candidate.engineVersion)}`,
+    );
+  }
+  if (
+    typeof candidate.capabilitiesEngineVersion !== "string" ||
+    candidate.capabilitiesEngineVersion.length === 0
+  ) {
+    throw new LiveVerdictsProvenanceError(
+      'source "live" requires a CanaryResult witness carrying a `capabilitiesEngineVersion`',
+    );
+  }
+  if (typeof candidate.rateLimit !== "object" || candidate.rateLimit === null) {
+    throw new LiveVerdictsProvenanceError(
+      'source "live" requires a CanaryResult witness carrying the `rateLimit` snapshot its live stream was parsed into',
+    );
+  }
+}
+
+/**
  * Writes the COMMITTED, sanitized, deterministically key-sorted
  * `src/live/fixtures/live-verdicts.json` the offline `fake-live-parity.test`
- * locks fake-engine verdicts against verdict-for-verdict. `source` records
- * this payload's provenance: `"live"` from a green `@live` conformance run,
- * `"offline-baseline"` from `deriveOfflineBaselineVerdicts` — machine-
- * checkable so the committed file's honesty never has to be taken on faith.
+ * locks fake-engine verdicts against verdict-for-verdict. `provenance.source`
+ * records this payload's origin: `"live"` from a green `@live` conformance run,
+ * and only against a `CanaryResult` witness of a real engine invocation;
+ * `"offline-baseline"` from `deriveOfflineBaselineVerdicts`. Refuses BEFORE
+ * touching the file, so a rejected provenance leaves the committed bytes
+ * untouched.
  */
 export async function writeLiveVerdicts(
   verdicts: ReadonlyMap<string, RecordedFixtureVerdict>,
-  source: LiveVerdictsSource,
+  provenance: LiveVerdictsProvenance,
 ): Promise<void> {
+  assertLiveVerdictsProvenance(provenance);
+  const source: LiveVerdictsSource = provenance.source;
   const fixtures: Record<string, RecordedFixtureVerdict> = {};
   for (const name of [...verdicts.keys()].sort()) {
     const value = verdicts.get(name);

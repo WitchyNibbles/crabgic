@@ -192,6 +192,16 @@ describe("⭐ MARQUEE: limit-parked resume surviving a simulated supervisor rest
       criteriaSeal: UNSEALED_CRITERIA_SEAL,
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
+          // The "rejected" status is UNOBSERVED LIVE — docs/engine-baseline.md
+          // §8 records it as UNRESOLVED and its mitigation (:378) confines the
+          // 'rejected'-transition handling to fake-engine fixtures. This IS one:
+          // a recorded payload spread into a FakeEngineAdapter script, never a
+          // claim about engine behaviour. Do not promote this shape into a
+          // live-facing assertion or cite it as observed. Its sibling in
+          // packages/scheduler/src/run-driver.test.ts:456-459 carries the same
+          // constraint; recorded here too by defect record
+          // `00-unresolved-hedge-nits.md` so the constraint is met at the point
+          // of edit rather than only in §8.
           sessionId,
           failure: {
             kind: "limitSignal",

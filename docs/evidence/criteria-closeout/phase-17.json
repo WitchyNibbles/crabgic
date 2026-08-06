@@ -64,8 +64,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/renderer/src/attribution-neutral.test.ts:11-21",
-          "quotedAssertion": "packages/renderer/src/attribution-neutral.test.ts:19-20 — 'expect(findings.some((f) => f.message.match(/Generated with/i))).toBe(true);' / 'expect(findings.some((f) => f.message.match(/Co-Authored-By/i))).toBe(true);' on the seeded fixture 08 also asserts from its side. Engine-name leak at :37 — 'expect(findings.some((f) => f.message.match(/engine\\/vendor name/i))).toBe(true);'. Negative control at :53 — 'attributionNeutralStage(stageInput(\"Corrects the off-by-one error in the pagination loop.\"))).toEqual([])', plus :62-70, two cases proving an unified-diff header and a markdown horizontal rule are NOT false-blocked."
+          "ref": "packages/renderer/src/attribution-neutral.test.ts:11-70",
+          "quotedAssertion": "packages/renderer/src/attribution-neutral.test.ts:19-20 — 'expect(findings.some((f) => f.message.match(/Generated with/i))).toBe(true);' / 'expect(findings.some((f) => f.message.match(/Co-Authored-By/i))).toBe(true);' on the seeded fixture 08 also asserts from its side. Engine-name leak at :37 — 'expect(findings.some((f) => f.message.match(/engine\\/vendor name/i))).toBe(true);'. Negative control at :53 — 'attributionNeutralStage(stageInput(\"Corrects the off-by-one error in the pagination loop.\"))).toEqual([])', plus :62-70, two cases proving an unified-diff header and a markdown horizontal rule are NOT false-blocked. (Span corrected 2026-08-06 from :11-21 to :11-70. The fragments quoted above — :37, :53 and :62-70 — sit OUTSIDE the span this ref originally declared, so a reader who opened only :11-21 saw a third of what is claimed here. Nothing was misattributed and no line number was wrong: every fragment is real and on the line it names, at this tree as when written. Only the ref's own reach understated itself. Found by the four-rule citation resolver that filed defect record `17-merged-citations-stale-after-later-prs.md`, finding 2; :70 is the last quoted line and the file has 71.)"
         },
         {
           "kind": "test",
@@ -217,8 +217,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/connectors-jira/src/resource-client/adf-guard.ts:80",
-          "quotedAssertion": "packages/connectors-jira/src/resource-client/adf-guard.ts:80 — 'const findings = validateAdfSafeSubset(candidate);', imported at :2 from `@crabgic/renderer`. Cited because roadmap/17's §Test plan phrases this criterion as `toADF` output checked 'against the same safe-subset whitelist 18 validates incoming payloads with' — 18 does not maintain a second list, it calls this one, and its own doc comment at :28-30 says so ('`@crabgic/renderer`'s own `validateAdfSafeSubset` — never re-derived here')."
+          "ref": "packages/connectors-jira/src/resource-client/adf-guard.ts:137",
+          "quotedAssertion": "packages/connectors-jira/src/resource-client/adf-guard.ts:137 — 'const findings = validateAdfSafeSubset(candidate);', imported at :2 from `@crabgic/renderer`. Cited because roadmap/17's §Test plan phrases this criterion as `toADF` output checked 'against the same safe-subset whitelist 18 validates incoming payloads with' — 18 does not maintain a second list, it calls this one, and its own doc comment at :28-30 says so ('`@crabgic/renderer`'s own `validateAdfSafeSubset` — never re-derived here'). (Line corrected 2026-08-06 from :80 to :137, in both the ref and this text. The citation was CORRECT when written — at eabb65a the statement was on :80 — and went stale when PR #95 (`e02956f`, 'fix(connectors-jira): scan the whole ADF document serialization for secrets') inserted 57 lines ahead of it and did not revisit this merged record. At :80 a reader now lands on a doc-comment line, ' * unchanged; only a caller that explicitly passes a different provider'. The quoted statement is unchanged and still present; the criterion's substance — that 18 calls `@crabgic/renderer`'s validator rather than maintaining a second whitelist — is untouched, and the `:2` import and `:28-30` doc comment both still resolve. Found by the four-rule citation resolver that filed defect record `17-merged-citations-stale-after-later-prs.md`, finding 1.)"
         },
         {
           "kind": "artifact",
