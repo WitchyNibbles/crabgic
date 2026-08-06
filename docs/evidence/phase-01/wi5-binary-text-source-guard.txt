@@ -226,3 +226,56 @@ $ git grep -I -c caseSetDigest -- packages/learning/src/eval/eval-pair.ts
       +      [c.id, ... computeCaseHash(c)].join("\0"),$
 
     (^@ is `cat -A`'s rendering of the raw 0x00 byte on the old side.)
+
+== 8. ADDED AFTER THE FULL-SUITE RUN — an existing guard bit this work ==
+
+  The first draft of scripts/check-repo-hygiene.test.mjs built its fixture
+  repositories with `execFileSync("git", ["init"], { cwd: dir })`. The
+  repo-wide run refused it:
+
+$ npm test
+  FAIL |@crabgic/testkit| src/git-spawn-hygiene.test.ts > every file that spawns
+       a MUTATING git command references a sanctioned environment scrub
+  AssertionError: expected [ Array(1) ] to deeply equal []
+  + [ "scripts/check-repo-hygiene.test.mjs" ]
+
+  That guard is right and the draft was wrong. `cwd` does not decide which
+  repository git operates on: GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE are
+  consulted first, and git exports them into every hook it runs — including
+  the pre-push hook that runs this suite against the real repository.
+  packages/testkit/src/git-env.ts records three corruptions this already
+  caused in the wild, one of which wrote core.bare=true into a SHARED
+  .git/config.
+
+  Fixed in both halves, because only one of them was flagged:
+
+    - the SUITE now spawns through `runFixtureGit` (drops every GIT_* name);
+    - the SCRIPT's own `git hash-object` / `git diff` now do the same. Those
+      are read-only, so the guard exempts them by design and would never have
+      reported them — but under an ambient GIT_DIR they would have classified
+      the AMBIENT repository while appearing to honour their `cwd` argument.
+      A check that silently reads the wrong repository is the same class of
+      defect as the one this whole transcript is about.
+
+  Pinned, not described. A new case sets a hostile GIT_DIR/GIT_WORK_TREE at a
+  decoy repo and asserts the SUBJECT repo's offender still comes back:
+
+    baseline                              Test Files 1 passed / Tests 12 passed
+    M4  delete the GIT_* scrub            Test Files 1 failed / Tests 1 failed | 11 passed
+        x reads the repository at `cwd`, not the one an ambient GIT_DIR points at
+    RESTORED (md5 3be04a7accacd43f53c5c70cd2f982f8)
+                                          Test Files 1 passed / Tests 12 passed
+
+== 9. THE PRE-EXISTING RED THIS BRANCH DID NOT CAUSE, and its resolution ==
+
+  The first full `npm test` on this branch also reported 2 failed snapshots in
+  packages/cli/src/commands/cli.snapshots.test.ts (`run --json` approved and
+  escalate arms). Not caused here: this branch touches no file under
+  packages/cli, and the failure was a red already standing on origin/main at
+  1bc0d51, from PR #116's Gap 22 provisionalBudgetHash. PR #117 (6f964d7)
+  refreshed those snapshots on main and this branch merged it in.
+
+  Recorded rather than dropped, because "the suite was red when I got here"
+  is a claim that has to be checkable: `git diff --name-only
+  origin/main...HEAD` (three-dot, since main had moved) names no packages/cli
+  path, and 6f964d7 changes exactly one file — that .snap.
