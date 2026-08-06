@@ -1,0 +1,115 @@
+# PROBE TRANSCRIPT — roadmap/22 exit criterion 8 ("no bypass path exists"), PARTS 1-2 ONLY
+# batch A of the 2026-08-06 closeout remediation wave
+#
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — a branch commit dies on every rebase): 70f5347 "feat(learning): refuse grader drift, …"
+#
+# SCOPE, said plainly up front: this batch does NOT address the criterion's
+# "before publish (08)" conjunct, and the box stays unticked. Part 3 is an
+# owner-gated ruling handed up separately. What follows evidences parts 1-2 and
+# nothing more.
+# ---8<--- verbatim numbers below ---8<---
+
+== PART 1 — the doc-comment grep becomes an enforced static scan ==
+
+  no-bypass.redteam.test.ts:28-30 states the absence in prose: "this package
+  never imports, wraps, or special-cases createGateRegistry/fireAll/fireByTag
+  at all (grep confirms zero occurrences …)". True when re-run, but a sentence.
+
+  $ git grep -n -E 'createGateRegistry|fireAll|fireByTag' -- packages/learning/src ':(exclude)packages/learning/src/**/*.test.ts'
+    (no output)  exit=1                                     # at c0b3873
+
+  SCOPE DECISION, MEASURED THEN CHOSEN. The stronger form — ban the
+  `@crabgic/gates` import outright — was written, measured, and REJECTED:
+
+  $ git grep -n '@crabgic/gates' -- packages/learning/src ':(exclude)packages/learning/src/**/*.test.ts'
+    packages/learning/src/changeset/build-change-set.ts:35    (doc comment)
+    packages/learning/src/errors.ts:4                          (doc comment)
+    packages/learning/src/eval/case-schema.ts:22               (doc comment)
+    packages/learning/src/eval/eval-runner.ts:2                <- a REAL import
+    packages/learning/src/index.ts:10                          (doc comment)
+    packages/learning/src/promotion/promote.ts:27              (doc comment)
+    packages/learning/src/promotion/promote.ts:36              (doc comment)
+    exit=0
+
+  eval-runner.ts:2 imports `findEvidenceForRequirement` — a READ of recorded
+  gate evidence, which roadmap/22 §In scope explicitly requires ("dev/held-out
+  grading is executed against P14's gate framework and EvidenceRecords as
+  ground truth"). Banning the package import would misstate the boundary the
+  criterion draws, so the shipped scan bans the FIRING surface only
+  (createGateRegistry / fireAll / fireByTag) plus a directory-resolves guard
+  and an anti-vacuity file-count floor.
+
+  P4a — REVERSE PROBE: prove the guard bites in the direction that matters.
+  Planted packages/learning/src/tmp-probe-batchA.ts containing
+  `import { createGateRegistry } from "@crabgic/gates";`
+
+    baseline  (packages/learning, at 70f5347): 24 files / 237 tests / exit 0
+    mutation :  1 failed | 23 passed (24) / 1 failed | 236 passed (237) / exit 1
+      FAIL  no-gate-bypass-surface.redteam.test.ts > no non-test source under
+            packages/learning/src references createGateRegistry / fireAll / fireByTag
+      — and ONLY that. Nothing else in the package reddened.
+    restore  : file deleted; `git status --porcelain` empty.
+
+  The scan's own anti-vacuity floor asserts the scanned set is > 5 files; the
+  actual non-test source count under packages/learning/src is well above that
+  and the directory-resolves guard fails loudly if the path ever stops
+  resolving.
+
+== PART 2 — the fake-engine gate hop ==
+
+  Criterion 8 says "integration test on fake engine". no-bypass.redteam.test.ts
+  fires the real registry but has no engine in it at all (no FakeEngineAdapter,
+  no @crabgic/testkit). pipeline.e2e.test.ts runs entirely on FakeEngineAdapter
+  (:117) but fired no gates. The remedy composes the two: the gate hop is
+  appended to pipeline.e2e.test.ts.
+
+  APPEND-ONLY, verified mechanically. The merged phase-22 record cites
+  pipeline.e2e.test.ts at :101, :114-132, :176-184 and :193-213.
+
+  $ git diff -U0 -- packages/learning/src/pipeline.e2e.test.ts
+    @@ -213,0 +214,50 @@
+    (ONE hunk. Expanded, not counted: old side `-213,0` is a pure insertion
+    point with zero lines removed; new side occupies 214-263. Every line at or
+    below 213 is byte-identical. `git diff -U0` coalesces adjacent changed
+    lines, so hunk HEADERS are not a line count — the range is what is read
+    here.)
+
+  A dynamic `await import("@crabgic/gates")` is used instead of a top-level
+  import for the same reason: a new import line would shift every line in the
+  file.
+
+  HONEST STATEMENT OF WHAT PART 2 IS WORTH: it makes conjunct (iii) literally
+  true. It adds no new enforcement, and this transcript says so rather than
+  letting the reader infer otherwise.
+
+  P4b — does the new beat bind to the REAL gate registry, or to a local double?
+  Mutated packages/gates/src/registry.ts's own `fireOne` to green-light every
+  verdict (`{ ...(await gate.handler(context)), passed: true }`) — the exact
+  "learning ChangeSets get waved through" bypass the criterion exists to catch.
+  This edits a file outside this batch's shipped blast radius; it is a probe
+  only, disclosed here and restored.
+
+    baseline  (packages/learning, at 70f5347): 24 files / 237 tests / exit 0
+    src-only : 24 files / 237 tests / exit 0        <- COMPLETELY GREEN
+    rebuilt  (after `npm run build`, exit 0):
+               2 failed | 22 passed (24) / 2 failed | 235 passed (237) / exit 1
+      FAIL  pipeline.e2e.test.ts  (the new gate beat's `passed: false` assertion)
+      FAIL  no-bypass.redteam.test.ts
+    restore  : git checkout HEAD -- packages/gates/src/registry.ts; npm run build;
+               `git status --porcelain` empty; 10 *.redteam.test.ts still present.
+
+  Two things are measured here, and the second is the more important one.
+  (1) The new beat fires the genuine @crabgic/gates registry — it reddens
+      alongside no-bypass.redteam.test.ts, not instead of it, which is exactly
+      what "composes existing enforcement" should look like.
+  (2) THE SRC-ONLY LEG UNDER-REPORTED THE BLAST RADIUS TO ZERO. packages/learning
+      resolves @crabgic/gates through packages/gates/dist/, so a src-only edit
+      measured the unmutated code wearing the mutated code's label. Reported as
+      both numbers rather than quietly keeping the stronger one.
+
+== WHAT IS STILL NOT EVIDENCED ==
+  Conjunct (ii), "before publish (08)". learn approve constructs the promoted
+  ChangeSet, prints it and returns; nothing persists or dispatches it, so in the
+  shipped binary a promoted lesson never reaches gates or publish. No part of
+  this batch changes that, and no assertion here should be read as covering it.

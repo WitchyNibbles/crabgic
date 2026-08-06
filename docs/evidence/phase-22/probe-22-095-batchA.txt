@@ -1,0 +1,158 @@
+# PROBE TRANSCRIPT — roadmap/22 exit criterion 2 ("five behaviours in @learning-redteam")
+# batch A of the 2026-08-06 closeout remediation wave
+#
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — a branch commit dies on every rebase): 70f5347 "feat(learning): refuse grader drift, …"
+#
+# Every baseline/mutation/restore triple below ran at ONE sha. Baselines are
+# recorded beside their mutations deliberately: with nothing to compare
+# against, a mutation count reads as a result rather than as provenance.
+# All runs used --coverage.enabled=false; a scoped run otherwise trips the
+# global 80% threshold, which is expected and is not a finding.
+# ---8<--- verbatim numbers below ---8<---
+
+== 0. REPO-WIDE BASELINE at c0b3873 (measured here, not inherited) ==
+$ npm test
+  Test Files  636 passed (636)
+       Tests  6484 passed (6484)
+  EXIT=0
+
+== 1. SCOPED BASELINES at c0b3873 ==
+$ npx vitest run packages/learning --coverage.enabled=false
+  Test Files  19 passed (19) / Tests 223 passed (223) / exit 0
+$ npx vitest run packages/learning/src/red-team --coverage.enabled=false
+  Test Files  5 passed (5) / Tests 20 passed (20) / exit 0
+
+== 2. THE MEASUREMENTS THAT DECIDED "IMPLEMENT, DO NOT READ THE SEAL AS COVERAGE" ==
+$ git grep -n -E 'createGateRegistry|fireAll|fireByTag' -- packages/learning/src ':(exclude)packages/learning/src/**/*.test.ts'
+  (no output)  exit=1
+$ git grep -ni -E 'grader.drift|reward.hack' -- packages/learning/src
+  (no output)  exit=1
+$ git grep -n -E 'runEvalPair|EvalCaseSource|GraderDrift' -- docs/interface-ledger.md
+  (no output)  exit=1        <- no interface-ledger exposure for anything this batch adds
+
+  Plus, read out of the source rather than inferred:
+  - `runEvalSuite` (eval/eval-runner.ts:78-84) grades a caller-supplied in-memory
+    array and is never told where it came from, so a between-stage mutation of the
+    SOURCE was invisible to every line of code at c0b3873.
+  - store/case-fixture-store.ts's `seal()` covers one directory and is called by
+    no production code; store/layout.ts has no seal step for grader/dev/.
+
+== 3. SUITE-MEMBERSHIP DELTA — stated honestly as membership, NOT as TDD-red ==
+   Four of the five behaviours (contamination, rejected-promotion, expiry,
+   rollback) already had real, passing, non-vacuous cases OUTSIDE the named
+   suite. Their new red-team files are GREEN ON WRITE. The measured claim is
+   about the suite, and the instrument is `vitest list`, not a red run.
+
+$ npx vitest list packages/learning/src/red-team          # at c0b3873
+  5 files, 20 cases — none of them contamination, grader-drift,
+  rejected-promotion, expiry or rollback.
+$ npx vitest list packages/learning/src/red-team          # at 70f5347
+  10 files, 34 cases. The 14 new case names:
+
+  contamination.redteam.test.ts:
+    > case-hash overlap is refused, and no grading ever consults the journal
+    > shared provenance is refused even when the content differs
+    > CONTROL: a disjoint pair is graded, both suites pass, and the journal IS consulted
+  grader-drift.redteam.test.ts:
+    > refuses with GraderDriftError when the held-out set is RELABELLED between the pin and grading, and never grades the drifted set
+    > refuses a rename that leaves CONTENT identical — the pin covers case IDENTITY, not only `computeCaseHash`
+    > refuses when the mutation happens ON DISK, through a real (unsealed) CaseFixtureStore
+    > CONTROL: an un-mutated pair grades both suites and does not throw
+    > the digest input covers every member of EvalCaseSchema — a new field cannot silently escape the pin
+  rejected-promotion.redteam.test.ts:
+    > rejection at independent_review leaves the record identical but for `state`, and promotion afterwards is refused with the typed error
+    > CONTROL: the identical setup WITHOUT the rejection does promote — so the refusal above is the rejection's doing, not a broken promote path
+  expiry-rollback.redteam.test.ts:
+    > expires exactly the stale-evidence lesson, journals the transition, and leaves its fresh-evidence sibling untouched
+    > rolls a promoted proposal back, recording an inverse ChangeSet that NAMES the promoted one, with the reversal journaled last
+  no-gate-bypass-surface.redteam.test.ts:   (criterion 8 part 1 — see probe-22-102-batchA.txt)
+    > this scanner's target directory actually resolves and holds a non-trivial file count (the scan is not vacuous)
+    > no non-test source under packages/learning/src references createGateRegistry / fireAll / fireByTag
+
+== 4. THE ONE GENUINELY TDD-RED CASE — grader drift ==
+   grader-drift.redteam.test.ts was written and run BEFORE eval/eval-pair.ts
+   existed. It could not even import.
+
+$ npx vitest run packages/learning/src/red-team/grader-drift.redteam.test.ts --coverage.enabled=false
+   FAIL  |@crabgic/learning| src/red-team/grader-drift.redteam.test.ts
+  Error: Cannot find module '../eval/eval-pair.js' imported from …/src/red-team/grader-drift.redteam.test.ts
+   ❯ src/red-team/grader-drift.redteam.test.ts:8:1
+   Test Files  1 failed (1)
+        Tests  no tests
+   EXIT=1
+
+   Same command after eval/eval-pair.ts + errors.ts's GraderDriftError landed:
+   Test Files  1 passed (1) / Tests 5 passed (5) / exit 0
+
+== 5. ANTI-VACUITY PROBES — baseline -> mutation -> restore, all at 70f5347 ==
+   Restores are `git checkout HEAD -- <explicit single file path>`, then all
+   three countermeasures: test COUNT, `git status`, and a grep for the new
+   tests' own names.
+
+   CONSUMER CENSUS first, to settle the rebuild question by measurement:
+   $ git grep -l <symbol> -- packages | grep -v '^packages/learning/'
+     runEvalPair            -> (nothing)
+     caseSetDigest          -> (nothing)
+     assertNoContamination  -> (nothing)
+     sweepExpiredProposals  -> (nothing)
+     promoteProposal        -> packages/cli/src/learning/learn-command-backend.ts
+     rollbackProposal       -> packages/cli/src/learning/learn-command-backend.ts
+   So P2a/P2b/P2d are package-internal; P2c/P2e cross a package boundary and
+   are run BOTH src-only and after `npm run build`, with both numbers kept.
+
+   BASELINE (packages/learning): 24 files / 237 tests, exit 0.
+
+   P2a — eval/eval-pair.ts: delete the `if (observedDigest !== pinnedDigest) throw`
+     1 failed | 23 passed (24) / 3 failed | 234 passed (237) / exit 1
+     FAIL: grader-drift … RELABELLED between the pin and grading
+     FAIL: grader-drift … rename that leaves CONTENT identical
+     FAIL: grader-drift … mutation happens ON DISK
+     GREEN as required: grader-drift's own CONTROL case and its digest-
+     exhaustiveness case, contamination.redteam, pipeline.e2e — the drift
+     refusal is carried by the three refusal cases and nothing else.
+     restore -> git status clean; 5 *.redteam.test.ts names still present.
+
+   P2b — eval/contamination.ts: delete the throw in assertNoContamination
+     2 failed | 22 passed (24) / 3 failed | 234 passed (237) / exit 1
+     FAIL: eval/contamination.test.ts > assertNoContamination throws …
+     FAIL: contamination.redteam … case-hash overlap is refused
+     FAIL: contamination.redteam … shared provenance is refused
+     EXPECTED-GREEN CONTROL, named: pipeline.e2e.test.ts stays green — its dev
+     and held-out sets are disjoint, so it never exercises the refusal.
+     restore -> git status clean.
+
+   P2d — expiry/expiry-sweeper.ts: `staleFlags.some(Boolean)` -> a false predicate
+     2 failed | 22 passed (24) / 3 failed | 234 passed (237) / exit 1
+     FAIL: expiry-sweeper.test.ts > expires a non-terminal proposal …
+     FAIL: expiry-sweeper.test.ts > expires even an already-promoted proposal …
+     FAIL: expiry-rollback.redteam … expires exactly the stale-evidence lesson …
+     restore -> git status clean.
+
+   CROSS-PACKAGE BASELINE (packages/learning + packages/cli/src/learning, after
+   `npm run build`): 26 files / 256 tests, exit 0.
+
+   P2c — proposal-store/registry.ts: `transition` drops evidenceRecordIds when
+         the target is "rejected"
+     src-only : 2 failed | 24 passed (26) / 2 failed | 254 passed (256) / exit 1
+     rebuilt  : 2 failed | 24 passed (26) / 2 failed | 254 passed (256) / exit 1
+     FAIL: registry.test.ts > rejected: changes nothing else about the proposal's …
+     FAIL: rejected-promotion.redteam … leaves the record identical but for `state`
+     restore -> rebuild -> git status clean; 10 *.redteam.test.ts present.
+
+   P2e — rollback/rollback.ts: stop recording rollbackChangeSetId
+     src-only : 3 failed | 23 passed (26) / 3 failed | 253 passed (256) / exit 1
+     rebuilt  : 3 failed | 23 passed (26) / 3 failed | 253 passed (256) / exit 1
+     FAIL: pipeline.e2e.test.ts
+     FAIL: expiry-rollback.redteam … rolls a promoted proposal back …
+     FAIL: rollback/rollback.test.ts > rolls back a promoted proposal …
+     restore -> rebuild -> git status clean.
+
+   FINDING worth recording rather than smoothing: for P2c and P2e the two legs
+   are IDENTICAL. The packages/cli/src/learning leg did not move under either
+   mutation — learn-command-backend.test.ts asserts `rolledBack: true` and that
+   `inverseChangeSet.rollbackStrategy` contains the forward ChangeSet id, but
+   never `proposal.rollbackChangeSetId`, and never a rejected proposal's
+   retained evidence. So the CLI-side backend suite is insensitive to both.
+   Both numbers are reported; keeping only one would have been a claim about
+   coupling that the measurement does not support.

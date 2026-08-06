@@ -211,5 +211,55 @@ describe("E2E: observation -> reproducer -> candidate -> dev_eval -> held_out_ev
       from: "promoted",
       to: "rolled_back",
     });
+
+    // 11. GATES (roadmap/22 exit criterion 8, conjunct "integration test on
+    // fake engine"): the SAME `@crabgic/gates` registry any human-authored
+    // change fires, against the ChangeSet THIS fake-engine pipeline just
+    // produced. `./red-team/no-bypass.redteam.test.ts` already fires the
+    // registry, but on a ChangeSet built with no engine anywhere in the file;
+    // this beat is what makes the criterion's "on fake engine" phrase literally
+    // true, since everything above ran on `FakeEngineAdapter` (`:117`).
+    //
+    // Two placement decisions, both deliberate:
+    //   - AFTER the rollback beat, because every line from `:101` to `:213` is
+    //     cited by the merged phase-22 closeout record and must stay
+    //     byte-stable. The `changeSet` object is unaffected by the proposal's
+    //     rollback transition, so firing here fires the same artefact.
+    //   - `await import(...)` rather than a top-level import, for the same
+    //     citation-stability reason — a new import line would shift every line
+    //     in the file.
+    //
+    // Honest scope: this composes existing enforcement, it does not add any.
+    // The load-bearing control is IN-BAND — one gate is registered to FAIL and
+    // must report `passed: false`. A "green-light learning ChangeSets" special
+    // case would have to make that assertion fail.
+    const { createGateRegistry } = await import("@crabgic/gates");
+    const gateRegistry = createGateRegistry();
+    gateRegistry.register("tdd", "fake-tdd-gate", async () => ({
+      passed: true,
+      command: "npm test",
+      exitStatus: 0,
+      toolchainFingerprint: "node-24",
+      artifactDigests: [],
+      detail: "green",
+    }));
+    gateRegistry.register("coverage", "fake-coverage-gate", async () => ({
+      passed: false,
+      command: "npm test",
+      exitStatus: 1,
+      toolchainFingerprint: "node-24",
+      artifactDigests: [],
+      detail: "red",
+    }));
+    const gateResults = await gateRegistry.fireAll({
+      stage: "final_verifying",
+      changeSetId: changeSet.id,
+      objectId: "deadbeef-learning-pipeline",
+      journal,
+    });
+    expect(gateResults).toHaveLength(2);
+    expect(gateResults.find((r) => r.name === "fake-tdd-gate")?.verdict.passed).toBe(true);
+    expect(gateResults.find((r) => r.name === "fake-coverage-gate")?.verdict.passed).toBe(false);
+    expect(gateResults.every((r) => r.evidence.changeSetId === changeSet.id)).toBe(true);
   });
 });

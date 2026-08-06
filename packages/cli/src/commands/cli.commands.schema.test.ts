@@ -182,16 +182,47 @@ describe("dispatchCommand — real backends", () => {
     });
   });
 
-  it("doctor --json: returns a well-formed report", async () => {
+  /**
+   * The finding IDS, in order, as they appear ON THE `--json` SERIALIZATION
+   * PATH — not a count. This used to be `expect(parsed.findings).toHaveLength(10)`,
+   * which the phase-09 `--json`-snapshot defect names: a count cannot tell a
+   * displaced check from a renamed one, and two of the last three merges
+   * already moved that number.
+   *
+   * Deliberately NOT redundant with `../doctor/run-doctor.test.ts:17-31`,
+   * which asserts the identical list against `buildDefaultDoctorChecks`'s
+   * return value. That one pins the BUILDER; this one pins what a caller of
+   * `dispatchCommand` actually reads out of `stdout` after
+   * `runDoctorCommand` → `formatJson`. Measured, not assumed: reversing the
+   * finding order inside `real-handlers.ts`'s own `--json` branch left the
+   * whole `packages/cli` suite green (100 files / 1175 tests) before this
+   * assertion existed, and reddens exactly this case after it.
+   *
+   * Order is the wiring order of `buildDefaultDoctorChecks`
+   * (`../doctor/run-doctor.ts:90-135`); each id literal was read out of its
+   * own check source, never copied from another test.
+   */
+  it("doctor --json: the finding id set is exactly the default check set, in wiring order", async () => {
     const result = await dispatchCommand(
       { command: "doctor", repairPlan: false, json: true },
       deps,
     );
     const parsed = JSON.parse(result.stdout!) as {
-      findings: readonly unknown[];
+      findings: readonly { readonly id: string }[];
       allPassed: boolean;
     };
-    expect(parsed.findings).toHaveLength(10);
+    expect(parsed.findings.map((f) => f.id)).toEqual([
+      "engine.version",
+      "sandbox.selftest",
+      "hermeticity.selftest",
+      "auth.probe",
+      "git.plumbing",
+      "xdg.permissions",
+      "journal.chain",
+      "journal.head-anchor",
+      "journal.writer-separation",
+      "wsl2.warnings",
+    ]);
     expect(typeof parsed.allPassed).toBe("boolean");
   });
 

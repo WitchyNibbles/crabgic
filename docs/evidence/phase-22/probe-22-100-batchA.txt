@@ -1,0 +1,103 @@
+# PROBE TRANSCRIPT — roadmap/22 exit criterion 6 ("learn * passes P09's CLI
+# conformance harness, replacing its NOT_IMPLEMENTED stub (golden CLI-output test)")
+# batch A of the 2026-08-06 closeout remediation wave
+#
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+# branch tip at capture (PROVISIONAL — a branch commit dies on every rebase): 80294ec "test(cli): cover dispatch.ts's four wired learn arms, …"
+# ---8<--- verbatim numbers below ---8<---
+
+== 1. THE SEAM GAP — the single most important measurement in this batch ==
+
+  At c0b3873 there is no packages/cli/src/commands/learn-dispatch.test.ts
+  ($ ls packages/cli/src/commands/ -> the four dispatch suites are
+  connection/installer/intake/trust). dispatch.ts:111-126's four
+  `deps.learning !== undefined` branches are executed by no test:
+  cli.commands.schema.test.ts supplies no deps.learning, so its four learn rows
+  at :228-231 take the stub arm; learn-command-backend.test.ts calls the
+  runLearn* functions directly, never through the dispatcher.
+
+  THE MUTATION THAT ISOLATES THE WIRED ARM. For each verb, the whole ternary is
+  replaced with an unconditional `notImplementedResult(command.command,
+  command.json)` — i.e. the verb is UN-WIRED, exactly as a shipped CLI missing
+  the composition-root wiring would behave. Run at c0b3873, scope
+  `packages/cli packages/learning`:
+
+    baseline           :               119 files / 1398 tests / exit 0
+    un-wire learn-list :               119 files / 1398 tests / exit 0
+    un-wire learn-approve :            119 files / 1398 tests / exit 0
+    un-wire learn-reject :             119 files / 1398 tests / exit 0
+    un-wire learn-rollback :           119 files / 1398 tests / exit 0
+
+  Four times, all green. THAT GREEN RUN IS THE CRITERION'S REDNESS. Restores by
+  `git checkout HEAD -- packages/cli/src/commands/dispatch.ts` between each;
+  `git status --porcelain` empty after every one.
+
+  (e2e/live/src/cliNotImplementedSweep.test.ts:105 would catch this, but it is
+  outside the default `npm test` fan-out — unrun evidence, per the playbook's
+  own classification, not a bearer.)
+
+== 1b. A CORRECTION TO THE PLAN THIS BATCH EXECUTED — reported, not routed around ==
+
+  The plan specified a different mutation: invert the CONDITION,
+  `deps.learning !== undefined` -> `deps.learning === undefined`, and it
+  asserted "Expected: all green … that green run IS the criterion's redness."
+
+  MEASURED, at c0b3873, same scope:
+    invert learn-list     : 1 failed | 118 passed (119) / 1 failed | 1397 passed (1398)
+    invert learn-approve  : 1 failed | 118 passed (119) / 1 failed | 1397 passed (1398)
+    invert learn-reject   : 1 failed | 118 passed (119) / 1 failed | 1397 passed (1398)
+    invert learn-rollback : 1 failed | 118 passed (119) [+1 unrelated flake, below]
+
+  In every case the ONE failure is
+    FAIL  src/commands/cli.commands.schema.test.ts > dispatchCommand —
+          NOT_IMPLEMENTED stubs > '<verb>' returns the typed NOT_IMPLEMENTED shape
+
+  The inversion also breaks the UNWIRED direction, which those stub rows really
+  do pin. So the plan's mutation measures the wrong direction, and would have
+  produced a red run labelled as the criterion's green redness. The plan is
+  wrong here; the un-wiring mutation in §1 is the correct instrument, and the
+  correction is recorded in learn-dispatch.test.ts's own header so it is not
+  re-derived by the next reader.
+
+  UNRELATED FLAKE, disclosed rather than dropped: the learn-rollback inversion
+  leg also showed
+    FAIL  src/daemon/run-dispatcher.test.ts > createRealRunDispatcher — dispatch >
+          marks a run blocked when its drive ends blocked, so the change set is retryable  (1109ms)
+  It appeared exactly once across ~12 packages/cli runs at this sha and in no
+  baseline. It is not in the two known load flakes named in the wave preamble.
+  Nothing in this batch touches packages/cli/src/daemon.
+
+== 2. PER-VERB BITE AFTER learn-dispatch.test.ts LANDS (at 80294ec) ==
+  A single-verb probe would pass with three of four arms broken, so each arm is
+  un-wired ONE AT A TIME. Scope `packages/cli packages/learning`.
+
+    baseline                : 125 files / 1418 tests / exit 0
+    un-wire learn-list      : 1 failed (125) / 1 failed | 1417 passed (1418)
+        FAIL  learn-dispatch.test.ts > routes `learn list` to the real backend …
+    un-wire learn-approve   : 1 failed (125) / 2 failed | 1416 passed (1418)
+        FAIL  learn-dispatch.test.ts > routes `learn approve` … unknown id
+        FAIL  learn-dispatch.test.ts > routes `learn approve` through the full
+              prompt -> mint -> record path (1-of-2 shape)
+    un-wire learn-reject    : 1 failed (125) / 1 failed | 1417 passed (1418)
+        FAIL  learn-dispatch.test.ts > routes `learn reject` to the real backend …
+    un-wire learn-rollback  : 1 failed (125) / 1 failed | 1417 passed (1418)
+        FAIL  learn-dispatch.test.ts > routes `learn rollback` … unknown id
+
+  Restore after each: `git checkout HEAD -- packages/cli/src/commands/dispatch.ts`,
+  then all three countermeasures — `git status --porcelain` empty, and
+  learn-dispatch.test.ts still holds its 6 `it(` cases.
+
+  TWO EXPECTED-GREEN CONTROLS, both named because a green is only evidence when
+  you say in advance which green you expect:
+   - learn-command-backend.test.ts stays GREEN under every un-wiring. It bypasses
+     the dispatcher entirely, which is precisely the seam the defect names. That
+     green is the evidence, quoted here as such.
+   - learn-dispatch.test.ts's own final case (`deps.learning` ABSENT still
+     produces the typed EXIT_NOT_IMPLEMENTED shape for all four verbs) stays
+     GREEN under every un-wiring, as do cli.commands.schema.test.ts's four stub
+     rows. So it is routing that changed the outcome, not the backend.
+
+== 3. WHAT THIS TRANSCRIPT DOES NOT COVER ==
+  Conjunct (c), "(golden CLI-output test)", is borne by the --json snapshot work
+  recorded in docs/evidence/phase-09/probe-09-383-batchA.txt, which shares the
+  same commit. Nothing here should be read as evidencing it.
