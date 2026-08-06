@@ -1,0 +1,555 @@
+================================================================================
+phase 18 — cassette replay of the Jira flow, and the de-tautologised read parity
+Batch J of the 2026-08-06 closeout remediation wave
+================================================================================
+
+# RULING-3 HEADER
+# UTC (capture window):            2026-08-06T13:50Z .. 2026-08-06T14:00Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#                                  1bc0d51  ("Batch E: bind the enforced budget
+#                                            to the approved envelope … (#116)")
+# branch:                          closeout/batch-j  (worktree /home/eimi/projects/wt-batchj)
+# workspace build before any run:  `npm run build`  -> EXIT 0
+#   (playbook §CROSS-PACKAGE DELETION PROBES MUST REBUILD — connectors-jira
+#    imports @crabgic/gateway from packages/gateway/dist, and this pass adds a
+#    module that imports gateway types.)
+# scoped runs use `--coverage.enabled=false`: the repo's 80% global coverage
+#   gate is a REPO-WIDE gate and always reds a single-package scoped run. The
+#   unscoped, gate-enforcing run is §R6 below.
+
+WHAT THIS TRANSCRIPT DOES AND DOES NOT ESTABLISH — read before citing it.
+
+  ESTABLISHES
+    * roadmap/18 exit criterion 1's second fixture channel ("+ cassettes") now
+      has a bearer: the whole named chain — board → sprint → epic → issue →
+      link → comment(ADF) → worklog → attachment, plus a transition and a 412
+      concurrent-edit conflict — is driven from bytes on disk, through the REAL
+      `executeMutationPlan` and a REAL temp-dir JournalStore, with the same
+      assertion set the fake arm runs.
+    * The pre-existing Cloud cassette corpus could NOT bear that clause.
+      Measured in §R3, not argued.
+    * The read-parity assertion is falsifiable again (§P4), and the byte-level
+      coverage that was lost by dropping the tautology is replaced, not
+      abandoned (§P5/§P5b).
+
+  DOES NOT ESTABLISH
+    * That the recorded shapes are what Atlassian actually returns. THE
+      WRITE-SCENARIO CASSETTE IS HAND-AUTHORED, NOT CAPTURED. No licensed Jira
+      Cloud sandbox was available to this pass and none was used.
+    * roadmap/18-jira-cloud-adapter.md exit criterion 9 (fake/cassette parity).
+      Parity needs a recording INDEPENDENT of the fake; a second hand-authored
+      fixture is not one. That box stays UNTICKED and owner-gated. Nothing in
+      this transcript may be cited for it.
+    * Anything about live Jira traffic, rate limits or edition differences.
+
+  The hand-authored-fixture disclosure follows this repository's existing
+  precedent rather than inventing one:
+    packages/connectors-jira/src/testkit/fake-cassette-parity-dc.test.ts:16-22
+      ("hand-authored/MODELED fixtures … not live-captured recordings")
+    e2e/attestation/src/traceabilityEvidence.ts  (Grafana: "HAND-AUTHORED, not
+      recorded")
+
+
+================================================================================
+§0  BASELINE — the tree before this pass
+================================================================================
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/
+ Test Files  10 passed (10)
+      Tests  39 passed (39)
+EXIT 0
+
+  packages/connectors-jira/src/testkit/jira-flow.integration.test.ts held 3
+  tests, all on inline fake scripts. The only Cloud cassette in the repository
+  was src/testkit/fixtures/read-scenario.cassette.json — 7 GET responses.
+
+
+================================================================================
+§R1  RED — the cassette-arm assertions written BEFORE any replay code exists
+================================================================================
+
+Written first: jira-flow.integration.test.ts parameterized over
+`describe.each(["fake", "cassette"] as const)`, the cassette arm importing
+`createCassetteReplayTransport` / `loadWriteScenarioCassette` /
+`recomputeBodyDigest` from "./write-scenario-cassette.js". That module did not
+exist yet.
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/jira-flow.integration.test.ts
+ FAIL  |@crabgic/connectors-jira| src/testkit/jira-flow.integration.test.ts
+Error: Cannot find module './write-scenario-cassette.js' imported from
+  /home/eimi/projects/wt-batchj/packages/connectors-jira/src/testkit/jira-flow.integration.test.ts
+ Test Files  1 failed (1)
+      Tests  no tests
+EXIT 1
+
+
+================================================================================
+§R2  RED — replay loader exists, the write-scenario fixture does not
+================================================================================
+
+src/testkit/write-scenario-cassette.ts added (loader + replay transport). The
+fixture it names was still absent.
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/jira-flow.integration.test.ts
+Error: ENOENT: no such file or directory, open
+  '…/packages/connectors-jira/src/testkit/fixtures/write-scenario.cassette.json'
+   × Jira flow — cassette fixture regime > … chain …
+   × Jira flow — cassette fixture regime > transitions > …
+   × Jira flow — cassette fixture regime > concurrent-edit conflicts > …
+   × write-scenario cassette … every recorded response body still hashes …
+   × write-scenario cassette … pins the hand-authored provenance disclosure …
+ Test Files  1 failed (1)
+      Tests  5 failed | 3 passed (8)
+EXIT 1
+
+  The 3 passes are the FAKE arm — unchanged behaviour, which is the control
+  that says this RED is about the cassette channel and nothing else.
+
+
+================================================================================
+§R3  RED — the headline measurement: the cassette corpus that existed on `main`
+      CANNOT drive this flow
+================================================================================
+
+Fixture written containing the repository's ONLY pre-existing Cloud cassette —
+the seven entries of src/testkit/fixtures/read-scenario.cassette.json, byte for
+byte, reshaped into the write-cassette envelope with their real recorded GET
+request lines (dumped from a real run of `runScriptedReadScenario`), as the
+`chain` section; `transition` and `conflict` empty, because the read cassette
+contains nothing for them.
+
+Generator (scratch, deliberately never committed):
+  gen-red3-fixture-batchj.mjs — "wrote RED-3 fixture with 7 chain entries"
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/jira-flow.integration.test.ts
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+EXIT 1
+
+  1/4  chain:
+       AssertionError: expected 'jira-cloud:created' to be '1'
+         ❯ src/testkit/jira-flow.integration.test.ts:224
+         expect(boardOutcome.appliedRevision).toBe("1");
+       — a read cassette's project-list body carries no created-resource id, so
+         the pipeline falls back to its provider-default revision string.
+
+  2/4  transitions:
+       Error: cassette replay: section "transition" recorded 0 call(s); the
+              connector made at least 1
+         ❯ src/testkit/write-scenario-cassette.ts (send)
+         ❯ … reads.ts (listTransitions) ❯ jira-resource-client.ts (planTransition)
+
+  3/4  concurrent-edit conflicts:
+       AssertionError: expected 'blocked' to be 'failed'
+         ❯ src/testkit/jira-flow.integration.test.ts:390
+       — no non-2xx status exists anywhere in the read cassette, so the 412
+         branch has no fixture to replay and the mutation ends ambiguous.
+
+  4/4  fixture integrity: expected 7 to be 12  (entry count)
+
+  THIS IS THE DEFECT, MEASURED. Defect record
+  docs/evidence/criteria-closeout/defects/18-flow-never-replayed-on-a-cassette.md
+  asserted this by enumeration; §R3 asserts it by execution.
+
+
+================================================================================
+§GREEN — the write-scenario cassette authored, both arms green
+================================================================================
+
+packages/connectors-jira/src/testkit/fixtures/write-scenario.cassette.json
+  sha256(file) = db68d033da365e8ae9bc0005410c7130b8f204d7a1bd8b4fd0655b47009d3b80
+  12 entries in 3 sections: chain 8, transition 3, conflict 1.
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/jira-flow.integration.test.ts
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+EXIT 0
+
+  3 tests -> 8 tests: 3 fake-arm + 3 cassette-arm + 2 cassette-fixture checks.
+
+DELIBERATELY NOT A SERIALIZATION OF THE FAKE. The read cassette's defect was
+that every one of its `bodyText` values is `JSON.stringify` of the inline
+literal beside it. This fixture is not: its bodies carry the response-envelope
+fields a real Jira Cloud instance returns and the inline fake does not — `self`
+URLs, `expand`, comment `author`/`created`, worklog `issueId`/`timeSpent`,
+attachment `mimeType`/`size`, `statusCategory.colorName`, and Jira's real 412
+`errorMessages` envelope in place of the fake's empty 412 body. The connector
+must extract the same typed results from both, which is a real (if modest)
+robustness statement the single-arm suite could not make.
+
+
+================================================================================
+§P1  NON-VACUITY PROBE (the one the work order names): byte-reorder one
+      `bodyText` key
+================================================================================
+
+Mutation, semantically invisible, digest left untouched — inside the epic
+`issue.create` body of the `chain` section:
+    {"id":"20001","key":"PROJ-1",…}   ->   {"key":"PROJ-1","id":"20001",…}
+  file sha256 db68d033… -> 7997f439…
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira src/testkit/jira-flow.integration.test.ts
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+EXIT 1
+
+  1/2  Jira flow — cassette fixture regime > … chain …
+       AssertionError: expected [ { index: 2, …(3) } ] to deeply equal []
+         ❯ Object.settle src/testkit/jira-flow.integration.test.ts:151
+           expect(replay.violations).toEqual([]);
+         ❯          src/testkit/jira-flow.integration.test.ts:298
+         [ { "index": 2, "kind": "body-digest",
+             "expected": "sha256:a9b1c1e7be54ea6b727e7ebca5fda26d5c37fe7cb51fe205e1a6cb937e3a1e09",
+             "actual":   "sha256:170c83db9e6434aea4679526c4a6d2237829e7022d62ac9a9c1f77a869727cc7" } ]
+
+  2/2  write-scenario cassette … every recorded response body still hashes …
+         ❯ src/testkit/jira-flow.integration.test.ts:409
+
+  READ THE FAILURE LOCATION, NOT ONLY THE COUNT. The chain test failed at
+  :151 — reached from :298, i.e. AFTER every one of its eight semantic
+  assertions (:223, :224, :232, :233, :242, :251, :259, :270, :271, :281, :296)
+  had already passed. So:
+
+      the SEMANTIC assertions are blind to a byte-level key reorder — exactly
+      the blindness that made this phase's parity claim vacuous —
+      and the WIRE-SHAPE assertion is not.
+
+  That asymmetry is the point of the probe. It is reported as a finding, not
+  hidden: a reader must not read "the cassette arm is green" as "the cassette
+  bytes are pinned"; only `expect(replay.violations).toEqual([])` and the
+  digest test pin them.
+
+RESTORE: regenerated from gen-write-cassette-batchj.mjs (the fixture is a NEW,
+untracked file, so `git checkout HEAD -- <path>` cannot restore it — playbook
+§RESTORING AFTER A PROBE). Verified by hash and by test count, not by exit code:
+  sha256(file) = db68d033da365e8ae9bc0005410c7130b8f204d7a1bd8b4fd0655b47009d3b80  (baseline)
+  Tests  8 passed (8)
+
+
+================================================================================
+§P2  PROBE — do the cassette BYTES actually drive the flow, or is the cassette
+      arm quietly re-running the inline script?
+================================================================================
+
+Mutation: `"key":"PROJ-2"` -> `"key":"PROJ-9"` in the story `issue.create` body
+of the `chain` section, WITH its `bodyDigest` recomputed — so this is a purely
+semantic change, invisible to the digest guard.
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+EXIT 1
+
+  AssertionError: expected 'PROJ-9' to be 'PROJ-2'
+    ❯ src/testkit/jira-flow.integration.test.ts:251
+      expect(issueOutcome.appliedRevision).toBe("PROJ-2");
+  FAIL … > Jira flow — cassette fixture regime > … chain …
+
+  CONTROL, and the reason this probe is worth running: the FAKE arm's
+  byte-identical test stayed GREEN. Exactly one of the two arms moved, so the
+  cassette arm is genuinely sourced from the fixture — it is not falling back
+  to INLINE_SCRIPTS, and it is not asserting over a literal.
+
+RESTORE: regenerated; sha256 db68d033…; 8 passed (8).
+
+
+================================================================================
+§P3  REVERSE PROBE — does the recorded REQUEST line bite?
+================================================================================
+
+Playbook §REVERSE PROBES: an assertion nobody has seen fail is not yet known to
+be non-vacuous. Mutation: recorded path `/rest/api/3/issueLink` ->
+`/rest/api/3/issuelink` (one byte, case only).
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+EXIT 1
+
+  AssertionError: expected [ { index: 4, kind: 'path', …(2) } ] to deeply equal []
+    ❯ Object.settle src/testkit/jira-flow.integration.test.ts:151
+    [ { "index": 4, "kind": "path",
+        "expected": "/rest/api/3/issuelink", "actual": "/rest/api/3/issueLink" } ]
+
+  All eight semantic flow assertions stayed green (the response bytes were
+  untouched) and the fake arm stayed green. The request-line check is the only
+  thing that moved — it is a real, independent check, and it is one the
+  inline-fake arm does not have at all.
+
+RESTORE: regenerated; sha256 db68d033…; 8 passed (8).
+
+
+================================================================================
+§P4  PARITY — the falsifiability half of
+      defects/18-cassette-parity-is-a-tautology.md
+================================================================================
+
+FIRST, THE CLAIM THE CORRECTION MAKES, RE-MEASURED RATHER THAN INHERITED. The
+defect record states the read cassette is a serialization of the fake. This
+pass re-derived it rather than quoting it — a throwaway script re-`JSON.stringify`d
+each object literal of `HAND_AUTHORED_READ_SCENARIO` and byte-compared it to the
+fixture entry beside it:
+
+    byte-identical bodyText entries: 7 of 7
+    capture metadata keys on entries: status,bodyText
+
+  Seven of seven identical, and the only per-entry keys in the whole fixture
+  are `status` and `bodyText` — no timestamp, no request URL, no response
+  header, no instance identity. The dated corrections written into
+  scripted-read-scenario.ts, fake-cassette-parity.test.ts and the release-e2e
+  twin rest on this measurement, not on the record.
+
+Change: drop `expect(cassette.responses).toEqual(HAND_AUTHORED_READ_SCENARIO.responses);`
+(the at-rest pin that made the parity assertion unfalsifiable by construction),
+and replace the "two INDEPENDENT sources" claim in
+src/testkit/scripted-read-scenario.ts with a dated correction stating the truth.
+
+Mutation used for both legs — a SEMANTIC drift in the read cassette:
+    "name":"Project"  ->  "name":"Project (drifted)"
+
+  P4-before  (tree as on `main`, `:26` present)
+    baseline : Tests  2 passed (2)
+    mutation : Tests  2 failed (2)
+      FAIL … > the hand-authored fake and the recorded JSON cassette … (:20)
+      FAIL … > sanity: the cassette fixture actually resolves and is non-trivial (:26)
+
+  P4-after   (`:26` dropped)
+    baseline : Tests  3 passed (3)   [3rd case is the new byte pin, §P5b]
+    mutation : Tests  1 failed | 1 passed (2)   [run before §P5b's case existed]
+      FAIL … > the hand-authored fake and the JSON cassette fixture drive the
+               JiraResourceClient to byte-identical typed results
+      AssertionError: expected { projects: [ { …(3) } ], …(5) }
+                      to deeply equal { projects: [ { …(3) } ], …(5) }
+
+  RESULT: the parity assertion CAN now fail, and is the suite's sole detector
+  of fake/cassette divergence. Before the change the cassette was pinned equal
+  to the fake at rest, so "parity" was a comparison two files were forbidden
+  from losing.
+
+  ⚠️ WHAT THIS DOES NOT DO. It removes a false claim. It does not create the
+  missing recording. The two sides are still both hand-authored, so criterion 9
+  stays UNTICKED and owner-gated on a capture against a licensed Jira Cloud
+  sandbox. The in-file disclosure now says so at all three sites the false
+  claim was written: fake-cassette-parity.test.ts, scripted-read-scenario.ts,
+  and e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts.
+
+RESTORE (both legs): `git checkout HEAD -- <explicit path>` for the read
+cassette, and the parity test restored from an explicit copy, verified by hash
+(591eed219e55c81c575be00e0cfd2773e85ef6ac0d59a083e9357bd5820e8339) and by test
+count, per playbook §RESTORING AFTER A PROBE.
+
+
+================================================================================
+§P5  THE COST OF DROPPING `:26`, MEASURED — and §P5b, paid back
+================================================================================
+
+Playbook §ADDING A CHECK CAN SILENTLY UN-PIN THE ONE IT SITS BESIDE, run in
+reverse: what did the dropped assertion cover that nothing else does?
+
+Mutation: byte-level, semantically invisible key reorder in the read cassette
+    {"values":[{"id":"10000","key":"PROJ","name":"Project"}]}
+ -> {"values":[{"key":"PROJ","id":"10000","name":"Project"}]}
+
+  §P5 pre-change  (`:26` present)   : Tests  1 failed | 1 passed (2)
+      FAIL … > sanity: the cassette fixture actually resolves and is non-trivial
+      — i.e. ONLY `:26` caught it. The PARITY assertion at `:20` stayed GREEN.
+        (This independently reproduces the original vacuity finding: the parity
+         comparison is semantic and cannot see wire shape.)
+
+  §P5 post-change (`:26` dropped, nothing added)
+                                    : Tests  2 passed (2)
+      — nothing caught it. Dropping the tautology WOULD have opened a
+        byte-level hole. Reported rather than routed around.
+
+  §P5b THE REPLACEMENT — a third case pinning the cassette to ITSELF (sha-256
+       of its parsed-and-restringified form) rather than to the fake:
+    baseline : Tests  3 passed (3)
+    mutation : Tests  1 failed | 2 passed (3)
+      FAIL … > pins the cassette fixture's own bytes, so a byte-level edit
+               cannot pass unnoticed
+    restore  : Tests  3 passed (3)
+
+  Why this is not the old assertion under a new name: the old one pinned the
+  cassette TO THE FAKE, which is precisely what made parity unfalsifiable. The
+  new one pins the cassette to itself, so the cassette is free to diverge from
+  the fake — which parity must be able to detect — while still not drifting at
+  the byte level unnoticed. Hashing the parsed form, not the raw file, so a
+  Prettier reformat of the fixture is not a false alarm while an edit inside
+  any `bodyText` string still is.
+
+
+================================================================================
+§R6  GATE RUNS AT THE BRANCH TIP
+================================================================================
+
+$ npm run build                                   EXIT 0
+$ npm run typecheck                               EXIT 0
+$ npm run lint                                    EXIT 0
+$ npx prettier --check .                          EXIT 0  ("All matched files use Prettier code style!")
+$ npm run check:e2e-types                         EXIT 0  ("PASS — 8 project(s) typechecked clean.")
+$ npm run check:criteria-closeout                 EXIT 0  ("PASS — 25 closeout record(s) valid and consistent with their roadmap files.")
+$ npm run check:criteria-baseline                 EXIT 0  ("PASS — every committed baseline hash re-derives from its pinned revision (25 phases).")
+
+$ npx vitest run --coverage.enabled=false --project @crabgic/connectors-jira
+ Test Files  50 passed (50)
+      Tests  567 passed (567)
+EXIT 0
+
+$ npx vitest run --config e2e/matrix/connector/vitest.config.ts
+ Test Files  15 passed (15)
+      Tests  95 passed (95)
+EXIT 0
+  ⚠️ CLASSIFICATION: e2e/matrix is NOT in the default `npm test` fan-out (root
+  vitest.config.ts declares packages/*, e2e/report and scripts only; the matrix
+  runs from `npm run test:e2e`). This run is local. Per playbook §"A test lane
+  outside the default npm test fan-out is unrun evidence", the wording fixes in
+  jira-cassette-readback.test.ts are EVIDENCE-NEEDS-CI until a release-e2e run
+  executes them.
+
+REPO-WIDE RUN: see §R7.
+
+
+================================================================================
+§R7  REPO-WIDE RUN (the coverage-gate-enforcing one)
+================================================================================
+
+RUN 1 — branch based at 1bc0d51 (before rebase):
+
+$ npm test            # = vitest run --coverage
+ Snapshots  2 failed
+ Test Files  1 failed | 643 passed (644)
+      Tests  2 failed | 6575 passed (6577)
+
+  BOTH failures are pre-existing and belong to another agent's PR, NOT to this
+  branch. They are the two `provisionalBudgetHash` snapshot arms of
+  packages/cli/src/commands/cli.snapshots.test.ts:934 — the known cross-PR
+  digest conflict left by #116, fixed on `origin/main` by #117
+  ("test(cli): refresh the run --json envelope snapshots for Gap 22's
+  provisionalBudgetHash"), which merged AFTER this branch was cut at 1bc0d51.
+  This branch touches no file in packages/cli. Verified by running the full
+  suite: exactly two failures, both in that one file, both snapshot mismatches
+  on `provisionalBudgetHash`.
+
+RUN 2 — same branch rebased onto origin/main 6f964d7 (which contains #117):
+
+$ npm run build && npm test
+ Test Files  644 passed (644)
+      Tests  6577 passed (6577)
+EXIT 0
+
+  Fully green, coverage gate included (no `ERROR: Coverage …` line). Same test
+  total both runs (6577), which is the cross-check that RUN 1's two failures
+  were the snapshot arms and nothing else moved.
+
+  Delta attributable to this pass, connectors-jira alone:
+    src/testkit/jira-flow.integration.test.ts        3 tests -> 8 tests  (+5)
+    src/testkit/fake-cassette-parity.test.ts         2 tests -> 3 tests  (+1)
+    package total                                  561 tests -> 567 tests (+6)
+  A per-push CI job-log count comparison for those two files (playbook §PROVE A
+  NEW ASSERTION RUNS PER-PUSH BY THE JOB LOG'S TEST COUNT) is handed to Batch G
+  in this PR's bearer map — it needs the merged PR's own job log.
+
+
+================================================================================
+§R8  WHAT REMAINS OPEN, STATED SO NOBODY HAS TO REDERIVE IT
+================================================================================
+
+  1. roadmap/18-jira-cloud-adapter.md exit criterion 9 (fake/cassette parity)
+     stays UNTICKED. It needs a cassette captured from a real Jira Cloud
+     instance. Owner-gated: a licensed sandbox, credentials, and a capture
+     mode on the fake transport. Nothing in this pass changes that.
+
+  2. Both Cloud cassettes in this repository are hand-authored. So is the
+     Grafana set, and so are the two Data Center ones (which are additionally
+     byte-identical to each other, md5 0494d8e1…, which is why roadmap/19's
+     `(10.3 and 11.3)` conjunct is separately owner-gated).
+
+  3. The write cassette's fixture-integrity digests pin the FIXTURE. They say
+     nothing about the connector and nothing about Jira. §P1 is the measurement
+     that keeps that distinction visible.
+
+  4. The wording corrections in e2e/matrix/connector are classified
+     EVIDENCE-NEEDS-CI (§R6) — that lane does not run per push.
+
+  5. NOT touched by this pass, by assignment: write-order.integration.test.ts
+     (the `bulk:<keys>` residual, Batch C-final) and
+     packages/connectors-jira/src/index.ts (the barrel, Batch H).
+
+
+================================================================================
+§R9  LINE-NUMBER DELTAS FOR ALREADY-MERGED CITATIONS  (hand-off, Batch G)
+================================================================================
+
+Parameterizing the flow suite moved every line the merged phase-18 record and
+the roadmap/18 criterion-1 and criterion-9 annotations cite. `npm run
+check:criteria-closeout` stays GREEN (it checks a cited span against the file's
+LENGTH, and every file here grew), so nothing fails — which is exactly why this
+table exists: the citations still RESOLVE while pointing at the wrong lines.
+Batch G owns docs/evidence/criteria-closeout/** and roadmap/**; this pass does
+not edit either. Verified by `grep -n` at branch tip; re-verify at merge.
+
+packages/connectors-jira/src/testkit/jira-flow.integration.test.ts
+  old :14   import { toADF } from "@crabgic/renderer";               -> :16
+  old :107-186  chain describe body (span)                           -> :186-298
+  old :113  expect(boardOutcome.status).toBe("recorded")             -> :223
+  old :123  expect(sprintOutcome.appliedRevision).toBe("10")         -> :233
+  old :132  expect(epicOutcome.appliedRevision).toBe("PROJ-1")       -> :242
+  old :141  expect(issueOutcome.appliedRevision).toBe("PROJ-2")      -> :251
+  old :149  expect(linkOutcome.status).toBe("recorded")              -> :259
+  old :151-161  ADF span                                             -> :261-271
+  old :152  const markdown = "Outcome: **linked** …"                 -> :262
+  old :153-158 const commentPlan = resourceClient.comments.planCreate(-> :263-268
+  old :161  expect(commentOutcome.appliedRevision).toBe("50001")     -> :271
+  old :171  expect(worklogOutcome.appliedRevision).toBe("30001")     -> :281
+  old :186  expect(attachmentOutcome.appliedRevision).toBe("40001")  -> :296
+  old :190-286 transitions + conflict describes (span)               -> :302-393
+  old :192-198 the scripted `transitions` read                       -> :94-100
+                (it moved OUT of the describe into `INLINE_SCRIPTS`)
+  old :245  expect(outcome.status).toBe("recorded")   [transition]   -> :344
+  old :284-285 expect(outcome.status).toBe("failed") /
+               expect(outcome.errorKind).toBe("conflict")            -> :390-391
+
+packages/connectors-jira/src/testkit/fake-cassette-parity.test.ts
+  old :16-27 the two cases (span)                                    -> :43-84
+  old :20   expect(fromCassette).toEqual(fromFake);                  -> :48
+  old :26   expect(cassette.responses).toEqual(HAND_AUTHORED_READ_SCENARIO.responses);
+                                                                     -> DELETED.
+            Its quotation in phase-18.json criterion 9 and in roadmap/18's
+            criterion-9 annotation is now a quote of code that no longer
+            exists. The FINDING it records is unchanged and still true (the two
+            sources are the same bytes); only the mechanism named changed.
+            Handle by dated addendum — annotate, never rewrite.
+  new :53   expect(cassette.responses.length).toBeGreaterThan(1);
+  new :77-84 the replacement byte pin (see §P5b)
+
+packages/connectors-jira/src/testkit/scripted-read-scenario.ts
+  old :23-31 the "two INDEPENDENT sources" doc paragraph  -> WITHDRAWN in place
+            by a dated correction; the same span now holds the correction.
+  old :34-93 HAND_AUTHORED_READ_SCENARIO literal                     -> :48-109
+  old :37   the projects `bodyText` literal                          -> :52
+  old :116-146 runScriptedReadScenario                               -> :131-161
+
+e2e/matrix/connector/src/exactly-once/jira-cassette-readback.test.ts
+  old :100-104 the repeated parity assertion + "independently-maintained"
+            wording                                                  -> :129-133
+            (title rewritten, dated correction added above it)
+
+WHAT BATCH G SHOULD TAKE FROM THIS PASS
+  * roadmap/18-jira-cloud-adapter.md criterion 1 ("passes on fakes + cassettes")
+    — the "+ cassettes" conjunct now has a bearer. Cite this transcript's §R3
+    (the RED that proves the previous corpus could not bear it), §GREEN, §P2
+    (the cassette bytes drive the flow) and §P3. Scope note the tick MUST
+    carry: the cassette is HAND-AUTHORED, following this repository's existing
+    precedent for DC (fake-cassette-parity-dc.test.ts:16-22) and Grafana
+    (e2e/attestation/src/traceabilityEvidence.ts). If the reviewer reads
+    "cassettes" as requiring a RECORDING, the honest outcome is to leave the
+    box unticked and extend the defect record instead — this pass does not
+    presume the reading.
+  * roadmap/18 criterion 9 (parity) — STAYS UNTICKED. Only the S-half of
+    defects/18-cassette-parity-is-a-tautology.md is discharged (the assertion
+    is falsifiable, the false doc claims are corrected at all three sites).
+    Remedy 2 (a real capture) remains owner-gated.
+  * defects/18-flow-never-replayed-on-a-cassette.md — dated addendum: remedied
+    by this PR via its own option 1, with the option's caveat ("this is honest
+    only if the cassette is not simply a copy of the inline array") addressed
+    in §GREEN, not waved away.
+  * A per-push job-log test-count delta is still owed for the two suites
+    (3->8 and 2->3). It needs the merged PR's own CI job log.

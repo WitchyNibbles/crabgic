@@ -1,0 +1,186 @@
+{
+  "provenance": {
+    "capture": "hand-authored",
+    "capturedFrom": null,
+    "modeledAfter": "Jira Cloud REST v3 + Agile v1.0 documented response shapes (issue/board/sprint/comment/worklog/attachment/transitions create + 412 error envelope)",
+    "disclosure": "HAND-AUTHORED, NOT CAPTURED. No licensed Jira Cloud sandbox was available. Unlike ./read-scenario.cassette.json this file is not a JSON.stringify of any fake script in this repository: it carries the response-envelope fields a real instance returns (self, expand, author, mimeType, statusCategory.colorName, Jira's 412 errorMessages envelope) which the inline fake in jira-flow.integration.test.ts does not.",
+    "notEvidenceFor": "roadmap/18 exit criterion 9 (fake/cassette parity). Parity needs a recording INDEPENDENT of the fake; a second hand-authored fixture is not one. That box stays unticked and owner-gated on a real capture against a Jira Cloud sandbox.",
+    "replacedBy": "a real capture against a licensed Jira Cloud sandbox — roadmap/18 §Risks already flags the provisioning that needs."
+  },
+  "sections": {
+    "chain": {
+      "entries": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/agile/1.0/board"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"id\":1,\"self\":\"https://flow-test.atlassian.invalid/rest/agile/1.0/board/1\",\"name\":\"Sprint Board\",\"type\":\"scrum\",\"location\":{\"projectId\":10000,\"projectKey\":\"PROJ\",\"projectName\":\"Project\"}}"
+          },
+          "bodyDigest": "sha256:73a5aaee688c2ba1ba985aeef4921a45175bd3165ded318931e3300c1b1e83c6"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/agile/1.0/sprint"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"id\":10,\"self\":\"https://flow-test.atlassian.invalid/rest/agile/1.0/sprint/10\",\"state\":\"future\",\"name\":\"Sprint 1\",\"originBoardId\":1}"
+          },
+          "bodyDigest": "sha256:a55bb35a36e4edfe1d1cc1310631e38b777899f1a5348fc3e50e8f9a50875fa8"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"id\":\"20001\",\"key\":\"PROJ-1\",\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/issue/20001\"}"
+          },
+          "bodyDigest": "sha256:a9b1c1e7be54ea6b727e7ebca5fda26d5c37fe7cb51fe205e1a6cb937e3a1e09"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"id\":\"20002\",\"key\":\"PROJ-2\",\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/issue/20002\"}"
+          },
+          "bodyDigest": "sha256:53680a4b905a34479bdc759b073761c1e814353c9951eea63eae567512631517"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issueLink"
+          },
+          "response": {
+            "status": 201,
+            "bodyText": ""
+          },
+          "bodyDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue/PROJ-2/comment"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/issue/20002/comment/50001\",\"id\":\"50001\",\"author\":{\"accountId\":\"5b10a2844c20165700ede21g\",\"displayName\":\"Automation\"},\"created\":\"2026-08-06T09:14:22.101+0000\",\"updated\":\"2026-08-06T09:14:22.101+0000\",\"jsdPublic\":true}"
+          },
+          "bodyDigest": "sha256:86fd323374c76369bc17481a8abc7673237bd49cfb7de736f47ba2a58dcb5380"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue/PROJ-2/worklog"
+          },
+          "response": {
+            "status": 201,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/issue/20002/worklog/30001\",\"id\":\"30001\",\"issueId\":\"20002\",\"timeSpent\":\"1h\",\"timeSpentSeconds\":3600,\"started\":\"2026-08-06T09:14:22.310+0000\"}"
+          },
+          "bodyDigest": "sha256:3217975b86ec7bf4086d8da66755509e6384e275a3366eefdb46278cf0f2d9db"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue/PROJ-2/attachments"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "[{\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/attachment/40001\",\"id\":\"40001\",\"filename\":\"log.txt\",\"created\":\"2026-08-06T09:14:22.512+0000\",\"size\":16,\"mimeType\":\"text/plain\"}]"
+          },
+          "bodyDigest": "sha256:27a18a78afbad6bb5fa07d5317a9bb514c282fb91d3fd61b7ee302ba9bef0ec2"
+        }
+      ]
+    },
+    "transition": {
+      "entries": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/rest/api/3/issue/PROJ-2/transitions"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"expand\":\"transitions\",\"transitions\":[{\"id\":\"31\",\"name\":\"Close\",\"to\":{\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/status/10002\",\"id\":\"10002\",\"name\":\"Done\",\"statusCategory\":{\"id\":3,\"key\":\"done\",\"name\":\"Done\",\"colorName\":\"green\"}},\"hasScreen\":false,\"isGlobal\":true,\"isInitial\":false,\"isAvailable\":true,\"isConditional\":false}]}"
+          },
+          "bodyDigest": "sha256:373a26c67df21aa87548b0fc3930fdd0e1cb1dbaf4f429c8f95b50b166f0ebdb"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/rest/api/3/issue/PROJ-2/transitions"
+          },
+          "response": {
+            "status": 204,
+            "bodyText": ""
+          },
+          "bodyDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/rest/api/3/issue/PROJ-2"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"expand\":\"renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations\",\"id\":\"1\",\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/issue/20002\",\"key\":\"PROJ-2\",\"fields\":{\"summary\":\"s\",\"issuetype\":{\"id\":\"10001\",\"name\":\"Story\",\"subtask\":false},\"status\":{\"self\":\"https://flow-test.atlassian.invalid/rest/api/3/status/10002\",\"id\":\"10002\",\"name\":\"Done\",\"statusCategory\":{\"id\":3,\"key\":\"done\",\"name\":\"Done\",\"colorName\":\"green\"}},\"updated\":\"rev-after-transition\"}}"
+          },
+          "bodyDigest": "sha256:60f40d24e53e858df1fa79521e1dd45f4fda7bbc78aecf05a4e5f0a5bb268a14"
+        }
+      ]
+    },
+    "conflict": {
+      "entries": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/rest/api/3/issue/PROJ-2"
+          },
+          "response": {
+            "status": 412,
+            "headers": {
+              "content-type": "application/json;charset=UTF-8"
+            },
+            "bodyText": "{\"errorMessages\":[\"The issue has been updated since you loaded it.\"],\"errors\":{}}"
+          },
+          "bodyDigest": "sha256:aa5eeb170fb305200343ea5ba94c8012b90a527c5d1ce6a6cff4c1e78d2d771b"
+        }
+      ]
+    }
+  }
+}

@@ -21,14 +21,29 @@ import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
  * yield identical typed results." Work item 6.
  *
  * `HAND_AUTHORED_READ_SCENARIO` ("the fake") and
- * `./fixtures/read-scenario.cassette.json` ("the recorded cassette") are
- * deliberately kept as two INDEPENDENT sources for the SAME 7-call
- * scripted scenario (projects → boards → sprints → issues.search →
- * issues.get → comments → worklogs) — `fake-cassette-parity.test.ts`
- * proves they drive this connector's `JiraResourceClient` to byte-
- * identical typed results, which is only meaningful if the two sources
- * are maintained independently rather than one being derived from the
- * other at runtime.
+ * `./fixtures/read-scenario.cassette.json` ("the cassette") are two files
+ * holding the SAME 7-call scripted scenario (projects → boards → sprints
+ * → issues.search → issues.get → comments → worklogs);
+ * `fake-cassette-parity.test.ts` drives this connector's
+ * `JiraResourceClient` from each and compares the typed results.
+ *
+ * ⚠️ DATED CORRECTION (2026-08-06). This comment previously said the two
+ * are "deliberately kept as two INDEPENDENT sources … which is only
+ * meaningful if the two sources are maintained independently rather than
+ * one being derived from the other at runtime." **That claim was false in
+ * substance and is withdrawn.** Nothing is derived at *runtime*, but the
+ * cassette is not independently sourced either: every one of its seven
+ * `bodyText` values is byte-identical to `JSON.stringify` of the
+ * corresponding object literal below, it carries no capture metadata of
+ * any kind (no timestamp, no request URLs, no response headers, no
+ * instance identity), and it was committed in the very same commit as
+ * this fake with no capture tooling beside it. The parity suite's own
+ * second case additionally used to PIN the two arrays equal, which made
+ * the parity assertion unfalsifiable; that pin is dropped in the same
+ * change. This file is a hand-authored fixture pair, and roadmap/18's
+ * fake/cassette parity criterion stays unticked pending a real recording
+ * against a licensed Jira Cloud sandbox. Filed as
+ * `docs/evidence/criteria-closeout/defects/18-cassette-parity-is-a-tautology.md`.
  */
 export const HAND_AUTHORED_READ_SCENARIO: FakeProviderScript = {
   responses: [
@@ -95,7 +110,7 @@ export const HAND_AUTHORED_READ_SCENARIO: FakeProviderScript = {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-/** Loads the byte-recorded cassette fixture (independent of `HAND_AUTHORED_READ_SCENARIO` above) as a `FakeProviderScript`. */
+/** Loads the cassette fixture as a `FakeProviderScript`. Hand-authored, not a recording — see the dated correction above. */
 export function loadReadScenarioCassette(): FakeProviderScript {
   const raw = readFileSync(join(HERE, "fixtures", "read-scenario.cassette.json"), "utf8");
   return JSON.parse(raw) as FakeProviderScript;
