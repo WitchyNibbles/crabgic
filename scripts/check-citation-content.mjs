@@ -10,11 +10,15 @@
  * checks a run URL's shape. Neither reads a single quoted character. So the
  * moment any later PR inserts lines above cited text, the merged record keeps
  * validating and keeps pointing at the wrong place, forever. That is not a
- * hypothesis: measured across the 25 records, **166 citations quote text that is
- * verifiably present in the cited file and verifiably NOT at the cited line**,
- * 145 of them under ticked criteria, from at least five separate PRs — one of
- * them the PR whose own pass filed the defect record asking for this check
- * (`defects/17-merged-citations-stale-after-later-prs.md`).
+ * hypothesis. Measured by this tool over the 25 records at `e5a65ba`: of 1292
+ * content-checkable citations, **182 quote text that is verifiably present in
+ * the cited file and verifiably NOT at the cited line** — 154 of them under
+ * ticked criteria — caused by at least five separate merged PRs, one of which is
+ * the PR whose own pass filed the defect record asking for this check
+ * (`defects/17-merged-citations-stale-after-later-prs.md`). A further 42 quote
+ * text that repeats in the cited file, so their position cannot be verified by
+ * content at all. The per-record burn-down is pinned in
+ * `docs/evidence/citation-resolver/seed-census-batchN.txt`.
  *
  * WHAT IT DOES.
  *   `--check` (default)   the blocking lane. Two parts:
@@ -38,8 +42,8 @@
  *                         branch itself has modified. Merged records are never
  *                         touched: annotate-never-rewrite is the repo's evidence
  *                         discipline, a re-anchored citation silently claims a
- *                         pass verified code it never read, and 45 of the moved
- *                         fragments are repeat text where a mechanical
+ *                         pass verified code it never read, and 42 of the moved
+ *                         citations quote repeat text where a mechanical
  *                         re-anchor picks a line by luck.
  *
  * Dependency-free ESM: `meta-checks` runs `npm ci` with no build step.
@@ -410,6 +414,31 @@ function runReport(repoRoot, { out, today, jobLogs }) {
   say("");
   say("## Census");
   for (const [key, value] of Object.entries(census)) say(`- ${key}: ${String(value)}`);
+  say("");
+  say("## Classification of flagged citations (the burn-down's units)");
+  const classes = new Map();
+  for (const entry of entries) {
+    const statuses = new Set(
+      entry.fragments
+        .map((fragment) => fragment.resolution.status)
+        .filter((status) => STALE_STATUSES.has(status)),
+    );
+    if (statuses.size === 0) continue;
+    const label = statuses.has("FILE-MISSING")
+      ? "UNRESOLVED PATH inside the quote (usually an ambiguous bare basename)"
+      : statuses.has("PAST-EOF")
+        ? "HARD (marker past EOF)"
+        : statuses.has("MOVED")
+          ? "MOVED-unique (position measured — a dated correction is mechanical)"
+          : statuses.has("MOVED-AMBIG")
+            ? "MOVED-ambiguous (repeat text — position NOT verifiable by content)"
+            : "ABSENT-only (quote-convention variance or a real rewrite — needs a human)";
+    classes.set(label, (classes.get(label) ?? 0) + 1);
+    if (entry.ticked) {
+      classes.set(`${label} [ticked]`, (classes.get(`${label} [ticked]`) ?? 0) + 1);
+    }
+  }
+  for (const [label, count] of [...classes].sort()) say(`- ${label}: ${String(count)}`);
   say("");
   say(
     "## Per-record burn-down (stale fragments / stale citations / of which under a ticked criterion)",
