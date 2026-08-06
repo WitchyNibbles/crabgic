@@ -30,8 +30,11 @@ interactive permissions — **never** the compiled worker `EngineAdapter` profil
   own ledger recorded ~8 (`docs/verification-playbook.md` §BOUNDING A
   SUBAGENT-SPAWNING TEST). 30 leaves ordinary exploration room to finish and cuts
   the runaway tail; the engine ends the loop with `max_turns_reached` and the
-  partial findings, which for a read-only agent is a safe stop. Engine facts here
-  were read off the pinned 2.1.218 binary — see
+  partial findings, which for a read-only agent is a safe stop. **Engine facts:
+  `docs/engine-baseline.md` §21** (the key, its schema, the 200 default, and the
+  drop-on-invalid behaviour), gathered at the pinned 2.1.218 and labelled there
+  as binary-sourced rather than probe-verified; §10 carries its invalidation
+  trigger. Measurement transcript:
   `docs/evidence/phase-10/live-lane-preconditions-batchK.txt`.
 
 ## Non-goals
