@@ -1,0 +1,228 @@
+# PROBE TRANSCRIPT — phase 01 work item 5, repo-hygiene: no tracked text
+# source may be classified BINARY by git.
+#
+# Subject: four source files carried a raw 0x00 byte inside a string or
+# template literal where the two-character escape \0 was intended, and the
+# whole per-push gate was blind to it.
+#
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d5159b17715790c74b47f5a0007bd939a802
+# branch tip at capture (PROVISIONAL — a branch commit dies on every rebase):
+#   commit 1  15ebc75  ci(hygiene): fail when a tracked text source is classified binary by git
+#   commit 2  f47939c  fix(learning,gateway,renderer): write NUL separators as \0, not a raw byte
+#   commit 3  323d7fb  test(learning): pin caseSetDigest's field separator against boundary slide
+#
+# Captured 2026-08-06, UTC (see `date -u` below). No raw NUL byte appears in
+# this transcript: the offending byte is written 0x00, or ^@ where the quoted
+# tool (`cat -A`) rendered it that way. A transcript that carried the byte
+# would itself become binary and be excluded from the very sweeps it exists to
+# support — and would be flagged by the guard it documents.
+#
+# Suite runs used --coverage.enabled=false; a scoped run otherwise trips the
+# global 80% threshold, which is expected and is not a finding.
+# ---8<--- verbatim below ---8<---
+
+== 0. THE DEFECT, at 1bc0d51 (= origin/main at capture) ==
+
+$ date -u
+  Thu Aug  6 12:50:08 UTC 2026
+$ git rev-parse HEAD
+  1bc0d5159b17715790c74b47f5a0007bd939a802
+$ git rev-parse origin/main
+  1bc0d5159b17715790c74b47f5a0007bd939a802
+
+$ od -c packages/learning/src/eval/eval-pair.ts | grep -n 'j   o   i   n'
+  125:0003700   n   (   "  \0   "   )   ,  \n                   )  \n
+  129:0004000   p   e   r   C   a   s   e   .   j   o   i   n   (   "   \   n
+
+  Two joins, one statement apart. The first separator is ONE byte, 0x00 (od
+  renders the byte as \0). The second is TWO characters, backslash + n. The
+  typo is visible only here, because every editor and every diff view draws
+  the two identically.
+
+== 1. THE REPO-WIDE SCAN — it was never one file ==
+
+  git classifies a file as binary when a NUL falls in its first 8000 bytes.
+  `git diff --numstat <empty-tree>` diffs that tree against the WORKING tree
+  and renders a binary addition as `-<TAB>-<TAB>path`, so this is git's own
+  classifier rather than a reimplementation of it.
+
+$ git diff --numstat $(git hash-object -t tree /dev/null) \
+    | awk -F'\t' '$1=="-"&&$2=="-"{print $3}' | grep -v '^assets/'
+  packages/gateway/src/transport/write-serializer.ts
+  packages/learning/src/eval/eval-pair.ts
+  packages/renderer/src/unicode-defense.test.ts
+  packages/renderer/src/wiki-markup.ts
+
+  FOUR files, seven raw NUL bytes, all the same typo class:
+
+    write-serializer.ts:15   `${key.tenant}<0x00>${key.resource}`
+    eval-pair.ts:44          [...].join("<0x00>")
+    unicode-defense.test.ts:103   stageInput("abc<0x00>def")
+    wiki-markup.ts:20-21     "<0x00>WIKI_STRONG_OPEN<0x00>"  (x2 lines, 4 bytes)
+
+  The 22 entries filtered out by `grep -v '^assets/'` are the brand PNGs and
+  one committed `__pycache__/*.pyc` — genuinely binary, correctly binary, and
+  out of scope for the guard below by extension rather than by allowlist.
+
+== 2. THE MEASURED INSTRUMENT FAILURE ==
+
+$ git grep -n 'join' -- packages/learning/src/eval/eval-pair.ts
+  Binary file packages/learning/src/eval/eval-pair.ts matches
+  exit=0
+     ^ a match with NO line number. Every line-anchored citation in this
+       repository is built from output like the line above.
+
+$ git grep -I -l -e 'caseSetDigest' -- packages/learning/src/eval/eval-pair.ts
+  exit=1
+     ^ NO output and a non-zero exit. `-I` does not warn; it silently drops
+       the file. A sweep scoped with -I reports "clean" over a file it never
+       opened. This is the same failure shape as a mis-scoped pathspec: a
+       SMALLER answer with no error.
+
+  And `git diff` renders all four as "Binary files ... differ", which is why
+  eval-pair.ts's 97 lines were unreviewable in the PR that introduced them
+  (#115, squash 2c0562d) and remain unreviewable on GitHub.
+
+  Nothing per-push saw any of it. tsc, eslint, prettier and vitest were green
+  the entire time — correctly, because the files are valid TypeScript and the
+  runtime values are exactly what was intended. The program was never wrong.
+  The tooling that verifies the program was.
+
+== 3. THE GUARD, RED BEFORE THE FIX ==
+
+  Written and committed FIRST (15ebc75), against the unfixed tree, so the
+  ordering is legible in history rather than asserted in prose.
+
+$ npm run check:hygiene          # at 15ebc75, four offenders still present
+  check-repo-hygiene: PASS — all required top-level files exist and are non-empty.
+  check-repo-hygiene: BINARY TEXT SOURCE — packages/gateway/src/transport/write-serializer.ts — first NUL (0x00) at line 15, byte offset 554
+  check-repo-hygiene: BINARY TEXT SOURCE — packages/learning/src/eval/eval-pair.ts — first NUL (0x00) at line 44, byte offset 1987
+  check-repo-hygiene: BINARY TEXT SOURCE — packages/renderer/src/unicode-defense.test.ts — first NUL (0x00) at line 103, byte offset 3784
+  check-repo-hygiene: BINARY TEXT SOURCE — packages/renderer/src/wiki-markup.ts — first NUL (0x00) at line 20, byte offset 1066
+  check-repo-hygiene: FAIL — 4 tracked text source(s) are binary to git. Use the escape sequence (\0, \x00) instead of a raw NUL byte, or mark a file that truly needs one with the git `diff` attribute in .gitattributes.
+  EXIT=1
+
+  Scoped by EXTENSION, not by path. A git pathspec would have been the
+  natural way to write "under packages/*/src" and is the exact shape that
+  returns a smaller answer silently — a wildmatch `*` does not cross a slash.
+  The extension allowlist also needs no growable exception list, because the
+  repo's real binary assets carry none of those extensions. `.gitattributes`
+  `diff` stays available as git's own documented escape hatch, and being a
+  committed file it is visible rather than private to the script.
+
+== 4. THE GUARD'S OWN SUITE, AND ITS MUTATIONS ==
+
+  scripts/check-repo-hygiene.test.mjs drives real throwaway git repositories
+  rather than a stubbed classifier: the claim is agreement with GIT's notion
+  of binary, and a stub would only assert agreement with mine.
+
+$ npx vitest run scripts/check-repo-hygiene.test.mjs --coverage.enabled=false
+  BASELINE (unmutated)                         Test Files 1 passed / Tests 11 passed
+  M1  drop `.filter(isTextSourcePath)`         Test Files 1 failed / Tests 1 failed | 10 passed
+  M2  `const offenders = []`                   Test Files 1 failed / Tests 4 failed | 7 passed
+  M3  `if (offenders.length > 0)` -> `if (false)`  Test Files 1 failed / Tests 1 failed | 10 passed
+  RESTORED (git checkout HEAD -- <explicit path>)   Test Files 1 passed / Tests 11 passed
+
+  Test count constant at 11 across all five runs — checked, because a probe
+  that "passes" with the assertion silently deleted looks identical to one
+  that passes because the code is correct.
+
+  M1 is the one that matters: with the extension filter gone, only the
+  legitimately-binary-asset control reddens. That control is what separates
+  "this check has a scope" from "this check flags every PNG in assets/".
+
+  PINNED RESIDUAL, asserted in the suite rather than described here: a NUL
+  beyond git's 8000-byte sniff window is NOT detected. That is deliberate —
+  past the window git still diffs and greps the file as text, so the
+  instruments keep working and there is nothing to report. If git ever widens
+  the window, that test reddens, which is the correct notification.
+
+== 5. THE FIX IS VALUE-PRESERVING — measured, not argued ==
+
+  7 raw 0x00 bytes -> the two-character escape \0. Checked before writing:
+  no byte following any of the seven is a decimal digit, so none of them
+  becomes a legacy octal escape with a different value.
+
+  Digest of a fixed 4-case set through the REAL caseSetDigest (imported from
+  src via tsx), same fixture both sides:
+
+    BEFORE (raw byte)  444c213236677af8c9ec1a078079440a01fb52945498a4db635ca0e5926ed2b3
+    AFTER  (escape)    444c213236677af8c9ec1a078079440a01fb52945498a4db635ca0e5926ed2b3
+    single-case        72e3fb3b10727259e0d1bb7a3bdec5d6260fb9ee202fc094adea9ef319df78cf  (both)
+    empty set          e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  (both)
+
+  So no committed evidence citing a caseSetDigest value goes stale.
+
+  And the three affected packages, each run after `npm run build` (exit 0
+  every time — a mutation that does not compile measures the previous dist):
+
+$ npx vitest run packages/gateway packages/learning packages/renderer --coverage.enabled=false
+  A  POST-FIX (escape)                 Test Files 74 passed / Tests 785 passed
+  B  PRE-FIX  (raw byte, from HEAD)    Test Files 74 passed / Tests 785 passed
+  C  RESTORED (from scratch copies, md5 back to baseline)
+                                       Test Files 74 passed / Tests 785 passed
+
+== 6. THE REVERSE PROBE — and what it found ==
+
+  Equal test counts prove the fix changed nothing. They do not prove the
+  suite would have NOTICED had it changed something. So each separator was
+  rewritten to a colliding one and the suites re-run:
+
+    C2  eval-pair       .join("\0")  ->  .join("|")                74 files / 785 tests GREEN
+    D2  wiki-markup     "\0WIKI_STRONG_OPEN\0" -> "@@...@@"        74 files / 785 tests GREEN
+    E2  write-serializer `${tenant}\0${resource}` -> `${tenant}:${resource}`
+                                                                   74 files / 785 tests GREEN
+
+  Every mutation was verified to have APPLIED before the run (occurrence
+  count asserted non-zero) — a first attempt at these three used a perl
+  substitution whose backslash escaping did not match, and reported three
+  green runs of entirely UNMUTATED code. Caught by checking the substitution
+  count rather than the exit status, which is the only thing that separates
+  that transcript from this one.
+
+  FINDING: none of the three separators is pinned by any test in the
+  repository. The "value-preserving" claim in section 5 therefore could not
+  have been checked by the suite at all; it rests on the digest computation
+  above and on `"\0"` being U+0000 by language definition.
+
+  One of the three is now pinned (323d7fb, learning): two case sets that
+  differ only in where the field boundary falls must not digest identically.
+  Under mutation C2 it is the ONE test in the repository that reddens:
+
+    baseline                        Test Files 24 passed / Tests 238 passed
+    C3  separator \0 -> "|"         Test Files 1 failed | 23 passed / Tests 1 failed | 237 passed
+        x the per-case field separator is unambiguous — moving a field boundary changes the digest
+        AssertionError: expected '35747840548fda4209c810d690cd113100d51...' not to be '35747840548fda4209c810d690cd113100d51...'
+    restored                        Test Files 24 passed / Tests 238 passed
+
+  gateway's and renderer's separators are LEFT UNPINNED, stated rather than
+  quietly skipped: pinning them is a different piece of work from this typo
+  fix, and claiming otherwise would oversell the remedy.
+
+== 7. GREEN AFTER — the instruments come back ==
+
+$ npm run check:hygiene
+  check-repo-hygiene: PASS — all required top-level files exist and are non-empty.
+  check-repo-hygiene: PASS — no tracked text source is classified binary by git.
+  EXIT=0
+
+$ git grep -n 'join' -- packages/learning/src/eval/eval-pair.ts
+  packages/learning/src/eval/eval-pair.ts:44:      [c.id, c.provenanceId, c.groundTruthRequirementId ?? "", computeCaseHash(c)].join("\0"),
+  packages/learning/src/eval/eval-pair.ts:47:  return createHash("sha256").update(perCase.join("\n")).digest("hex");
+
+$ git grep -I -c caseSetDigest -- packages/learning/src/eval/eval-pair.ts
+  packages/learning/src/eval/eval-pair.ts:3
+  exit=0
+
+  Line numbers are back, and -I no longer drops the file.
+
+  ONE TRANSITIONAL ARTEFACT, stated because a reviewer will hit it: the fix
+  commit f47939c still shows as `Bin 4418 -> 4419 bytes`, because git marks a
+  diff binary when EITHER side is. `git show --text f47939c` renders it, and
+  every diff after it is textual:
+
+    $ git diff --text -- packages/learning/src/eval/eval-pair.ts | cat -A
+      -      [c.id, ... computeCaseHash(c)].join("^@"),$
+      +      [c.id, ... computeCaseHash(c)].join("\0"),$
+
+    (^@ is `cat -A`'s rendering of the raw 0x00 byte on the old side.)

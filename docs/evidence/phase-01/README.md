@@ -110,6 +110,31 @@ file captured **after**.
 | `engine-pin-lint` rejects the `^`-ranged fixture, passes on the real workspace | `wi7-engine-pin-lint-noexist-failing.txt` (check doesn't exist yet), `wi7-engine-pin-lint-fixture-and-real.txt` (fixture rejected; real workspace passes) |
 | `engine-live` CI job exists, manually-triggered, description names the phase-06 `@live` suite | `.github/workflows/engine-live.yml` itself (committed artifact); schema-validated in `wi4-ci-workflows-schema-valid.txt` |
 
+## Added 2026-08-06 — a second leg on the work-item-5 hygiene check
+
+`npm run check:hygiene` now also fails when a **tracked text source is
+classified BINARY by git**. This is not a roadmap/01 exit criterion and does not
+change any tick above; it is a per-push guard added after a defect that no exit
+criterion could have caught.
+
+Four source files
+(`packages/learning/src/eval/eval-pair.ts`,
+`packages/gateway/src/transport/write-serializer.ts`,
+`packages/renderer/src/wiki-markup.ts`,
+`packages/renderer/src/unicode-defense.test.ts`)
+carried a raw `0x00` byte inside a string literal where the two-character escape
+`\0` was meant. `tsc`, `eslint`, `prettier` and `vitest` were all green — the
+files are valid TypeScript and the runtime values are exactly what was intended.
+What broke was the **instrumentation**: git rendered their diffs as
+`Binary files … differ`, `git grep -n` returned no line numbers, and `git grep
+-I` excluded them silently. In a repository whose verification method is
+line-anchored citation, that is a hole with no symptom.
+
+Evidence: `wi5-binary-text-source-guard.txt` (the guard RED against the four
+offenders before the fix, its own suite's three mutations, the digest-invariance
+measurement, and the reverse probes). Suite:
+`scripts/check-repo-hygiene.test.mjs`.
+
 ## Toolchain versions pinned (exact, no `^`/`~`) for this phase
 
 `typescript@6.0.3` (pinned below the `7.x` line specifically because
