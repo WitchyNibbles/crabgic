@@ -22,6 +22,7 @@ function baseContent(): AuthorizationEnvelopeContent {
     ],
     temporaryServices: ["postgres:16"],
     prohibitedActions: ["force-push main"],
+    provisionalBudgetHash: "sha256:fixture-provisional-budget-hash",
   };
 }
 
@@ -108,6 +109,32 @@ describe("buildAuthorizationEnvelope", () => {
     expect(eighty.canonicalHash).not.toBe(forty.canonicalHash);
   });
 
+  it("LEDGER GAP 22 — the provisional budget binding is COVERED by the canonical hash: two contents identical but for it hash differently", () => {
+    // The whole point of the axis: the approval token signs `canonicalHash`,
+    // so unless the budget binding is inside that digest the human's signature
+    // says nothing about which budget set may be enforced. Red before the
+    // member was hashed — `hashEnvelopeContent` did not read it, so budget A
+    // and budget B produced the SAME approval hash.
+    const overBudgetA = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: { ...baseContent(), provisionalBudgetHash: "sha256:budget-a" },
+    });
+    const overBudgetB = buildAuthorizationEnvelope({
+      id: ID,
+      changeSetId: CHANGE_SET_ID,
+      createdAt: CREATED_AT,
+      content: { ...baseContent(), provisionalBudgetHash: "sha256:budget-b" },
+    });
+    expect(overBudgetA.provisionalBudgetHash).toBe("sha256:budget-a");
+    expect(overBudgetB.canonicalHash).not.toBe(overBudgetA.canonicalHash);
+    // …and the same binding is the same content (no spurious re-approval).
+    expect(
+      hashEnvelopeContent({ ...baseContent(), provisionalBudgetHash: "sha256:budget-a" }),
+    ).toBe(hashEnvelopeContent({ ...baseContent(), provisionalBudgetHash: "sha256:budget-a" }));
+  });
+
   it("the hash is independent of id/createdAt — identifies content, not record identity", () => {
     const first = buildAuthorizationEnvelope({
       id: ID,
@@ -134,6 +161,7 @@ describe("buildAuthorizationEnvelope", () => {
       remoteResourceAuthorizations: fc.constant([]),
       temporaryServices: fc.array(fc.string({ minLength: 1 })),
       prohibitedActions: fc.array(fc.string({ minLength: 1 })),
+      provisionalBudgetHash: fc.string({ minLength: 1 }),
     });
     fc.assert(
       fc.property(contentArb, contentArb, (a, b) => {

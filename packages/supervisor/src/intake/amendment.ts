@@ -97,6 +97,20 @@ export interface AmendEnvelopeOptions {
   readonly changeSetId: string;
   readonly newEnvelopeId: string;
   readonly createdAt: string;
+  /**
+   * The full envelope content, INCLUDING `provisionalBudgetHash` — unlike
+   * `IntakeRequest.envelopeContent`, which cannot represent it (ledger Gap 22).
+   *
+   * Caller-supplied here deliberately, and safe for two reasons: an amendment
+   * is not a budget-mutation surface (budgets derive from requirements at
+   * intake, Gap 21), and a wrong value cannot buy anything — it produces a new
+   * envelope hash the human must re-approve, and still fails closed at 15's
+   * gate (`envelope_hash_mismatch`). The auto-carry-forward alternative was
+   * REJECTED: the previous envelope can be unresolvable here (see
+   * `materialChange` below, which reports `true` for exactly that case), and
+   * inventing a binding when the previous one cannot be read would be
+   * fail-open — the one thing this axis exists to prevent.
+   */
   readonly content: AuthorizationEnvelopeContent;
   readonly reason: string;
 }

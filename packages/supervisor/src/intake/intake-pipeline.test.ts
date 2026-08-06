@@ -10,6 +10,7 @@ import { createWorkUnitsRegistry } from "../registries/work-units-registry.js";
 import { createAuthorizationEnvelopesRegistry } from "../registries/authorization-envelopes-registry.js";
 import { createIntentContractsRegistry } from "../registries/intent-contracts-registry.js";
 import {
+  buildIntakeArtifacts,
   runIntake,
   UnknownEcosystemError,
   type IntakeDeps,
@@ -312,6 +313,76 @@ describe("runIntake — derived budget provenance", () => {
     const contract = outcome.artifacts.provisionalPerformanceContract;
     expect(contract.budgetSource).toBe("base_revision_measurement");
     expect(contract.budgets).toStrictEqual([]);
+  });
+
+  /**
+   * Ledger Gap 22 (2026-08-06) — the envelope the human approves must cover the
+   * budget set 15 is later allowed to enforce. Asserted across all three
+   * sourcing outcomes, because "derived from one hash call" is only a
+   * guarantee if it holds for every branch that produces budgets, including
+   * the empty base-revision-measurement set.
+   */
+  it("GAP 22 — the built envelope's provisionalBudgetHash IS the provisional contract's budgetHash (source #1)", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(deps, withRequirements([perfRequirement]));
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const { envelope, provisionalPerformanceContract } = outcome.artifacts;
+    expect(envelope.provisionalBudgetHash).toBeDefined();
+    expect(envelope.provisionalBudgetHash).toBe(provisionalPerformanceContract.budgetHash);
+    // The binding is inside the digest the approval token signs — not merely
+    // carried beside it.
+    expect(deps.envelopes.get(envelope.id)?.provisionalBudgetHash).toBe(
+      provisionalPerformanceContract.budgetHash,
+    );
+  });
+
+  it("GAP 22 — the binding holds for the ecosystem-research source too (source #2)", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(
+      deps,
+      withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }], {
+        ecosystem: "node",
+      }),
+    );
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    expect(outcome.artifacts.envelope.provisionalBudgetHash).toBe(
+      outcome.artifacts.provisionalPerformanceContract.budgetHash,
+    );
+  });
+
+  it("GAP 22 — an empty base-revision-measurement budget set is still BOUND, never left unbound (source #3)", async () => {
+    const deps = freshDeps();
+    const outcome = await runIntake(
+      deps,
+      withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }]),
+    );
+
+    if (outcome.status === "conflict") throw new Error("unreachable");
+    const { envelope, provisionalPerformanceContract } = outcome.artifacts;
+    expect(provisionalPerformanceContract.budgets).toStrictEqual([]);
+    expect(envelope.provisionalBudgetHash).toBe(provisionalPerformanceContract.budgetHash);
+  });
+
+  it("GAP 22 — two assemblies whose ONLY difference is the derived budget land on different envelope hashes", () => {
+    // The perturbation that matters: a caller cannot state the binding, so the
+    // only way the approval digest can move is if the derived budgets moved —
+    // which is exactly when a prior approval token must stop being valid.
+    // Built through the pure assembly so no idempotency record is involved.
+    const withBudget = buildIntakeArtifacts(withRequirements([perfRequirement]));
+    const withoutBudget = buildIntakeArtifacts(
+      withRequirements([{ ...perfRequirement, acceptanceCriteria: ["It should feel snappy."] }]),
+    );
+    expect(withoutBudget.envelope.provisionalBudgetHash).not.toBe(
+      withBudget.envelope.provisionalBudgetHash,
+    );
+    expect(withoutBudget.envelope.canonicalHash).not.toBe(withBudget.envelope.canonicalHash);
+    // …and the request-content hash is unchanged in shape: the ONLY thing that
+    // moved the approval digest is the derivation, never a caller field.
+    expect(withBudget.envelope.provisionalBudgetHash).toBe(
+      withBudget.provisionalPerformanceContract.budgetHash,
+    );
   });
 
   it("treats the ecosystem as request content — a different one is a conflict, never a silent second ChangeSet", async () => {

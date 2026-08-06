@@ -43,6 +43,22 @@ export interface AuthorizationEnvelopeContent {
    * canonical hash.
    */
   readonly maxTurnsPerAttempt?: number;
+  /**
+   * Canonical hash of the provisional performance-budget set this envelope
+   * authorizes enforcement of — interface-ledger Gap 22 (2026-08-06).
+   * REQUIRED here, and unrepresentable on `IntakeRequest`
+   * (`../intake/intake-pipeline.ts`'s `RequestedEnvelopeContent` omits it):
+   * `buildIntakeArtifacts` derives it from the provisional
+   * `PerformanceContract` it builds in the same assembly, off the SAME hash
+   * call, so a consistent intake cannot produce a divergent pair. Gap 21's
+   * derived-never-declared posture, extended from provenance to the binding.
+   *
+   * Hashed by `hashEnvelopeContent`, so the approval token signs it — that is
+   * the whole point: before this, the token signed authority fields only and
+   * an approval rendered over budget A could be spent enforcing budget B with
+   * no edit anywhere for a tamper check to find.
+   */
+  readonly provisionalBudgetHash: string;
 }
 
 /** The resolved turn budget a piece of content actually requests — one definition, used by both the hash and the built record so they can never disagree. */
@@ -72,6 +88,10 @@ export function hashEnvelopeContent(content: AuthorizationEnvelopeContent): stri
     temporaryServices: content.temporaryServices,
     prohibitedActions: content.prohibitedActions,
     maxTurnsPerAttempt: resolveMaxTurnsPerAttempt(content),
+    // Last, deliberately: `canonicalStringify` sorts keys recursively so the
+    // position cannot affect the digest, but keeping it last here and in the
+    // built record below keeps the committed goldens tidy to read.
+    provisionalBudgetHash: content.provisionalBudgetHash,
   });
 }
 
@@ -94,6 +114,7 @@ export function buildAuthorizationEnvelope(
     temporaryServices: [...options.content.temporaryServices],
     prohibitedActions: [...options.content.prohibitedActions],
     maxTurnsPerAttempt: resolveMaxTurnsPerAttempt(options.content),
+    provisionalBudgetHash: options.content.provisionalBudgetHash,
   };
   return AuthorizationEnvelopeSchema.parse(envelope);
 }
