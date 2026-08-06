@@ -432,3 +432,41 @@ What no longer exists anywhere is a LIVE, currently-passing CI row printing that
 sentence - which was the hazard the retitle removed. Any future job log quoting
 that sentence as a green row is therefore evidence about a pre-2026-08-06 tree,
 never about this one.
+
+--------------------------------------------------------------------------------
+ADDENDUM 2 (2026-08-06) — the `:86-90` anchor request, re-measured over HISTORY
+--------------------------------------------------------------------------------
+The `:85-89` -> `:86-90` request was repeated, so it was re-checked over the
+file's whole history rather than only at the tip, in case `:86-90` had been
+right at some earlier tree and the request inherited a stale reading.
+
+  $ F=packages/connectors-jira/src/resource-client/jira-resource-client.ts
+  $ git log --oneline -- $F
+    a5f51d6  fix(gateway): enforce ExternalConnection.tenantAllowlist on the
+             mutation path (#100)           <- the commit that ADDED this derivation
+    3e74cc7  refactor: rename the project from engineering-orchestrator to crabgic
+    74bed14  feat: phase 21 connector evidence integration & drift CI
+    09ecda8  feat: phase 18 Jira Cloud adapter + intake/milestone sync
+
+  $ for rev in <those four>; do git show $rev:$F | sed -n '85p;90p'; done
+    a5f51d6  :85 = "  const tenant ="        :90 = "  const externalConnectionId = ..."
+    3e74cc7  :85 = "    },"                  :90 = "      planStart: (sprintId, ..."
+    74bed14  :85 = "    },"                  :90 = "      planStart: (sprintId, ..."
+    09ecda8  :85 = "      transitions: ..."  :90 = "          planCtx,"
+
+CONCLUSION. `:85` is `const tenant =` at every commit since the derivation
+existed at all, and before #100 the file held unrelated code at those lines. So
+`:86-90` was never a correct anchor for this statement at any tree: it would
+begin mid-expression (at `deps.tenant ??`) and absorb the unrelated
+`const externalConnectionId` line at `:90`.
+
+The anchor stays `:85-89`. Applying the requested change would have introduced
+exactly the defect class this repository's citation discipline exists to
+prevent - a citation that resolves, validates, and points at the wrong place
+forever. Reported rather than applied, per the playbook's rule that a wrong
+instruction is fixed at its source instead of silently routed around.
+
+The doc comment additionally now names the distinctive `:87` clause
+(`ctx.connection.tenantAllowlist?.[0] ??`), which is the same line
+`packages/gates/src/security-fixture-manifest.ts` already anchors on, so the
+citation cannot be misread as covering the chain lines alone.
