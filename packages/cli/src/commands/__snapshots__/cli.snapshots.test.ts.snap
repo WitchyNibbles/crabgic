@@ -33,6 +33,651 @@ exports[`--json output schema snapshots > gateway mcp's tool-listing shape (one 
 }
 `;
 
+exports[`--json output schema snapshots — approve <digest> > approve --json — confirmed at the terminal, dispatched 1`] = `
+"{
+  "approved": true,
+  "changeSetId": "<uuid>",
+  "state": "ready",
+  "dispatch": {
+    "accepted": true,
+    "runId": "<uuid>"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — approve <digest> > approve --json — declined at the terminal (a closed, fully static payload) 1`] = `
+"{
+  "approved": false,
+  "declined": true
+}
+"
+`;
+
+exports[`--json output schema snapshots — connection add / list / doctor / capabilities > connection add --json 1`] = `
+"{
+  "id": "<uuid>",
+  "provider": "jira",
+  "baseUrl": "https://example.atlassian.net",
+  "secretRef": "env:JIRA_TOKEN",
+  "discoveryTtlSeconds": 900
+}
+"
+`;
+
+exports[`--json output schema snapshots — connection add / list / doctor / capabilities > connection capabilities --json (injected discoverer) 1`] = `
+"{
+  "connectionId": "<uuid>",
+  "provider": "grafana",
+  "discovered": true,
+  "product": "grafana",
+  "edition": "oss",
+  "version": "13.1.0",
+  "apiFamilies": [
+    "dashboard:legacy"
+  ],
+  "resources": [
+    "dashboard"
+  ],
+  "actions": [
+    "list"
+  ],
+  "permissions": [
+    "read"
+  ],
+  "isReadOnly": true,
+  "discoveredAt": "<timestamp>",
+  "expiresAt": "<timestamp>"
+}
+"
+`;
+
+exports[`--json output schema snapshots — connection add / list / doctor / capabilities > connection doctor --json (reachable) 1`] = `
+"{
+  "connectionId": "<uuid>",
+  "provider": "jira",
+  "baseUrl": "https://example.atlassian.net",
+  "reachable": true,
+  "detail": "HTTP 200"
+}
+"
+`;
+
+exports[`--json output schema snapshots — connection add / list / doctor / capabilities > connection list --json (one connection) 1`] = `
+"{
+  "connections": [
+    {
+      "id": "<uuid>",
+      "provider": "jira",
+      "baseUrl": "https://example.atlassian.net",
+      "secretRef": "env:JIRA_TOKEN",
+      "discoveryTtlSeconds": 900
+    }
+  ]
+}
+"
+`;
+
+exports[`--json output schema snapshots — doctor (shape-reduced: host-independent) > doctor --json finding shape and id set are snapshot-stable 1`] = `
+{
+  "allPassedType": "boolean",
+  "findingIds": [
+    "engine.version",
+    "sandbox.selftest",
+    "hermeticity.selftest",
+    "auth.probe",
+    "git.plumbing",
+    "xdg.permissions",
+    "journal.chain",
+    "journal.head-anchor",
+    "journal.writer-separation",
+    "wsl2.warnings",
+  ],
+  "findingKeySets": [
+    "evidence,id,passed,repairStep,severity",
+    "evidence,id,passed,severity",
+  ],
+  "topLevelKeys": [
+    "allPassed",
+    "findings",
+  ],
+}
+`;
+
+exports[`--json output schema snapshots — doctor (shape-reduced: host-independent) > doctor --repair-plan --json adds exactly the repairPlan member 1`] = `
+[
+  "allPassed",
+  "findings",
+  "repairPlan",
+]
+`;
+
+exports[`--json output schema snapshots — evidence, populated > evidence --json over two journaled evidence_pointer records 1`] = `
+"{
+  "changeSetId": "<uuid>",
+  "records": [
+    {
+      "schemaVersion": 1,
+      "id": "<uuid>",
+      "changeSetId": "<uuid>",
+      "command": "npm test",
+      "exitStatus": 0,
+      "toolchainFingerprint": "node@24.18.0",
+      "capturedAt": "<timestamp>",
+      "artifactDigests": [
+        "sha256:deterministic-fixture-artifact-digest"
+      ],
+      "objectId": "0000000000000000000000000000000000000a"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "<uuid>",
+      "changeSetId": "<uuid>",
+      "command": "npm run lint",
+      "exitStatus": 1,
+      "toolchainFingerprint": "node@24.18.0",
+      "capturedAt": "<timestamp>",
+      "artifactDigests": [
+        "sha256:deterministic-fixture-artifact-digest"
+      ],
+      "objectId": "0000000000000000000000000000000000000a"
+    }
+  ]
+}
+"
+`;
+
+exports[`--json output schema snapshots — install / upgrade / uninstall > install --json 1`] = `
+"{
+  "status": "installed",
+  "repoState": "not-a-repo",
+  "monorepoDetected": false,
+  "gitInitPerformed": true,
+  "diff": [
+    {
+      "relPath": "CLAUDE.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/settings.json",
+      "action": "create"
+    },
+    {
+      "relPath": ".mcp.json",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/agents/eo-explore.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/agents/eo-reviewer.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/agents/eo-roaster.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/agents/eo-architect.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/agents/eo-planner.md",
+      "action": "create"
+    },
+    {
+      "relPath": ".claude/crabgic-statusline.mjs",
+      "action": "create"
+    }
+  ],
+  "policy": {
+    "status": "not-configured"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — install / upgrade / uninstall > uninstall --json 1`] = `
+"{
+  "status": "uninstalled",
+  "outcomes": [
+    {
+      "relPath": "CLAUDE.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/settings.json",
+      "action": "removed"
+    },
+    {
+      "relPath": ".mcp.json",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/agents/eo-explore.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/agents/eo-reviewer.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/agents/eo-roaster.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/agents/eo-architect.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/agents/eo-planner.md",
+      "action": "removed"
+    },
+    {
+      "relPath": ".claude/crabgic-statusline.mjs",
+      "action": "removed"
+    }
+  ]
+}
+"
+`;
+
+exports[`--json output schema snapshots — install / upgrade / uninstall > upgrade --json (immediately after a fresh install: up-to-date) 1`] = `
+"{
+  "status": "up-to-date",
+  "diff": [
+    {
+      "relPath": "CLAUDE.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/settings.json",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".mcp.json",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/agents/eo-explore.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/agents/eo-reviewer.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/agents/eo-roaster.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/agents/eo-architect.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/agents/eo-planner.md",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/crabgic-statusline.mjs",
+      "action": "unchanged"
+    }
+  ],
+  "recoveredFromInterruptedUpgrade": false
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn approve (human mode, 1 of 2) — golden CLI output 1`] = `
+"recorded independent-review approval 1/2 for proposal "<uuid>" — awaiting at least one more DISTINCT reviewer approval before promotion
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn approve --json (1 of 2 — records an approval, does not promote) 1`] = `
+"{
+  "promoted": false,
+  "distinctApprovals": 1
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn approve --json (2 of 2 — promoted, with the constructed ChangeSet) 1`] = `
+"{
+  "promoted": true,
+  "changeSet": {
+    "schemaVersion": 1,
+    "id": "<uuid>",
+    "state": "draft",
+    "intentContractId": "<uuid>",
+    "authorizationEnvelopeId": "<uuid>",
+    "capabilityManifestId": "<uuid>",
+    "provisionalPerformanceContractId": "<uuid>",
+    "integrationOrder": [],
+    "rollbackStrategy": "Promoted learning proposal <uuid>: revert the integration commit and restore prior behavior.",
+    "createdAt": "<timestamp>"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list (human mode, empty registry) — golden CLI output 1`] = `
+"no learning proposals recorded yet
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list (human mode, one proposal) — golden CLI output 1`] = `
+"- <uuid> [observation] always re-check X
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list --json (empty registry) 1`] = `
+"{
+  "proposals": []
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list --json (one proposal) 1`] = `
+"{
+  "proposals": [
+    {
+      "schemaVersion": 1,
+      "id": "<uuid>",
+      "state": "observation",
+      "content": "always re-check X",
+      "evidenceRecordIds": [],
+      "createdAt": "<timestamp>"
+    }
+  ]
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn reject --json 1`] = `
+"{
+  "rejected": true,
+  "proposal": {
+    "schemaVersion": 1,
+    "id": "<uuid>",
+    "state": "rejected",
+    "content": "lesson",
+    "evidenceRecordIds": [],
+    "createdAt": "<timestamp>"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn rollback --json (of a genuinely promoted proposal) 1`] = `
+"{
+  "rolledBack": true,
+  "inverseChangeSet": {
+    "schemaVersion": 1,
+    "id": "<uuid>",
+    "state": "draft",
+    "intentContractId": "<uuid>",
+    "authorizationEnvelopeId": "<uuid>",
+    "capabilityManifestId": "<uuid>",
+    "provisionalPerformanceContractId": "<uuid>",
+    "integrationOrder": [],
+    "rollbackStrategy": "Inverse of ChangeSet <uuid> (promoted learning proposal <uuid>): restore the pre-promotion baseline.",
+    "createdAt": "<timestamp>"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — run (three of the five decided-outcome arms) > run --json — approved under the standing policy, and dispatched 1`] = `
+"{
+  "outcome": {
+    "status": "created",
+    "artifacts": {
+      "changeSet": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "state": "awaiting_approval",
+        "intentContractId": "<uuid>",
+        "authorizationEnvelopeId": "<uuid>",
+        "capabilityManifestId": "<uuid>",
+        "provisionalPerformanceContractId": "<uuid>",
+        "integrationOrder": [],
+        "rollbackStrategy": "Revert the integration commit.",
+        "createdAt": "<timestamp>"
+      },
+      "intentContract": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "sections": {
+          "scope": "s",
+          "non-goals": "n",
+          "audience": "a",
+          "compatibility": "c",
+          "security": "sec",
+          "performance": "p",
+          "observability": "o",
+          "rollout": "r",
+          "acceptance": "acc"
+        },
+        "requirementIds": []
+      },
+      "requirements": [],
+      "workUnits": [],
+      "envelope": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "canonicalHash": "sha256:1c40b330c6c0838b673b8e2bfbe6081be4c342edbe22138e99518245dfbc8611",
+        "ownedPaths": [],
+        "commands": [],
+        "networkDestinations": [],
+        "credentialReferences": [],
+        "dependencies": [],
+        "remoteResourceAuthorizations": [],
+        "temporaryServices": [],
+        "prohibitedActions": [],
+        "maxTurnsPerAttempt": 40
+      },
+      "capabilityManifest": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "entries": []
+      },
+      "provisionalPerformanceContract": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "budgetSource": "base_revision_measurement",
+        "variant": "provisional",
+        "budgets": [],
+        "budgetHash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "standing": {
+    "status": "approved",
+    "changeSet": {
+      "schemaVersion": 1,
+      "id": "<uuid>",
+      "state": "ready",
+      "intentContractId": "<uuid>",
+      "authorizationEnvelopeId": "<uuid>",
+      "capabilityManifestId": "<uuid>",
+      "provisionalPerformanceContractId": "<uuid>",
+      "integrationOrder": [],
+      "rollbackStrategy": "Revert the integration commit.",
+      "createdAt": "<timestamp>"
+    },
+    "policyDigest": "sha256:standing"
+  },
+  "dispatch": {
+    "accepted": true,
+    "runId": "<uuid>"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — run (three of the five decided-outcome arms) > run --json — conflict (same requestKey, different content, same journal) 1`] = `
+"{
+  "outcome": {
+    "status": "conflict",
+    "existingContentHash": "sha256:8ec3aa7683a9ffa94050119c5f8399e607724113f2f31967c00ee40357881780"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — run (three of the five decided-outcome arms) > run --json — escalate (the envelope claims authority the policy does not grant) 1`] = `
+"{
+  "outcome": {
+    "status": "created",
+    "artifacts": {
+      "changeSet": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "state": "awaiting_approval",
+        "intentContractId": "<uuid>",
+        "authorizationEnvelopeId": "<uuid>",
+        "capabilityManifestId": "<uuid>",
+        "provisionalPerformanceContractId": "<uuid>",
+        "integrationOrder": [],
+        "rollbackStrategy": "Revert the integration commit.",
+        "createdAt": "<timestamp>"
+      },
+      "intentContract": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "sections": {
+          "scope": "s",
+          "non-goals": "n",
+          "audience": "a",
+          "compatibility": "c",
+          "security": "sec",
+          "performance": "p",
+          "observability": "o",
+          "rollout": "r",
+          "acceptance": "acc"
+        },
+        "requirementIds": []
+      },
+      "requirements": [],
+      "workUnits": [],
+      "envelope": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "canonicalHash": "sha256:5e59f1e49f8f98292d2c558413e031f1e824d48c81ab918a94cd2a21791e7b44",
+        "ownedPaths": [
+          "infra/secrets"
+        ],
+        "commands": [],
+        "networkDestinations": [],
+        "credentialReferences": [],
+        "dependencies": [],
+        "remoteResourceAuthorizations": [],
+        "temporaryServices": [],
+        "prohibitedActions": [],
+        "maxTurnsPerAttempt": 40
+      },
+      "capabilityManifest": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "entries": []
+      },
+      "provisionalPerformanceContract": {
+        "schemaVersion": 1,
+        "id": "<uuid>",
+        "changeSetId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "budgetSource": "base_revision_measurement",
+        "variant": "provisional",
+        "budgets": [],
+        "budgetHash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "standing": {
+    "status": "escalate",
+    "reason": "this change set needs authority the standing policy does not grant: owned path \\"infra/secrets\\" is not at or below any allowed path prefix"
+  }
+}
+"
+`;
+
+exports[`--json output schema snapshots — supervisor-backed commands (status/cancel/resume/evidence) > cancel <target-id> --json (unknown run) 1`] = `
+"{
+  "accepted": false
+}
+"
+`;
+
+exports[`--json output schema snapshots — supervisor-backed commands (status/cancel/resume/evidence) > evidence <change-set-id> --json (empty report) 1`] = `
+"{
+  "changeSetId": "<uuid>",
+  "records": []
+}
+"
+`;
+
+exports[`--json output schema snapshots — supervisor-backed commands (status/cancel/resume/evidence) > resume <run-id> --json — the daemon's own refusal prose, pinned verbatim 1`] = `
+"{
+  "accepted": false,
+  "reason": "no run dispatcher is configured on this daemon"
+}
+"
+`;
+
+exports[`--json output schema snapshots — supervisor-backed commands (status/cancel/resume/evidence) > status (no run-id) --json on a fresh daemon 1`] = `
+"{
+  "runs": []
+}
+"
+`;
+
+exports[`--json output schema snapshots — supervisor-backed commands (status/cancel/resume/evidence) > status <run-id> --json (unknown run) 1`] = `
+"{}
+"
+`;
+
+exports[`--json output schema snapshots — trust review / approve / revoke > trust approve --json (minted, digest-bound token) 1`] = `
+"{
+  "tokenId": "<uuid>",
+  "token": "<token>",
+  "subjectKind": "capability_digest",
+  "digest": "<sha256>",
+  "mintedAt": "<timestamp>",
+  "expiresAt": "<timestamp>"
+}
+"
+`;
+
+exports[`--json output schema snapshots — trust review / approve / revoke > trust review --json (empty store) 1`] = `
+"{
+  "entries": []
+}
+"
+`;
+
+exports[`--json output schema snapshots — trust review / approve / revoke > trust revoke --json (unknown token id — the refusal shape) 1`] = `
+"{
+  "revoked": false,
+  "reason": "no approval record found for token \\"no-such-token\\" — nothing to revoke"
+}
+"
+`;
+
 exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = `
 "{
   "install": {
