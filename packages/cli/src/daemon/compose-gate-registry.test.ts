@@ -154,9 +154,11 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
     // This is what makes `COMPOSED_GATE_NAMES`' own ordering correct, and it is
     // a claim about `@crabgic/gates`' `list()` rather than about this file's
     // constant: `registry.list()` flattens the tag map in `GATE_RISK_TAGS`
-    // order (`packages/gates/src/risk-tags.ts:28` puts `security` at index 4
-    // and `acceptance` at index 8), so re-ordering that vocabulary reddens here
-    // even though every gate is still registered.
+    // order (`packages/gates/src/risk-tags.ts:28`), and that vocabulary opens
+    // by spreading `INTENT_CONTRACT_SECTION_KEYS`
+    // (`packages/contracts/src/contracts/intent-contract.ts:16`), which lists
+    // `security` fifth and `acceptance` ninth. Re-ordering either list reddens
+    // here even though every gate is still registered.
     const names = registry.list().map((gate) => gate.name);
     expect(names.at(-1)).toBe("criteria-seal");
     expect(names.slice(0, -1)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
