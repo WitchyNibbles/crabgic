@@ -510,3 +510,61 @@ conjunct is owner-gated). What CHANGED and may be recorded in the annotation:
     `src/resource-client/datacenter/jira-datacenter-connection-registry.{ts,test.ts}`. Its
     real path is `packages/connectors-jira/src/provider/jira-datacenter-connection-registry.{ts,test.ts}`.
     The `:87-93` line anchor for the join IS correct at 1bc0d51.
+
+
+================================================================================
+§9. PER-PUSH PROOF — the same suites, the same job, the counts moved
+================================================================================
+
+A green workflow proves nothing about a particular test. These are the two job logs,
+same workflow (`ci.yml`), same job name, same runner label (`ubuntu-latest`), downloaded
+with `gh api repos/WitchyNibbles/crabgic/actions/jobs/<id>/logs`. Lines are quoted under
+the ONE-SPACE rule (timestamp and exactly one separator space stripped; vitest's own
+content then begins with one space before `✓`). ANSI colour escapes are stripped, and that
+is said here rather than left for a byte-comparer to trip over.
+
+BEFORE — `main` @ `6f964d7`, run 31104703738, job **92626742663**:
+
+<!-- prettier-ignore-start -->
+```text
+log line 364:  ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (12 tests) 29ms
+log line 397:  ✓  @crabgic/connectors-jira  src/provider/jira-datacenter-connection-registry.test.ts (3 tests) 19ms
+log line 403:  ✓  @crabgic/connectors-jira  src/capability/field-metadata.test.ts (6 tests) 89ms
+log line 402:  ✓  @crabgic/connectors-jira  src/capability/discovery-datacenter.test.ts (3 tests) 12ms
+```
+<!-- prettier-ignore-end -->
+
+AFTER — this branch @ `8577dc4` (PR #124), run 31109085272, job **92641912494**:
+
+<!-- prettier-ignore-start -->
+```text
+log line 379:  ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (19 tests) 42ms
+log line 397:  ✓  @crabgic/connectors-jira  src/provider/jira-datacenter-connection-registry.test.ts (6 tests) 27ms
+log line 399:  ✓  @crabgic/connectors-jira  src/capability/field-metadata.test.ts (11 tests) 93ms
+log line 422:  ✓  @crabgic/connectors-jira  src/capability/discovery-datacenter.test.ts (3 tests) 15ms
+```
+<!-- prettier-ignore-end -->
+
+    resource-client   12 -> 19   (+7)
+    registry           3 ->  6   (+3)
+    field-metadata     6 -> 11   (+5)
+                                  +15  — equals §1's repo-wide delta exactly.
+    discovery-datacenter  3 -> 3  CONTROL: a count that should NOT move, and did not.
+                                  Criterion 3's conjuncts 1 and 2 are cited unchanged from
+                                  this file, so a movement here would mean I had quietly
+                                  edited the evidence I claim was already there.
+
+⚠️ RIGHT-COUNT/WRONG-FILE guard. `(3 tests)` occurs at BOTH `:397` and `:402` in the BEFORE
+log — two different suites with the same count. Every row above is therefore keyed on the
+FILE PATH, which is unique in each log, and the line number is recorded only as a locator.
+A comparer keyed on the count alone would have matched the wrong suite here, in this exact
+log, on this exact number.
+
+⚠️ These two line numbers are pinned to the two job ids named above and to nothing else.
+The commit that adds THIS section changes only this file, so a later CI run of PR #124 will
+have different line numbers and identical counts; do not "correct" the numbers above
+against a newer run — read the job id first.
+
+CI at `8577dc4`: 15 of 15 required checks pass, on both `ubuntu-latest` and
+`ubuntu-24.04-arm` — lint, typecheck, unit-test+coverage, gates-conformance,
+perf-conformance, learning-redteam, commitlint, engine-pin-lint, meta-checks.
