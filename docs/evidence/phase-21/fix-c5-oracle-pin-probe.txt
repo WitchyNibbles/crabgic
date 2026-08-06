@@ -1,0 +1,307 @@
+Phase 21, exit criterion 5 — the fault-injection scenarios' OWN oracles: mutation/deletion probe
+=================================================================================================
+
+Companion to `docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt`. That transcript proves the
+GATE layer bites. This one proves the layer beneath it — the scenario whose verdict the gate
+faithfully reports — bites too. Defect record (named in prose, never cited as evidence):
+`20-fault-injection-scenarios-have-unpinned-oracles`.
+
+RULING-3 provenance
+-------------------
+# captured (UTC):                        2026-08-06T10:49:03Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): c0b38731b383ff024033738b3a56d0c8aa9d831d
+#   (origin/main at capture: "test(cli): resolve the capability tools over the real gateway
+#    registry and a real MCP transport (#111)")
+# branch tip at capture (PROVISIONAL — a pre-merge branch commit; see note): 992b470fc09e2416f0188d7c9dde2181974f135e
+#   ("fix(connectors-grafana): pin each fault-injection scenario's own verdict with injectable seams")
+#
+# Every measurement below ran at branch tip 992b470, whose only delta from the upstream base is
+# the two files this probe is about. That id is PROVISIONAL: a rebase kills it. Every claim it
+# establishes is re-provable at any tree by re-running the two committed driver scripts, since
+# each mutation is a mechanical, single-substitution edit stated verbatim below; and the same
+# mutations are pinned per-push by the six reverse probes committed in 992b470.
+#
+# Drivers (scratch, batch-suffixed per the isolation rule):
+#   probe-oracle-batchD.sh        — baseline -> mutation -> restore, at ONE head, for M1..M5b
+#   probe-oracle-recut-batchD.sh  — the same for M2/M2a/M2b with COMPILING mutations (see §3)
+#
+# Suite command for every leg, verbatim:
+#   npx vitest run --project @crabgic/gates --project @crabgic/connectors-grafana --coverage.enabled=false
+# `--coverage.enabled=false` is a speed measure only; the counts are identical either way, measured
+# at this tree: coverage-ON 83 files / 668 tests, coverage-OFF 83 files / 668 tests.
+#
+# `npm run build` (= `tsc -b && bundle:types && bundle:cli`) precedes EVERY mutated measurement and
+# its exit code is recorded, because @crabgic/gates imports @crabgic/connectors-grafana through
+# packages/connectors-grafana/dist/. A src-only edit is invisible to the gates leg until the
+# workspace is rebuilt, and a mutation that does not COMPILE gives a measurement of the old code
+# wearing the new code's label. Three of the first-cut mutations did exactly that — §3.
+#
+# Every restore is `git checkout HEAD -- <explicit file path>` — explicit SOURCE and explicit PATH.
+# The probed code was COMMITTED BEFORE the probe ran, precisely so that this restore form is safe:
+# with the change still uncommitted, `git checkout HEAD -- <matrix file>` would have deleted the
+# very factories under test and produced a false green with a clean exit code. (The plan this batch
+# executed ordered the commit AFTER the probes; that ordering is a defect and was routed around.)
+# After every restore the driver records the test COUNT (not the exit code), `git status --short`,
+# and `grep -c 'RP-T1' <test file>` — the three countermeasures for the three known ways a restore
+# silently destroys an agent's own uncommitted test.
+#
+# No @live test, no CRABGIC_LIVE, no engine-live dispatch, no docker. The whole probe is
+# container-free and network-free: the doctor's token-info fetch is an injected callback and the
+# adapter's `send` is `neverCalledSend`.
+
+
+§0. WHAT WAS BROKEN, AND WHAT THIS PROBE HAS TO SHOW
+----------------------------------------------------
+Adversarial review of PR #94 (attack G, 2026-08-05) mutated the tenant scenario's own closure —
+
+    passed: result.ok === false   ->   passed: true
+
+— and both packages stayed green at 83 files / 660 tests. The gate added by PR #94 is a faithful
+reporter of whatever the scenario concludes, so its refusal-detecting power rode entirely on the
+scenario's integrity, and nothing per-push pinned that direction. The three scenarios also had no
+seam: org 999 vs allowlist ["7"], the real adapter and the real guard were hardcoded inside the
+closures, so no test could construct a world in which a scenario OUGHT to fail.
+
+The fix gives each scenario a factory whose every override defaults to the real production
+dependency, and rebuilds the module-level constants as those factories' zero-argument products.
+Six reverse probes (RP-T1/T2, RP-F1/F2, RP-R1/R2) assert the fail-world verdict.
+
+This transcript must show four things:
+  (a) each scenario's verdict is now DERIVED — a constant `true` dies                    -> M1,M2',M3
+  (b) each verdict's individual conjuncts are pinned, not just the whole                 -> M2a',M2b',M3a,M3b
+  (c) adding these checks did NOT un-pin the neighbouring gate-layer coverage            -> M4
+  (d) exactly where the DEFAULT-argument residual begins and ends — measured, not argued -> M5a,M5b
+
+
+§1. BASELINE (unmutated, branch tip 992b470) — the row that makes the others legible
+------------------------------------------------------------------------------------
+  $ npm run build                                                                  exit=0
+  $ npx vitest run --project @crabgic/gates --project @crabgic/connectors-grafana --coverage.enabled=false
+     Test Files  83 passed (83)
+          Tests  668 passed (668)                                                  exit=0
+
+  Pre-change baselines at the upstream base c0b3873, for the delta:
+     both packages                                          83 files /  662 tests, green
+     packages/connectors-grafana .../fault-injection.test.ts               5 tests, green
+     packages/gates       src/security-fixture-manifest.test.ts           21 tests, green
+  Post-change, at 992b470:
+     both packages                                          83 files /  668 tests, green
+     packages/connectors-grafana .../fault-injection.test.ts              11 tests, green   (5 -> 11, delta +6)
+     packages/gates       src/security-fixture-manifest.test.ts           21 tests, green   (21 -> 21, CONTROL ROW)
+
+  The 21 -> 21 row is evidence, not an omission: packages/gates is touched ZERO times by this
+  change, so a count that does NOT move is what proves the +6 landed where it is claimed to have
+  landed rather than migrating in from a gates-side edit. (A count that should not move is exactly
+  the control PR #94's own job-log proof used.)
+
+  TDD order, recorded because the tests were written first and watched fail:
+    $ npx vitest run --project @crabgic/connectors-grafana src/fixtures/fault-injection.test.ts --coverage.enabled=false
+          Tests  6 failed | 5 passed (11)                                          exit=1
+      (6x "TypeError: makeTenantBoundaryBreachScenario is not a function", etc.)
+    $ npx tsc -b --force packages/connectors-grafana                               exit=2
+      packages/connectors-grafana/src/fixtures/fault-injection.test.ts(4,3): error TS2305: Module
+        '"./fault-injection-matrix.js"' has no exported member 'makeForgedDeleteAdminScenario'.
+      ... same for 'makeRedactionCheckScenario' and 'makeTenantBoundaryBreachScenario'.
+    NOTE — a correction to the plan: vitest transpiles with esbuild and does NOT type-check, so the
+    red stage is a RUNTIME "is not a function", not the "suite fails to compile" the plan predicted.
+    Both are recorded above; the tsc leg is the one that shows the compile-level red.
+
+
+§2. THE MUTATION MATRIX — every leg, verbatim
+----------------------------------------------
+Legend: "gates leg" = the @crabgic/gates half of the two-package run.
+MATRIX = packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts
+DOCTOR = packages/connectors-grafana/src/auth/connection-doctor.ts
+
+ id    | mutation (one file, mechanical, 1 substitution, asserted)      | build | result
+-------+----------------------------------------------------------------+-------+---------------------------------------
+ M1    | MATRIX: `passed: result.ok === false,` -> `passed: true,`       | exit=0| 2 failed | 666 passed (668)
+       |   (= ATTACK G, re-run verbatim against the fix)                 |       | RP-T1 RED, RP-T2 RED; gates ALL GREEN
+ M2'   | MATRIX: forged closure -> `void forgedDelete; void calls;`      | exit=0| 2 failed | 666 passed (668)
+       |         `const passed = true;`                                  |       | RP-F1 RED, RP-F2 RED
+ M2a'  | MATRIX: forged conjunct, drop the zero-HTTP-calls half:         | exit=0| 1 failed | 667 passed (668)
+       |         `void calls; const passed = typeof forgedDelete !== "function";`| | RP-F2 RED only
+ M2b'  | MATRIX: forged conjunct, drop the no-delete-method half:        | exit=0| 1 failed | 667 passed (668)
+       |         `void forgedDelete; const passed = calls.length === 0;` |       | RP-F1 RED only
+ M3    | MATRIX: `const passed = !message.includes("resources") &&       | exit=0| 2 failed | 666 passed (668)
+       |         message.length > 0;` -> `const passed = true;`          |       | RP-R1 RED, RP-R2 RED
+ M3a   | MATRIX: redaction conjunct, drop the no-"resources" half:       | exit=0| 1 failed | 667 passed (668)
+       |         `const passed = message.length > 0;`                    |       | RP-R1 RED only
+ M3b   | MATRIX: redaction conjunct, drop the did-refuse-at-all half:    | exit=0| 1 failed | 667 passed (668)
+       |         `const passed = !message.includes("resources");`        |       | RP-R2 RED only
+ M4    | DOCTOR: `sed -i '63,72d'` — delete the empty-allowlist          | exit=0| 7 failed | 661 passed (668)
+       |         fail-closed branch AND the org-membership refusal       |       | 3 connectors-grafana + 4 GATES (see §4)
+ M5a   | MATRIX: default doctor -> always-refuse stub                    | exit=0| 1 failed | 667 passed (668)
+       |   `overrides.doctor ?? (async () => ({ok: false as const, ...}))`|      | RP-T2 RED only
+ M5b   | MATRIX: default doctor -> BEHAVIOURALLY FAITHFUL FROZEN COPY    | exit=0| 83 files / 668 tests, ALL GREEN
+       |         (the doctor's body pasted in as a local function)       |       | NOTHING REDDENS — see §5
+
+Restore after every single leg: `git checkout HEAD -- <that file>` -> exit=0, `git status --short`
+empty, `grep -c 'RP-T1' fault-injection.test.ts` -> 1, then `npm run build` exit=0 and the
+two-package run back to 83 files / 668 tests green. Recorded for all eleven legs in the driver logs.
+
+Sub-conjunct reading (M2a'/M2b'/M3a/M3b): each half of each two-conjunct verdict has its OWN
+dedicated killer, and the two killers are DISJOINT. That is what rules out the weaker claim "the
+pair of probes happens to cover the pair of conjuncts jointly". No conjunct is covered twice and
+none is uncovered.
+
+
+§3. A DEFECT IN THIS PROBE'S OWN FIRST CUT — recorded, not quietly discarded
+----------------------------------------------------------------------------
+The first cut of M2, M2a and M2b replaced the forged scenario's verdict expression outright. That
+left two locals unreferenced, and `npm run build` is `tsc -b && …`, so:
+
+  $ npx tsc -b                                                                     exit=2
+  packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts(84,21): error TS6133: 'calls' is declared but its value is never read.
+  packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts(98,13): error TS6133: 'forgedDelete' is declared but its value is never read.
+
+  first cut, M2  : build exit=2 | 2 failed | 666 passed (668)   <- gates leg ran on STALE dist
+  first cut, M2a : build exit=2 | 1 failed | 667 passed (668)   <- idem
+  first cut, M2b : build exit=2 | 1 failed | 667 passed (668)   <- idem
+
+The connectors-grafana half of those three legs is still sound — vitest resolves that package's own
+suite from `src`, so the mutation was live for it. What was NOT evidence is the "gates stayed green"
+half, because gates reads the package through `dist/` and `dist/` was the unmutated build. Rather
+than keep the stronger-looking number, the three legs were re-cut with semantically identical but
+COMPILING mutations (`void <ident>;` to keep tsc's noUnusedLocals quiet). Both numbers are reported
+above; the re-cut legs all built exit=0 and produced the IDENTICAL failure sets, so the conclusion is
+unchanged and now sound. M1, M3, M3a, M3b, M4, M5a and M5b all built exit=0 on their first cut.
+
+
+§4. M4 — THE NEIGHBOUR UN-PIN CHECK (adding a check can silently un-pin the one beside it)
+-------------------------------------------------------------------------------------------
+Deleted, verbatim, `packages/connectors-grafana/src/auth/connection-doctor.ts:63-72` — the exact
+`sed -i '63,72d'` PR #94's own probe used, line range re-verified unchanged at c0b3873:
+
+    |   if (deps.orgAllowlist.length === 0) {
+    |     return { ok: false, reason: "connection has an empty org allowlist — refusing to proceed" };
+    |   }
+    |   const orgIdStr = String(tokenInfo.orgId);
+    |   if (!deps.orgAllowlist.includes(orgIdStr)) {
+    |     return {
+    |       ok: false,
+    |       reason: `token is bound to org ${orgIdStr}, which is outside this connection's org allowlist`,
+    |     };
+    |   }
+
+  $ npm run build                                                                  exit=0
+     Test Files  3 failed | 80 passed (83)
+          Tests  7 failed | 661 passed (668)                                       exit=1
+
+  @crabgic/connectors-grafana (3):
+    connection-doctor.test.ts  "fails when the org allowlist is empty (refuses rather than trusting any org)"
+    connection-doctor.test.ts  "fails when the token's org is outside the allowlist"
+    fault-injection.test.ts    it.each row "a token bound to an out-of-allowlist org is refused before any resource access"
+  @crabgic/gates (4):
+    security-fixture-manifest.test.ts  it.each row "grafana-tenant-boundary passes when invoked directly"
+    security-fixture-manifest.test.ts  T1
+    security-fixture-manifest.test.ts  T3
+    security-fixture-manifest.test.ts  T6
+
+**THE GATES LEG STILL REDDENS, with exactly the four failures PR #94's probe 2 recorded.** That is
+the finding this leg exists for: the six new scenario-layer probes WIDEN coverage, they do not
+MIGRATE it. Had the gates suite gone green here, the new checks would have absorbed the old ones'
+subject and the gate-layer pin would have been destroyed in the same commit that appeared to
+strengthen it — and this transcript would say STOP instead of what it says.
+
+RP-T1 and RP-T2 stay GREEN under M4, BY DESIGN, and that is the correct behaviour rather than a
+miss: RP-T1 injects its own doctor so the deleted branch is not on its path, and RP-T2's allowlist
+["999"] legitimises org 999 with or without the deleted branch. Their subject is the scenario's
+oracle, not the doctor's enforcement; M4's subject is the doctor's enforcement. Two different pins.
+
+Also by design, and stated so a reviewer reads it as the documented asymmetry rather than a gap:
+under M1 the GATES suite stays fully GREEN. The gate reports whatever the scenario concludes, so a
+scenario that lies "passed" is invisible to it. That is precisely the defect; the pin for it now
+lives one layer down, in the per-push connectors-grafana suite, where M1 reddens two tests.
+
+
+§5. THE DEFAULT-ARGUMENT RESIDUAL — measured, and narrower than the gate layer's equivalent
+--------------------------------------------------------------------------------------------
+Injected-path tests cannot prove the DEFAULT arguments stay coupled to the real dependencies. This
+probe measures exactly where that residual starts:
+
+  rewire the default to an ALWAYS-ACCEPT stub   -> dies on the pre-existing pass-world it.each row
+  rewire the default to an ALWAYS-REFUSE stub   -> dies on RP-T2                    (M5a, MEASURED)
+  rewire the default to a FAITHFUL FROZEN COPY  -> NOTHING REDDENS                  (M5b, MEASURED)
+
+M5a is the strengthening over the defect record's minimal remedy, which pinned only the injected
+path: RP-T2 drives the REAL default doctor into its accept branch, so the two crude rewires are both
+per-push-detectable. M5b is the honest remainder. A behaviourally faithful frozen copy decouples the
+scenario from the production doctor without changing any observable verdict, and only re-running an
+M4-style deletion probe at a later tree detects it. Its all-green result is the measurement, not a
+failure of the probe.
+
+Two things this transcript will NOT let a reader over-read:
+  * No equivalent narrowing exists for the `adapterFactory` or `guard` defaults. There is no RP-F/RP-R
+    analogue of RP-T2, and M4's deletion probe does not reach them. Their residual is wider.
+  * The treatment for all three is the same as PR #94 set for the gate layer: the in-file ⚠️ RESIDUAL
+    comment above the factories in fault-injection-matrix.ts, plus this transcript as a
+    POINT-IN-TIME coupling proof. Neither is a per-push pin, and neither is described as one.
+
+
+§6. CONSUMER CENSUS — that the seam is on the PRODUCTION path, not a test-only copy
+------------------------------------------------------------------------------------
+Run at branch tip 992b470, pinned to the commit (`git grep … HEAD`) rather than the working tree, so
+the output stays checkable. `dist/` is gitignored and therefore excluded by construction.
+
+  $ git grep -nE "FaultInjectionScenario|FAULT_INJECTION_MATRIX" HEAD -- packages e2e scripts
+    packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:21,42,51,78,119,145,178,180,182,184
+    packages/connectors-grafana/src/fixtures/fault-injection.test.ts:3,12,14,18
+    packages/connectors-grafana/src/index.ts:185,186
+    packages/gates/src/security-fixture-manifest.ts:6,12,175,197
+    packages/gates/src/security-fixture-manifest.test.ts:13,177,190
+  => the ONLY consumers are the matrix module, its own test, the package barrel, and packages/gates'
+     manifest + that manifest's test. NO e2e/ consumer and NO scripts/ consumer exists.
+
+  $ git grep -nE "makeForgedDeleteAdminScenario|makeTenantBoundaryBreachScenario|makeRedactionCheckScenario" HEAD -- packages e2e scripts
+    packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:76,117,143,178,180,182
+    packages/connectors-grafana/src/fixtures/fault-injection.test.ts:4,5,6,52,67,74,91,103,117
+  => the three factories are consumed by the matrix module itself and by its sibling test only. They
+     are deliberately NOT added to the package barrel: the exported surface is unchanged.
+
+  $ git grep -nE "\.run\(\)" HEAD -- packages/gates packages/connectors-grafana
+    packages/gates/src/security-fixture-manifest.ts:209      <- the ONE production call site
+    packages/connectors-grafana/src/fixtures/fault-injection.test.ts:21,55,68,83,97,108,118
+
+The production chain, end to end: security-fixture-manifest.ts:289 `verify: async () =>
+grafanaTenantBoundaryVerify()` -> the default parameter `scenarios = FAULT_INJECTION_MATRIX`
+(manifest.ts:197) -> the matrix literal (fault-injection-matrix.ts:184-188) -> the module-level
+constants, which ARE `makeXxxScenario()` (fault-injection-matrix.ts:178,180,182). The factory's
+default-argument closure IS the object production executes. There is no separate test-only copy,
+which is the defect record's constraint 1.
+
+
+§7. INTERFACE-LEDGER EXPOSURE OF `FaultInjectionScenario.run` — re-measured: NONE
+----------------------------------------------------------------------------------
+Notation-aware sweep of `docs/interface-ledger.md` (1599 lines) at this tree, because a
+single-notation grep is how a previous "cited nowhere" claim was published wrongly:
+
+  grep -ciF, all 0 hits: FaultInjectionScenario · FAULT_INJECTION · fault-injection ·
+    "fault injection" · tenant-boundary · "tenant boundary" · tenantBoundary · connectors-grafana ·
+    security-fixture · "security fixture" · breach · scenario · makeTenantBoundary · ".run(" ·
+    adapterFactory · assertWritableCapability · checkGrafanaConnectionDoctor · createGrafanaProviderAdapter
+
+  The only adjacent vocabulary: `grep -in grafana` -> 7 hits, every one enumerated —
+    :410 and :432 (Gap 6, the dropped dashboard-version-message constant), :567-568 (Gap 10,
+    capability-flag labels), :769 and :887 (Gap 16, requirement-traceability record / release-e2e
+    producer), :1113 (Gap 18, flag taxonomy). None names the matrix, the scenario type, or any
+    `run` signature.
+
+This change edits the ledger ZERO times and shifts ZERO ledger lines, so the protected
+inbound-citation line set {111, 113, 145, 379, 400-402, 712, 714-717, 726-727} is untouched.
+Belt and braces: `FaultInjectionScenario` and `run`'s signature are byte-identical before and after,
+so even a ruling nobody found could not be contradicted by this change.
+
+
+§8. WHAT THIS TRANSCRIPT DOES NOT ESTABLISH
+--------------------------------------------
+  1. It says nothing about whether the gate registry is composed in the shipped daemon. It is not
+     — see `docs/deploy-posture.md`'s "Gate registry never composed" row and roadmap/21's own
+     scope-caveat block at `roadmap/21-connector-evidence-integration.md:142-151`. "Standing,
+     blocking" is evidenced at the per-push suite level and at gated releases, never as a
+     transition a shipped run is blocked at. This batch neither deepens nor fixes that.
+  2. It does not pin the frozen-copy default rewire (§5), and does not claim to.
+  3. Every number above is a LOCAL run. The per-push proof that these assertions execute in CI is a
+     job log showing `src/fixtures/fault-injection.test.ts (11 tests)` against main's `(5 tests)`,
+     with `src/security-fixture-manifest.test.ts (21 tests)` unmoved as the control row — to be
+     byte-compared under the one-space rule by whoever cites this in a record.
