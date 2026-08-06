@@ -1,0 +1,192 @@
+================================================================================
+roadmap/18 exit criterion 10, `bulk:<keys>` residual — RED-first + probe battery
+Batch C-final, 2026-08-06
+================================================================================
+
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#   6f964d76758158159c1d3dc01a0e3a8629f67f79   (origin/main, "test(cli): refresh
+#   the run --json envelope snapshots for Gap 22's provisionalBudgetHash (#117)")
+# The RED-first section below was captured one upstream commit earlier, at
+#   1bc0d5159b17715790c74b47f5a0007bd939a802   (origin/main at wave start, still
+#   reachable; #117 touches only packages/cli snapshots, so no count here moves).
+# Branch tip at capture (PROVISIONAL — do not cite): closeout/batch-c
+# Commands: verbatim below. Exit statuses recorded per section.
+# Runner: local, ubuntu (WSL2). No @live, no CRABGIC_LIVE, no network.
+
+--------------------------------------------------------------------------------
+0. WHAT WAS OPEN, AND WHAT THIS CLOSES
+--------------------------------------------------------------------------------
+
+roadmap/18 §Exit criteria 10 second clause: "per-issue write order preserved."
+PR #84 closed it for SINGLE-issue writes and deliberately left `bulk:<keys>`
+unserialized, pinning that residual as an assertion in
+packages/connectors-jira/src/resource-client/canonical-target.test.ts.
+
+The gateway primitive this needs (`WriteSerializer.runExclusiveMulti` and
+`GatewayHttpRequest.serializationResources`) landed on this branch's first
+commit. It was DEAD CODE for Jira until this batch: both apply clients called
+`writeSerializationTarget(plan.canonicalTarget)`, and that function passed a
+`bulk:` target straight through.
+
+Fix: `writeSerializationTarget` returns `string | readonly string[]`, and maps
+`bulk:K1,K2` onto the sorted, deduped set ["issue:K1","issue:K2"]. Neither
+apply client's call site changed — the widening is entirely inside
+canonical-target.ts, so Cloud and Data Center inherit it together.
+
+--------------------------------------------------------------------------------
+1. RED FIRST — the assertions written before the production change
+   (at upstream base 1bc0d51; production unchanged, tests added)
+--------------------------------------------------------------------------------
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage=false \
+    src/resource-client/canonical-target.test.ts \
+    src/testkit/write-order.integration.test.ts
+
+ Test Files  2 failed (2)
+      Tests  9 failed | 22 passed (31)
+exit status: 1   (deliberately RED)
+
+The nine, and what each proved was broken:
+
+  canonical-target.test.ts
+    maps bulk:PROJ-1,PROJ-2 onto both member issue keys
+      → expected 'bulk:PROJ-1,PROJ-2' to deeply equal [ 'issue:PROJ-1', 'issue:PROJ-2' ]
+    was the residual: a bulk write now takes the mutex of each member issue
+      → expected 'bulk:PROJ-1,PROJ-2' to contain 'issue:PROJ-1'
+    was the residual: order-permuted member lists mint the SAME key set
+      → expected 'bulk:PROJ-2,PROJ-1' to deeply equal 'bulk:PROJ-1,PROJ-2'
+    dedupes a repeated member key
+      → expected 'bulk:PROJ-1,PROJ-1,PROJ-2' to deeply equal [ 'issue:PROJ-1', 'issue:PROJ-2' ]
+    a single-member bulk target is the SAME shape as the single-issue write it races
+      → expected 'bulk:PROJ-1' to deeply equal [ 'issue:PROJ-1' ]
+
+  write-order.integration.test.ts   (real plan builders, real executeMutationPlan,
+                                     real temp-dir JournalStore, real GatewayHttpClient)
+    issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-1) never overlap on the wire
+      → expected 2 to be 1
+    two bulk plans over the SAME issues in permuted order serialize against each other
+      → expected 2 to be 1
+    issue.bulkTransition shares the mapping — it serializes against a member's single write
+      → expected 2 to be 1
+    Jira Data Center: issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-2) never overlap
+      → expected 2 to be 1
+
+`expected 2 to be 1` is the race itself, observed on the wire: two requests
+simultaneously in flight where one bulk key and one issue key were taken.
+
+THE THREE CONTROLS WERE GREEN IN THIS SAME RED RUN, which is what rules out a
+global-mutex "fix" and proves the instrumentation can see overlap at all:
+    CONTROL: a bulk plan and a write to a NON-member issue still run concurrently  (=== 2)
+    CONTROL: two bulk plans over DISJOINT issue sets still run concurrently        (=== 2)
+    Jira Data Center CONTROL: bulk vs NON-member issue                             (=== 2)
+
+After the production change, same command:
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+exit status: 0
+
+--------------------------------------------------------------------------------
+2. PROBE BATTERY — baseline / mutation / restore, all at UPSTREAM BASE 6f964d7
+--------------------------------------------------------------------------------
+
+Restores use an explicit SOURCE and an explicit PATH (`git checkout HEAD --
+<file>`), never a directory. Test-name presence is grepped after every restore,
+and the closing baseline is compared against the opening one — a probe that
+"passes" because an assertion vanished looks identical to one that passes
+because the code is correct.
+
+BASELINE
+  $ npm run build                                            → exit 0
+  $ npx vitest run --project @crabgic/connectors-jira \
+      --project @crabgic/gateway --project @crabgic/connectors-grafana --coverage=false
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+
+PROBE A — remove `.sort()` from the bulk member-key mapping
+  Test Files  1 failed | 49 passed (50)
+       Tests  1 failed | 572 passed (573)
+  FAIL  canonical-target.test.ts > was the residual: order-permuted member lists
+        mint the SAME key set
+
+  ⚠️ FINDING, AND IT CORRECTS THIS BATCH'S OWN FIRST DRAFT. Only the UNIT case
+  reddens. Every connector integration case stays green, because 16's
+  `runExclusiveMulti` canonicalizes (dedupes + sorts) the key set again on its
+  own side. The connector-side sort is therefore DEFENCE IN DEPTH and a locally
+  testable contract — NOT the mechanism that closes the order-permutation race.
+  The first draft's doc comment claimed the opposite ("without a canonical key
+  ORDER two bulk plans ... would still fail to serialize"); it was corrected in
+  the same branch, in both canonical-target.ts and canonical-target.test.ts.
+
+PROBE B — remove the dedupe (`new Set`) from the bulk member-key mapping
+  Test Files  1 failed | 49 passed (50)
+       Tests  1 failed | 572 passed (573)
+  FAIL  canonical-target.test.ts > dedupes a repeated member key
+  Same reading as A: a local contract, pinned locally.
+
+PROBE C (REVERSE PROBE) — fold the bulk mapping back to the pre-fix passthrough
+  Test Files  2 failed | 48 passed (50)
+       Tests  9 failed | 564 passed (573)
+  All five new unit cases AND all four integration cases redden. This is the
+  reverse direction that matters: the assertions have been SEEN to fail, so
+  none of them is vacuous, and the restored behaviour is exactly the residual
+  PR #84 left. The three `=== 2` controls stay green under it.
+
+PROBE D — delete the gateway's `serializationResources` forwarding
+           (packages/gateway/src/mutation-pipeline/mutation-pipeline.ts)
+           CROSS-PACKAGE: connectors-jira imports @crabgic/gateway from dist/.
+
+  D1, WITHOUT rebuild (connectors-jira still importing the OLD gateway dist):
+    Test Files  2 failed | 80 passed (82)
+         Tests  3 failed | 918 passed (921)
+
+  D2, AFTER `npm run build` (exit 0):
+    Test Files  3 failed | 79 passed (82)
+         Tests  7 failed | 914 passed (921)
+    FAIL  connectors-jira write-order.integration.test.ts  (4 bulk cases)
+    FAIL  gateway mutation-pipeline.test.ts                (2 PLURAL cases)
+    FAIL  gateway mutation-apply-tool.test.ts              (1 forwarding case)
+
+  The src-only run understates the blast radius by more than half — 3 vs 7 —
+  and every one of the four CONNECTOR legs is invisible without the rebuild.
+  Both numbers are reported rather than only the stronger one.
+
+  Restore + rebuild → exit 0.
+
+RESTORED BASELINE (must equal the opening baseline exactly)
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+  test-name presence after restore:
+    "a bulk target maps to its member issues" occurrences  : 1
+    "bulk write order" occurrences                          : 2
+  $ git status --porcelain                                  → (empty)
+
+--------------------------------------------------------------------------------
+3. THE REBUILD QUESTION, SETTLED BY MEASUREMENT RATHER THAN RITUAL
+--------------------------------------------------------------------------------
+
+$ git grep -n "writeSerializationTarget" -- . | grep -v "^packages/connectors-jira/"
+  → only docs/evidence/** transcripts and roadmap/19 prose; no code consumer
+    outside the package. Probes A/B/C are therefore intra-package and do not
+    need a rebuild.
+
+$ git grep -n "serializationResources" -- . | grep -v "^packages/gateway/"
+  → one comment in connectors-jira's canonical-target.test.ts; no code consumer.
+    But the SYMBOL is not the boundary — the pipeline's behaviour is, and
+    connectors-jira reaches it through `executeMutationPlan` in gateway's dist.
+    Probe D's two numbers are the proof that a symbol census alone would have
+    under-reported here.
+
+--------------------------------------------------------------------------------
+4. RESIDUAL, STATED RATHER THAN IMPLIED
+--------------------------------------------------------------------------------
+
+Narrowed, not eliminated, and asserted as `=== 2` controls rather than described:
+
+  - cross-issue parallelism between single-issue writes is untouched (intended);
+  - a bulk plan and a single write to a NON-member issue still run concurrently;
+  - two bulk plans over disjoint issue sets still run concurrently.
+
+Not claimed by this transcript: nothing here evidences behaviour against a real
+Jira. Every leg is a fake transport. roadmap/18's cassette/live conjuncts remain
+owner-gated and are untouched by this batch.
