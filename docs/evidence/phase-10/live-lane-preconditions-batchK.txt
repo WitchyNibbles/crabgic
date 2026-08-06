@@ -367,5 +367,17 @@ restore (202 total throughout — no assertion silently vanished).
    failure still costs whatever the engine-claude lane spent before it. `--bail`
    bounds that; splitting the plugin lane into its own job would remove it, and
    is not attempted here.
+ * `--bail=1` makes one neighbouring doc comment imprecise, and it is named
+   here rather than edited: `packages/engine-claude/src/live/zz-live-run-record
+   .live.test.ts`'s header says "vitest runs every file sequentially regardless
+   of earlier failures, so this finalizer writes a record whenever it is
+   reached". Under `--bail=1` a failure stops the run before the finalizer, so
+   no `live-run-record.json` is written at all. The BEHAVIOUR is unchanged and
+   arguably better — the workflow uploads that artifact only `if: success()`,
+   and the file's own "green-run semantics" paragraph already says the green
+   gate is the overall exit status, so a red run was never supposed to yield a
+   trusted record. Only the sentence's premise moved. `packages/engine-claude`
+   belongs to another batch in this wave, so the annotation is handed off
+   rather than made here.
 
 ================================================================================
