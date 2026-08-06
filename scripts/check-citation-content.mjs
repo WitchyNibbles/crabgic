@@ -56,6 +56,8 @@ import {
   BASELINE_FILE,
   buildBaseline,
   diffAgainstBaseline,
+  isOutOfSpanPin,
+  isStalePin,
   serializeBaseline,
   shortHash,
 } from "./citation-content/baseline.mjs";
@@ -86,6 +88,27 @@ function listRecords(repoRoot) {
     .sort();
 }
 
+/**
+ * The citation a resolved entry came from — the ONE selector, used by every
+ * caller that needs to get back from an entry to the JSON it describes.
+ *
+ * `ref` alone is not a key. A criterion may cite the same `ref` twice with
+ * different quoted assertions, and it may interleave `ci-run` citations that
+ * `resolveRecord` skips. Selecting by `ref` alone therefore returns the wrong
+ * object, and this bit twice: once in the edit hash (two same-ref citations
+ * shared a hash, so an edit to the second read as no edit), and once in `--fix`,
+ * where it applied citation 2's edit at citation 2's offset into citation 1's
+ * string — silently corrupting a record and reporting success. Both are the same
+ * one-line mistake, so there is now one function and no second place to make it.
+ */
+export function citationOf(record, entry) {
+  return record.criteria
+    .find((criterion) => criterion.index === entry.criterion)
+    ?.citations.filter((each) => RESOLVABLE_KINDS.has(each.kind) && each.ref === entry.ref)[
+    entry.ordinal
+  ];
+}
+
 /** Resolves every content-checkable citation in every record, at the given tree. */
 export function resolveCorpus(repoRoot) {
   const load = createFileLoader(repoRoot);
@@ -94,21 +117,31 @@ export function resolveCorpus(repoRoot) {
   for (const name of listRecords(repoRoot)) {
     const record = JSON.parse(readFileSync(path.join(repoRoot, RECORD_DIRECTORY, name), "utf8"));
     for (const entry of resolveRecord(name, record, load, resolvePath)) {
-      const citation = record.criteria
-        .find((criterion) => criterion.index === entry.criterion)
-        .citations.filter((each) => RESOLVABLE_KINDS.has(each.kind) && each.ref === entry.ref)[
-        entry.ordinal
-      ];
-      entry.quotedAssertionHash = shortHash(citation?.quotedAssertion ?? "");
+      entry.quotedAssertionHash = shortHash(citationOf(record, entry)?.quotedAssertion ?? "");
       entries.push(entry);
     }
   }
   return { entries, load };
 }
 
+/**
+ * The tree's real top-level directories, read rather than hardcoded: the set is
+ * what tells a repo-rooted `packages/...` reference from a package-relative
+ * fragment, and a hardcoded list would quietly stop covering a directory the
+ * repo grows later.
+ */
+function topLevelDirectories(repoRoot) {
+  return new Set(
+    readdirSync(repoRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== "node_modules")
+      .map((entry) => entry.name),
+  );
+}
+
 export function sweepProse(repoRoot) {
   const load = createFileLoader(repoRoot);
   const resolvePath = createPathResolver(repoRoot, load);
+  const roots = topLevelDirectories(repoRoot);
   const rows = [];
   for (const source of PROSE_SOURCES) {
     const directory = path.join(repoRoot, source.directory);
@@ -120,6 +153,7 @@ export function sweepProse(repoRoot) {
           readFileSync(path.join(repoRoot, relative), "utf8"),
           load,
           resolvePath,
+          roots,
         ),
       );
     }
@@ -127,16 +161,36 @@ export function sweepProse(repoRoot) {
   return rows;
 }
 
-function headSha(repoRoot) {
+/**
+ * `git` resolves `GIT_DIR`/`GIT_WORK_TREE` and friends BEFORE it consults `cwd`,
+ * so a `GIT_DIR` inherited from a hook (this repository's `pre-push` exports one)
+ * re-aims these commands at a different repository and `cwd` becomes decoration.
+ * This is not cosmetic here: `changedRecords` is what decides which records
+ * `--fix` is ALLOWED TO WRITE, so a mis-aimed `git diff` is a write-authority
+ * bug. Dropping every `GIT_*` name is a strict superset of the fifteen
+ * `git rev-parse --local-env-vars` reports and stays correct if git adds more.
+ */
+function gitEnv() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
+  );
+}
+
+function git(args, repoRoot, fallback) {
   try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
+    return execFileSync("git", args, {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+      env: gitEnv(),
+    });
   } catch {
-    return "unknown";
+    return fallback;
   }
+}
+
+function headSha(repoRoot) {
+  return git(["rev-parse", "HEAD"], repoRoot, "unknown\n").trim();
 }
 
 function censusOf(entries) {
@@ -276,7 +330,12 @@ const BLOCKING_HEADINGS = [
     "NEW OR EDITED CITATIONS THAT DO NOT RESOLVE WHERE THEY CLAIM",
     "Fix the record — this is not repairable by regenerating the baseline. A citation added or " +
       "edited in this PR must quote text that is present, at the line its marker names, inside the " +
-      "span its `ref` declares. `--report` prints where each quote actually is.",
+      "span its `ref` declares. `--report` prints where each quote actually is.\n" +
+      "  CORRECTING a merged citation? Follow the recipe in " +
+      "docs/evidence/citation-resolver/README.md: widen the `ref` to cover the fragments the " +
+      "assertion walks, and write the stale line number in `backticks` rather than in the '...' " +
+      "file-quote notation — '...' asserts the text IS at that line, which is what a stale pointer " +
+      "is not. Corrections written that way pass without any flag.",
   ],
   [
     "frozen",
@@ -317,7 +376,9 @@ function runCheck(repoRoot) {
   const problems = [];
   if (baseline === null) {
     console.error(
-      `check-citation-content: ${BASELINE_FILE} is missing. Seed it with \`${REPAIR_COMMAND}\`.`,
+      `check-citation-content: ${BASELINE_FILE} is missing. If it was deleted, restore it ` +
+        `(\`git checkout -- ${BASELINE_FILE}\`); to create one deliberately, ` +
+        "`npm run check:citation-content -- --seed`.",
     );
     return 1;
   }
@@ -344,7 +405,9 @@ function runCheck(repoRoot) {
     problems.push(...bucket);
   }
 
-  const proseFailures = proseRows.filter((row) => row.tier === "past-eof");
+  const proseFailures = proseRows.filter(
+    (row) => row.tier === "past-eof" || row.tier === "missing",
+  );
   if (proseFailures.length > 0) {
     console.error(`\nPROSE REFERENCES THAT DO NOT RESOLVE — ${String(proseFailures.length)}`);
     console.error(
@@ -369,9 +432,31 @@ function runCheck(repoRoot) {
   return 1;
 }
 
-function runUpdate(repoRoot, { allowUnanchored, today }) {
+function runUpdate(repoRoot, { allowUnanchored, seed, today }) {
   const { entries } = resolveCorpus(repoRoot);
   const baseline = readBaseline(repoRoot);
+  // A missing baseline used to mean "seed everything", which handed anyone a
+  // one-line bypass of the refusal below: `rm baseline && --update-baseline`
+  // blessed a bad citation with no flag and no trace. First-seeding is now an
+  // explicit, deliberate act.
+  if (baseline === null && !seed) {
+    console.error(
+      `check-citation-content: ${BASELINE_FILE} does not exist. Creating one from scratch adopts ` +
+        "the CURRENT state of every citation as correct, including any that are wrong, so it is " +
+        "not something to do by accident: pass --seed if that is really what you mean. If the " +
+        "baseline was deleted to get past a refusal, restore it instead (`git checkout -- " +
+        `${BASELINE_FILE}\`) and fix the citation.`,
+    );
+    return 1;
+  }
+  if (baseline !== null && seed) {
+    console.error(
+      `check-citation-content: ${BASELINE_FILE} already exists — --seed creates a first baseline ` +
+        "and would adopt today's state wholesale. To re-pin after a legitimate change, use " +
+        `\`${REPAIR_COMMAND}\`.`,
+    );
+    return 1;
+  }
   if (baseline !== null && !allowUnanchored) {
     const unanchored = diffAgainstBaseline(entries, baseline).filter(
       (divergence) => divergence.class === "unanchored",
@@ -380,17 +465,42 @@ function runUpdate(repoRoot, { allowUnanchored, today }) {
       console.error(
         `check-citation-content: REFUSING to regenerate — ${String(unanchored.length)} new or edited ` +
           "citation(s) do not resolve where they claim. Regenerating would pin the defect as the " +
-          "new normal, which is exactly how a ratchet becomes paper. Fix the record, or pass " +
-          "--allow-unanchored and justify it in the PR body.",
+          "new normal, which is exactly how a ratchet becomes paper.\n" +
+          "  If this is a CORRECTION to a merged citation, it does not need this flag — it needs " +
+          "the correction recipe in docs/evidence/citation-resolver/README.md: widen the `ref` to " +
+          "cover the fragments it walks, and write stale line numbers in `backticks`, not in the " +
+          "'...' file-quote notation.\n" +
+          "  If it is genuinely new evidence, fix the citation. --allow-unanchored exists for " +
+          "neither of those: it is recorded in the baseline itself, so the diff will say you used it.",
       );
       for (const divergence of unanchored) console.error(describeDivergence(divergence));
       return 1;
     }
   }
   const census = censusOf(entries);
+  const unanchoredCount =
+    baseline === null
+      ? entries.filter((entry) => entry.pins.some((pin) => isStalePin(pin) || isOutOfSpanPin(pin)))
+          .length
+      : diffAgainstBaseline(entries, baseline).filter(
+          (divergence) => divergence.class === "unanchored",
+        ).length;
   const next = buildBaseline(entries, {
     generatedAt: today,
     generatedAtSha: headSha(repoRoot),
+    // The escape hatch confesses in the artifact, not just in a terminal nobody
+    // kept. A baseline produced by overriding the refusal says so, and says how
+    // many citations it swallowed, so a reviewer meets the fact in the diff.
+    ...(allowUnanchored && baseline !== null
+      ? {
+          allowUnanchored: true,
+          unanchoredAccepted: unanchoredCount,
+          allowUnanchoredWarning:
+            "Regenerated with --allow-unanchored: the citation(s) counted above do NOT resolve " +
+            "where they claim, and were pinned anyway. This must be justified in the PR body.",
+        }
+      : {}),
+    ...(seed && baseline === null ? { seeded: true } : {}),
     note:
       "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted " +
       "fragment of every content-checkable citation resolves, so that a PR which moves lines under " +
@@ -552,21 +662,48 @@ function runReport(repoRoot, { out, today, jobLogs }) {
 }
 
 function changedRecords(repoRoot) {
-  try {
-    const output = execFileSync(
-      "git",
-      ["diff", "--name-only", "origin/main...HEAD", "--", `${RECORD_DIRECTORY}/`],
-      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-    );
-    return new Set(
-      output
-        .split("\n")
-        .filter((line) => line.endsWith(".json"))
-        .map((line) => path.posix.basename(line)),
-    );
-  } catch {
-    return new Set();
+  const output = git(
+    ["diff", "--name-only", "origin/main...HEAD", "--", `${RECORD_DIRECTORY}/`],
+    repoRoot,
+    "",
+  );
+  return new Set(
+    output
+      .split("\n")
+      .filter((line) => line.endsWith(".json"))
+      .map((line) => path.posix.basename(line)),
+  );
+}
+
+/**
+ * The marker rewrites one resolved citation needs: for every fragment whose text
+ * has MOVED to exactly one measured place, re-anchor that marker's digits.
+ *
+ * Pure, and separated from the file I/O for a reason the reviewer is right
+ * about. It consumes `markerPosition`/`markerText`, which `resolveRecord` must
+ * carry through from `parseQuotedAssertion`. Nothing else in the suite touches
+ * that propagation, so if it is not pinned HERE — through the real parse and the
+ * real resolve — deleting those two lines leaves every test green while `--fix`
+ * silently rewrites nothing and reports success.
+ *
+ * Ambiguity is declined, not guessed: a fragment whose text occurs more than
+ * once has no measured position, so it gets no edit.
+ */
+export function buildMarkerEdits(entry) {
+  const edits = [];
+  for (const fragment of entry.fragments) {
+    const { resolution } = fragment;
+    if (resolution.status !== "MOVED" || resolution.occurrences?.length !== 1) continue;
+    if (fragment.markerPosition === null || fragment.markerPosition === undefined) continue;
+    if (typeof fragment.markerText !== "string") continue;
+    const [start] = resolution.occurrences[0];
+    edits.push({
+      position: fragment.markerPosition,
+      text: fragment.markerText,
+      replacement: fragment.markerText.replace(/:\d+(?:-\d+)?$/, `:${String(start)}`),
+    });
   }
+  return edits;
 }
 
 /**
@@ -605,28 +742,20 @@ function runFix(repoRoot) {
   for (const name of own) {
     const file = path.join(repoRoot, RECORD_DIRECTORY, name);
     const record = JSON.parse(readFileSync(file, "utf8"));
+    let touched = false;
     for (const entry of entries.filter((each) => each.record === name)) {
-      const citation = record.criteria
-        .find((criterion) => criterion.index === entry.criterion)
-        ?.citations.find((each) => each.ref === entry.ref);
+      const citation = citationOf(record, entry);
       if (citation === undefined) continue;
-      const edits = [];
-      for (const fragment of entry.fragments) {
-        const { resolution } = fragment;
-        if (resolution.status !== "MOVED" || resolution.occurrences?.length !== 1) continue;
-        if (fragment.markerPosition === null || fragment.markerPosition === undefined) continue;
-        const [start] = resolution.occurrences[0];
-        edits.push({
-          position: fragment.markerPosition,
-          text: fragment.markerText,
-          replacement: fragment.markerText.replace(/:\d+(?:-\d+)?$/, `:${String(start)}`),
-        });
-      }
+      const edits = buildMarkerEdits(entry);
       if (edits.length === 0) continue;
       citation.quotedAssertion = applyMarkerRewrites(citation.quotedAssertion, edits);
       rewritten += edits.length;
+      touched = true;
     }
-    writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, "utf8");
+    // Only rewrite a file this actually changed. Re-serializing an untouched
+    // record churns its bytes for nothing and puts an unrelated diff in front of
+    // a reviewer.
+    if (touched) writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, "utf8");
   }
   console.log(
     `check-citation-content: --fix rewrote ${String(rewritten)} marker(s) in ${String(own.size)} record(s) ` +
@@ -651,9 +780,10 @@ export function main(argv) {
     out: outIndex >= 0 ? argv[outIndex + 1] : null,
     jobLogs: jobLogsIndex >= 0 ? argv[jobLogsIndex + 1] : null,
     allowUnanchored: args.has("--allow-unanchored"),
+    seed: args.has("--seed"),
     today,
   };
-  if (args.has("--update-baseline")) return runUpdate(repoRoot, options);
+  if (args.has("--update-baseline") || args.has("--seed")) return runUpdate(repoRoot, options);
   if (args.has("--report")) return runReport(repoRoot, options);
   if (args.has("--fix")) return runFix(repoRoot);
   return runCheck(repoRoot);
@@ -661,4 +791,7 @@ export function main(argv) {
 
 const isMain =
   process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) process.exit(main(process.argv.slice(2)));
+// `process.exitCode`, never `process.exit()`. `--report` writes its whole sweep
+// to stdout, and `process.exit()` tears the process down before a pipe has
+// drained — measured: `--report | grep` lost the tail of the report.
+if (isMain) process.exitCode = main(process.argv.slice(2));

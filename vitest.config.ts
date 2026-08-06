@@ -84,6 +84,18 @@ export default defineConfig({
         test: { root: "scripts", name: "scripts" },
       },
     ],
+    // Removes every `GIT_*` variable from each test process before any test
+    // file loads. `git` resolves `GIT_DIR`/`GIT_WORK_TREE` ahead of `cwd`, and
+    // the `pre-push` hook runs this suite with `GIT_DIR` exported at the
+    // repository being pushed — so a fixture that spawns `git` with `{ cwd:
+    // tempDir }` can, and twice did, operate on the real repository instead.
+    // See `vitest.setup.mjs` for the full account and why this is a prefix
+    // sweep. `packages/testkit/src/git-env.ts` remains the opt-in overlay for
+    // fixtures that also want a hermetic identity; this is the floor beneath it,
+    // covering the tests that have never heard of it.
+    // Absolute: each project declares its own `root`, and a relative setup path
+    // resolves against THAT, not against this file's directory.
+    setupFiles: [join(REPO_ROOT, "vitest.setup.mjs")],
     passWithNoTests: true,
     // The default 5s per-test timeout is too tight for this repo's legitimate
     // >=10k-case fast-check property suites (envelope-compiler footguns, config

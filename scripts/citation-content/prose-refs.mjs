@@ -15,16 +15,29 @@
  * it fails the first time a PR deletes a file the roadmap points at or cites a
  * line past a file's end.
  *
- * A reference that names no unique file is counted and listed, never failed.
- * Two shapes produce those, and BOTH had to be measured rather than assumed:
- * bare basenames (`registry.ts:209`), and package-relative fragments
- * (`store/append-entry.ts:145`, written relative to `packages/journal/src/`).
- * A first cut of this lane treated "contains a slash" as "is repo-relative" and
- * reported 38 blocking failures on the second shape alone — a lane that starts
- * with 38 false failures is a lane that gets deleted. Resolution therefore goes
- * through the same unique-suffix resolver the structured lane uses, and anything
- * still ambiguous is reported, not failed: failing on an ambiguous basename
- * means failing on a guess.
+ * Deciding WHICH unresolvable reference is a defect took two corrections, in
+ * opposite directions, and the rule is the narrow band between them.
+ *
+ * A first cut treated "contains a slash" as "is repo-relative" and reported 38
+ * blocking failures on package-relative fragments (`store/append-entry.ts:145`,
+ * written relative to `packages/journal/src/`) — and a lane that starts with 38
+ * false failures is a lane that gets deleted. So resolution goes through the
+ * same unique-suffix resolver the structured lane uses.
+ *
+ * The over-correction then made EVERY unresolvable path a mere note, which made
+ * the lane toothless in exactly the case it was built for: deleting
+ * `packages/supervisor/src/router/build-router.ts`, cited twice in a defect
+ * record, left the check GREEN — the two references silently degraded from
+ * "resolved" to "bare basename (unchecked)", a counter nothing gates on. A check
+ * that goes quiet when the thing it watches for happens is worse than no check.
+ *
+ * The rule: a reference whose FIRST PATH SEGMENT is a real top-level directory
+ * of this repository is claiming a repo-rooted path. If that path resolves to
+ * nothing, the file is gone and that is a `missing` — blocking. Everything else
+ * (a bare basename, a package-relative fragment) names no root, cannot be
+ * resolved without guessing, and stays a reported `unresolved`. Failing on an
+ * ambiguous basename means failing on a guess; staying silent on a deleted
+ * `packages/...` path means not checking at all.
  */
 import path from "node:path";
 
@@ -76,10 +89,29 @@ export function extractRefs(line) {
 }
 
 /**
- * Checks one source file's prose references.
- * `tier` is `"ok"`, `"past-eof"` (blocking) or `"unresolved"` (reported).
+ * Is this reference claiming a path from the repository root? True when its
+ * first segment is a real top-level directory of the tree being checked, which
+ * is what separates `packages/supervisor/src/x.ts` (a repo-rooted claim, and a
+ * defect if it does not exist) from `store/append-entry.ts` (a fragment written
+ * relative to somewhere else, unresolvable without guessing).
  */
-export function checkProseFile(sourceRelativePath, text, load, resolvePath) {
+export function isRepoRootedPath(filePath, topLevelDirectories) {
+  const [firstSegment, ...rest] = filePath.split("/");
+  return rest.length > 0 && topLevelDirectories.has(firstSegment);
+}
+
+/**
+ * Checks one source file's prose references.
+ * `tier` is `"ok"`, `"past-eof"` / `"missing"` (blocking) or `"unresolved"`
+ * (reported).
+ */
+export function checkProseFile(
+  sourceRelativePath,
+  text,
+  load,
+  resolvePath,
+  topLevelDirectories = new Set(),
+) {
   const rows = [];
   const sourceDirectory = path.posix.dirname(sourceRelativePath);
   for (const { lineNumber, text: line } of linesOutsideFences(text)) {
@@ -95,8 +127,11 @@ export function checkProseFile(sourceRelativePath, text, load, resolvePath) {
           note: "",
         };
         if (target === null) {
-          row.tier = "unresolved";
-          row.note = "names no single file in the repository — not checked";
+          const repoRooted = isRepoRootedPath(filePath, topLevelDirectories);
+          row.tier = repoRooted ? "missing" : "unresolved";
+          row.note = repoRooted
+            ? "names a repo-rooted path that does not exist — the file was moved or deleted"
+            : "names no single file in the repository — not checked";
         } else if (high > target.lineCount) {
           row.tier = "past-eof";
           row.note = `${path.posix.basename(filePath)} has ${String(target.lineCount)} lines`;

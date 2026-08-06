@@ -24,7 +24,7 @@
  * where it cannot rot — executed against worktrees at the exact merge shas, in
  * `docs/evidence/citation-resolver/red-corpus-batchN.txt`.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -45,7 +45,14 @@ import {
   parseDeclarations,
   parseQuotedAssertion,
 } from "./citation-content/quoted-assertion.mjs";
-import { applyMarkerRewrites, main, resolveCorpus, sweepProse } from "./check-citation-content.mjs";
+import {
+  applyMarkerRewrites,
+  buildMarkerEdits,
+  citationOf,
+  main,
+  resolveCorpus,
+  sweepProse,
+} from "./check-citation-content.mjs";
 
 const REPO_ROOT = path.dirname(import.meta.dirname);
 const temporaries = [];
@@ -260,7 +267,7 @@ describe("resolver mutations — each must be caught", () => {
     const { root } = makeFixtureRepo(
       cite(":14 'const findings = validateAdfSafeSubset(candidate);'", "src/guard.ts:6"),
     );
-    expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     expect(main(["--check", "--repo", root])).toBe(0);
 
     const baselinePath = path.join(root, BASELINE_FILE);
@@ -387,7 +394,7 @@ describe("trust controls — these are what keep the check from crying wolf", ()
       ]),
     };
     const { root, write } = makeFixtureRepo(files);
-    expect(main(["--update-baseline", "--repo", root])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     expect(main(["--check", "--repo", root])).toBe(0);
     // Reverse probe: edit the committed evidence, not the record.
     write(
@@ -416,7 +423,7 @@ describe("the ratchet", () => {
 
   it("goes red on the PR that moves lines under a merged citation, and green again once the baseline records it", () => {
     const { root, write } = makeFixtureRepo(drifted(4));
-    expect(main(["--update-baseline", "--repo", root])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     expect(main(["--check", "--repo", root])).toBe(0);
     // Simulate the measured failure mode: a later PR inserts lines above.
     write("src/guard.ts", `// inserted\n// by a later PR\n${GUARD_SOURCE}`);
@@ -429,7 +436,7 @@ describe("the ratchet", () => {
 
   it("refuses to regenerate a baseline that would bless a new citation pointing at the wrong line", () => {
     const { root, write } = makeFixtureRepo(drifted(4));
-    expect(main(["--update-baseline", "--repo", root])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     // A NEW citation (different ref, so a new key) that does not resolve where it claims.
     write(
       "docs/evidence/criteria-closeout/phase-99.json",
@@ -446,12 +453,114 @@ describe("the ratchet", () => {
     expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
   });
 
+  it("cannot be bypassed by deleting the baseline — first-seeding needs --seed", () => {
+    const { root, write } = makeFixtureRepo(drifted(4));
+    expect(main(["--seed", "--repo", root])).toBe(0);
+    write(
+      "docs/evidence/criteria-closeout/phase-99.json",
+      record([
+        {
+          kind: "test",
+          ref: "src/guard.ts:1",
+          quotedAssertion: ":1 'const findings = validateAdfSafeSubset(candidate);'",
+        },
+      ]),
+    );
+    expect(main(["--update-baseline", "--repo", root])).toBe(1);
+    // --seed cannot be used to sidestep that refusal either.
+    expect(main(["--seed", "--repo", root])).toBe(1);
+    // The bypass proper: delete the baseline and regenerate. Refused, nothing written.
+    const baselinePath = path.join(root, BASELINE_FILE);
+    const before = readFileSync(baselinePath, "utf8");
+    rmSync(baselinePath);
+    expect(main(["--update-baseline", "--repo", root])).toBe(1);
+    expect(existsSync(baselinePath)).toBe(false);
+    writeFileSync(baselinePath, before, "utf8");
+    expect(main(["--check", "--repo", root])).toBe(1);
+  });
+
+  it("records --allow-unanchored in the baseline itself, so the diff confesses", () => {
+    const { root, write } = makeFixtureRepo(drifted(4));
+    expect(main(["--seed", "--repo", root])).toBe(0);
+    expect(JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8")).allowUnanchored).toBe(
+      undefined,
+    );
+    write(
+      "docs/evidence/criteria-closeout/phase-99.json",
+      record([
+        {
+          kind: "test",
+          ref: "src/guard.ts:1",
+          quotedAssertion: ":1 'const findings = validateAdfSafeSubset(candidate);'",
+        },
+      ]),
+    );
+    expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
+    const baseline = JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8"));
+    expect(baseline.allowUnanchored).toBe(true);
+    expect(baseline.unanchoredAccepted).toBe(1);
+    expect(baseline.allowUnanchoredWarning).toContain("do NOT resolve");
+  });
+
   it("seeds known-stale legacy drift instead of failing on it — zero day-one noise", () => {
     const { root } = makeFixtureRepo(drifted(1));
-    expect(main(["--update-baseline", "--repo", root])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     expect(main(["--check", "--repo", root])).toBe(0);
     const baseline = JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8"));
     expect(baseline.counts.seededStale).toBe(1);
+  });
+});
+
+describe("same-ref citations in one criterion", () => {
+  const twoCitations = {
+    "src/x.ts": ["line one ALPHA();", "line two BETA();", "line three GAMMA();"].join("\n"),
+    "docs/evidence/criteria-closeout/phase-99.json": record([
+      { kind: "ci-run", ref: "CI / unit-test, job 1", quotedAssertion: "'not a file quote'" },
+      { kind: "test", ref: "src/x.ts:3", quotedAssertion: ":3 'line one ALPHA();'" },
+      { kind: "test", ref: "src/x.ts:3", quotedAssertion: ":3 'line two BETA();'" },
+    ]),
+  };
+
+  it("selects the right citation past an interleaved ci-run, by ordinal not by ref", () => {
+    // Selecting by `ref` alone returned citation 1 for BOTH entries. That gave
+    // them the same edit hash (an edit to the second read as no edit), and in
+    // `--fix` it applied citation 2's edit at citation 2's offset into citation
+    // 1's string — corrupting the record and reporting success.
+    const { root, entries } = resolveFixture(twoCitations);
+    expect(entries).toHaveLength(2);
+    expect(entries[0].ordinal).toBe(0);
+    expect(entries[1].ordinal).toBe(1);
+    expect(entries[0].quotedAssertionHash).not.toBe(entries[1].quotedAssertionHash);
+    const parsed = JSON.parse(
+      readFileSync(path.join(root, "docs/evidence/criteria-closeout/phase-99.json"), "utf8"),
+    );
+    expect(citationOf(parsed, entries[0]).quotedAssertion).toContain("ALPHA");
+    expect(citationOf(parsed, entries[1]).quotedAssertion).toContain("BETA");
+  });
+
+  it("builds each citation's edits against its OWN string", () => {
+    const { root, entries } = resolveFixture(twoCitations);
+    const parsed = JSON.parse(
+      readFileSync(path.join(root, "docs/evidence/criteria-closeout/phase-99.json"), "utf8"),
+    );
+    for (const entry of entries) {
+      const citation = citationOf(parsed, entry);
+      const rewritten = applyMarkerRewrites(citation.quotedAssertion, buildMarkerEdits(entry));
+      // Every rewrite lands on a marker; no fragment text is ever mangled.
+      expect(rewritten).toMatch(/^:\d+ '[^']+'$/);
+    }
+    expect(
+      applyMarkerRewrites(
+        citationOf(parsed, entries[0]).quotedAssertion,
+        buildMarkerEdits(entries[0]),
+      ),
+    ).toBe(":1 'line one ALPHA();'");
+    expect(
+      applyMarkerRewrites(
+        citationOf(parsed, entries[1]).quotedAssertion,
+        buildMarkerEdits(entries[1]),
+      ),
+    ).toBe(":2 'line two BETA();'");
   });
 });
 
@@ -472,7 +581,7 @@ describe("the declaration vocabulary", () => {
         },
       ]),
     });
-    expect(main(["--update-baseline", "--repo", root])).toBe(0);
+    expect(main(["--seed", "--repo", root])).toBe(0);
     const baseline = JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8"));
     const pinned = Object.values(baseline.citations)[0];
     expect(pinned.declared).toEqual(["JOINED"]);
@@ -499,6 +608,34 @@ describe("the prose lane", () => {
     });
     const rows = sweepProse(root);
     expect(rows.map((row) => row.tier)).toEqual(["unresolved"]);
+  });
+
+  it("FAILS on a deleted repo-rooted path — the case the lane exists for", () => {
+    // Measured toothless once: deleting a file cited twice in a defect record
+    // left the check green, the references silently degrading to
+    // "bare-basename (unchecked)", a counter nothing gates on.
+    const { root, write } = makeFixtureRepo({
+      "packages/thing/src/gone.ts": "export const a = 1;\n",
+      "docs/evidence/criteria-closeout/defects/99-fixture.md":
+        "Measured at `packages/thing/src/gone.ts:1`.\n",
+    });
+    expect(sweepProse(root).map((row) => row.tier)).toEqual(["ok"]);
+    rmSync(path.join(root, "packages/thing/src/gone.ts"));
+    const after = sweepProse(root);
+    expect(after.map((row) => row.tier)).toEqual(["missing"]);
+    expect(main(["--seed", "--repo", root])).toBe(0);
+    expect(main(["--check", "--repo", root])).toBe(1);
+    // Control: restoring the file returns the lane to silence, so the failure
+    // is about the deletion and not about the reference's shape.
+    write("packages/thing/src/gone.ts", "export const a = 1;\n");
+    expect(main(["--check", "--repo", root])).toBe(0);
+  });
+
+  it("keeps a package-relative fragment reported, not failed — it names no root", () => {
+    const { root } = makeFixtureRepo({
+      "docs/evidence/criteria-closeout/defects/99-fixture.md": "See `store/append-entry.ts:145`.\n",
+    });
+    expect(sweepProse(root).map((row) => row.tier)).toEqual(["unresolved"]);
   });
 
   it("ignores references inside fenced blocks — those are examples, not claims", () => {
@@ -554,7 +691,60 @@ describe("job-log normalization", () => {
   });
 });
 
+describe("the test process's git environment", () => {
+  it("carries no GIT_* variable — the scrub that prevents this suite's own incident", () => {
+    // This is the suite that caused it. On 2026-08-06 a fixture here spawned
+    // `git init`/`config`/`commit`/`update-ref` at a temp directory and instead
+    // wrote `core.bare = true` and a placeholder identity into the shared
+    // `.git/config`, put two junk commits on the branch, clobbered
+    // `refs/remotes/origin/main`, and left `git status` failing in the main
+    // checkout — because `git` reads GIT_DIR before it reads `cwd`, and the
+    // pre-push hook exports one. `vitest.setup.mjs` removes them; this asserts
+    // it is still wired, so the prevention cannot be deleted in silence.
+    expect(Object.keys(process.env).filter((name) => name.startsWith("GIT_"))).toEqual([]);
+  });
+});
+
 describe("--fix", () => {
+  it("carries markerPosition/markerText through the REAL parse and resolve into the edits", () => {
+    // The regression this pins: `resolveRecord` must copy `markerPosition` and
+    // `markerText` off the parsed fragment. Nothing else in the suite touches
+    // that propagation, and hand-building the edits (as the test below does)
+    // does not exercise it — so without this case, deleting those two lines
+    // leaves every test green while `--fix` rewrites nothing and reports
+    // success. Drive the whole pipeline: parseQuotedAssertion -> resolveRecord
+    // -> buildMarkerEdits -> applyMarkerRewrites.
+    const { entries } = resolveFixture({
+      "src/guard.ts": GUARD_SOURCE,
+      "docs/evidence/criteria-closeout/phase-99.json": record([
+        {
+          kind: "test",
+          ref: "src/guard.ts:1",
+          quotedAssertion: ":1 'const findings = validateAdfSafeSubset(candidate);'",
+        },
+      ]),
+    });
+    const [entry] = entries;
+    expect(entry.fragments[0].markerPosition).toBe(0);
+    expect(entry.fragments[0].markerText).toBe(":1");
+    const edits = buildMarkerEdits(entry);
+    expect(edits).toEqual([{ position: 0, text: ":1", replacement: ":4" }]);
+    expect(
+      applyMarkerRewrites(":1 'const findings = validateAdfSafeSubset(candidate);'", edits),
+    ).toBe(":4 'const findings = validateAdfSafeSubset(candidate);'");
+  });
+
+  it("declines to guess: a fragment whose text repeats gets no edit", () => {
+    const { entries } = resolveFixture({
+      "src/repeat.ts": ["const x = 1;", "const y = 2;", "const x = 1;"].join("\n"),
+      "docs/evidence/criteria-closeout/phase-99.json": record([
+        { kind: "test", ref: "src/repeat.ts:2", quotedAssertion: ":2 'const x = 1;'" },
+      ]),
+    });
+    expect(entries[0].fragments[0].resolution.status).toBe("MOVED-AMBIG");
+    expect(buildMarkerEdits(entries[0])).toEqual([]);
+  });
+
   it("re-anchors exactly the marker's digits and nothing else around them", () => {
     // The rewrite is a pure string edit, tested as one. It is deliberately NOT
     // tested by driving `git` over a fixture repository: an earlier version of

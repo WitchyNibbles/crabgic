@@ -49,3 +49,38 @@ npm run check:citation-content -- --update-baseline # re-pin; the diff IS the dr
 If the citation that moved is in a **merged** record, paste the dated correction `--report` prints
 **beside** the existing text. Do not rewrite it, and do not use `--fix` — that mode refuses to touch
 any record this branch has not itself modified.
+
+## The correction recipe (owner ruling, 2026-08-06)
+
+A dated correction written in the obvious house style — appending a second `'…'` file quote naming
+the old line — makes the corrected citation report `unanchored`, and `--update-baseline` then
+**refuses** it. That is the gate working: the appended quote genuinely does not resolve where it
+claims, because it is quoting a line number that is no longer true.
+
+The ruling is to amend the convention rather than weaken the gate, because the alternative is every
+one of the ~180 owed corrections carrying `--allow-unanchored`, and a bypass everyone uses is a
+bypass that has replaced the check.
+
+**Two rules, and a correction passes:**
+
+1. **Widen the `ref` to cover the fragments it walks.** If the assertion quotes `:28-30` and `:137`,
+   the `ref` is `:28-137`, not `:137`. This is not a concession to the tool — it is what defect 17's
+   own Finding 2 already prescribes ("the `ref` understates its own citation's reach, so a reader who
+   opens only `:11-21` sees a third of what is being claimed"). The tool simply makes it checkable.
+2. **Write stale line numbers in backticks, not in the `'…'` file-quote notation.** `'…'` means
+   "this text is in the cited file, at the marker beside it" — which is exactly what a stale pointer
+   is not. So:
+
+   ```
+   Corrected 2026-08-06: was `adf-guard.ts:80`, now :137 — PR #95 inserted above it.
+   ```
+
+   and **not** `:80 'const findings = validateAdfSafeSubset(candidate);'`, which asserts the quote is
+   at :80 and reddens the check, correctly.
+
+For a genuinely **new** citation the in-span rule stands with no exception, and the phase-04 "anchor
+the `ref` at one representative line and walk the surrounding evidence" convention is the thing that
+gives. Widening a `ref` costs one edit and makes the citation say what it actually claims.
+
+`--allow-unanchored` is for neither case. It is recorded in the baseline itself (`allowUnanchored`,
+`unanchoredAccepted`), so using it puts a confession in the diff.

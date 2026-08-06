@@ -55,12 +55,17 @@ export function buildBaseline(entries, meta) {
     }
     citations[entry.key] = pinned;
   }
+  const { generatedAt, generatedAtSha, note, counts, ...provenance } = meta;
   return {
     schemaVersion: SCHEMA_VERSION,
-    generatedAt: meta.generatedAt,
-    generatedAtSha: meta.generatedAtSha,
-    note: meta.note,
-    counts: meta.counts,
+    generatedAt,
+    generatedAtSha,
+    note,
+    // Any flag that weakened the checks which produced this file is recorded
+    // here, immediately under the note, so it lands in the diff a reviewer reads
+    // rather than in a terminal that scrolled away.
+    ...provenance,
+    counts,
     citations,
   };
 }
