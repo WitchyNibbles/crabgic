@@ -17,8 +17,18 @@
 // emitted wiki-markup bold marker (`*text*`) for source-level italics — a
 // naive chained-replace ordering would otherwise double-convert
 // `**bold**` -> `*bold*` -> `_bold_`.
-const BOLD_PLACEHOLDER_OPEN = "\0WIKI_STRONG_OPEN\0";
-const BOLD_PLACEHOLDER_CLOSE = "\0WIKI_STRONG_CLOSE\0";
+// EXPORTED FOR ONE REASON, stated here so nobody "tidies" it back to private:
+// the placeholders are unforgeable ONLY because `unicode-defense.ts`'s
+// `UNEXPECTED_CONTROL_PATTERN` blocks U+0000 in every candidate upstream, so no
+// source text reaching `toWikiMarkup` can contain one. That is a cross-module
+// invariant, and until 2026-08-06 nothing asserted it: rewriting these to
+// `@@WIKI_STRONG_OPEN@@` left gateway, learning and renderer green across 74
+// files / 785 tests. A printable placeholder is a silent injection surface —
+// source text containing the sentinel would be rewritten into bold markers it
+// never asked for. `wiki-markup.test.ts` now pins that whatever these hold is
+// refused by `unicodeDefenseStage`.
+export const BOLD_PLACEHOLDER_OPEN = "\0WIKI_STRONG_OPEN\0";
+export const BOLD_PLACEHOLDER_CLOSE = "\0WIKI_STRONG_CLOSE\0";
 
 // Markdown image syntax, converted to Jira's own image syntax (`!url!`)
 // BEFORE the link pass — `![alt](url)` contains `[alt](url)`, so a link-first
