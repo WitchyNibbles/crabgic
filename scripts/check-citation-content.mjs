@@ -125,15 +125,30 @@ export function resolveCorpus(repoRoot) {
 }
 
 /**
- * The tree's real top-level directories, read rather than hardcoded: the set is
- * what tells a repo-rooted `packages/...` reference from a package-relative
- * fragment, and a hardcoded list would quietly stop covering a directory the
- * repo grows later.
+ * The repository's top-level directories — read from GIT, not from the
+ * filesystem. This set is what separates a repo-rooted `packages/...` reference
+ * (a claim that must resolve) from a package-relative fragment like
+ * `coverage/ratchet-store.ts:138` (written relative to `packages/gates/src/`,
+ * unresolvable without guessing).
+ *
+ * Reading the filesystem was wrong, and the merge that brought three sibling
+ * PRs in is what proved it: a worktree where anyone has run `npm test` has a
+ * gitignored `coverage/` directory, which made `coverage/ratchet-store.ts:138`
+ * look repo-rooted and produced a blocking failure for a reference that had been
+ * fine for months. A check whose verdict depends on whether you have run the
+ * tests yet is a check that will be muted.
+ *
+ * `git ls-tree` sees only tracked entries, so build outputs cannot create
+ * top-level names. The filesystem fallback (for a checkout with no git) keeps
+ * the same intent by excluding the generated directories by name.
  */
 function topLevelDirectories(repoRoot) {
+  const tracked = git(["ls-tree", "-d", "--name-only", "HEAD"], repoRoot, "").trim();
+  if (tracked !== "") return new Set(tracked.split("\n").filter(Boolean));
+  const generated = new Set(["node_modules", "coverage", "dist", ".git"]);
   return new Set(
     readdirSync(repoRoot, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && entry.name !== "node_modules")
+      .filter((entry) => entry.isDirectory() && !generated.has(entry.name))
       .map((entry) => entry.name),
   );
 }

@@ -631,6 +631,20 @@ describe("the prose lane", () => {
     expect(main(["--check", "--repo", root])).toBe(0);
   });
 
+  it("does not let a gitignored build directory make a fragment look repo-rooted", () => {
+    // Found by merging three sibling PRs in: a worktree where anyone had run
+    // `npm test` has a generated `coverage/` directory, which made the
+    // long-standing reference `coverage/ratchet-store.ts:138` (written relative
+    // to `packages/gates/src/`) look repo-rooted and fail. A verdict that
+    // depends on whether the tests have been run yet is not a verdict.
+    const { root } = makeFixtureRepo({
+      "roadmap/99-fixture.md": "See `coverage/ratchet-store.ts:138`.\n",
+    });
+    mkdirSync(path.join(root, "coverage"), { recursive: true });
+    writeFileSync(path.join(root, "coverage", "index.html"), "<html></html>", "utf8");
+    expect(sweepProse(root).map((row) => row.tier)).toEqual(["unresolved"]);
+  });
+
   it("keeps a package-relative fragment reported, not failed — it names no root", () => {
     const { root } = makeFixtureRepo({
       "docs/evidence/criteria-closeout/defects/99-fixture.md": "See `store/append-entry.ts:145`.\n",
