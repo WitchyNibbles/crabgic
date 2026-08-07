@@ -1,5 +1,205 @@
 # crabgic
 
+## 1.6.0
+
+### Minor Changes
+
+- 05bda34: **`ExternalConnection.folderAllowlist` was a published schema field that looked like a security
+  control and enforced nothing — and enforcing it honestly means an unattributable mutation is
+  refused.** It was declared in the contract, emitted into the published JSON Schema, settable by an
+  operator, and read by **zero** code anywhere in the repository: the same declared-and-inert shape
+  `tenantAllowlist` had before its own enforcement landed. An operator who set it reasonably concluded
+  that writes outside those folders were refused, and nothing refused them.
+
+  It is now enforced at the gateway's mutation pipeline — the sole issuer of mutation network I/O —
+  **on mutations only**, through a provider folder-attribution hook with three answers: attributed to
+  folders, attributed outside all folders, or unknown. The field being absent still means
+  folder-unscoped and changes nothing; an empty list refuses every mutation, fail-closed, the same
+  reading the tenant check already gives; a non-empty list admits only a mutation the provider places
+  inside a listed folder.
+
+  **A ruling fills the spec's silence: a provider that supplies no attribution is refused, not waved
+  through.** The alternative — admit it — would have made the field bind only providers that happened
+  to opt in, with nothing telling an operator which, which is the trusted-and-inert defect this change
+  exists to remove. The refusal has a visible consequence, written into the published schema
+  description because there is no config-time signal for it: **setting `folderAllowlist` on a Jira
+  connection refuses every Jira mutation on that connection**, because Jira has no folder in its model
+  and registers no attribution hook; Grafana's `annotation` kind is `unknown` by construction and is
+  refused on a folder-scoped connection for the same reason. Unset the field if you did not mean it. A
+  connection-doctor warning is recorded as future work.
+
+  **Scope, because an over-claimed control is the problem this change exists to remove.** It binds the
+  folder the provider derives **from the plan**, never where the resource actually lives on the remote —
+  a dashboard moved server-side still reports its plan's folder. It is "an operator can bound which
+  folder a write may claim to land in", not "writes outside these folders are impossible". Reads are
+  not folder-checked.
+
+  **Bulk Jira writes now serialize against their member issues.** A `bulk:<keys>` mutation took its own
+  serialization key, so a bulk update of issues A and B could run concurrently with a single-issue write
+  to A — the race was observed on the wire as `expected 2 to be 1`. The write serializer gained
+  multi-key acquisition, and both Jira apply clients map a bulk plan to its sorted member issue keys, so
+  a bulk write now serializes against single-issue writes of its members and against order-permuted bulk
+  twins, while writes over disjoint issue sets deliberately stay concurrent. Nothing here evidences
+  behaviour against a real Jira; every leg is a fake transport.
+
+- bddac4c: Intake validates its two unvalidated inputs, and the upgrade boundary is documented where operators read.
+
+  `IntakeRequest.ecosystem` arrived straight from `JSON.parse` and was used to index a plain object literal, so `{"ecosystem": "constructor"}` on stdin crashed `runIntake` with a `TypeError` from inside `@crabgic/contracts`. The table now answers only for its own rows, and intake refuses an ecosystem the pinned table has no row for instead of silently falling through to base-revision measurement.
+
+  A performance acceptance criterion whose comparison operator contradicts its metric's canonical direction — `throughput <= 1000 ops/sec`, where a throughput budget is a floor — was silently reinterpreted as its opposite, because a budget entry carries no direction and the gate takes it from the metric. Such a criterion is now refused with a diagnostic naming the operator to use. Direction-consistent criteria parse exactly as before; no derived budget value moves.
+
+  **Before upgrading:** finish or cancel in-flight runs, and expect a replayed `requestKey` across this upgrade to report `conflict` by design — `IntakeRequest`'s field set changed in 1.5.0's successor, so the same document hashes differently on either side. Use a fresh `requestKey` or the amendment flow. Both rulings existed only in design documents until now; see `docs/upgrade-guide.md`, "Before upgrading".
+
+- 05bda34: **A completed run now walks the verification pipeline, and the security gates fire — blocking. A run
+  that previously reached the end unexamined, and published, can now fail.**
+
+  Until now no run ever left `running`. The daemon composed no gate registry, nothing in production —
+  no command, no daemon path, no test — transitioned a run onto `verifying`, `integrating` or
+  `final_verifying`, and the security-fixture gates' only caller anywhere in the repository was their
+  own unit test. A control that is registered nowhere is a control that does not exist, and this is the
+  change that gives them somewhere to fire.
+
+  The daemon's one production composition root now builds the gate registry, and a run whose DAG
+  completes walks `verifying → integrating → final_verifying → published_local`. At `verifying` the
+  criteria-seal gate fires; at `final_verifying` every entry in the security-fixture manifest fires
+  **blocking** — seven of them, once the Jira tenant-boundary scenario auto-registered through the
+  derived id list with no edit to the registration site — and a refusal names the failing fixture id
+  rather than reporting a bare failure. The seven cover forged delete/admin operations, tenant-boundary
+  breach and error redaction, across Jira, Grafana and the gateway itself.
+
+  **Two consequences worth reading before upgrading.** A run that would previously have finished
+  unexamined can now be refused at `final_verifying`. And the criteria-seal gate fires the same way at
+  `verifying`: change sets created before this upgrade carry no approval seal and fail closed, so
+  finish or cancel in-flight runs first — `crabgic status <run-id>`, `crabgic cancel <run-id>`.
+
+  Deliberately **not** registered, by owner ruling and with its cause measured rather than assumed: 15's
+  performance gate and 14's own tdd/coverage/flake/scanner/engine-conformance tranche. Their measurement
+  backends do not exist in the daemon, and every registered gate fires on every run — so registering
+  them today would either fail every run or fabricate a measurement. Widening that scope starts with
+  building the backends, never with a `register` call.
+
+### Patch Changes
+
+- 05bda34: **Refusing a write to an undiscovered Data Center custom field raised the wrong error kind and blamed
+  the wrong provider.** The shared field-metadata guard hardcoded `ConnectorError.validation` and the
+  Cloud provider name at both of its throws, so a Data Center connection refusing an undiscovered custom
+  field — or an unrecognized schema type — returned a `validation` error attributed to `jira-cloud`. A
+  consumer branching on the canonical error union was steered wrong, and the phase's own requirement
+  that unrecognized fields return a typed `unsupported` was unmet on every Data Center write path.
+
+  The refusal's kind and provider are now a parameter of the guard rather than a constant: Data Center
+  write paths produce `kind: "unsupported"`, `provider: "jira-datacenter"`, and Cloud keeps
+  `validation` / `jira-cloud` unchanged. Both settings are pinned by assertions on the kind and the
+  provider, not on the throw — `toThrow(ConnectorError)` passes for every kind, which is exactly what
+  left this path unpinned.
+
+- 9057abe: **Shutting the daemon down no longer risks the journal.** `run.dispatch` deliberately leaves its
+  drive running in the background, and the project lease is the journal's only single-writer
+  guarantee — but teardown released that lease with the drive still appending. An ordinary SIGTERM
+  mid-run therefore freed the lease, the next `crabgic` call spawned a second daemon that acquired it,
+  and two writers on one hash chain produce a duplicate `seq` that the journal classifies as tampering
+  rather than as a torn tail. Shutdown now closes the control plane, drains the dispatcher, and
+  releases the lease last — and not at all if something is still writing, because a lease left held by
+  a departing process is reclaimed safely by the next daemon and a lease handed over under a live
+  writer is not reclaimed at all. Runs cut off at the drain deadline have their workers terminated and
+  their end recorded, so a restart sees a finished run instead of one that can never finish.
+
+  **A restart with a parked run says what it means.** `crabgic resume` used to report success and do
+  nothing: the parked unit's engine session is same-daemon state, a restart loses it, and the run
+  re-parked forever while its change set stayed un-dispatchable. It now refuses with the reason and
+  the one command that works. Startup recovery no longer mistakes a rate-limit park for a crash — the
+  park record is the truth about a session that is waiting on purpose — and when it does reap a
+  genuine crash it attributes the record to the run, so run-scoped and unscoped readers of the journal
+  can no longer disagree about whether a work unit failed.
+
+- 8a7dc7a: **A failed run no longer wedges its change set forever.** An ordinary single-unit failure — or any
+  DAG that ended all-terminal without succeeding — was reported by the scheduler as a _completion_,
+  because the stop reason only asked whether anything was still pending or parked, never whether the
+  terminals were successes. A completion has no run transition to write (its successor is the
+  verification stage, which is not wired yet), so the run stayed in `running` with every unit
+  finished: `crabgic status --watch` never terminated, `crabgic run` refused the change set with
+  "already has run … in flight", and `crabgic cancel` was the only way out. A run's drive now records
+  how it actually ended — `failed` when a unit failed, `cancelled` when units were cancelled and none
+  failed — so retrying is just `crabgic run` again, as a fresh run with its own repair budget. This is
+  the same defect as the 1.5.0 correction's restart-with-a-parked-run case, in its failure-shaped
+  half, and it reached more than the obvious trigger: mixed success-and-failure DAGs, leaf failures,
+  runs re-driven after a daemon crash, units stopped by `worker.terminate`, and exhausted repairs all
+  wedged the same way. An all-succeeded run still waits in `running` for the verification stage;
+  that deferral is unchanged.
+
+  **And `crabgic resume` will not claim to have resumed one.** Resuming a run whose every unit is
+  already terminal cannot dispatch anything, so it is refused rather than accepted — naming how many
+  units failed or were cancelled, why waiting cannot help, and the `crabgic cancel` that does work.
+  This covers runs already wedged by the old behaviour, which the journal replays as `running` after
+  every restart. Resume still accepts a run with real work left, including one holding a parked unit
+  whose session this daemon can still reach.
+
+- 70d7da7: **Two daemons could hold the same project lease at once.** Claiming a lease created the lease file
+  and wrote the holder's record into it as two separate steps, so for a sub-millisecond window the
+  file existed and was empty — and an empty lease file reads as "no holder at all", which grants a
+  takeover without ever checking whether the recorded process is still running. A second `crabgic`
+  invocation landing in that window took the lease from a live daemon and both believed they held it.
+  Two concurrent invocations racing to start the daemon is an ordinary, expected event (two terminals,
+  a hook alongside a CLI call, a retry overlapping a slow boot), the project lease is the journal's
+  only single-writer guarantee, and two writers on one hash chain produce a chain the journal
+  classifies as tampering. Measured at 9 double acquires in 11,000 races on an idle machine.
+
+  A lease is now published by writing the complete, fsynced record under a private name and linking
+  it into place, so the lease path is never visible without its full contents. Two related holes
+  closed with it: a lease that disappears mid-check now sends the contender back to a claim it can
+  lose cleanly, instead of a replace that cannot lose and would overwrite whichever process claimed
+  the lease in between; and a lease file that cannot be read (permissions, an unexpected directory, a
+  failing disk) is no longer treated as an absent one, which used to hand out the lease on an I/O
+  error. A genuinely corrupt lease still self-heals, and a live holder is still never displaced.
+
+- 05bda34: **The bundled `eo-explore` subagent had no turn bound, and a malformed one would have been silently
+  dropped.** A subagent's turns never reach the parent session's turn counter, so nothing downstream
+  bounded them: one "count the files in this directory" request served roughly fifty nested round trips
+  before returning. The installed subagent's frontmatter now declares `maxTurns: 30`, below the engine's
+  built-in 200-turn default, and that file is the one `crabgic install` writes into a project.
+
+  The manifest validator now also refuses an unreadable `maxTurns` — a non-integer, a zero or negative
+  value, or a quoted one — instead of letting the loader drop it back to the built-in default. That
+  matters more than the bound itself: a frontmatter value the engine cannot parse fails open, so a
+  subagent that looks bounded on disk would have run unbounded, and no channel warned about it.
+
+- a5f51d6: **`ExternalConnection.tenantAllowlist` was a published schema field that looked like a security
+  control and enforced nothing.** It was declared in the contract, emitted into the published JSON
+  Schema, and read by no code anywhere in the repository — a repo-wide search found no tenant equality
+  or inclusion comparison in production source at all. The value that _was_ used, `plan.tenant`,
+  derived from a different field (`projectAllowlist`) and was consumed only as a concurrency key for
+  the per-tenant+resource write mutex. An operator who set `tenantAllowlist`, reasonably believing
+  cross-tenant writes were refused, got no refusal of any kind, and the published schema invited that
+  belief.
+
+  The field is now enforced rather than removed. Removing it would have bricked stored configurations:
+  the connection schema is strict and the file-backed connection store re-parses every record on every
+  read, so a connection carrying the field would throw on the next read — measured, not assumed. It
+  would also have been a breaking change on two published surfaces.
+
+  The gateway's mutation pipeline — the sole issuer of mutation network I/O — now compares the plan's
+  declared tenant against the connection's `tenantAllowlist` and refuses a non-member with the
+  canonical `policy_blocked` error kind, ahead of the idempotency lock, the journal and any network
+  call. An empty allowlist refuses every mutation (fail-closed, the same reading the Grafana connection
+  doctor already gives an empty org allowlist); the field being absent still means the connection is
+  tenant-unscoped. The refusal is deliberately not journalled, so fixing a misconfigured allowlist and
+  retrying the same idempotency key still works. Both Jira resource clients (Cloud and Data Center)
+  now derive a plan's tenant from `tenantAllowlist` first, so a tenant-scoped connection produces
+  in-allowlist plans by default.
+
+  **Scope, because an over-claimed control is the problem this change exists to remove.** This binds
+  the tenant a mutation plan _declares_, on the mutation path only. It is not "cross-tenant access is
+  refused": reads are not tenant-checked (read requests carry pseudo-tenants used purely as concurrency
+  keys), and the remote's actual tenant identity is never verified against the list. Both are stated in
+  the published schema description and pinned by tests. What the change adds beyond making the contract
+  honest is real but narrow — a plan's tenant arrives from the semi-trusted worker side and previously
+  passed entirely unexamined.
+
+  `MutationPipelineDeps` gains a required `tenantAllowlist` member typed to include `undefined`. This is
+  a types-only break for direct `@crabgic/gateway` consumers, deliberately not optional so that every
+  construction site has to state its answer; JavaScript callers are runtime-compatible, since an omitted
+  key reads as tenant-unscoped, the previous behaviour.
+
 ## 1.5.0
 
 ### Minor Changes
