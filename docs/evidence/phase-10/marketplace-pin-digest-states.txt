@@ -320,6 +320,32 @@ than this file: a guard whose exemption is a textual token can be disabled by
 PROSE ABOUT the guard. Any comment that must discuss an exemption mechanism has
 to name it obliquely, and the only way to know is a reverse probe.
 
+⇒ THE LESSON NOW LIVES AT THREE ADDRESSES, not one (`docs/verification-
+playbook.md:261-269`: put a ruling where the reader lands, at every site they
+could arrive from):
+
+  - `packages/testkit/src/git-spawn-hygiene.test.ts` — the site a maintainer
+    editing the guard arrives at. Split in two, for a mundane and instructive
+    reason: merged closeout citations pin :140, :148, :152 and :201 of that
+    file, and a 30-line comment above them moved four fragments and reddened
+    `check:citation-content` on the first attempt. So the `SANCTIONED_SCRUB`
+    definition carries a ONE-LINE, LINE-COUNT-NEUTRAL warning (presence over the
+    whole file, including in a comment explaining why a file cannot use them),
+    and the full account is a footnote APPENDED below every pinned line. The
+    footnote says why it is where it is, so the placement does not read as an
+    accident.
+  - `docs/verification-playbook.md`, as a new section beside its two siblings —
+    the coverage-migration finding and the assert-a-residual rule. It is a
+    distinct failure mode from both: documentation disabling the guard it
+    documents.
+  - this transcript, which is where it was found.
+
+⚠️ Checked, because the irony would be total otherwise: the playbook section
+names NONE of the three exemption tokens (`grep -c` over it returns 0), and
+`git-spawn-hygiene.test.ts` excludes itself from its own scan. Adding the
+documentation did not re-disable the guard. Re-probed after writing all three:
+green as-is at 4 passed, and 1 failed / 3 passed with a `git commit` spawn added.
+
     after both fixes:
       packages/testkit/src/git-spawn-hygiene.test.ts   4 passed (4)
       scripts/check-marketplace-pin-digest.test.mjs   21 passed (21)

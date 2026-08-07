@@ -108,7 +108,7 @@ function spawnsMutatingGit(text: string): boolean {
   return false;
 }
 
-/** Any of the sanctioned ways to scrub git's repository-location variables. */
+/** Any of the sanctioned ways to scrub git's repository-location variables. ⚠️ This is a PRESENCE check over the WHOLE FILE — naming one of these anywhere, INCLUDING IN A COMMENT EXPLAINING WHY A FILE CANNOT USE THEM, exempts that file from the mutating-spawn rule entirely. See the footnote at the bottom of this file; it has happened. */
 const SANCTIONED_SCRUB = /runFixtureGit|gitFixtureEnv|GIT_LOCATION_ENV_VARS/;
 
 const SCANNED_ROOTS = ["packages", "e2e", "scripts", "spikes"];
@@ -203,3 +203,51 @@ describe("git-spawn hygiene (repo-wide GIT_DIR-hijack guard)", () => {
     expect(scrubbed).toContain("packages/plugin/src/statusline.test.ts");
   });
 });
+
+/*
+ * ────────────────────────────────────────────────────────────────────────────
+ * FOOTNOTE: THE DAY A COMMENT SWITCHED THIS GUARD OFF (2026-08-07)
+ *
+ * Placed at the foot of the file rather than beside `SANCTIONED_SCRUB` for a
+ * mundane and instructive reason: merged closeout citations pin lines :140,
+ * :148, :152 and :201 of this file, so inserting a 30-line comment above them
+ * moved four pinned fragments and reddened `check:citation-content`. The
+ * definition site therefore carries a one-line, line-count-neutral warning, and
+ * the account lives here where nothing is anchored.
+ *
+ * WHAT HAPPENED. `scripts/check-marketplace-pin-digest.mjs` was corrected to
+ * spawn only read-only git subcommands after this guard reddened its first
+ * draft. The fix carried a DO-NOT-REFACTOR note naming all three sanctioned
+ * scrub identifiers, to explain why a build-free script cannot import them.
+ * That note matched `SANCTIONED_SCRUB`, so the file was exempted from the
+ * mutating-spawn rule entirely — and the exemption is invisible in the passing
+ * direction, because a skipped file and a clean file both look green.
+ *
+ * MEASURED, on the branch as pushed:
+ *
+ *   probe                                                    this suite
+ *   reintroduce the generic `git(repoRoot, args)` helper       4 passed   ✗
+ *   add outright `git commit -am` AND `git reset --hard`       4 passed   ✗
+ *   ...after de-tokenizing that comment, same spawns    1 failed | 3 passed ✓
+ *
+ * Both of the first two should have reddened. The sentence in that file
+ * claiming its read-only property was "checked by a machine rather than
+ * asserted in a comment" was the very thing making it false.
+ *
+ * THE RULES THIS EARNS — the same three are in
+ * `docs/verification-playbook.md`, "DOCUMENTATION CAN DISABLE THE GUARD IT
+ * DOCUMENTS":
+ *
+ *   1. Any comment that must discuss this exemption names it OBLIQUELY —
+ *      refer to `./git-env.ts` as a module, never to its exports.
+ *   2. Never write "this is now machine-checked" without a REVERSE PROBE: add
+ *      the violation, watch it redden, restore.
+ *   3. Presence-not-proof is a deliberate trade (cheap, hard to bypass by
+ *      accident), so this edge is a documented COST, not a bug to be fixed by
+ *      tightening the regex. Tightening it would only move the same hazard.
+ *
+ * COROLLARY worth someone's afternoon: grep the three tokens across the scanned
+ * roots and ask which matches are PROSE. A file that names a sanctioned helper
+ * without using it is exempt and nothing says so.
+ * ────────────────────────────────────────────────────────────────────────────
+ */

@@ -465,8 +465,10 @@ file delivers. It said "the wording at all five reader-facing sites now says
 what actually happens". What is true is narrower and is worth stating exactly:
 every EMITTED FAILURE MESSAGE in `versionSupportWindows.ts` has been reworded —
 `:151` and `:159` were missed in the first pass and are fixed here — and so has
-every `source` string. What has NOT been reworded is four DOC COMMENTS that
-still use "re-confirmation"/"re-confirmed": `:8` (which quotes the roadmap
+every `source` string. What has NOT been reworded is FIVE DOC COMMENTS that
+still use "re-confirmation"/"re-confirmed" (dated correction 2026-08-07: this
+sentence said "four" while the list beside it enumerates five — the count was
+wrong, the enumeration was right, and the enumeration is the authority): `:8` (which quotes the roadmap
 criterion verbatim and must), `:72` (citation-pinned; its text is a merged
 record's anchor), and `:25`/`:90`/`:97` (design prose about the field, left
 alone rather than churned for line-count-neutrality). A reader meeting the term

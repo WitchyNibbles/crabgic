@@ -231,10 +231,17 @@ describe("the real repository is in one of the two legal states", () => {
     //
     // Added after the mutation battery showed the historical corpus was the
     // ONLY thing pinning that computation: deleting it left this arm green,
-    // because a missing `tree@pin` reports `ahead-of-pin`, which is legal. This
-    // assertion pins it with NO history dependency beyond the entry's own
-    // commit — and it is a second signal for the shallow-clone breakage below,
-    // which the corpus test caught only because it names five older commits.
+    // because a missing `tree@pin` reports `ahead-of-pin`, which is legal.
+    //
+    // ⚠️ PRECISION, correcting this branch's own commit message (adc3312),
+    // which said this pins the computation "with no history dependency". It
+    // does not remove the dependency, it NARROWS it — from the corpus's five
+    // named commits to the ONE commit the entry itself pins. Measured against a
+    // real `git clone --depth 1`: `resolveCommit` returns undefined, the state
+    // is `unresolvable-pin` and `pinnedTreeDigest` is undefined, so this arm
+    // fails there too. That is the intended behaviour and it is why the
+    // shallow-clone guard above runs first with an actionable message — but
+    // "no history dependency" overstated it and is withdrawn.
     expect(result.pinnedTreeDigest).toMatch(/^[0-9a-f]{64}$/);
   }, 60_000);
 });
