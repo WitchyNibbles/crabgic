@@ -262,3 +262,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run check:citation-runs
+      # Both validators above are blind to what a citation SAYS. One reads the
+      # record JSON's shape and resolves `ref` to a file at a line that exists;
+      # the other checks a run URL. Neither reads a single quoted character, so
+      # the moment a later PR inserts lines above cited text the merged record
+      # keeps validating while pointing at the wrong place — measured at 182
+      # citations of 1292, 154 of them under ticked criteria, caused by at least
+      # five separate merged PRs including the one whose own pass filed the
+      # defect record asking for this step. This step content-resolves every quoted
+      # fragment against the tree and compares the result to a committed
+      # baseline, so it fails on the PR that moves the ground under a citation
+      # rather than years later. Legacy drift is seeded into that baseline as
+      # known, so this starts at zero noise; new and edited citations are held
+      # to resolving exactly where they claim. It also fails any `path:NN` in
+      # roadmap or defect prose that names a missing file or a line past its
+      # end. Dependency-free, like its two siblings: this job does not build.
+      - name: cited file content resolves at the lines the records claim
+        run: npm run check:citation-content

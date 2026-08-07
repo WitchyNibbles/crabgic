@@ -1,0 +1,264 @@
+/**
+ * Parsing a `quotedAssertion` into (marker, fragment) pairs.
+ *
+ * A `quotedAssertion` is prose with quoted file text embedded in it, in the
+ * house notation:
+ *
+ *   "…the guard is real: :51 'for (const fixture of fixtures) {' / :56
+ *    'const outcome = lint(candidate);'. Every fixture declares…"
+ *
+ * Every hazard handled below was measured in the merged corpus or filed as a
+ * defect against an earlier resolver — none is hypothetical:
+ *
+ * - **Possessive apostrophes.** Naive `'…'` pairing treats "the pass's own" as
+ *   an open quote and swallows the rest of the sentence. One pass's resolver
+ *   reported 91 phantom problems from exactly this (`docs/verification-playbook
+ *   .md`, "MUTATION-TEST YOUR RESOLVER"). Pairing therefore requires a delimiter
+ *   before the opening quote AND after the closing quote.
+ * - **Backslash-escaped inner quotes** (`\'`) must not close a fragment.
+ * - **`:NN` markers written INSIDE a quote** — the quote then contains a line
+ *   number that is nowhere in the file. Stripped, and NOTED, never silently
+ *   dropped.
+ * - **Markers inside a quote must not create new markers.** Fragment interiors
+ *   are masked out before the marker scan, or `':138 { numRuns: 10_000 }'` would
+ *   re-anchor everything after it.
+ * - **Path-qualified markers switch files mid-assertion** (`foo.test.ts:12`), so
+ *   a cross-file quote resolves against the file it names, not the citation's
+ *   `ref`.
+ * - **CI job-log lines quoted inside a `test` citation** (`'  ✓ src/x.test.ts'`)
+ *   are a different domain entirely — they belong to a run log, not to any file
+ *   in the tree, and routing them at a file is how a resolver invents a defect.
+ */
+
+/** A fragment must be preceded by one of these to open (never a letter — that is a possessive). */
+const OPEN_BEFORE = " \t(—:/,;–[{>";
+/** A fragment must be followed by one of these to close (or be at end of string). */
+const CLOSE_AFTER = " \t;,.)/—–'\"]}>";
+
+/**
+ * A path-qualified marker. The line number is REQUIRED, deliberately: making it
+ * optional lets a filename merely MENTIONED in the surrounding prose hijack every
+ * quote after it. Measured — with the line number optional, `'$ git log … --
+ * spikes/fixtures/01-auth.verdicts.json'` inside a transcript quote re-pointed
+ * seven fragments of phase-00 c1 at a path that no longer exists, and the
+ * resolver reported seven FILE-MISSING defects that were purely its own.
+ * See KNOWN LIMITATIONS in `check-citation-content.mjs` for what this costs.
+ */
+const PATH_MARKER =
+  /([A-Za-z0-9_@./-]+\.(?:ts|tsx|mjs|cjs|js|json|md|txt|snap|sh|yml|yaml|log|html|css)):(\d+)(?:-(\d+))?/g;
+const BARE_MARKER = /(?<![\w:.\-/]):(\d+)(?:-(\d+))?/g;
+
+/** `:NN ` or `:NN-MM ` accidentally captured at the head of the quoted span. */
+const LEADING_MARKER_IN_QUOTE = /^:(\d+)(?:-(\d+))?\s+/;
+
+/**
+ * The declaration vocabulary. A citation whose quoted text is not a verbatim
+ * copy of one line may SAY SO, machine-readably, at the head of its
+ * `quotedAssertion`:
+ *
+ *   "JOINED, NORMALIZED: :53 'expect(lint(candidate)).toBe(false)' …"
+ *
+ * The corpus already declares these things — in prose ("quoted verbatim and
+ * spliced", "REDACTED here"), which no tool can read. Codifying the vocabulary
+ * is what turns the permanently-noisy classes (a quote joined from a wrapped
+ * statement, a comment-prefix stripped, a redacted secret) into a declared,
+ * checkable property instead of a warning everybody learns to ignore.
+ *
+ * A declaration NEVER waives anchoring: the quote must still resolve, and still
+ * resolve at the line it claims. It waives only the "this citation is not
+ * byte-verbatim" warning, and it is recorded in the baseline so a reader knows
+ * which claim they are being handed.
+ */
+export const DECLARATION_VOCABULARY = ["VERBATIM", "JOINED", "NORMALIZED", "SPLICED", "REDACTED"];
+const DECLARATION_HEAD = new RegExp(
+  `^\\s*(${DECLARATION_VOCABULARY.join("|")})(?:\\s*[,+]\\s*(?:${DECLARATION_VOCABULARY.join("|")}))*\\s*:`,
+);
+
+/**
+ * Reads the declaration head, if any. Returns the declared token set (possibly
+ * empty) — never throws on an undeclared assertion, which is the corpus's
+ * overwhelming majority and stays legal.
+ */
+export function parseDeclarations(assertion) {
+  const head = DECLARATION_HEAD.exec(assertion);
+  if (head === null) return [];
+  return head[0]
+    .replace(/:\s*$/, "")
+    .split(/[,+]/)
+    .map((token) => token.trim())
+    .filter((token) => DECLARATION_VOCABULARY.includes(token));
+}
+
+/** Elision and line-separator conventions inside a single quoted span. */
+const SPLICE_PATTERN = /…|\s\.\.\.\s|\s\/\s/;
+
+/**
+ * A quote that carries a vitest tick, a run-summary counter, or a job-log line
+ * label is quoting a CI log, not a file in the tree.
+ */
+export function isCrossDomainQuote(text) {
+  return /[✓✗×]/u.test(text) || /^\s*(?:Test Files|Tests|Duration|Snapshots)\s+/.test(text);
+}
+
+/**
+ * A fragment with no code-ish character is the record's own commentary caught
+ * between quotes, not a file quote. Reported, never blocking.
+ */
+export function isCodeish(text) {
+  return /[(){};=[\]"`<>]|->|=>|\.[a-z]{2,4}\b/.test(text);
+}
+
+/**
+ * Splits a quoted span on the house elision/line-separator conventions.
+ * Returns `[text]` when the span carries no splice.
+ */
+export function splicePieces(text) {
+  return text
+    .split(SPLICE_PATTERN)
+    .map((piece) => piece.trim())
+    .filter((piece) => piece.length > 0);
+}
+
+/**
+ * Extracts every quoted span, and returns the assertion with span interiors
+ * masked so the marker scan cannot see inside them.
+ */
+export function extractFragments(assertion) {
+  const fragments = [];
+  const masked = [...assertion];
+  let i = 0;
+  while (i < assertion.length) {
+    if (assertion[i] !== "'") {
+      i += 1;
+      continue;
+    }
+    const openable = i === 0 || OPEN_BEFORE.includes(assertion[i - 1]);
+    if (!openable) {
+      i += 1;
+      continue;
+    }
+    let close = -1;
+    for (let k = i + 1; k < assertion.length; k += 1) {
+      const closable =
+        assertion[k] === "'" &&
+        assertion[k - 1] !== "\\" &&
+        (k + 1 === assertion.length || CLOSE_AFTER.includes(assertion[k + 1]));
+      if (closable) {
+        close = k;
+        break;
+      }
+    }
+    if (close <= i + 1) {
+      i += 1;
+      continue;
+    }
+    fragments.push({ position: i, text: assertion.slice(i + 1, close) });
+    for (let m = i; m <= close; m += 1) masked[m] = "\0";
+    i = close + 1;
+  }
+  return { fragments, masked: masked.join("") };
+}
+
+function collectMarkers(masked, defaultPath) {
+  const events = [];
+  for (const match of masked.matchAll(PATH_MARKER)) {
+    events.push({
+      position: match.index,
+      text: match[0],
+      filePath: match[1],
+      low: Number(match[2]),
+      high: match[3] === undefined ? null : Number(match[3]),
+    });
+  }
+  for (const match of masked.matchAll(BARE_MARKER)) {
+    events.push({
+      position: match.index,
+      text: match[0],
+      filePath: null,
+      low: Number(match[1]),
+      high: match[2] === undefined ? null : Number(match[2]),
+    });
+  }
+  events.sort((a, b) => a.position - b.position);
+  const markers = [];
+  let currentPath = defaultPath;
+  for (const event of events) {
+    if (event.filePath !== null) currentPath = event.filePath;
+    markers.push({
+      position: event.position,
+      text: event.text,
+      filePath: currentPath,
+      low: event.low,
+      high: event.high ?? event.low,
+    });
+  }
+  return markers;
+}
+
+/**
+ * THE ASSOCIATION GRAMMAR — stated explicitly, because leaving it implicit is a
+ * measured way to build a resolver that is systematically blind and does not
+ * know it.
+ *
+ * A sibling pass's scratch resolver over this same corpus passed a three-way
+ * mutation battery and still missed FOUR real instances of the class it was
+ * censusing, because it only associated a quote with a marker when the two were
+ * adjacent. Every instance where prose sat between the marker and the quote fell
+ * through the grammar and was never checked at all — and its "known limitations"
+ * section never named the gap, because a gap in the grammar is invisible to
+ * mutations of the rules the grammar feeds.
+ *
+ * The rules, each of which is mutation-tested in
+ * `scripts/check-citation-content.test.mjs`:
+ *
+ * 1. A quoted span associates with the NEAREST PRECEDING marker, at ANY
+ *    distance and across ANY amount of intervening prose.
+ * 2. A quoted span with no preceding marker inherits the CITATION'S DECLARED
+ *    `ref` SPAN. It is checked, never skipped — an unmarked quote is a claim
+ *    about the cited span, and dropping it is how four real findings hid.
+ * 3. A marker inside a quoted span (`':138 { numRuns: 10_000 }'`) is stripped
+ *    from the text, used as that span's marker, and NOTED.
+ * 4. A path-qualified marker switches the file for itself and every marker after
+ *    it, until another path-qualified marker appears.
+ * 5. Markers are collected from the MASKED assertion, so a `:NN` inside quoted
+ *    text can never become a marker for the fragments that follow it.
+ */
+export function parseQuotedAssertion(assertion, defaultPath) {
+  const { fragments, masked } = extractFragments(assertion);
+  const markers = collectMarkers(masked, defaultPath);
+  return {
+    declarations: parseDeclarations(assertion),
+    markers,
+    fragments: fragments.map((fragment) => {
+      let owner = null;
+      for (const marker of markers) {
+        if (marker.position < fragment.position) owner = marker;
+        else break;
+      }
+      let text = fragment.text;
+      const notes = [];
+      let low = owner === null ? null : owner.low;
+      let high = owner === null ? null : owner.high;
+      const inQuote = LEADING_MARKER_IN_QUOTE.exec(text);
+      if (inQuote !== null) {
+        notes.push(`line marker :${inQuote[1]} was written inside the quoted span`);
+        low = Number(inQuote[1]);
+        high = inQuote[2] === undefined ? low : Number(inQuote[2]);
+        text = text.slice(inQuote[0].length);
+      }
+      return {
+        text,
+        rawText: fragment.text,
+        filePath: owner === null ? defaultPath : owner.filePath,
+        low,
+        high,
+        markerWritten: owner !== null || inQuote !== null,
+        // Where the marker's own `:NN` sits in the assertion, so `--fix` can
+        // rewrite exactly that number and nothing else.
+        markerPosition: owner === null ? null : owner.position,
+        markerText: owner === null ? null : owner.text,
+        notes,
+      };
+    }),
+  };
+}
