@@ -47,7 +47,7 @@ export const ORCHESTRATION_MATRIX_GATE_TAG = "release-gate:crash-recovery-concur
  * resume across a supervisor restart (05/13)".
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:crash-recovery-concurrency": "5b85bdb7-5269-5d2d-8d2f-36cf9958d5c8",
+  "release-gate:crash-recovery-concurrency": "4147ed44-8703-5c21-906f-db468f03449e",
 } as const);
 
 /**

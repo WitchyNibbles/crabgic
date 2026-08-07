@@ -6,13 +6,14 @@ standing-approval work — and all four are timing-sensitive rather than logical
 Catalogued here because an uncatalogued flake is indistinguishable from a regression, and
 this branch hit that confusion once already (see `live-verification.md`).
 
-| Suite                 | Test                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| `@crabgic/git-engine` | ref-collision resistance: many concurrent attempts on the SAME task never collide                |
-| `@crabgic/perf`       | times a default-exported sync benchmark function and self-reports real `getrusage` figures       |
-| `crabgic` (CLI)       | HIGH H2: two overlapping verifications of the SAME token — exactly one succeeds                  |
-| `@crabgic/journal`    | the automatic heartbeat interval actually renews the on-disk record (`autoRenew: true`)          |
-| `@crabgic/git-engine` | control-clone crash/recovery (`control-clone.crash.test.ts`) — see the 2026-08-07 row note below |
+| Suite                 | Test                                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@crabgic/git-engine` | ref-collision resistance: many concurrent attempts on the SAME task never collide                                                                               |
+| `@crabgic/perf`       | times a default-exported sync benchmark function and self-reports real `getrusage` figures                                                                      |
+| `crabgic` (CLI)       | HIGH H2: two overlapping verifications of the SAME token — exactly one succeeds                                                                                 |
+| `@crabgic/journal`    | the automatic heartbeat interval actually renews the on-disk record (`autoRenew: true`)                                                                         |
+| `@crabgic/git-engine` | control-clone crash/recovery (`control-clone.crash.test.ts`) — see the 2026-08-07 row note below                                                                |
+| `@crabgic/supervisor` | idle resource budget over a sustained idle window with the REAL 5s-paced scheduler (`idle-budget.integration.test.ts`) — see the 2026-08-07 sighting note below |
 
 Each was observed failing once during this branch's work, re-run in isolation, and passed.
 The pattern is the same in all four: a real wall-clock interval or a concurrency window
@@ -74,3 +75,23 @@ property and `engine-claude`'s session property, all timeouts under concurrent l
 assertion failures — are now listed there and are deliberately **not** given rows here, because none
 was re-run in isolation to confirm it passes. Neither list is authoritative alone; add a new sighting
 to both.
+
+## Sighting added 2026-08-07 (the v1.6.0 pre-cut gate) — `@crabgic/supervisor` idle budget
+
+Seen red once in a full `npm test` run taken immediately after `npm run build` on the developer host:
+`expected 0.011960719041278295 to be less than 0.01`, i.e. the measured CPU fraction over the idle
+window came in at 1.196% against a <1% budget, with RSS well inside its own budget. Re-run in
+isolation three times immediately afterwards: **3/3 green**. The branch carrying the sighting touches
+only `e2e/`, `docs/`, `roadmap/` and `.changeset/` — nothing under `packages/supervisor` — so the
+failure cannot be attributed to the diff it appeared under.
+
+**The table above is now SIX rows.** The 2026-08-07 section headed "Fifth row" says it is five and
+is left verbatim; this is its correction, the same handling that section itself applied to the
+"Four tests"/"all four" prose above it. The table has always been the authority — count it.
+
+This row is a verdict of the same strength as rows 1-4 rather than a catalogue entry: it was
+observed, re-run in isolation, and seen to pass. The shape is the family this file already
+describes — a real wall-clock window whose measurement a loaded host stretches past its tolerance —
+and the same remedy applies: widen the tolerance or measure against something a co-tenant build
+cannot inflate. Added to `docs/verification-playbook.md`'s list in the same pass, per the
+cross-reference rule below.

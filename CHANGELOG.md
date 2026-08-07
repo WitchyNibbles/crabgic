@@ -8,24 +8,144 @@ per-package notes changesets generates at `packages/cli/CHANGELOG.md`. Both are
 derived from the same reviewed `.changeset/*.md` entries — neither is written by
 hand at release time, so the two cannot disagree about what shipped.
 
-## Unreleased
+_Correction 2026-08-07, at the 1.6.0 cut: that criterion now sits at
+`roadmap/23-release-hardening.md:176`; the `:136` above is left verbatim as the anchor
+this paragraph was written against. Two precisions the paragraph oversells, recorded
+where the next release-cutter reads: `changeset version` does **not** touch this root
+file — only `packages/cli/CHANGELOG.md` — so this section IS written by hand at release
+time, and a release that forgets it fails the gate (commit `a344105` is the precedent);
+and this file is the only one of the two the gate reads._
 
-Mirrors `.changeset/upgrade-boundary-and-intake-validation.md`; folded into the next
-version's section at release time, not rewritten by hand there.
+## 1.6.0
 
-**⚠️ Before upgrading from 1.5.0 — read `docs/upgrade-guide.md`, "Before upgrading".** Two
-rulings that until now lived only in design documents. (1) **Finish or cancel in-flight
-runs first.** Change sets created before phase 24 carry no approval seal, and the new
-verification fails them closed; the ruling is to drain rather than grandfather, and no
-enforcement epoch is implemented deliberately. Wait for every run to reach
-`published_local`, `failed`, `blocked` or `cancelled` (`crabgic status <run-id>`), or stop
-it with `crabgic cancel <run-id>`. (2) **A replayed `requestKey` across this upgrade
-reports `conflict`, by design.** `IntakeRequest` no longer carries
-`performanceBudgetSource`/`performanceBudgets` — intake derives them — so an unchanged
-intake document hashes differently on either side of the upgrade and is refused as a
-content conflict rather than minting a second change set. Nothing is lost or overwritten;
-re-run under a fresh `requestKey`, or use the amendment flow. The refusal message now says
-so instead of leaving you hunting for an edit that never happened.
+**⚠️ Read this before upgrading. Two behaviour changes in 1.6.0 can fail runs and refuse
+mutations that previously went through — they are (1) and (2) below — and (3) is the intake
+boundary this release crosses.**
+
+1. **🛡️ Blocking security gates now fire on every run.** A completed run now walks the
+   verification pipeline (`verifying → integrating → final_verifying → published_local`),
+   which nothing in production previously did. At `final_verifying` the security-fixture
+   manifest's seven entries — forged delete/admin refusal, tenant-boundary breach and error
+   redaction, across Jira, Grafana and the gateway — fire **blocking**, and a failure names
+   the fixture id. **A run that previously published can now fail.** The criteria-seal check
+   fires the same way at `verifying`: **change sets created before this upgrade carry no
+   approval seal and fail closed — finish or cancel in-flight runs first**
+   (`crabgic status <run-id>`, `crabgic cancel <run-id>`).
+
+2. **📁 `folderAllowlist` is now enforced — and an unattributable mutation is refused.**
+   Setting `folderAllowlist` on a **Jira** connection refuses **every** Jira mutation on that
+   connection, because Jira has no folder concept and supplies no attribution; Grafana
+   `annotation` writes are refused on a folder-scoped connection for the same reason. There
+   is no config-time warning yet — unset the field if you did not mean it. The check binds
+   the folder the provider derives from the plan, not where the resource actually lives on
+   the remote; reads are not folder-checked.
+
+3. **A replayed `requestKey` across this upgrade reports `conflict`, by design.**
+   `IntakeRequest` no longer carries `performanceBudgetSource`/`performanceBudgets` — intake
+   derives them — so an unchanged intake document hashes differently on either side of the
+   upgrade and is refused as a content conflict rather than minting a second change set.
+   Nothing is lost or overwritten; re-run under a fresh `requestKey`, or use the amendment
+   flow. The refusal message now says so instead of leaving you hunting for an edit that
+   never happened.
+
+The ruling behind (1) is to **drain rather than grandfather**, and no enforcement epoch is
+implemented, deliberately. Wait for every run to reach `published_local`, `failed`, `blocked`
+or `cancelled`, or stop it with `crabgic cancel <run-id>`. All three are set out in
+`docs/upgrade-guide.md`, "Before upgrading".
+
+**🎯 Certification posture** (`docs/deploy-posture.md`, owner ruling 2026-08-07): crabgic is
+certified for the **single-tenant, trusted-operator** scope, **and for nothing wider**.
+Three load-bearing conditions:
+
+1. Do **not** add a broad `Read`/`Grep`/`Glob` allow rule — it removes the only working
+   barrier for out-of-cwd reads, which is also what stands between a worker and the
+   journal/control state.
+2. **Multi-tenant deployment is NOT certified.** `tenantAllowlist` binds only the tenant a
+   mutation plan _declares_, on the mutation path; reads are not tenant-checked, and the
+   remote's actual tenant identity is not verified.
+3. **The live engine lane has never run.** The live evidence behind this certification is
+   the owner-authorized local batches recorded in `docs/engine-baseline.md`, valid for the
+   pinned engine range 2.1.207–2.1.220; drift outside that range re-opens the question.
+
+**No live connector verification of any kind is claimed** — live Jira, Jira Data Center and
+Grafana Cloud conformance remain unrun.
+
+---
+
+### Runs, the daemon and the journal
+
+**A completed run now reaches an end.** Until now no run ever left `running`: the daemon
+composed no gate registry, nothing in production transitioned a run onto `verifying`,
+`integrating` or `final_verifying`, and the security-fixture gates' only caller anywhere in
+the repository was their own unit test. The daemon's one production composition root now
+builds the gate registry and a completed DAG walks through to `published_local`. Deliberately
+still unregistered, by owner ruling and with its cause measured: the performance gate and the
+tdd/coverage/flake/scanner/engine-conformance tranche have no measurement backend in the
+daemon, and every registered gate fires on every run — registering them today would either
+fail every run or fabricate a measurement.
+
+**A failed run no longer wedges its change set forever.** An ordinary single-unit failure —
+or any DAG that ended all-terminal without succeeding — was reported by the scheduler as a
+_completion_, because the stop reason only asked whether anything was still pending or
+parked, never whether the terminals were successes. The run stayed in `running` with every
+unit finished: `crabgic status --watch` never terminated, `crabgic run` refused the change
+set as already in flight, and `crabgic cancel` was the only way out. A run's drive now
+records how it actually ended — `failed` when a unit failed, `cancelled` when units were
+cancelled and none failed — so retrying is just `crabgic run` again. `crabgic resume` will
+no longer claim to have resumed a run whose every unit is already terminal.
+
+**Shutting the daemon down no longer risks the journal.** Teardown released the project
+lease — the journal's only single-writer guarantee — while the background drive was still
+appending, so an ordinary SIGTERM mid-run let a second daemon acquire it and two writers on
+one hash chain produced a duplicate `seq` the journal classifies as tampering. Shutdown now
+closes the control plane, drains the dispatcher, and releases the lease last, and not at all
+if something is still writing. Runs cut off at the drain deadline have their workers
+terminated and their end recorded, so a restart sees a finished run instead of one that can
+never finish. A restart with a parked run now refuses with the reason and the one command
+that works, rather than reporting success and doing nothing.
+
+**Two daemons could hold the same project lease at once.** Claiming a lease created the file
+and wrote the holder's record as two separate steps, so for a sub-millisecond window the file
+existed and was empty — and an empty lease file reads as "no holder at all", granting a
+takeover without checking whether the recorded process is still running. Measured at 9 double
+acquires in 11,000 races on an idle machine. A lease is now published by writing the
+complete, fsynced record under a private name and linking it into place, so the path is never
+visible without its full contents. A lease that cannot be read is no longer treated as an
+absent one.
+
+### Connectors and the gateway
+
+**`folderAllowlist` is enforced, and the ruling that fills the spec's silence is that an
+unattributable mutation is refused.** The field was declared in the contract, emitted into
+the published JSON Schema, settable by an operator, and read by zero code — the same
+declared-and-inert shape `tenantAllowlist` had. It now binds at the gateway's mutation
+pipeline, mutations only, through a provider folder-attribution hook. Scope, stated because
+an over-claimed control is the problem this change exists to remove: it binds the folder the
+provider derives from the plan, never where the resource actually lives on the remote, and
+reads are not folder-checked.
+
+**`tenantAllowlist` is enforced.** Same shape, landed the same way: the gateway's mutation
+pipeline compares the plan's declared tenant against the connection's allowlist and refuses a
+non-member with `policy_blocked` ahead of the idempotency lock, the journal and any network
+call. An empty allowlist refuses every mutation; an absent field still means tenant-unscoped.
+The refusal is deliberately not journalled, so fixing a misconfigured allowlist and retrying
+the same idempotency key still works. This binds the tenant a plan _declares_, on the
+mutation path only — it is not a guarantee that cross-tenant access is refused, and
+multi-tenant deployment is not certified.
+
+**Bulk Jira writes now serialize against their member issues.** A `bulk:<keys>` mutation took
+its own serialization key, so a bulk update of issues A and B could run concurrently with a
+single-issue write to A. The write serializer gained multi-key acquisition and both Jira apply
+clients map a bulk plan to its sorted member issue keys; writes over disjoint issue sets
+deliberately stay concurrent.
+
+**Data Center custom-field refusals carry the right kind and the right provider.** The shared
+field-metadata guard hardcoded `validation` and the Cloud provider name at both throws, so a
+Data Center connection refusing an undiscovered custom field returned the wrong canonical kind
+and blamed Cloud. DC write paths now produce `unsupported` / `jira-datacenter`; Cloud is
+unchanged.
+
+### Intake, the installer and the bundled plugin
 
 **Intake validates the two inputs nothing was validating.** Intake reads its request as
 `JSON.parse` with no schema, and `ecosystem` was the one field no builder ever parsed: it
@@ -38,6 +158,14 @@ direction — `throughput <= 1000 ops/sec`, where a throughput budget is a floor
 silently enforced as its opposite, because a budget entry carries no direction of its own.
 It is now refused with a diagnostic naming the operator to write. Direction-consistent
 criteria parse exactly as before and no derived budget value moves.
+
+**The bundled `eo-explore` subagent has a turn bound.** A subagent's turns never reach the
+parent session's counter, so nothing downstream bounded them — one "count the files in this
+directory" request served roughly fifty nested round trips. Its frontmatter now declares
+`maxTurns: 30`, and the manifest validator requires a bare positive integer literal instead of
+letting a value the loader cannot read be dropped back to the engine's 200-turn default. Scope:
+**only `eo-explore` is bounded** — the other four bundled subagents declare none and still run at
+200, deliberately, because a bound that bites mid-review silently truncates a reviewer's findings.
 
 ## 1.5.0
 

@@ -48,7 +48,7 @@ export const CONNECTOR_MATRIX_GATE_TAG = "release-gate:connector-matrix";
  * requirement and no criterion is left without evidence.
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:connector-matrix": "8dcda1da-b82c-591a-b778-9f65363e546a",
+  "release-gate:connector-matrix": "ea52bc42-443a-5af8-b4ab-8bc6d335aa7f",
 } as const);
 
 /** This harness's own toolchain fingerprint — a fixed, versioned literal (never a hardcoded secret/credential, per this repo's own coding-style rule against hardcoded values — this is a public, non-sensitive identifier). */

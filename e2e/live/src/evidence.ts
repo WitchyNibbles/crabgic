@@ -59,9 +59,9 @@ export const GATEWAY_CLI_SURFACE_COMPLETE_GATE_TAG = "release-gate:gateway-cli-s
  * across all three would credit the wrong requirement.
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:live-conformance": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
-  "release-gate:not-implemented-sweep": "14e320ee-bdf4-5aca-abe4-538eba6c0ae5",
-  "release-gate:gateway-cli-surface-complete": "ac0f822f-32b9-5471-bf1b-6a94fa658c6d",
+  "release-gate:live-conformance": "e54413e1-5f35-5907-bf73-61c126275eb8",
+  "release-gate:not-implemented-sweep": "e54413e1-5f35-5907-bf73-61c126275eb8",
+  "release-gate:gateway-cli-surface-complete": "3de45957-aec7-5aa3-985c-39d08551e5c9",
 } as const);
 
 /** The requirement a given emitted tag evidences, or `undefined` for a tag this harness does not map. */

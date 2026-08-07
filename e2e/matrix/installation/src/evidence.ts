@@ -42,7 +42,7 @@ export const INSTALLATION_MATRIX_GATE_TAG = "release-gate:installation-matrix";
  * criterion of their own).
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:installation-matrix": "a6ec5e44-7901-5f4c-8d48-e5901d8384b4",
+  "release-gate:installation-matrix": "984d2333-f221-5aa3-8fb0-e70428ab09c5",
 } as const);
 
 const TOOLCHAIN_FINGERPRINT = `node ${process.version}`;

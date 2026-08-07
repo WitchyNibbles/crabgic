@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "d89166046a8316302f3dd894c7a1524579648bf3",
+  "generatedAtSha": "bda264dc3e5798dc29383721e2f297ce5f9442bf",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -9,7 +9,7 @@
     "anchored": 2685,
     "seededStale": 637,
     "outsideSpan": 772,
-    "repeatText": 527,
+    "repeatText": 529,
     "crossFile": 20,
     "skipped": 609
   },
@@ -512,8 +512,8 @@
       "ref": "OK",
       "pins": [
         "OK-file/collapsed@1",
-        "OK-file/collapsed@3",
-        "OK-file/collapsed@470,866,883,927,948~repeat",
+        "OK-file/collapsed@214",
+        "OK-file/collapsed@81,681,1077,1094,1138,1159~repeat",
         "SKIP-commentary"
       ]
     },
@@ -532,8 +532,8 @@
       "pins": [
         "OK-file/collapsed@7",
         "OK-file/collapsed@9",
-        "OK-file/collapsed@20",
-        "OK-file/collapsed@21",
+        "OK-file/collapsed@20,90,115,118~repeat",
+        "OK-file/collapsed@21,119~repeat",
         "OK-file/collapsed@22",
         "OK-file/collapsed@13-15"
       ]
@@ -10975,11 +10975,11 @@
         "OK/collapsed@138"
       ]
     },
-    "phase-23.json#c15#CHANGELOG.md:323": {
-      "qa": "66f9e327f989",
+    "phase-23.json#c15#CHANGELOG.md:451": {
+      "qa": "e4de924ebb38",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@323"
+        "OK/collapsed@451"
       ]
     },
     "phase-23.json#c15#docs/evidence/phase-23/closeout/c1-c15-checkout-candidate-skew.txt": {
