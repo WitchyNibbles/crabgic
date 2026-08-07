@@ -19,8 +19,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "crabgic": "./dist/bin.js",
-    "crabgic-supervisord": "./dist/bin/supervisord.js"
+    "crabgic": "dist/bin.js",
+    "crabgic-supervisord": "dist/bin/supervisord.js"
   },
   "exports": {
     ".": {

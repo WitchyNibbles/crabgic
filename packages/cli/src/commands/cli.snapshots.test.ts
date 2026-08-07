@@ -118,7 +118,7 @@ describe("gateway mcp — exact stdio boot invocation (byte-compared against 10'
   it("package.json's own bin entry is keyed exactly BINARY_NAME — the literal 10's .mcp.json command field must match", async () => {
     const raw = await readFile(join(PACKAGE_ROOT, "package.json"), "utf8");
     const pkg = JSON.parse(raw) as { readonly bin?: Record<string, string> };
-    expect(pkg.bin?.[BINARY_NAME]).toBe("./dist/bin.js");
+    expect(pkg.bin?.[BINARY_NAME]).toBe("dist/bin.js");
   });
 
   /**
@@ -128,14 +128,14 @@ describe("gateway mcp — exact stdio boot invocation (byte-compared against 10'
    * composing them there would have been a cycle. It is a SECOND, separately
    * named binary: `crabgic` itself is untouched, so 10's
    * `.mcp.json` command field still resolves exactly as asserted above.
-   * Pinned here so a third bin entry cannot appear unnoticed.
+   * Pinned here so a third bin entry cannot appear unnoticed. Both targets lost their leading `./` on 2026-08-07 (npm's own normalizer strips it, and the v1.6.0 publish log said so misleadingly) — this assertion's SUBJECT is the key set, and `.mcp.json`'s `command` field is the key `crabgic`, never the target path, so the literals moved with the manifest rather than the manifest being held back by them. The general invariant now lives in `scripts/check-published-tarball.mjs`.
    */
   it("declares exactly the two expected bin entries — the CLI and the separately-named supervisor daemon", async () => {
     const raw = await readFile(join(PACKAGE_ROOT, "package.json"), "utf8");
     const pkg = JSON.parse(raw) as { readonly bin?: Record<string, string> };
     expect(pkg.bin).toEqual({
-      [BINARY_NAME]: "./dist/bin.js",
-      [`${BINARY_NAME}-supervisord`]: "./dist/bin/supervisord.js",
+      [BINARY_NAME]: "dist/bin.js",
+      [`${BINARY_NAME}-supervisord`]: "dist/bin/supervisord.js",
     });
   });
 });
