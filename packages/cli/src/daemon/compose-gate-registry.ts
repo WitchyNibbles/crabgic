@@ -187,7 +187,7 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
       ),
   });
   /**
-   * Phase 21's six security fixtures, as BLOCKING entries — `blocking: true` on
+   * Phase 21's security fixtures, as BLOCKING entries — `blocking: true` on
    * every manifest entry, and `allGatesPassed` in
    * `./post-completion-pipeline.ts` treats a `false` verdict from any tag as a
    * refusal to publish. Registered with no arguments deliberately: the manifest
@@ -195,6 +195,14 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
    * primitives, so there is no seam here for a caller to substitute a passing
    * fixture through. That is the same rule the file header states for the
    * registry itself.
+   *
+   * COUNT, corrected 2026-08-07 at the v1.6.0 cut: this comment said "six"
+   * until now and the manifest carries SEVEN. #122's Jira tenant-boundary
+   * fixture joined through `REQUIRED_SECURITY_FIXTURE_IDS` with no edit at
+   * this call site — which is the no-arguments registration working as
+   * designed, and also exactly why a hand-written count here goes stale
+   * without anything failing. Do not write the number here again; read it
+   * from the manifest.
    */
   registerSecurityFixtureManifest(registry);
   return registry;

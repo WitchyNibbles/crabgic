@@ -85,6 +85,10 @@ isolation three times immediately afterwards: **3/3 green**. The branch carrying
 only `e2e/`, `docs/`, `roadmap/` and `.changeset/` — nothing under `packages/supervisor` — so the
 failure cannot be attributed to the diff it appeared under.
 
+**The table above is now SIX rows.** The 2026-08-07 section headed "Fifth row" says it is five and
+is left verbatim; this is its correction, the same handling that section itself applied to the
+"Four tests"/"all four" prose above it. The table has always been the authority — count it.
+
 This row is a verdict of the same strength as rows 1-4 rather than a catalogue entry: it was
 observed, re-run in isolation, and seen to pass. The shape is the family this file already
 describes — a real wall-clock window whose measurement a loaded host stretches past its tolerance —
