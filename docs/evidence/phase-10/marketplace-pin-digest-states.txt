@@ -247,6 +247,43 @@ the suite rather than promised, by scanning this script's own source.
 `scripts/check-repo-hygiene.mjs` scrubs them.
 
 --------------------------------------------------------------------------------
+9b. ⚠️ THE REPO'S OWN GUARD REDDENED THIS SCRIPT'S FIRST DRAFT — and was right
+--------------------------------------------------------------------------------
+Recorded because it is the kind of thing that is otherwise silently fixed and
+lost. The first draft routed all three git calls through one
+`git(repoRoot, args, options)` helper. The full-suite gate went RED:
+
+    FAIL |@crabgic/testkit| src/git-spawn-hygiene.test.ts
+         > every file that spawns a MUTATING git command references a
+           sanctioned environment scrub
+    AssertionError: expected [ Array(1) ] to deeply equal []
+    +   "scripts/check-marketplace-pin-digest.mjs",
+    Test Files  1 failed | 651 passed (652)
+         Tests  1 failed | 6813 passed (6814)
+
+That guard classifies a spawn by the LITERAL first element of its argv array
+(`git-spawn-hygiene.test.ts:51-52`, and its own comment explains why a leading
+dash must not be capturable). A generic helper passing a variable `args` is
+unclassifiable, so it is assumed MUTATING and must name a sanctioned scrub —
+`runFixtureGit`/`gitFixtureEnv`/`GIT_LOCATION_ENV_VARS` — none of which a
+build-free `meta-checks` script can import.
+
+The draft DID scrub `GIT_*`, with its own local `scrubbedGitEnv`. The guard
+could not see that, and its refusal is presence-not-proof by design.
+
+FIXED BY WRITING EACH CALL SITE WITH ITS LITERAL SUBCOMMAND, not by adding the
+magic identifier to a comment. `rev-parse`, `merge-base` and `archive` are all
+in the guard's read-only set, so the module's "read-only throughout" claim is
+now checked by a machine instead of asserted in prose — which is strictly better
+than what the helper had. The script carries a DO-NOT-REFACTOR note at the seam
+saying so, because collapsing three literal call sites into one helper is
+exactly the tidy-up a future reader would reach for.
+
+    after the fix:
+      packages/testkit/src/git-spawn-hygiene.test.ts   4 passed (4)
+      scripts/check-marketplace-pin-digest.test.mjs   20 passed (20)
+
+--------------------------------------------------------------------------------
 10. WHAT IS AND IS NOT CLAIMED
 --------------------------------------------------------------------------------
 CLAIMED: the two legal states are named and asserted; `ahead-of-pin` prints on

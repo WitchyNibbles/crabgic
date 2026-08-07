@@ -141,22 +141,43 @@ function scrubbedGitEnv() {
   return env;
 }
 
-function git(repoRoot, args, options = {}) {
-  return execFileSync("git", args, {
+/**
+ * Shared spawn options. Deliberately NOT a `git(repoRoot, args)` helper.
+ *
+ * ⚠️ DO NOT REFACTOR THE THREE CALL SITES BELOW INTO ONE. This module's first
+ * draft did exactly that, and `packages/testkit/src/git-spawn-hygiene.test.ts`
+ * reddened the whole suite for it — correctly. That guard classifies a spawn by
+ * the LITERAL first element of its argv array; a generic helper passing a
+ * variable `args` is unclassifiable, so it is assumed MUTATING and required to
+ * name a sanctioned scrub (`runFixtureGit`/`gitFixtureEnv`/
+ * `GIT_LOCATION_ENV_VARS`), none of which this build-free script can import.
+ *
+ * Writing each call site with its literal subcommand is the better answer
+ * anyway, and not merely the one that satisfies the guard: it makes
+ * `rev-parse`, `merge-base` and `archive` — all read-only — visible to a static
+ * reader and to CI, so this module's "read-only throughout" claim is checked by
+ * a machine rather than asserted in a comment. Adding a fourth git call means
+ * adding a fourth literal call site, and if that subcommand mutates, the guard
+ * will say so.
+ */
+function gitOptions(repoRoot, extra = {}) {
+  return {
     cwd: repoRoot,
     env: scrubbedGitEnv(),
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    ...options,
-  });
+    ...extra,
+  };
 }
 
 /** The full object id `rev` names, or `undefined` when it resolves to no commit in this repository. */
 export function resolveCommit(repoRoot, rev) {
   try {
-    return git(repoRoot, ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`], {
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    return execFileSync(
+      "git",
+      ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`],
+      gitOptions(repoRoot, { stdio: ["ignore", "pipe", "ignore"] }),
+    ).trim();
   } catch {
     return undefined;
   }
@@ -165,9 +186,11 @@ export function resolveCommit(repoRoot, rev) {
 /** Whether `ancestor` is reachable from `descendant`. */
 export function isAncestor(repoRoot, ancestor, descendant) {
   try {
-    git(repoRoot, ["merge-base", "--is-ancestor", ancestor, descendant], {
-      stdio: ["ignore", "ignore", "ignore"],
-    });
+    execFileSync(
+      "git",
+      ["merge-base", "--is-ancestor", ancestor, descendant],
+      gitOptions(repoRoot, { stdio: ["ignore", "ignore", "ignore"] }),
+    );
     return true;
   } catch {
     return false;
@@ -182,7 +205,11 @@ export function isAncestor(repoRoot, ancestor, descendant) {
 export function extractPluginTreeAt(repoRoot, commit) {
   const dir = mkdtempSync(path.join(tmpdir(), "crabgic-pin-digest-"));
   const tarPath = path.join(dir, "plugin.tar");
-  git(repoRoot, ["archive", "--format=tar", "-o", tarPath, commit, PLUGIN_RELATIVE_PATH]);
+  execFileSync(
+    "git",
+    ["archive", "--format=tar", "-o", tarPath, commit, PLUGIN_RELATIVE_PATH],
+    gitOptions(repoRoot),
+  );
   execFileSync("tar", ["-xf", tarPath, "-C", dir], { stdio: ["ignore", "ignore", "pipe"] });
   return {
     pluginRoot: path.join(dir, ...PLUGIN_RELATIVE_PATH.split("/")),
