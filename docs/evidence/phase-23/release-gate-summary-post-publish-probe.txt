@@ -35,6 +35,7 @@
 
      Test Files  1 failed (1)
            Tests  1 failed | 16 passed (17)
+     exit status: 1
 
 crabgic@1.6.0 was published today. `published` is `true` because it is true.
 
@@ -61,7 +62,8 @@ cut, and the only fix is a version bump or a re-cut tag.
 
 WHAT IS WRONG IS THE TEST. It asserts a release-CANDIDATE moment ("the version
 about to be cut is not yet on the registry") as though it were a repository
-invariant that holds at every commit — while, four lines below, the SAME test
+invariant that holds at every commit — while, NINE lines below (:336 to :345),
+the SAME test
 explicitly reasons the other way about the tag clause:
 
     :345  // asserted here: this harness runs against whatever HEAD happens to be,
@@ -103,6 +105,7 @@ STEP 1 — neutralise :334.
          335|       expect(result.publication.reasons).toEqual([]);
      Test Files  1 failed (1)
            Tests  1 failed | 16 passed (17)
+     exit status: 1
 
 STEP 2 — neutralise :335 as well.
 
@@ -140,6 +143,10 @@ everything else still neutralised.
 
      Test Files  1 passed (1)
            Tests  17 passed (17)
+     exit status: 0
+
+(Steps 2, 3 and 4 each exited 1; only their failing assertion is quoted above,
+ since the file/test counts were identical to step 1's throughout.)
 
 ⇒ SIX SITES, not one: `:334`, `:335`, `:336`, `:382`, `:383`, and the pattern
 list at `:413-418`. A fix that changes only the assertion the failure message
@@ -150,7 +157,7 @@ is cleared. That is the reason for measuring rather than reading.
 4. THE SIZED FIX (NOT IMPLEMENTED HERE)
 --------------------------------------------------------------------------------
 Assert the CONDITIONAL that is actually invariant, in the shape the tag clause
-already uses three lines away:
+already uses nine lines below (:336 to :345):
 
     if the release version is ABSENT from `publishedVersions`:
         publication.published === false  and  publication.reasons === []

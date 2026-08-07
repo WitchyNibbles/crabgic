@@ -8,7 +8,7 @@ ticked and stays ticked: this record is about the instrument, not about the daem
 (`origin/main`).
 
 **Severity:** **raised 2026-08-07 from low to blocking-the-gate**, still **not a product defect of
-any kind**. The cost named at `docs/evidence/gap-18/known-gate-flakes.md:24` — "a gate that goes red
+any kind**. The cost named at `docs/evidence/gap-18/known-gate-flakes.md:25` — "a gate that goes red
 for reasons unrelated to the change under test teaches its readers to re-run rather than
 investigate" — is no longer occasional here. ⚠️ **On this host today the arm breached in two of three
 consecutive plain full-suite runs, at 1.6977% and 3.2330%, with no artificial load in any of them.**
@@ -53,60 +53,83 @@ The constant was **transcribed from the roadmap criterion's words**, which is th
 done for a spec number — and it means the threshold has never been calibrated against the
 distribution of the instrument that checks it.
 
-## Measured — and the received story is inverted
+## Measured — 23 samples, and why this record stops comparing channels
 
-| channel                                                    | `cpuFraction`             |
-| ---------------------------------------------------------- | ------------------------- |
-| isolated, coverage OFF, 3 files — **committed 2026-08-01** | **0.3293%**               |
-| isolated, coverage OFF, 1 file, **32 busy loops**          | 0.1007 / 0.1271 / 0.1399% |
-| isolated, coverage OFF, 1 file, no load                    | 0.0284 / 0.0773 / 0.0931% |
-| isolated, coverage ON, 1 file — **committed**              | 0.1083%                   |
-| isolated, coverage ON, 1 file                              | 0.0827 / 0.0842 / 0.0897% |
-| isolated, coverage OFF, 1 file, 8 busy loops (unstarved)   | 0.0910%                   |
-| one project (55 files)                                     | 0.0992%                   |
-| full suite, local                                          | 0.0971 / 0.1571%          |
-| full suite, CI — **committed**                             | 0.1202%                   |
-| full suite, local, **under 32 busy loops**                 | 0.0961 / 0.1069%          |
+Every figure below is verbatim captured stdout with a recorded command and exit status, in
+`docs/evidence/phase-05/idle-budget-load-sensitivity.txt` or in the committed artifact named beside
+it. (An earlier draft carried seven figures whose stdout had not been retained; those configurations
+were re-run and re-captured rather than annotated.)
+
+| channel                                                   | `cpuFraction`             |
+| --------------------------------------------------------- | ------------------------- |
+| isolated, cov OFF, 3 files — **committed 2026-08-01**     | **0.3293%**               |
+| isolated, cov OFF, 1 file, **32 busy loops**              | 0.1007 / 0.1271 / 0.1399% |
+| isolated, cov OFF, 1 file, 8 busy loops (unstarved)       | 0.1122%                   |
+| isolated, cov OFF, 1 file, no load                        | 0.0284 / 0.0773 / 0.0931% |
+| isolated, cov ON, 1 file                                  | 0.0823 / 0.1014 / 0.1142% |
+| isolated, cov ON, 1 file (immediately after a breach)     | 0.0277 / 0.0819 / 0.1074% |
+| isolated, coverage/command **unrecorded** — **committed** | 0.1083%                   |
+| one project, cov ON (55 files)                            | 0.0414%                   |
+| full suite, cov ON, uncontended (two distinct runs)       | 0.1093% / 0.1093%         |
+| full suite, cov ON, under 32 busy loops                   | 0.0961 / 0.1069%          |
+| full suite, CI — **committed**                            | 0.1202%                   |
+| full suite, cov ON, uncontended — **BREACH**              | **1.6977%**               |
+| full suite, cov ON, uncontended — **BREACH**              | **3.2330%**               |
+
+23 samples, laid out as 13 rows over **10 distinct configurations** — the two post-breach isolated
+rows share a configuration with the cov-ON rows above them, and the two BREACH rows share one with
+the uncontended full-suite row.
 
 **Two results, and the second is the one that matters.**
 
-**1. External machine contention does move it, cleanly.** Three unloaded runs against three runs
-under 32 busy loops (2× `nproc`, so the process is genuinely starved rather than merely sharing):
-means 0.0663% → 0.1226%, **1.85×, with no overlap** — the loaded minimum (0.1007%) exceeds the
-unloaded maximum (0.0931%). An earlier probe used 8 loops on 16 cores, never starved the process, and
-found nothing; that probe proved nothing and its conclusion is withdrawn.
+**1. External machine contention does move it, cleanly.** Three unloaded runs against three under 32
+busy loops (2× `nproc`, so the process is genuinely starved rather than merely sharing): means
+0.0663% → 0.1226%, **1.85×, with no overlap** — the loaded minimum (0.1007%) exceeds the unloaded
+maximum (0.0931%). The first draft's 8-loop probe never starved the process and its conclusion is
+withdrawn; re-captured on review, that control reads **0.1122%**, above the unloaded mean — which is
+why a single sample settles nothing in either direction.
 
-**2. The isolated channel is the noisier one, by a wide margin.**
+**2. Two different kinds of spread, and they must not be collapsed into one.** ⚠️ This record has
+made a comparative-noise claim twice and been wrong twice — first "the full suite is noisy and
+isolation quiet", then its inversion, "the isolated channel is the noisier one". **Both are
+retired.** The second was true of the non-breach figures available when it was written, and stopped
+being the useful statement the moment a full-suite breach was captured. What survives, over captured
+figures only:
 
 ```
-ISOLATED   span 0.0284% -> 0.3293%   = 11.6x
-FULL SUITE span 0.0971% -> 0.1571%   =  1.6x
+NON-BREACH SPREAD
+  isolated,   no artificial load   0.0277% -> 0.3293%   = 11.9x
+  FULL SUITE, no artificial load   0.1093% -> 0.1202%   =  1.1x  (3 samples)
+
+WHERE BREACHES HAPPEN
+  isolated     0 breaches in 15 samples, spanning 11.9x
+  FULL SUITE   2 breaches in 5 uncontended samples — 1.6977% and 3.2330%
 ```
 
-The 0.3293% top of that range is `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20` — an
-**isolated** run with **coverage off**, the leanest configuration that exists, committed on
-2026-08-01 with its command and exit status. It is the **highest non-breach figure on record
-anywhere**, and 2.7× the CI full-suite figure at `roadmap/05-supervisor-daemon.md:122` (0.1202%).
-Every full-suite figure ever recorded sits _inside_ the isolated channel's own band. Even three
-consecutive unloaded runs of one command span 3.3× (0.0284–0.0931%) with nothing changed between
-them.
+**The isolated channel's wide spread sits entirely BELOW the bound. The full-suite channel's narrow
+non-breach spread — three samples inside 1.1×, two of them printing the identical 0.1093% — has a
+heavy tail that crosses it, by 1.7× and then 3.2×.** The top of the isolated
+range — 0.3293%, at `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, an isolated
+**coverage-off** run committed 2026-08-01 with its own command and exit status — is the highest
+_non-breach_ figure anywhere, and still 3× inside budget.
 
-⇒ **The honest statement is not "the full suite is noisy and isolation is quiet". It is: this metric
-is noisy in every configuration, and no channel has been sampled enough times to say what its
-distribution is.** The budget is a spec number sitting above a distribution nobody has
-characterised — which is what makes an occasional breach unsurprising, and what makes "re-ran it in
-isolation, 3/3 green" a weak disposition rather than a verdict.
+⇒ So the load-bearing conclusion needs no channel comparison at all: **isolation has never produced a
+breach in 15 captured samples, so a green isolated re-run is not evidence about the full-suite
+draw — it is a sample from a different part of the distribution.** That is why "3/3 green in
+isolation" has never been a disposition for this arm, and it is now measurable rather than arguable.
+The budget remains a spec number transcribed from the roadmap, sitting above a distribution nobody
+has characterised in either channel.
 
 ## The breaches
 
-**On record**, committed and independently readable at `docs/evidence/gap-18/known-gate-flakes.md:82`:
+**On record**, committed and independently readable at `docs/evidence/gap-18/known-gate-flakes.md:83`:
 `expected 0.011960719041278295 to be less than 0.01` — **1.196%** — in a full `npm test` taken
 immediately after `npm run build`; 3/3 green in isolation; the branch touched nothing under
-`packages/supervisor`. Mirrored at `docs/verification-playbook.md:922`.
+`packages/supervisor`. Mirrored at `docs/verification-playbook.md:963`.
 
 **Observed during review of PR #133**, in a full-suite run under concurrent external load:
 **1.0137%**. Attributed to the review rather than claimed first-hand, and added to both flake lists
-in this commit per `docs/verification-playbook.md:929`.
+in this commit per `docs/verification-playbook.md:1009`.
 
 **Reported without an artifact — UNVERIFIED:** 1.075% and 1.159%. A repo-wide grep returns nothing
 for either; no transcript, no run id, no flake row. Nothing here rests on them.
@@ -165,9 +188,9 @@ honest answer to "what does contention actually break here" — and the answer i
 ## Why "it is already in both flake lists" is not a disposition
 
 The arm is listed twice (`docs/evidence/gap-18/known-gate-flakes.md:16`,
-`docs/verification-playbook.md:922`), and both entries are honest. But the catalogue calls itself
+`docs/verification-playbook.md:963`), and both entries are honest. But the catalogue calls itself
 "the minimum honest response" and names the fix as owed to "whoever owns those phases"
-(`docs/evidence/gap-18/known-gate-flakes.md:26-28`). Sightings have now accumulated faster than
+(`docs/evidence/gap-18/known-gate-flakes.md:27-29`). Sightings have now accumulated faster than
 calibration, and the reason a fourth list entry is not the answer is now measurable rather than
 rhetorical: **the disposition each sighting used — "re-ran in isolation, green" — is drawn from the
 channel with the widest spread on record.**
@@ -186,8 +209,9 @@ Both remedies are better supported now that the pool is known to be `forks`, bec
 2. **Set the bound from a MEASURED distribution, and record the samples.** Not a round number picked
    to make the red go away: take N samples per channel, commit every one under
    `docs/evidence/phase-05/`, and write the sampling method beside the bound. ⚠️ **N must be large.**
-   The table above is 18 samples across eight configurations and the isolated channel alone spans
-   11.6× — a handful of runs cannot characterise this. Keep the 1% figure as a **second, isolated**
+   The table above is 23 samples over ten distinct configurations; the isolated channel alone spans 11.9×
+   while never breaching, and the full suite breached in two of five uncontended samples — a handful
+   of runs cannot characterise either. Keep the 1% figure as a **second, isolated**
    assertion so the roadmap's documented number is still asserted somewhere. **Effort: S**, plus real
    sampling time.
 

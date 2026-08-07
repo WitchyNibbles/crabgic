@@ -41,7 +41,7 @@ it from a file that forgot to scrub.
     :146      offenders.push(relative(REPO_ROOT, file));
 
 Line :145 is the exemption. It runs against the file's WHOLE TEXT, comments
-included. The warning at :111 and the 40-line footnote at :207 onward describe
+included. The warning at :111 and the 47-line footnote block at :207-253 describe
 this accurately and completely — the mechanism is unchanged by them, which is the
 whole subject of this transcript. Documentation is not a control.
 
@@ -126,6 +126,7 @@ PROBE A — BASELINE, tree untouched.
 
     Test Files  1 passed (1)
           Tests  4 passed (4)
+    exit status: 0
 
 PROBE B — insert an outright destructive spawn into `plumbing.test.ts`,
 immediately above the control at :201, token left intact:
@@ -134,6 +135,7 @@ immediately above the control at :201, token left intact:
 
     Test Files  1 passed (1)
           Tests  4 passed (4)          <<<< SHOULD BE RED
+    exit status: 0                     <<<< SHOULD BE 1
 
 `git reset --hard` at `/` is in `MUTATING_SUBCOMMANDS` and would be flagged in
 any other file in the tree. It is invisible here, and the reason is one word in a
@@ -151,6 +153,7 @@ PROBE C — probe B's spawn still present, AND the comment de-tokenized
       +   "packages/git-engine/src/plumbing.test.ts",
     Test Files  1 failed (1)
           Tests  1 failed | 3 passed (4)
+    exit status: 1
 
 PROBE D — the decisive one. `plumbing.test.ts` restored to its committed bytes;
 the ONLY edit is de-tokenizing that one comment word. No spawn added, nothing
@@ -162,6 +165,7 @@ else changed:
       +   "packages/git-engine/src/plumbing.test.ts",
     Test Files  1 failed (1)
           Tests  1 failed | 3 passed (4)
+    exit status: 1
 
 ⇒ PROBE D IS THE FINDING. At HEAD, with no mutation of any kind, this file is
 exempt from the repo-wide mutating-spawn rule, and the sole thing granting the

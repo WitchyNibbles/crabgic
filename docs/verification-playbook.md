@@ -988,8 +988,10 @@ directions:
   timing flake: at that rate it is a gate that does not work, and a green isolated re-run is not a
   disposition. ⚠️ **And the disposition every sighting has used —
   "re-ran in isolation, green" — comes from the noisiest channel there is:** the isolated channel
-  spans **11.6×** on the committed record (0.0284% up to 0.3293% at
-  `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, isolated with coverage off), against 1.6×
+  spans **11.9×** (0.0277% up to 0.3293% at
+  `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, isolated with coverage off) yet has NEVER
+  breached in 15 captured samples, while the full suite breached in two of five uncontended ones —
+  so a green isolated re-run samples a different part of the distribution. Against 1.1×
   for the full suite. **A green isolated re-run does not clear this row.** Filed with a sized remedy
   as `docs/evidence/criteria-closeout/defects/05-idle-budget-arm-not-calibrated-for-its-channel.md`;
   full measurements at `docs/evidence/phase-05/idle-budget-load-sensitivity.txt`.

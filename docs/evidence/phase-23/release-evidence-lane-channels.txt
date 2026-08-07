@@ -322,8 +322,12 @@ CLAIMED: the four scripts are in no workflow; the tarball content guards are the
 sole bearer of their subject and a line-count-neutral weakening of that subject
 leaves 654 test files, 6869 tests and nine meta-checks green; `e2e/release` and
 `e2e/attestation` are in no per-push channel and their only CI channel is a
-dispatch or a `v*` tag; and the one merged record that could have depended on
-this cites a committed transcript instead.
+dispatch or a `v*` tag; and of the TWO merged records that mention the unrun
+acyclicity script, one cites a committed transcript rather than a CI run and the
+other carries a pointer ruling about what that script WOULD accept — so neither
+tick rests on a run that never happened. (An earlier draft of this line said
+"the one merged record"; §5 corrects the count to two and this sentence was
+left behind by that correction.)
 
 NOT CLAIMED: that anything shipped wrong. Every published tarball to date is
 covered by §5's reasoning and by `check:tarball` having been run by hand at the

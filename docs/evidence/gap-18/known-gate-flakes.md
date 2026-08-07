@@ -139,9 +139,10 @@ and the difference changes the remedy. Measured, and written up in full at
 - But contention alone is **not sufficient** to breach: a full 654-file suite run _under_ those 32
   busy loops put the arm at **0.0961%**, well inside budget.
 - And the disposition every sighting has used — "re-ran in isolation, 3/3 green" — is drawn from the
-  **noisiest** channel on record. The isolated channel spans **11.6×**
+  **wrong part of the distribution**. The isolated channel spans **11.9×**
   (0.0284% here → 0.3293% at `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, an isolated
-  run with coverage off, committed 2026-08-01); the full-suite channel spans 1.6×. Every full-suite
+  run with coverage off, committed 2026-08-01) and has produced **zero breaches in 15 captured
+  samples**, while the full suite breached in **two of five** uncontended ones. Every non-breach full-suite
   figure ever recorded sits inside the isolated band.
 
 ⇒ **Do not read a green isolated re-run as clearing this row.** The honest summary is that the 1%
