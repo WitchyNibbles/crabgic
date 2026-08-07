@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "966498e2d28eb505c8158c480bdf4d20626d1445",
+  "generatedAtSha": "31ecf30d8adc51acd8e9df50978d508e1e7c4963",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "allowUnanchored": true,
-  "unanchoredAccepted": 1,
+  "unanchoredAccepted": 0,
   "allowUnanchoredWarning": "Regenerated with --allow-unanchored: the citation(s) counted above do NOT resolve where they claim, and were pinned anyway. This must be justified in the PR body.",
   "counts": {
     "citations": 1292,

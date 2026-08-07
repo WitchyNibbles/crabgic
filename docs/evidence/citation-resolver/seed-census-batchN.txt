@@ -1,7 +1,7 @@
 RULING-3 transcript
-UTC:        2026-08-06T18:26:32Z
-HEAD:       2cadecde461ac6e51b6495daec905f6e33428d29  (fix(meta): name the git location-var scrub as the repo-wide guard requires)
-UPSTREAM BASE: e5a65ba43cbdf09322d154fe9720592277f7a852  (origin/main, #119)
+UTC:        2026-08-07T00:52:38Z
+HEAD:       31ecf30d8adc51acd8e9df50978d508e1e7c4963  (fix(meta): derive top-level directories from git, not the filesystem)
+UPSTREAM BASE: 23790fdf7f957a592ca81a40bc0d399e013085a2  (origin/main, (#123))
 Purpose:    the pinned starting line of the burn-down. Every number below is
             re-derived by the PRODUCTION tool at the sha in this header, so a
             later pass can measure progress against it rather than against a
@@ -16,32 +16,32 @@ $ node scripts/check-citation-content.mjs --report
 
 ## Census
 - citations: 1292
-- fragments: 3901
-- anchored: 2711
-- seededStale: 582
-- outsideSpan: 734
-- repeatText: 526
+- fragments: 3903
+- anchored: 2655
+- seededStale: 640
+- outsideSpan: 766
+- repeatText: 525
 - crossFile: 20
 - skipped: 608
 
 ## Classification of flagged citations (the burn-down's units)
-- ABSENT-only (quote-convention variance or a real rewrite — needs a human) [ticked]: 92
-- ABSENT-only (quote-convention variance or a real rewrite — needs a human): 95
+- ABSENT-only (quote-convention variance or a real rewrite — needs a human) [ticked]: 90
+- ABSENT-only (quote-convention variance or a real rewrite — needs a human): 93
 - MOVED-ambiguous (repeat text — position NOT verifiable by content) [ticked]: 39
 - MOVED-ambiguous (repeat text — position NOT verifiable by content): 42
-- MOVED-unique (position measured — a dated correction is mechanical) [ticked]: 156
-- MOVED-unique (position measured — a dated correction is mechanical): 184
+- MOVED-unique (position measured — a dated correction is mechanical) [ticked]: 167
+- MOVED-unique (position measured — a dated correction is mechanical): 199
 - UNRESOLVED PATH inside the quote (usually an ambiguous bare basename) [ticked]: 2
 - UNRESOLVED PATH inside the quote (usually an ambiguous bare basename): 2
 
 ## Per-record burn-down (stale fragments / stale citations / of which under a ticked criterion)
-- phase-00.json: 11 / 8 / 8
-- phase-01.json: 9 / 7 / 7
+- phase-00.json: 15 / 8 / 8
+- phase-01.json: 10 / 7 / 7
 - phase-02.json: 16 / 9 / 9
 - phase-03.json: 19 / 13 / 13
 - phase-04.json: 10 / 9 / 9
 - phase-05.json: 10 / 8 / 8
-- phase-06.json: 16 / 3 / 0
+- phase-06.json: 52 / 10 / 5
 - phase-07.json: 14 / 13 / 13
 - phase-08.json: 10 / 8 / 8
 - phase-09.json: 27 / 17 / 16
@@ -52,11 +52,11 @@ $ node scripts/check-citation-content.mjs --report
 - phase-14.json: 20 / 16 / 16
 - phase-15.json: 18 / 12 / 9
 - phase-16.json: 87 / 44 / 44
-- phase-17.json: 14 / 5 / 5
+- phase-17.json: 20 / 8 / 8
 - phase-18.json: 82 / 26 / 18
-- phase-19.json: 11 / 4 / 0
+- phase-19.json: 21 / 7 / 1
 - phase-20.json: 55 / 17 / 13
-- phase-21.json: 20 / 9 / 3
+- phase-21.json: 21 / 9 / 3
 - phase-22.json: 13 / 8 / 8
 - phase-23.json: 29 / 20 / 17
 - phase-24.json: 15 / 11 / 11
@@ -67,7 +67,7 @@ exit=0
 The blocking check at this sha, with the baseline seeded from it
 ===============================================================================
 $ node scripts/check-citation-content.mjs
-check-citation-content: 1292 citation(s), 3901 quoted fragment(s) (2711 anchored, 582 known-stale, 608 not file quotes); 816 prose reference(s), 33 bare-basename (unchecked).
+check-citation-content: 1292 citation(s), 3903 quoted fragment(s) (2655 anchored, 640 known-stale, 608 not file quotes); 816 prose reference(s), 33 bare-basename (unchecked).
 check-citation-content: PASS — every citation resolves exactly as the baseline pins it.
 exit=0
 
