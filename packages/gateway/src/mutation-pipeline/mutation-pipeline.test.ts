@@ -71,6 +71,7 @@ function buildDeps(
   journal: JournalStore,
   sendRequest: typeof sendHttpRequest,
   tenantAllowlist: readonly string[] | undefined = undefined,
+  folderAllowlist: readonly string[] | undefined = undefined,
 ): MutationPipelineDeps {
   const httpClient = new GatewayHttpClient({
     allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://fake-provider.invalid"] },
@@ -78,7 +79,13 @@ function buildDeps(
     sendRequest,
     sleep: async () => undefined,
   });
-  return { journal, httpClient, lock: new IdempotencyKeyLock(), tenantAllowlist };
+  return {
+    journal,
+    httpClient,
+    lock: new IdempotencyKeyLock(),
+    tenantAllowlist,
+    folderAllowlist,
+  };
 }
 
 let journalDir: string;
@@ -802,6 +809,105 @@ describe("executeMutationPlan — serializationTarget", () => {
 
     expect(recorder.maxInFlight()).toBe(2);
   });
+
+  /**
+   * PLURAL form — `serializationTarget` returning an ARRAY, the shape
+   * 18/19's `bulk:<keys>` writes need (roadmap/18 §Exit criteria 10).
+   * Same barrier discipline as the cases above: no duration is asserted,
+   * and every `=== 1` claim is paired with a disjoint-set `=== 2` control.
+   */
+  it("PLURAL: two plans whose serializationTarget ARRAYS share ONE member key are serialized", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers({
+      serializationTarget: (p) =>
+        p.canonicalTarget === "bulk:A,B" ? ["issue:A", "issue:B"] : ["issue:B", "issue:C"],
+    });
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("e", "bulk:A,B"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("f", "bulk:B,C"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("PLURAL CONTROL: two plans whose serializationTarget arrays are DISJOINT overlap", async () => {
+    const recorder = createOverlapRecorder();
+    const deps = buildDeps(journal, recorder.sendRequest);
+    const handlers = buildHandlers({
+      serializationTarget: (p) =>
+        p.canonicalTarget === "bulk:A,B" ? ["issue:A", "issue:B"] : ["issue:C", "issue:D"],
+    });
+
+    await Promise.all([
+      executeMutationPlan(sharedTargetPlan("g", "bulk:A,B"), handlers, deps),
+      executeMutationPlan(sharedTargetPlan("h", "bulk:C,D"), handlers, deps),
+    ]);
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+
+  it("PLURAL: an array target sends serializationResources and keeps canonicalTarget as `resource`", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "bulk:A,B" });
+
+    await executeMutationPlan(
+      plan,
+      buildHandlers({ serializationTarget: () => ["issue:A", "issue:B"] }),
+      deps,
+    );
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.serializationResources).toEqual(["issue:A", "issue:B"]);
+    // `resource` stays the plan's identity — audit/attribution only when
+    // the mutex is taken over the plural set.
+    expect(req?.resource).toBe("bulk:A,B");
+  });
+
+  it("SINGLE-ELEMENT ARRAY is byte-identical to the string form: `resource` set, no serializationResources", async () => {
+    // This is the assertion that keeps the pre-existing contract from
+    // silently changing shape now that the hook is plural-capable. Every
+    // single-issue Jira write takes this path.
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "issue:A:comment" });
+
+    await executeMutationPlan(
+      plan,
+      buildHandlers({ serializationTarget: () => ["issue:A"] }),
+      deps,
+    );
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.resource).toBe("issue:A");
+    expect(req?.serializationResources).toBeUndefined();
+  });
+
+  it("an EMPTY array target falls back to canonicalTarget — a write is never left unkeyed", async () => {
+    const deps = buildDeps(journal, async () => ({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({ appliedRevision: "rev-1" }),
+    }));
+    const requestSpy = vi.spyOn(deps.httpClient, "request");
+    const plan = buildPlan({ canonicalTarget: "issue:EX-9" });
+
+    await executeMutationPlan(plan, buildHandlers({ serializationTarget: () => [] }), deps);
+
+    const req = requestSpy.mock.calls[0]?.[0];
+    expect(req?.resource).toBe("issue:EX-9");
+    expect(req?.serializationResources).toBeUndefined();
+  });
 });
 
 /**
@@ -943,6 +1049,273 @@ describe("executeMutationPlan — tenant-allowlist admission check (defect 21)",
     );
     expect(afterTightening.status).toBe("failed");
     expect(afterTightening.errorKind).toBe("policy_blocked");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * DEFECT 16 — the folder-allowlist admission check.
+ *
+ * `ExternalConnection.folderAllowlist` was the third declared-and-inert
+ * sibling of `tenantAllowlist` (defect 21, closed by PR #100): published in
+ * the JSON Schema, settable by an operator, read by no code anywhere.
+ *
+ * The shape it needs is NOT the tenant one, and the difference is the whole
+ * design. `plan.tenant` is a required field on every `RemoteMutationPlan`,
+ * so tenancy has exactly two answers. A folder is not on the plan at all
+ * (`RemoteMutationPlanSchema` is `.strict()` and names no folder), so the
+ * pipeline has to ASK the provider — and a provider has THREE honest
+ * answers: "in these folders", "not inside any folder" (an org-level or
+ * root-level resource), and "I cannot tell". Only the first can ever be
+ * admitted against an allowlist; the other two are refused, with their own
+ * detail sentences so the two are distinguishable in an outcome.
+ *
+ * SCOPE, so a reader does not over-read these tests: this binds the folder
+ * a provider attributes FROM THE PLAN, on the mutation path only. It does
+ * not verify where the resource actually lives on the remote, and it does
+ * not check reads.
+ */
+describe("executeMutationPlan — folder-allowlist admission check (defect 16)", () => {
+  const okResponse = {
+    status: 200,
+    headers: {},
+    bodyText: '{"appliedRevision":"rev-1"}',
+  } satisfies HttpTransportResponse;
+
+  const inFolder = (folders: readonly string[]): Partial<MutationPipelineHandlers> => ({
+    folderAttribution: () => ({ scope: "folders", folders }),
+  });
+
+  it("CONTROL: an ABSENT folderAllowlist (undefined) is folder-unscoped — the mutation proceeds", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      // No `folderAttribution` at all — the pre-defect-16 world, which must
+      // stay byte-for-byte unchanged for every connection that sets no
+      // folderAllowlist. This is the case that would break if the check
+      // were wired fail-closed by default.
+      buildHandlers(),
+      buildDeps(journal, sendRequest, undefined, undefined),
+    );
+    expect(outcome).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("CONTROL: an IN-allowlist folder proceeds — rules out a refuse-everything implementation", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(inFolder(["team-a"])),
+      buildDeps(journal, sendRequest, undefined, ["team-a", "team-b"]),
+    );
+    expect(outcome).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(outcome.detail).toBeUndefined();
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a plan attributed to an OUT-of-allowlist folder — typed policy_blocked, zero network calls", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(inFolder(["team-z"])),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("outside this connection's folderAllowlist");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  it("refuses when ANY attributed folder is out of the allowlist, not only when all are", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(inFolder(["team-a", "team-z"])),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  it("FAIL-CLOSED: an EMPTY folderAllowlist refuses every mutation, with no network call", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      // Even a perfectly-attributed, otherwise-admissible plan.
+      buildHandlers(inFolder(["team-a"])),
+      buildDeps(journal, sendRequest, undefined, []),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("folderAllowlist is empty");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * THE STATE THAT MAKES THE CONTROL NON-INERT. A provider that supplies no
+   * `folderAttribution` (18/19's Jira apply clients — Jira has no folder in
+   * its model at all) cannot place a write in a folder, so under a declared
+   * folderAllowlist it is refused rather than waved through. The opposite
+   * choice — allow when unattributable — would make the field enforced only
+   * for providers that happened to opt in, with nothing telling an operator
+   * which, i.e. exactly the inert-control shape defect 16 is about.
+   */
+  it("refuses when the provider supplies NO folderAttribution hook at all — unattributable is not admissible", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("cannot attribute");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  it("refuses an explicit 'unknown' attribution, and says so distinctly from the out-of-allowlist case", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const unknown = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers({ folderAttribution: () => ({ scope: "unknown" }) }),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    const outOfList = await executeMutationPlan(
+      buildPlan({ idempotencyKey: "op-folder-out" }),
+      buildHandlers(inFolder(["team-z"])),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(unknown.errorKind).toBe("policy_blocked");
+    expect(outOfList.errorKind).toBe("policy_blocked");
+    // The two refusals are distinguishable — neither detail matches the
+    // other's assertion, so a test for one cannot pass on the other.
+    expect(unknown.detail).toContain("cannot attribute");
+    expect(unknown.detail).not.toContain("outside this connection's folderAllowlist");
+    expect(outOfList.detail).not.toContain("cannot attribute");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The unattributable refusal is the one an operator is likeliest to meet by
+   * misconfiguration rather than by policy, and there is NO config-time signal
+   * — nothing validates `folderAllowlist` against the provider when a
+   * connection is created, so first mutation is where they find out. The
+   * detail therefore has to name both causes and the remedy. Pinned so it
+   * cannot be shortened back to a bare "cannot be admitted".
+   *
+   * The `not.toContain` here is not padding: it re-proves the cross-detail
+   * disjointness after the wording grew. The remedy clause mentions
+   * `folderAllowlist`, so the risk it introduces is colliding with the
+   * OUT-OF-ALLOWLIST detail's own phrase.
+   */
+  it("tells the operator how to fix the commonest cause — no folder concept on this provider", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("the Jira adapters do not");
+    expect(outcome.detail).toContain("remove folderAllowlist from this connection");
+    expect(outcome.detail).toContain("not derivable from the plan");
+    expect(outcome.detail).not.toContain("outside this connection's folderAllowlist");
+  });
+
+  it("refuses an 'outside-folders' attribution, and says so distinctly from the unattributable case", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers({ folderAttribution: () => ({ scope: "outside-folders" }) }),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("does not target a folder");
+    expect(outcome.detail).not.toContain("cannot attribute");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  it("treats an EMPTY attributed folder list as unattributable rather than vacuously admissible", async () => {
+    // `folders: []` would satisfy "every attributed folder is a member"
+    // vacuously — the classic empty-quantifier hole. It is refused.
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan(),
+      buildHandlers(inFolder([])),
+      buildDeps(journal, sendRequest, undefined, ["team-a"]),
+    );
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("cannot attribute");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Same ruling as the tenant check, pinned separately because it is a
+   * different code path: the refusal is NOT journalled, so an operator who
+   * fixes the allowlist can retry the same idempotencyKey. Both halves are
+   * asserted — zero appends, and the retry actually succeeds.
+   */
+  it("writes NOTHING to the journal for a refusal, and does not poison the idempotencyKey", async () => {
+    const appendSpy = vi.spyOn(journal, "appendEntry");
+    const plan = buildPlan({ idempotencyKey: "op-folder-retry" });
+
+    const refused = await executeMutationPlan(
+      plan,
+      buildHandlers(inFolder(["team-z"])),
+      buildDeps(journal, vi.fn().mockResolvedValue(okResponse), undefined, ["team-a"]),
+    );
+    expect(refused.errorKind).toBe("policy_blocked");
+    expect(appendSpy).toHaveBeenCalledTimes(0);
+
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const retried = await executeMutationPlan(
+      plan,
+      buildHandlers(inFolder(["team-z"])),
+      buildDeps(journal, sendRequest, undefined, ["team-a", "team-z"]),
+    );
+    expect(retried).toEqual({ status: "recorded", appliedRevision: "rev-1" });
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses even a replay of an already-recorded operation once the allowlist no longer admits its folder", async () => {
+    const plan = buildPlan({ idempotencyKey: "op-folder-tighten" });
+    const first = await executeMutationPlan(
+      plan,
+      buildHandlers(inFolder(["team-a"])),
+      buildDeps(journal, vi.fn().mockResolvedValue(okResponse), undefined, ["team-a"]),
+    );
+    expect(first.status).toBe("recorded");
+
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const afterTightening = await executeMutationPlan(
+      plan,
+      buildHandlers(inFolder(["team-a"])),
+      buildDeps(journal, sendRequest, undefined, ["team-b"]),
+    );
+    expect(afterTightening.status).toBe("failed");
+    expect(afterTightening.errorKind).toBe("policy_blocked");
+    expect(sendRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ORDERING. The tenant check runs first, so a plan that fails BOTH is
+   * reported as a tenant refusal. Pinned because the alternative order would
+   * change what an operator sees for the commonest misconfiguration, and
+   * because it proves neither check absorbed the other.
+   */
+  it("reports the TENANT refusal when a plan is outside both allowlists", async () => {
+    const sendRequest = vi.fn().mockResolvedValue(okResponse);
+    const outcome = await executeMutationPlan(
+      buildPlan({ tenant: "tenant-b" }),
+      buildHandlers(inFolder(["team-z"])),
+      buildDeps(journal, sendRequest, ["tenant-a"], ["team-a"]),
+    );
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(outcome.detail).toContain("tenantAllowlist");
+    expect(outcome.detail).not.toContain("folderAllowlist");
     expect(sendRequest).not.toHaveBeenCalled();
   });
 });

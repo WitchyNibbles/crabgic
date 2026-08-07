@@ -90,6 +90,7 @@ export {
 } from "./mutation-pipeline/mutation-pipeline.js";
 export type {
   MutationApplyResult,
+  MutationFolderAttribution,
   MutationHttpRequestSpec,
   MutationPipelineHandlers,
   MutationPipelineOutcome,

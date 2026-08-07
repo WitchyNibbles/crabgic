@@ -118,6 +118,7 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
 
@@ -139,6 +140,7 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
     expect(replay.status).toBe("replayed");
@@ -187,6 +189,7 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
 
@@ -282,6 +285,7 @@ describe("exactly-once via entity-property markers under an injected mid-POST ti
         httpClient: ctx.httpClient,
         lock: new IdempotencyKeyLock(),
         tenantAllowlist: undefined,
+        folderAllowlist: undefined,
       },
     );
 

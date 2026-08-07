@@ -118,6 +118,7 @@ const outcome = await executeMutationPlan(plan, handlers, {
   // explicitly rather than left to default — an omitted key would read as
   // `undefined` anyway, but silence is what let this hole exist.
   tenantAllowlist: undefined,
+  folderAllowlist: undefined,
 });
 appendFileSync(`${sideEffectFile}.outcomes.jsonl`, `${JSON.stringify(outcome)}\n`);
 process.exit(0);

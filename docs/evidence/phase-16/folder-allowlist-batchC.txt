@@ -1,0 +1,279 @@
+================================================================================
+defect 16 — ExternalConnection.folderAllowlist: declared and read nowhere
+RED-first, seam census, ruling, and probe battery. Batch C-final, 2026-08-06
+================================================================================
+
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#   6f964d76758158159c1d3dc01a0e3a8629f67f79   (origin/main, "test(cli): refresh
+#   the run --json envelope snapshots for Gap 22's provisionalBudgetHash (#117)")
+# The RED-first section was captured one upstream commit earlier, at
+#   1bc0d5159b17715790c74b47f5a0007bd939a802   (origin/main at wave start, still
+#   reachable; #117 touches only packages/cli, so no count here moves).
+# Branch tip at capture (PROVISIONAL — do not cite): closeout/batch-c
+# Runner: local, ubuntu (WSL2). No @live, no CRABGIC_LIVE, no Docker, no network.
+
+--------------------------------------------------------------------------------
+0. THE GAP, RE-MEASURED BEFORE ANY CHANGE
+--------------------------------------------------------------------------------
+
+⚠️ The two line numbers below are pinned to the UPSTREAM BASE, not to the tree
+this branch lands as — this batch edits both files, so the same grep at the
+branch tip answers differently. Re-run it exactly as written:
+
+$ git grep -n "folderAllowlist" 6f964d7 -- packages
+  6f964d7:packages/contracts/schemas/external-connection.json:59:    "folderAllowlist": {
+  6f964d7:packages/contracts/src/contracts/external-connection.ts:129:    folderAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
+
+Two hits, both declarations. ZERO reads. The field was published, settable by an
+operator, and enforced nowhere — the third declared-and-inert sibling of
+`tenantAllowlist` (defect 21, closed by PR #100).
+
+--------------------------------------------------------------------------------
+1. THE SEAM DECISION, AND THE CONSUMER CENSUS BEHIND IT
+--------------------------------------------------------------------------------
+
+A tenant is decidable inside the pipeline: `RemoteMutationPlan.tenant` is a
+required field. A FOLDER IS NOT ON THE PLAN AT ALL —
+
+$ sed -n '/RemoteMutationPlanSchema = /,/\.strict()/p' \
+      packages/contracts/src/contracts/remote-mutation-plan.ts
+  → 14 members; none names a folder; the object is `.strict()`, and the desired
+    state is present only as `desiredStateHash` + `redactedDiff`.
+
+So the pipeline cannot decide this alone. Three seams were possible:
+
+  (a) add a folder field to `RemoteMutationPlan`
+      REJECTED. `.strict()` + a phase-02-owned contract ⇒ a coordinated change
+      across 02/16/18/20 and the interface ledger, and every plan builder in
+      every connector would have to fill a field only Grafana can populate.
+  (b) check inside `GatewayHttpClient.request()`
+      REJECTED for the same reason PR #100 rejected it for tenants: read
+      requests carry pseudo-tenants used purely as concurrency keys, and the
+      request layer has no notion of the plan at all.
+  (c) a PROVIDER HOOK on the handler set, consulted by `executeMutationPlan`
+      CHOSEN. It mirrors the `serializationTarget` seam that already exists two
+      members above it: same optional shape, same purity requirement, same
+      forwarding path through the apply-tool bridge.
+
+CONSUMER CENSUS for (c) — by consumer, not by type name (a type-name grep misses
+inferred object literals). Census route: every construction of
+`MutationPipelineDeps`, found via its `tenantAllowlist` member, then filtered:
+
+  production (1)  packages/gateway/src/mcp/native-tools/mutation-apply-tool.ts
+  re-entrant (1)  packages/connectors-grafana/src/mutation/apply-with-rebase.ts
+                  — takes deps from its caller, so it is covered by the same
+                    single check rather than needing a second one
+  tests/e2e (16 files carrying `folderAllowlist: undefined` — 12 `.ts`
+            suites/harnesses and 4 `.mjs` crash-harness fixtures)
+
+Exactly ONE production site can see the real `ExternalConnection`, and it is the
+one that already hands over `tenantAllowlist`. That is where the wiring went.
+
+WHO CAN ANSWER THE HOOK — census over the closed 7-kind Grafana list
+(packages/connectors-grafana/src/resource-kinds.ts), each row read from that
+kind's own `CANONICAL_FIELD_KEYS` rather than guessed:
+
+  kind                   | field naming a folder      | ruling
+  -----------------------|----------------------------|------------------
+  folder                 | (the resource IS a folder) | folders: [own uid]
+  dashboard              | folderUid                  | folders: [it]; "" ⇒ outside-folders
+  alert-rule             | folderUID  (capital UID)   | folders: [it]; absent ⇒ unknown
+  annotation             | dashboardUID only          | unknown (transitive; needs a read)
+  contact-point          | —                          | outside-folders (org-level)
+  mute-timing            | —                          | outside-folders (org-level)
+  notification-template  | —                          | outside-folders (org-level)
+
+Jira (18/19) has no folder in its model and registers no hook at all.
+
+That census is why the answer type has THREE members, not two:
+`{folders}` / `{outside-folders}` / `{unknown}`. Collapsing the last two would
+make a lost plan-payload entry indistinguishable from a genuine root-level write.
+
+--------------------------------------------------------------------------------
+2. THE RULING THAT FILLS THE SPEC SILENCE
+--------------------------------------------------------------------------------
+
+roadmap/16 names "folder allowlists" and says nothing about a provider that has
+no folder concept. Two readings were available:
+
+  ADMIT when unattributable — the field then binds only providers that opted in,
+    with nothing telling an operator which. That is the same trusted-and-inert
+    control shape the defect record is about, rebuilt one level up.
+  REFUSE when unattributable — chosen.
+
+Visible consequence, written into the code and the published `.describe()` so it
+is not later rediscovered as a bug: setting `folderAllowlist` on a JIRA
+connection refuses every Jira mutation on it, loudly and with a typed
+`policy_blocked` reason.
+
+Probe I below implements the REJECTED reading and shows exactly which assertions
+separate the two, so the ruling is measured rather than argued.
+
+--------------------------------------------------------------------------------
+3. RED FIRST (at upstream base 1bc0d51; tests added, production unchanged)
+--------------------------------------------------------------------------------
+
+$ npx vitest run --project @crabgic/gateway --coverage=false \
+    src/mutation-pipeline/mutation-pipeline.test.ts \
+    src/mcp/native-tools/mutation-apply-tool.test.ts
+
+ Test Files  2 failed (2)
+      Tests  11 failed | 55 passed (66)
+exit status: 1   (deliberately RED)
+
+The eleven: 9 pipeline-semantics cases + 2 production-wiring cases.
+
+FIVE CONTROLS WERE GREEN IN THAT SAME RED RUN, and they are what stop the
+enforcement being a refuse-everything implementation:
+    CONTROL: an ABSENT folderAllowlist (undefined) is folder-unscoped
+    CONTROL: an IN-allowlist folder proceeds
+    CONTROL (tool): an in-allowlist folder is still applied
+    CONTROL (tool): a connection that declares NO folderAllowlist is unaffected
+    ordering: reports the TENANT refusal when a plan is outside both allowlists
+
+$ npx vitest run --project @crabgic/connectors-grafana --coverage=false \
+    src/mutation/folder-attribution.test.ts
+ Test Files  1 failed (1)
+      Tests  no tests
+  Error: Cannot find module './folder-attribution.js'
+  — a weak RED (the module did not exist yet); the strong evidence for that
+    module is probe H below, which mutates it and watches 7 cases redden.
+
+After the production change, all three files green.
+
+--------------------------------------------------------------------------------
+4. PROBE BATTERY — baseline / mutation / restore, all at UPSTREAM BASE 6f964d7
+--------------------------------------------------------------------------------
+
+Restores use an explicit SOURCE and an explicit PATH; test-name presence is
+grepped after each; the closing baseline is compared to the opening one.
+
+BASELINE   npm run build → exit 0
+  $ npx vitest run --project @crabgic/connectors-jira \
+      --project @crabgic/gateway --project @crabgic/connectors-grafana --coverage=false
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+
+PROBE E3 — the pipeline never sees the connection's folderAllowlist
+           (`refuseOutOfAllowlistFolder(plan, undefined, handlers)`)
+  npm run build → exit 0
+   Test Files  3 failed | 117 passed (120)
+        Tests  12 failed | 1340 passed (1352)
+  9 pipeline cases + 2 tool-wiring cases + 1 Grafana end-to-end refusal case.
+
+  ⚠️ Two earlier forms of this same probe (deleting the call, and an early
+  `if (true) return undefined`) gave `npm run build → exit 2`, so their
+  cross-package legs ran on stale dist. Both were discarded and re-run in the
+  compiling form above. The discarded runs reported 11 failures; the compiling
+  one reports 12 — the extra is the Grafana leg the stale dist had hidden.
+
+PROBE F — the apply tool stops reading `connection.folderAllowlist`
+  npm run build → exit 0
+   Test Files  1 failed | 69 passed (70)
+        Tests  2 failed | 777 passed (779)
+  Only the two TOOL-level refusal cases redden; every pipeline case stays green.
+  That is the point of having both layers: a pipeline-only suite would pass with
+  the tool never reading the connection at all, which is the defect's own shape.
+
+PROBE G — the apply tool stops FORWARDING the client's `folderAttribution`
+   Test Files  1 failed | 69 passed (70)
+        Tests  1 failed | 778 passed (779)
+  FAIL  CONTROL: an in-allowlist folder is still applied
+
+  The CONTROL is the bearer here, and the two refusal cases are NOT. Without the
+  forwarding, the plan becomes unattributable — which the pipeline also refuses —
+  so an assertion that only checked "refused" would have passed in both worlds.
+  (npm run build → exit 2 under this mutation; the reddening suite is gateway's
+  own, which vitest runs from src, so the measurement holds. Recorded, not hidden.)
+
+PROBE H — swap Grafana's `folderUid` / `folderUID` spellings
+   Test Files  2 failed | 36 passed (38)
+        Tests  7 failed | 424 passed (431)
+  5 mapping cases + the 2 registration cases. The two spellings are a real
+  Grafana API difference; reading the wrong one would silently refuse every
+  write on a folder-scoped connection.
+
+PROBE I — implement the REJECTED reading (admit an unattributable mutation)
+  npm run build → exit 0
+   Test Files  2 failed | 68 passed (70)
+        Tests  4 failed | 775 passed (779)
+  FAIL  refuses when the provider supplies NO folderAttribution hook at all
+  FAIL  refuses an explicit 'unknown' attribution, distinctly from out-of-allowlist
+  FAIL  treats an EMPTY attributed folder list as unattributable, not vacuously admissible
+  FAIL  (tool) refuses on a folder-scoped connection whose provider has no hook
+
+  Exactly four assertions separate the chosen ruling from the rejected one, and
+  every other case is indifferent to it. The third of them is the empty-quantifier
+  hole: `folders: []` satisfies "every attributed folder is a member" vacuously.
+
+PROBE J2 — Grafana stops REGISTERING the hook
+   Test Files  1 failed | 69 passed (70)
+        Tests  2 failed | 777 passed (779)
+
+  ⚠️ THIS PROBE FOUND A REAL GAP IN THIS BATCH'S OWN FIRST DRAFT, and the numbers
+  are recorded rather than smoothed over. Run against the first draft, deleting
+  the registration left EVERYTHING green — 776 passed / 776 in connectors-grafana
+  + gateway. The mapping was unit-tested and the pipeline's admission rule was
+  tested, and nothing pinned that the connector INSTALLS the one into the other:
+  a hook that exists and is never registered is dead code cited as a bearer.
+  Three cases were added (`createGrafanaMutationApplyClient — folderAllowlist
+  attribution is registered`), driving a real dashboard update through the real
+  `executeMutationPlan`. The bearer among them is again the CONTROL, for the
+  same reason as probe G.
+  (npm run build → exit 2 under this mutation; the reddening suite is
+  connectors-grafana's own, run from src.)
+
+RESTORED BASELINE (must equal the opening baseline exactly)
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+  test-name presence after restore:
+    "folder-allowlist admission check"                : 2
+    "folderAllowlist wiring"                          : 1
+    "folderAllowlist attribution is registered"       : 1
+  $ git status --porcelain                            → (empty)
+
+--------------------------------------------------------------------------------
+5. SCOPE — what this does NOT bind
+--------------------------------------------------------------------------------
+
+Stated here, in the published `.describe()`, in the schema JSON, and beside
+`refuseOutOfAllowlistFolder` itself, because an oversold control is how one ends
+up trusted and inert:
+
+  - MUTATIONS ONLY. Reads are not folder-checked, for the same reason they are
+    not tenant-checked: read requests carry pseudo-tenants used purely as
+    `WriteSerializer` concurrency keys.
+  - DECLARED PLACEMENT, NOT ACTUAL. It binds the folder the provider derives
+    from the plan's own stored payload. Nothing here verifies where the resource
+    actually lives on the remote; a dashboard moved server-side still reports its
+    plan's folder.
+  - It is therefore NOT "writes outside these folders are impossible". It is
+    "an operator can bound which folder a write may claim to land in."
+  - `annotation` is `unknown` by construction, so on a folder-scoped connection
+    Grafana annotations are refused rather than placed. That is deliberate and
+    pinned; making it precise needs a remote read this hook may not perform.
+
+Nothing in this transcript evidences behaviour against a real Grafana or Jira.
+Every leg is a fake transport with a real journal.
+
+--------------------------------------------------------------------------------
+6. HOW THIS TRANSCRIPT WAS CHECKED
+--------------------------------------------------------------------------------
+
+A prose sweeper resolved every `path[:NN]` reference in this file and in
+docs/evidence/phase-18/bulk-write-order-batchC.txt against the tree this branch
+lands as: 8 references, 0 problems.
+
+It was mutation-tested in both directions before its silence was trusted:
+  inject a line past EOF          → caught (exit 1)
+  inject a nonexistent file path  → caught (exit 1)
+  in-range off-by-one (:129→:130) → NOT caught (exit 0)
+
+The third is a real blind spot, so it is named rather than left inside a
+"hand-check" bucket. The only two line-anchored references in either transcript
+are §0's pair, both pinned to 6f964d7 and both hand-verified by the `git grep`
+above, whose output is quoted verbatim with its own line numbers.
+
+Its own first run also reported a false positive — `external-connection.json:59`
+read as a missing `external-connection.js`, because `js` preceded `json` in the
+extension alternation. The tool was fixed; the transcript was not.

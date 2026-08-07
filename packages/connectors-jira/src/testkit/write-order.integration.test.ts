@@ -263,7 +263,7 @@ function applyAll(
             ? { serializationTarget: (p: RemoteMutationPlan) => serializationTarget(p) }
             : {}),
         },
-        { journal, httpClient, lock, tenantAllowlist: undefined },
+        { journal, httpClient, lock, tenantAllowlist: undefined, folderAllowlist: undefined },
       ),
     ),
   );
@@ -346,6 +346,163 @@ describe("per-issue write order — same issue, different resource kinds (Jira C
 
     // Dual purpose: forbids a global write mutex, and proves this
     // instrumentation can observe overlap at all.
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+});
+
+/**
+ * roadmap/18 §Exit criteria 10's `bulk:<keys>` RESIDUAL, closed.
+ *
+ * `issue.bulkUpdate`/`issue.bulkTransition` mint `bulk:<key>,<key>,…`
+ * (`../resource-client/issue-plans.ts:189`, `:210`). Before this batch
+ * that string was its own serialization key, so a bulk write touching
+ * PROJ-1 raced a single-issue write to PROJ-1, and two bulk plans whose
+ * member lists were permuted raced each other. The connector now maps a
+ * bulk target onto the SORTED SET of its member issues' keys and 16's
+ * `WriteSerializer.runExclusiveMulti` acquires all of them at once.
+ *
+ * Every leg below is the real thing — real plan builders, real
+ * `executeMutationPlan`, real temp-dir journal, real `GatewayHttpClient`
+ * — and each `=== 1` claim is paired with a disjoint `=== 2` control
+ * that is green BEFORE and AFTER the fix, which is what rules out a
+ * global mutex and proves the instrumentation can observe overlap at all.
+ */
+describe("bulk write order — a bulk plan serializes against its member issues (Jira Cloud)", () => {
+  it("issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-1) never overlap on the wire", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildCloudHarness(recorder, "203.0.113.210");
+    const bulkPlan = h.resourceClient.issues.planBulkUpdate(
+      ["PROJ-1", "PROJ-2"],
+      { summary: "bulk" },
+      ENVELOPE_ID,
+    );
+    const singlePlan = h.resourceClient.issues.planUpdate(
+      "PROJ-1",
+      "rev-1",
+      { summary: "single" },
+      ENVELOPE_ID,
+    );
+
+    // The targets under test are the ones production mints, never
+    // literals written by this file.
+    expect(bulkPlan.canonicalTarget).toBe("bulk:PROJ-1,PROJ-2");
+    expect(singlePlan.canonicalTarget).toBe("issue:PROJ-1");
+    // Distinct idempotency keys — so anything serializing here is the
+    // write mutex, never `IdempotencyKeyLock` doing it for the wrong reason.
+    expect(bulkPlan.idempotencyKey).not.toBe(singlePlan.idempotencyKey);
+
+    await applyAll([bulkPlan, singlePlan], h.applyClient, h.httpClient, "jira-cloud");
+
+    expect(recorder.maxInFlight()).toBe(1);
+    const firstEnd = recorder.events.findIndex((e) => e.startsWith("end:"));
+    const secondStart = recorder.events.findIndex((e, i) => e.startsWith("start:") && i > 0);
+    expect(firstEnd).toBeGreaterThanOrEqual(0);
+    expect(secondStart).toBeGreaterThan(firstEnd);
+  });
+
+  it("two bulk plans over the SAME issues in permuted order serialize against each other", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildCloudHarness(recorder, "203.0.113.211");
+    const forward = h.resourceClient.issues.planBulkUpdate(
+      ["PROJ-1", "PROJ-2"],
+      { summary: "a" },
+      ENVELOPE_ID,
+    );
+    const reversed = h.resourceClient.issues.planBulkUpdate(
+      ["PROJ-2", "PROJ-1"],
+      { summary: "b" },
+      ENVELOPE_ID,
+    );
+
+    // The permutation mints a DIFFERENT canonicalTarget — which is
+    // exactly why the pre-fix single-string key could not serialize them.
+    expect(forward.canonicalTarget).toBe("bulk:PROJ-1,PROJ-2");
+    expect(reversed.canonicalTarget).toBe("bulk:PROJ-2,PROJ-1");
+    expect(forward.idempotencyKey).not.toBe(reversed.idempotencyKey);
+
+    await applyAll([forward, reversed], h.applyClient, h.httpClient, "jira-cloud");
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("issue.bulkTransition shares the mapping — it serializes against a member's single write", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildCloudHarness(recorder, "203.0.113.212");
+    const plans = [
+      h.resourceClient.issues.planBulkTransition(["PROJ-1", "PROJ-2"], "31", ENVELOPE_ID),
+      h.resourceClient.comments.planCreate(
+        "PROJ-2",
+        { type: "doc", version: 1, content: [] },
+        "bulk-transition-marker",
+        ENVELOPE_ID,
+      ),
+    ];
+    expect(plans.map((p) => p.canonicalTarget)).toEqual([
+      "bulk:PROJ-1,PROJ-2",
+      "issue:PROJ-2:comment",
+    ]);
+
+    await applyAll(plans, h.applyClient, h.httpClient, "jira-cloud");
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("CONTROL: a bulk plan and a write to a NON-member issue still run concurrently", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildCloudHarness(recorder, "203.0.113.213");
+    const plans = [
+      h.resourceClient.issues.planBulkUpdate(["PROJ-1", "PROJ-2"], { summary: "a" }, ENVELOPE_ID),
+      h.resourceClient.issues.planUpdate("PROJ-3", "rev-1", { summary: "b" }, ENVELOPE_ID),
+    ];
+
+    // Green BEFORE and AFTER the fix. Forbids a global write mutex (which
+    // would destroy cross-issue throughput and make every `=== 1` above
+    // pass for the wrong reason), and proves the instrumentation can see
+    // overlap at all.
+    await applyAll(plans, h.applyClient, h.httpClient, "jira-cloud");
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+
+  it("CONTROL: two bulk plans over DISJOINT issue sets still run concurrently", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildCloudHarness(recorder, "203.0.113.214");
+    const plans = [
+      h.resourceClient.issues.planBulkUpdate(["PROJ-1", "PROJ-2"], { summary: "a" }, ENVELOPE_ID),
+      h.resourceClient.issues.planBulkUpdate(["PROJ-3", "PROJ-4"], { summary: "b" }, ENVELOPE_ID),
+    ];
+
+    await applyAll(plans, h.applyClient, h.httpClient, "jira-cloud");
+
+    expect(recorder.maxInFlight()).toBe(2);
+  });
+});
+
+describe("bulk write order — Jira Data Center shares the mapping", () => {
+  it("issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-2) never overlap on the wire", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildDatacenterHarness(recorder, "203.0.113.215");
+    const plans = [
+      h.resourceClient.issues.planBulkUpdate(["PROJ-1", "PROJ-2"], { summary: "a" }, ENVELOPE_ID),
+      h.resourceClient.issues.planUpdate("PROJ-2", "rev-1", { summary: "b" }, ENVELOPE_ID),
+    ];
+    expect(plans.map((p) => p.canonicalTarget)).toEqual(["bulk:PROJ-1,PROJ-2", "issue:PROJ-2"]);
+
+    await applyAll(plans, h.applyClient, h.httpClient, "jira-datacenter");
+
+    expect(recorder.maxInFlight()).toBe(1);
+  });
+
+  it("CONTROL: a bulk plan and a write to a NON-member issue still run concurrently", async () => {
+    const recorder = createOverlapRecorder(2);
+    const h = buildDatacenterHarness(recorder, "203.0.113.216");
+    const plans = [
+      h.resourceClient.issues.planBulkUpdate(["PROJ-1", "PROJ-2"], { summary: "a" }, ENVELOPE_ID),
+      h.resourceClient.issues.planUpdate("PROJ-3", "rev-1", { summary: "b" }, ENVELOPE_ID),
+    ];
+
+    await applyAll(plans, h.applyClient, h.httpClient, "jira-datacenter");
+
     expect(recorder.maxInFlight()).toBe(2);
   });
 });

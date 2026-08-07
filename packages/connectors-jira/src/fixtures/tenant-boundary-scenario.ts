@@ -383,6 +383,15 @@ async function runArm(
     // pipeline from the `ExternalConnection` in hand
     // (`mutation-apply-tool.ts:130`).
     tenantAllowlist: connection.tenantAllowlist,
+    // Same wiring, same reason (defect 16). Forwarded rather than hardcoded to
+    // `undefined` so this stays "verbatim" as claimed above: today
+    // `buildFixtureConnection` sets no `folderAllowlist`, so this is
+    // `undefined` — folder-unscoped, no check runs, and this scenario's verdict
+    // is entirely about tenancy. If a future edit ever DOES set one, the
+    // in-allowlist positive control fails loudly (Jira registers no
+    // `folderAttribution`, so an unattributable mutation is refused), rather
+    // than this scenario quietly passing for the wrong reason.
+    folderAllowlist: connection.folderAllowlist,
   });
 
   return { outcome, httpRequests: transport.requests.length, journalAppends: appends.length };

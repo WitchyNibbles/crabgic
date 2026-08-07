@@ -13,6 +13,7 @@ import {
   deriveAnnotationMarkerTag,
 } from "../reconciliation/marker-reconciler.js";
 import { parseCanonicalTarget } from "./canonical-target.js";
+import { grafanaFolderAttribution } from "./folder-attribution.js";
 import type { GrafanaPlanPayloadStoreLike } from "./plan-payload-store.js";
 import type { GrafanaRollbackSnapshotStoreLike } from "./snapshot-store.js";
 
@@ -88,6 +89,16 @@ export function createGrafanaMutationApplyClient(
       }
       throw new Error(`GrafanaMutationApplyClient: unsupported action "${plan.action}"`);
     },
+
+    /**
+     * DEFECT 16 — `ExternalConnection.folderAllowlist`'s enforcement input.
+     * The per-kind mapping and the rulings behind it live in
+     * `./folder-attribution.js`; this is the registration that makes the
+     * gateway consult them (via the apply-tool bridge, so every
+     * `observability.apply` call is covered including the re-entrant
+     * rebase path in `./apply-with-rebase.js`).
+     */
+    folderAttribution: (plan) => grafanaFolderAttribution(plan, deps.payloadStore),
 
     parseResponse(plan, response): MutationApplyResult {
       // FAMILY-AWARE. This used to apply the classic extraction
