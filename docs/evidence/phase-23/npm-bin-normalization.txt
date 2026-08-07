@@ -1,0 +1,310 @@
+================================================================================
+npm `bin` normalization — the v1.6.0 publish warning, measured end to end
+================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     cb450e3ef11610e2cd5d18ccf7da6cb7a3a65442   (origin/main, tag v1.6.0)
+# branch at capture: postrelease/npm-bin-normalization (PROVISIONAL — a branch
+#     tip is not resolvable after a rebase; every claim below is pinned to the
+#     UPSTREAM BASE above or to a registry artifact, never to the tip)
+# Commands are quoted verbatim with their exit status.
+#
+# ⚠️ NOTE FOR A LATER AUDITOR — one path in this file is OUTSIDE this
+# repository. `@npmcli/package-json/lib/normalize.js` is a bundled dependency
+# of the globally-installed npm 11.16.0, resolved at
+#   /home/eimi/.local/share/fnm/node-versions/v24.18.0/installation/lib/
+#   node_modules/npm/node_modules/@npmcli/package-json/lib/normalize.js
+# It is not a file in this repo and no `git` command will resolve it. Quoted
+# because it is the mechanism, and labelled because otherwise the next sweep
+# will try to "fix" the reference.
+
+--------------------------------------------------------------------------------
+0. THE SYMPTOM
+--------------------------------------------------------------------------------
+The v1.6.0 publish log carried, twice:
+
+    "bin[crabgic]" script name dist/bin.js was invalid and removed
+    "bin[crabgic-supervisord]" script name dist/bin/supervisord.js was invalid and removed
+
+Read literally, both binaries were dropped from the published package. They
+were not. §1-§2 measure that; §3 reads the code that emits the sentence.
+
+--------------------------------------------------------------------------------
+1. THE PUBLISHED MAPS ARE INTACT — three published versions, read from the
+   registry, read-only
+--------------------------------------------------------------------------------
+    $ npm view crabgic@1.6.0 bin --json
+    {"crabgic":"dist/bin.js","crabgic-supervisord":"dist/bin/supervisord.js"}
+    $ npm view crabgic@1.5.0 bin --json
+    {"crabgic":"dist/bin.js","crabgic-supervisord":"dist/bin/supervisord.js"}
+    $ npm view crabgic@1.0.0 bin --json
+    {"crabgic":"dist/bin.js","crabgic-supervisord":"dist/bin/supervisord.js"}
+
+Both keys present in every published version. EXIT=0 for all three.
+
+--------------------------------------------------------------------------------
+2. THE SHIPPED TARBALLS KEEP THE `./`, THE PACKUMENT SHOWS THE NORMALIZED FORM
+--------------------------------------------------------------------------------
+Downloaded with `npm pack crabgic@<v>` into a scratch dir and unpacked:
+
+    crabgic@1.6.0  package/package.json bin ->
+        {"crabgic":"./dist/bin.js","crabgic-supervisord":"./dist/bin/supervisord.js"}
+    crabgic@1.5.0  package/package.json bin ->
+        {"crabgic":"./dist/bin.js","crabgic-supervisord":"./dist/bin/supervisord.js"}
+
+So the registry METADATA carries npm's normalized form while the shipped
+MANIFEST carries the source form. That divergence is the whole finding: npm
+rewrote, it did not drop.
+
+A third, independent witness inside this repository — npm's own lockfile,
+which records the normalized form for the workspace member:
+
+    package-lock.json:6818     "crabgic": "dist/bin.js",
+    package-lock.json:6819     "crabgic-supervisord": "dist/bin/supervisord.js"
+
+--------------------------------------------------------------------------------
+3. THE WARNING TEXT IS AN UPSTREAM MISLABEL — the mechanism, read not guessed
+--------------------------------------------------------------------------------
+npm 11.16.0, `@npmcli/package-json/lib/normalize.js` (path labelled above),
+lines 65-72, verbatim:
+
+        if (base !== binKey) {
+          delete pkg.bin[binKey]
+          changes?.push(`"bin[${binKey}]" was renamed to "bin[${base}]"`)
+        }
+        if (binTarget !== pkg.bin[binKey]) {
+          changes?.push(`"bin[${base}]" script name ${binTarget} was invalid and removed`)
+        }
+        pkg.bin[base] = binTarget
+
+Three things make the sentence wrong:
+  (a) it fires when the NORMALIZED target differs from the written one — i.e.
+      on every rewrite, not only on a removal;
+  (b) `pkg.bin[base] = binTarget` on the very next line ASSIGNS the value the
+      message just called removed;
+  (c) it interpolates `binTarget`, the NEW value, as the thing that "was
+      invalid" — which is exactly why the log said `dist/bin.js` (already
+      stripped) while the manifest said `./dist/bin.js`. That mismatch is the
+      tell.
+
+The rewrite itself, same file, lines 127-134:
+
+    function unixifyPath (ref) {
+      return ref.replace(/\\|:/g, '/')
+    }
+
+    function secureAndUnixifyPath (ref) {
+      const secured = unixifyPath(path.join('.', path.join('/', unixifyPath(ref))))
+      return secured.startsWith('./') ? '' : secured
+    }
+
+The one genuine removal case is `secureAndUnixifyPath(ref) === ''` (npm's
+`if (!binTarget) { delete ... }` a few lines above). Neither of this package's
+targets is that case.
+
+--------------------------------------------------------------------------------
+4. `npm pkg fix` TOUCHES EXACTLY THE TWO bin LINES — measured on the real file
+--------------------------------------------------------------------------------
+    $ (cd packages/cli && npm pkg fix)          EXIT=0, no output
+    $ git diff -U0 -- packages/cli/package.json
+    @@ -22,2 +22,2 @@
+    -    "crabgic": "./dist/bin.js",
+    -    "crabgic-supervisord": "./dist/bin/supervisord.js"
+    +    "crabgic": "dist/bin.js",
+    +    "crabgic-supervisord": "dist/bin/supervisord.js"
+    $ git diff --numstat
+    2	2	packages/cli/package.json
+
+Two lines, nothing else, LINE-COUNT-NEUTRAL — which is what keeps
+`packages/cli/package.json:49` (pinned by merged `phase-23.json#c16`) resolving:
+
+    $ sed -n '49p' packages/cli/package.json          # before AND after
+        "@anthropic-ai/claude-agent-sdk": "0.3.218",
+
+    md5 before  1c32c7d2c29aa42b182dab95c1867cc9
+    md5 after   0760bf29a0b81d704ada4d586d14c252
+
+(The earlier research pass saw `npm pkg fix` also print `No bin file found at
+dist/bin.js`. That was an artefact of running it on a copy in a scratch dir
+with no `dist/`. Run in place, where `dist/` exists, it prints nothing.)
+
+--------------------------------------------------------------------------------
+5. ⚠️ CORRECTION TO THE RESEARCH PASS — the `./` prefix DID have dependents
+--------------------------------------------------------------------------------
+The work order for this fix stated, as a measurement:
+
+    "`git grep '"\./dist/bin'` outside `node_modules`/`dist`: zero hits
+     anywhere but the manifest itself."
+
+**That is false at cb450e3.** Re-run here:
+
+    $ git grep -n '"\./dist/bin' -- . ':(exclude)node_modules' ':(exclude)*/node_modules'
+    docs/evidence/phase-09/probe-09-383-batchA.txt:241:     :80  expect(pkg.bin?.[BINARY_NAME]).toBe("./dist/bin.js"); -> :121
+    packages/cli/src/commands/cli.snapshots.test.ts:121:    expect(pkg.bin?.[BINARY_NAME]).toBe("./dist/bin.js");
+    packages/cli/src/commands/cli.snapshots.test.ts:137:      [BINARY_NAME]: "./dist/bin.js",
+    packages/cli/src/commands/cli.snapshots.test.ts:138:      [`${BINARY_NAME}-supervisord`]: "./dist/bin/supervisord.js",
+
+Two live assertions, not prose. Measured red under the manifest edit, before
+any test was touched:
+
+    $ npx vitest run --coverage=false packages/cli/src/commands/cli.snapshots.test.ts
+     Test Files  1 failed (1)
+          Tests  2 failed | 44 passed (46)
+    AssertionError: expected { crabgic: 'dist/bin.js', …(1) } to deeply equal { crabgic: './dist/bin.js', …(1) }
+
+How the research pass missed it: its §5 gate list ran `check:citation-content`,
+`check:tarball`, `check:install-smoke` and `prettier --check` — and **not**
+`npm test`. Recorded because the shape recurs: a gate list that omits the suite
+returns a smaller answer with no error.
+
+WHY THE TWO TESTS WERE CHANGED RATHER THAN THE MANIFEST HELD BACK. Their stated
+subject is the bin KEY, not the target path: the `it()` at
+`packages/cli/src/commands/cli.snapshots.test.ts:118` reads "package.json's own
+bin entry is keyed exactly BINARY_NAME — the literal 10's .mcp.json command
+field must match", and `packages/plugin/.mcp.json`'s `command` field is
+`"crabgic"` — a key, never a path. The literal target was incidental to what
+they pin, so it moved with the manifest and the reasoning was written into the
+doc comment at `packages/cli/src/commands/cli.snapshots.test.ts:131` where the
+next reader lands. Both edits are LINE-COUNT-NEUTRAL (`4 4` in `--numstat`);
+the only citation-pinned line in that file is `:19`, which does not move.
+
+    $ npx vitest run --coverage=false packages/cli/src/commands/cli.snapshots.test.ts   # after
+     Test Files  1 passed (1)
+          Tests  46 passed (46)
+
+The `docs/evidence/phase-09/probe-09-383-batchA.txt:241` hit is a committed
+transcript pinned to its own HEAD and is deliberately left verbatim.
+
+--------------------------------------------------------------------------------
+6. THE ASSERTION THAT WAS ADDED — and the one that was deliberately NOT
+--------------------------------------------------------------------------------
+NOT added: `expect(manifest.bin.crabgic).toBe("dist/bin.js")`. That is a
+tautology over a literal one line away — vacuity pattern #1,
+`docs/verification-playbook.md:75-76`. It would go green the moment it was
+written and would measure nothing.
+
+Added instead, in `scripts/check-published-tarball.mjs`: **every declared `bin`
+target must survive npm's own normalizer unchanged**, i.e.
+`secureAndUnixifyPath(target) === target` for every entry. That catches the
+same class under a DIFFERENT key added later, and catches the four other shapes
+npm rewrites (`/abs`, `../`, `a/../b`, `a:b`, backslashes) which a `./`-specific
+check would not.
+
+`secureAndUnixifyPath` is transcribed from the npm source quoted in §3, with
+one deliberate divergence recorded in its own doc comment: `posix.join` instead
+of the platform `path.join`.
+
+RED-FIRST, against the real committed manifest rather than a synthetic fixture
+— the strongest form available here, because the repository WAS in the failing
+state at the UPSTREAM BASE:
+
+    RED    manifest at cb450e3 (both targets carry `./`), new suite added
+           $ npx vitest run --project scripts scripts/check-published-tarball.test.mjs
+            Test Files  1 failed (1)
+                 Tests  1 failed | 12 passed (13)
+           AssertionError: expected [ { key: 'crabgic', …(2) }, { …(3) } ] to deeply equal []
+             at check-published-tarball.test.mjs:146  expect(nonNormalizedBinTargets(manifest)).toEqual([]);
+           md5 packages/cli/package.json = 1c32c7d2c29aa42b182dab95c1867cc9
+
+    GREEN  manifest with the two-line edit applied
+            Test Files  1 passed (1)
+                 Tests  13 passed (13)
+           md5 packages/cli/package.json = 0760bf29a0b81d704ada4d586d14c252
+
+DELETION PROBE on the enforcement itself — `nonNormalizedBinTargets` stubbed to
+`return []`, restored afterwards with an explicit source AND an explicit path
+(`docs/verification-playbook.md:296-311`):
+
+    baseline    13 passed (13)                        EXIT=0
+    mutation     2 failed | 11 passed (13)            EXIT=1
+                 × flags a target npm would rewrite, naming the key and both forms
+                 × flags only the offending key when a manifest mixes both forms
+    restore     13 passed (13)                        EXIT=0
+                grep -c "MUTATION PROBE" scripts/check-published-tarball.mjs -> 0
+
+Stated honestly: the real-manifest arm did NOT redden under that mutation,
+because by then the manifest was already fixed. What proves that arm is the RED
+stage above, where it is the only test that failed.
+
+--------------------------------------------------------------------------------
+7. ⚠️ WHERE THIS RUNS — `check:tarball` is in NO workflow
+--------------------------------------------------------------------------------
+    $ grep -rn "npm run check:" .github/workflows/
+    .github/workflows/ci.yml:203         check:engine-pin
+    .github/workflows/ci.yml:221         check:workspace-count
+    .github/workflows/ci.yml:223         check:hygiene
+    .github/workflows/ci.yml:225         check:release-notes
+    .github/workflows/ci.yml:247         check:criteria-closeout
+    .github/workflows/ci.yml:254         check:criteria-baseline
+    .github/workflows/ci.yml:264         check:citation-runs
+    .github/workflows/ci.yml:281         check:citation-content
+    .github/workflows/release-e2e.yml:16   (a comment)
+    .github/workflows/release-e2e.yml:198  check:e2e-types
+
+Ten hits, none of them `check:tarball`, `check:install-smoke` or
+`check:package-graph`. Those three run only through `npm run check:all`, by
+hand. So a guard placed ONLY in `scripts/check-published-tarball.mjs` would be
+unrun evidence per `docs/verification-playbook.md:106-108`.
+
+That is why the bearer is `scripts/check-published-tarball.test.mjs`: the
+`scripts` vitest project (`vitest.config.ts:84`) is in the default `npm test`
+fan-out, so the real-manifest assertion executes on every push and in the
+`unit-test+coverage` job on both arches.
+
+--------------------------------------------------------------------------------
+8. THE TRANSCRIPTION IS BOUND TO NPM ITSELF
+--------------------------------------------------------------------------------
+A transcription nobody compares to its source is a belief. The last test in the
+suite writes a throwaway manifest with six differently-shaped targets, runs the
+REAL `npm pkg fix` over it, and requires npm's result to equal the
+transcription's key by key — plus a control that five of the six actually moved,
+so the comparison cannot pass by npm having done nothing.
+
+--------------------------------------------------------------------------------
+9. GATE RUNS AT THIS BRANCH
+--------------------------------------------------------------------------------
+    $ npm run check:tarball
+      check-published-tarball: PASS — 31 files, 1517 kB unpacked, no
+      tests/sources included, every declared bin target already in npm's
+      normalized form.                                                    EXIT=0
+
+    $ npm run check:install-smoke
+      check-install-smoke: PASS — crabgic@1.6.0 installs from a packed tarball
+      into a clean project; `crabgic` and `crabgic-supervisord` link, boot, and
+      resolve every dependency they import, and a TypeScript consumer compiles
+      against it.                                                         EXIT=0
+
+    $ npm run check:citation-content
+      check-citation-content: 1327 citation(s), 3931 quoted fragment(s) (2685
+      anchored, 637 known-stale, 609 not file quotes); 888 prose reference(s),
+      37 bare-basename (unchecked).
+      check-citation-content: PASS — every citation resolves exactly as the
+      baseline pins it.                                                   EXIT=0
+
+    $ npx eslint <the three touched source files>                         EXIT=0
+    $ npx prettier --check <the four touched files>                       EXIT=0
+
+--------------------------------------------------------------------------------
+10. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: nothing was ever removed from the published package; the warning is an
+upstream mislabel; the manifest now declares the form npm stores, so the
+sentence cannot recur for these two keys; and a NEW key declaring a
+normalizer-rewritten target reddens a per-push test.
+
+NOT CLAIMED: that the warning is reproducible locally. `npm pack --dry-run` and
+`npm publish --dry-run` at npm 11.16.0 emit no such line here — it surfaces on
+the real publish path in CI, which this pass did not and must not run. The
+mechanism in §3 is read from source rather than reproduced, and that is stated
+rather than papered over.
+
+NOT CLAIMED: any behavioural difference between the two forms. §1, §2 and the
+`check:install-smoke` run in §9 all say there is none. This fix buys a legible
+publish log, which is the only channel on which a REAL removal would ever be
+noticed — that is the whole of its value, and it is defence of an instrument,
+not of the program.
+
+NO DEFECT RECORD IS OWED. Nothing in this repository was broken. The npm
+wording bug is upstream and is recorded here rather than in this repo's
+claim-space.

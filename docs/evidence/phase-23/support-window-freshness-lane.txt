@@ -1,0 +1,484 @@
+================================================================================
+Vendor support windows: the advance-warning lane, the auto-renewal tripwire,
+and what `confirmedOn` actually attests
+================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     cb450e3ef11610e2cd5d18ccf7da6cb7a3a65442   (origin/main, tag v1.6.0)
+# branch at capture: postrelease/support-window-freshness (PROVISIONAL — a
+#     branch tip is not resolvable after a rebase; nothing below is pinned to it)
+# Commands quoted verbatim with their exit status.
+
+--------------------------------------------------------------------------------
+1. THE PROBLEM — a gate with no per-push caller and a hard date behind it
+--------------------------------------------------------------------------------
+`e2e/attestation`'s `checkVersionSupportWindows` refuses a release once the
+committed record is more than `DEFAULT_MAX_RECORD_AGE_DAYS` (30) old at the cut,
+or once a vendor window has closed.
+
+It has NO production caller. Its only invocation anywhere is inside
+`e2e/attestation`'s own suite, which runs solely under
+`npm run test:e2e:release-evidence` — the step `.github/workflows/publish.yml`
+blocks on at a `v*` tag. `e2e/attestation` is not a `vitest.config.ts` project,
+so nothing per-push ran it.
+
+Every record carried `confirmedOn: 2026-07-25`. 2026-07-25 + 31 days =
+2026-08-25 ⇒ from 2026-08-25 no release could be cut, and the failure would have
+landed inside a tag-triggered publish, with nothing having said a word.
+
+--------------------------------------------------------------------------------
+1b. ⚖️ THE ARM SPLIT — owner ruling 2026-08-07, correcting this lane's own first
+    version
+--------------------------------------------------------------------------------
+The first version of this check FAILED per-push on BOTH a stale probe stamp and
+an expired vendor window, in a REQUIRED `meta-checks` step. The undisclosed
+consequence: from the 31st day after each probe run, EVERY PULL REQUEST IN THE
+REPOSITORY would have gone red until a human ran the probe and committed. That
+is an escalation from "cannot cut a release" to "cannot merge anything", for
+work with no connection to releasing. The condition was stated in the PR; the
+consequence was not.
+
+The two things measured here carry different risks and must not share a blast
+radius:
+
+  ARM A — STALE PROBE STAMP. Risk: "we would be SHIPPING on evidence nobody
+          re-checked." That is a release-time risk and nothing else.
+          ⇒ WARNS per-push, from T-21 and thereafter, however stale.
+          ⇒ FAILS at a release cut, where it already did and still does —
+            `e2e/attestation`'s `checkVersionSupportWindows`, which
+            `publish.yml` blocks on at a `v*` tag.
+
+  ARM B — EXPIRED VENDOR WINDOW. Risk: this repository pins a version the
+          vendor has stopped supporting. True right now, for everyone.
+          ⇒ FAILS everywhere, per-push included.
+
+Malformed records (future-dated, missing target, versioned target with no
+support-end date) and auto-renewal offenders FAIL everywhere too: they are
+integrity errors, not clocks.
+
+⚠️ THE RELEASE-TIME HALF IS NOT A PROMISE IN A COMMENT. Asserting it by
+grepping `versionSupportWindows.ts` for a `fail` branch would be a textual
+presence check — the instrument class this repository has been bitten by twice.
+So the suite IMPORTS THE REAL GATE and drives records through it:
+
+    the real gate refuses a record past the bound                    asserted
+    ...and does NOT refuse it one day earlier                        asserted  <- control
+    this lane and the real gate cross at the SAME day, swept
+      across offsets -2..+2 around the bound                         asserted
+
+Plus the anti-brick control, measured a year out rather than a day past:
+`assessTarget` produces exactly `["warn"]` per-push at +18, +54 and +365 days.
+
+`enforceStaleness: true` puts arm A back on FAIL for a caller that IS a release
+cut; it is exercised by the suite rather than left as an unreachable flag, which
+is what keeps the two halves' arithmetic provably identical.
+
+--------------------------------------------------------------------------------
+2. WHAT THE NEW CHECK PRINTED AGAINST THE RECORD AS IT STOOD AT cb450e3
+--------------------------------------------------------------------------------
+Run BEFORE the re-stamp, against `confirmedOn: 2026-07-25`. This is the RED-ish
+stage: the lane is non-vacuous from its very first push, and it is the whole
+point that it was already warning on the day it was written.
+
+    $ node scripts/check-support-window-freshness.mjs                  EXIT=0
+    ::warning::check-support-window-freshness: jira-cloud: the support-window record turns the release gate RED on 2026-08-25 (probed 2026-07-25, 18 day(s) left). Re-run `npm run probe:support-windows` and commit the result before then.
+    ::warning::check-support-window-freshness: jira-dc-10.3: ... RED on 2026-08-25 (probed 2026-07-25, 18 day(s) left) ...
+    ::warning::check-support-window-freshness: jira-dc-11.3: ... RED on 2026-08-25 ...
+    ::warning::check-support-window-freshness: grafana-cloud: ... RED on 2026-08-25 ...
+    ::warning::check-support-window-freshness: grafana-12.4: ... RED on 2026-08-25 ...
+    ::warning::check-support-window-freshness: grafana-13.1: ... RED on 2026-08-25 ...
+    check-support-window-freshness: jira-cloud — probed 13 day(s) ago, gate turns red 2026-08-25
+    ... (one line per target)
+    check-support-window-freshness: WARN — 6 advance warning(s) above; no
+    workflow can renew the bound by committing the probe's output.
+
+Six warnings, age 13, naming 2026-08-25, exit 0 — a warning, never a block.
+
+--------------------------------------------------------------------------------
+3. THE PROBE, RE-DERIVED IN THIS PASS RATHER THAN INHERITED
+--------------------------------------------------------------------------------
+3a. MECHANICAL HALF — the four Docker Hub tag endpoints `dockerHubTagUrl` builds,
+    probed independently with `curl` before running the repo's own probe:
+
+    grafana/grafana-oss:13.1.0         404   (record says tagPublished: false)  ✅
+    grafana/grafana-oss:12.4.0         200   (record says true)                 ✅
+    atlassian/jira-software:10.3       200   (record says true)                 ✅
+    atlassian/jira-software:11.3       200   (record says true)                 ✅
+    captured 2026-08-07T13:06:28Z
+
+3b. ATTESTED HALF — both vendor pages re-read at the URLs the records themselves
+    cite, and quoted verbatim:
+
+    jira-dc-10.3   record 2026-12-05   page: "10.3 (EOS date: 5 December 2026) LONG TERM SUPPORT"   ✅
+    jira-dc-11.3   record 2027-12-03   page: "11.3 (EOS date: 3 December 2027) LONG TERM SUPPORT"   ✅
+    grafana-12.4   record 2027-05-24   page: "| 12.4.x (Last minor of 12) | February 24, 2026 | May 24, 2027 | Patch Support |"  ✅
+    grafana-13.1   record 2027-03-20   page: "| 13.1.x | June 22, 2026 | March 20, 2027 | Patch Support |"                        ✅
+    jira-cloud / grafana-cloud — continuous, no per-version EOL, unchanged
+
+    ⚠️ Recorded as a TRANSCRIPTION, with its date and source quote, in
+    `docs/vendor-support-policy.json` — not as a probe result, because it is not
+    one. The negative claim for the two hosted targets ("publishes no
+    per-version EOL") is transcribed from the cited pages and is NOT re-verified
+    as a negative; it is marked as such.
+
+3c. THE REPOSITORY'S OWN PROBE, run live:
+
+    $ npm run probe:support-windows                                     EXIT=0
+    support-window probe: wrote .../docs/evidence/phase-23/vendor-support-windows.json — 6 record(s)
+      jira-cloud: continuous, tagPublished=true
+      jira-dc-10.3: until 2026-12-05, tagPublished=true
+      jira-dc-11.3: until 2027-12-03, tagPublished=true
+      grafana-cloud: continuous, tagPublished=true
+      grafana-12.4: until 2027-05-24, tagPublished=true
+      grafana-13.1: until 2027-03-20, tagPublished=false
+
+    Six records, zero SKIPPED, and every `tagPublished` matches §3a's independent
+    curl. ALL SIX WINDOWS UNCHANGED — no fixture needed refreshing.
+
+    record md5  before 9d0f41ab853d827f5817a1f6831ea439
+                after  87c5d5d7bc385d04976e42b34f939070
+    diff: 13 insertions / 13 deletions — six `confirmedOn` and six `source`
+    strings, plus the 13.1 `fixtureRefresh` probe date. No date, lifecycle or
+    tagPublished value changed.
+
+--------------------------------------------------------------------------------
+4. WHAT IT PRINTS NOW, AFTER THE RE-STAMP
+--------------------------------------------------------------------------------
+    $ node scripts/check-support-window-freshness.mjs                   EXIT=0
+    check-support-window-freshness: jira-cloud — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: jira-dc-10.3 — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: jira-dc-11.3 — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: grafana-cloud — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: grafana-12.4 — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: grafana-13.1 — probed 0 day(s) ago, warns from 2026-08-17, release cut blocked from 2026-09-07
+    check-support-window-freshness: PASS — every target is inside the freshness bound and inside its vendor support window; no workflow can renew the bound by committing the probe's output.
+
+Next warn day 2026-08-17; next red day 2026-09-07 — and BOTH are now printed on
+every per-target line, so a reader need not redo the arithmetic to check a
+claim about it.
+
+⚠️ CORRECTION, dated 2026-08-07, left visible because getting this wrong is
+exactly the failure this file exists to prevent. The first version of this
+section said "next warn day 2026-08-28" and "both printed", and BOTH statements
+were false:
+
+  - 2026-08-28 is `confirmedOn + 21`. The warn arm fires at
+    `age > maxAgeDays - leadDays`, i.e. `staleOn - 21` = **2026-08-17**, eleven
+    days earlier. This file's own §5 T-21 assertion contradicted it, which is
+    the cheap cross-check that should have caught it (`docs/verification-
+    playbook.md`: two artifacts you wrote disagreeing is a free defect
+    detector).
+  - "Both printed" was false: the passing branch printed only the red date. The
+    warn day was computed nowhere and printed nowhere.
+
+Both are fixed in the program rather than only in the prose: `assessTarget` now
+returns `warnFrom`, the CLI prints it, and a test asserts the printed line
+contains both dates so the prose and the program cannot diverge again.
+
+⚠️ NON-VACUITY AFTER THE RE-STAMP, stated because "it prints PASS" is exactly
+the shape that stops meaning anything. The warn arm no longer fires today. What
+keeps it honest is that the real-record tests assert against the record's OWN
+probe date rather than the wall clock — "clean at `confirmedOn`", "WARN at
+`confirmedOn + 10`", "FAIL at `confirmedOn + 31`" — so they stay meaningful
+through every future re-stamp instead of silently going quiet.
+
+--------------------------------------------------------------------------------
+5. THE ARMS, AND THEIR CONTROLS
+--------------------------------------------------------------------------------
+Every date is injected; nothing reads the wall clock.
+
+    FAIL at confirmedOn + 31 (2026-08-25)                        asserted
+    DOES NOT FAIL at + 30 (2026-08-24)                           asserted  <- the control
+    WARN from exactly T-21 (2026-08-04), silent on 2026-08-03    asserted, both sides
+    warning text names the target AND 2026-08-25                 asserted
+    future-dated record FAILS                                    asserted
+    vendor window: FAIL at 2026-12-06, not at 2026-12-04         asserted, both sides
+    vendor window: WARN inside 90 days                           asserted
+    continuous target: exempt from the window rule, NOT freshness asserted, both sides
+    versioned target with no supportEndsOn FAILS                 asserted
+    missing required target FAILS on coverage                    asserted
+
+The "does not fail" control is `docs/verification-playbook.md:400-403`: without
+it, a check that failed every single day would satisfy the FAIL arm equally well.
+
+CALIBRATION IS BOUND TO THE GATE, not duplicated on trust: the suite reads
+`e2e/attestation/src/versionSupportWindows.ts` and asserts this lane's limit
+equals `DEFAULT_MAX_RECORD_AGE_DAYS` and its target list equals
+`REQUIRED_SUPPORT_WINDOW_TARGETS`. A warning lane calibrated against a different
+bound than the gate it warns about is worse than no lane.
+
+--------------------------------------------------------------------------------
+6. THE AUTO-RENEWAL TRIPWIRE — the durable half
+--------------------------------------------------------------------------------
+`drift-ci.yml` runs `npm run probe:support-windows` weekly and uploads the
+rewritten record as an ARTIFACT; the release gate reads the COMMITTED file. That
+distinction was the only thing making the 30-day bound mean anything, and
+NOTHING PINNED IT. One `git commit` step in that workflow would have made the
+bound renew itself, silently and forever.
+
+RED-FIRST, against the real workflow text rather than a fixture:
+
+    real drift-ci.yml + one appended commit/push step  ->  FLAGGED
+        [{ path: "drift-ci.yml", mechanisms: ["`git commit`", "`git push`"] }]
+    real drift-ci.yml unmodified                       ->  not flagged   <- the control
+    a workflow that commits but never runs the probe   ->  not flagged   <- the conjunction is the rule
+    `contents: write` on a probe-running workflow      ->  FLAGGED (before any commit step exists)
+    the probe invoked as `tsx .../supportWindowsCli.ts` ->  FLAGGED (the obvious evasion)
+    every real workflow in this repository             ->  no offender
+
+Plus a scan-coverage control: the walk must see more than three real workflows
+and exactly one that runs the probe, so an empty scan cannot pass as clean.
+
+--------------------------------------------------------------------------------
+7. MUTATION BATTERY — baseline, mutation, restore, at the same HEAD
+--------------------------------------------------------------------------------
+BASELINE                                        31 passed (31)   EXIT=0
+
+MUTATION A — delete the age computation (`age` forced to 0)
+                                                 9 failed | 22 passed (31)
+    × FAILS on the first day the release gate would refuse a cut
+    × warns from exactly T-21, and not the day before that
+    × names the exact date the gate turns red, in the warning text
+    × FAILS a record dated in the future rather than reporting it as very fresh
+    × exempts a continuous target from the window rule but NOT from freshness
+    × still warns, from the real record, once the lead window opens
+    × goes RED from the real record on the day the release gate would
+    × emits a ::warning:: annotation and exit 0 in the warn window
+    × exits 1 and writes to stderr once the bound has expired
+    restore: file copied back from its pre-mutation snapshot, marker grep = 0
+
+MUTATION B — delete the workflow auto-renewal scan (always empty)
+                                                 3 failed | 28 passed (31)
+    × flags a workflow that BOTH runs the probe AND commits its output
+    × flags `contents: write` on a probe-running workflow
+    × catches the probe invoked through its CLI module rather than the npm script
+    restore: marker grep = 0
+
+RESTORED                                        31 passed (31)   EXIT=0
+
+--------------------------------------------------------------------------------
+8. THE REWORD — verbatim, and where each copy lands
+--------------------------------------------------------------------------------
+Owner ruling 2026-08-07: probe-based confirmation is ACCEPTED and `confirmedOn`
+may be re-stamped by a probe run. No human-attestation field was added. What
+changed is the wording.
+
+8a. THE GATE'S STALENESS REASON — `versionSupportWindows.ts`, line-count-neutral.
+
+BEFORE:
+    `${target}: re-confirmation is ${Math.floor(age)} days stale at the release cut ` +
+      `(confirmed ${record.confirmedOn}, limit ${maxAgeDays} days) — not "current at release time".`,
+
+AFTER:
+    `${target}: the support-window PROBE last ran ${Math.floor(age)} days before the release ` +
+      `cut (probed ${record.confirmedOn}, limit ${maxAgeDays} days) — the record is not "current at release time". The probe re-checks that the pinned artifact still resolves; the support-end date is transcribed by a human into docs/vendor-support-policy.json and is NOT re-read here.`,
+
+8b. THE FIELD'S OWN DOC — same file, one line to one line.
+
+BEFORE:  /** When this confirmation was taken, ISO `YYYY-MM-DD`. */
+AFTER:   /** When the automated PROBE last ran, ISO `YYYY-MM-DD` — NOT a human re-read; see `CONFIRMED_ON_PROVENANCE` at the foot of this file. */
+
+8c. THE MODULE HEADER'S OBLIGATION 2 — same file, two lines to two lines.
+
+BEFORE:  2. FRESHNESS — the confirmation was taken close enough to the release
+             cut to still be meaningful, and is not dated after it.
+AFTER:   2. FRESHNESS — the PROBE ran close enough to the release cut for its
+             record to still describe reality, and is not dated after it.
+
+8d. THE APPENDED RULING BLOCK — `CONFIRMED_ON_PROVENANCE`, at the FOOT of
+    `versionSupportWindows.ts` (after :225, the only appendable region). Carries
+    the ruling, the accepted limitation in a WHAT IT PROVES / WHAT IT DOES NOT
+    PROVE pair, why the gate is NOT renamed, and that auto-renewal is still
+    refused. Its exported string constant:
+
+    "confirmedOn is the date the automated support-window probe last ran. It
+     attests that the pinned artifact still resolves at the vendor registry. It
+     does NOT attest that the vendor's support-end dates are unchanged: those
+     are transcribed by a human into docs/vendor-support-policy.json, which
+     records its own transcription date and source quote."
+
+8e. THE MISATTRIBUTION SITE ITSELF — a comment at
+    `e2e/provisioning/src/supportWindows.ts`'s `confirmedOn: options.probedOn`
+    assignment, below every citation-pinned line in that file (pins are at
+    :6, :59, :64, :69, :70; all verified unmoved). This is where the value is
+    produced, and `docs/verification-playbook.md:261-269` is explicit that a
+    ruling goes where the reader lands, at every site they could arrive from.
+
+8f. THE RECORD'S OWN `source` STRINGS, via `docs/vendor-support-policy.json`
+    (0 occurrences in the citation baseline — safe to edit). Every one now says
+    the date is transcribed by a human, that the probe does not re-read it,
+    carries the transcription date, and quotes the vendor row verbatim.
+    "Confirmed 2026-07-25" is gone from all six.
+
+8g. NOT RENAMED, and deliberately. `release-gate:jira-grafana-version-support-
+    windows` describes its subject accurately and matches the criterion's own
+    words. What overclaimed was the message, not the name.
+
+    ⚠️ CORRECTION TO THIS FILE'S OWN FIRST VERSION, dated 2026-08-07 and left
+    visible rather than deleted. It also said renaming "would re-derive its
+    requirement id and desync it from the criterion". THAT IS FALSE and was
+    never measured. `releaseRequirements.ts`'s `deriveRequirementId` hashes the
+    CRITERION BULLET TEXT and nothing else; `gateTagsForCriterion` is a lookup
+    into `CRITERION_TAG_RULES` whose result is never hashed. Measured here:
+    `release-gate:jira-grafana-version-support-windows` does not appear in ANY
+    of the six emitters' `REQUIREMENT_ID_BY_GATE_TAG` literals — a repo-wide
+    grep over them returns nothing — so it is not among the nine frozen ids and
+    renaming it could not have moved one. The subject-accuracy reason carries
+    the decision on its own; the invented second reason is withdrawn.
+
+--------------------------------------------------------------------------------
+9. THE FROZEN-CITATION COLLISION — measured, then discharged under ruling 2
+--------------------------------------------------------------------------------
+    $ npm run check:citation-content            (after the re-stamp + reword)
+    check-citation-content: FAIL — 2 citation divergence(s), 0 prose failure(s).
+                                                                        EXIT=1
+
+      COMMITTED EVIDENCE UNDER docs/evidence/** HAS CHANGED — 1
+        phase-23.json#c13#docs/evidence/phase-23/vendor-support-windows.json
+            OK-file/collapsed@6,15,24,32,41,50~repeat  ->  ABSENT@-
+
+      THIS PR MOVED LINES UNDER A MERGED CITATION — 1
+        phase-23.json#c13#e2e/attestation/src/versionSupportWindows.ts:73-166
+            OK/collapsed@164  ->  ABSENT@-
+            OK/collapsed@165  ->  ABSENT@-
+
+Root cause: `phase-23.json` c13 quotes `"confirmedOn": "2026-07-25"` out of a
+file the probe is DESIGNED to rewrite every 30 days, and the ratchet freezes
+everything under `docs/evidence/**`. The citation had an expiry date built in.
+
+    $ npm run check:citation-content -- --update-baseline
+    check-citation-content: wrote .../citation-content-baseline.json —
+      1327 citation(s), 3931 fragment(s), 640 known-stale, 772 outside span.
+
+BASELINE DIFF — 7 lines, disclosed rather than summarised:
+
+    generatedAtSha  bda264dc3e5798dc29383721e2f297ce5f9442bf -> cb450e3ef116...
+    anchored        2685 -> 2682
+    seededStale      637 -> 640
+    repeatText       529 -> 528
+    phase-23.json#c13#...vendor-support-windows.json
+        "OK-file/collapsed@6,15,24,32,41,50~repeat" -> "ABSENT@-"
+    phase-23.json#c13#...versionSupportWindows.ts:73-166
+        "OK/collapsed@164" -> "ABSENT@-"
+        "OK/collapsed@165" -> "ABSENT@-"
+
+Nothing else in the file moved.
+
+    $ npm run check:citation-content                                    EXIT=0
+    check-citation-content: PASS — every citation resolves exactly as the
+    baseline pins it.
+
+THE MERGED RECORD WAS NOT EDITED. Hard rule 4 forbids editing another pass's
+`phase-*.json`. The real remedy — re-quoting c13 to a STRUCTURAL line rather
+than to the date, so the citation survives every scheduled refresh — is sized as
+S and filed rather than taken, in
+`docs/evidence/criteria-closeout/defects/23-support-window-confirmation-is-probe-stamped.md`.
+
+--------------------------------------------------------------------------------
+10. PINNED LINES VERIFIED UNMOVED
+--------------------------------------------------------------------------------
+`versionSupportWindows.ts` stayed at 225 lines through every in-place reword
+(the provenance block is APPENDED after it, taking the file to 273). Each pinned
+line re-read afterwards and confirmed to hold its original content, except :164
+and :165 whose text is the reword itself:
+
+    63, 70, 72, 73, 126, 150, 158, 162, 171, 174, 175, 176, 177, 179, 180, 182,
+    189 — unchanged
+    164, 165 — reworded ON PURPOSE (§8a), disclosed in §9
+
+`supportWindows.ts` pins at :6, :59, :64, :69, :70, :71 — all unmoved; the new
+comment sits below every one of them.
+
+--------------------------------------------------------------------------------
+11. ROADMAP AND THE NINE IDS
+--------------------------------------------------------------------------------
+Prose lands in `roadmap/23-release-hardening.md` §Risks & open questions,
+APPENDED. The version-support-windows exit criterion is untouched: a criterion's
+bullet text is the input to the UUIDv5 the release harnesses stamp.
+
+Re-derived after the append, exactly as the v1.6.0 cut did — each of the six
+emitters' `REQUIREMENT_ID_BY_GATE_TAG` literals parsed and compared against
+`requirementIdForGateTag(corpus, tag)`:
+
+    release-gate:git-matrix                    117e688c-e286-5c58-96a3-9788e868c90f  OK
+    release-gate:installation-matrix           984d2333-f221-5aa3-8fb0-e70428ab09c5  OK
+    release-gate:crash-recovery-concurrency    4147ed44-8703-5c21-906f-db468f03449e  OK
+    release-gate:connector-matrix              ea52bc42-443a-5af8-b4ab-8bc6d335aa7f  OK
+    release-gate:live-conformance              e54413e1-5f35-5907-bf73-61c126275eb8  OK
+    release-gate:not-implemented-sweep         e54413e1-5f35-5907-bf73-61c126275eb8  OK
+    release-gate:gateway-cli-surface-complete  3de45957-aec7-5aa3-985c-39d08551e5c9  OK
+    release-gate:reproducible-build            80b7e1bb-d84b-5d6b-8340-8e9b4b01f4e1  OK
+    release-gate:engine-pin-recorded           bd7756df-b7bc-59c3-827f-b8409313ea49  OK
+
+    criteria parsed: 16;  gate-tag ids checked: 9;  mismatched: 0
+
+--------------------------------------------------------------------------------
+11b. ⚠️ THIS PR'S OWN REWORD BROKE TWO TESTS AND NOTHING CAUGHT IT — which is
+     this PR's own subject, happening to this PR
+--------------------------------------------------------------------------------
+Found on the second pass, disclosed rather than quietly fixed, because the
+mechanism is exactly the one this whole change exists to address.
+
+The first version of the reword changed the staleness message from "days stale
+at the release cut" to "the support-window PROBE last ran … days before the
+release cut". Two assertions in
+`e2e/attestation/src/versionSupportWindows.test.ts` matched on the OLD phrase:
+
+    × FAILs on a stale re-confirmation — 'current at release time' is a
+      freshness claim
+        expected '…' to contain 'days stale at the release cut'
+    × still applies freshness to a continuously-supported service
+        expected '…' to contain 'days stale'
+    Test Files  1 failed (1)      Tests  2 failed | 17 passed (19)
+
+**The full local gate was green and CI was green on both arches, 15/15, while
+those two tests were red.** `e2e/attestation` is not a `vitest.config.ts`
+project, so `npm test` never runs it — the precise fact this PR was written to
+compensate for, biting the PR that names it.
+
+FIXED: both assertions now match the new wording AND name the arithmetic (`205
+days before the release cut`, `limit 30 days`) rather than a phrase that could
+survive the check being gutted. Re-run in the project's own runner:
+
+    e2e/attestation   19 files / 379 tests passed     EXIT=0
+    e2e/provisioning   8 files /  54 tests passed     EXIT=0
+    npm run test:e2e (all eight offline projects)     see below
+
+⚠️ THE RESIDUAL IS UNCHANGED AND IS NOT CLAIMED AWAY: nothing per-push runs
+`e2e/attestation`. This PR adds a per-push lane that WARNS about the bound; it
+does not put the gate itself into the per-push fan-out, and the next reword of
+one of its messages can break the same tests the same way. What is new is that
+`check-support-window-freshness.test.mjs` now imports the real gate, so at least
+the threshold agreement between the two is per-push.
+
+--------------------------------------------------------------------------------
+12. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the bound now warns 21 days early naming both the warn date and the red
+date; the thresholds are the gate's own and no stricter; no workflow can renew
+the bound by the ordinary spellings; and all six windows are unchanged as of
+2026-08-07, re-derived here rather than inherited.
+
+⚠️ NARROWED, because the first version of this section claimed more than the
+file delivers. It said "the wording at all five reader-facing sites now says
+what actually happens". What is true is narrower and is worth stating exactly:
+every EMITTED FAILURE MESSAGE in `versionSupportWindows.ts` has been reworded —
+`:151` and `:159` were missed in the first pass and are fixed here — and so has
+every `source` string. What has NOT been reworded is four DOC COMMENTS that
+still use "re-confirmation"/"re-confirmed": `:8` (which quotes the roadmap
+criterion verbatim and must), `:72` (citation-pinned; its text is a merged
+record's anchor), and `:25`/`:90`/`:97` (design prose about the field, left
+alone rather than churned for line-count-neutrality). A reader meeting the term
+there is one scroll from `CONFIRMED_ON_PROVENANCE`, which defines it.
+
+NOT CLAIMED: that the attested half is verified. It is not. `supportEndsOn` is a
+human transcription, and the reword exists precisely to stop anyone reading a
+fresh `confirmedOn` as evidence about it.
+
+NOT CLAIMED: that `jira-cloud`/`grafana-cloud` publishing no per-version EOL was
+re-verified as a negative — a negative read off a page is not a measurement. It
+is transcribed and labelled as such.
+
+NOT CLAIMED: that the merged `phase-23.json` c13 citation is repaired. It is not;
+its quotation of the date is permanently dead, and the sized remedy is filed.
