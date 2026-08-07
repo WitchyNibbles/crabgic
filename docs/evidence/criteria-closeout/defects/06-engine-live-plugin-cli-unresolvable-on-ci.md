@@ -114,3 +114,24 @@ Both are classified `EVIDENCE-NEEDS-CI` and both carry this record as their `def
 The comment is stale by two re-baselines. It is a comment, so nothing enforces it and nothing breaks
 today. It matters because it is the first thing whoever implements remedy step 1 will read, and it
 names the wrong upper bound to pin against. Fix it in the same `ci:` PR.
+
+## Addendum 2026-08-07 — the named remedy landed; status moves open → owner-gated
+
+PR #118 implemented this record's own remedy. `engine-live.yml` now installs
+`@anthropic-ai/claude-code@2.1.218` — pinned in-range rather than by a dist-tag, because `latest` is
+2.1.223 and outside the accepted range while `stable` is a moving tag that no spike suite validated —
+and verifies `command -v claude` before the suite, with the assertion anchored on the whole line
+after the pass's probe C found a `toContain` matching a prefix. `test:live` gained `--bail=1`, so a
+plugin-lane failure no longer costs whatever the engine-claude lane spends after it. Evidence:
+`docs/evidence/phase-10/live-lane-preconditions-batchK.txt`, whose §2.2 measures the two facts that
+carry the fix — the pinned version still resolves in the registry, and its `bin` map is keyed
+`claude`, which is exactly the name the three live call sites resolve, so the `ENOENT` is removed.
+
+**UNVERIFIED against a live engine, and this addendum is not evidence that it was.** Nothing in that
+batch ran `@live`, set `CRABGIC_LIVE`, dispatched `engine-live` or served a model turn; every
+measurement is a free local invocation, a registry metadata read or an offline test run.
+
+**Status moves from `open` to `owner-gated`.** The missing evidence is now exactly one thing: an
+owner-dispatched green `engine-live` run, in a low-utilization window, with the run id cited — and
+the `CLAUDE_CODE_OAUTH_TOKEN` repository secret, which that batch did not confirm exists. Until then
+`roadmap/06-claude-engine-adapter.md:198` (clause 2) and `:207` stay unticked.

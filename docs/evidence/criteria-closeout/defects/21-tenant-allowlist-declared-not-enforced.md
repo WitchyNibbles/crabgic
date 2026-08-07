@@ -50,3 +50,26 @@ the guard bites — or (b) remove the field from the contract and schema and say
 comment stating plainly that it is not yet enforced.
 
 Needs no live engine, no Docker and no owner subscription.
+
+## Addendum 2026-08-07 — the scope bound, quoted verbatim from the published schema
+
+This record is already `fixed` and its scope bound is already stated. It is repeated here verbatim,
+from `packages/contracts/src/contracts/external-connection.ts:117-122`, because the enforcement's
+own `.describe()` is what an operator reads and it is the wording every downstream claim must not
+exceed:
+
+> SCOPE: this binds the tenant a mutation plan DECLARES, on the mutation path only. Reads are not
+> tenant-checked (read requests carry pseudo-tenants used only as concurrency keys), and the
+> remote's actual tenant identity is not verified by this field. It is not a guarantee that
+> cross-tenant access is refused.
+
+Two later changes touch the same area and neither widens that bound. PR #122 added a Jira
+tenant-boundary security fixture as a seventh blocking manifest entry, which made
+`roadmap/21-connector-evidence-integration.md:157` tickable — but the fixture exercises this
+gateway-owned, provider-agnostic enforcement rather than adding a Jira-side one. And PR #125
+enforced the sibling `folderAllowlist` field on the same seam, with the same three deliberate
+narrowings (mutations only, declared placement rather than actual, no config-time signal).
+
+**Kept open:** the multi-tenant judgement itself. The residual exposures an operator should assume
+are unchanged — reads on a tenant-scoped connection; a plan declaring an in-allowlist tenant while
+its URL targets another tenant reachable with the same credential; and unbound remote identity.

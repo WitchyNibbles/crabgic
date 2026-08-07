@@ -117,3 +117,46 @@ Effort **S** (one test file plus its `.snap`, and two assertions added to an exi
 fixture already exists). Needs no CI job, no live engine, and no owner input.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — 19 snapshot entries to 51, with the narrowings disclosed
+
+PR #115 took this record's own S-sized remedy. The committed `.snap` went from 19 entries to 51,
+covering all 22 `ParsedCommand` members that extend `JsonFlag`; the twenty-third declares no
+user-facing flags and its stdio shapes were already snapshotted. The 16 help entries are unchanged,
+so the criterion's already-met help half does not regress. Evidence:
+`docs/evidence/phase-09/probe-09-383-batchA.txt`.
+
+The measurements that make those entries evidence rather than decoration are the four vacuity probes
+(V1–V4): an extra key on every doctor finding, a reversed finding order on the `--json` render path
+only, two reworded `repairStep` strings, and an added key on `learn list --json` each left the whole
+`packages/cli` suite **completely green** beforehand, and each reddens afterwards (P1a–P1d). The
+named expected-green control is `learn-command-backend.test.ts`, whose `toMatchObject` passes for an
+extra-keyed payload where a snapshot cannot — and that difference is exactly the value the snapshot
+adds, measured rather than asserted.
+
+**The three narrowings are restated here verbatim from transcript §7**, because they are what a
+reader has to be able to disagree with: (i) `run --json` is one payload shape whose two unsnapshotted
+content arms produce the identical field set to the snapshotted escalate arm; (ii)
+`status --watch --json` is byte-produced by the same `formatJson(result)` expression as the
+snapshotted non-watch branch; (iii) `status <run-id> --json` for an unknown run serializes to `{}`,
+so that entry pins an empty object rather than the populated `RunStatusResult` shape, which is pinned
+instead by a zod parse in `cli.commands.schema.test` — strictly stronger than a snapshot, but in a
+different suite from the one the criterion names.
+
+**Residual, named so it cannot drift:** no case in `cli.snapshots.test` snapshots a **populated**
+`RunStatusResult`, and `status (no run-id) --json` snapshots a `runs` key holding an empty array,
+which pins no element shape either. Closing that is one S-sized case in the named suite. The box was
+ticked anyway, on this repository's own roadmap/06 precedent — a criterion whose guarantee is met
+while its named suite does not carry it stays ticked and the pointer gap is recorded — and this
+paragraph is that record.
+
+**Two corrections to this record's own earlier text, both measured rather than argued.** The id-set
+rider's stated justification, that the next doctor check to land must not silently displace one, is
+already discharged **at the builder** by `packages/cli/src/doctor/run-doctor.test.ts:17-31`, which
+asserts the exact ordered id list against `buildDefaultDoctorChecks`; reordering it reddens that test
+today. What was genuinely unpinned is the ids as rendered through the `doctor --json` **dispatch**
+path, which is what this criterion governs and what the shipped assertion pins. And the "8-check
+default set" comment listed under remedy item 4 was already corrected on `main` by PR #66, so it is
+no work item and the credit is not this wave's. §8 of the transcript records the line drift this
+change caused in `cli.snapshots.test.ts`, and §9 is a dated correction to that transcript's own
+units — a `<uuid>` count reported as occurrences was a line count.

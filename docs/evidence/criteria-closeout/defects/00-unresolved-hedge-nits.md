@@ -88,3 +88,18 @@ id at `:404`, and `:685`) against four mitigation notes (`:270`, `:378`, `:343` 
 Conjunct 2 is clean. Had either item above been a genuine reliance on an UNRESOLVED fact as settled,
 conjunct 2 would have been UNMET and the box would have stayed unticked — that was the pre-agreed
 handling, and it did not have to be used.
+
+## Remedied 2026-08-07 — both nits closed at the point of edit
+
+PR #123 closed both. The `rejected`-status hedge is now recorded where a maintainer meets it rather
+than only in the baseline: `e2e/matrix/orchestration/test/limit-parked-resume-restart.test.ts`
+carries a comment stating that the status is unobserved live, that `docs/engine-baseline.md` §8
+records it as UNRESOLVED, that this fixture is a recorded payload spread into a fake-engine script
+and never a claim about engine behaviour, and that the shape must not be promoted into a live-facing
+assertion or cited as observed — with a pointer to the sibling constraint in the scheduler's own run
+driver test so the two cannot drift apart silently. The event-normalizer nit is closed by a dated
+correction block inside `docs/evidence/phase-06/wi2-event-normalizer.md`, which withdraws the stale
+injection-scope sentence in place rather than editing it away.
+
+Both are documentation-of-a-constraint changes; neither moves a test count, and neither is claimed
+to. **Residual: none.**

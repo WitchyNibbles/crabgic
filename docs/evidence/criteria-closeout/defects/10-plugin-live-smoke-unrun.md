@@ -103,3 +103,29 @@ exists (whose presence this pass did not confirm), and the same workflow also ru
 spend than this four-test subset — a scoped local run is the cheaper way to close this one box.
 
 **Ticket-ready:** yes, pending owner approval for the subscription spend.
+
+## Addendum 2026-08-07 — the spawn case's filed test defects are fixed; the run is still owed
+
+PR #118 fixed the three test defects this record filed against the spawn case: the timeout moved to
+240s against vitest's 300s ceiling (the previous 120s cap was what the case died on, in a run that
+needed roughly 185s), the prompt is bounded to two named files instead of a monorepo-wide count that
+sent about fifty calls into `node_modules`, and the model is pinned with a cost bound
+(`--model=haiku` plus `--max-budget-usd=0.50`) rather than inheriting the host default.
+`packages/plugin/agents/eo-explore.md` now declares `maxTurns: 30`.
+
+The engine fact behind that bound is **binary-sourced and not probe-verified**, and it is recorded
+that way rather than promoted: `maxTurns` is a known plugin-agent frontmatter key validated as a
+positive integer and dropped with a warning when invalid, the built-in default for an agent
+declaring none is 200, and the loop's own terminator emits a max-turns-reached event. Read
+`docs/evidence/phase-10/live-lane-preconditions-batchK.txt` §2.4, which also records that this fact
+has no home in `docs/engine-baseline.md` yet — a carry-forward, not a discharged item. The same
+transcript's §2.3 records that `--max-turns` is **absent** from the CLI at the pinned version, so it
+would not have bounded the nested subagent loop even if it had been used.
+
+The other four manager subagents (`eo-reviewer`, `eo-roaster`, `eo-architect`, `eo-planner`) are
+deliberately left at the built-in default, because the overspend was measured for `eo-explore` only
+and a bound that bites mid-review truncates a reviewer's findings. That deliberate choice is pinned
+by an assertion rather than left in prose.
+
+**Status stays `owner-gated`.** `roadmap/10-plugin-and-installer.md:222` names a green `@live` run,
+and one owner dispatch is what discharges it. Nothing here was verified against a live engine.

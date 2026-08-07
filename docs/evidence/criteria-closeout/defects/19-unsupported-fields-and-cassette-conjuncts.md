@@ -137,3 +137,29 @@ criterion 1). Pieces 1 and 2 need nothing beyond a normal working tree — but p
 change, so it belongs to an implementation pass, not to a closeout pass.
 
 **Ticket-ready:** yes.
+
+## Addendum 2026-08-07 — pieces 1 and 2 landed; PIECE 3 IS OPEN AND OWNER-GATED
+
+**Not closed.** Two of this record's three remedy pieces landed in PR #124 and the third did not.
+
+Pieces 1 and 2: the custom-field refusal attribution is now parameterized, so a Data Center context
+refuses an undiscovered custom field with canonical kind `unsupported` attributed to provider
+`jira-datacenter` where it previously returned `validation` attributed to `jira-cloud` — measured as
+the pre-fix product behaviour, `expected 'validation' to be 'unsupported'`, not inferred. The check
+sits at the plan-build boundary in the Data Center client, on all three write entry points that take
+a custom-field payload. Cloud's own default is byte-unchanged and is pinned in its **own** right
+(probe P1d), so the Data Center change cannot be satisfied by collapsing the two attributions into
+one. Evidence: `docs/evidence/phase-19/dc-typed-kinds-probe-batchI.txt`.
+
+**Piece 3 — a cassette carrying a refusal — is OPEN and owner-gated.** It needs a capture against a
+licensed Jira Data Center instance, which no free channel can produce. Nothing was hand-authored to
+stand in for one, deliberately: the two Data Center cassettes already in the tree are the happy-path
+seven-call read scenario and are byte-identical to each other. `roadmap/19-jira-datacenter-adapter.md:191`
+therefore **stays unticked**, and this record's status stays **owner-gated**. The actions conjunct's
+recorded bound is unchanged — of the seventeen gated call sites the typed refusal is asserted on
+three, so the mechanism is proven and per-action coverage is not.
+
+**Honest scope, carried from that pass rather than restated more warmly:** this buys a correct
+caller-visible taxonomy at the **package boundary** only. The shipped daemon never composes the Data
+Center provider — its registration function has zero importers outside its own package — so no
+operator-facing behaviour changes until it is wired.

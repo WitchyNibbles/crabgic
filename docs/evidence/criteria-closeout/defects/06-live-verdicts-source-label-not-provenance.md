@@ -136,3 +136,34 @@ two comment corrections. But the mechanism should either work or be removed.
 This record deliberately does not fix anything: a closeout pass files defects. The one change this
 pass made to the file was to run the sanctioned live suite, which rewrote it with identical bytes —
 so the committed content is unchanged from `origin/main` and appears in no diff.
+
+## Addendum 2026-08-07 — items 1-3 remedied; item 4 stays open with an S-sized remedy attached
+
+PR #123 closed the first three items. Item 2 was resolved as **wire, not delete**, and the reason is
+worth keeping: deleting the label would rewrite the very artifact the parity criterion rests on, so
+the writer was gated instead. The only caller of the verdict writer must now present a real canary
+result, and a fabricated one is refused at runtime as well as by the type system — the type-level
+half was falsified rather than asserted, with a `@ts-expect-error` directive going unused (TS2578)
+under the widening and the runtime guard's own discriminant dependence (TS2339) as a second,
+independent tripwire. Evidence:
+`docs/evidence/phase-06/live-verdicts-provenance-probes-batchL.txt`, which also records a line-number
+note so nobody "corrects" a correct transcript: a later comment-only block shifted the directive from
+`:110` to `:121`, and the re-run at the tree the branch lands as is quoted rather than assumed.
+
+**Item 4 stays open.** The gate binds the **writer**, not the committed artifact: nothing reads the
+committed `source` field, so a hand-edit of that string is still undetectable — which is exactly what
+one earlier commit did, and how the label came to claim a live provenance months before any green
+`@live` run existed. What changed is that no **code path** can mint the label any more. What did not
+change, and should not be oversold, is that the criterion's provenance evidence is still the green
+run, the moved mtime and the clean `git diff` recorded in the phase-06 closeout transcript — never
+the `source` string.
+
+**S-sized remedy now attached**, since this record previously named the gap without one: a single
+`expect(committed.source).toBe("live")` in the fake/live parity test. That does not derive provenance
+from the artifact — it converts a silent hand-edit into a CI-visible one, which is a strictly smaller
+and honest claim. It was deliberately **not** built by the batch that closed items 1-3, because a
+closeout pass files defects rather than fixing them and this one was outside that batch's own remedy
+list. Deriving provenance from the artifact itself would need the file to carry something a fake
+cannot reproduce, which is a larger design change than this record proposes.
+
+Status stays **open**.

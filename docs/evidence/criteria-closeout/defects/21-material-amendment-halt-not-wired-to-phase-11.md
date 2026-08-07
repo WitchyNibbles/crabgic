@@ -68,3 +68,31 @@ Steps 1 and 2 are the criterion; step 3 is bookkeeping and can ride along.
 **Effort sizing: M.** No new contract, no schema change, no live system — one wiring module, one integration test, one evidence capture. It needs CI only (no owner subscription, no live engine). The one design question a reviewer must settle first is which package owns the polling→classify→halt loop, because this would be the **first production caller** of `haltOnStopCondition` anyone has had to place. The halt mechanism itself is already exercised end to end, which is what keeps this M rather than L.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — the first production caller, and the excerpt that did not exist
+
+PR #113 wired 21's signal to 11's stop condition:
+`packages/supervisor/src/intake/material-amendment-halt.ts:102` is the first and only production
+caller of `haltOnStopCondition`, which had zero repository-wide before. The criterion's second named
+evidence channel — the halted run's journal excerpt — is now a committed artifact at
+`docs/evidence/phase-21/halt-wiring-journal-excerpt-batchB.txt`, produced over a real temp-dir
+journal, a real runs registry, 02's real run-lifecycle state machine and 21's real classifier. In it,
+the `running → blocked` transition precedes the `adjudication_decision`, whose rationale names the
+stop-condition kind verbatim; and "before `final_verifying`" is proven against the state machine
+rather than a flag, by an `IllegalTransitionError` on the attempt to resume, with `blocked` absorbing.
+The mandatory does-not-halt control runs on a second run, stays `running`, journals zero decisions and
+walks on cleanly to `final_verifying`.
+
+Probes M3 and M4 are what make it non-vacuous: M3 reddens three with both does-not-halt controls
+green, and M4 pins the kind rather than the mere existence of a decision
+(`docs/evidence/phase-21/halt-wiring-probes-batchB.txt`).
+
+**Remedy step 3 verified, not assumed.** The phase-21 evidence README's "Journal excerpt" section now
+carries a dated annotation stating plainly that it is **not** the halted run's excerpt and pointing
+at the one that is. `git log` on that path shows PR #113 (`b3bf737`) as the commit that added it, so
+the step landed in the same change as the wiring.
+
+**Kept open:** daemon wiring of the halt. The composed daemon does not invoke
+`haltRunOnMaterialAmendment` today, and no production milestone-polling loop exists to feed it —
+sized L, and named in the module's own doc comment so a maintainer meets it at the point of edit
+rather than here.

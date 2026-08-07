@@ -105,3 +105,29 @@ already exists in the tree.
 phase 19's four open defects.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — fully; both measured gaps now redden
+
+PR #124 closed both gaps this record measured. Gap (i) — the unrecognized-edition branch asserting
+only that a `ConnectorError` was thrown, so downgrading its canonical kind left the whole repository
+green — is closed by an assertion on the kind **and** the provider **and** the branch's own
+distinctive message, with a control proving a recognized edition's missing action is `unsupported`
+too but on the other branch's message, so neither branch can satisfy the other. Gap (ii) — the
+production discovery-to-client join being replaceable with `undefined` at full repository green — is
+closed by a positive leg (a successful 10.3 discovery reaching the client) against two negative ones
+(an unrecognized version, and a failed discovery swallowed fail-closed). The two gaps map to probes
+P2a and P3b in `docs/evidence/phase-19/dc-typed-kinds-probe-batchI.txt`: P2a downgrades the kind and
+reddens 3, P3b nulls the join and reddens exactly 1.
+
+Two things in that transcript are worth reading before relying on it. Eight of the fifteen new
+assertions were **green on write** and are enumerated one by one with the leg that reddens each,
+because "measured by mutation" is a claim about specific legs and a vague version of it is how an
+unprobed assertion hides. And a dated correction records that an earlier draft of that enumeration
+left the recognized-edition **control** reddened by no leg at all — a control nothing can redden is a
+control in name only — so a fourteenth probe leg was added to close it.
+
+This record's own proposed remedy said no production change was required. That held **for this
+record**: the production change in that branch belongs to
+`19-unsupported-fields-and-cassette-conjuncts`, not here.
+
+`roadmap/19-jira-datacenter-adapter.md:192` is ticked in the same pass. **Residual: none.**

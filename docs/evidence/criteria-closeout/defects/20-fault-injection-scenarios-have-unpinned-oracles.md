@@ -58,3 +58,22 @@ Useful symmetry to preserve: gates' T6 pins **always-refuse** at the gate layer;
 **always-accept** at the scenario layer. Together they bracket the oracle from both sides.
 
 Needs no live engine, no Docker and no owner subscription.
+
+## Remedied 2026-08-07 — with this record's own constraint 2 restated, because it still binds
+
+PR #112 pinned each fault-injection scenario's own verdict using injectable seams that default to
+the real dependency, with reverse probes proving each new assertion has been seen to fail. Read that
+PR's committed transcript under `docs/evidence/phase-20/` before relying on any number here; nothing
+in this addendum is sourced from a PR body.
+
+**This record's constraint 2 is restated verbatim because the remedy does not retire it: "the
+residual moves, it does not vanish" — a rewired default argument still survives the reverse probe.**
+An injectable seam whose default is the real dependency is only as honest as the default, and
+nothing per-push pins that someone has not re-pointed it. That is documented in-file at the seam
+rather than only here.
+
+Two later changes inherit the pattern rather than re-earning it. PR #122's Jira tenant-boundary
+scenario adopted all four constraints from day one instead of retrofitting them, and its probe B2
+produced a second gate-level control — an empty-allowlist case proving that a factory reporting
+success under a refuse-everything configuration **fails** the gate — which is precisely the direction
+a first control can miss.

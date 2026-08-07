@@ -71,3 +71,65 @@ by construction — one reads only the record JSON's shape, the other only run U
 **Needs:** nothing live, no Docker, no credentials, no engine.
 
 **Ticket-ready:** yes.
+
+## Addendum 2026-08-07 — three parts: the two filed corrections, the structural remedy, and what stays open
+
+### (a) The two filed findings were corrected, and the census that found them is a LOWER BOUND
+
+PR #123 applied both corrections this record authorized, as dated corrections beside the existing
+text: the stale `adf-guard.ts` location, and the `attribution-neutral.test.ts` ref that understated
+its own reach. `check:criteria-closeout` and `check:criteria-baseline` passed on both sides, so Hard
+Rule 5 never fired — and neither validator could have caught either defect, which is this record's
+whole point.
+
+`docs/evidence/phase-17/merged-citation-corrections-batchL.txt` §4 carries three further findings of
+the same two classes, reported and deliberately not fixed. One of them is the **second** stale
+citation, `adf.test.ts:251-267`, which was introduced by PR #108 — the very PR whose pass filed this
+record — and now sits at `:279-295`, a shift of 28 lines caused by an inserted test above it. The
+substance is untouched: the whitelist assertion still exists and still pins the exact list; only the
+pointer is wrong.
+
+**§4b is an append-corrected LOWER BOUND of hand-read citation rows, NOT a census, and that framing
+is load-bearing.** It was first published with a hard count and the word "census", which overstates
+it; an independent span-check then found four more of the same class, and three further ones turned
+up while checking those. The root cause is a **grammar** gap, not a rule gap, which is why three
+passing mutation tests did not expose it: the instrument required a quote to follow its marker
+immediately, so (a) any prose or punctuation between marker and quote defeated the pairing — the
+**association gap** — and (b) **bare markers** carrying no quote at all were never span-checked. All
+three mutations happened to land on markers in the adjacent form, so the battery tested the four
+rules and never the grammar that feeds them.
+
+**One row that pass's list missed, verified 2026-08-07 and added here so the bound moves in the right
+direction:** `phase-17.json` criterion 6 cites `packages/renderer/src/length-limits.test.ts:12-25`
+and its assertion also walks the **bare range** `:48-57` and the marker `:50`, both outside the
+declared span — the same class as the rows already listed. So the bound is **at least 11 rows**, and
+it must be written as "≥", never as a completed count. Enshrining any total here would make the next
+pass trust a number that was never a census.
+
+### (b) The structural remedy landed
+
+PR #126 built the CI-resident resolver this record's remedy proposed:
+`scripts/check-citation-content.mjs`, wired as a **blocking** step in `meta-checks`, with a prose lane
+that resolves every `path:NN` written in `roadmap/*.md` and in these defect records outside fenced
+blocks. `docs/evidence/citation-resolver/red-corpus-batchN.txt` is the "would it have caught this on
+the PR?" question executed rather than asserted — the corpus is clean at one sha and reports the
+`adf-guard.ts` drift at the sha that caused it, with the record already merged at both. The battery
+in `docs/evidence/citation-resolver/mutation-tests-batchN.txt` mutates the **notation** as well as the
+values, which is the lesson §4b earned.
+
+### (c) Phase 18's drift, attributed — and why it is still open
+
+The phase-18 stale citations are attributed to **PR #100 and PR #119**, not to #119 alone; the
+resolver's own measurement over the corpus names five separate PRs. The #119 half has a committed
+old-to-new table at `docs/evidence/phase-18/cassette-flow-replay-batchJ.txt` §R9.
+
+The repair was **attempted with the production tool and then reverted**, and the measurement is
+recorded in `phase-18.json` itself rather than here: `--fix` re-anchored 20 citations and left 18 of
+them not resolving where they claim, in three classes — fragments now correct but outside the span
+their `ref` declares (mechanical, the `ref` has to be widened too), fragments whose text is **absent**
+because the code was rewritten rather than moved, and fragments whose text repeats so their position
+is not verifiable by content at all. Landing that would have needed `--allow-unanchored`, which is a
+confession written into the baseline and the way a ratchet becomes paper.
+
+**This record stays open.** The burn-down's pinned starting line is
+`docs/evidence/citation-resolver/seed-census-batchN.txt`, and the great majority of it is still owed.

@@ -130,3 +130,25 @@ document. c6's two conjuncts are each pinned, one in the named suite and one in 
 sibling. Nothing is unguarded; a pointer is aimed slightly off. Ticking on measured substance and
 recording the drift here is the honest handling — leaving the boxes unticked would misreport a real,
 working guarantee as absent.
+
+## Remedied 2026-08-07 — the add-tests route, with a counterfactual
+
+PR #123 took this record's add-tests route rather than the criterion-wording alternative, so the
+wording question this record raised is retired: nothing is reworded, and a reader who follows either
+criterion's own pointer now lands where the guarantee is.
+
+Criterion 9: `version-gate.test.ts` now constructs a real engine adapter and asserts that `spawn()`
+and `resume()` refuse out of range with a typed kind and reason, with zero engine calls and zero
+journal appends, plus a does-not-refuse control at the tested version. Criterion 6: `limit-signal.test.ts`
+now reads the committed spike fixture transcripts off disk and drives the criterion's subject against
+those bytes.
+
+The measurement that makes this a delta rather than something already true is the **counterfactual**:
+`docs/evidence/phase-06/criteria-suite-pointer-probes-batchL.txt` runs the record's own two mutations
+against the **pre-batch** versions of those files and reproduces this record's original result
+exactly — deleting the version gate from `resume()` reddened one test, in `adapter.test.ts`, with the
+whole of the criterion's named suite green. After the change the same mutation reddens two, and one
+of them is in the suite the criterion names. Probes A and B are the after; probe C is the before.
+
+**No box moved.** Both criteria were already ticked on measured substance; what changed is where the
+pointer lands. **Residual: none.**

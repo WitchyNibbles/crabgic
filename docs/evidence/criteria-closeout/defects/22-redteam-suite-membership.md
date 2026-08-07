@@ -111,3 +111,29 @@ Two independent halves; the first closes the locator, the second closes the miss
 reword rather than implement half 2.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — with the green-on-write honesty note
+
+PR #115 put all five behaviours in the suite this criterion names. `npx vitest list
+packages/learning/src/red-team` enumerates 10 files where it enumerated 5, and a grep for the tag
+returns exactly those files, which is what the tag is: a describe-title convention plus the path
+selector the `learning-redteam` workflow runs. Evidence:
+`docs/evidence/phase-22/probe-22-095-batchA.txt`.
+
+**Stated honestly, because the distinction is the whole point of this record.** Four of the five
+behaviours — contamination, rejected promotion, expiry and rollback — already had real, passing,
+non-vacuous cases outside the named suite, and their new red-team files were **green on write**. The
+measured claim is a membership delta taken with `vitest list`, not a red run, and it is not dressed
+as TDD-red. Only grader drift is genuinely TDD-red: it could not even import before the module it
+needs existed.
+
+Because four were green on write, their value is carried by mutation rather than by their first run,
+and each mutation names its expected-green control in advance: deleting the drift refusal reddens
+three while grader-drift's own control and its digest-exhaustiveness case stay green; deleting the
+contamination throw reddens two red-team cases while the pipeline e2e stays green, because its two
+case sets are disjoint so it never exercises the refusal; falsifying the expiry predicate reddens the
+expiry case. The two cross-package legs are reported with **both** the src-only and the rebuilt
+numbers, and the finding that they are identical — the CLI-side backend suite is insensitive to
+either mutation — is recorded rather than quietly replaced by the stronger number.
+
+**Residual: none.**

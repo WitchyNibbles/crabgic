@@ -123,3 +123,34 @@ credentials, and a capture path; no CI minutes and no engine subscription.
 
 **Ticket-ready:** yes for remedy 1. Remedy 2 needs an owner decision on sandbox provisioning
 first, and is the same decision phase 23's live matrix already depends on.
+
+## Addendum 2026-08-07 — the S-half is discharged; remedy 2 stays owner-gated
+
+PR #119 discharged the falsifiability half. The at-rest pin that made the parity assertion
+unfalsifiable by construction is dropped, so the assertion can now fail and is the suite's only
+detector of fake/cassette divergence; the "two INDEPENDENT sources" claim is corrected at all three
+sites that carried it. The record's finding was re-derived rather than quoted — a throwaway script
+re-serialized each object literal of the hand-authored read scenario and byte-compared it to the
+fixture entry beside it: seven of seven identical, with `status` and `bodyText` the only per-entry
+keys in the whole fixture. Evidence:
+`docs/evidence/phase-18/cassette-flow-replay-batchJ.txt` §P4.
+
+The cost of dropping that pin was measured rather than assumed (§P5), which is the reverse of the
+"adding a check can un-pin the one beside it" hazard: a semantically invisible key reorder in the
+read cassette was caught **only** by the dropped assertion, and after dropping it nothing caught it.
+So §P5b replaces the byte coverage with a case pinning the cassette to **itself** — a hash of its own
+parsed-and-restringified form — rather than to the fake. That is not the old assertion renamed: the
+old one pinned the cassette to the fake, which is what made parity unfalsifiable; the new one leaves
+the cassette free to diverge from the fake, which parity must be able to detect, while still catching
+a byte-level edit.
+
+**Kept open and owner-gated: remedy 2, a real capture.** Both sides are still hand-authored, so
+`roadmap/18-jira-cloud-adapter.md:142` stays unticked. It needs a cassette captured from a real Jira
+Cloud instance: a licensed sandbox, credentials, and a capture mode on the fake transport.
+
+**One owed sentence, and it is owed now rather than after the capture.** The write-scenario
+cassette's envelope carries a rich `provenance` block (`capture`, `capturedFrom`, `modeledAfter`, a
+`disclosure` and a `notEvidenceFor`) but **no schema or format version at all** — verified at the
+fixture head, whose only top-level keys are `provenance` and `sections`. When the real capture lands,
+stamp the envelope with a capture source and a format version, so replay drift is attributable rather
+than being diagnosed from a diff.

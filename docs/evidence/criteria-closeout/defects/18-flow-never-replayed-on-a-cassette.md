@@ -116,3 +116,33 @@ the fixture is to be captured against a real Jira Cloud sandbox rather than hand
 which is the question the companion defect raises.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — via this record's own option 1, with its caveat addressed rather than waved
+
+PR #119 parameterized the flow suite over a fake arm and a cassette arm, so the same assertion set
+runs twice — once on the inline script and once replayed from bytes on disk — through the real
+`executeMutationPlan` and a real temp-dir journal, over the whole named chain plus a transition and a
+412 conflict. Evidence: `docs/evidence/phase-18/cassette-flow-replay-batchJ.txt`.
+
+**This record's caveat — "honest only if the cassette is not simply a copy of the inline array" — is
+addressed by measurement, not by assertion.** The bodies carry response-envelope fields a real Cloud
+instance returns and the inline fake does not (`self`, `expand`, comment `author`, worklog and
+attachment metadata, a status category colour, and Jira's real 412 error envelope in place of the
+fake's empty body), so the connector must extract the same typed results from two different wire
+shapes. Section P2 mutates one response value with its digest recomputed and reddens **only** the
+cassette arm while the byte-identical fake arm stays green, which is what proves the bytes drive the
+flow rather than a fallback to the inline script. Section P3 changes one byte of a recorded request
+path and is caught by a request-line check the fake arm does not have at all.
+
+Section R3 is the part that discharges this record on its own terms: reshaping the repository's only
+pre-existing Cloud cassette into the write envelope fails four of eight cases by **execution**, where
+this record asserted the same thing by enumeration.
+
+**Hand-authored provenance is disclosed at four sites**, and section R10 records why that mattered: a
+later adversarial review found two surviving "recorded" strings eight lines below corrections already
+made in the same file — one of them a value **journaled into release attestation evidence**, i.e. a
+false provenance claim with a longer life than the test run. The lesson is recorded in the transcript
+rather than only in a review thread: when withdrawing a provenance claim, grep the whole file for the
+word, and check every value that leaves the process rather than only the prose that stays in it.
+
+**Residual: none for this record.** Criterion 9 (parity) is a different record and stays owner-gated.

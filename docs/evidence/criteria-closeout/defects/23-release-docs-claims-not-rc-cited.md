@@ -191,3 +191,25 @@ rather than pending claims. Both are consequences of the sha this record pins, n
   tenant entries were replaced by one real Grafana tenant-boundary entry in PRs #94/#100 — seven
   minus two plus one. Both copies of the number were found before the correction was written, and
   both are named in it.
+
+## Correction 2026-08-07 — the step-5 sentence is stale
+
+Dated correction beside the addendum's step-5 paragraph, which stays verbatim. That paragraph reads
+`npm run check:e2e-types` is **red on `origin/main`** (25 pre-existing `DispatchAttemptOptions`
+errors in `e2e/matrix/orchestration`, and the script is `&&`-chained fourth so it short-circuits
+before most projects). Both halves have since stopped being true.
+
+The chaining was replaced: the script now runs every project independently and reports a per-project
+verdict, so it no longer short-circuits. And the errors were fixed by PR #109 — re-verified at
+`ed999b9`, `PASS — 8 project(s) typechecked clean`, and independently in three separate batch
+transcripts this wave. One precision so the next reader does not re-open this: the check typechecks
+`e2e/` against the workspace's built `dist/`, so on a stale build it reports failures that are a
+build-state artifact rather than a regression. `release-e2e.yml` runs `npm run build` in the step
+immediately before it, which is the channel this claim is about.
+
+**Everything else about this record stands, and the box stays unticked.** The criterion's second
+conjunct is a universal quantifier over claims cited to the release candidate, and the census behind
+it is unchanged: the large majority of the audited lines rest on docker, live or host channels that
+no free run can produce. Status stays **owner-gated**, and the disposition — permanent untick versus a
+reword that loses a guarantee and therefore needs owner sight — is an owner question, not a
+maintenance task.

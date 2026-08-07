@@ -87,3 +87,39 @@ evidenced at gate-harness level exactly as its own criterion names. What is miss
 gets built), not a bug to slot into a maintenance pass.
 
 **Ticket-ready:** yes, as an epic; it needs its own plan, not this one.
+
+## Addendum 2026-08-07 — partially remedied, and the remainder is a measured necessity
+
+**Remedied half.** The daemon's one production composition root now composes a gate registry
+(`packages/cli/src/daemon/compose-gate-registry.ts:113`) and the post-completion pipeline walks
+`running → verifying → integrating → final_verifying → published_local`
+(`packages/cli/src/daemon/post-completion-pipeline.ts:217`, `:288`, `:364`, `:454`), so this
+record's core claim — that nothing in production ever reaches those states — no longer holds.
+PR #121 then registered the security-fixture manifest, so six gates (seven once PR #122's Jira
+tenant-boundary entry auto-registered through the derived list, with no edit) fire **blocking** at
+`final_verifying` for every run, and a failure names the fixture id in the refusal. Evidence:
+`docs/evidence/phase-14/gate-composition-security-manifest-batchM.txt`, whose §11 carries the
+per-push job-log proof (`compose-gate-registry.test.ts` 7 → 10 cases between `main` `6f964d7` job
+92626742663 and PR #121's job 92635250908, byte-compared under the one-space rule with the ANSI
+escapes stripped, with three control rows that correctly do **not** move), and whose §12 is a dated
+self-correction that matters here: in `post-completion-pipeline.test.ts` those gates are
+**registered and fire ZERO times**, because that suite's one composing case fails at requirements
+resolution during `verifying`. "Registered but never fired" is exactly the trusted-and-inert
+distinction this record exists to close, so it was measured with an instrumented counter rather
+than asserted, and both instrument controls (1 firing and 3 firings) are reported beside the zero.
+
+**Kept open, by measured necessity rather than omission.** 15's performance gate and 14's own
+tdd/coverage/flake/scanner/engine-conformance tranche are still unregistered. `fireAll` fires every
+registered gate for every run, so a handler without a backend either fails every run or fabricates.
+The perf gate's backend is missing in four independent places (transcript §9): `GateContext` carries
+no `baseObjectId`, so the A side of the A/B benchmark is unreachable from the firing context;
+`dispatchAttempt`'s outcome does not expose a `worktreePath`; no production code composes a
+`ProjectProfile`, so there is no benchmark command; and the methodology floor demands 22+ sequential
+stack commands per run, which is 14's worker-sandbox dispatch precondition rather than a preference.
+The coverage gates need report files nothing composes, the scanner gates need digest-pinned binaries
+from 12's capability store, and the engine-conformance gate needs a journaled green `engine-live`
+record while that workflow has never run at all. **Whether they fire in the daemon is an owner scope
+decision, not a maintenance task**, which is what this record's own remedy section already says.
+
+Status stays **open** rather than `owner-gated`: what is missing is a design ruling, not an
+owner-authorised run against a paid system.

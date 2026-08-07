@@ -191,3 +191,28 @@ described, so it cannot change silently.
 An earlier draft of this fix justified the `bulk:` passthrough on the grounds that it "names no
 existing issue". That was false — the target literally contains the issue keys — and is corrected
 here rather than rewritten away. The behaviour was right; the stated reason was not.
+
+## Remedied 2026-08-07 — the `bulk:<keys>` residual is closed
+
+PR #125 closed the residual PR #84 deliberately left. 16's `WriteSerializer` gained multi-key
+acquisition (`runExclusiveMulti`), and both Jira apply clients now map a `bulk:<keys>` plan onto its
+sorted, deduped member issue keys through one widened helper, so Cloud and Data Center inherit the
+fix together. Evidence: `docs/evidence/phase-18/bulk-write-order-batchC.txt` — RED first, 9 failures
+of 31, with the four integration failures each reading `expected 2 to be 1`: the race itself,
+observed on the wire through real plan builders, the real `executeMutationPlan`, a real temp-dir
+journal and a real `GatewayHttpClient`. Probe D's stale-`dist` demonstration (3 failures src-only
+against 7 after a rebuild) is why the cross-package legs are measured after `npm run build` and both
+numbers are recorded.
+
+Two findings that PR corrected in its own draft are kept rather than smoothed over. The connector-side
+`.sort()` reddens only the unit case, because `runExclusiveMulti` re-canonicalises the key set on its
+own side — so the connector sort is **defence in depth**, not the mechanism that closes the
+order-permutation race, and the first draft's doc comment claimed the opposite. And a numstat quoted
+in the merge write-up was a mid-conflict working-tree capture rather than a ref-to-ref measurement;
+the correction and the rule it earns are appended to the transcript itself.
+
+**Kept open, and asserted rather than described:** the **disjoint-set residual**. Disjoint bulk and
+member key sets deliberately still run concurrently, and that is pinned by `=== 2` controls which are
+green **both before and after** the fix — so the narrowing cannot be over-applied silently either. A
+suite that only asserted `maxInFlight === 1` would pass equally well under a global mutex, which is
+the failure this pair of assertions rules out.
