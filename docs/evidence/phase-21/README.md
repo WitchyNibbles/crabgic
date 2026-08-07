@@ -830,3 +830,41 @@ pass: every RED→GREEN fix landed inside `packages/gates/`,
   the pointer discriminator can no longer be spoofed by a `gateTag`-mismatched
   collision (MINOR-2); the traceability view's fan-in/fan-out/revision-
   precedence behavior is proven non-degenerate (MINOR-3).
+
+---
+
+## Annotated 2026-08-07 (closeout batch G) — the c5 evidence bullet's mechanism clause, and the 2026-08-05 annotation's "removed" claim
+
+**Appended at EOF rather than beside the text it corrects, deliberately.** This file carries its own
+line-marker self-references (the c5 bullet and the file inventory are each quoted by line number in
+the 2026-08-06 correction above), and an insertion above them would shift the very markers that
+correction exists to fix. So the two paragraphs below are named by content instead. Everything above
+this line is left verbatim, per this file's own convention.
+
+**1. The c5 evidence bullet.** Its sentence describing the tenant-boundary entries as
+`jira-tenant-boundary`/`grafana-tenant-boundary` [18/20, this phase's own new `assertTenantBoundary`
+guard — no equivalent existed pre-21] is now **half true and half false**, and the two halves moved
+in opposite directions. The **count** is true again: the manifest carries seven entries once more.
+The **mechanism clause is false**: `assertTenantBoundary` was deleted by PR #94 and no definition or
+call survives anywhere — measured at this tree, `git grep assertTenantBoundary -- packages` returns
+exactly one hit, and it is a doc comment inside the new Jira fixture recording the history. What the
+two entries drive now are real checks with anti-vacuity floors: the Grafana entry runs phase 20's
+real `tenantBoundaryBreachScenario` through `checkGrafanaConnectionDoctor` (PR #94, with the
+scenario's own oracle pinned by PR #112), and the Jira entry runs phase 18's real
+`tenant-boundary-scenario` — a real cross-tenant `RemoteMutationPlan` through the real
+`executeMutationPlan`, which consults the gateway's `refuseOutOfAllowlistTenant` (PR #122).
+
+**2. The 2026-08-05 annotation above is itself now partly superseded.** Its closing statement that
+"the manifest now carries ONE tenant-boundary entry" and that "`assertTenantBoundary` and the
+`jira-tenant-boundary` entry are removed" was correct when written and describes an intermediate
+state. The `jira-tenant-boundary` entry is **back**, and the condition that annotation set for its
+return was met rather than waived: it said a gates-side Jira guard would be dead code "no
+Jira/gateway tenant enforcement exists to gate", and PR #100 then landed that enforcement, so the
+fixture PR #122 registers has something real to fail against. That it is not another tautology is
+measured, not argued — deleting the tenant refusal from the gateway mutation pipeline takes the
+suite from 5 failures src-only to 13 after a workspace rebuild, with the 8 rebuild-only rows being
+exactly the ones the new entry adds. Transcript:
+`docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt`.
+
+`assertTenantBoundary` is gone as a mechanism, and nothing here restores it. The enforcement stays
+gateway-owned and provider-agnostic; phase 18 owns the fixture, not the check.
