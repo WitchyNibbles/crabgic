@@ -158,10 +158,21 @@
   before returning. The installed subagent's frontmatter now declares `maxTurns: 30`, below the engine's
   built-in 200-turn default, and that file is the one `crabgic install` writes into a project.
 
-  The manifest validator now also refuses an unreadable `maxTurns` — a non-integer, a zero or negative
-  value, or a quoted one — instead of letting the loader drop it back to the built-in default. That
-  matters more than the bound itself: a frontmatter value the engine cannot parse fails open, so a
-  subagent that looks bounded on disk would have run unbounded, and no channel warned about it.
+  The manifest validator now also requires any declared `maxTurns` to be a **bare positive integer
+  literal**, instead of letting a value the loader cannot read be dropped back to the built-in
+  default. That matters more than the bound itself: an unreadable value fails open, so a subagent that
+  looks bounded on disk would have run unbounded. The engine does warn — its loader's message is
+  recorded verbatim from the pinned binary — but that warning could not be surfaced through any free
+  local command, so nothing a maintainer runs would have shown it. Quoted forms (`maxTurns: "30"`) are
+  refused for a narrower reason, stated exactly: whether the engine coerces or drops them is
+  **undetermined** at the pinned version, and the bare literal is the one form whose installation is
+  settled.
+
+  Scope, because it is easy to read more coverage into this than exists: **only `eo-explore` is
+  bounded.** The other four bundled subagents declare no `maxTurns` and still run at the engine's
+  200-turn default — deliberately, since the overspend was measured for `eo-explore` alone and a bound
+  that bites mid-review silently truncates a reviewer's findings. That residual is pinned by its own
+  assertion, so it announces itself if anyone changes it.
 
 - a5f51d6: **`ExternalConnection.tenantAllowlist` was a published schema field that looked like a security
   control and enforced nothing.** It was declared in the contract, emitted into the published JSON

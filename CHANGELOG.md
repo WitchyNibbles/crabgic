@@ -162,8 +162,10 @@ criteria parse exactly as before and no derived budget value moves.
 **The bundled `eo-explore` subagent has a turn bound.** A subagent's turns never reach the
 parent session's counter, so nothing downstream bounded them — one "count the files in this
 directory" request served roughly fifty nested round trips. Its frontmatter now declares
-`maxTurns: 30`, and the manifest validator refuses an unreadable value instead of letting the
-loader drop it back to the engine's 200-turn default.
+`maxTurns: 30`, and the manifest validator requires a bare positive integer literal instead of
+letting a value the loader cannot read be dropped back to the engine's 200-turn default. Scope:
+**only `eo-explore` is bounded** — the other four bundled subagents declare none and still run at
+200, deliberately, because a bound that bites mid-review silently truncates a reviewer's findings.
 
 ## 1.5.0
 
