@@ -901,6 +901,47 @@ Detach with `setsid`, or push in the FOREGROUND and wait for it. And whenever a 
 looks like a flake, check first whether the push was backgrounded — the same shrug this file warns
 about for real flakes applies here, and here it is hiding a missing push rather than a regression.
 
+### ⚠️ AMENDED 2026-08-07 — `setsid` IS NOT SUFFICIENT, AND THE FAILURE IS SILENT
+
+The paragraph above stays verbatim and its detection heuristic does not cover the mode that was then
+observed. It keys on **"a pre-push hook failure that looks like a flake"**. Measured on PR #133:
+
+```
+$ setsid git push -u origin <branch> > push.log 2>&1
+                                            # exit 0, push.log EMPTY
+$ git ls-remote --heads origin <branch>
+                                            # (no output — the ref is not there)
+```
+
+`setsid` returns as soon as it has forked. **Its exit code is `setsid`'s, not the push's**, so a push
+whose hook is still running — or that is later killed — reports success and writes nothing. There is
+no failing test, no red hook, no error line. Nothing looks like a flake, because nothing looks like
+anything. The prescription above was followed and the push still did not happen.
+
+**The rule, and it is the only one that actually caught this: VERIFY BY REF, NEVER BY EXIT CODE.**
+
+```
+git ls-remote --heads origin <branch> | grep -q <expected-sha>   # the only proof
+```
+
+A push is landed when the remote says so. Exit status, an empty log and a quiet terminal prove
+nothing about a detached process. Poll the ref until it appears; if it never does, the push is still
+running or already dead, and only the ref distinguishes those from success.
+
+Corollaries earned in the same pass:
+
+- **`setsid nohup … & disown`** survived where bare `setsid` did not. Redirect stdin from
+  `/dev/null` too, or the hook can block on a closed descriptor.
+- **A retry does not replace the first attempt — it races it.** Two concurrent pushes of the same
+  branch each ran the full suite, on one host, and roughly doubled the wall time of both. Check
+  `pgrep -af "git push"` before re-pushing, and kill the orphan.
+- **Kill it by PGID, never with `pkill -f`.** `pkill -f "git push …"` matches the harness's own
+  `bash -c` wrapper, whose command line contains the pattern — it kills the shell issuing the kill,
+  which presents as a bare exit 143 with no explanation. It did so twice here. Use
+  `kill -TERM -- -$(ps -o pgid= -p <pid>)` against the specific process group instead. The same trap
+  applies to `pkill -f vitest` and `pkill -f 'while :; do :; done'` while a probe script holds those
+  strings in its own argv.
+
 ## 🔁 KNOWN LOAD-FLAKE LISTS — reconcile the two, they have drifted
 
 _(Added 2026-08-07.)_ This file names two known load flakes above
@@ -925,5 +966,48 @@ directions:
   `npm run build`, then passed **3/3 in isolation**. Same family as the rows above — a real
   wall-clock window a co-tenant build stretches past its tolerance — and, unlike the three
   fast-check timeouts, it was re-run in isolation, so it is a verdict rather than a catalogue entry.
+
+- **Amended 2026-08-07 after review of PR #133 — the bullet above states the wrong mechanism, and it
+  is left verbatim.** A **fourth** breach of that arm was observed during that review at **1.0137%**,
+  in a full-suite run under concurrent external load. Two more were reported at 1.075% and 1.159%
+  with no transcript, run id or row anywhere in the tree — **UNVERIFIED**, and nothing rests on them.
+  What the bullet gets wrong is "a co-tenant build stretches past its tolerance": `vitest.config.ts`
+  sets no `pool`, so Vitest 4.1.10 resolves `pool = "forks"` with `isolate: true` — every test file
+  is its own forked process and the metric is `getrusage(RUSAGE_SELF)`, so no co-tenant build or
+  sibling test file can enter the numerator. Machine-level CPU contention **can**, and does:
+  3 unloaded runs vs 3 under 32 busy loops on 16 cores gave means 0.0663% → 0.1226%, **1.85× with
+  non-overlapping arms**. It is still not sufficient to breach — two full 654-file suite runs under
+  those same 32 loops came in at **0.0961%** and **0.1069%**. ⚠️ **And a FIFTH breach was then
+  captured first-hand at `1.6977%` — the largest ever recorded for this arm — on a plain
+  `vitest run --coverage` full-suite run with NO artificial load** (`pgrep` for the generators
+  returned 0; `/proc/loadavg` read `6.47 16.96 20.59`), 3/3 green in isolation immediately
+  afterwards. So deliberate contention is **neither necessary nor sufficient**, and the mechanism is
+  not isolated. ⚠️⚠️ **Then a SIXTH at `3.2330%` twenty minutes later — 2.7× the 1.196% — in the
+  pre-push hook for the commit recording the fifth. Two of three consecutive plain full-suite runs
+  on that host breached, unloaded, with the readings GROWING.** Stop treating this as an occasional
+  timing flake: at that rate it is a gate that does not work, and a green isolated re-run is not a
+  disposition. ⚠️ **A SEVENTH then took TWO tests at once** — `heartbeat-scheduler.test.ts:39` at
+  1.0388% and `idle-budget.integration.test.ts:46` at 1.2785% — revealing a **second assertion site**
+  with its own private `CPU_BUDGET_FRACTION = 0.01`. Grep for every copy of a THRESHOLD, not just of
+  a line number: a remedy applied to one site leaves the other live. The second site had already been
+  widened once (300 ms to 2000 ms, `e1eaa31`) and breached anyway. ⚠️ **And the disposition every sighting has used —
+  "re-ran in isolation, green" — comes from the noisiest channel there is:** the isolated channel
+  spans **11.9×** (0.0277% up to 0.3293% at
+  `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, isolated with coverage off) yet has NEVER
+  breached in 15 captured samples, while the full suite breached in two of five uncontended ones —
+  so a green isolated re-run samples a different part of the distribution. Against 1.1×
+  for the full suite. **A green isolated re-run does not clear this row.** Filed with a sized remedy
+  as `docs/evidence/criteria-closeout/defects/05-idle-budget-arm-not-calibrated-for-its-channel.md`;
+  full measurements at `docs/evidence/phase-05/idle-budget-load-sensitivity.txt`.
+- **New 2026-08-07, in neither list until now:** `packages/cli/src/daemon/run-dispatcher.test.ts`'s
+  "reports a settle-transition failure through `onDriveError` rather than crashing"
+  (`expected false to be true`) failed once in the same plain full-suite run as the 1.6977% reading,
+  and passed **61/61 three times** in isolation immediately afterwards. A verdict, not a catalogue
+  entry. Added to `docs/evidence/gap-18/known-gate-flakes.md` in the same pass.
+- **The fast-check family is bigger than the three named above.** Reproduced deliberately in the two
+  contended runs just described, rather than seen in passing:
+  `packages/engine-core/src/footguns/{property,smuggling,anchor-forms,mcp-deny}.test.ts` and
+  `packages/perf/src/stats/decision-engine.property.test.ts` — all timeouts, never assertion
+  failures.
 
 Neither list is authoritative on its own. Read both, and add a new sighting to **both**.

@@ -1,0 +1,201 @@
+================================================================================
+SANCTIONED_SCRUB IS A PRESENCE-ONLY EXEMPTION — CENSUS AND FOUR REVERSE PROBES
+================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744   (origin/main)
+# branch at capture: closeout/postrelease-observability-records (PROVISIONAL —
+#     a branch tip is not resolvable after a rebase; every claim below is
+#     pinned to the UPSTREAM BASE above or to a committed artifact)
+# Host: 16 logical CPUs (`nproc` = 16), WSL2.
+# Commands are quoted verbatim with their exit status.
+
+WHAT THIS IS. `docs/verification-playbook.md`'s "DOCUMENTATION CAN DISABLE THE
+GUARD IT DOCUMENTS" section — landed 2026-08-07 in the same wave — closes with a
+corollary it did not itself carry out:
+
+    "⚠️ Corollary for any presence-based rule: grep the exemption tokens across
+    the tree and ask which matches are prose. A file that names a sanctioned
+    helper without using it is exempt and nothing says so."
+
+This transcript carries it out. The instance found is NOT the one the playbook
+section is about (`scripts/check-marketplace-pin-digest.mjs`, de-tokenized in
+PR #131). It is older, it is still live at this commit, and nothing distinguishes
+it from a file that forgot to scrub.
+
+--------------------------------------------------------------------------------
+0. THE MECHANISM, QUOTED
+--------------------------------------------------------------------------------
+`packages/testkit/src/git-spawn-hygiene.test.ts`:
+
+    :111  /** Any of the sanctioned ways to scrub git's repository-location
+          variables. ⚠️ This is a PRESENCE check over the WHOLE FILE — naming one
+          of these anywhere, INCLUDING IN A COMMENT EXPLAINING WHY A FILE CANNOT
+          USE THEM, exempts that file from the mutating-spawn rule entirely. See
+          the footnote at the bottom of this file; it has happened. */
+    :112  const SANCTIONED_SCRUB = /runFixtureGit|gitFixtureEnv|GIT_LOCATION_ENV_VARS/;
+
+    :144      if (!spawnsMutatingGit(text)) continue;
+    :145      if (SANCTIONED_SCRUB.test(text)) continue;
+    :146      offenders.push(relative(REPO_ROOT, file));
+
+Line :145 is the exemption. It runs against the file's WHOLE TEXT, comments
+included. The warning at :111 and the 47-line footnote block at :207-253 describe
+this accurately and completely — the mechanism is unchanged by them, which is the
+whole subject of this transcript. Documentation is not a control.
+
+--------------------------------------------------------------------------------
+1. CENSUS — WHICH MATCHES ARE PROSE?
+--------------------------------------------------------------------------------
+Same walk as the guard (`SCANNED_ROOTS` = packages, e2e, scripts, spikes;
+`SKIP_DIRS` = node_modules, dist, .git, coverage, fixtures; the five scanned
+extensions), the guard's own file excluded exactly as it excludes itself. For
+each hit, the token count over the raw text is compared with the count after
+block and line comments are stripped.
+
+    files matching SANCTIONED_SCRUB anywhere: 20
+      of which PROSE-ONLY (token never appears outside a comment): 1
+
+    code        matches=2   outside-comments=2    e2e/attestation/src/demoRun.ts
+    code        matches=9   outside-comments=9    packages/cli/src/daemon/composed-post-completion.e2e.test.ts
+    code        matches=31  outside-comments=31   packages/cli/src/daemon/post-completion-git-effects.test.ts
+    code        matches=9   outside-comments=6    packages/cli/src/installer/git-location-env-sync.test.ts
+    code        matches=8   outside-comments=6    packages/cli/src/installer/git-repo-state.test.ts
+    code        matches=3   outside-comments=2    packages/cli/src/installer/git-repo-state.ts
+    code        matches=3   outside-comments=2    packages/cli/src/installer/install.matrix.test.ts
+    code        matches=2   outside-comments=2    packages/engine-claude/src/live/adjudication-bridge.live.test.ts
+    code        matches=2   outside-comments=2    packages/engine-claude/src/live/builtin-allow-rule-shadowing.live.test.ts
+    code        matches=1   outside-comments=1    packages/git-engine/src/git-arg-guard.ts
+    code        matches=1   outside-comments=1    packages/git-engine/src/index.ts
+    PROSE-ONLY  matches=1   outside-comments=0    packages/git-engine/src/plumbing.test.ts     <<<<
+    code        matches=4   outside-comments=2    packages/git-engine/src/plumbing.ts
+    code        matches=3   outside-comments=2    packages/git-engine/src/test-support/fixture-repo.ts
+    code        matches=6   outside-comments=4    packages/plugin/src/statusline.test.ts
+    code        matches=4   outside-comments=2    packages/plugin/statusline/crabgic-statusline.mjs
+    code        matches=17  outside-comments=16   packages/testkit/src/git-env.test.ts
+    code        matches=6   outside-comments=3    packages/testkit/src/git-env.ts
+    code        matches=3   outside-comments=2    scripts/check-citation-content.mjs
+    code        matches=4   outside-comments=3    scripts/check-repo-hygiene.test.mjs
+
+One prose-only file. `scripts/check-marketplace-pin-digest.mjs` — the playbook
+section's own subject — is correctly ABSENT from this list: PR #131 de-tokenized
+its DO-NOT-REFACTOR note, so it no longer matches at all.
+
+The comment-stripping is a crude regex pass (`/\*…\*/` and trailing `//…`), and
+is stated as crude rather than sold as exact. It does not need to be exact: it
+produced one candidate, and that candidate is then confirmed by execution in §3
+and §4 below, not by the strip.
+
+--------------------------------------------------------------------------------
+2. THE INSTANCE
+--------------------------------------------------------------------------------
+    $ grep -n "runFixtureGit\|gitFixtureEnv\|GIT_LOCATION_ENV_VARS" \
+          packages/git-engine/src/plumbing.test.ts
+    133: * Ambient-git-LOCATION containment (2026-08-01). `GIT_LOCATION_ENV_VARS`
+
+ONE match, in a block comment that opens at :132. The file imports neither
+`runFixtureGit` nor `gitFixtureEnv` — it has no `@crabgic/testkit` import at all
+(`vitest` at :1, a local barrel from :2) — and never references
+`GIT_LOCATION_ENV_VARS` as an identifier.
+
+The mutating spawn that the exemption is suppressing:
+
+    :196  it("CONTROL: the same write on an unscrubbed spawn DOES land in the poisoned repo instead", async () => {
+    :201      execFileSync("git", ["config", "user.email", "hijacked@example.invalid"], {
+    :202        cwd: target,
+    :203        env: { ...process.env, GIT_DIR: join(victim, ".git") },
+
+⚠️ THIS SPAWN IS BENIGN AND IS SUPPOSED TO BE UNSCRUBBED. It is a deliberate
+negative control inside a hermetic two-repo fixture (`twoRepos()`), and it sets
+`GIT_DIR` ON PURPOSE, to demonstrate that the scrub the sibling test applies is
+load-bearing. Nothing here is unsafe today, and this transcript claims no unsafe
+behaviour.
+
+What is missing is a DISTINCTION. A file that is deliberately unscrubbed for a
+stated reason and a file whose author forgot are, to this guard, the same file.
+
+--------------------------------------------------------------------------------
+3. REVERSE PROBE — THE EXEMPTION HIDES AN OUTRIGHT DANGEROUS SPAWN
+--------------------------------------------------------------------------------
+Command in every probe below:
+
+    $ npx vitest run --project @crabgic/testkit src/git-spawn-hygiene.test.ts
+
+PROBE A — BASELINE, tree untouched.
+
+    Test Files  1 passed (1)
+          Tests  4 passed (4)
+    exit status: 0
+
+PROBE B — insert an outright destructive spawn into `plumbing.test.ts`,
+immediately above the control at :201, token left intact:
+
+    execFileSync("git", ["reset", "--hard", "HEAD~5"], { cwd: "/", stdio: "ignore" });
+
+    Test Files  1 passed (1)
+          Tests  4 passed (4)          <<<< SHOULD BE RED
+    exit status: 0                     <<<< SHOULD BE 1
+
+`git reset --hard` at `/` is in `MUTATING_SUBCOMMANDS` and would be flagged in
+any other file in the tree. It is invisible here, and the reason is one word in a
+comment sixty-eight lines above it.
+
+--------------------------------------------------------------------------------
+4. REVERSE PROBE — THE EXEMPTION IS LOAD-BEARING TODAY, NOT LATENT
+--------------------------------------------------------------------------------
+PROBE C — probe B's spawn still present, AND the comment de-tokenized
+(`` `GIT_LOCATION_ENV_VARS` `` -> `the location-scrub constant`):
+
+    FAIL |@crabgic/testkit| src/git-spawn-hygiene.test.ts >
+      every file that spawns a MUTATING git command references a sanctioned environment scrub
+    AssertionError: expected [ Array(1) ] to deeply equal []
+      +   "packages/git-engine/src/plumbing.test.ts",
+    Test Files  1 failed (1)
+          Tests  1 failed | 3 passed (4)
+    exit status: 1
+
+PROBE D — the decisive one. `plumbing.test.ts` restored to its committed bytes;
+the ONLY edit is de-tokenizing that one comment word. No spawn added, nothing
+else changed:
+
+    FAIL |@crabgic/testkit| src/git-spawn-hygiene.test.ts >
+      every file that spawns a MUTATING git command references a sanctioned environment scrub
+    AssertionError: expected [ Array(1) ] to deeply equal []
+      +   "packages/git-engine/src/plumbing.test.ts",
+    Test Files  1 failed (1)
+          Tests  1 failed | 3 passed (4)
+    exit status: 1
+
+⇒ PROBE D IS THE FINDING. At HEAD, with no mutation of any kind, this file is
+exempt from the repo-wide mutating-spawn rule, and the sole thing granting the
+exemption is a token inside a documentation comment. Delete the word, the guard
+notices the file. Restore the word, the guard stops looking — including at
+anything a future edit adds.
+
+Both files restored to their committed bytes after each probe; `git status`
+reports a clean tree between §4 and §5.
+
+--------------------------------------------------------------------------------
+5. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the exemption is presence-only over whole-file text; exactly one file in
+the tree matches it in prose alone; that file spawns a mutating git command; and
+a mutating spawn added to it is not flagged (probe B), while removing the prose
+token flags the file as it already stands (probe D).
+
+NOT CLAIMED: that any current spawn is unsafe. §2 says the opposite, measured
+against the fixture's own construction.
+
+NOT CLAIMED: that the census's comment-stripping is exact. It is a regex pass; it
+produced one candidate and the candidate was confirmed by execution.
+
+NOT CLAIMED: that presence-not-proof is the wrong trade. `git-spawn-hygiene`'s
+own header calls it "presence, not proof — enough to make the omission loud", and
+the playbook rules it "a deliberate trade (cheap, hard to bypass by accident)".
+The gap is narrower than that trade: there is no way to SAY "deliberately
+unscrubbed, and here is why", so the only way to say it is the same string that
+turns the rule off.
+
+NO PRODUCTION CODE WAS CHANGED BY THIS PASS. Filing is the deliverable; the fix
+is separate work with its own TDD trail.
