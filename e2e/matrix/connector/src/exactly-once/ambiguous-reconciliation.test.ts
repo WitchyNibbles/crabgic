@@ -105,6 +105,7 @@ describe("ambiguous reconciliation — a mid-POST timeout that DID land is recon
       httpClient,
       lock: new IdempotencyKeyLock(),
       tenantAllowlist: undefined,
+      folderAllowlist: undefined,
     };
 
     const handlers: MutationPipelineHandlers = {
@@ -164,6 +165,7 @@ describe("ambiguous reconciliation — a mid-POST timeout that DID land is recon
       httpClient,
       lock: new IdempotencyKeyLock(),
       tenantAllowlist: undefined,
+      folderAllowlist: undefined,
     };
 
     const handlers: MutationPipelineHandlers = {

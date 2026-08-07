@@ -1,0 +1,447 @@
+================================================================================
+roadmap/18 exit criterion 10, `bulk:<keys>` residual — RED-first + probe battery
+Batch C-final, 2026-08-06
+================================================================================
+
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#   6f964d76758158159c1d3dc01a0e3a8629f67f79   (origin/main, "test(cli): refresh
+#   the run --json envelope snapshots for Gap 22's provisionalBudgetHash (#117)")
+# The RED-first section below was captured one upstream commit earlier, at
+#   1bc0d5159b17715790c74b47f5a0007bd939a802   (origin/main at wave start, still
+#   reachable; #117 touches only packages/cli snapshots, so no count here moves).
+# Branch tip at capture (PROVISIONAL — do not cite): closeout/batch-c
+# Commands: verbatim below. Exit statuses recorded per section.
+# Runner: local, ubuntu (WSL2). No @live, no CRABGIC_LIVE, no network.
+
+--------------------------------------------------------------------------------
+0. WHAT WAS OPEN, AND WHAT THIS CLOSES
+--------------------------------------------------------------------------------
+
+roadmap/18 §Exit criteria 10 second clause: "per-issue write order preserved."
+PR #84 closed it for SINGLE-issue writes and deliberately left `bulk:<keys>`
+unserialized, pinning that residual as an assertion in
+packages/connectors-jira/src/resource-client/canonical-target.test.ts.
+
+The gateway primitive this needs (`WriteSerializer.runExclusiveMulti` and
+`GatewayHttpRequest.serializationResources`) landed on this branch's first
+commit. It was DEAD CODE for Jira until this batch: both apply clients called
+`writeSerializationTarget(plan.canonicalTarget)`, and that function passed a
+`bulk:` target straight through.
+
+Fix: `writeSerializationTarget` returns `string | readonly string[]`, and maps
+`bulk:K1,K2` onto the sorted, deduped set ["issue:K1","issue:K2"]. Neither
+apply client's call site changed — the widening is entirely inside
+canonical-target.ts, so Cloud and Data Center inherit it together.
+
+--------------------------------------------------------------------------------
+1. RED FIRST — the assertions written before the production change
+   (at upstream base 1bc0d51; production unchanged, tests added)
+--------------------------------------------------------------------------------
+
+$ npx vitest run --project @crabgic/connectors-jira --coverage=false \
+    src/resource-client/canonical-target.test.ts \
+    src/testkit/write-order.integration.test.ts
+
+ Test Files  2 failed (2)
+      Tests  9 failed | 22 passed (31)
+exit status: 1   (deliberately RED)
+
+The nine, and what each proved was broken:
+
+  canonical-target.test.ts
+    maps bulk:PROJ-1,PROJ-2 onto both member issue keys
+      → expected 'bulk:PROJ-1,PROJ-2' to deeply equal [ 'issue:PROJ-1', 'issue:PROJ-2' ]
+    was the residual: a bulk write now takes the mutex of each member issue
+      → expected 'bulk:PROJ-1,PROJ-2' to contain 'issue:PROJ-1'
+    was the residual: order-permuted member lists mint the SAME key set
+      → expected 'bulk:PROJ-2,PROJ-1' to deeply equal 'bulk:PROJ-1,PROJ-2'
+    dedupes a repeated member key
+      → expected 'bulk:PROJ-1,PROJ-1,PROJ-2' to deeply equal [ 'issue:PROJ-1', 'issue:PROJ-2' ]
+    a single-member bulk target is the SAME shape as the single-issue write it races
+      → expected 'bulk:PROJ-1' to deeply equal [ 'issue:PROJ-1' ]
+
+  write-order.integration.test.ts   (real plan builders, real executeMutationPlan,
+                                     real temp-dir JournalStore, real GatewayHttpClient)
+    issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-1) never overlap on the wire
+      → expected 2 to be 1
+    two bulk plans over the SAME issues in permuted order serialize against each other
+      → expected 2 to be 1
+    issue.bulkTransition shares the mapping — it serializes against a member's single write
+      → expected 2 to be 1
+    Jira Data Center: issue.bulkUpdate([PROJ-1,PROJ-2]) and issue.update(PROJ-2) never overlap
+      → expected 2 to be 1
+
+`expected 2 to be 1` is the race itself, observed on the wire: two requests
+simultaneously in flight where one bulk key and one issue key were taken.
+
+THE THREE CONTROLS WERE GREEN IN THIS SAME RED RUN, which is what rules out a
+global-mutex "fix" and proves the instrumentation can see overlap at all:
+    CONTROL: a bulk plan and a write to a NON-member issue still run concurrently  (=== 2)
+    CONTROL: two bulk plans over DISJOINT issue sets still run concurrently        (=== 2)
+    Jira Data Center CONTROL: bulk vs NON-member issue                             (=== 2)
+
+After the production change, same command:
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+exit status: 0
+
+--------------------------------------------------------------------------------
+2. PROBE BATTERY — baseline / mutation / restore, all at UPSTREAM BASE 6f964d7
+--------------------------------------------------------------------------------
+
+Restores use an explicit SOURCE and an explicit PATH (`git checkout HEAD --
+<file>`), never a directory. Test-name presence is grepped after every restore,
+and the closing baseline is compared against the opening one — a probe that
+"passes" because an assertion vanished looks identical to one that passes
+because the code is correct.
+
+BASELINE
+  $ npm run build                                            → exit 0
+  $ npx vitest run --project @crabgic/connectors-jira \
+      --project @crabgic/gateway --project @crabgic/connectors-grafana --coverage=false
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+
+PROBE A — remove `.sort()` from the bulk member-key mapping
+  Test Files  1 failed | 49 passed (50)
+       Tests  1 failed | 572 passed (573)
+  FAIL  canonical-target.test.ts > was the residual: order-permuted member lists
+        mint the SAME key set
+
+  ⚠️ FINDING, AND IT CORRECTS THIS BATCH'S OWN FIRST DRAFT. Only the UNIT case
+  reddens. Every connector integration case stays green, because 16's
+  `runExclusiveMulti` canonicalizes (dedupes + sorts) the key set again on its
+  own side. The connector-side sort is therefore DEFENCE IN DEPTH and a locally
+  testable contract — NOT the mechanism that closes the order-permutation race.
+  The first draft's doc comment claimed the opposite ("without a canonical key
+  ORDER two bulk plans ... would still fail to serialize"); it was corrected in
+  the same branch, in both canonical-target.ts and canonical-target.test.ts.
+
+PROBE B — remove the dedupe (`new Set`) from the bulk member-key mapping
+  Test Files  1 failed | 49 passed (50)
+       Tests  1 failed | 572 passed (573)
+  FAIL  canonical-target.test.ts > dedupes a repeated member key
+  Same reading as A: a local contract, pinned locally.
+
+PROBE C (REVERSE PROBE) — fold the bulk mapping back to the pre-fix passthrough
+  Test Files  2 failed | 48 passed (50)
+       Tests  9 failed | 564 passed (573)
+  All five new unit cases AND all four integration cases redden. This is the
+  reverse direction that matters: the assertions have been SEEN to fail, so
+  none of them is vacuous, and the restored behaviour is exactly the residual
+  PR #84 left. The three `=== 2` controls stay green under it.
+
+PROBE D — delete the gateway's `serializationResources` forwarding
+           (packages/gateway/src/mutation-pipeline/mutation-pipeline.ts)
+           CROSS-PACKAGE: connectors-jira imports @crabgic/gateway from dist/.
+
+  D1, WITHOUT rebuild (connectors-jira still importing the OLD gateway dist):
+    Test Files  2 failed | 80 passed (82)
+         Tests  3 failed | 918 passed (921)
+
+  D2, AFTER `npm run build` (exit 0):
+    Test Files  3 failed | 79 passed (82)
+         Tests  7 failed | 914 passed (921)
+    FAIL  connectors-jira write-order.integration.test.ts  (4 bulk cases)
+    FAIL  gateway mutation-pipeline.test.ts                (2 PLURAL cases)
+    FAIL  gateway mutation-apply-tool.test.ts              (1 forwarding case)
+
+  The src-only run understates the blast radius by more than half — 3 vs 7 —
+  and every one of the four CONNECTOR legs is invisible without the rebuild.
+  Both numbers are reported rather than only the stronger one.
+
+  Restore + rebuild → exit 0.
+
+RESTORED BASELINE (must equal the opening baseline exactly)
+   Test Files  120 passed (120)
+        Tests  1352 passed (1352)
+  test-name presence after restore:
+    "a bulk target maps to its member issues" occurrences  : 1
+    "bulk write order" occurrences                          : 2
+  $ git status --porcelain                                  → (empty)
+
+--------------------------------------------------------------------------------
+3. THE REBUILD QUESTION, SETTLED BY MEASUREMENT RATHER THAN RITUAL
+--------------------------------------------------------------------------------
+
+$ git grep -n "writeSerializationTarget" -- . | grep -v "^packages/connectors-jira/"
+  → only docs/evidence/** transcripts and roadmap/19 prose; no code consumer
+    outside the package. Probes A/B/C are therefore intra-package and do not
+    need a rebuild.
+
+$ git grep -n "serializationResources" -- . | grep -v "^packages/gateway/"
+  → one comment in connectors-jira's canonical-target.test.ts; no code consumer.
+    But the SYMBOL is not the boundary — the pipeline's behaviour is, and
+    connectors-jira reaches it through `executeMutationPlan` in gateway's dist.
+    Probe D's two numbers are the proof that a symbol census alone would have
+    under-reported here.
+
+--------------------------------------------------------------------------------
+4. RESIDUAL, STATED RATHER THAN IMPLIED
+--------------------------------------------------------------------------------
+
+Narrowed, not eliminated, and asserted as `=== 2` controls rather than described:
+
+  - cross-issue parallelism between single-issue writes is untouched (intended);
+  - a bulk plan and a single write to a NON-member issue still run concurrently;
+  - two bulk plans over disjoint issue sets still run concurrently.
+
+Not claimed by this transcript: nothing here evidences behaviour against a real
+Jira. Every leg is a fake transport. roadmap/18's cassette/live conjuncts remain
+owner-gated and are untouched by this batch.
+
+================================================================================
+APPENDED 2026-08-06 — PER-PUSH PROOF FROM THE CI JOB LOGS
+(and a correction to a claim this batch published in its PR body)
+================================================================================
+
+# Jobs cited (same workflow, same job NAME, same runner LABEL):
+#   main @ 6f964d7  unit-test+coverage (ubuntu-latest)  job 92626742663
+#   PR #125         unit-test+coverage (ubuntu-latest)  job 92641855998
+# Fetched with: gh api repos/WitchyNibbles/crabgic/actions/jobs/<id>/logs
+
+--------------------------------------------------------------------------------
+A. THE CORRECTION — AND THE INSTRUMENT THAT CAUSED IT
+--------------------------------------------------------------------------------
+
+PR #125's body originally carried a paragraph headed "Honest limit on this
+proof", asserting that this repo's CI runs vitest with the default reporter and
+that the job log therefore prints ONLY the repo-wide summary, with no per-file
+`✓ … (N tests)` lines to byte-compare.
+
+THAT CLAIM IS FALSE, and it was published as a measurement.
+
+The per-file lines are present in both logs. They are ANSI-colour-coded, so:
+
+  $ grep -c "write-order.integration.test.ts (" joblog-pr125.txt
+  0
+
+returns zero — a SMALLER ANSWER WITH NO ERROR, the exact instrument-failure
+shape the verification playbook names for mis-scoped pathspecs and
+notation-blind greps. Strip the escapes first and the lines are all there:
+
+  $ sed -E 's/\x1b\[[0-9;]*m//g' joblog-pr125.txt | grep '…test.ts ([0-9]* tests)'
+
+The false claim reached the PR body only. No committed file carried it
+(`git grep -niE "per-file|one-space rule|default reporter|byte-compare" --
+docs/evidence/phase-16 docs/evidence/phase-18` → exit 1, no matches), and the
+body was corrected. This section exists so the finding lives in the repo rather
+than in a review thread: the correct method wave-wide is "strip ANSI escapes,
+THEN grep", and a per-push proof must not be downgraded on the strength of a
+grep that returned nothing.
+
+--------------------------------------------------------------------------------
+B. THE AGGREGATE
+--------------------------------------------------------------------------------
+
+main @ 6f964d7, job 92626742663, log lines 1059-1060:
+ Test Files  644 passed (644)
+      Tests  6570 passed | 1 skipped (6571)
+
+PR #125, job 92641855998, log lines 1086-1087:
+ Test Files  645 passed (645)
+      Tests  6634 passed | 1 skipped (6635)
+
++1 test file, +64 tests.
+
+--------------------------------------------------------------------------------
+C. THE PER-FILE ROWS, QUOTED FROM THE LOGS THEMSELVES
+--------------------------------------------------------------------------------
+
+Escapes stripped and the leading GitHub timestamp removed; what remains is
+vitest's own line, which itself begins with one space before the check mark.
+Durations are elided as `…ms` because they are not reproducible; every other
+byte is verbatim.
+
+main @ 6f964d7, job 92626742663:
+ ✓  @crabgic/connectors-jira  src/resource-client/canonical-target.test.ts (14 tests) …ms
+ ✓  @crabgic/connectors-jira  src/testkit/write-order.integration.test.ts (5 tests) …ms
+ ✓  @crabgic/gateway  src/mutation-pipeline/mutation-pipeline.test.ts (36 tests) …ms
+ ✓  @crabgic/gateway  src/mcp/native-tools/mutation-apply-tool.test.ts (8 tests) …ms
+ ✓  @crabgic/gateway  src/transport/write-serializer.test.ts (5 tests) …ms
+ ✓  @crabgic/gateway  src/transport/http-client.test.ts (16 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/mutation-apply-client.test.ts (8 tests) …ms
+   (no src/mutation/folder-attribution.test.ts line — the file does not exist yet)
+
+PR #125, job 92641855998:
+ ✓  @crabgic/connectors-jira  src/resource-client/canonical-target.test.ts (19 tests) …ms
+ ✓  @crabgic/connectors-jira  src/testkit/write-order.integration.test.ts (12 tests) …ms
+ ✓  @crabgic/gateway  src/mutation-pipeline/mutation-pipeline.test.ts (53 tests) …ms
+ ✓  @crabgic/gateway  src/mcp/native-tools/mutation-apply-tool.test.ts (13 tests) …ms
+ ✓  @crabgic/gateway  src/transport/write-serializer.test.ts (14 tests) …ms
+ ✓  @crabgic/gateway  src/transport/http-client.test.ts (20 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/folder-attribution.test.ts (14 tests) …ms
+ ✓  @crabgic/connectors-grafana  src/mutation/mutation-apply-client.test.ts (11 tests) …ms
+
+  file                                                              base  PR   Δ
+  ----------------------------------------------------------------  ----  ---  ---
+  connectors-jira  src/resource-client/canonical-target.test.ts        14   19   +5
+  connectors-jira  src/testkit/write-order.integration.test.ts          5   12   +7
+  gateway          src/mutation-pipeline/mutation-pipeline.test.ts     36   53  +17
+  gateway          src/mcp/native-tools/mutation-apply-tool.test.ts     8   13   +5
+  gateway          src/transport/write-serializer.test.ts               5   14   +9
+  gateway          src/transport/http-client.test.ts                   16   20   +4
+  connectors-grafana src/mutation/folder-attribution.test.ts        (new)   14  +14
+  connectors-grafana src/mutation/mutation-apply-client.test.ts         8   11   +3
+                                                                              ----
+                                                                              +64
+
+The eight deltas sum to the aggregate with NO REMAINDER, which is what rules out
+a right-count/wrong-file match: an accidental pairing would leave the sum short
+or long. The last four rows are the folder-allowlist work; the first four are
+the bulk work plus this branch's first commit's transport tests.
+
+A CONTROL ROW, because a count that should NOT move is evidence too:
+ main: ✓  @crabgic/connectors-grafana  src/mutation/canonical-target.test.ts (5 tests)
+ PR:   ✓  @crabgic/connectors-grafana  src/mutation/canonical-target.test.ts (5 tests)
+Grafana's own same-named `canonical-target.test.ts` is untouched at 5 → 5. It
+shares a BASENAME with the Jira file that moved 14 → 19, so a comparer keyed on
+the basename alone would have matched the wrong suite.
+
+--------------------------------------------------------------------------------
+D. WHAT THIS DOES AND DOES NOT SHOW
+--------------------------------------------------------------------------------
+
+It shows the new assertions EXECUTED in CI on ubuntu-latest, per push, in the
+job whose green this PR reports. It does not show anything about the arm64 job
+(green, not quoted here) and it is not evidence about behaviour against a real
+Jira or Grafana — every leg remains a fake transport.
+
+--------------------------------------------------------------------------------
+E. THE QUOTES WERE BYTE-COMPARED, AND THE COMPARER WAS MUTATION-TESTED
+--------------------------------------------------------------------------------
+
+Neither repo validator checks quoted job-log content at all, so every ` ✓ … (N
+tests)` line in §C was machine-compared against the downloaded logs: escapes
+stripped, GitHub timestamp removed, each quote required to be a prefix of
+EXACTLY ONE line in the log it is attributed to.
+
+  17 quoted line(s), 0 mismatch(es)
+
+The comparer's silence was not trusted until it had been mutation-tested three
+ways, including the one nobody thinks of:
+
+  falsify a count (19 → 20)                             → caught
+  right count, WRONG JOB (main's 14 quoted under the PR) → caught
+  right count, WRONG FILE (connectors-grafana's
+    same-basename canonical-target.test.ts re-attributed
+    to connectors-jira)                                  → caught
+
+The third is not hypothetical here: two DIFFERENT `canonical-target.test.ts`
+files appear in these logs, one in connectors-jira and one in
+connectors-grafana. A comparer keyed on basename + count would have matched the
+wrong suite and reported success.
+
+================================================================================
+APPENDED 2026-08-07 — RE-PROOF AFTER MERGING #121, #120, #122, #124
+================================================================================
+
+# UPSTREAM BASE (stable): 7ded38b  ("fix(connectors-jira): type DC custom-field
+#   refusals as unsupported/jira-datacenter (#124)") — origin/main at this merge.
+# The sections above remain pinned to 6f964d7 and are NOT restated: their
+# commands ran at that tree and RULING-3 asks the header to name the tree the
+# commands actually ran at. This section re-runs the two headline bearers at the
+# new base, because four PRs landed under them.
+
+BASELINE (connectors-jira + gateway + connectors-grafana)
+   Test Files  121 passed (121)
+        Tests  1386 passed (1386)
+
+PROBE C (reverse — fold the bulk mapping back to the pre-fix passthrough)
+   Test Files  2 failed | 49 passed (51)
+        Tests  9 failed | 596 passed (605)
+  Same 9 assertions as at 6f964d7. The bearer is unchanged by #124's DC work.
+
+PROBE E3 (the pipeline never sees the connection's folderAllowlist)
+  npm run build → exit 0
+   Test Files  3 failed | 118 passed (121)
+        Tests  13 failed | 1373 passed (1386)
+  12 at 6f964d7, 13 now — the extra is the operator-remedy case added for the
+  reviewer's advisory (a).
+
+RESTORED BASELINE   121 files / 1386 tests; `git status --porcelain` empty.
+
+--------------------------------------------------------------------------------
+PROBE L (NEW) — did this branch's delegation ABSORB #120's separator pin?
+--------------------------------------------------------------------------------
+
+#120 landed a test pinning that `keyOf`'s separator is unambiguous (a sliding
+field boundary must yield two queues, not one). This branch then rewrote the
+same class so that `runExclusive` DELEGATES to `runExclusiveMulti` — exactly the
+shape of the playbook's "adding a check can silently un-pin the one it sits
+beside": coverage migrating between two rules with no test failing.
+
+So it was measured rather than assumed. Mutate the joiner `\0` → `:`:
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 14 passed (15)
+   × the key separator is unambiguous — a sliding field boundary yields two
+     queues, not one
+
+#120's test still bites THROUGH the delegated path. Its coverage was not
+absorbed. The suite is 15 cases: 5 original + 1 from #120 + 9 multi-key.
+
+--------------------------------------------------------------------------------
+THE CONFLICT, AND WHY IT EXISTED AT ALL
+--------------------------------------------------------------------------------
+
+`git merge` reported "Cannot merge binary files" for write-serializer.ts and
+fell back to a whole-file conflict. The cause was the defect #120 fixed: OUR
+side still carried the raw 0x00 joiner, so git classified our blob as binary and
+disabled the line merge — the two edits do not overlap by a single line.
+
+Resolution: this branch's file, with #120's one-line change applied to it.
+Measured afterwards, at the merge commit:
+
+  raw NUL bytes in the file                             0
+  `\0` escapes                                          2  (code + doc comment)
+  git diff --numstat origin/main -- <file>          88  5  (numbers ⇒ TEXT)  [corrected — see below]
+  git grep reads it as text                            yes (not "Binary file … matches")
+  npm run check:hygiene                                PASS, incl. its whole-file NUL scan
+  runtime equivalence, measured: `${"a"}\0${"b"}` → [97, 0, 98], identical to a
+    raw-NUL join — the escape is a SOURCE-ENCODING change only.
+
+--------------------------------------------------------------------------------
+CORRECTION 2026-08-07 — the numstat above originally read `75  5`, and that
+number was not reproducible from any ref state
+--------------------------------------------------------------------------------
+
+Found by review of this branch's merge delta, not by me. The reviewer measured
+`88  5` for every candidate pair — `origin/main`→branch, `b9a935b`→branch, and
+this section's own pinned `7ded38b`→`f5a4c86` — and showed no ref state can
+produce `75  5`: every pre-#120 main gives binary `-  -`, every post-#120 main
+gives `88  5`. They also ran the right-count/wrong-file check against it; no
+other file in `transport/` yields `75  5` either (`write-serializer.test.ts` is
+`268  0`).
+
+I CAN reproduce `75  5`, and the cause is exactly what they guessed — a
+mid-resolution WORKING-TREE capture, written up as though it were a ref-to-ref
+measurement. Reproduced:
+
+  $ git show f5a4c86:<file>                       # committed:      6504 bytes
+  $ # …with the 13-line joiner doc comment removed: 5816 bytes
+  $ git diff --numstat --no-index <main blob> <that 5816-byte file>
+  75      5
+  $ git diff --numstat --no-index <main blob> <the committed 6504-byte file>
+  88      5
+
+The conflict was resolved in two steps: first the NUL→`\0` swap, THEN the
+13-line doc comment at the joiner. I ran the numstat between those two steps and
+carried the number forward into this file after the second step had already
+changed it. 88 − 75 = 13, exactly the doc comment.
+
+THE CONCLUSION WAS NEVER AFFECTED — both numbers are numbers rather than `-  -`,
+which is the whole claim (the file is TEXT, not binary). The PROVENANCE was
+wrong, and that is a RULING-3 violation on its own terms: a transcript's numbers
+must be reproducible at the tree its header names. This is the same failure the
+playbook records for a re-cut transcript whose totals belonged to the pre-merge
+tree — a real measurement, of a tree that is not the one being claimed.
+
+THE RULE THIS EARNS, since it is not yet in the playbook in this form: a working
+tree mid-conflict-resolution is not a ref, and `git diff <ref> -- <path>` with no
+second ref silently measures it. When a probe's output is going into a record,
+re-run it against two named object ids after the last edit — or capture it after
+committing, never between edits. The other copy of this number (PR #125's body)
+was corrected in the same pass; the copy inside merge commit `f5a4c86`'s message
+is frozen and is superseded by this note.

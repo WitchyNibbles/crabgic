@@ -241,6 +241,69 @@ describe("buildMutationApplyTool", () => {
   });
 
   /**
+   * The PLURAL half of the same bridge (18/19's `bulk:<keys>` writes,
+   * roadmap/18 §Exit criteria 10). Without this case the array branch of
+   * the forwarding closure could be narrowed back to a string — or the
+   * whole forwarding line deleted — with every `connectors-jira` suite
+   * still green, because that package's write-order integration test
+   * calls `executeMutationPlan` directly and never crosses this bridge.
+   */
+  it("forwards an ARRAY-returning serializationTarget as the transport's serializationResources", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "bulk-serializing-provider",
+      baseUrl: "https://serializing-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("bulk-serializing-provider", {
+      buildRequest: () => ({
+        url: new URL("https://serializing-provider.invalid/apply"),
+        method: "POST",
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+      serializationTarget: () => ["issue:EX-1", "issue:EX-2"],
+    });
+
+    let requestSpy: ReturnType<typeof vi.spyOn> | undefined;
+    const buildHttpClient = async (_c: ExternalConnection) => {
+      const client = new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://serializing-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => ({ status: 200, headers: {}, bodyText: "{}" }),
+      });
+      requestSpy = vi.spyOn(client, "request");
+      return client;
+    };
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({
+      plan: buildPlan(connection.id, { canonicalTarget: "bulk:EX-1,EX-2" }),
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(requestSpy).toHaveBeenCalledTimes(1);
+    const arg = requestSpy?.mock.calls[0]?.[0] as {
+      resource: string;
+      serializationResources?: readonly string[];
+    };
+    expect(arg.serializationResources).toEqual(["issue:EX-1", "issue:EX-2"]);
+    // canonicalTarget is retained as the audit/attribution key.
+    expect(arg.resource).toBe("bulk:EX-1,EX-2");
+  });
+
+  /**
    * DEFECT 21 — `ExternalConnection.tenantAllowlist` was a published schema
    * field that looked like a security control and enforced nothing.
    *
@@ -421,5 +484,120 @@ describe("buildMutationApplyTool", () => {
     expect((requestSpy?.mock.calls[0]?.[0] as { resource: string }).resource).toBe(
       "dashboard:abc123",
     );
+  });
+});
+
+/**
+ * DEFECT 16 — the PRODUCTION WIRING of the folder-allowlist admission
+ * check. These cases are at the tool level because this handler is the only
+ * place the real `ExternalConnection` is in hand; a pipeline-only test would
+ * stay green with the tool never reading `connection.folderAllowlist` at
+ * all, which is precisely the shape the defect describes.
+ *
+ * The bearer in each refusal case is the TRIPLE assertion — outcome status,
+ * the exact typed `policy_blocked` kind, and ZERO transport calls.
+ */
+describe("buildMutationApplyTool — folderAllowlist wiring (defect 16)", () => {
+  const APPLY_URL = "https://folder-scoped-provider.invalid/apply";
+
+  async function buildFolderScopedFixture(
+    folderAllowlist: readonly string[] | undefined,
+    folderAttribution?: MutationApplyClient["folderAttribution"],
+  ): Promise<{
+    connection: ExternalConnection;
+    deps: MutationApplyToolDeps;
+    transportCalls: () => number;
+  }> {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "folder-scoped-provider",
+      baseUrl: "https://folder-scoped-provider.invalid",
+      allowedRedirectOrigins: [],
+      ...(folderAllowlist !== undefined ? { folderAllowlist } : {}),
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "X" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("folder-scoped-provider", {
+      buildRequest: () => ({ url: new URL(APPLY_URL), method: "PUT", hasPrecondition: true }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+      ...(folderAttribution !== undefined ? { folderAttribution } : {}),
+    });
+
+    let calls = 0;
+    const buildHttpClient = async (_c: ExternalConnection) =>
+      new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://folder-scoped-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async () => {
+          calls += 1;
+          return { status: 200, headers: {}, bodyText: '{"appliedRevision":"rev-1"}' };
+        },
+      });
+
+    return {
+      connection,
+      deps: buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+      transportCalls: () => calls,
+    };
+  }
+
+  async function run(
+    fixture: Awaited<ReturnType<typeof buildFolderScopedFixture>>,
+  ): Promise<{ status?: string; errorKind?: string; detail?: string }> {
+    const tool = buildMutationApplyTool("observability.apply", "test", fixture.deps);
+    const result = await tool.handler({ plan: buildPlan(fixture.connection.id) });
+    return JSON.parse(result.content[0]?.text ?? "{}") as {
+      status?: string;
+      errorKind?: string;
+      detail?: string;
+    };
+  }
+
+  it("refuses a plan attributed to a folder outside the connection's folderAllowlist — typed policy_blocked, zero network calls", async () => {
+    const fixture = await buildFolderScopedFixture(["team-a"], () => ({
+      scope: "folders",
+      folders: ["team-z"],
+    }));
+    const outcome = await run(fixture);
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(fixture.transportCalls()).toBe(0);
+  });
+
+  it("CONTROL: an in-allowlist folder is still applied — recorded, exactly one network call", async () => {
+    const fixture = await buildFolderScopedFixture(["team-a"], () => ({
+      scope: "folders",
+      folders: ["team-a"],
+    }));
+    const outcome = await run(fixture);
+    expect(outcome.status).toBe("recorded");
+    expect(fixture.transportCalls()).toBe(1);
+  });
+
+  it("CONTROL: a connection that declares NO folderAllowlist is unaffected, even with no attribution hook", async () => {
+    const fixture = await buildFolderScopedFixture(undefined, undefined);
+    const outcome = await run(fixture);
+    expect(outcome.status).toBe("recorded");
+    expect(fixture.transportCalls()).toBe(1);
+  });
+
+  /**
+   * The wiring-specific case: the provider is one with no folder concept at
+   * all (18/19's Jira clients register no `folderAttribution`), so a
+   * connection that declares a folderAllowlist admits nothing on it. This is
+   * what stops the field being "enforced only where someone opted in".
+   */
+  it("refuses on a folder-scoped connection whose provider client has no folderAttribution hook", async () => {
+    const fixture = await buildFolderScopedFixture(["team-a"], undefined);
+    const outcome = await run(fixture);
+    expect(outcome.status).toBe("failed");
+    expect(outcome.errorKind).toBe("policy_blocked");
+    expect(fixture.transportCalls()).toBe(0);
   });
 });

@@ -125,8 +125,51 @@ export const ExternalConnectionSchema = z
     orgAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
     /** roadmap/16 §In scope: ".../project/.../allowlists" (Jira project scoping). */
     projectAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
-    /** roadmap/16 §In scope: ".../folder allowlists" (Grafana folder scoping). */
-    folderAllowlist: z.array(NonEmptyStringSchema).readonly().optional(),
+    /**
+     * roadmap/16 §In scope: ".../folder allowlists" (Grafana folder scoping).
+     *
+     * ENFORCED since 2026-08-06 (defect 16 — the third declared-and-inert
+     * sibling of `tenantAllowlist`, previously published and read by no code
+     * at all). The gateway's mutation pipeline
+     * (`packages/gateway/src/mutation-pipeline/mutation-pipeline.ts`,
+     * `executeMutationPlan`) asks the provider where the mutation lands and
+     * refuses a non-member with the canonical `policy_blocked` error kind,
+     * before any network I/O and before any `RemoteOperationRecord` is
+     * journalled.
+     *
+     * Three states, the first two identical to `tenantAllowlist`'s:
+     *  - ABSENT — the connection is folder-unscoped; no check runs.
+     *  - `[]`   — refuses EVERY mutation (fail-closed). An empty allowlist is
+     *             a deliberate "nothing is permitted", never "no opinion".
+     *  - non-empty — only a mutation the provider places INSIDE a listed
+     *             folder is admitted.
+     *
+     * THE THIRD STATE THAT `tenantAllowlist` DOES NOT HAVE. A plan's tenant
+     * is a required `RemoteMutationPlan` field; a folder is not on the plan
+     * at all, so the pipeline asks the provider, and a provider may answer
+     * "not inside any folder" (an org-level resource) or "I cannot tell".
+     * Both are REFUSED under a declared allowlist. Consequence, stated so it
+     * is not rediscovered as a bug: a provider with no folder concept —
+     * 18/19's Jira — supplies no attribution, so declaring a
+     * `folderAllowlist` on a Jira connection refuses every mutation on it.
+     * The alternative (admit when unattributable) would leave this field
+     * binding only providers that opted in, which is the inert-control shape
+     * this enforcement exists to remove.
+     *
+     * SCOPE — read this before trusting the field. It binds the folder a
+     * provider derives FROM THE PLAN, on the mutation path only. It does NOT
+     * check reads, and it does NOT verify where the resource actually lives
+     * on the remote. So this field is not "writes outside these folders are
+     * impossible". It is "an operator can bound which folder a write may
+     * claim to land in."
+     */
+    folderAllowlist: z
+      .array(NonEmptyStringSchema)
+      .readonly()
+      .optional()
+      .describe(
+        "Folder scoping (roadmap/16 §In scope). Enforced by the gateway mutation pipeline: a RemoteMutationPlan the provider places outside this list is refused with the canonical `policy_blocked` error kind before any network I/O and before any RemoteOperationRecord is journalled. An empty array refuses every mutation (fail-closed); the field being absent means the connection is folder-unscoped and no check runs. A folder is not a RemoteMutationPlan field, so the pipeline asks the provider where the mutation lands; a provider that answers 'not inside any folder' or 'cannot tell' — including one with no folder concept at all, such as the Jira adapters — is REFUSED under a declared allowlist, never admitted. SCOPE: this binds the folder a provider derives from the plan, on the mutation path only. Reads are not folder-checked, and where the resource actually lives on the remote is not verified. It is not a guarantee that writes outside these folders are impossible.",
+      ),
 
     /** roadmap/16 §In scope: "custom CA reference." */
     customCaRef: CustomCaReferenceSchema.optional(),

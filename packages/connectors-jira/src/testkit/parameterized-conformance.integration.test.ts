@@ -82,6 +82,7 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
             httpClient: harness.httpClient,
             lock: new IdempotencyKeyLock(),
             tenantAllowlist: undefined,
+            folderAllowlist: undefined,
           },
         );
 
@@ -195,6 +196,7 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
           httpClient: harness.httpClient,
           lock: new IdempotencyKeyLock(),
           tenantAllowlist: undefined,
+          folderAllowlist: undefined,
         },
       );
       expect(outcome.status).toBe("recorded");
@@ -226,6 +228,7 @@ describe.each(["cloud", "datacenter"] as const satisfies readonly JiraDeployment
           httpClient: harness.httpClient,
           lock: new IdempotencyKeyLock(),
           tenantAllowlist: undefined,
+          folderAllowlist: undefined,
         },
       );
       expect(outcome.status).toBe("failed");

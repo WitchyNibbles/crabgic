@@ -64,7 +64,13 @@ function buildPipelineDeps(script: readonly FakeProviderScriptEntry[]): {
   };
   return {
     // Tenant-unscoped: this suite's subject is 409/412 rebase resolution.
-    deps: { journal, httpClient, lock: new IdempotencyKeyLock(), tenantAllowlist: undefined },
+    deps: {
+      journal,
+      httpClient,
+      lock: new IdempotencyKeyLock(),
+      tenantAllowlist: undefined,
+      folderAllowlist: undefined,
+    },
     calls: fakeTransport.calls,
     get,
   };

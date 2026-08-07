@@ -211,7 +211,13 @@ describe.each(["fake", "cassette"] as const)("Jira flow — %s fixture regime", 
             parseResponse: (p, r) => applyClient.parseResponse(p, r),
             verify: (p, a) => applyClient.verify?.(p, a) ?? Promise.resolve(true),
           },
-          { journal, httpClient: ctx.httpClient, lock, tenantAllowlist: undefined },
+          {
+            journal,
+            httpClient: ctx.httpClient,
+            lock,
+            tenantAllowlist: undefined,
+            folderAllowlist: undefined,
+          },
         );
 
       // 1. board
@@ -338,6 +344,7 @@ describe.each(["fake", "cassette"] as const)("Jira flow — %s fixture regime", 
           httpClient: ctx.httpClient,
           lock: new IdempotencyKeyLock(),
           tenantAllowlist: undefined,
+          folderAllowlist: undefined,
         },
       );
 
@@ -384,6 +391,7 @@ describe.each(["fake", "cassette"] as const)("Jira flow — %s fixture regime", 
           httpClient: ctx.httpClient,
           lock: new IdempotencyKeyLock(),
           tenantAllowlist: undefined,
+          folderAllowlist: undefined,
         },
       );
 
