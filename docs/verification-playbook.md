@@ -881,5 +881,11 @@ directions:
   never assertion failures:** `packages/engine-core`'s footguns property, `packages/gates`'
   coverage-ratchet property, and `packages/engine-claude`'s session property. Seen across PRs #115,
   #116 and #118.
+- **Added 2026-08-07 at the v1.6.0 pre-cut gate, and written into both lists in the same pass:**
+  `packages/supervisor/src/idle-budget/idle-budget.integration.test.ts`'s sustained-idle arm read
+  `cpuFraction` 1.196% against its <1% budget in a full `npm test` taken straight after
+  `npm run build`, then passed **3/3 in isolation**. Same family as the rows above — a real
+  wall-clock window a co-tenant build stretches past its tolerance — and, unlike the three
+  fast-check timeouts, it was re-run in isolation, so it is a verdict rather than a catalogue entry.
 
 Neither list is authoritative on its own. Read both, and add a new sighting to **both**.
