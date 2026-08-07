@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "da873d27c655b9f7217c9f5f274bdfeab874d75e",
+  "generatedAtSha": "13599575c6d0b0d9377a0ec22dfab3fbb9bcaed0",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
-    "citations": 1292,
-    "fragments": 3903,
-    "anchored": 2651,
-    "seededStale": 644,
-    "outsideSpan": 780,
-    "repeatText": 525,
+    "citations": 1327,
+    "fragments": 3931,
+    "anchored": 2685,
+    "seededStale": 637,
+    "outsideSpan": 772,
+    "repeatText": 527,
     "crossFile": 20,
-    "skipped": 608
+    "skipped": 609
   },
   "citations": {
     "phase-00.json#c1#docs/engine-baseline.md:12": {
@@ -383,11 +383,11 @@
       ],
       "frozen": true
     },
-    "phase-01.json#c4#vitest.config.ts:138-143": {
-      "qa": "d80dd5a2abdb",
+    "phase-01.json#c4#vitest.config.ts:150-155": {
+      "qa": "382e137e0b51",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@150-155!span"
+        "OK/collapsed@150-155"
       ]
     },
     "phase-01.json#c5#commitlint.config.js:8": {
@@ -3975,14 +3975,29 @@
         "SKIP-commentary"
       ]
     },
-    "phase-09.json#c7#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap": {
-      "qa": "820f6291be8a",
+    "phase-09.json#c7#docs/evidence/phase-09/probe-09-383-batchA.txt": {
+      "qa": "1a1f87d21a7b",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-09.json#c7#packages/cli/src/argv/types.ts:146-179": {
+      "qa": "dab0d099b3de",
       "ref": "OK",
       "pins": [
-        "OK-file/collapsed@3",
-        "OK-file/collapsed@11",
-        "OK-file/collapsed@17"
+        "OK/collapsed@156",
+        "OK/collapsed@147"
       ]
+    },
+    "phase-09.json#c7#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap": {
+      "qa": "403f7ae0d64e",
+      "ref": "OK",
+      "pins": []
+    },
+    "phase-09.json#c7#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap#2": {
+      "qa": "403f7ae0d64e",
+      "ref": "OK",
+      "pins": []
     },
     "phase-09.json#c7#packages/cli/src/commands/cli.snapshots.test.ts:19": {
       "qa": "beeb5f7aa019",
@@ -6174,11 +6189,24 @@
       ],
       "frozen": true
     },
+    "phase-15.json#c3#docs/evidence/phase-15/envelope-binding-probe-batchE.txt": {
+      "qa": "5156e1a0e386",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
     "phase-15.json#c3#packages/contracts/src/approval/token.ts:45": {
       "qa": "5a2d6b4ee6ba",
       "ref": "OK",
       "pins": [
         "OK/collapsed@45"
+      ]
+    },
+    "phase-15.json#c3#packages/contracts/src/contracts/authorization-envelope.ts:134": {
+      "qa": "cb787377b176",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@134"
       ]
     },
     "phase-15.json#c3#packages/contracts/src/contracts/authorization-envelope.ts:73-104": {
@@ -6199,10 +6227,25 @@
       "ref": "OK",
       "pins": []
     },
+    "phase-15.json#c3#packages/contracts/src/contracts/performance-contract.ts:177": {
+      "qa": "c5a35d493daa",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@177"
+      ]
+    },
     "phase-15.json#c3#packages/perf/src/contract/contract-builder.test.ts:45-202": {
       "qa": "9c24c3bc19b5",
       "ref": "OK",
       "pins": []
+    },
+    "phase-15.json#c3#packages/perf/src/contract/hash-link.ts:189-208": {
+      "qa": "014f22630272",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@201",
+        "OK/collapsed@208"
+      ]
     },
     "phase-15.json#c3#packages/perf/src/contract/hash-link.ts:71-90": {
       "qa": "3334889bb2a7",
@@ -6214,12 +6257,28 @@
       "ref": "OK",
       "pins": []
     },
+    "phase-15.json#c3#packages/supervisor/src/intake/envelope-builder.ts:77-94": {
+      "qa": "70436c34a863",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@77",
+        "OK/collapsed@94"
+      ]
+    },
     "phase-15.json#c3#packages/supervisor/src/intake/intake-pipeline.test.ts:407-422": {
       "qa": "eab53b14bd4d",
       "ref": "OK",
       "pins": [
         "ABSENT@-",
         "MOVED/collapsed@518!span"
+      ]
+    },
+    "phase-15.json#c3#packages/supervisor/src/intake/intake-pipeline.ts:73-84": {
+      "qa": "99490d5dc38f",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@73",
+        "OK/collapsed@84"
       ]
     },
     "phase-15.json#c4#docs/evidence/phase-15/closeout-c4-determinism.txt": {
@@ -7747,15 +7806,14 @@
       ],
       "frozen": true
     },
-    "phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:137": {
-      "qa": "c897f0633f19",
+    "phase-17.json#c4#packages/connectors-jira/src/resource-client/adf-guard.ts:2-137": {
+      "qa": "cf3613658de7",
       "ref": "OK",
       "pins": [
         "OK/collapsed@137",
-        "SKIP-commentary",
-        "OK/prose@28-29!span",
-        "ABSENT@-",
-        "OK/collapsed@80!span"
+        "OK/prose@28-29",
+        "SKIP-short",
+        "SKIP-short"
       ]
     },
     "phase-17.json#c4#packages/renderer/fixtures/corpus/attack-adf-link-javascript-href.json": {
@@ -8007,6 +8065,12 @@
         "OK/collapsed@32!span"
       ]
     },
+    "phase-18.json#c1#docs/evidence/phase-18/cassette-flow-replay-batchJ.txt": {
+      "qa": "6ebda8b2d279",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
     "phase-18.json#c1#docs/evidence/phase-18/closeout-c1-c2-flow-and-conformance.txt": {
       "qa": "706e270e45c1",
       "ref": "OK",
@@ -8015,6 +8079,11 @@
         "SKIP-log"
       ],
       "frozen": true
+    },
+    "phase-18.json#c1#packages/connectors-jira/src/testkit/fixtures/write-scenario.cassette.json": {
+      "qa": "1fbd7b3c6e98",
+      "ref": "OK",
+      "pins": []
     },
     "phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:107-186": {
       "qa": "3c1cd73269cb",
@@ -8047,6 +8116,15 @@
         "MOVED/collapsed@277!span"
       ]
     },
+    "phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:161-185": {
+      "qa": "58f6ee5b14d3",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@185",
+        "OK/collapsed@161",
+        "OK/collapsed@162"
+      ]
+    },
     "phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:190-286": {
       "qa": "93f0d57be46b",
       "ref": "OK",
@@ -8055,6 +8133,12 @@
         "MOVED/collapsed@398!span",
         "MOVED/collapsed@399!span"
       ]
+    },
+    "phase-18.json#c10#docs/evidence/phase-18/bulk-write-order-batchC.txt": {
+      "qa": "6f9f470dba34",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
     },
     "phase-18.json#c10#docs/evidence/phase-18/closeout-c10-write-order-probe.txt": {
       "qa": "e458d7f01f63",
@@ -8077,6 +8161,13 @@
       ],
       "frozen": true
     },
+    "phase-18.json#c10#packages/connectors-jira/src/resource-client/canonical-target.ts:106-115": {
+      "qa": "cd9ec70f1727",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@106"
+      ]
+    },
     "phase-18.json#c10#packages/connectors-jira/src/testkit/rate-limit-and-write-order.test.ts:22-57": {
       "qa": "e1943f58f104",
       "ref": "OK",
@@ -8097,6 +8188,13 @@
         "OK/collapsed@92,100,136,144~repeat",
         "OK/collapsed@93,101,137~repeat",
         "MOVED/collapsed@108!span"
+      ]
+    },
+    "phase-18.json#c10#packages/gateway/src/transport/write-serializer.ts:100-104": {
+      "qa": "9eba79a842d2",
+      "ref": "OK",
+      "pins": [
+        "OK/code@100-103"
       ]
     },
     "phase-18.json#c2#docs/evidence/phase-18/closeout-c1-c2-flow-and-conformance.txt": {
@@ -8358,6 +8456,22 @@
         "SKIP-log"
       ],
       "frozen": true
+    },
+    "phase-18.json#c6#docs/evidence/phase-18/milestone-poll-probe-batchB.txt": {
+      "qa": "bdf0ffc7ff17",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-18.json#c6#packages/connectors-jira/src/intake/milestone-sync.ts:13-195": {
+      "qa": "9de0a751cdf5",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@13",
+        "OK/collapsed@184",
+        "OK/collapsed@170",
+        "OK/collapsed@195"
+      ]
     },
     "phase-18.json#c6#packages/connectors-jira/src/intake/revision-comparator.test.ts:30-37": {
       "qa": "8bbaa795c66e",
@@ -8707,6 +8821,12 @@
       ],
       "frozen": true
     },
+    "phase-19.json#c3#docs/evidence/phase-19/dc-typed-kinds-probe-batchI.txt": {
+      "qa": "417fc0eafab5",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
     "phase-19.json#c3#packages/connectors-jira/src/capability/discovery-datacenter.test.ts:32-45": {
       "qa": "9bd404069d21",
       "ref": "OK",
@@ -8717,6 +8837,14 @@
         "OK/collapsed@42,54~repeat",
         "OK/collapsed@43",
         "OK/collapsed@44"
+      ]
+    },
+    "phase-19.json#c3#packages/connectors-jira/src/capability/discovery-datacenter.test.ts:32-55": {
+      "qa": "01bb41e1b759",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@41",
+        "OK/collapsed@53"
       ]
     },
     "phase-19.json#c3#packages/connectors-jira/src/capability/discovery-datacenter.test.ts:47-55": {
@@ -8748,6 +8876,11 @@
         "OK/collapsed@67"
       ]
     },
+    "phase-19.json#c3#packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts:111-149": {
+      "qa": "9bac37b32ced",
+      "ref": "OK",
+      "pins": []
+    },
     "phase-19.json#c3#packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts:33-46": {
       "qa": "dc984d3c5dd9",
       "ref": "OK",
@@ -8775,6 +8908,15 @@
         "MOVED-AMBIG/collapsed@197,200!span~repeat",
         "MOVED-AMBIG/collapsed@198,233!span~repeat",
         "MOVED/collapsed@199!span"
+      ]
+    },
+    "phase-19.json#c3#packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:223-266": {
+      "qa": "8312f15a61fa",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@238,263,337,359~repeat",
+        "OK/collapsed@239,264,338,360~repeat",
+        "OK/prose@265"
       ]
     },
     "phase-19.json#c4#packages/connectors-jira/src/resource-client/datacenter/wiki-markup-corpus.test.ts:115-126": {
@@ -9589,6 +9731,18 @@
       ],
       "frozen": true
     },
+    "phase-21.json#c1#docs/evidence/phase-21/halt-wiring-journal-excerpt-batchB.txt": {
+      "qa": "7d00fc810a8e",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-21.json#c1#docs/evidence/phase-21/halt-wiring-probes-batchB.txt": {
+      "qa": "2a66da3332a9",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
     "phase-21.json#c1#packages/cli/src/intake/intake.e2e.test.ts:221-244": {
       "qa": "0cd3b80404c4",
       "ref": "OK",
@@ -9599,6 +9753,11 @@
         "MOVED/collapsed@241",
         "OK/collapsed@242"
       ]
+    },
+    "phase-21.json#c1#packages/cli/src/intake/material-amendment-halt.e2e.test.ts:164-219": {
+      "qa": "66ef29f8638a",
+      "ref": "OK",
+      "pins": []
     },
     "phase-21.json#c1#packages/gates/src/material-amendment-guard.ts:26-30": {
       "qa": "cd0d03a35666",
@@ -9637,6 +9796,13 @@
         "OK/collapsed@144",
         "OK/collapsed@145",
         "SKIP-short"
+      ]
+    },
+    "phase-21.json#c1#packages/supervisor/src/intake/material-amendment-halt.ts:102": {
+      "qa": "73c4c699583b",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@102"
       ]
     },
     "phase-21.json#c1#packages/supervisor/src/intake/stop-conditions.ts:36-45": {
@@ -9865,6 +10031,18 @@
       ],
       "frozen": true
     },
+    "phase-21.json#c5#docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt": {
+      "qa": "ef098c68e624",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-21.json#c5#docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt": {
+      "qa": "431832a6da24",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
     "phase-21.json#c5#packages/connectors-grafana/src/fixtures/fault-injection-matrix.ts:61-74": {
       "qa": "3804a613d612",
       "ref": "OK",
@@ -9905,12 +10083,29 @@
         "MOVED/collapsed@56!span"
       ]
     },
+    "phase-21.json#c5#packages/gates/src/security-fixture-manifest.test.ts:53-58": {
+      "qa": "d59acbc77ef8",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@53",
+        "OK/collapsed@56"
+      ]
+    },
     "phase-21.json#c5#packages/gates/src/security-fixture-manifest.ts:164-187": {
       "qa": "2a3a5bc3e1f1",
       "ref": "OK",
       "pins": [
         "ABSENT@-",
         "ABSENT@-"
+      ]
+    },
+    "phase-21.json#c5#packages/gates/src/security-fixture-manifest.ts:216-488": {
+      "qa": "9c3aa2fbafad",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@216",
+        "OK/collapsed@436",
+        "OK/collapsed@447"
       ]
     },
     "phase-21.json#c5#packages/gates/src/security-fixture-manifest.ts:31-39": {
@@ -10023,6 +10218,24 @@
         "OK/collapsed@58!span",
         "OK/collapsed@59!span",
         "OK/collapsed@60!span"
+      ]
+    },
+    "phase-22.json#c2#.github/workflows/learning-redteam.yml:45": {
+      "qa": "05e5c30c9132",
+      "ref": "OK",
+      "pins": []
+    },
+    "phase-22.json#c2#docs/evidence/phase-22/probe-22-095-batchA.txt": {
+      "qa": "bfaafe09725c",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-22.json#c2#packages/learning/src/red-team/grader-drift.redteam.test.ts:9": {
+      "qa": "09d7e00705ec",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@9"
       ]
     },
     "phase-22.json#c3#docs/evidence/phase-22/closeout-c3-self-promotion-and-no-mcp-tool.txt": {
@@ -10267,6 +10480,24 @@
         "OK/collapsed@31!span",
         "OK/collapsed@32!span",
         "OK/collapsed@33!span"
+      ]
+    },
+    "phase-22.json#c6#docs/evidence/phase-22/probe-22-100-batchA.txt": {
+      "qa": "e0c9cfd8e17c",
+      "ref": "OK",
+      "pins": [],
+      "frozen": true
+    },
+    "phase-22.json#c6#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap": {
+      "qa": "708bb5643f0f",
+      "ref": "OK",
+      "pins": []
+    },
+    "phase-22.json#c6#packages/cli/src/commands/learn-dispatch.test.ts:121-191": {
+      "qa": "6895abbf887a",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@191"
       ]
     },
     "phase-22.json#c7#docs/evidence/phase-22/closeout-c7-journal-round-trip.txt": {
@@ -10904,15 +11135,15 @@
         "OK/collapsed@70,144~repeat"
       ]
     },
-    "phase-23.json#c2#vitest.config.ts:138-143": {
-      "qa": "1485a0ba25ef",
+    "phase-23.json#c2#vitest.config.ts:150-155": {
+      "qa": "d592ca185638",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@150!span",
-        "MOVED/collapsed@151!span",
-        "MOVED/collapsed@152!span",
-        "MOVED/collapsed@153!span",
-        "MOVED/collapsed@154!span",
+        "OK/collapsed@150",
+        "OK/collapsed@151",
+        "OK/collapsed@152",
+        "OK/collapsed@153",
+        "OK/collapsed@154",
         "SKIP-short"
       ]
     },
