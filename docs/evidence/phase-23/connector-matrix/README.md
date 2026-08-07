@@ -104,6 +104,23 @@ cassettes and emits an `EvidenceRecord` whose `command` text states
 `evidenceSource: "cassette-only"` explicitly. No DC container is started,
 booted, or required anywhere in this harness.
 
+> **Corrected 2026-08-07 (closeout batch G) — two claims in the paragraph above; the paragraph
+> itself is left verbatim.**
+>
+> **(1) `recorded` is wrong.** Phase 19's Data Center cassettes are HAND-AUTHORED, not captured. The
+> DC parity file has disclosed exactly that since 2026-08-02, and the two cassettes are additionally
+> byte-identical to each other, which is why roadmap/19's `(10.3 and 11.3)` conjunct is separately
+> owner-gated on a real capture. This is the same overstatement class PR #119 removed from the tests
+> themselves.
+>
+> **(2) The quoted `evidenceSource` value is now a PREFIX of the real one, and it is mislocated.**
+> Since PR #119 the string lives in the emitted record's `outcomeContent.evidenceSource`, not in its
+> `command`, and it reads `cassette-only (hand-authored fixtures, not live captures)`. The value was
+> widened precisely because `cassette-only` on its own reads as _recorded_ to anyone who has not
+> opened the DC parity file — and that string is journaled into release attestation evidence, so it
+> outlives the test run. The CASSETTE-ONLY scope decision above is unaffected; only the provenance
+> word and the field pointer were wrong.
+
 ## Gate tag
 
 Every scenario's assertions, once green, emit one `EvidenceRecord`
