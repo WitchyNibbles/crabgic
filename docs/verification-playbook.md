@@ -1040,11 +1040,19 @@ tier, while "an identifier occurring nowhere in the cited file" is a content che
 none.
 
 **Measured, not projected.** On PR #133 the check was **GREEN through nine real broken citations.** A
-pass inserted 42 lines into this file and one table row into
-`docs/evidence/gap-18/known-gate-flakes.md`, then cited the pre-insertion numbers; nine anchors came
-to rest on blank lines and in the wrong sections. Every one named a real file at a line that existed,
-so the gate reported PASS. They were caught by a human reviewer opening each target line — by no
-tool, and a rerun of the gate would never have found them.
+pass inserted **41** lines into this file — re-derived, not counted: the content at its pre-#133
+`:922` reads at `:963` today — and one table row into `docs/evidence/gap-18/known-gate-flakes.md`,
+then cited the pre-insertion numbers; nine anchors came to rest on blank lines and in the wrong
+sections. Every one named a real file at a line that existed, so the gate reported PASS. They were
+caught by a human reviewer opening each target line — by no tool, and a rerun of the gate would never
+have found them.
+
+⚠️ **That figure is 41, and the first draft of this amendment said 42.** It inherited the number
+verbatim from `ff3358c`'s message ("gained 42 lines above old :922") — whose own correction table, on
+the very next line, reads `:922 -> :963`. `963 - 922 + 1` counts the anchor line itself. **A
+displacement is a subtraction, not an inclusive count**, and a figure copied forward without being
+re-derived is the same failure as an anchor trusted without its target line being read. Caught by a
+reviewer, in the paragraph whose own ruling is "not by arithmetic".
 
 ⇒ **RE-RESOLVE AN ANCHOR BY READING THE TARGET LINE.** Not by arithmetic, and not by a green gate.
 Above all when your own edit is what inserted lines above it.
@@ -1065,3 +1073,10 @@ where no correction is available — **six inside frozen `docs/evidence/` transc
 test-file comments** — so an insertion in the middle of this file rots all nine permanently, with the
 prose lane green throughout. That is the price of writing this amendment at line 500; it is why the
 text is here instead, and why line 500 carries only a pointer to it.
+
+⚠️ **And name the cost of that, because it cuts the other way.** This file's convention is in-place
+amendment — the `### ⚠️ AMENDED 2026-08-07` block at `docs/verification-playbook.md:904` sits
+directly under the paragraph it corrects, which is why a reader meets it. A file amended only by
+appending accumulates corrections ever further from what they correct, and a heading pointer is a
+weaker guarantee than adjacency. So take **append** as the exception that a measured, uncorrectable
+anchor set forces, not as the default: **when nothing below your edit is anchored, amend in place.**
