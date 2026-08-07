@@ -135,6 +135,16 @@ earlier. Three consecutive plain full-suite runs on this host went **red (1.6977
 red (3.2330%)**, none of them under artificial load. The readings are getting _larger_, not
 clustering near the bound.
 
+⚠️ **AND THE NECESSARY QUALIFICATION, measured at the same commit: CI is GREEN.** Both
+`unit-test+coverage` jobs passed at `14636b0` — `ubuntu-latest` in 4m16s and `ubuntu-24.04-arm` in
+3m36s, 15/15 checks green. So the two-in-three failure rate is a property of **this developer host**,
+not of the repository's CI runners, and this record does not claim otherwise. That contrast is
+itself the strongest available evidence for the central claim: the same assertion, on the same
+commit, is a reliable pass in one environment and a two-in-three failure in another, because nobody
+has characterised the distribution it sits above. It also means the remedy is **not** urgent for CI
+and **is** urgent for anyone running the gate locally — which is every agent working in this
+repository.
+
 **And it cuts both ways, which is why both halves are stated.** Two full-suite runs held under 32
 busy loops for their whole duration came in at **0.0961%** and **0.1069%** — inside budget by an
 order of magnitude — while the **unloaded** run breached at 1.6977%. So deliberate machine contention

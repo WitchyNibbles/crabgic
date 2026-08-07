@@ -329,6 +329,21 @@ A test that fails roughly two runs in three is not a flake to be catalogued; it
 is a gate that does not work, and the remedy is owed sooner than "whoever owns
 that phase" implies.
 
+⚠️ AND THE QUALIFICATION THAT KEEPS THIS HONEST — CI IS GREEN AT THE SAME
+COMMIT. Both `unit-test+coverage` jobs passed at `14636b0`: `ubuntu-latest`
+4m16s, `ubuntu-24.04-arm` 3m36s, 15/15 checks green. The two-in-three rate is a
+property of THIS DEVELOPER HOST, not of the CI runners, and nothing here claims
+otherwise.
+
+That contrast is the best evidence in this file for its own thesis: the same
+assertion, at the same commit, is a reliable pass in one environment and a
+two-in-three failure in another. Not because either environment is wrong, but
+because the threshold was transcribed from a spec and the distribution beneath
+it has never been measured in either. Practically: the remedy is NOT urgent for
+CI, and IS urgent for anyone running the gate locally — which is every agent
+working in this repository, and which is why two commits on this branch needed
+the sanctioned docs-only pre-push bypass.
+
 ⚠️ TWO CONSEQUENCES, and they pull in opposite directions, which is why both are
 stated. It STRENGTHENS the record: the breach is real, reproducible without any
 artificial load, and worse than anything previously recorded. It WEAKENS §5b's

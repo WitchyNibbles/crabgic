@@ -119,8 +119,10 @@ for the very commit recording the fifth. **2.7× the 1.196% this section opens w
 ⇒ **THIS ROW'S FREQUENCY DESCRIPTION IS NOW WRONG AND IS THE POINT.** "Seen red once", above, is
 left verbatim. On the developer host on 2026-08-07 the arm breached in **two of three consecutive
 plain full-suite runs** — red 1.6977%, green, red 3.2330% — none under artificial load, with the
-readings growing rather than clustering near the bound. **Do not treat this row as an occasional
-timing flake any more.** At that rate it is a gate that does not work, and re-running it is not a
+readings growing rather than clustering near the bound. ⚠️ **But CI is GREEN at the same commit** — both
+`unit-test+coverage` jobs passed at `14636b0` (4m16s x64, 3m36s arm, 15/15 checks). The rate is a
+property of the **developer host**, not the runners. **Do not treat this row as an occasional
+timing flake any more, and do not read it as a CI problem either.** At that rate it is a gate that does not work, and re-running it is not a
 disposition. Severity in the defect record is raised accordingly.
 
 ⚠️ **The sentence above — "a real wall-clock window whose measurement a loaded host stretches past
