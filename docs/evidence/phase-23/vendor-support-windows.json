@@ -3,8 +3,8 @@
     "target": "jira-cloud",
     "pinnedVersion": "v3",
     "lifecycle": "continuous",
-    "confirmedOn": "2026-07-25",
-    "source": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/ — Jira Cloud platform REST API v3. Atlassian operates Cloud as a continuously-updated service and publishes no per-version end-of-support date; API-version deprecations are announced separately on the changelog. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/ — Jira Cloud platform REST API v3. Atlassian operates Cloud as a continuously-updated service and publishes no per-version end-of-support date; API-version deprecations are announced separately on the changelog. This date is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07 (unchanged since 2026-07-25).",
     "tagPublished": true
   },
   {
@@ -12,8 +12,8 @@
     "pinnedVersion": "10.3",
     "lifecycle": "versioned",
     "supportEndsOn": "2026-12-05",
-    "confirmedOn": "2026-07-25",
-    "source": "https://confluence.atlassian.com/support/atlassian-support-end-of-life-policy-201851003.html — Jira Software 10.3, Long-Term Support release, end of support 5 December 2026. Atlassian supports releases for two years after the initial feature or LTS release. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://confluence.atlassian.com/support/atlassian-support-end-of-life-policy-201851003.html — Jira Software 10.3, Long-Term Support release, end of support 5 December 2026. Atlassian supports releases for two years after the initial feature or LTS release. This date is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07, quoting '10.3 (EOS date: 5 December 2026) LONG TERM SUPPORT' (unchanged since 2026-07-25).",
     "tagPublished": true
   },
   {
@@ -21,16 +21,16 @@
     "pinnedVersion": "11.3",
     "lifecycle": "versioned",
     "supportEndsOn": "2027-12-03",
-    "confirmedOn": "2026-07-25",
-    "source": "https://confluence.atlassian.com/support/atlassian-support-end-of-life-policy-201851003.html — Jira Software 11.3, Long-Term Support release, end of support 3 December 2027. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://confluence.atlassian.com/support/atlassian-support-end-of-life-policy-201851003.html — Jira Software 11.3, Long-Term Support release, end of support 3 December 2027. This date is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07, quoting '11.3 (EOS date: 3 December 2027) LONG TERM SUPPORT' (unchanged since 2026-07-25).",
     "tagPublished": true
   },
   {
     "target": "grafana-cloud",
     "pinnedVersion": "cloud",
     "lifecycle": "continuous",
-    "confirmedOn": "2026-07-25",
-    "source": "https://grafana.com/docs/grafana-cloud/ — Grafana Cloud is a continuously-updated hosted service; Grafana Labs publishes no per-version end-of-support date for it. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://grafana.com/docs/grafana-cloud/ — Grafana Cloud is a continuously-updated hosted service; Grafana Labs publishes no per-version end-of-support date for it. This is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07 (unchanged since 2026-07-25).",
     "tagPublished": true
   },
   {
@@ -38,8 +38,8 @@
     "pinnedVersion": "12.4.0",
     "lifecycle": "versioned",
     "supportEndsOn": "2027-05-24",
-    "confirmedOn": "2026-07-25",
-    "source": "https://grafana.com/docs/grafana/latest/upgrade-guide/when-to-upgrade/ — 12.4.x (last minor of 12), released 24 February 2026, support end date 24 May 2027, support level 'Patch Support'. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://grafana.com/docs/grafana/latest/upgrade-guide/when-to-upgrade/ — 12.4.x (last minor of 12), released 24 February 2026, support end date 24 May 2027, support level 'Patch Support'. This date is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07, quoting '| 12.4.x (Last minor of 12) | February 24, 2026 | May 24, 2027 | Patch Support |' (unchanged since 2026-07-25).",
     "tagPublished": true
   },
   {
@@ -47,9 +47,9 @@
     "pinnedVersion": "13.1.0",
     "lifecycle": "versioned",
     "supportEndsOn": "2027-03-20",
-    "confirmedOn": "2026-07-25",
-    "source": "https://grafana.com/docs/grafana/latest/upgrade-guide/when-to-upgrade/ — 13.1.x, released 22 June 2026, support end date 20 March 2027, support level 'Patch Support'. Confirmed 2026-07-25.",
+    "confirmedOn": "2026-08-07",
+    "source": "https://grafana.com/docs/grafana/latest/upgrade-guide/when-to-upgrade/ — 13.1.x, released 22 June 2026, support end date 20 March 2027, support level 'Patch Support'. This date is transcribed from the cited page by a human; the automated probe does NOT re-read it. Last human transcription 2026-08-07, quoting '| 13.1.x | June 22, 2026 | March 20, 2027 | Patch Support |' (unchanged since 2026-07-25).",
     "tagPublished": false,
-    "fixtureRefresh": "Known, disclosed vendor-timing asymmetry, not a defect in the recipe: grafana/grafana-oss:13.1.0 is still unpublished on Docker Hub (probe re-confirmed 404 on 2026-07-25), while grafana/grafana-enterprise:13.1 was published 2026-07-22. Already documented in docs/compatibility-matrix.md and docs/evidence/phase-23/provisioning/grafana-13.1-tag-check.txt; the enterprise recipe is smoke-tested and the OSS compose file needs no change, only the vendor's own publication. Tracked, no action available to this repository."
+    "fixtureRefresh": "Known, disclosed vendor-timing asymmetry, not a defect in the recipe: grafana/grafana-oss:13.1.0 is still unpublished on Docker Hub (probe re-confirmed 404 on 2026-08-07), while grafana/grafana-enterprise:13.1 was published 2026-07-22. Already documented in docs/compatibility-matrix.md and docs/evidence/phase-23/provisioning/grafana-13.1-tag-check.txt; the enterprise recipe is smoke-tested and the OSS compose file needs no change, only the vendor's own publication. Tracked, no action available to this repository."
   }
 ]

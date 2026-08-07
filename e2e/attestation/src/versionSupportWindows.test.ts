@@ -71,7 +71,12 @@ describe("checkVersionSupportWindows — seeded defects each FAIL", () => {
       requiredTargets: ["grafana-11.6"],
     });
     expect(result.verdict).toBe("FAIL");
-    expect(result.reasons.join(" ")).toContain("days stale at the release cut");
+    // Wording updated 2026-08-07 with the provenance reword. The SUBJECT is
+    // unchanged — a stale record is still an unconditional FAIL at a cut — and
+    // the assertion now names the arithmetic (days, limit) rather than a phrase
+    // that could survive the check being gutted.
+    expect(result.reasons.join(" ")).toContain("PROBE last ran 205 days before the release cut");
+    expect(result.reasons.join(" ")).toContain("limit 30 days");
   });
 
   it("FAILs on a re-confirmation dated after the release cut", () => {
@@ -176,7 +181,7 @@ describe("checkVersionSupportWindows — seeded defects each FAIL", () => {
       requiredTargets: ["grafana-cloud"],
     });
     expect(result.verdict).toBe("FAIL");
-    expect(result.reasons.join(" ")).toContain("days stale");
+    expect(result.reasons.join(" ")).toContain("PROBE last ran 570 days before the release cut");
   });
 
   it("honours a caller-supplied freshness window", () => {

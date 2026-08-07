@@ -186,6 +186,29 @@ export async function buildSupportWindowRecords(
       pinnedVersion: spec.pinnedVersion,
       lifecycle: policy.lifecycle,
       ...(policy.supportEndsOn !== undefined ? { supportEndsOn: policy.supportEndsOn } : {}),
+      // ⚠️ THIS IS THE PROBE DATE, AND THE FIELD NAME OVERSELLS IT.
+      //
+      // `confirmedOn` is `probedOn` — when THIS ran — not when a human last
+      // read a vendor page. Owner ruling 2026-08-07: probe-based confirmation
+      // is ACCEPTED, so re-stamping this from a probe run is legitimate and
+      // intended. What is not accepted is pretending it means more.
+      //
+      // What the stamp attests: the MECHANICAL half above — a real HTTP fact,
+      // that `spec.image:spec.tag` still resolves at the registry, re-checked
+      // on every run.
+      //
+      // What it does NOT attest: the ATTESTED half. `policy.supportEndsOn` and
+      // `policy.source` are copied verbatim out of the committed
+      // `docs/vendor-support-policy.json` and are never re-read from the
+      // vendor. A run on a day when a window has silently moved records a fresh
+      // `confirmedOn` over a stale date, and nothing here can tell. That is why
+      // each policy entry carries its own human transcription date and a quote
+      // of the vendor row it came from — that is where the attested half's
+      // provenance lives, and it is deliberately NOT this field.
+      //
+      // `e2e/attestation/src/versionSupportWindows.ts`'s `CONFIRMED_ON_PROVENANCE`
+      // states the same limitation at the consuming end, because a reader can
+      // arrive from either side.
       confirmedOn: options.probedOn,
       source: policy.source,
       tagPublished,
