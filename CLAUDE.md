@@ -16,8 +16,9 @@ any work here:
    patterns, the four-rule citation resolver, transcript and probe discipline, and the cost
    rules for live runs. Skipping it means re-earning them.
 5. `docs/deploy-posture.md` — the sole authority on whether crabgic is certifiably deployable.
-   Currently **conditional, not clear**.
-6. `docs/evidence/criteria-closeout/defects/INDEX.md` — 37 filed defects with sized remedies.
+   Currently **certified for the single-tenant, trusted-operator scope only** (owner ruling
+   2026-08-07); multi-tenant is NOT certified.
+6. `docs/evidence/criteria-closeout/defects/INDEX.md` — 38 filed defects with sized remedies.
    Bookkeeping inside the claim-space: **never cite it as evidence**, cite a record's own evidence.
 
 ## Non-negotiables

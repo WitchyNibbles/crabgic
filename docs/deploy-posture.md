@@ -28,6 +28,47 @@
 >
 > ⚠️ **Not a clean bill of health.** A control that is trusted and inert is the failure mode this
 > whole exercise exists to surface, and §20.2 is an instance of it.
+>
+> ---
+>
+> **AMENDED 2026-08-07, by owner ruling — the certification line flips.**
+> **CERTIFIED for the SINGLE-TENANT, TRUSTED-OPERATOR scope, and for nothing wider.**
+>
+> **This is a scope ruling, not a new measurement.** The measured base is unchanged and nothing was
+> re-probed for it. As shipped, `Read` on the three sensitive roots is BINDING under the compiled
+> profile (`docs/engine-baseline.md` §20, R7-P1, 30 authorized engine turns, 2026-08-05), and the
+> deny/sandbox backstop is ABSENT (§20.2) — defence-in-depth of depth one. The owner accepts the
+> measured tenant scope below rather than funding read-path tenant checks and connection-doctor
+> identity verification now. The "NO. Deployment is NOT certified." header of 2026-08-05 above and
+> the 2026-08-05 amendment beneath it stay verbatim and are superseded in place, not rewritten.
+>
+> **Named conditions — each load-bearing, none of them new:**
+>
+> 1. Do **not** add a broad `Read`/`Grep`/`Glob` allow rule — that is precisely what
+>    `docs/claude-code-adaptation.md` Appendix B sketches, and per §20.2 it removes the **only
+>    working barrier** (out-of-cwd reads matching no allow rule under `dontAsk`). The same single
+>    barrier is also what stands between a worker and the journal/control state, so this condition
+>    carries that weight too.
+> 2. **Multi-tenant deployment is NOT certified.** `tenantAllowlist` binds only the tenant a
+>    mutation plan DECLARES, on the mutation path; reads are not tenant-checked; the remote's
+>    actual identity is not verified. This answers the 2026-08-05 words above — "multi-tenant
+>    deployment still needs a judgement call rather than a green light" — and the tenant defect
+>    record's own "Kept open: the multi-tenant judgement itself": the judgement is **out of
+>    certified scope**, not resolved.
+> 3. **The live lane has never run.** `engine-live.yml` has zero runs ever and the
+>    `CLAUDE_CODE_OAUTH_TOKEN` secret is unconfirmed. The live evidence behind this certification is
+>    the owner-authorized local batches recorded in `docs/engine-baseline.md`, valid for the pinned
+>    range 2.1.207–2.1.220; engine drift outside that range re-opens the question per the
+>    engine-fact-drift ground rule.
+>
+> **Not certified, and deliberately not claimed: no live connector verification of any kind.** The
+> vendor-fidelity criteria — live Jira, Jira Data Center and Grafana Cloud conformance — remain
+> owner-gated and unrun, and this ruling does not touch them. Nor does it certify anything about the
+> marketplace publication channel, on which it is silent.
+>
+> Gate composition is certified at its ruled v1 scope — the criteria-seal gate plus the
+> security-fixture manifest, firing blocking at `final_verifying` — see the same-dated ruling beside
+> the gate-registry row below.
 
 This document is the **sole authority** on deploy certification. Dated rulings only; annotate,
 never rewrite. It supersedes — **without editing** — the 2026-07-24 sign-off in
@@ -169,6 +210,32 @@ document, and this document is not evidence that it was.
 > §14 accounts for all five. The original text is left verbatim per this document's own convention.
 > This was found while EOF-appending a §11 addendum to `docs/engine-baseline.md` in the same pass —
 > that append cannot shift anything, and did not cause this; the drift predates it.
+>
+> _Ruling 2026-08-07 (owner) — the `tenantAllowlist` row above, judgement settled:_ the multi-tenant
+> judgement that row's 2026-08-05 amendment left open — "multi-tenant deployment still needs a
+> judgement call rather than a green light" — is answered by the certification ruling in this
+> document's header: **single-tenant / trusted-operator is certified, multi-tenant is NOT.** The
+> judgement is therefore **out of certified scope rather than resolved**, and the row's residual
+> exposures stand unchanged and unnarrowed: reads on a tenant-scoped connection; a plan declaring an
+> in-allowlist tenant while its URL targets another tenant reachable with the same credential; and
+> unbound remote identity. Nothing was measured for this ruling and nothing about the enforcement
+> changed — the owner accepted the measured scope rather than funding read-path tenant checks and
+> connection-doctor identity verification.
+>
+> _Ruling 2026-08-07 (owner) — the "Gate registry never composed" row above, scope settled:_ the v1
+> gate-composition scope is **seal + security** — the criteria-seal gate plus the security-fixture
+> manifest's entries, firing blocking at `final_verifying`, exactly what PRs #104, #121 and #122
+> composed. 15's performance gate, 14's own tranche (tdd, coverage, flake, semgrep, gitleaks,
+> osv-scanner, root-cause-policy, engine-conformance) and `createRemoteVerificationGate` stay
+> **unregistered, accepted as a disclosed residual with its measured cause**: `getMeasurements` has
+> no backend — no `baseObjectId` on `GateContext`, no `worktreePath` on `DispatchAttemptOutcome`, no
+> production-composed `ProjectProfile`, and a methodology floor of 22+ sequential stack commands
+> requiring the worker sandbox — and `fireAll` fires every registered gate on every run, so
+> registering them today would either fail every run or fabricate measurements. This answers the
+> sentence "Whether they fire in the daemon is an owner scope decision, not a maintenance task" in
+> the 2026-08-07 amendment above: **the decision is made.** Registering the tranche becomes in-scope
+> only when its measurement backends exist — the widening starts with building them, never with a
+> `register` call.
 
 ### Measurement behind the gate-registry row
 

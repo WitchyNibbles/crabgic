@@ -164,3 +164,19 @@ ratification, not the enforcement. Remedy step 2's disclosed deviation is record
 the approval-time check is discharged by signature coverage rather than by a separate check. And
 legacy envelopes without the member still parse but cannot pass enforcement, so in-flight runs must
 be drained before upgrading.
+
+## Addendum 2026-08-07 — ledger Gap 22 is ratified as written
+
+This record says "**Kept open: ledger Gap 22 awaits owner ratification**, on two points — its
+deliberate omission from the ledger's intro sentence and origin table … and the OPTIONAL-in-schema
+posture. That gates the **ledger entry's** ratification, not the enforcement."
+
+That is discharged. On 2026-08-07 the owner ratified Gap 22 **as written**, both flagged points
+included: the intro-sentence / origin-table / Index omission stands on the Gap 21 precedent — line
+stability over self-consistency — and the OPTIONAL-in-schema posture is accepted as ruled, with no
+global version bump, no migrations and no default, because a default there forges what the human
+signed. The ratification is appended at the end of `docs/interface-ledger.md`; the entry's own
+"Awaiting owner ratification" marker stays verbatim per that file's annotate-never-rewrite
+convention.
+
+No ruling content changed, so no phase-file edit follows. Status stays **fixed**, unchanged.

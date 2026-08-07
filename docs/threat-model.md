@@ -393,3 +393,12 @@ question.
 the §5 corrections that post-date it. It is not a re-review of the other eight surfaces; Open item 7
 above still holds for them. And it does not speak to deploy certification, which lives solely in
 `docs/deploy-posture.md` and is currently **conditional, not clear**.
+
+> **Dated correction 2026-08-07 — the scope paragraph above stays verbatim and one clause of it is
+> superseded.** Its closing words, "deploy certification, which lives solely in
+> `docs/deploy-posture.md` and is currently **conditional, not clear**", were true when written. On
+> 2026-08-07 an owner ruling recorded in that document flipped the certification line to **CERTIFIED
+> for the single-tenant, trusted-operator scope, and nothing wider** — multi-tenant explicitly NOT
+> certified, no broad `Read`/`Grep`/`Glob` allow rule permitted, and the live lane still never run.
+> It is a scope ruling, not a new measurement: no surface here was re-reviewed for it, Open item 7
+> still holds, and deploy certification still lives solely in `docs/deploy-posture.md`.

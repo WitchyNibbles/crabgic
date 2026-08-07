@@ -141,3 +141,28 @@ declining the wording route (option (b)) in this pass:
 The gap is now exactly one clause wide, and its disposition is an owner ruling between remedy (a) —
 persist the promoted `ChangeSet` into the durable registry so it genuinely enters the
 scheduler→gates→publish pipeline, M–L — and remedy (b), S.
+
+## Addendum 2026-08-07 — the owner ruling arrived: option (b) is withdrawn
+
+This record's previous addendum ends by saying "the gap is now exactly one clause wide, and its
+disposition is an owner ruling between remedy (a) — persist the promoted `ChangeSet` into the durable
+registry so it genuinely enters the scheduler→gates→publish pipeline, M–L — and remedy (b), S." That
+ruling arrived on 2026-08-07.
+
+**The wording route — remedy option (b) — is WITHDRAWN, permanently.** The pre-authorization to
+reword this criterion is rescinded and this pass's refusal of it is upheld, on both of the measured
+reasons already recorded above and neither of them softened:
+
+1. `packages/cli/src/learning/learn-command-backend.ts:191-207` constructs the `ChangeSet`, prints
+   it and returns. The hand-off does not happen, so a criterion reworded to say the phase "hands
+   off" a `ChangeSet` would be unborne by the code too — the replacement wording is not more
+   precise, it is differently unmet.
+2. This record's own remedy already required option (b) to land in its own reviewed commit rather
+   than in a closeout pass.
+
+**Remedy (a) is the sole closing path**, deferred until learning promotion matters. The box at
+`roadmap/22-learning-system.md:102` stays unticked as a disclosed gap and the annotation there
+records the same ruling in place.
+
+Status stays **open** — but on a deferred implementation now, no longer on a pending decision. The
+decision is made.
