@@ -396,8 +396,52 @@ Measured afterwards, at the merge commit:
 
   raw NUL bytes in the file                             0
   `\0` escapes                                          2  (code + doc comment)
-  git diff --numstat origin/main -- <file>          75  5  (numbers ⇒ TEXT)
+  git diff --numstat origin/main -- <file>          88  5  (numbers ⇒ TEXT)  [corrected — see below]
   git grep reads it as text                            yes (not "Binary file … matches")
   npm run check:hygiene                                PASS, incl. its whole-file NUL scan
   runtime equivalence, measured: `${"a"}\0${"b"}` → [97, 0, 98], identical to a
     raw-NUL join — the escape is a SOURCE-ENCODING change only.
+
+--------------------------------------------------------------------------------
+CORRECTION 2026-08-07 — the numstat above originally read `75  5`, and that
+number was not reproducible from any ref state
+--------------------------------------------------------------------------------
+
+Found by review of this branch's merge delta, not by me. The reviewer measured
+`88  5` for every candidate pair — `origin/main`→branch, `b9a935b`→branch, and
+this section's own pinned `7ded38b`→`f5a4c86` — and showed no ref state can
+produce `75  5`: every pre-#120 main gives binary `-  -`, every post-#120 main
+gives `88  5`. They also ran the right-count/wrong-file check against it; no
+other file in `transport/` yields `75  5` either (`write-serializer.test.ts` is
+`268  0`).
+
+I CAN reproduce `75  5`, and the cause is exactly what they guessed — a
+mid-resolution WORKING-TREE capture, written up as though it were a ref-to-ref
+measurement. Reproduced:
+
+  $ git show f5a4c86:<file>                       # committed:      6504 bytes
+  $ # …with the 13-line joiner doc comment removed: 5816 bytes
+  $ git diff --numstat --no-index <main blob> <that 5816-byte file>
+  75      5
+  $ git diff --numstat --no-index <main blob> <the committed 6504-byte file>
+  88      5
+
+The conflict was resolved in two steps: first the NUL→`\0` swap, THEN the
+13-line doc comment at the joiner. I ran the numstat between those two steps and
+carried the number forward into this file after the second step had already
+changed it. 88 − 75 = 13, exactly the doc comment.
+
+THE CONCLUSION WAS NEVER AFFECTED — both numbers are numbers rather than `-  -`,
+which is the whole claim (the file is TEXT, not binary). The PROVENANCE was
+wrong, and that is a RULING-3 violation on its own terms: a transcript's numbers
+must be reproducible at the tree its header names. This is the same failure the
+playbook records for a re-cut transcript whose totals belonged to the pre-merge
+tree — a real measurement, of a tree that is not the one being claimed.
+
+THE RULE THIS EARNS, since it is not yet in the playbook in this form: a working
+tree mid-conflict-resolution is not a ref, and `git diff <ref> -- <path>` with no
+second ref silently measures it. When a probe's output is going into a record,
+re-run it against two named object ids after the last edit — or capture it after
+committing, never between edits. The other copy of this number (PR #125's body)
+was corrected in the same pass; the copy inside merge commit `f5a4c86`'s message
+is frozen and is superseded by this note.
