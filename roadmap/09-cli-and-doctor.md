@@ -420,7 +420,7 @@ one command — see the note under criterion 1.
       31138369774, job 92742754385, log line 932) reads
       ` ✓  crabgic  src/commands/cli.snapshots.test.ts (46 tests) 711ms`. Transcript:
       `docs/evidence/phase-09/probe-09-383-batchA.txt`. **THREE NARROWINGS, carried verbatim from that
-      transcript's §7 so a judge can disagree with the reading rather than have to find it.** (i) "`run --json`
+      transcript's §7 so a judge can disagree with the reading rather than have to find it.** (Whitespace is normalized and one line-wrap hyphen is closed up — the transcript breaks `approved-and-dispatched` across two lines. Declared rather than left for a byte-exact resolver to report forever: the rest of all three quotes is verbatim, re-checked mechanically against the committed transcript.) (i) "`run --json`
       is ONE TypeScript payload shape (`{ ...RunIntakeCommandResult, dispatch? }`) whose CONTENT union has five
       decided-outcome arms. Three are snapshotted (approved-and-dispatched, escalate, conflict). The two that
       are not — `not_ready` and the already-in-a-non-ready-state arm — produce the IDENTICAL field set to the
