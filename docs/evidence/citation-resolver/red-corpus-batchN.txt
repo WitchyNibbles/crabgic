@@ -1,7 +1,7 @@
 RULING-3 transcript
-UTC:        2026-08-07T00:51:58Z
-HEAD:       31ecf30d8adc51acd8e9df50978d508e1e7c4963  (fix(meta): derive top-level directories from git, not the filesystem)
-UPSTREAM BASE: 23790fdf7f957a592ca81a40bc0d399e013085a2  (origin/main, (#123))
+UTC:        2026-08-07T01:21:09Z
+HEAD:       41411cdbad6fdf08a88a90be6a18ed336568c5f6  (test(meta): reseed against #125, and name the citations --allow-unanchored swallows)
+UPSTREAM BASE: 880ae34e4bfbb4ac1f290aa1c8e897f3693e8c7b  (origin/main, (#125))
 Purpose:    show the resolver catching the REAL historical citation drifts,
             pinned at the shas that caused them, so this proof cannot rot when
             a sibling batch corrects the records.
@@ -48,23 +48,23 @@ VERDICT: at a7988c1 the citation carries no Rule 1+2 finding at all; at e02956f
          had it existed, would have failed PR #95 on PR #95.
 
 ===============================================================================
-PART 2 — the other two measured drifts, at origin/main (23790fd)
+PART 2 — the other two measured drifts, at origin/main (880ae34)
 ===============================================================================
 
 $ node scripts/check-citation-content.mjs --report --repo <worktree at origin/main>
 exit=0
 
 --- drift 2: PR #108 (+28) — filed by the pass that WROTE the defect record ---
-    2885:    phase-17.json c4: packages/renderer/src/adf.test.ts:253 → :281 — corrected 2026-08-07; quote "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
-    2886:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :287 — corrected 2026-08-07; quote "\"orderedList\","
-    2887:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :290 — corrected 2026-08-07; quote "\"blockquote\","
-    2888:    phase-17.json c4: packages/renderer/src/adf.test.ts:265 → :293 — corrected 2026-08-07; quote "expect(ADF_ALLOWED_MARK_TYPES).toEqual([\"link\", \"strong\", \"e"
+    2907:    phase-17.json c4: packages/renderer/src/adf.test.ts:253 → :281 — corrected 2026-08-07; quote "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
+    2908:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :287 — corrected 2026-08-07; quote "\"orderedList\","
+    2909:    phase-17.json c4: packages/renderer/src/adf.test.ts:254 → :290 — corrected 2026-08-07; quote "\"blockquote\","
+    2910:    phase-17.json c4: packages/renderer/src/adf.test.ts:265 → :293 — corrected 2026-08-07; quote "expect(ADF_ALLOWED_MARK_TYPES).toEqual([\"link\", \"strong\", \"e"
 
 --- drift 3: phase-18 c2 / c1 — jira-resource-client + jira-flow ---
-    2905:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:245 → :344 — corrected 2026-08-07; quote "expect(outcome.status).toBe(\"recorded\");"
-    2906:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :390 — corrected 2026-08-07; quote "expect(outcome.status).toBe(\"failed\");"
-    2907:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :391 — corrected 2026-08-07; quote "expect(outcome.errorKind).toBe(\"conflict\");"
-    2908:    phase-18.json c2: packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:53 → :60 — corrected 2026-08-07; quote "expect(list).toEqual([{ id: \"10000\", key: \"PROJ\", name: \"Pro"
+    2927:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:245 → :351 — corrected 2026-08-07; quote "expect(outcome.status).toBe(\"recorded\");"
+    2928:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :398 — corrected 2026-08-07; quote "expect(outcome.status).toBe(\"failed\");"
+    2929:    phase-18.json c1: packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:284 → :399 — corrected 2026-08-07; quote "expect(outcome.errorKind).toBe(\"conflict\");"
+    2930:    phase-18.json c2: packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:53 → :60 — corrected 2026-08-07; quote "expect(list).toEqual([{ id: \"10000\", key: \"PROJ\", name: \"Pro"
 
 ===============================================================================
 PART 3 — the four instances an independent audit found a sibling resolver MISS
@@ -74,25 +74,25 @@ All four have the same shape: the quoted text is real and present, and sits
 OUTSIDE the span the citation declares. A resolver whose association grammar
 only pairs a quote with an ADJACENT marker never checks them at all.
 
-    1847:- phase-17.json#c1#packages/renderer/src/length-limits.test.ts:12-25: 1 fragment(s) outside packages/renderer/src/length-limits.test.ts:12-25
-    1848-    57-57 "expect(findings.some((f) => f.message.match(/6 chars exceeds"
-    1849-- phase-17.json#c4#packages/renderer/src/adf.test.ts:251-267: 10 fragment(s) outside packages/renderer/src/adf.test.ts:251-267
-    1850-    281-281 "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
+    1854:- phase-17.json#c1#packages/renderer/src/length-limits.test.ts:12-25: 1 fragment(s) outside packages/renderer/src/length-limits.test.ts:12-25
+    1855-    57-57 "expect(findings.some((f) => f.message.match(/6 chars exceeds"
+    1856-- phase-17.json#c4#packages/renderer/src/adf.test.ts:251-267: 10 fragment(s) outside packages/renderer/src/adf.test.ts:251-267
+    1857-    281-281 "expect(ADF_ALLOWED_NODE_TYPES).toEqual(["
     --
-    1870:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 2 fragment(s) outside packages/contracts/src/contracts/communication-policy.ts:102-112
-    1871-    82-82 "`prTitle` shares the `commitSubject` shape (`maxChars` + `fo"
-    1872-    19-19 "same convention as the commit subject"
-    1873:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 9 fragment(s) outside packages/renderer/src/manifest.test.ts:45-56
-    1874-    23-23 "node-fetch"
-    1875-    24-24 "undici"
-    1876-    26-26 "superagent"
+    1877:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 2 fragment(s) outside packages/contracts/src/contracts/communication-policy.ts:102-112
+    1878-    82-82 "`prTitle` shares the `commitSubject` shape (`maxChars` + `fo"
+    1879-    19-19 "same convention as the commit subject"
+    1880:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 9 fragment(s) outside packages/renderer/src/manifest.test.ts:45-56
+    1881-    23-23 "node-fetch"
+    1882-    24-24 "undici"
+    1883-    26-26 "superagent"
     --
-    2502:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 3 fragment(s) whose text occurs more than once in the cited file
-    2503-- phase-17.json#c6#packages/git-engine/src/commit-renderer.test.ts:31-68: 1 fragment(s) whose text occurs more than once in the cited file
-    2504:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 1 fragment(s) whose text occurs more than once in the cited file
-    2505-- phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:151-161: 1 fragment(s) whose text occurs more than once in the cited file
-    2506-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:138-146: 4 fragment(s) whose text occurs more than once in the cited file
-    2507-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:206-566: 1 fragment(s) whose text occurs more than once in the cited file
+    2524:- phase-17.json#c6#packages/contracts/src/contracts/communication-policy.ts:102-112: 3 fragment(s) whose text occurs more than once in the cited file
+    2525-- phase-17.json#c6#packages/git-engine/src/commit-renderer.test.ts:31-68: 1 fragment(s) whose text occurs more than once in the cited file
+    2526:- phase-17.json#c7#packages/renderer/src/manifest.test.ts:45-56: 1 fragment(s) whose text occurs more than once in the cited file
+    2527-- phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:151-161: 1 fragment(s) whose text occurs more than once in the cited file
+    2528-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:138-146: 4 fragment(s) whose text occurs more than once in the cited file
+    2529-- phase-18.json#c2#packages/connectors-jira/src/resource-client/jira-resource-client.test.ts:206-566: 1 fragment(s) whose text occurs more than once in the cited file
 
 ===============================================================================
 PART 4 — what the ratchet does with all of this

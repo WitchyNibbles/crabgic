@@ -1,7 +1,7 @@
 RULING-3 transcript
-UTC:        2026-08-07T00:52:38Z
-HEAD:       31ecf30d8adc51acd8e9df50978d508e1e7c4963  (fix(meta): derive top-level directories from git, not the filesystem)
-UPSTREAM BASE: 23790fdf7f957a592ca81a40bc0d399e013085a2  (origin/main, (#123))
+UTC:        2026-08-07T01:21:31Z
+HEAD:       41411cdbad6fdf08a88a90be6a18ed336568c5f6  (test(meta): reseed against #125, and name the citations --allow-unanchored swallows)
+UPSTREAM BASE: 880ae34e4bfbb4ac1f290aa1c8e897f3693e8c7b  (origin/main, (#125))
 Purpose:    the pinned starting line of the burn-down. Every number below is
             re-derived by the PRODUCTION tool at the sha in this header, so a
             later pass can measure progress against it rather than against a
@@ -17,9 +17,9 @@ $ node scripts/check-citation-content.mjs --report
 ## Census
 - citations: 1292
 - fragments: 3903
-- anchored: 2655
-- seededStale: 640
-- outsideSpan: 766
+- anchored: 2651
+- seededStale: 644
+- outsideSpan: 780
 - repeatText: 525
 - crossFile: 20
 - skipped: 608
@@ -55,7 +55,7 @@ $ node scripts/check-citation-content.mjs --report
 - phase-17.json: 20 / 8 / 8
 - phase-18.json: 82 / 26 / 18
 - phase-19.json: 21 / 7 / 1
-- phase-20.json: 55 / 17 / 13
+- phase-20.json: 59 / 17 / 13
 - phase-21.json: 21 / 9 / 3
 - phase-22.json: 13 / 8 / 8
 - phase-23.json: 29 / 20 / 17
@@ -67,7 +67,7 @@ exit=0
 The blocking check at this sha, with the baseline seeded from it
 ===============================================================================
 $ node scripts/check-citation-content.mjs
-check-citation-content: 1292 citation(s), 3903 quoted fragment(s) (2655 anchored, 640 known-stale, 608 not file quotes); 816 prose reference(s), 33 bare-basename (unchecked).
+check-citation-content: 1292 citation(s), 3903 quoted fragment(s) (2651 anchored, 644 known-stale, 608 not file quotes); 816 prose reference(s), 33 bare-basename (unchecked).
 check-citation-content: PASS — every citation resolves exactly as the baseline pins it.
 exit=0
 
