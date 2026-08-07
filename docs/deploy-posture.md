@@ -236,6 +236,30 @@ document, and this document is not evidence that it was.
 > the 2026-08-07 amendment above: **the decision is made.** Registering the tranche becomes in-scope
 > only when its measurement backends exist — the widening starts with building them, never with a
 > `register` call.
+>
+> _Correction 2026-08-07 (at the v1.6.0 release cut) — the `CLAUDE_CODE_OAUTH_TOKEN` claim is
+> FALSIFIED in three places in this document, and the condition it sits under is UNCHANGED._ The
+> secret **exists**. Measured directly: `gh secret list` returns two rows,
+> `CLAUDE_CODE_OAUTH_TOKEN` created `2026-08-05T19:03:12Z` and `NPM_TOKEN` created
+> `2026-07-26T20:03:42Z`. The three sites the correction applies to, each left verbatim: the
+> "Live evidence: phases 00 and 06" residual row above, which says the repository has **no**
+> `CLAUDE_CODE_OAUTH_TOKEN` secret and that `gh secret list` returns only `NPM_TOKEN`, "verified
+> 2026-08-05" — that claim was very likely true when it was taken and stopped being true later the
+> same day, which is why it is corrected rather than blamed; the same row's 2026-08-07 (PR #118)
+> amendment, which repeats "the `CLAUDE_CODE_OAUTH_TOKEN` secret is still unconfirmed"; and
+> **condition 3 of the certification header**, which says the same in its second sentence.
+>
+> **What does NOT change, re-measured rather than assumed: condition 3 stands exactly as written.**
+> Its substance is that the live lane has never run, and that is still true —
+> `gh run list --workflow=engine-live.yml` returns `[]`, **zero runs ever**, re-verified 2026-08-07.
+> (`jira-datacenter-smoke.yml` likewise returns `[]`.) The certification therefore still rests on
+> the owner-authorized local batches in `docs/engine-baseline.md` for the pinned range
+> 2.1.207–2.1.220, and drift outside that range still re-opens the question. **The presence of a
+> secret is not evidence of a run**, and this correction narrows the condition's stated _cause_ — a
+> missing credential — without narrowing the condition itself: what was "CI dispatch of the live
+> lane is therefore impossible today" is now "CI dispatch of the live lane is possible and has never
+> been done", which remains an owner action and was not taken by the pass that wrote this
+> correction. Nothing was dispatched, no `@live` test was run and no `CRABGIC_LIVE` was set.
 
 ### Measurement behind the gate-registry row
 
