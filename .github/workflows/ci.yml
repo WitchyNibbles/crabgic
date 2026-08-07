@@ -223,6 +223,25 @@ jobs:
         run: npm run check:hygiene
       - name: release-notes-prep records the npm-name verdict
         run: npm run check:release-notes
+      # The committed marketplace entry couples three facts — `version`,
+      # `commit` and `digest` — but only the digest was kept fresh per push
+      # (`packages/plugin/src/marketplace-schema.test.ts`'s freshness
+      # assertion). `version` and `commit` move only at a release cut, so
+      # between cuts the entry describes HEAD's plugin content while naming the
+      # previous release's commit. Measured on five real commits: that state
+      # held for the whole of the 1.5.0 -> 1.6.0 interval, twice, and NOTHING
+      # per-push said a word about it — the only check that looks at the pin at
+      # all (`e2e/release`'s `marketplacePinCheck`) is not a `vitest.config.ts`
+      # project and runs in no per-push channel, so the drift surfaced once per
+      # release. This step names the two legal states, PASSES both, prints the
+      # drift on every push when the entry is ahead of its own pin, and blocks
+      # only on the third case (a digest describing no tree, a pin that
+      # resolves to nothing, or a pin HEAD cannot reach). Needs the full
+      # history the `fetch-depth: 0` above already provides: it `git archive`s
+      # the pinned commit to recompute that tree's digest. Dependency-free and
+      # build-free, like its siblings here.
+      - name: marketplace entry is in one of its two legal digest states
+        run: npm run check:marketplace-pin
       # The criteria-closeout index (`docs/evidence/criteria-closeout/
       # phase-NN.json`) is where each roadmap phase's ticked exit criteria
       # record their citations. Validated here so a record cannot drift from

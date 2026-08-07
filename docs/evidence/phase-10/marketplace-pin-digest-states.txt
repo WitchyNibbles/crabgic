@@ -1,0 +1,263 @@
+================================================================================
+Marketplace entry: the two legal digest states, and the tripwire on the third
+================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     cb450e3ef11610e2cd5d18ccf7da6cb7a3a65442   (origin/main, tag v1.6.0)
+# branch at capture: postrelease/marketplace-pin-digest (PROVISIONAL — a branch
+#     tip is not resolvable after a rebase; every commit cited below is an
+#     UPSTREAM object, never a branch commit)
+# Commands quoted verbatim with their exit status.
+#
+# Filed under phase-10, not phase-23: the digest clause is roadmap/10's
+# (§In scope, "Distribution"), and its cited bearer is phase-10.json criterion 6.
+
+--------------------------------------------------------------------------------
+0. THE RESIDUAL, IN ONE PARAGRAPH
+--------------------------------------------------------------------------------
+`packages/plugin/.claude-plugin/marketplace.json`'s entry couples `version`,
+`commit` and `digest`. Only `digest` is kept fresh per push —
+`packages/plugin/src/marketplace-schema.test.ts`'s freshness assertion forces
+any PR touching a packaged plugin file to rewrite it in the same commit —
+while `version` and `commit` move only at a release cut. So between cuts the
+entry describes HEAD's plugin content while naming the PREVIOUS release's
+commit and version.
+
+--------------------------------------------------------------------------------
+1. RED-FIRST, HISTORICAL RATHER THAN SYNTHETIC — five real commits
+--------------------------------------------------------------------------------
+Each commit's own `packages/plugin` exported with `git archive` into a temp dir
+OUTSIDE the repository, then classified by THE PRODUCTION CLASSIFIER
+(`inspectPluginEntry` from `scripts/check-marketplace-pin-digest.mjs`) — never
+by a reimplementation of it. `headRev` is the commit itself, so ancestry is
+judged as it stood there.
+
+    $ node <replay> cb450e3 1c85913 b5a609c 2ff3bce 6b9dd7b            EXIT=0
+
+    commit    entry.version  recorded      digest(worktree@C)  digest(tree@pin)  pin           state
+    -------   -------------  ------------  ------------------  ----------------  ------------  ------------
+    cb450e3   1.6.0          fa13c22c223a  fa13c22c223a        fa13c22c223a      1c85913e65f0  at-release
+    1c85913   1.6.0          fa13c22c223a  fa13c22c223a        d3b18ed68c91      39ef7d192d90  ahead-of-pin
+    b5a609c   1.5.0          fa13c22c223a  fa13c22c223a        d3b18ed68c91      39ef7d192d90  ahead-of-pin
+    2ff3bce   1.5.0          983414f02e44  983414f02e44        d3b18ed68c91      39ef7d192d90  ahead-of-pin
+    6b9dd7b   1.5.0          d3b18ed68c91  d3b18ed68c91        d3b18ed68c91      39ef7d192d90  at-release
+
+`recorded === digest(worktree)` at ALL FIVE. The per-push freshness assertion
+has never been violated. The drift is entirely `recorded` vs `digest(tree@pin)`,
+and it recurred TWICE (PR #50 at `2ff3bce`, PR #118 at `b5a609c`) with nothing
+per-push saying a word.
+
+This table is also the corpus assertion in
+`scripts/check-marketplace-pin-digest.test.mjs`, with a control requiring the
+corpus to contain BOTH states — "always at-release" and "always ahead-of-pin"
+would each satisfy a bare equality.
+
+--------------------------------------------------------------------------------
+2. THE `digest-neutral-ancestor` TOLERANCE IS NOT WHAT COVERED THIS
+--------------------------------------------------------------------------------
+Worth falsifying because it is the natural hypothesis.
+`e2e/release/src/marketplacePinCheck.ts` accepts an ancestor pin only when the
+intervening diff is confined to `packages/plugin/.claude-plugin/`. Measured, the
+packaged paths that changed across each drift interval:
+
+    $ git diff --name-only 39ef7d1 2ff3bce -- packages/plugin | grep -v '\.claude-plugin/'
+    packages/plugin/package.json
+    packages/plugin/src/statusline.test.ts
+    packages/plugin/statusline/crabgic-statusline.mjs
+    packages/plugin/tsconfig.json
+
+    $ git diff --name-only 39ef7d1 b5a609c -- packages/plugin | grep -v '\.claude-plugin/'
+    packages/plugin/agents/eo-explore.md
+    packages/plugin/package.json
+    packages/plugin/src/engine-live-workflow.test.ts
+    ... (+5 more)
+
+`crabgic-statusline.mjs` and `agents/eo-explore.md` are both in the packaged set
+(§6 below). So had `marketplacePinCheck` run during either interval it would have
+returned `mismatched`, not tolerated. It did not run, because `e2e/release` is
+not a `vitest.config.ts` project and its sole production caller is the release
+gate summary.
+
+⇒ "the tolerance already makes this a non-problem" is FALSE. It is a non-problem
+for a different, measured reason: §3.
+
+--------------------------------------------------------------------------------
+3. BLAST RADIUS — measured on the published artifacts, not argued
+--------------------------------------------------------------------------------
+See `docs/evidence/criteria-closeout/defects/
+10-marketplace-entry-ahead-of-its-own-pin.md` for the full account. In short:
+every published release is a self-consistent (version, commit, digest) triple
+because the tarball is built at the tag; the recorded `digest` has NO production
+reader (`install.ts`, `upgrade.ts` and `capability-manifest-freshness.ts` each
+recompute from `pluginSourceDir`); and no GitHub-hosted marketplace exists —
+there is exactly one `marketplace.json` in the tree and no root
+`.claude-plugin/`. Whether the engine would refuse such an add is UNVERIFIED and
+deliberately not claimed.
+
+--------------------------------------------------------------------------------
+4. THE CHECK AT THIS BRANCH
+--------------------------------------------------------------------------------
+    $ node scripts/check-marketplace-pin-digest.mjs
+    check-marketplace-pin-digest: PASS — at-release
+      entry version 1.6.0, pinned commit 1c85913e65f0, recorded fa13c22c223a,
+      worktree fa13c22c223a, tree@pin fa13c22c223a
+                                                                        EXIT=0
+
+    $ npx vitest run --coverage=false scripts/check-marketplace-pin-digest.test.mjs
+     Test Files  1 passed (1)
+          Tests  20 passed (20)                                         EXIT=0
+
+--------------------------------------------------------------------------------
+5. ⚠️ THE REPORTING CHANNEL SPEAKS — proved, not assumed
+--------------------------------------------------------------------------------
+`docs/verification-playbook.md:811-819`: a channel's silence evidences nothing
+until it has been watched speaking for a value known to be interesting. So the
+`ahead-of-pin` line is driven by a KNOWN drifted commit (`b5a609c`, PR #118's
+drift) rather than by a fixture, and the CLI's own rendering is exercised in
+both directions — a stdout PASS line for `ahead-of-pin`, and a stderr
+`FAIL — non-ancestor-pin` with exit 1 when the CLI is pointed at a HEAD the
+committed pin cannot reach. Both are assertions in the suite, not prose here.
+
+--------------------------------------------------------------------------------
+6. MUTATION BATTERY — baseline, mutation, restore, at the same HEAD
+--------------------------------------------------------------------------------
+BASELINE
+    scripts/check-marketplace-pin-digest.test.mjs   20 passed (20)   EXIT=0
+    packages/plugin (whole package)                 14 files / 205 passed
+    node scripts/check-marketplace-pin-digest.mjs   PASS at-release   EXIT=0
+
+MUTATION A — swap the two legal state names in the classifier
+    scripts suite                                   4 failed | 16 passed (20)
+        × at-release: recorded === worktree === tree@pin
+        × ahead-of-pin: recorded === worktree, tree@pin differs, pin is an ancestor
+        × prints the ahead-of-pin drift rather than passing silently
+        × reproduces all five measured commits, using the real classifier
+    restore: file copied back from the pre-mutation snapshot, marker grep = 0
+    scripts suite                                   20 passed (20)
+
+MUTATION B — delete the digest(tree@commit) computation entirely
+    scripts suite                                   1 failed | 19 passed (20)
+        × reproduces all five measured commits, using the real classifier
+    node scripts/check-marketplace-pin-digest.mjs   PASS — ahead-of-pin, tree@pin `—`
+                                                    EXIT=0
+    restore: marker grep = 0; scripts suite         20 passed (20)
+
+    ⚠️ REPORTED HONESTLY, because it is the interesting one. Under mutation B
+    the PER-PUSH real-tree arm ("classifies THIS worktree, and it is legal") does
+    NOT redden: with `tree@pin` undefined the classifier reports `ahead-of-pin`,
+    which is a LEGAL state, so an arm that asserts legality is satisfied. That is
+    correct behaviour for that arm — it must tolerate both states or it would
+    block every ordinary plugin PR — and it means the historical-corpus test is
+    the ONLY thing pinning the `tree@pin` computation. Said here rather than left
+    for the next reader to discover: delete the corpus test and mutation B goes
+    green.
+
+--------------------------------------------------------------------------------
+7. ⚠️ OVERLAP PROBE — the new check sits beside one it must NOT weaken
+--------------------------------------------------------------------------------
+`docs/verification-playbook.md:610-628` records that adding a check beside an
+existing one can silently un-pin it: coverage migrates between rules and nothing
+fails. The new `stale-digest` arm overlaps
+`packages/plugin/src/marketplace-schema.test.ts`'s freshness assertion, which is
+the cited bearer of merged `phase-10.json` criterion 6 — "the load-bearing half
+of the digest clause and it demonstrably bites". Touching it is hard rule 5. So
+the overlap was MEASURED, with an immediate restore, and the assertion is
+unchanged in this branch.
+
+    md5 BEFORE  marketplace.json          6ef6ebb93afd6ceb67e8c271bfd8b21e
+    md5 BEFORE  marketplace-schema.test.ts 90309a90dd48fa56dede5c2859aa9504
+
+C1 — recorded digest hand-edited to all-zeroes, freshness assertion INTACT
+    packages/plugin        1 failed | 204 passed (205)
+        × its recorded digest matches a fresh recomputation ... (freshness)
+    scripts suite          3 failed | 17 passed (20)
+        × that digest is the one the committed entry records
+        × classifies THIS worktree, and it is legal
+        × prints the ahead-of-pin drift rather than passing silently
+    node scripts/check-marketplace-pin-digest.mjs   FAIL — stale-digest   EXIT=1
+
+C2 — digest still hand-edited AND the freshness assertion deleted
+    packages/plugin        14 files / 204 passed (204)     ← fully green,
+                           and the COUNT dropped by exactly 1, which is what
+                           proves the deletion took effect rather than the
+                           suite silently not running (playbook: check the
+                           test COUNT, not the exit code)
+    scripts suite          3 failed | 17 passed (20)        ← the new check
+                                                              still bites
+    node scripts/check-marketplace-pin-digest.mjs   EXIT=1
+
+RESTORE — explicit source AND explicit path
+    git checkout HEAD -- packages/plugin/.claude-plugin/marketplace.json
+    marketplace-schema.test.ts copied back from its pre-probe snapshot
+    md5 AFTER  marketplace.json           6ef6ebb93afd6ceb67e8c271bfd8b21e  ✅
+    md5 AFTER  marketplace-schema.test.ts 90309a90dd48fa56dede5c2859aa9504  ✅
+    grep -c "PROBE C2" packages/plugin/src/marketplace-schema.test.ts -> 0
+    git status --porcelain shows only this branch's intended files
+
+CONCLUSION, both directions:
+  - the new check DOES cover the old one's subject, so the invariant survives
+    even if the old assertion were ever removed;
+  - the old assertion is NOT thereby redundant: it additionally drives
+    `UnpinnedMarketplaceSchema.parse` through `loadUnpinnedMarketplace`, which
+    the new check does not — it reads raw JSON. That is the thing the old check
+    catches and the new one cannot.
+  - it stays exactly as it is. This probe is a measurement, not a proposal.
+
+--------------------------------------------------------------------------------
+8. THE TRANSCRIBED DIGEST IS BOUND TO ITS SOURCE
+--------------------------------------------------------------------------------
+`scripts/check-marketplace-pin-digest.mjs` reimplements
+`packages/plugin/src/content-digest.ts`, because `meta-checks` runs on `npm ci`
+and never builds, so `@crabgic/plugin` (which resolves through
+`packages/plugin/dist/`) is not importable there. `content-digest.ts:21-27` is
+itself pinned by a merged citation and must not be edited, which is the other
+half of why the behaviour lives in a new file.
+
+Three witnesses bind the copy to the original, all asserted in the suite:
+
+  1. `computeContentDigest(PLUGIN_ROOT)` === `@crabgic/plugin`'s own, on the real
+     plugin tree;
+  2. `listPackagedFiles(PLUGIN_ROOT)` equals the TypeScript module's list file
+     for file — because two implementations can agree perfectly by both walking
+     nothing;
+  3. that digest equals the one the COMMITTED entry records — because two
+     implementations agreeing proves they are the same function, not that either
+     is right.
+
+The packaged set at `cb450e3` is 18 files (`.mcp.json`, 5 `agents/`, 4 `hooks/`,
+6 `skills/`, 2 `statusline/`). The suite asserts a floor of 10 rather than
+pinning 18, so adding a plugin file is not a spurious failure; the file-for-file
+equality above is what actually holds the two walks together.
+
+--------------------------------------------------------------------------------
+9. WHERE IT RUNS
+--------------------------------------------------------------------------------
+  - `.github/workflows/ci.yml`, `meta-checks` job — `npm run check:marketplace-pin`.
+    That job already checks out with `fetch-depth: 0`, which this needs: it
+    `git archive`s the pinned commit.
+  - `npm run check:all`, chained after `check:release-notes`.
+  - the `scripts` vitest project (`vitest.config.ts:84`), which IS in the default
+    `npm test` fan-out, so the unit suite runs per-push on both arches.
+
+Read-only throughout: `git rev-parse`, `git merge-base --is-ancestor`,
+`git archive`. NEVER `git config`, NEVER `git worktree` — and that is asserted in
+the suite rather than promised, by scanning this script's own source.
+`GIT_*` variables are scrubbed from every git invocation, for the same reason
+`scripts/check-repo-hygiene.mjs` scrubs them.
+
+--------------------------------------------------------------------------------
+10. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the two legal states are named and asserted; `ahead-of-pin` prints on
+every push; the three failure states block; the historical corpus reproduces;
+and no operator on any existing channel is affected by the residual.
+
+NOT CLAIMED: that anything was broken. Nothing was. This is a residual being
+made visible, not a bug being fixed.
+
+NOT CLAIMED: that the criterion at `roadmap/23-release-hardening.md`'s
+reproducible-build line changes state. It is untouched, deliberately — its bullet
+text is the input to the UUIDv5 the release harnesses stamp. All nine gate-tag
+ids were re-derived after this branch's roadmap append and are unchanged;
+16 criteria parse, 9 ids checked, 0 mismatched.
