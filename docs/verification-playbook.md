@@ -986,7 +986,11 @@ directions:
   pre-push hook for the commit recording the fifth. Two of three consecutive plain full-suite runs
   on that host breached, unloaded, with the readings GROWING.** Stop treating this as an occasional
   timing flake: at that rate it is a gate that does not work, and a green isolated re-run is not a
-  disposition. ⚠️ **And the disposition every sighting has used —
+  disposition. ⚠️ **A SEVENTH then took TWO tests at once** — `heartbeat-scheduler.test.ts:39` at
+  1.0388% and `idle-budget.integration.test.ts:46` at 1.2785% — revealing a **second assertion site**
+  with its own private `CPU_BUDGET_FRACTION = 0.01`. Grep for every copy of a THRESHOLD, not just of
+  a line number: a remedy applied to one site leaves the other live. The second site had already been
+  widened once (300 ms to 2000 ms, `e1eaa31`) and breached anyway. ⚠️ **And the disposition every sighting has used —
   "re-ran in isolation, green" — comes from the noisiest channel there is:** the isolated channel
   spans **11.9×** (0.0277% up to 0.3293% at
   `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, isolated with coverage off) yet has NEVER

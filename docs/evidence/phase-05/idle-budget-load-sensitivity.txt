@@ -468,6 +468,50 @@ and a threshold was set above it by transcription.
 A new load flake, filed into both lists in this commit as a catalogue entry.
 
 --------------------------------------------------------------------------------
+5d. ⚠️ A SEVENTH BREACH — AND A SECOND ASSERTION SITE THIS FILE HAD MISSED
+--------------------------------------------------------------------------------
+The pre-push hook for the commit carrying §5c's write-up failed with TWO tests
+red, not one:
+
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 0.010388111888111888 to be less than 0.01
+     ❯ src/idle-budget/heartbeat-scheduler.test.ts:39:25
+    AssertionError: expected 0.012785096473719228 to be less than 0.01
+     ❯ src/idle-budget/idle-budget.integration.test.ts:46:25
+     Test Files  2 failed | 652 passed (654)
+           Tests  2 failed | 6867 passed (6869)
+    exit status: 1
+
+1.0388% and 1.2785%, in one uncontended run.
+
+⇒ THE SECOND SITE IS THE FINDING. Everything above this section — and the defect
+record it supports — discussed ONE assertion. There are TWO, each with its own
+private copy of the constant:
+
+    packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:15
+      const CPU_BUDGET_FRACTION = 0.01;   // <1% of one core   (1500 ms window)
+    packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts:11
+      const CPU_BUDGET_FRACTION = 0.01;   // <1% of one core   (2000 ms window)
+
+This is the playbook's "grep for every copy" rule applied to a threshold instead
+of a line number, and this transcript had not applied it to its own subject. Any
+remedy that widens, moves or re-scopes one site and not the other leaves a live
+breach behind — measured, not predicted: the site this file never mentioned
+breached in the very run that was carrying the file to the remote.
+
+⚠️ AND THE SECOND SITE HAS ALREADY BEEN RE-CALIBRATED ONCE, undisclosed. Its own
+comment at heartbeat-scheduler.test.ts:23-32 records that the window was widened
+from 300 ms to 2000 ms because "the short window sat on the boundary and flaked
+when this test ran alongside the full parallel suite". The commit is
+`e1eaa31 test: de-flake supervisor idle-CPU-budget window under parallel load`.
+
+That is a prior attempt at remedy option 2 — widen the measurement window —
+carried out on this exact budget, recorded in no flake list, no defect record and
+no evidence file, and **it did not hold**: the widened site is the one that just
+breached at 1.0388%. Any future widening has to be argued against that outcome
+rather than proposed as though it were untried.
+
+--------------------------------------------------------------------------------
 5. THE BREACHES
 --------------------------------------------------------------------------------
 ON RECORD, committed and independently readable:
@@ -481,7 +525,7 @@ ON RECORD, committed and independently readable:
 OBSERVED DURING REVIEW of PR #133, in a full-suite run under concurrent external
 load: **1.0137%**. Not observed by this pass; attributed to the review rather
 than claimed first-hand, and added to both flake lists in this commit per
-docs/verification-playbook.md:1009.
+docs/verification-playbook.md:1013.
 
 REPORTED WITHOUT AN ARTIFACT — 1.075% and 1.159%. A repo-wide grep for those
 figures returns nothing but this paragraph: no transcript, no run id, no

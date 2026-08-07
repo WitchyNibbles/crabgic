@@ -129,7 +129,7 @@ immediately after `npm run build`; 3/3 green in isolation; the branch touched no
 
 **Observed during review of PR #133**, in a full-suite run under concurrent external load:
 **1.0137%**. Attributed to the review rather than claimed first-hand, and added to both flake lists
-in this commit per `docs/verification-playbook.md:1009`.
+in this commit per `docs/verification-playbook.md:1013`.
 
 **Reported without an artifact — UNVERIFIED:** 1.075% and 1.159%. A repo-wide grep returns nothing
 for either; no transcript, no run id, no flake row. Nothing here rests on them.
@@ -195,10 +195,47 @@ calibration, and the reason a fourth list entry is not the answer is now measura
 rhetorical: **the disposition each sighting used — "re-ran in isolation, green" — is drawn from the
 channel with the widest spread on record.**
 
+## ⚠️ A SECOND ASSERTION SITE — found by the pre-push hook of this record's own commit
+
+Everything above discusses one assertion. **There are two**, each with its own private copy of the
+constant:
+
+| site                                                  | window  | constant                     |
+| ----------------------------------------------------- | ------- | ---------------------------- |
+| `idle-budget.integration.test.ts:15` / asserted `:46` | 1500 ms | `CPU_BUDGET_FRACTION = 0.01` |
+| `heartbeat-scheduler.test.ts:11` / asserted `:39`     | 2000 ms | `CPU_BUDGET_FRACTION = 0.01` |
+
+A **seventh** breach took both at once, in one uncontended run:
+
+```
+AssertionError: expected 0.010388111888111888 to be less than 0.01
+ ❯ src/idle-budget/heartbeat-scheduler.test.ts:39:25
+AssertionError: expected 0.012785096473719228 to be less than 0.01
+ ❯ src/idle-budget/idle-budget.integration.test.ts:46:25
+ Test Files  2 failed | 652 passed (654)
+```
+
+This is `docs/verification-playbook.md`'s "grep for every copy" rule applied to a **threshold**
+rather than a line number, and this record had not applied it to its own subject. **Any remedy that
+touches one site and not the other leaves a live breach** — measured rather than predicted, since the
+site this record never mentioned breached in the run that was carrying the record to the remote.
+
+⚠️ **And that second site has already been re-calibrated once, undisclosed.** Its comment at
+`heartbeat-scheduler.test.ts:23-32` records the window being widened from 300 ms to 2000 ms because
+"the short window sat on the boundary and flaked when this test ran alongside the full parallel
+suite" — commit `e1eaa31 test: de-flake supervisor idle-CPU-budget window under parallel load`. That
+is a prior attempt at remedy 2 below, on this exact budget, recorded in no flake list, no defect
+record and no evidence file. **It did not hold**: the widened site is the one that just breached at
+1.0388%. A future widening must be argued against that outcome, not proposed as though untried.
+
 ## Proposed remedy
 
 Both remedies are better supported now that the pool is known to be `forks`, because it means the arm
 **already** gets its own process. What it does not get is a quiet machine or a known co-tenant count.
+
+0. **Whatever is chosen, apply it to BOTH sites and collapse the duplicated constant to one exported
+   value.** Two private copies of a threshold is how a remedy half-lands. This is a precondition on
+   the two options below, not a third option.
 
 1. **Give the arm its own CI step on a runner that is doing nothing else.** Not merely "its own
    process" — it has that. Move the sustained-idle case out of the default `npm test` fan-out into a

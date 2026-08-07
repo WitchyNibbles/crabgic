@@ -116,6 +116,13 @@ a 3.9× spread. Verbatim capture in `docs/evidence/phase-05/idle-budget-load-sen
 (`expected 0.03233044636908727 to be less than 0.01`, 1 failed | 6868 passed), in the pre-push hook
 for the very commit recording the fifth. **2.7× the 1.196% this section opens with.**
 
+⚠️⚠️ **A SEVENTH, and it exposed a SECOND ASSERTION SITE this row never covered.** One uncontended
+run failed BOTH `heartbeat-scheduler.test.ts:39` at **1.0388%** and
+`idle-budget.integration.test.ts:46` at **1.2785%**. Each file carries its own private
+`CPU_BUDGET_FRACTION = 0.01`. **This row, and any remedy, must cover both** — and note that the
+second site has already been widened once (300 ms to 2000 ms, commit `e1eaa31`, recorded in no list
+until now) and breached anyway.
+
 ⇒ **THIS ROW'S FREQUENCY DESCRIPTION IS NOW WRONG AND IS THE POINT.** "Seen red once", above, is
 left verbatim. On the developer host on 2026-08-07 the arm breached in **two of three consecutive
 plain full-suite runs** — red 1.6977%, green, red 3.2330% — none under artificial load, with the
