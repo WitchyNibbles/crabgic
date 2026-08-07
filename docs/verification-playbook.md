@@ -497,7 +497,7 @@ been captured in the same section at the same sha, the mismatch would have been 
 Every probe transcript gets three things at the same HEAD: **baseline → mutation → restore.** The
 baseline is not padding; it is what makes the other two legible.
 
-## 🧹 THE PROSE IS UNCHECKED — build a sweeper for it
+## 🧹 THE PROSE IS UNCHECKED — build a sweeper for it _(⚠️ HALF-SUPERSEDED 2026-08-07 — the sweeper exists now; read the amendment at the end of this file)_
 
 Three checkers, three blind spots: the **resolver** reads only the record JSON, the **transcript
 cross-checker** reads only transcripts, and **nothing reads the prose** — roadmap annotations and defect
@@ -1011,3 +1011,72 @@ directions:
   failures.
 
 Neither list is authoritative on its own. Read both, and add a new sighting to **both**.
+
+## ⚠️ AMENDED 2026-08-07 — §🧹 THE PROSE IS UNCHECKED IS NOW HALF-TRUE
+
+_(Amends `docs/verification-playbook.md:500`, which stays verbatim. This text sits at the end of the
+file rather than beside what it corrects; that placement is the second ruling below, and it was
+measured rather than chosen for convenience.)_
+
+**What `check:citation-content` falsified.** The sweeper that section asks for was built. Its prose
+lane resolves every `path:NN` written in `roadmap/*.md` and in the defect records — 940 references at
+`776f593` — so "nothing reads the prose" and "no tool validates" are no longer true of those two
+directories. The section's two closing ⚠️ rulings are untouched and still hold: cite `file.ts:345`
+and never a bare `:345`, and soften a rule that flags something honest rather than tuning the tool
+green.
+
+**What it did not falsify — the residual, and it is the whole of what is left:**
+
+> Its prose lane checks that a `path:NN` exists and is in range — not what is on the line. A citation
+> can rot into a blank line and pass.
+
+Two narrower gaps the section's original wording now hides. **Scope:** the lane reads `roadmap/*.md`
+and `docs/evidence/criteria-closeout/defects/*.md` and nothing else — this file,
+`docs/interface-ledger.md`, every transcript under `docs/evidence/`, and every `path:NN` in a code
+comment are still read by nothing at all. **Reach:** 39 of those 940 are bare basenames that resolve
+only by guessing; they are counted as `unresolved` and gate on nothing. And of the two mutation tests
+the section asked for, **one landed and one did not** — "a line past EOF" is the lane's `past-eof`
+tier, while "an identifier occurring nowhere in the cited file" is a content check, and there is
+none.
+
+**Measured, not projected.** On PR #133 the check was **GREEN through nine real broken citations.** A
+pass inserted **41** lines into this file — re-derived, not counted: the content at its pre-#133
+`:922` reads at `:963` today — and one table row into `docs/evidence/gap-18/known-gate-flakes.md`,
+then cited the pre-insertion numbers; nine anchors came to rest on blank lines and in the wrong
+sections. Every one named a real file at a line that existed, so the gate reported PASS. They were
+caught by a human reviewer opening each target line — by no tool, and a rerun of the gate would never
+have found them.
+
+⚠️ **That figure is 41, and the first draft of this amendment said 42.** It inherited the number
+verbatim from `ff3358c`'s message ("gained 42 lines above old :922") — whose own correction table, on
+the very next line, reads `:922 -> :963`. `963 - 922 + 1` counts the anchor line itself. **A
+displacement is a subtraction, not an inclusive count**, and a figure copied forward without being
+re-derived is the same failure as an anchor trusted without its target line being read. Caught by a
+reviewer, in the paragraph whose own ruling is "not by arithmetic".
+
+⇒ **RE-RESOLVE AN ANCHOR BY READING THE TARGET LINE.** Not by arithmetic, and not by a green gate.
+Above all when your own edit is what inserted lines above it.
+
+### ⚠️ AN ANCHOR INTO A FILE YOU ARE STILL EDITING IS FIXED **LAST**
+
+From the same pass: one anchor into this file was corrected three times — `:1007`, then `:1009`, then
+`:1013` — because each later edit pushed its target further down. Correcting it early was worse than
+leaving it alone, because a number that has already been "fixed" stops being re-read. There is one
+safe order: **finish every edit to the file, then re-resolve every anchor into it, then commit.**
+
+The settled value came to rest on what was then this file's **final line**, and this amendment —
+appended below it — leaves it reading exactly as it did. That is the mechanism rather than luck:
+**an append moves nothing, so amend `docs/verification-playbook.md` by appending.** Enumerated at
+`776f593`, this amendment's own base, rather than estimated: **26 references point into this file,
+from 12 files, and 16 of them target a line further down than §500.** Nine of those sixteen sit
+where no correction is available — **six inside frozen `docs/evidence/` transcripts and three inside
+test-file comments** — so an insertion in the middle of this file rots all nine permanently, with the
+prose lane green throughout. That is the price of writing this amendment at line 500; it is why the
+text is here instead, and why line 500 carries only a pointer to it.
+
+⚠️ **And name the cost of that, because it cuts the other way.** This file's convention is in-place
+amendment — the `### ⚠️ AMENDED 2026-08-07` block at `docs/verification-playbook.md:904` sits
+directly under the paragraph it corrects, which is why a reader meets it. A file amended only by
+appending accumulates corrections ever further from what they correct, and a heading pointer is a
+weaker guarantee than adjacency. So take **append** as the exception that a measured, uncorrectable
+anchor set forces, not as the default: **when nothing below your edit is anchored, amend in place.**
