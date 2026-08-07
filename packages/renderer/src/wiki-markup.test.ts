@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_COMMUNICATION_POLICY } from "@crabgic/contracts";
 import { isArtifactKind } from "./artifact-kind.js";
 import { lint } from "./lint.js";
-import { toWikiMarkup } from "./wiki-markup.js";
+import { unicodeDefenseStage } from "./unicode-defense.js";
+import { BOLD_PLACEHOLDER_CLOSE, BOLD_PLACEHOLDER_OPEN, toWikiMarkup } from "./wiki-markup.js";
 
 describe("toWikiMarkup", () => {
   it("converts a heading", () => {
@@ -112,4 +113,55 @@ describe("toWikiMarkup output against the phase-17 lint corpus", () => {
       expect(lint(converted, fixture.kind, DEFAULT_COMMUNICATION_POLICY).ok).toBe(false);
     });
   }
+});
+
+describe("the bold placeholders are unforgeable — pinned, not assumed", () => {
+  // Added 2026-08-06. The bold pass tokenizes `**bold**` behind a sentinel so
+  // the later italic pass cannot re-match its own output. The scheme is only
+  // sound while NO source text reaching `toWikiMarkup` can contain the
+  // sentinel — and what guarantees that is not this module. It is
+  // `unicode-defense.ts`, one stage earlier, refusing U+0000 outright.
+  //
+  // Nothing asserted that cross-module dependency: rewriting the placeholders
+  // to `@@WIKI_STRONG_OPEN@@` left gateway, learning and renderer green across
+  // 74 files / 785 tests. That is a silent injection-surface regression — a
+  // candidate containing the printable sentinel would come back with bold
+  // markers it never wrote.
+  const placeholders = { BOLD_PLACEHOLDER_OPEN, BOLD_PLACEHOLDER_CLOSE };
+
+  for (const [name, placeholder] of Object.entries(placeholders)) {
+    it(`${name} carries a codepoint the lint stage refuses`, () => {
+      const findings = unicodeDefenseStage({
+        candidate: placeholder,
+        kind: "commit_body",
+        policy: DEFAULT_COMMUNICATION_POLICY,
+      });
+      expect(findings.some((f) => /control character/i.test(f.message))).toBe(true);
+    });
+  }
+
+  it("CONTROL: the same sentinel text WITHOUT its control characters is accepted", () => {
+    // Without this, the assertions above would also pass for a stage that
+    // rejected every candidate. This is the exact text a `@@`-style rewrite
+    // would produce, and the stage lets it straight through — which is
+    // precisely why such a rewrite would be silent.
+    const printable = BOLD_PLACEHOLDER_OPEN.replaceAll("\0", "@@");
+    expect(printable).toBe("@@WIKI_STRONG_OPEN@@");
+    expect(
+      unicodeDefenseStage({
+        candidate: printable,
+        kind: "commit_body",
+        policy: DEFAULT_COMMUNICATION_POLICY,
+      }),
+    ).toEqual([]);
+  });
+
+  it("the placeholders never survive into converted output", () => {
+    // The end-to-end half: whatever the sentinel is, it must be fully
+    // reversed. Asserted on a real conversion rather than by inspection.
+    const converted = toWikiMarkup("**bold** and *italic*");
+    expect(converted).not.toContain("WIKI_STRONG_OPEN");
+    expect(converted).not.toContain("WIKI_STRONG_CLOSE");
+    expect(converted).toBe("*bold* and _italic_");
+  });
 });

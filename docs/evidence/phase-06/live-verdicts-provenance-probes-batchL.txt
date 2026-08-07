@@ -1,0 +1,174 @@
+===============================================================================
+Batch L — roadmap/06 c7's provenance label: `writeLiveVerdicts` now demands a
+witness, and `deriveOfflineBaselineVerdicts` is wired rather than dead.
+Probes D (is the new parity case a NEW pin?) and E (falsify the compile-time
+half). Plus the honest statement of what could NOT be executed.
+===============================================================================
+
+# RULING-3 header
+# UTC: 2026-08-06T13:31:57Z (mtime of the raw run log these excerpts are copied
+#      from; probes D and E ran back to back with probe C, in ONE tree)
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d51
+#   ("Batch E: bind the enforced budget to the approved envelope … (#116)")
+# branch tip at capture (PROVISIONAL): 90fe16c on closeout/batch-l
+# ⚠️ 90fe16c IS UNREACHABLE — reworded to satisfy commitlint's 100-char subject
+#   limit; identical content now at 70ca49a. Annotated, not rewritten.
+# NOTE: a later commit on this branch adds a comment-only RESIDUAL block to
+#   packages/engine-claude/src/live/live-verdicts-provenance.test.ts. It moves no
+#   test count: the same command re-run after it reported the identical
+#   "Test Files  41 passed (41) / Tests  543 passed (543)".
+# Toolchain: node v24.18.0, vitest/4.1.10 linux-x64, tsc via `npx tsc -b --force`
+# Scope: npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+# Exit statuses recorded per run. A deliberately RED leg is the point of a probe.
+
+-------------------------------------------------------------------------------
+⛔ WHAT WAS NOT RUN, STATED FIRST SO IT IS NOT MISSED
+-------------------------------------------------------------------------------
+No `@live` test was executed and no engine was spawned. Hard Rule 1 and this
+wave's authorization forbid it, and nothing in this batch needed it.
+
+Consequence, stated rather than glossed: the one edit this batch makes to a file
+on the `@live` EXECUTION path —
+`packages/engine-claude/src/live/envelope-conformance.live.test.ts`, whose
+`afterAll` now presents the canary as the provenance witness — is verified by
+`tsc -b` and by reading, NOT by running. It is excluded from the default gate by
+`vitest.config.ts`'s `*.live.test.ts` exclusion, so no run in this repository
+exercises it without owner-authorized live spend.
+
+What the change does and does not do, so a reviewer can check it by reading:
+  - `beforeAll` already called `await ensureCanary()` as the file's FIRST live
+    call. The edit assigns that already-computed result to a module-level
+    `canaryWitness`. No new call, no new ordering, no extra spend.
+  - `afterAll`'s persist guard was `!isLiveEnabled() || verdicts.size !== N`.
+    It is now `… || canaryWitness === undefined`. That third conjunct cannot be
+    reached alongside a full `verdicts` map — no conformance case runs unless
+    `beforeAll` resolved — so it introduces no new no-op path in practice; it is
+    the fail-safe that makes the argument total.
+  - The bytes written are unchanged: the payload is still
+    `{ engineVersion: TESTED_ENGINE_VERSION, source, fixtures }` with the same
+    key sorter and the same `assertSanitized` call. Only the ARGUMENT changed.
+  - `packages/engine-claude/src/live/fixtures/live-verdicts.json` is untouched by
+    this batch. Its md5 is still ada6ddd1cc98cf10146a8c9629b6c95c, the digest the
+    defect record's clean-diff regeneration recorded.
+
+The provenance gate ITSELF is not live-gated and is fully measured below: it
+lives in `live-harness.ts`, is unit-tested offline by
+`src/live/live-verdicts-provenance.test.ts` (12 cases, DEFAULT gate — the
+filename deliberately does not end in `.live.test.ts`), and probes D and E below
+mutate it and record what reddens.
+
+===============================================================================
+PROBE D — is `fake-live-parity.test`'s new case a NEW pin, or a restatement?
+The record's remedy item 2 said "wire or remove `deriveOfflineBaselineVerdicts`"
+(zero call sites repo-wide). It is now wired: the parity test asserts the
+committed fixture equals the derivation's verdict, mechanism AND detail.
+`mechanism` was already pinned via `classifyFixtureDenyMechanism`, so the
+question a reviewer should ask is whether the new case says anything the old
+assertions did not.
+Mutation: change ADAPTER_GATE_DETAIL's text ("refused" -> "REFUSED"), which the
+committed fixture carries verbatim and which NOTHING in the default gate read
+before this batch.
+===============================================================================
+
+Mutation applied (grep of the mutated file; `ADAPTER_GATE_DETAIL` is declared at
+`live-harness.ts:903` and its first string line is :904, unmutated and mutated
+alike — the edit is in-place and changes no line count):
+904:  "real ClaudeEngineAdapter.spawn REFUSED the raw fixture profile at its synchronous " +
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ ❯ |@crabgic/engine-claude| src/fake-live-parity.test.ts (9 tests | 1 failed) 143ms
+     × the committed fixture equals `deriveOfflineBaselineVerdicts()` verdict, mechanism AND detail 100ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 542 passed (543)
+exit=1
+restored md5: 322c01134c459c587cbe0c5477051363  packages/engine-claude/src/live/live-harness.ts
+
+  ANSWER: a NEW pin. Exactly ONE test reddens and it is the new case. The seven
+  per-fixture parity cases and the `mechanism` assertion at
+  `fake-live-parity.test.ts:165` all stay green under this mutation — they never
+  read `detail`. Before this batch the committed `detail` strings were read by
+  nothing in the default gate, so `ADAPTER_GATE_DETAIL`/`ENGINE_DENY_DETAIL`
+  could drift away from the committed artifact silently.
+
+  Also note what this settles about the record's "wire or remove" question: the
+  wiring is not decorative. Deleting `deriveOfflineBaselineVerdicts` now reddens
+  the DEFAULT gate rather than nothing at all.
+
+===============================================================================
+PROBE E — falsify the COMPILE-TIME half of the provenance gate.
+`live-verdicts-provenance.test.ts` carries a `@ts-expect-error` asserting that
+`{ source: "live" }` WITHOUT a witness does not typecheck. The playbook's ruling
+is that a claimed compile-time guarantee must be falsified, not asserted: put
+the hole back and record `tsc`'s exit status.
+Mutation: widen `LiveVerdictsProvenance` with a third, witness-free member
+`| { readonly source: "live" }`.
+===============================================================================
+
+E0: unmutated typecheck
+$ npx tsc -b --force
+tsc -b --force exit=0
+
+E1: LiveVerdictsProvenance widened so `{ source: "live" }` typechecks
+(grep of the mutated file)
+1018:  | { readonly source: "live" };
+$ npx tsc -b --force
+packages/engine-claude/src/live/live-harness.ts(1033,39): error TS2339: Property 'witness' does not exist on type '{ readonly source: "live"; readonly witness: CanaryResult; } | { readonly source: "live"; }'.
+packages/engine-claude/src/live/live-verdicts-provenance.test.ts(110,5): error TS2578: Unused '@ts-expect-error' directive.
+tsc -b --force exit=2
+
+  The TS2578 is the assertion firing: the directive became unused the moment the
+  witness stopped being required, so the claim is real and not decorative. The
+  TS2339 beside it is the runtime guard's own dependence on the discriminant —
+  a second, independent tripwire on the same widening.
+
+E2: restored
+$ npx tsc -b --force
+tsc -b --force exit=0
+
+  LINE-NUMBER NOTE, so nobody "corrects" a correct transcript. The two `(line,col)`
+  markers inside tsc's own output above are verbatim from the run at the capture
+  commit (90fe16c, reworded to 70ca49a — see the header). The comment-only
+  RESIDUAL block added afterwards shifted
+  `live-verdicts-provenance.test.ts`'s `@ts-expect-error` from :110 to :121. RE-RUN AND VERIFIED on the tree this branch lands as, not assumed:
+
+    packages/engine-claude/src/live/live-harness.ts(1033,39): error TS2339: Property 'witness' does not exist on type '{ readonly source: "live"; readonly witness: CanaryResult; } | { readonly source: "live"; }'.
+    packages/engine-claude/src/live/live-verdicts-provenance.test.ts(121,5): error TS2578: Unused '@ts-expect-error' directive.
+    exit=2   (restored: exit=0)
+
+  Same two error codes, same TS2339 position, TS2578 at :121 instead of :110.
+  `live-harness.ts(1033,...)` is a position that exists only under the mutation,
+  which adds one line to the type declaration.
+
+===============================================================================
+FINAL STATE — after every restore
+===============================================================================
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ Test Files  41 passed (41)
+      Tests  543 passed (543)
+exit=0
+$ git status --short
+(empty)
+
+===============================================================================
+RESIDUAL — what this batch did NOT close, pinned in prose and in the test file
+===============================================================================
+The gate binds the WRITER, not the committed artifact. Nothing reads
+`live-verdicts.json`'s own `source` field, so a hand-edit of that string is still
+undetectable — which is precisely what commit `29b3c46` did, and how the label
+came to claim a live provenance months before any green `@live` run existed.
+
+What changed: no CODE PATH can mint the label any more. The only caller of
+`writeLiveVerdicts` must present a `CanaryResult`, and a fabricated one is
+refused at runtime as well as by the type system.
+
+What did not change, and should not be oversold: the criterion's provenance
+evidence is still the green run, the moved mtime and the clean `git diff`
+recorded at `docs/evidence/phase-06/closeout/closeout-live-batch.txt` §4 — never
+the `source` string. Deriving provenance from the artifact itself would require
+the file to carry something a fake cannot reproduce; that is a larger design
+change than the defect record proposes, and this batch did not attempt it. The
+residual is restated at the head of
+`packages/engine-claude/src/live/live-verdicts-provenance.test.ts` so a reader
+meets it at the point of edit.

@@ -1,0 +1,649 @@
+# UTC: 2026-08-06T13:40:31Z
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d5159b17715790c74b47f5a0007bd939a802
+# branch tip at capture (PROVISIONAL — see the RULING-3 amendment in docs/verification-playbook.md): 5fa5ca3efe160d8b28498ca0d0189d353b319b4d
+#   (branch closeout/batch-i, commit 1 of 2. SCOPE OF THIS BLANKET: every
+#    BASELINE, MUTATION and RESTORE leg in §3 ran at tree 5fa5ca3. §2's RED-first
+#    legs by construction ran BEFORE the implementation existed — at upstream base
+#    1bc0d51 with the new tests uncommitted in the worktree; §2 carries its own
+#    provenance line. Commit 2 of 2 carries this transcript plus a doc-comment
+#    precision correction found by the consumer census in §5; it changes no
+#    executable line, so the numbers here are unaffected — asserted and
+#    re-measured, not assumed. See §6.
+#    NOT REBASED ONTO A NEWER `main` ON PURPOSE: a rebase would orphan the 5fa5ca3
+#    every leg in §3 is pinned to, for a cosmetic gain. See §1's dated UPDATE.)
+# command: python3 scratchpad/probe-i.py ; python3 scratchpad/probe-i2.py ; python3 scratchpad/probe-i3.py
+# exit status: 0 (all three drivers; described in §7)
+#   ⚠️ probe-i3.py (leg P2c) was added after PR #124's review and ran at branch tip
+#     aa6d50a, NOT at the 5fa5ca3 this header's blanket covers. Its own provenance,
+#     its own baseline, and the two-way proof that its mutation target is byte-identical
+#     between the two trees are stated inline at P2c in §3. Read those, not this line.
+# Every leg ran `npm run build` FIRST and its exit code is recorded inline.
+# Worktree: /home/eimi/projects/crabgic-wt-batch-i, node_modules hardlinked (cp -al);
+#   `readlink -f node_modules/@crabgic/connectors-jira` ->
+#   /home/eimi/projects/crabgic-wt-batch-i/packages/connectors-jira  (isolation verified).
+
+PURPOSE — anti-vacuity probes for roadmap/19-jira-datacenter-adapter.md criteria 2 and 3,
+i.e. the defect records `19-unsupported-fields-and-cassette-conjuncts.md` (fields half) and
+`19-unrecognized-edition-fallback-kind-unproven.md` (both gaps). All legs are repo-wide
+unless marked `[pkg]`, in which case they are `--project @crabgic/connectors-jira`.
+
+
+================================================================================
+§0. WHAT THIS TRANSCRIPT DOES NOT COVER — the owner-gated conjunct
+================================================================================
+
+Criterion 2 (`roadmap/19-jira-datacenter-adapter.md:191`) reads:
+
+    DC-only unsupported actions/fields return typed `unsupported` — fixture-proven
+    cassette test, zero raw-fallback occurrences.
+
+The **cassette** conjunct is NOT discharged here and was NOT attempted. Its evidence
+channel is a capture against a licensed Jira Data Center instance, which is outside this
+wave's authorization (no live/paid systems, no docker-recipe dispatch). Nothing in this
+branch was written to look like a cassette, and no cassette was hand-authored to stand in
+for one: the two DC cassettes already in the tree are the happy-path 7-call READ scenario
+and are byte-identical between the two editions (md5 `0494d8e13d9ccf60d938d3faa2d4cf6c`
+for both, per `closeout-c1-conformance-fixture-backing.txt`). Criterion 2's box therefore
+STAYS UNTICKED. See §8's bearer map.
+
+
+================================================================================
+§1. BASELINE — unmutated, at 5fa5ca3, immediately before every probe
+================================================================================
+
+    $ npm run build                       ; exit 0
+    $ npx vitest run                      ; exit 1
+     Test Files  1 failed | 643 passed (644)
+          Tests  2 failed | 6584 passed (6586)
+
+    $ npx vitest run --project @crabgic/connectors-jira   ; exit 0
+     Test Files  50 passed (50)
+          Tests  576 passed (576)
+
+The 1 failed file / 2 failed tests in the repo-wide baseline are PRE-EXISTING ON `main`
+and are not this branch's:
+
+     FAIL  |crabgic| src/commands/cli.snapshots.test.ts > --json output schema snapshots — run (three of the five decided-outcome arms) > run --json — approved under the standing policy, and dispatched
+     FAIL  |crabgic| src/commands/cli.snapshots.test.ts > --json output schema snapshots — run (three of the five decided-outcome arms) > run --json — escalate (the envelope claims authority the policy does not grant)
+
+Confirmed at upstream base 1bc0d51 in the freshly-created worktree (`git worktree add … -b
+closeout/batch-i origin/main`, so `git status --short` was empty), before a line of this
+branch was written. The commands actually run, verbatim:
+
+    $ npm run build     ; exit 0
+    $ npx vitest run    ; exit 1
+     Test Files  1 failed | 643 passed (644)
+          Tests  2 failed | 6569 passed (6571)
+       (the same two `cli.snapshots.test.ts` names)
+
+They are a known cross-PR digest conflict owned by another agent and are excluded from
+every count below. UPDATE, same day, measured after this branch's probes finished: `main`
+has since advanced to `6f964d7` ("refresh the run --json envelope snapshots for Gap 22's
+`provisionalBudgetHash`"), which fixes exactly those two. This branch is based on
+`1bc0d51`, which predates that fix, so every repo-wide number in this file carries the two
+pre-existing failures. The two are named individually in every leg below so the arithmetic
+is checkable either way.
+
+SECOND UPDATE (2026-08-06, measured, not predicted). `origin/main` was MERGED into this
+branch — merged, deliberately not rebased, so `5fa5ca3` stays reachable and every sha in
+this file still resolves (`git merge-base --is-ancestor 5fa5ca3 HEAD` -> exit 0). At the
+merge commit:
+
+    $ npm run build     ; exit 0
+    $ npx vitest run    ; exit 0
+     Test Files  644 passed (644)
+          Tests  6586 passed (6586)
+
+Zero failures. The totals are unchanged from §1 (644 / 6586), which is the check that
+matters: `main`'s fix moved two tests from failing to passing and added none, so the
+delta arithmetic above is unaffected. Delta from base 1bc0d51 to this branch: 6571 -> 6586 tests = **+15**,
+644 -> 644 files (no new test FILE; all fifteen assertions land in three existing files).
+That +15 is the exact sum of this branch's new cases: 5 in `field-metadata.test.ts`,
+7 in `jira-datacenter-resource-client.test.ts`, 3 in
+`jira-datacenter-connection-registry.test.ts`.
+
+
+================================================================================
+§2. RED FIRST — the new assertions failing against unmodified production code
+================================================================================
+# provenance for THIS SECTION ONLY:
+#   UTC 2026-08-06T12:54Z, tree = upstream base 1bc0d5159b17715790c74b47f5a0007bd939a802
+#   with the three test files edited in the worktree and NO production change applied.
+# command: npx vitest run --project @crabgic/connectors-jira <the three test files>
+# exit status: 1  (deliberately RED)
+
+     ❯ |@crabgic/connectors-jira| src/capability/field-metadata.test.ts (11 tests | 3 failed) 48ms
+           × carries Data Center attribution — unsupported/jira-datacenter — for an undiscovered custom field 6ms
+           × carries Data Center attribution — unsupported/jira-datacenter — for an unrecognized schema type 1ms
+           × the two exported attributions are distinct on BOTH members — so neither can be satisfied by the other 0ms
+     ❯ |@crabgic/connectors-jira| src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (19 tests | 4 failed) 34ms
+           × issues.planCreate: an UNDISCOVERED custom field is typed unsupported and attributed to jira-datacenter 7ms
+           × issues.planUpdate: an UNDISCOVERED custom field is typed unsupported and attributed to jira-datacenter 1ms
+           × issues.planBulkUpdate: an UNDISCOVERED custom field is typed unsupported and attributed to jira-datacenter 1ms
+           × issues.planUpdate: a DISCOVERED custom field with an UNRECOGNIZED schema type is typed unsupported too 1ms
+
+     Test Files  2 failed | 1 passed (3)
+          Tests  7 failed | 29 passed (36)
+
+    AssertionError: expected 'validation' to be 'unsupported' // Object.is equality
+    Expected: "unsupported"
+    Received: "validation"
+
+That is the measured pre-fix product behaviour, reproducing the 2026-08-04 finding: a Data
+Center connection refusing an undiscovered custom field returned canonical kind
+`validation`, attributed to provider `jira-cloud`, on all three write entry points.
+
+⚠️ HONEST NOTE ON THE OTHER EIGHT NEW ASSERTIONS. Seven of the fifteen were RED above (the
+seven `×` lines). The other EIGHT passed the moment they were written — they pin
+already-correct behaviour rather than fix it, so a green first run tells you nothing about
+them. Their whole value is measured by mutation, in §3. All eight are enumerated with the
+leg that reddens each, because "measured by mutation" is a claim about specific legs, and a
+vague version of it is exactly how an unprobed assertion hides:
+
+    | green-first assertion                                     | reddened by      |
+    | --------------------------------------------------------- | ---------------- |
+    | field-metadata.test.ts:69   Cloud default, undiscovered   | P1d              |
+    | field-metadata.test.ts:79   Cloud default, unknown type   | P1d              |
+    | …resource-client.test.ts:223  undefined-branch typed kind | P2a, P2b         |
+    | …resource-client.test.ts:252  recognized-edition CONTROL  | **P2c**          |
+    | …resource-client.test.ts:366  discovered field still plans| P1e              |
+    | …connection-registry.test.ts:111  10.3 reaches the client | P3b              |
+    | …connection-registry.test.ts:121  8.20.1 falls back       | P2a, P2b         |
+    | …connection-registry.test.ts:139  failed discovery, closed| P2a, P2b         |
+
+    Eight rows, eight assertions, every one with at least one leg. (The count checks:
+    15 new tests − 7 RED-first = 8. `field-metadata.test.ts:117` is NOT in this table
+    because it was RED-first, not green-first.)
+
+    ⚠️ CORRECTION (2026-08-06, from PR #124's review — recorded rather than smoothed over).
+    An earlier draft of this paragraph read "their whole value is measured by mutation, in
+    §3 (P2a, P2b, P3b)". That enumeration named 5 of the 8, and it left
+    `…resource-client.test.ts:252` — the recognized-edition CONTROL — reddened by NO leg at
+    all. P2b collapses the two branch messages toward the RECOGNIZED wording only, which is
+    the direction that control already tolerates; the OPPOSITE collapse was never probed.
+    Leg **P2c** was added to close it (§3), so the sentence is now true as written. No
+    claim-carrying assertion was ever unprobed — every typed-kind, provider and join claim
+    had a leg — but a control that nothing can redden is a control in name only, which is
+    the exact shape this file exists to catch. A second, smaller slip is recorded with it:
+    my first attempt at this correction wrote "ELEVEN new assertions" and had to be
+    re-counted against the RED log. The reviewer's "8" was right both times.
+
+
+================================================================================
+§3. MUTATION PROBES — baseline -> mutation -> restore, all at 5fa5ca3
+================================================================================
+
+Restore discipline for every leg: `git checkout HEAD -- <explicit path>` — EXPLICIT SOURCE
+and EXPLICIT PATH — followed by a sha256 comparison of the file against its pre-mutation
+hash. All FOURTEEN legs restored byte-identically; the hashes are in §7's table.
+Test COUNTS (not exit codes) are what is compared, per the playbook.
+
+  ⚠️ CORRECTION (2026-08-06). This line read "All eleven legs" — an undercount that
+  contradicted §7's own table on the same day it was written (that table listed thirteen:
+  P1a, P1a2, P1a3, P1a4, P1b, P1c, P1c2, P1d, P1e, P2a, P2b, P3, P3b). "Eleven" was the leg
+  count of the FIRST driver only. P2c makes fourteen. Two files I wrote disagreeing is the
+  free defect detector the playbook names; recorded, not silently fixed.
+
+Repo-wide reference: **644 files / 6586 tests, of which 1 file / 2 tests fail on `main`.**
+Package reference `[pkg]`: **50 files / 576 tests, 0 failing.**
+
+--------------------------------------------------------------------------------
+GROUP P1 — criterion 2, the FIELDS conjunct
+--------------------------------------------------------------------------------
+
+P1a — no-op the DC pre-check helper entirely
+     (`assertDatacenterCustomFieldWrites` body replaced by a no-op; the three call
+      sites left in place, so this measures the CHECK, not the wiring)
+     build exit 0
+     Test Files  2 failed | 642 passed (644)
+          Tests  6 failed | 6580 passed (6586)
+     -> 4 new failures beyond baseline's 2, all four DC field cases:
+        planCreate / planUpdate / planBulkUpdate (undiscovered) + planUpdate (unrecognized type).
+
+P1a2 [pkg] — delete ONLY the `issues.planCreate` call site
+     build exit 0
+     Test Files  1 failed | 49 passed (50)
+          Tests  1 failed | 575 passed (576)
+     -> exactly 1: the planCreate case.
+
+P1a3 [pkg] — delete ONLY the `issues.planUpdate` call site
+     build exit 0
+     Test Files  1 failed | 49 passed (50)
+          Tests  2 failed | 574 passed (576)
+     -> exactly 2: both planUpdate cases (undiscovered + unrecognized type).
+
+P1a4 [pkg] — delete ONLY the `issues.planBulkUpdate` call site
+     build exit 0
+     Test Files  1 failed | 49 passed (50)
+          Tests  1 failed | 575 passed (576)
+     -> exactly 1: the planBulkUpdate case.
+
+     ⇒ P1a2/P1a3/P1a4 together establish PER-ENTRY-POINT coverage, not merely that the
+     mechanism exists. This is deliberately the bound that criterion 2's own defect record
+     could NOT state for the actions conjunct (there, deleting each of 17 `gate(…)` sites
+     individually reddened for only 3 of 17). Here it is 3 of 3.
+
+P1b — `DATACENTER_CUSTOM_FIELD_REFUSAL.kind`: "unsupported" -> "validation"
+     (the exact silent downgrade the criterion's word "typed" exists to catch)
+     build exit 0
+     Test Files  3 failed | 641 passed (644)
+          Tests  9 failed | 6577 passed (6586)
+     -> 7 new failures: 3 unit (field-metadata) + 4 client-level DC field cases.
+
+P1c — `DATACENTER_CUSTOM_FIELD_REFUSAL.provider`: jira-datacenter -> jira-cloud
+     **build exit 2 — THIS LEG DID NOT COMPILE.** `JIRA_DATACENTER_PROVIDER_NAME` became an
+     unused import and `noUnusedLocals` rejected it, so every CROSS-PACKAGE leg of this run
+     executed the PREVIOUS `dist` (playbook §"A FAILED BUILD DURING A PROBE"). Reported
+     rather than discarded, and re-run as P1c2. Numbers as measured:
+     Test Files  3 failed | 641 passed (644)
+          Tests  9 failed | 6577 passed (6586)
+
+P1c2 — same mutation, made to COMPILE (`void JIRA_DATACENTER_PROVIDER_NAME;` added)
+     build exit 0
+     Test Files  3 failed | 641 passed (644)
+          Tests  9 failed | 6577 passed (6586)
+     -> identical to P1c. The stale-`dist` run under-reported nothing here, which is a
+     measurement and not a presumption: `assertCustomFieldWritesAreDiscovered` has ZERO
+     importers outside `packages/connectors-jira`
+     (`git grep -n assertCustomFieldWritesAreDiscovered -- packages e2e scripts` filtered
+     to non-`connectors-jira/src` paths, exit 1), so the affected suites all resolve it
+     from `src`. Both numbers are recorded, per the playbook, rather than keeping only the
+     stronger one.
+
+P1d — CONTROL IN THE OPPOSITE DIRECTION.
+     `CLOUD_CUSTOM_FIELD_REFUSAL.kind`: "validation" -> "unsupported"
+     build exit 0
+     Test Files  2 failed | 642 passed (644)
+          Tests  5 failed | 6581 passed (6586)
+     -> 3 new failures, and they are the CLOUD cases:
+        "defaults to Cloud attribution — validation/jira-cloud — for an undiscovered custom field"
+        "defaults to Cloud attribution — validation/jira-cloud — for an unrecognized schema type"
+        "the two exported attributions are distinct on BOTH members …"
+     This is the probe that matters for roadmap/18: parameterizing a shared gate is exactly
+     the shape in which a fix for one deployment type silently changes the other. Cloud's
+     default is now pinned in its own right — before this branch, NOTHING in the repository
+     asserted the kind or provider of the Cloud path either
+     (`field-metadata.test.ts` asserted only `.toThrow(ConnectorError)`).
+
+P1e [pkg] — MUTATE THE TEST, NOT THE CODE: prove the suite's own vacuity guard is real.
+     In the DC field suite's client factory, `availableActions: FULL_ACTIONS` -> `[]`.
+     build exit 0
+     Test Files  1 failed | 49 passed (50)
+          Tests  5 failed | 571 passed (576)
+     -> all four field cases fail, PLUS the "still builds a plan" control.
+     The four failures are on the MESSAGE assertion, not on kind/provider — because with an
+     empty action list `assertActionSupported` fires first and throws the SAME
+     `unsupported`/`jira-datacenter` pair. That is precisely the trap the message assertion
+     exists to close: without it, these four tests would pass with the field gate never
+     reached at all.
+
+     The fifth failure — the "still builds a plan" control — is what pins P1e as a
+     TEST-side mutation rather than a code-side one: with no action permitted, the positive
+     case cannot build a plan either.
+
+--------------------------------------------------------------------------------
+GROUP P2 — criterion 3, gap (i): the unrecognized-edition fallback KIND
+--------------------------------------------------------------------------------
+
+P2a — THE RECORD'S OWN MUTATION. Split `assertActionSupported`'s condition and downgrade
+     ONLY the `dcFeatures === undefined` branch from `ConnectorError.unsupported` to
+     `ConnectorError.validation`. At `3dec9bf` this left 625 files / 6216 tests green
+     repository-wide.
+     build exit 0
+     Test Files  4 failed | 640 passed (644)
+          Tests  6 failed | 6580 passed (6586)
+     -> new failures:
+        · jira-datacenter-resource-client.test.ts > "the dcFeatures === undefined fallback is typed
+          unsupported, attributed to jira-datacenter, on its own distinctive branch"
+        · jira-datacenter-connection-registry.test.ts > "a SUCCESSFUL discovery of an UNRECOGNIZED
+          version falls back to typed unsupported at the client"
+        · jira-datacenter-connection-registry.test.ts > "a FAILED discovery is swallowed fail-CLOSED
+          — the client still refuses with typed unsupported"
+     ⚠️ The fourth new failure in this leg is `@crabgic/journal` `src/lease.test.ts`
+     "the automatic heartbeat interval actually renews the on-disk record (autoRenew: true)".
+     That is one of the two load flakes the playbook names by file and arm
+     (real-timer race under contention); it is UNRELATED to this mutation, appears in no
+     other leg, and is excluded. So: 3 genuine new failures.
+
+     ⇒ The silence the record measured is broken, and by three assertions in two files
+     rather than one.
+
+P2b [pkg] — collapse the two branches' MESSAGES into one (both emit the recognized-edition
+     wording), leaving both kinds `unsupported`.
+     build exit 0
+     Test Files  2 failed | 48 passed (50)
+          Tests  3 failed | 573 passed (576)
+     -> the same three assertions redden.
+     This pins that the fallback branch is identified by its OWN distinctive text, not by a
+     generic "unsupported" that the sibling branch also satisfies (playbook §"ASSERT THE
+     RULE'S DISTINCTIVE MESSAGE").
+     ⚠️ P2b collapses the messages in ONE direction only — toward the recognized-edition
+     wording. It therefore does NOT exercise the recognized-edition CONTROL at
+     `…resource-client.test.ts:252`, which tolerates that direction by construction. See
+     P2c, added for exactly that reason.
+
+P2c — THE OPPOSITE COLLAPSE, and the leg that makes the CONTROL a control.
+     Collapse both branches' messages toward the FALLBACK wording (both emit "…has not been
+     positively confirmed by discovery…"), leaving both kinds `unsupported`. This is the
+     direction `…resource-client.test.ts:252` exists to catch, and the direction no earlier
+     leg probed.
+     # provenance for THIS LEG ONLY: ran at branch tip aa6d50a, not 5fa5ca3, because the
+     # review that asked for it arrived after `main` had been merged in. That is why its
+     # baseline shows 0 failures where §1's shows 2 — `main`'s snapshot fix is present.
+     # The MUTATION TARGET is byte-identical between the two trees, asserted two ways:
+     #   `git diff --stat 5fa5ca3 aa6d50a -- <the .ts and the .test.ts>` is EMPTY, and this
+     #   leg's own `sha_before` (60bc8279a89c) equals the `sha_before` that P1a/P2a/P2b/P3
+     #   recorded for the same file at 5fa5ca3 (see §7). Re-run in the merged tree rather
+     #   than re-labelled — playbook §"A TRANSCRIPT'S NUMBERS MUST BE CONSISTENT".
+     baseline at aa6d50a: build exit 0; `npx vitest run` exit 0
+       Test Files  644 passed (644)
+            Tests  6586 passed (6586)
+     mutation: build exit 0
+       Test Files  1 failed | 643 passed (644)
+            Tests  1 failed | 6585 passed (6586)
+     -> EXACTLY ONE failure, and it is the control:
+        `CONTROL: a recognized edition's missing action is unsupported too, but on the other
+         branch's message`
+     Nothing else in the repository moves. Together, P2b and P2c pin the message pair in
+     BOTH directions: neither branch's wording can absorb the other's.
+
+--------------------------------------------------------------------------------
+GROUP P3 — criterion 3, gap (ii): the production discovery -> matrix -> client JOIN
+--------------------------------------------------------------------------------
+
+P3 — FIRST ATTEMPT, REPORTED AS A DEFECT IN MY OWN PROBE. I replaced the whole
+     `const dcFeatures = …` initializer with `undefined`, which also removed the
+     `options.dcFeaturesOverride ??` and `options.skipDiscovery ?` seams.
+     build exit 0
+     Test Files  3 failed | 641 passed (644)
+          Tests  4 failed | 6582 passed (6586)
+     -> 2 new failures: my 10.3 case AND the pre-existing
+        `register-datacenter.test.ts` "routes get/planCreate/planUpdate/planTransition/…".
+     The second failure is a MUTATION ARTIFACT: that test injects `dcFeaturesOverride`, a
+     TEST-ONLY seam, so breaking the override seam is not evidence about the production
+     join. Left in this transcript rather than deleted, because a probe that proves more
+     than the claim is as misleading as one that proves less. Re-run as P3b.
+
+P3b — the record's exact mutation: keep the `dcFeaturesOverride` and `skipDiscovery` seams,
+     replace ONLY the `discover -> resolveDcEditionFeatures` chain with `undefined`.
+     At `3dec9bf` this left 625 files / 6216 tests green repository-wide.
+     build exit 0
+     Test Files  2 failed | 642 passed (644)
+          Tests  3 failed | 6583 passed (6586)
+     -> exactly ONE new failure:
+        jira-datacenter-connection-registry.test.ts > "a SUCCESSFUL 10.3 discovery reaches the
+        client — a mutating plan* call is permitted"
+
+     ⇒ This is the assertion the record asked for and the ONLY one that can catch this
+     mutation. Stated plainly because it is easy to over-read the group: the two REFUSING
+     registry cases (8.20.1, and failed-discovery) stay GREEN under P3b, since `undefined`
+     refuses everything. They are not redundant — they carry different claims (that the
+     refusal follows a SUCCESSFUL discovery of an unrecognized version, and that the
+     `.catch(() => undefined)` swallow is fail-CLOSED) and they are the two that P2a and
+     P2b redden. Three cases, three distinct mutations, no case unpinned.
+
+
+================================================================================
+§4. CRITERION 3'S OTHER FOUR CONJUNCTS — re-verified, not assumed
+================================================================================
+
+Criterion 3 (`roadmap/19-jira-datacenter-adapter.md:192`) has five conjuncts. Four already
+held at `3dec9bf` per the record; each is re-checked here at 5fa5ca3 because an emptiness
+proof rots and a citation can drift:
+
+  1. resolves 10.3 — `packages/connectors-jira/src/capability/discovery-datacenter.test.ts:32-45`
+     (scripted `serverInfo` `{"version":"10.3.1"}` + `mypermissions` through a real
+     `GatewayHttpClient`; asserts `edition "10.3"`, `isReadOnly false`,
+     `apiFamilies ["rest-v2","agile-1.0"]`). Unchanged by this branch.
+  2. resolves 11.3 — same file `:47-55`. Unchanged by this branch.
+  3. falls back to typed `unsupported` — NOW borne, by §3's P2a/P2b/P3b.
+  4. fixture-proven — the same scripted fixtures drive the real transport, as above.
+  5. no raw fallback — emptiness proof RE-RUN at 5fa5ca3, scoped to the exact directory:
+
+        $ git grep -nE "raw\.request|rawEndpoint|rawFallback|plan\.(url|endpoint|path)" \
+              -- packages/connectors-jira/src/resource-client/datacenter/
+        (no output)
+        exit status: 1
+
+
+================================================================================
+§5. CONSUMER CENSUS — who else is on these code paths
+================================================================================
+
+Censused by consumer, unscoped then filtered, per the playbook's warning that a
+`packages/*/src` pathspec is a wildmatch and that `from "@pkg/name"` misses multi-line
+imports.
+
+`assertCustomFieldWritesAreDiscovered` — 4 call sites, all inside `packages/connectors-jira`:
+    resource-client/issue-plans.ts:65   planIssueCreate     (shared, Cloud default)
+    resource-client/issue-plans.ts:96   planIssueUpdate     (shared, Cloud default)
+    resource-client/issue-plans.ts:191  planIssueBulkUpdate (shared, Cloud default)
+    resource-client/datacenter/jira-datacenter-resource-client.ts:135  the DC pre-check (new)
+  Exported from the package barrel (`src/index.ts:43`); importers outside the package: NONE
+  (grep over `packages`, `e2e`, `scripts`, excluding `connectors-jira/src`, exit 1).
+
+Reachability of the DC client, i.e. who is actually affected in production:
+    provider/jira-datacenter-connection-registry.ts:95 -> createJiraDatacenterResourceClient
+    provider/register-datacenter.ts:127                -> new JiraDatacenterConnectionRegistry
+    `registerJiraDatacenterProvider` importers outside `packages/connectors-jira`: NONE.
+  ⇒ FINDING, recorded because it bounds how much this fix buys: the Data Center provider is
+    not registered anywhere in the shipped daemon's composition. The behaviour change is
+    real and correct at the connector's public boundary, and it is currently reached only
+    through that boundary — not through a wired daemon path. Not a defect of this branch;
+    stated so the remedy is not oversold.
+
+Branch-on-`unsupported` sites, and whether this refusal reaches them:
+    packages/gateway/src/capability-snapshot/capability-snapshot-cache.ts:37 isInvalidatingError
+      — sole caller is `invalidateOnError` in the same file; `invalidateOnError` has ZERO
+        callers repo-wide outside its own declaration (grep exit as shown by an empty
+        non-declaration result set).
+    packages/gates/src/remote-verification-gate.ts:49 BLOCKING_CONNECTOR_OUTCOMES
+      — reached via `createRemoteVerificationGate`, whose only non-test references are its
+        own declaration and `packages/gates/src/index.ts:128`.
+  ⇒ Neither is reached by a plan-build refusal in any case: this throw is synchronous and
+    precedes `executeMutationPlan`, which is what mints a `RemoteOperationRecord.errorKind`
+    (`packages/gateway/src/mutation-pipeline/mutation-pipeline.ts:298`). The caller-visible
+    surface that DOES change is the native tool result, which serializes `err.toData()`
+    verbatim (`packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:41`).
+    This is recorded in the production source too, at
+    `packages/connectors-jira/src/capability/field-metadata.ts`'s
+    `CustomFieldRefusalAttribution` doc comment, so a maintainer meets it where they land.
+
+Interface ledger: `grep -n 'assertCustomFieldWritesAreDiscovered|CustomFieldRefusal|field-metadata|
+JIRA_DATACENTER_PROVIDER_NAME|resolveDcEditionFeatures|DcEditionEntry|assertActionSupported'
+docs/interface-ledger.md` -> exit 1, zero hits. No coordinated ledger edit is owed.
+
+
+================================================================================
+§6. SELF-CHECKS
+================================================================================
+
+  · `git cat-file -e 5fa5ca3efe160d8b28498ca0d0189d353b319b4d^{commit}` -> exit 0.
+  · `git merge-base --is-ancestor 1bc0d5159b17715790c74b47f5a0007bd939a802 origin/main` -> exit 0,
+    so the UPSTREAM BASE resolves for any reader after this branch merges.
+  · Test totals vs. the tree the header claims: 6586 at 5fa5ca3 against 6571 at 1bc0d51,
+    delta +15, which equals this branch's added case count (5 + 7 + 3). No new test file,
+    so `Test Files` stays 644 in both — consistent.
+  · Restores: 14 legs, 14 sha256 matches against the pre-mutation hash, explicit source and
+    explicit path every time (this line also read "11" and is corrected with the one at
+    §3's head — same undercount, same cause). No probe target shared a directory-level
+    restore with an uncommitted file: the branch was COMMITTED (5fa5ca3) before the first
+    mutation, so `git checkout HEAD -- <path>` restores the tested code, not an empty file.
+  · Leg-count reconciliation, so the three statements of it cannot drift again:
+    §3 narrates 14 legs, §7's table lists 14 hash triples, and the drivers hold 11 + 2 + 1.
+    All three agree.
+  · The doc-comment commit touches only the `CustomFieldRefusalAttribution` block in
+    `field-metadata.ts` (JSDoc; no executable line). Verified by re-running the
+    package suite after it: 50 files / 576 tests, 0 failed — identical to §1's `[pkg]`
+    baseline.
+
+
+================================================================================
+§7. RAW DRIVER OUTPUT
+================================================================================
+
+Drivers: `scratchpad/probe-i.py` (P1a, P1a2, P1a3, P1a4, P1b, P1c, P1d, P1e, P2a, P2b, P3),
+`scratchpad/probe-i2.py` (P1c2, P3b) and `scratchpad/probe-i3.py` (P2c) — 11 + 2 + 1 = 14.
+All apply one mutation at a time, assert the
+anchor occurs EXACTLY ONCE before replacing it (a silent multi-match would make the
+mutation ambiguous), run `npm run build` and record its exit code, run the suite, then
+restore with `git checkout HEAD -- <explicit path>` and assert the file's sha256 returned
+to its pre-mutation value.
+
+Per-leg machine record (file, scope, build exit, test exit, counts, failing test names,
+sha256 before/mutated/restored) is the JSON the drivers emit; the counts and failure names
+are reproduced verbatim in §3 above. Every `sha_restored` equals its `sha_before`:
+
+    P1a   60bc8279a89c -> aea23bd9ce96 -> 60bc8279a89c
+    P1a2  60bc8279a89c -> 590b831dfa08 -> 60bc8279a89c
+    P1a3  60bc8279a89c -> 6003968f4074 -> 60bc8279a89c
+    P1a4  60bc8279a89c -> c89a44aa2591 -> 60bc8279a89c
+    P1b   58fcf790a8a1 -> d2ec9899fa06 -> 58fcf790a8a1
+    P1c   58fcf790a8a1 -> b985d5a8e6eb -> 58fcf790a8a1
+    P1c2  58fcf790a8a1 -> a371cce51c3f -> 58fcf790a8a1
+    P1d   58fcf790a8a1 -> a7c16bb186b1 -> 58fcf790a8a1
+    P1e   10b2645ece59 -> c6dae5fab5b7 -> 10b2645ece59
+    P2a   60bc8279a89c -> 7d5d54141955 -> 60bc8279a89c
+    P2b   60bc8279a89c -> 40afbae33f44 -> 60bc8279a89c
+    P2c   60bc8279a89c -> 394ac311c5f1 -> 60bc8279a89c   (driver `scratchpad/probe-i3.py`)
+    P3    0e64b17fa91c -> 600c6b5efb1f -> 0e64b17fa91c
+    P3b   0e64b17fa91c -> efda806f3496 -> 0e64b17fa91c
+
+P2c's `sha_before` matching P1a/P2a/P2b/P3's exactly is the cross-check that its later
+capture sha does not make it a measurement of a different file.
+
+(These are sha256 prefixes of the FILE CONTENT, not git object ids — said in-file so a
+future auditor does not try to `git cat-file` them.)
+
+
+================================================================================
+§8. BEARER MAP FOR BATCH G — what each box may and may not carry
+================================================================================
+
+NO ROADMAP BOX IS FLIPPED BY THIS BRANCH. Batch G owns the flips. Line numbers below are
+as of branch tip 5fa5ca3 and MUST be re-resolved against the merged tree.
+
+--- roadmap/19-jira-datacenter-adapter.md:192 (criterion 3) -> TICK ------------
+Label: `Evidence`. All five conjuncts now have bearers.
+  conjunct 1 (10.3):  packages/connectors-jira/src/capability/discovery-datacenter.test.ts:32-45
+  conjunct 2 (11.3):  same file :47-55
+  conjunct 3 (typed `unsupported` fallback):
+      packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:223
+        "the dcFeatures === undefined fallback is typed unsupported, attributed to
+         jira-datacenter, on its own distinctive branch"
+      + its control at :252
+      packages/connectors-jira/src/provider/jira-datacenter-connection-registry.test.ts:111, :121, :139
+      + probes P2a, P2b, P3b in this file (§3) — cite THIS transcript, never the defect record.
+  conjunct 4 (fixture-proven): the scripted fixtures in conjunct 1/2's file drive a real
+      `GatewayHttpClient`.
+  conjunct 5 (no raw fallback): the re-run emptiness proof in §4 of this file.
+Also required by the wave's rules: a per-push CI job-log test-count delta, byte-compared
+under the one-space rule. The three deltas, MEASURED (`npx vitest list --project
+@crabgic/connectors-jira`, counting the lines for each file) rather than counted by eye —
+left column at `main` `6f964d7`, right column at this branch tip:
+
+    src/provider/jira-datacenter-connection-registry.test.ts             3 ->  6   (+3)
+    src/resource-client/datacenter/jira-datacenter-resource-client.test.ts  12 -> 19   (+7)
+    src/capability/field-metadata.test.ts                                6 -> 11   (+5)
+                                                                              total +15
+
+A CONTROL ROW for the same job log, since a count that should NOT move is evidence too:
+`src/capability/discovery-datacenter.test.ts` stays at 3 — criterion 3's conjuncts 1 and 2
+are cited unchanged, and this branch adds nothing to that file.
+
+--- roadmap/19-jira-datacenter-adapter.md:191 (criterion 2) -> STAYS UNTICKED --
+Label: `Left unticked` (the box must NOT be ticked; the criterion is conjunctive and one
+conjunct is owner-gated). What CHANGED and may be recorded in the annotation:
+  · fields conjunct: NOW MET. Bearers —
+      packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:334
+        (the three-entry-point `describe.each`-style loop: planCreate / planUpdate / planBulkUpdate)
+      packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.test.ts:347
+        (discovered field, unrecognized schema type)
+      packages/connectors-jira/src/capability/field-metadata.test.ts:89, :103, :117
+      production change: packages/connectors-jira/src/capability/field-metadata.ts
+        (`CustomFieldRefusalAttribution`, `CLOUD_CUSTOM_FIELD_REFUSAL`,
+         `DATACENTER_CUSTOM_FIELD_REFUSAL`) + the DC pre-check at
+        packages/connectors-jira/src/resource-client/datacenter/jira-datacenter-resource-client.ts:135
+      probes: P1a, P1a2-P1a4 (per-entry-point), P1b (kind), P1c2 (provider), P1d (Cloud
+        regression control), P1e (test-side vacuity guard) — all in §3.
+  · actions conjunct: unchanged, already met, with the record's existing 3-of-17 bound.
+  · zero-raw-fallback conjunct: unchanged, re-proved in §4.
+  · cassette conjunct: OWNER-GATED, untouched, not attempted. See §0.
+
+--- defect records (Batch G writes the dated addenda) --------------------------
+  `19-unrecognized-edition-fallback-kind-unproven.md` — FULLY remedied. Its two gaps map to
+  P2a (gap i) and P3b (gap ii). Note in the addendum that the record's proposed remedy said
+  "no production change required"; that held for this record, and the production change in
+  this branch belongs to the OTHER record.
+  `19-unsupported-fields-and-cassette-conjuncts.md` — remedy pieces 1 and 2 landed
+  (parameterized kind/provider + DC field-rejection tests on all three entry points).
+  Piece 3 (a cassette carrying a refusal) is OPEN and owner-gated. The addendum must say so
+  explicitly, and must not describe the record as closed.
+
+--- anchors in the plan/records that were STALE at HEAD, corrected here --------
+  · The record and the wave plan cite `jira-datacenter-resource-client.test.ts:146-160` for
+    the `.toThrow(ConnectorError)`-only fallback case. At 1bc0d51 that case is at
+    **:150-164**; `:146` is the KIND assertion in the sibling recognized-edition test. The
+    anchors were correct at `3dec9bf` and have drifted by 4 lines since.
+  · The wave plan lists the registry as
+    `src/resource-client/datacenter/jira-datacenter-connection-registry.{ts,test.ts}`. Its
+    real path is `packages/connectors-jira/src/provider/jira-datacenter-connection-registry.{ts,test.ts}`.
+    The `:87-93` line anchor for the join IS correct at 1bc0d51.
+
+
+================================================================================
+§9. PER-PUSH PROOF — the same suites, the same job, the counts moved
+================================================================================
+
+A green workflow proves nothing about a particular test. These are the two job logs,
+same workflow (`ci.yml`), same job name, same runner label (`ubuntu-latest`), downloaded
+with `gh api repos/WitchyNibbles/crabgic/actions/jobs/<id>/logs`. Lines are quoted under
+the ONE-SPACE rule (timestamp and exactly one separator space stripped; vitest's own
+content then begins with one space before `✓`). ANSI colour escapes are stripped, and that
+is said here rather than left for a byte-comparer to trip over.
+
+BEFORE — `main` @ `6f964d7`, run 31104703738, job **92626742663**:
+
+<!-- prettier-ignore-start -->
+```text
+log line 364:  ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (12 tests) 29ms
+log line 397:  ✓  @crabgic/connectors-jira  src/provider/jira-datacenter-connection-registry.test.ts (3 tests) 19ms
+log line 403:  ✓  @crabgic/connectors-jira  src/capability/field-metadata.test.ts (6 tests) 89ms
+log line 402:  ✓  @crabgic/connectors-jira  src/capability/discovery-datacenter.test.ts (3 tests) 12ms
+```
+<!-- prettier-ignore-end -->
+
+AFTER — this branch @ `8577dc4` (PR #124), run 31109085272, job **92641912494**:
+
+<!-- prettier-ignore-start -->
+```text
+log line 379:  ✓  @crabgic/connectors-jira  src/resource-client/datacenter/jira-datacenter-resource-client.test.ts (19 tests) 42ms
+log line 397:  ✓  @crabgic/connectors-jira  src/provider/jira-datacenter-connection-registry.test.ts (6 tests) 27ms
+log line 399:  ✓  @crabgic/connectors-jira  src/capability/field-metadata.test.ts (11 tests) 93ms
+log line 422:  ✓  @crabgic/connectors-jira  src/capability/discovery-datacenter.test.ts (3 tests) 15ms
+```
+<!-- prettier-ignore-end -->
+
+    resource-client   12 -> 19   (+7)
+    registry           3 ->  6   (+3)
+    field-metadata     6 -> 11   (+5)
+                                  +15  — equals §1's repo-wide delta exactly.
+    discovery-datacenter  3 -> 3  CONTROL: a count that should NOT move, and did not.
+                                  Criterion 3's conjuncts 1 and 2 are cited unchanged from
+                                  this file, so a movement here would mean I had quietly
+                                  edited the evidence I claim was already there.
+
+⚠️ RIGHT-COUNT/WRONG-FILE guard. `(3 tests)` occurs at BOTH `:397` and `:402` in the BEFORE
+log — two different suites with the same count. Every row above is therefore keyed on the
+FILE PATH, which is unique in each log, and the line number is recorded only as a locator.
+A comparer keyed on the count alone would have matched the wrong suite here, in this exact
+log, on this exact number.
+
+⚠️ These two line numbers are pinned to the two job ids named above and to nothing else.
+The commit that adds THIS section changes only this file, so a later CI run of PR #124 will
+have different line numbers and identical counts; do not "correct" the numbers above
+against a newer run — read the job id first.
+
+CI at `8577dc4`: 15 of 15 required checks pass, on both `ubuntu-latest` and
+`ubuntu-24.04-arm` — lint, typecheck, unit-test+coverage, gates-conformance,
+perf-conformance, learning-redteam, commitlint, engine-pin-lint, meta-checks.
