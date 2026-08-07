@@ -32,8 +32,11 @@ if (SANCTIONED_SCRUB.test(text)) continue;
 `text` is the file's **whole** source, comments included. Naming any of the three identifiers
 anywhere in a file exempts it from the mutating-git-spawn rule entirely.
 
-This is documented, accurately and at length: a one-line warning at `:111` and a 40-line footnote
-from `:207`, both added earlier the same day, plus a playbook section. **Documentation is not a
+This is documented, accurately and at length: a one-line warning at `:111` and a **47-line** footnote
+block at `:207-253`, both added earlier the same day, plus a playbook section. (Corrected 2026-08-07
+before merge: an earlier draft said "40-line". The block opens at `:207` and runs to the end of the
+file at `:253`. Its own text at `:213` says "a 30-line comment", which refers to the comment that was
+_proposed and rejected_ for the definition site, not to itself.) **Documentation is not a
 control**, and the mechanism is unchanged by any of it — which is precisely why this is filed rather
 than considered closed by that prose.
 
@@ -103,9 +106,10 @@ Two options. They are not alternatives to each other so much as a cheap one and 
    matching files loses its exemption for a reason its author did not intend — several have counts
    that drop under comment-stripping (`git-repo-state.ts` 3→2, `plumbing.ts` 4→2,
    `crabgic-statusline.mjs` 4→2) and must still qualify on their remaining uses; (b) the guard's own
-   `the guard is not vacuous` case at `git-spawn-hygiene.test.ts:194` asserts
-   `scrubbed.length >= 5`, so narrowing moves that number and the assertion has to be re-derived from
-   a measurement rather than adjusted to fit.
+   `the guard is not vacuous` case (opened at `git-spawn-hygiene.test.ts:194`) asserts
+   `expect(scrubbed.length).toBeGreaterThanOrEqual(5)` at `git-spawn-hygiene.test.ts:201`, so
+   narrowing moves that number and the assertion has to be re-derived from a measurement rather than
+   adjusted to fit.
 
 2. **Drop presence-matching for the tests.** For test files, require the actual import
    (`runFixtureGit`/`gitFixtureEnv` from `@crabgic/testkit`) rather than the string. This is stronger

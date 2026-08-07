@@ -1,8 +1,15 @@
 ================================================================================
 SANCTIONED_SCRUB IS A PRESENCE-ONLY EXEMPTION — CENSUS AND FOUR REVERSE PROBES
-Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744
-(`origin/main`, one commit after the v1.6.0 marketplace re-pin).
 ================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744   (origin/main)
+# branch at capture: closeout/postrelease-observability-records (PROVISIONAL —
+#     a branch tip is not resolvable after a rebase; every claim below is
+#     pinned to the UPSTREAM BASE above or to a committed artifact)
+# Host: 16 logical CPUs (`nproc` = 16), WSL2.
+# Commands are quoted verbatim with their exit status.
 
 WHAT THIS IS. `docs/verification-playbook.md`'s "DOCUMENTATION CAN DISABLE THE
 GUARD IT DOCUMENTS" section — landed 2026-08-07 in the same wave — closes with a

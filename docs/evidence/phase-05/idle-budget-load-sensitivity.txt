@@ -1,175 +1,394 @@
 ================================================================================
-THE IDLE-BUDGET ARM'S HEADROOM IS A FUNCTION OF ITS CO-TENANTS — MEASURED
-Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744.
-Host: 16 logical CPUs, WSL2 (`nproc` = 16).
+The idle-budget arm: what its number actually measures, and what moves it
 ================================================================================
-
-WHAT THIS IS. `packages/supervisor/src/idle-budget/idle-budget.integration.test
-.ts`'s sustained-idle arm has been observed red in full-suite runs and green in
-isolation, and the handling each time was to add a sighting to a flake list. This
-transcript asks the question a flake list cannot: what does the arm actually
-measure, and how much headroom does it have in the channel it actually runs in?
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744   (origin/main)
+# branch at capture: closeout/postrelease-observability-records (PROVISIONAL —
+#     a branch tip is not resolvable after a rebase; every claim below is
+#     pinned to the UPSTREAM BASE above or to a committed artifact)
+# Host: 16 logical CPUs (`nproc` = 16), WSL2.
+# Commands are quoted verbatim with their exit status.
+#
+# ⚠️ THIS FILE REPLACES AN EARLIER DRAFT WHOSE STATED MECHANISM WAS FALSE.
+# §0 records what was wrong and how it was refuted, because the refutation is
+# the most useful thing in this transcript and deleting it would leave the next
+# reader free to re-derive the same error.
 
 --------------------------------------------------------------------------------
-1. THE ARM, AND WHAT ITS NUMBER MEANS
+0. WITHDRAWN — the mechanism this transcript first claimed, and its refutation
+--------------------------------------------------------------------------------
+An earlier draft of this file claimed the inflating pressure was co-tenancy
+INSIDE the vitest worker process: "work in the SAME PROCESS ... belonging to the
+other test files that worker is chewing through". THAT IS FALSE, and it is false
+for a reason that is checkable in one line.
+
+    $ grep -n "pool" vitest.config.ts
+    (no output)
+
+`vitest.config.ts` sets no `pool`. Vitest 4.1.10 resolves the default at
+`node_modules/vitest/dist/chunks/coverage.DM_a_rWm.js:180`:
+
+    resolved.pool ??= "forks";
+
+and `isolate` defaults to `true`
+(`node_modules/vitest/dist/chunks/defaults.9aQKnqFk.js:47`). **Every test file
+runs in its own forked child process.** `process.resourceUsage()` is
+`getrusage(RUSAGE_SELF)`, which cannot see another process. So no other test
+file's module graph, GC or coverage work can enter this measurement, and the
+withdrawn sentence described something that cannot happen.
+
+The second withdrawn claim, refuted by measurement in §3: "external host load
+barely moves this metric at all." It does move it. The probe behind that
+sentence used 8 busy loops on a 16-core host — the process was never starved, so
+the probe could not have shown anything.
+
+The third withdrawn claim, refuted by reading: the arm's scheduler "fires ZERO
+times inside the window". `heartbeat-scheduler.ts:45` is
+
+    tick(); // one immediate sample so callers have data before the first interval elapses
+
+inside `start()`, which `idle-budget.integration.test.ts:26` calls. It fires
+exactly ONCE — the immediate tick — and never again, because the 5 s interval
+does not elapse inside a 1.5 s window. "Once, not zero" is a small correction
+with a real consequence: the subject is not entirely absent from its own
+measurement.
+
+--------------------------------------------------------------------------------
+1. WHAT THE NUMBER IS
 --------------------------------------------------------------------------------
     idle-budget.integration.test.ts
     :15  const CPU_BUDGET_FRACTION = 0.01;      // <1% of one core
     :16  const SUSTAINED_WINDOW_MS = 1_500;
-    :24    const before = sampleResourceUsage();
-    :25    const scheduler = createHeartbeatScheduler();   // real HEARTBEAT_INTERVAL_MS
+    :26    scheduler.start();                   // fires once, immediately
     :28    await new Promise((resolve) => setTimeout(resolve, SUSTAINED_WINDOW_MS));
-    :32    const cpuFraction = cpuFractionBetween(before, after);
     :46    expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);
 
-`resource-probe.ts:37-45` defines the number:
+    resource-probe.ts:37-45
+      cpuDelta  = (userCPUTime + systemCPUTime) delta     // getrusage(RUSAGE_SELF)
+      wallDelta = Date.now() delta
+      fraction  = cpuDelta / wallDelta
 
-    cpuDelta  = (userCPUTime + systemCPUTime) delta      // process.resourceUsage()
-    wallDelta = Date.now() delta
-    fraction  = cpuDelta / wallDelta
+So: **all CPU consumed by this forked worker process — every thread of it,
+including V8's GC and compiler threads and libuv's pool — over 1500 ms of wall
+clock, while the subject under test does almost nothing.** What is in the
+numerator is the worker's own overhead: v8 coverage collection, GC, the module
+graph of the one file it is running, and whatever the OS scheduler charges it.
 
-⚠️ THIS IS `getrusage(RUSAGE_SELF)` OVER WALL TIME, and that is the crux. It is
-the CPU of THE WHOLE PROCESS — every thread of it — divided by a fixed 1500 ms
-of wall clock. The scheduler under test is idle for the entire window (its real
-interval is 5 s and the window is 1.5 s, so it fires ZERO times inside it). So
-essentially all of the measured CPU is the *host process's* other work, not the
-subject's.
+WHERE THE THRESHOLD CAME FROM. Not from a measurement:
 
-The module's own header (`resource-probe.ts:1-11`) makes the scope explicit and
-correct: "a SELF-CONTAINED … probe of THIS process alone". The defect is not the
-probe. It is that a threshold calibrated against a process containing only this
-test is being applied to a process containing 654 test files' worth of module
-graphs, V8 GC and v8 coverage collection.
+    $ git log -S "CPU_BUDGET_FRACTION = 0.01" --oneline -- \
+          packages/supervisor/src/idle-budget/idle-budget.integration.test.ts
+    42c9afe feat: phase 05 supervisor daemon and UDS control plane
 
---------------------------------------------------------------------------------
-2. MEASURED — FOUR CHANNELS, SAME ASSERTION
---------------------------------------------------------------------------------
-Every figure below is the arm's own `console.log`, captured with
-`--disable-console-intercept`. All four channels PASSED, seven runs in total;
-the interest is the margin, not the verdict.
+One commit — the phase's own implementation commit. The constant was
+TRANSCRIBED from the roadmap criterion's words ("<1% of one core"), which is the
+right thing to have done for a SPEC number, and it means the figure has never
+been calibrated against the distribution of the instrument that checks it.
 
-  A. ISOLATED — one file, `npx vitest run --project @crabgic/supervisor
-     src/idle-budget/idle-budget.integration.test.ts`, three consecutive runs:
-
-        cpuFraction = 0.0827%    RSS 71 MiB
-        cpuFraction = 0.0897%    RSS 70 MiB
-        cpuFraction = 0.0842%    RSS 70 MiB
-        (2 passed (2) each time)
-
-  B. ONE PROJECT — `npx vitest run --project @crabgic/supervisor`,
-     55 files / 354 tests:
-
-        cpuFraction = 0.0992%    RSS 70 MiB
-
-  C. FULL SUITE — `npx vitest run --coverage`, 654 files / 6869 tests, EXIT=0
-     both times, two separate runs an hour apart on the same host:
-
-        cpuFraction = 0.1571%    RSS 70 MiB      (run 1)
-        cpuFraction = 0.0971%    RSS 70 MiB      (run 2)
-
-  D. EXTERNAL HOST LOAD — the isolated command again, with 8 busy-loop
-     processes saturating half the host's 16 cores:
-
-        cpuFraction = 0.0910%    RSS 70 MiB   (2 passed (2))
-
-⇒ TWO THINGS, and the second is the more useful one.
-
-FIRST: A → C rises, by 1.14x on one full-suite sample and 1.84x on the other,
-against an isolated mean of ~0.0855%. The direction is up.
-
-SECOND, AND THE POINT: **the full-suite figure is not a figure, it is a spread.**
-Three isolated runs land inside 0.0827-0.0897% — a 1.08x band. Two full-suite
-runs of the identical command on the identical host land at 0.0971% and 0.1571%
-— a 1.62x band, WIDER than the entire gap between isolation and the full suite.
-The channel the assertion actually runs in has variance the channel it was
-calibrated in does not, and that is exactly the shape a threshold cannot be
-picked against from a single sample. Two samples are not a distribution either;
-they are enough to show one exists.
-
-A → D is essentially flat, which is the diagnostic result: EXTERNAL host load
-barely moves this number at all. Descheduling the process lowers its own CPU
-delta while the wall denominator keeps running, so "a loaded host" is the wrong
-model of the failure. **What inflates this metric is work in the SAME PROCESS** —
-GC, module evaluation and v8 coverage collection belonging to the other test
-files that worker is chewing through.
-
-That matters for the remedy: "re-run it on a quieter machine" does not address
-the mechanism, and neither does any tolerance expressed in terms of host load.
+⚠️ And the earlier draft's "what is not stated anywhere" was wrong too:
+`roadmap/05-supervisor-daemon.md:122` states the measured CI figure explicitly,
+quoting the job log. See §4.
 
 --------------------------------------------------------------------------------
-3. THE OBSERVED BREACHES — WHAT IS ON RECORD AND WHAT IS NOT
+2. THE COMMITTED SAMPLES — three of them, and they were omitted
 --------------------------------------------------------------------------------
-ON RECORD, one breach, committed and independently readable:
+The earlier draft called its own seven runs "the first seven samples of that
+work". Three samples predate this pass, two of them in the very directory this
+transcript sits in.
 
-    docs/evidence/gap-18/known-gate-flakes.md:81-86
-      "expected 0.011960719041278295 to be less than 0.01", i.e. 1.196% of one
-      core, in a full `npm test` taken immediately after `npm run build`;
-      re-run in isolation three times immediately afterwards: 3/3 green; the
-      branch touched nothing under `packages/supervisor`.
-      Mirrored at docs/verification-playbook.md:922-928.
+  (a) docs/evidence/phase-05/closeout-c6-idle-budget.txt:20 — ISOLATED, THREE
+      FILES, COVERAGE OFF, captured 2026-08-01T21:27:24Z at 65ff0da, exit 0:
 
-NOT ON RECORD, and stated as UNVERIFIED rather than repeated as fact: reviewers
-during this wave reported two further breaches of the same arm, at 1.075% and
-1.159%, both in full-suite runs and both clean 3/3 in isolation. A repo-wide grep
-for those figures (and for their fractional forms) returns nothing outside this
-paragraph. They have no committed transcript, no run id and no flake-list row. I
-did not observe them and I do not record them as measurements — what I can say is
-that no artifact in this tree corroborates them, and that the one breach that IS
-corroborated is enough to carry this record on its own.
+        [idle-budget] measured over 1500ms: RSS=71MiB (budget <100MiB), cpuFraction=0.3293% of one core (budget <1%)
 
-NOT REPRODUCED BY THIS PASS. No breach occurred in any of the seven runs
-above. The corroborated breach is 1.196% against an isolated baseline of
-~0.0855% — a factor of **14**, where the largest isolated-to-full-suite factor I
-could measure is **1.84**. So the breach condition is materially heavier than a plain full-suite
-run on this host, which is consistent with the sighting note's own "taken
-immediately after `npm run build`" and with §2's finding that the pressure is
-in-process. **This transcript does not claim to have found the breach condition.**
-It claims something narrower and sufficient: the arm's margin is not a constant,
-it moves with the process the arm is running in, and the direction is measured.
+      Command recorded in that file's own header:
+        npx vitest run --coverage.enabled=false --reporter=verbose \
+          packages/supervisor/src/idle-budget/idle-budget.integration.test.ts \
+          packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts \
+          packages/supervisor/src/idle-budget/resource-probe.test.ts
 
---------------------------------------------------------------------------------
-4. WHY "ALREADY IN BOTH FLAKE LISTS" IS NOT A DISPOSITION
---------------------------------------------------------------------------------
-The arm is currently listed in both catalogues:
+  (b) docs/evidence/phase-05/wi6-idle-budget-measured-numbers.txt:6 — ISOLATED,
+      one file:
 
-    docs/evidence/gap-18/known-gate-flakes.md:16   (the sixth table row)
-    docs/verification-playbook.md:922-928          (the cross-reference section)
+        [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1083% of one core (budget <1%)
 
-Both entries are honest and both were the right immediate response. But
-`known-gate-flakes.md:22-28` states the standard those lists hold themselves to:
+  (c) roadmap/05-supervisor-daemon.md:122 — CI, FULL SUITE, quoting run
+      30718490962's job log line 884:
 
-    "A gate that goes red for reasons unrelated to the change under test teaches
-    its readers to re-run rather than investigate — and the moment that habit
-    forms, a genuine regression gets the same shrug. The catalogue is the
-    minimum honest response; the fix is to make each of these … either
-    deterministic (inject the clock) or explicitly tolerant of a slow host,
-    which is work for whoever owns those phases."
+        [idle-budget] measured over 1500ms: RSS=74MiB (budget <100MiB), cpuFraction=0.1202% of one core (budget <1%)
 
-The list itself calls itself the minimum, and names the fix as owed. What has
-changed since is that the sighting count went up while the calibration did not.
+⇒ (a) IS THE HIGHEST NON-BREACH FIGURE ON RECORD ANYWHERE, and it is an ISOLATED
+run with coverage OFF — the leanest configuration that exists. It is 2.7x the
+CI full-suite figure (c). Any story in which "isolated" is the quiet channel is
+refuted by the repository's own committed evidence, and was refuted before this
+pass started.
 
 --------------------------------------------------------------------------------
-5. WHAT IS AND IS NOT CLAIMED
+3. MEASURED — external host load, done properly this time
 --------------------------------------------------------------------------------
-CLAIMED: the assertion is `getrusage(RUSAGE_SELF)`/wall over a 1.5 s window in
-which the scheduler under test fires zero times; the measured figure rises from
-isolation to the full suite (1.14x and 1.84x on two samples) and is flat under
-external host load; the two full-suite samples differ from each other by more
-than the isolated-to-full-suite gap; one breach at 1.196% is committed and
-readable; the arm sits in both flake lists.
+Command, both arms (coverage off, so the arm is the only thing in the process):
 
-NOT CLAIMED: that the test is wrong about the daemon. The daemon's real idle cost
-is not in dispute and RSS was comfortably inside its own budget in every run
-here (70-71 MiB against a 100 MiB budget).
+    $ npx vitest run --project @crabgic/supervisor \
+        src/idle-budget/idle-budget.integration.test.ts \
+        --coverage.enabled=false --disable-console-intercept
 
-NOT CLAIMED: that 1% is the wrong number for a real daemon. It is very probably
-the right number for the SUBJECT and the wrong number for the INSTRUMENT, and
-those are different sentences.
+NO LOAD — verbatim, three consecutive runs:
 
-NOT CLAIMED: the two uncorroborated breach figures. See §3.
+    [idle-budget] measured over 1500ms: RSS=68MiB (budget <100MiB), cpuFraction=0.0931% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=68MiB (budget <100MiB), cpuFraction=0.0284% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=68MiB (budget <100MiB), cpuFraction=0.0773% of one core (budget <1%)
+          Tests  2 passed (2)
 
-NOT CLAIMED: that this is urgent. Nothing ships wrong; the cost is a gate that
-occasionally reds for a reason unrelated to the change, which is exactly the cost
-`known-gate-flakes.md:22-28` describes.
+    exit status: 0 (all three)
+
+32 BUSY LOOPS — 2x `nproc`, so the process is genuinely contended rather than
+merely sharing. Same command, three consecutive runs, verbatim:
+
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1007% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1399% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1271% of one core (budget <1%)
+          Tests  2 passed (2)
+
+    exit status: 0 (all three)
+
+    mean no-load  0.0663%      max no-load  0.0931%
+    mean 32-load  0.1226%      min 32-load  0.1007%
+
+⇒ **1.85x on the means, and the two arms DO NOT OVERLAP** — the loaded minimum
+is above the unloaded maximum, over three samples each. External machine-level
+contention moves this number, and moves it by about as much as the entire
+isolation-to-full-suite gap the earlier draft attributed to in-process
+co-tenancy. The earlier probe used 8 loops on 16 cores and found nothing, which
+is what an unstarved process looks like.
+
+  ⚠️ NOTE ON THE 0.0284% SAMPLE. It is the lowest figure in this whole file and
+  it is real, not a typo — three consecutive unloaded runs of the identical
+  command span 0.0284-0.0931%, a 3.3x band, with nothing changed between them.
+  That band, from three samples of the quietest configuration available, is on
+  its own enough to say a single sample of this metric means very little.
+
+--------------------------------------------------------------------------------
+4. EVERY SAMPLE IN ONE PLACE — the point is the spread, not any figure
+--------------------------------------------------------------------------------
+    channel                                     cpuFraction        source
+    ---------------------------------------------------------------------------
+    isolated, coverage OFF, 3 files              0.3293%           committed (a)
+    isolated, coverage OFF, 1 file, 32 loads     0.1399%           §3
+    isolated, coverage OFF, 1 file, 32 loads     0.1271%           §3
+    isolated, coverage OFF, 1 file, 32 loads     0.1007%           §3
+    isolated, coverage OFF, 1 file               0.0931%           §3
+    isolated, coverage OFF, 1 file               0.0773%           §3
+    isolated, coverage OFF, 1 file               0.0284%           §3
+    isolated, coverage ON,  1 file               0.0827 / 0.0897 / 0.0842%
+    isolated, coverage ON,  1 file               0.1083%           committed (b)
+    isolated + 8 loads (unstarved; see §3)       0.0910%
+    one project, 55 files                        0.0992%
+    FULL SUITE, local                            0.1571%  /  0.0971%
+    FULL SUITE, local, under 32 busy loops       0.0961%  /  0.1069%   §5b
+    FULL SUITE, CI                               0.1202%           committed (c)
+
+    ISOLATED channel span:    0.0284% -> 0.3293%   = 11.6x
+    FULL-SUITE channel span:  0.0961% -> 0.1571%   =  1.6x
+       (0.0961% is a CONTENDED full-suite run — §5b. Counting only the
+        uncontended full-suite figures gives 0.0971% -> 0.1571%, the same 1.6x.)
+
+⇒ THE ISOLATED CHANNEL IS THE NOISIER ONE, BY A LARGE MARGIN. The earlier
+draft's central sentence — "the channel this assertion runs in has variance the
+channel it was calibrated in does not" — is FALSE, and inverted. Every full-suite
+figure ever recorded sits inside the isolated channel's own band.
+
+The honest statement is simpler and does not need the inversion: **this metric is
+noisy everywhere, in every configuration, and no channel has been sampled enough
+times to say what its distribution is.** The budget is a spec number sitting
+above a distribution nobody has characterised. That is what makes an occasional
+breach unsurprising, and it is what makes a single re-run in isolation a weak
+disposition.
+
+--------------------------------------------------------------------------------
+5b. THE DELIBERATE BREACH ATTEMPT — full suite UNDER contention, twice
+--------------------------------------------------------------------------------
+If machine contention is the mechanism (§3), the next question is whether it is
+SUFFICIENT. It is not. Two full-suite runs with 32 busy loops held for the whole
+run:
+
+    ### FULL SUITE under 32 busy loops, nproc=16, started 2026-08-07T16:23:51Z
+    [idle-budget] measured over 1500ms: RSS=70MiB (budget <100MiB), cpuFraction=0.0961% of one core (budget <1%)
+     Test Files  3 failed | 651 passed (654)
+          Tests  6 failed | 6863 passed (6869)
+    ### exit status: 1
+    ### end 2026-08-07T16:31:03Z
+
+    ### FULL SUITE run 2 under 32 busy loops, nproc=16, started 2026-08-07T16:32:02Z
+    [idle-budget] measured over 1500ms: RSS=71MiB (budget <100MiB), cpuFraction=0.1069% of one core (budget <1%)
+     Test Files  5 failed | 649 passed (654)
+          Tests  6 failed | 6863 passed (6869)
+    ### exit status: 1
+    ### end 2026-08-07T16:39:51Z
+
+=> 0.0961% and 0.1069% — inside budget by an order of magnitude, and barely
+above the unloaded isolated mean. THE ARM DID NOT BREACH under the heaviest
+contention this pass could apply. Whatever produces a 1.196% reading, 2x `nproc`
+of external CPU pressure across a full suite is not it.
+
+WHAT DID BREAK, and it is not this arm. Both runs are RED (exit 1), and the
+failures are the same family both times — fast-check property TIMEOUTS, never
+assertion failures:
+
+    |@crabgic/engine-core| src/footguns/property.test.ts       (8 tests | 2 failed) 132569ms
+    |@crabgic/engine-core| src/footguns/mcp-deny.test.ts       (4 tests | 1 failed)  28050ms
+    |@crabgic/engine-core| src/footguns/anchor-forms.test.ts   (5 tests | 1 failed)  21271ms
+    |@crabgic/engine-core| src/footguns/smuggling.test.ts      (6 tests | 1 failed)  20612ms
+    |@crabgic/perf| src/stats/decision-engine.property.test.ts (2 tests | 1 failed)  30796ms
+
+`docs/verification-playbook.md` already names "three fast-check property
+timeouts under concurrent load"; this reproduces that family DELIBERATELY rather
+than in passing, and the set is LARGER than the three recorded there. Both lists
+are updated in this commit. It is recorded here because it is the honest answer
+to "what does contention actually break in this repository", and the answer is
+not the arm this transcript is about.
+
+--------------------------------------------------------------------------------
+5c. ⚠️ REPRODUCED FIRST-HAND — 1.6977%, the largest breach on record
+--------------------------------------------------------------------------------
+This section was written last and it reverses this transcript's own conclusion.
+An earlier draft of §6 said "not reproduced by this pass". It then reproduced,
+on the very next run — the ordinary green-the-branch gate run, with NO
+artificial load:
+
+    $ npx vitest run --coverage        # the plain full-suite gate, 654 files
+
+     FAIL |@crabgic/supervisor| src/idle-budget/idle-budget.integration.test.ts >
+       idle resource budget — sustained no-op window, real 5s-paced heartbeats >
+       RSS and CPU both stay within budget over a sustained idle window, using
+       the REAL 5s-paced scheduler
+     AssertionError: expected 0.01697674418604651 to be less than 0.01
+      ❯ src/idle-budget/idle-budget.integration.test.ts:46:25
+
+     Test Files  2 failed | 652 passed (654)
+           Tests  2 failed | 6867 passed (6869)
+    exit status: 1
+
+**1.6977% against a <1% budget — 1.42x the previous maximum on record (1.196%)
+and the largest figure this arm has ever produced.**
+
+HOST STATE, checked rather than assumed, because it is the whole value of the
+sample: `pgrep` for the busy-loop generators returned **0** — every spinner from
+§5b had already been killed by its own script. `/proc/loadavg` read
+`6.47 16.96 20.59`, i.e. the 5- and 15-minute figures were still decaying from
+§5b's contended runs while nothing was actively consuming CPU. So this is an
+UNCONTENDED run on a RECENTLY-loaded host, which is very close to the condition
+the committed 1.196% sighting describes ("a full `npm test` taken immediately
+after `npm run build`").
+
+RE-RUN IN ISOLATION IMMEDIATELY AFTERWARDS, three times, verbatim:
+
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.1074% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.0277% of one core (budget <1%)
+          Tests  2 passed (2)
+    [idle-budget] measured over 1500ms: RSS=69MiB (budget <100MiB), cpuFraction=0.0819% of one core (budget <1%)
+          Tests  2 passed (2)
+
+    exit status: 0 (all three)
+
+3/3 green, spanning 3.9x among themselves — the same disposition every prior
+sighting used, from the same noisy channel, and it says nothing about the 1.6977
+reading.
+
+⚠️ TWO CONSEQUENCES, and they pull in opposite directions, which is why both are
+stated. It STRENGTHENS the record: the breach is real, reproducible without any
+artificial load, and worse than anything previously recorded. It WEAKENS §5b's
+tidy story: the two runs held under 32 busy loops came in at 0.0961% and
+0.1069%, while this UNLOADED run breached at 1.6977%. **Deliberate machine
+contention is neither necessary nor sufficient.** Whatever the mechanism is,
+this pass has not isolated it, and the honest conclusion is unchanged and now
+better evidenced: the metric's distribution is uncharacterised in every channel,
+and a threshold was set above it by transcription.
+
+⚠️ A SECOND TEST FAILED IN THE SAME RUN, and it is in NEITHER flake list:
+
+     FAIL |crabgic| src/daemon/run-dispatcher.test.ts >
+       createRealRunDispatcher — dispatch > reports a settle-transition failure
+       through onDriveError rather than crashing
+     AssertionError: expected false to be true
+      ❯ src/daemon/run-dispatcher.test.ts:837:81
+
+    re-run in isolation, three times:  61 passed (61) each, exit 0
+
+A new load flake, filed into both lists in this commit as a catalogue entry.
+
+--------------------------------------------------------------------------------
+5. THE BREACHES
+--------------------------------------------------------------------------------
+ON RECORD, committed and independently readable:
+
+  docs/evidence/gap-18/known-gate-flakes.md:82
+    "expected 0.011960719041278295 to be less than 0.01" — 1.196% — in a full
+    `npm test` taken immediately after `npm run build`; 3/3 green in isolation
+    immediately afterwards; the branch touched nothing under
+    packages/supervisor. Mirrored at docs/verification-playbook.md:922.
+
+OBSERVED DURING REVIEW of PR #133, in a full-suite run under concurrent external
+load: **1.0137%**. Not observed by this pass; attributed to the review rather
+than claimed first-hand, and added to both flake lists in this commit per
+docs/verification-playbook.md:929.
+
+REPORTED WITHOUT AN ARTIFACT — 1.075% and 1.159%. A repo-wide grep for those
+figures returns nothing but this paragraph: no transcript, no run id, no
+flake-list row. **UNVERIFIED.** Nothing in this transcript rests on them.
+
+--------------------------------------------------------------------------------
+6. NOT REPRODUCED, AND WHAT THAT DOES AND DOES NOT MEAN
+--------------------------------------------------------------------------------
+⚠️ THIS PARAGRAPH IS SUPERSEDED BY §5c AND IS KEPT VERBATIM. It read: "No breach
+occurred in any run this pass captured, INCLUDING the two deliberately contended
+full-suite runs of §5b (0.0961%, 0.1069%). Against an unloaded isolated mean of
+0.0663%, the committed 1.196% breach is a factor of ~18, and the largest
+single-configuration effect measured here is 1.85x. So the breach condition is
+NOT reached by machine contention alone at 2x `nproc` over a full suite, and
+this transcript does not claim to have found it."
+
+WHAT IS TRUE AFTER §5c: a breach WAS reproduced, at 1.6977%, in an UNCONTENDED
+full-suite run — larger than any figure previously recorded. The sentence about
+contention being insufficient still stands and is now sharper: contention is
+neither necessary nor sufficient. What this transcript still does not claim is
+to have ISOLATED the mechanism.
+
+What it does establish, which is enough for the record it supports:
+
+  1. the metric is process-scoped and the pool is `forks`, so the mechanism is
+     machine-level contention plus this worker's OWN coverage/GC overhead — not
+     other test files;
+  2. machine-level contention moves it, measurably and without overlap — but is
+     not on its own sufficient to breach (§5b);
+  3. the isolated channel spans 11.6x on the committed record, so "re-ran it in
+     isolation and it passed" is a weak signal, not a verdict;
+  4. the 1% threshold was transcribed from a spec, never calibrated.
+
+--------------------------------------------------------------------------------
+7. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the pool is `forks` with `isolate: true`, quoted from the resolved
+defaults in the installed Vitest; the scheduler fires once, not zero times;
+external contention at 2x `nproc` raises the figure 1.85x on means with
+non-overlapping arms; three committed samples exist and one of them (0.3293%,
+isolated, coverage off) is the highest non-breach figure anywhere; the isolated
+channel's span exceeds the full-suite channel's.
+
+NOT CLAIMED: that the daemon's real idle cost is in question. RSS was 68-71 MiB
+against a 100 MiB budget in every run here.
+
+NOT CLAIMED: that 1% is the wrong number for a daemon. It is a spec number; what
+is unestablished is the distribution of the instrument that checks it.
+
+NOT CLAIMED: the two uncorroborated breach figures (§5).
+
+NOT CLAIMED: that this transcript found the breach condition (§6).
 
 NO PRODUCTION CODE AND NO TEST WAS CHANGED BY THIS PASS.

@@ -45,8 +45,8 @@ cannot be cut, and the only fixes are a version bump or a re-cut tag. The commen
 (`publicationCheck.ts:215`) already states the design.
 
 **What is wrong is the assertion.** The test pins "the version about to be cut is not yet on the
-registry" as though it held at every commit — while, four lines below, the same test reasons the
-other way about a structurally identical clause:
+registry" as though it held at every commit — while **nine lines below** (`:336` to `:345`), the same
+test reasons the other way about a structurally identical clause:
 
 > `releaseGateSummary.test.ts:345` — "asserted here: this harness runs against whatever HEAD happens
 > to be, and HEAD moves with every commit after a cut while the tag stays put. Pinning
@@ -84,7 +84,7 @@ sibling record `23-release-evidence-lanes-run-in-no-per-push-channel.md`, filed 
 
 ## Proposed remedy
 
-Assert the **conditional** that is actually invariant, in the shape the tag clause three lines away
+Assert the **conditional** that is actually invariant, in the shape the tag clause nine lines below
 already uses:
 
 - if the release version is **absent** from `publishedVersions`:

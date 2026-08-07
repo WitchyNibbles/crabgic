@@ -25,23 +25,36 @@ $ grep -rn "check:tarball\|check:install-smoke\|check:package-graph\|check:all" 
 
 `npm run check:` appears 12 times under `.github/workflows/`; 11 of those are `run:` steps naming 11
 distinct scripts, and none of them is one of these four. Their only invocation path is a human typing
-`npm run check:all`, which chains the other three among its eleven links, by hand.
+`npm run check:all`, which chains the other three among its **thirteen** links, by hand.
 
 What that leaves unobserved is not cosmetic. `scripts/check-published-tarball.mjs:33` opens
 `FORBIDDEN_PATTERNS` — compiled test files, `test-support/` fixtures, TypeScript sources and
 `.tsbuildinfo` — and its own header records why: before it existed, "252 of 514 files — 49% of the
-package" shipped to consumers, and "`npm publish --dry-run` … never inspects the file list."
-`.github/workflows/publish.yml:125` runs exactly that dry run immediately before the real publish.
+package, ~600 kB unpacked — shipped to consumers who can never run them"
+(`scripts/check-published-tarball.mjs:10-11`).
+
+⚠️ **Dated correction, 2026-08-07, before this record was ever merged.** An earlier draft of this
+paragraph attributed to that header the sentence _"`npm publish --dry-run` … never inspects the file
+list."_ **The header does not say that.** `scripts/check-published-tarball.mjs:13-14` says _"Nothing
+caught it: `e2e/release`'s **packRunner** compares tarball BYTES for reproducibility but never
+inspects the file list. This guard does."_ — the subject is `packRunner`, and the string
+`publish --dry-run` does not occur anywhere in that file. The draft then built on the misquotation.
+The claim it was reaching for is true and is available from a source that actually supports it, so it
+is restated from the workflow instead: `.github/workflows/publish.yml:125` is
+`run: npm publish --dry-run --access public --workspace packages/cli`, a bare `run:` with no pipe, no
+redirect and no following step that reads its output — `grep -n "dry-run" .github/workflows/publish.yml`
+returns that line and one comment, and nothing else. So the dry run **prints** a file list and
+**asserts** nothing about it; no step in the publish pipeline consumes it.
 
 **Measured, with a line-count-neutral mutation** so nothing reddens for an incidental reason. Rewrite
 `"!dist/.tsbuildinfo"` as `"!dist/nothingxxxxx"` in `packages/cli/package.json` — same semantic
 weakening, same file length:
 
-| channel                                          | result                                    |
-| ------------------------------------------------ | ----------------------------------------- |
-| `npm run check:tarball`                          | **FAIL**, EXIT=1 — the guard bites        |
-| `npx vitest run --coverage` (the per-push suite) | **654 files / 6869 tests passed**, EXIT=0 |
-| all nine `meta-checks` steps                     | EXIT=0, every one                         |
+| channel                                                 | result                                    |
+| ------------------------------------------------------- | ----------------------------------------- |
+| `npm run check:tarball`                                 | **FAIL**, EXIT=1 — the guard bites        |
+| `npx vitest run --coverage` (the per-push suite)        | **654 files / 6869 tests passed**, EXIT=0 |
+| all nine `meta-checks` steps (the real set — see below) | EXIT=0, every one                         |
 
 The mutated full-suite counts are **identical** to the pristine run's, so the suite really executed
 and really did not care. A tree whose published tarball would ship a 234 kB `.tsbuildinfo` is green
@@ -53,10 +66,15 @@ pin line further down the same file and the deletion moves it. That is a line-po
 on a line-count change, not a check of the negation patterns; the sanctioned remedy for that class is
 `--update-baseline`, which re-pins and lets the change through.
 
-⚠️ **And one honest narrowing of the blast radius.** Since the bundler took over `packages/cli/dist`,
-`find packages/cli/dist -name '*.test.js'` returns **0**, so two of the four `FORBIDDEN_PATTERNS`
-have no subject in the one published package today and could not be falsified there. That is a
-property of the current bundling step that nothing asserts, not a reason the guard is unnecessary.
+⚠️ **And one honest narrowing of the blast radius — which is sharper than an earlier draft said.**
+Since the bundler took over `packages/cli/dist` (30 files), a census of all four forbidden classes
+over that directory returns: `*.test.*` **0**, anything under `test-support/` **0**, non-`.d.ts`
+`.ts` **0**, `.tsbuildinfo` **1**. So **three** of the four `FORBIDDEN_PATTERNS` have no subject in
+the one published package today and cannot be falsified there at all — only the `.tsbuildinfo` guard
+can, which is why it is the one the mutation above uses. An earlier draft said "two of the four";
+that understated it, and the corrected figure makes the point stronger, not weaker: the single
+falsifiable guard of the four runs in no channel. That three are currently subject-less is a property
+of the current bundling step that nothing asserts, and is a reason to keep them, not to drop them.
 
 ## Instance 2 — `e2e/release` and `e2e/attestation` are outside every per-push channel
 
@@ -68,9 +86,15 @@ exactly one place, `.github/workflows/release-e2e.yml:389`, in a workflow whose 
 `workflow_dispatch` and `workflow_call`, whose only caller is `.github/workflows/publish.yml:64`,
 whose own trigger is `push: tags: v*`.
 
-The three per-push workflows besides `ci.yml` run `packages/*` paths only:
-`.github/workflows/gates-conformance.yml:44`, `.github/workflows/perf-conformance.yml:44`,
-`.github/workflows/learning-redteam.yml:45`.
+**Four** other workflows carry a `pull_request` trigger, not three, and all four run `packages/*`
+paths only: `.github/workflows/gates-conformance.yml:44`,
+`.github/workflows/perf-conformance.yml:44`, `.github/workflows/learning-redteam.yml:45` — which run
+unconditionally — and `.github/workflows/journal-crash-suite.yml:36`, whose `pull_request` trigger
+(wired by PR #110 earlier in this wave) is **path-filtered** to `packages/journal/**` and the
+workflow's own file. An earlier draft said "the three per-push workflows"; that was an enumeration
+stated without counting, which is `docs/verification-playbook.md:718` exactly. The corrected count
+does not move the conclusion — none of the four touches `e2e/` — and it is fixed here rather than
+left, because a false exhaustive claim is what stops the next reader checking.
 
 Test files with no per-push channel: **19** in `e2e/release`, **20** in `e2e/attestation`, and for
 completeness **71** more across the other six harnesses — 110 files whose first execution on any
@@ -94,15 +118,34 @@ different subjects. This one names the channel.
 ## Blast radius on the merged corpus — bounded, and measured rather than assumed
 
 The natural worry is that a merged closeout ticked a criterion on a run of one of these unrun checks.
-It did not. `phase-01.json` criterion 3 is the only merged criterion whose evidence mentions
-`check-package-graph-acyclic`, and the `PASS — 18 workspace packages, dependency graph is a DAG` line
-is quoted from an `artifact` citation — the committed transcript
-`docs/evidence/phase-01/closeout-c3-tsc-18-packages.txt:43`, captured by hand — not from either of
-that criterion's two `ci-run` citations, which name the `typecheck` job (`tsc -b`, whose TS6202 bears
-the zero-cycles clause) and the `meta-checks` workspace count. Nothing in that record claims the
-acyclicity script runs in CI.
+It did not — but the corpus does lean on an unrun script in a way worth naming, and an earlier draft
+of this section missed it by asserting an exclusivity it had not enumerated.
 
-**No merged record is falsified by any of this.** What is affected is the future.
+**Two merged records mention `check-package-graph-acyclic`, not one.**
+
+1. `phase-01.json` criterion 3. Its `PASS — 18 workspace packages, dependency graph is a DAG` line is
+   quoted from an `artifact` citation — the committed transcript
+   `docs/evidence/phase-01/closeout-c3-tsc-18-packages.txt:43`, captured by hand — **not** from
+   either of that criterion's two `ci-run` citations, which name the `typecheck` job (`tsc -b`, whose
+   TS6202 bears the zero-cycles clause) and the `meta-checks` workspace count. Nothing in that record
+   claims the script runs in CI.
+2. `phase-21.json` criterion 1 — **ticked, `EVIDENCE-EXISTS`** — whose notes carry the pointer ruling:
+   _"Naming the instrument precisely, `check-package-graph-acyclic` would in fact ACCEPT that edge
+   today, because nothing in gates' transitive closure depends on supervisor — so the BINDING
+   constraint is the roadmap phase graph, not manifest acyclicity."_ The same sentence is in
+   `roadmap/21-connector-evidence-integration.md:153`.
+
+⚠️ **The second is the better instance for this record's thesis, and it is the one the earlier draft
+did not have.** It is a merged, ticked criterion carrying a claim about **what an unrun script would
+accept**. The claim was measured by hand when it was written and this record does not dispute it —
+but nothing re-establishes it on any push, so if a future manifest edit gave `gates` a transitive
+`supervisor` dependency, the sentence would quietly become false inside a ticked record, and the
+instrument that would have caught it is the one in no workflow. That is
+`docs/verification-playbook.md:718` — a claim about an enumeration nothing re-enumerates — applied to
+a guard rather than to a list.
+
+**No merged record is falsified by any of this**, and neither tick is in question. What is affected
+is the future: one record's pointer ruling has no standing guard behind it.
 
 ## Not read as worse than it is — two mitigations landed today
 

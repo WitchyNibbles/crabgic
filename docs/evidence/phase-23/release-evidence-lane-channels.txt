@@ -1,7 +1,15 @@
 ================================================================================
 THE RELEASE-EVIDENCE LANES HAVE NO CHANNEL THAT OBSERVES THEM BETWEEN TAGS
-Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744.
 ================================================================================
+# RULING-3 header
+# UTC: 2026-08-07
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge):
+#     5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744   (origin/main)
+# branch at capture: closeout/postrelease-observability-records (PROVISIONAL —
+#     a branch tip is not resolvable after a rebase; every claim below is
+#     pinned to the UPSTREAM BASE above or to a committed artifact)
+# Host: 16 logical CPUs (`nproc` = 16), WSL2.
+# Commands are quoted verbatim with their exit status.
 
 WHAT THIS IS. Three findings that reviewers surfaced separately during the
 post-release pass. They are folded into one transcript because they are one
@@ -42,7 +50,8 @@ moved and the conclusion has not.
 
 ⇒ `check:tarball`, `check:install-smoke`, `check:package-graph` and `check:all`
 appear NOWHERE under `.github/`. Their only invocation path is a human typing
-`npm run check:all`, which chains all three (`package.json`, `"check:all"`).
+`npm run check:all` — a THIRTEEN-link `&&` chain in `package.json` of which
+these three are members (and `check:all` itself is invoked by nothing).
 
 ⚠️ A NOTE ON THE FIGURE. The review that raised this counted "nine invocations".
 That does not reproduce at this commit and the difference is benign: PRs #131 and
@@ -53,25 +62,44 @@ among them — reproduces exactly.
 --------------------------------------------------------------------------------
 2. WHAT `check:tarball` IS THE ONLY BEARER OF
 --------------------------------------------------------------------------------
-`scripts/check-published-tarball.mjs:33-47` — `FORBIDDEN_PATTERNS`, four classes
-of file that must never reach the registry:
+`scripts/check-published-tarball.mjs:33-46` — `FORBIDDEN_PATTERNS`, four classes
+of file that must never reach the registry (the array opens at :33 and its last
+entry is at :45; an earlier draft put that entry at :46):
 
     :34  { label: "compiled test files",  test: (p) => /(^|\/)[^/]*\.test\.[^/]+$/.test(p) },
     :35  { label: "test-support fixtures", test: (p) => p.includes("/test-support/") },
     :36  { label: "TypeScript sources",    test: (p) => p.endsWith(".ts") && !p.endsWith(".d.ts") },
-    :46  { label: "incremental build state", test: (p) => p.endsWith(".tsbuildinfo") },
+    :45  { label: "incremental build state", test: (p) => p.endsWith(".tsbuildinfo") },
 
-Its header (`:8-14`) records why it exists: the build compiles `*.test.ts` too,
-so before the guard "252 of 514 files — 49% of the published tarball" were
-compiled tests, and "`npm publish --dry-run` … never inspects the file list."
+Its header (`:6-14`) records why it exists: the build compiles `*.test.ts` too,
+so before the guard "252 of 514 files — 49% of the package, ~600 kB unpacked"
+were compiled tests shipped "to consumers who can never run them" (`:10-11`).
+
+  ⚠️ DATED CORRECTION 2026-08-07, before merge. An earlier draft of this
+  paragraph attributed to that header the words "`npm publish --dry-run` …
+  never inspects the file list". THE HEADER DOES NOT SAY THAT. `:13-14` reads
+  "Nothing caught it: `e2e/release`'s packRunner compares tarball BYTES for
+  reproducibility but never inspects the file list. This guard does." — the
+  subject is packRunner, and `grep -c "publish --dry-run"` over that file
+  returns 0. The draft also misquoted "49% of the package" as "49% of the
+  published tarball". Both are corrected above; the claim about the publish
+  pipeline is restated below from a source that supports it.
 
 The mechanism these guards protect is `packages/cli/package.json`'s `files`:
 
     "files": ["dist", "!dist/**/*.test.*", "!dist/**/test-support/**", "!dist/.tsbuildinfo"]
 
-Nothing else in the repository asserts that those negation patterns work.
-`.github/workflows/publish.yml` runs `npm publish --dry-run` immediately before
-the real publish (`:125`), which by that header's own account does not look.
+Nothing else in the repository asserts that those negation patterns work. And
+the publish pipeline does not either — restated here from the workflow itself
+rather than from the script's header, which does not support it:
+
+    $ grep -n "dry-run" .github/workflows/publish.yml
+    4:# "npm build with provenance; ... publication dry-run before the real publish
+    125:        run: npm publish --dry-run --access public --workspace packages/cli
+
+One comment and one bare `run:`. No pipe, no redirect, no `if:` reading it and
+no following step that consumes its output. So the dry run PRINTS a file list
+and ASSERTS nothing about it.
 
 --------------------------------------------------------------------------------
 3. MUTATION — WHAT WOULD ACTUALLY NOTICE A WEAKENED TARBALL GUARD?
@@ -90,12 +118,22 @@ MUTATION A — DELETE the `"!dist/**/*.test.*"` entry from `files`:
 
   ⚠️ Recorded rather than discarded, because it is a real and separate fact:
   `npm run build` is `tsc -b && bundle:types && bundle:cli`, and the bundler
-  REPLACES `packages/cli/dist` with 30 bundled files. `find packages/cli/dist
-  -name '*.test.js'` returns 0 (against 558 across the other packages' `dist`
-  trees, which are not published). So at this commit the compiled-test negation
-  has no subject in the one published package and cannot be falsified there.
-  Two of the four guards are latent; that is a property of today's bundling
-  step, not a property anything asserts.
+  REPLACES `packages/cli/dist` with 30 bundled files. Full census of all four
+  forbidden classes over that directory:
+
+      total files in packages/cli/dist          30
+      *.test.*                                   0
+      anything under a test-support/ directory   0
+      .ts that is not .d.ts                      0
+      .tsbuildinfo                               1
+
+  So THREE of the four guards have no subject in the one published package and
+  cannot be falsified there at all; only `.tsbuildinfo` can, which is why the
+  mutations below use it. An earlier draft said "two of the four" — wrong, and
+  it UNDERSTATED the finding. (558 `*.test.js` files exist across the other
+  packages' `dist` trees; none of those packages is published.) That three
+  classes are currently subject-less is a property of today's bundling step
+  which nothing asserts, and is a reason to keep the guards, not to drop them.
 
 MUTATION B — DELETE the `"!dist/.tsbuildinfo"` entry (this one has a live
 subject: `packages/cli/dist/.tsbuildinfo`, 233 931 bytes):
@@ -126,15 +164,31 @@ MUTATION C — LINE-COUNT-NEUTRAL: rewrite `"!dist/.tsbuildinfo"` as
         Test Files  654 passed (654)
               Tests  6869 passed (6869)   EXIT=0
 
+    THE NINE `meta-checks` STEPS, exactly as `ci.yml` declares them
+    (`ci.yml:244`, `:246`, `:248`, `:267`, `:301`, `:323`, `:330`, `:340`,
+    `:357`) — re-run under mutation C:
+
     $ npm run check:workspace-count      EXIT=0
     $ npm run check:hygiene              EXIT=0
     $ npm run check:release-notes        EXIT=0
     $ npm run check:marketplace-pin      EXIT=0
     $ npm run check:support-windows      EXIT=0
-    $ npm run check:engine-pin           EXIT=0
     $ npm run check:criteria-closeout    EXIT=0
     $ npm run check:criteria-baseline    EXIT=0
+    $ npm run check:citation-runs        EXIT=0
     $ npm run check:citation-content     EXIT=0
+
+    ⚠️ DATED CORRECTION 2026-08-07, before merge. An earlier draft of this
+    block listed a DIFFERENT nine: it included `check:engine-pin`, which is not
+    a `meta-checks` step at all but its own `engine-pin-lint` job
+    (`ci.yml:215-226`), and it OMITTED `check:citation-runs`, which is one
+    (`ci.yml:340`). The count coincided at nine and the set was wrong — an
+    enumeration asserted without being enumerated, which is
+    `docs/verification-playbook.md:718`. The corrected set is above and was
+    re-run rather than re-reasoned. For completeness, both jobs that sit
+    outside it are green under the same mutation too:
+
+    $ npm run check:engine-pin           EXIT=0   (engine-pin-lint job)
 
 ⇒ THE WHOLE PER-PUSH CHANNEL IS GREEN ON A TREE WHOSE PUBLISHED TARBALL WOULD
 SHIP A 234 kB `.tsbuildinfo`, and the one thing that objects is a script no
@@ -168,11 +222,20 @@ them.
 `workflow_call`. The only caller is `publish.yml:64` (`uses:
 ./.github/workflows/release-e2e.yml`), whose own trigger is `push: tags: v*`.
 
-The three per-push workflows besides `ci.yml` run `packages/*` paths only:
+FOUR other workflows carry a `pull_request` trigger, not three, and all four
+run `packages/*` paths only:
 
-    gates-conformance.yml:44,46,77  npx vitest run packages/gates/…
+    gates-conformance.yml:44,46,77   npx vitest run packages/gates/…
     perf-conformance.yml:44,46,48,50 npx vitest run packages/perf/…
     learning-redteam.yml:45,47       npx vitest run packages/learning …
+    journal-crash-suite.yml:36       pull_request, PATH-FILTERED to
+                                     packages/journal/** and its own file
+                                     (wired by PR #110 earlier in this wave)
+
+⚠️ DATED CORRECTION 2026-08-07, before merge: an earlier draft said "the three
+per-push workflows" and missed the fourth. It does not move the conclusion —
+none of the four touches `e2e/` — and it is corrected rather than left, because
+a false exhaustive claim is what stops the next reader counting.
 
 Test files with no per-push channel: `e2e/release` 19, `e2e/attestation` 20 —
 and, for completeness, the other six harnesses too (`e2e/provisioning` 10,
@@ -186,8 +249,10 @@ execution on any push is at a `v*` tag or a manual dispatch.
 The natural worry is that a merged closeout record ticked a criterion on a CI run
 of one of these unrun checks. It did not.
 
-`phase-01.json` criterion 3 is the only merged criterion whose evidence mentions
-`check-package-graph-acyclic`. Its six citations are:
+TWO merged criteria mention `check-package-graph-acyclic`, not one. Take them in
+turn.
+
+(1) `phase-01.json` criterion 3. Its six citations are:
 
     ci-run     CI / typecheck (ubuntu-latest), job 91419417975      — `tsc -b`
     ci-run     CI / meta-checks, job 91419417950                    — check-workspace-count
@@ -203,8 +268,30 @@ to either `ci-run`. The criterion's own named channel is the typecheck job log,
 and `tsc -b`'s TS6202 is what actually bears the zero-cycles clause. Nothing in
 that record claims the acyclicity script runs in CI.
 
-⇒ NO MERGED RECORD IS FALSIFIED by any of this. What is affected is the future:
-these instruments cannot regress loudly.
+(2) `phase-21.json` criterion 1 — TICKED, `EVIDENCE-EXISTS` — whose notes carry
+the pointer ruling, repeated verbatim at
+`roadmap/21-connector-evidence-integration.md:153`:
+
+    "Naming the instrument precisely, check-package-graph-acyclic would in fact
+     ACCEPT that edge today, because nothing in gates transitive closure depends
+     on supervisor — so the BINDING constraint is the roadmap phase graph, not
+     manifest acyclicity."
+
+⚠️ DATED CORRECTION 2026-08-07, before merge. An earlier draft of this section
+asserted that phase-01 c3 was "the only merged criterion" mentioning the script.
+That is an exclusivity claim stated without enumerating —
+`docs/verification-playbook.md:718` — and it is false. The second instance is
+also the BETTER one for this transcript's thesis, and missing it cost the
+argument rather than saving it: a merged, ticked criterion carries a claim about
+WHAT AN UNRUN SCRIPT WOULD ACCEPT. That claim was measured by hand when written
+and is not disputed here, but nothing re-establishes it on any push — so a
+future manifest edit giving `gates` a transitive `supervisor` dependency would
+quietly falsify a sentence inside a ticked record, and the instrument that would
+have caught it is the one in no workflow.
+
+⇒ NO MERGED RECORD IS FALSIFIED by any of this, and neither tick is in question.
+What is affected is the future: these instruments cannot regress loudly, and one
+merged pointer ruling has no standing guard behind it.
 
 --------------------------------------------------------------------------------
 6. WHAT ALREADY LANDED TODAY — SO THIS IS NOT READ AS WORSE THAN IT IS

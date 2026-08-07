@@ -14,6 +14,7 @@ this branch hit that confusion once already (see `live-verification.md`).
 | `@crabgic/journal`    | the automatic heartbeat interval actually renews the on-disk record (`autoRenew: true`)                                                                         |
 | `@crabgic/git-engine` | control-clone crash/recovery (`control-clone.crash.test.ts`) — see the 2026-08-07 row note below                                                                |
 | `@crabgic/supervisor` | idle resource budget over a sustained idle window with the REAL 5s-paced scheduler (`idle-budget.integration.test.ts`) — see the 2026-08-07 sighting note below |
+| `crabgic` (CLI)       | run-dispatcher reports a settle-transition failure through `onDriveError` rather than crashing (`run-dispatcher.test.ts`) — see the seventh-row note below      |
 
 Each was observed failing once during this branch's work, re-run in isolation, and passed.
 The pattern is the same in all four: a real wall-clock interval or a concurrency window
@@ -95,3 +96,71 @@ describes — a real wall-clock window whose measurement a loaded host stretches
 and the same remedy applies: widen the tolerance or measure against something a co-tenant build
 cannot inflate. Added to `docs/verification-playbook.md`'s list in the same pass, per the
 cross-reference rule below.
+
+### Second sighting of the same row, 2026-08-07 — and the mechanism above is amended
+
+**A fourth breach was observed during review of PR #133: `1.0137%`**, in a full-suite run under
+concurrent external load. Two further breaches were reported in the same review at **1.075%** and
+**1.159%**; a repo-wide grep finds no transcript, run id or row for either, so they are listed as
+**UNVERIFIED** and nothing rests on them.
+
+⚠️ **And a FIFTH, captured first-hand while writing this entry — `1.6977%`, the largest this arm has
+ever produced, 1.42× the 1.196% above.** `expected 0.01697674418604651 to be less than 0.01` at
+`idle-budget.integration.test.ts:46`, in a plain `npx vitest run --coverage` full-suite run
+(2 failed | 652 passed of 654) with **no artificial load** — `pgrep` for the load generators returned
+0 and `/proc/loadavg` read `6.47 16.96 20.59`, a machine settling rather than working. Re-run in
+isolation three times immediately afterwards: **3/3 green**, at 0.1074 / 0.0277 / 0.0819%, themselves
+a 3.9× spread. Verbatim capture in `docs/evidence/phase-05/idle-budget-load-sensitivity.txt` §5c.
+
+⚠️ **The sentence above — "a real wall-clock window whose measurement a loaded host stretches past
+its tolerance" — stays verbatim and is half wrong.** It is the right family and the wrong mechanism,
+and the difference changes the remedy. Measured, and written up in full at
+`docs/evidence/phase-05/idle-budget-load-sensitivity.txt`:
+
+- `vitest.config.ts` sets no `pool`, so Vitest 4.1.10 resolves `pool = "forks"` with `isolate: true`.
+  **Every test file runs in its own forked process**, and the metric is `getrusage(RUSAGE_SELF)` over
+  wall clock — so a co-tenant _build_ or a co-tenant _test file_ cannot enter the numerator at all.
+  What can: machine-level CPU contention, and this worker's own coverage/GC overhead.
+- Machine contention does move it, and by a lot: three unloaded runs vs three under 32 busy loops on
+  16 cores gave means 0.0663% → 0.1226%, **1.85× with no overlap between the arms**.
+- But contention alone is **not sufficient** to breach: a full 654-file suite run _under_ those 32
+  busy loops put the arm at **0.0961%**, well inside budget.
+- And the disposition every sighting has used — "re-ran in isolation, 3/3 green" — is drawn from the
+  **noisiest** channel on record. The isolated channel spans **11.6×**
+  (0.0284% here → 0.3293% at `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, an isolated
+  run with coverage off, committed 2026-08-01); the full-suite channel spans 1.6×. Every full-suite
+  figure ever recorded sits inside the isolated band.
+
+⇒ **Do not read a green isolated re-run as clearing this row.** The honest summary is that the 1%
+figure is a spec number transcribed from the roadmap (traceable to one commit, `42c9afe`) sitting
+above a distribution nobody has characterised. Filed with a sized remedy as
+`docs/evidence/criteria-closeout/defects/05-idle-budget-arm-not-calibrated-for-its-channel.md`; the
+remedy that matches the measured mechanism is a dedicated CI step on a runner doing nothing else, not
+a wider tolerance.
+
+### Seventh row, added 2026-08-07 — `crabgic` (CLI) run-dispatcher settle-transition
+
+**The table above is now SEVEN rows.** Failed once in the same plain full-suite run that produced the
+1.6977% reading above:
+
+```
+FAIL |crabgic| src/daemon/run-dispatcher.test.ts >
+  createRealRunDispatcher — dispatch > reports a settle-transition failure
+  through onDriveError rather than crashing
+AssertionError: expected false to be true
+ ❯ src/daemon/run-dispatcher.test.ts:837:81
+```
+
+Re-run in isolation three times immediately afterwards: **61 passed (61)** each, exit 0. So this is a
+**verdict** of the same strength as rows 1-4, not a catalogue entry — observed, re-run in isolation,
+seen to pass. It was in **neither** list before today.
+
+### Also observed in those contended runs — the fast-check family, confirmed
+
+The same two deliberately-contended full-suite runs failed 3 files / 6 tests and 5 files / 6 tests
+respectively, **none of them the idle-budget arm**: `@crabgic/engine-core`'s
+`src/footguns/{property,smuggling,anchor-forms,mcp-deny}.test.ts` and `@crabgic/perf`'s
+`src/stats/decision-engine.property.test.ts`, all as timeouts rather than assertion failures. That is
+the "three fast-check property timeouts under concurrent load" family the cross-reference section
+below already names, now reproduced deliberately rather than seen in passing, and it is a **larger**
+set than the three recorded there.
