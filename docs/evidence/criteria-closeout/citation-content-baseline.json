@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "13599575c6d0b0d9377a0ec22dfab3fbb9bcaed0",
+  "generatedAtSha": "442e5fa03da5c5e16078cecba8eba12b97c0eeb7",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -10221,7 +10221,7 @@
       ]
     },
     "phase-22.json#c2#.github/workflows/learning-redteam.yml:45": {
-      "qa": "05e5c30c9132",
+      "qa": "b4f3279c3598",
       "ref": "OK",
       "pins": []
     },
